@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
 	"time"
 
@@ -11,16 +12,27 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
-type xUnitResults []testSuite
+type testSuites struct {
+	Suites   []testSuite `xml:"testsuite"`
+	Errors   int         `xml:"errors,attr"`
+	Failures int         `xml:"failures,attr"`
+	Skip     int         `xml:"skip,attr"`
+	Name     string      `xml:"name,attr"`
+	Time     float64     `xml:"time,attr"`
+	Tests    int         `xml:"tests,attr"`
+}
 
 type testSuite struct {
 	Errors    int        `xml:"errors,attr"`
 	Failures  int        `xml:"failures,attr"`
 	Skip      int        `xml:"skip,attr"`
 	Name      string     `xml:"name,attr"`
+	Tests     int        `xml:"tests,attr"`
 	TestCases []testCase `xml:"testcase"`
+	Time      float64    `xml:"time,attr"`
 	SysOut    string     `xml:"system-out"`
 	SysErr    string     `xml:"system-err"`
 }
@@ -40,13 +52,24 @@ type failureDetails struct {
 	Content string `xml:",chardata"`
 }
 
-func parseXMLResults(reader io.Reader) (xUnitResults, error) {
-	results := xUnitResults{}
-	if err := xml.NewDecoder(reader).Decode(&results); err != nil {
+func parseXMLResults(reader io.Reader) ([]testSuite, error) {
+	results := testSuites{}
+	fileData, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to read results file")
+	}
+	// need to try to unmarshal into 2 different structs since the JUnit XML schema
+	// allows for <testsuite> or <testsuites> to be the root
+	// https://github.com/windyroad/JUnit-Schema/blob/master/JUnit.xsd
+	if err = xml.Unmarshal(fileData, &results); err != nil {
 		return nil, err
 	}
-
-	return results, nil
+	if len(results.Suites) == 0 {
+		if err = xml.Unmarshal(fileData, &results.Suites); err != nil {
+			return nil, err
+		}
+	}
+	return results.Suites, nil
 }
 
 // ToModelTestResultAndLog converts an xunit test case into an

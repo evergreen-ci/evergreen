@@ -1,0 +1,1235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="0.1570000000000001" tests="429" failures="0">
+  <testsuite name="Root Suite" timestamp="2017-06-30T04:06:00" tests="0" failures="0" time="0">
+  </testsuite>
+  <testsuite name="bundles/common/components/AuthExpired/AuthExpired" timestamp="2017-06-30T04:06:00" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0.003">
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired wraps the content in a div" time="0.003" classname="wraps the content in a div">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired renders node returned from children function" time="0" classname="renders node returned from children function">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired does not render PasswordAuth" time="0" classname="does not render PasswordAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired does not render MultiFactorAuth" time="0" classname="does not render MultiFactorAuth">
+    </testcase>
+  </testsuite>
+  <testsuite name="when multifactor is expired" timestamp="2017-06-30T04:06:00" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="and a user triggers onAuthExpired" timestamp="2017-06-30T04:06:00" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired and a user triggers onAuthExpired does not render node returned from children function" time="0.001" classname="does not render node returned from children function">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired and a user triggers onAuthExpired does not render PasswordAuth" time="0" classname="does not render PasswordAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired and a user triggers onAuthExpired renders MultiFactorAuth" time="0" classname="renders MultiFactorAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired and a user triggers onAuthExpired does not render a Modal" time="0" classname="does not render a Modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when promptWithinModal is true" timestamp="2017-06-30T04:06:00" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="and a user triggers onAuthExpired" timestamp="2017-06-30T04:06:00" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired when promptWithinModal is true and a user triggers onAuthExpired renders node returned from children function" time="0" classname="renders node returned from children function">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired when promptWithinModal is true and a user triggers onAuthExpired does not render PasswordAuth" time="0" classname="does not render PasswordAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired when promptWithinModal is true and a user triggers onAuthExpired renders MultiFactorAuth" time="0" classname="renders MultiFactorAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when multifactor is expired when promptWithinModal is true and a user triggers onAuthExpired renders a Modal" time="0" classname="renders a Modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when password is expired" timestamp="2017-06-30T04:06:00" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="and a user triggers onAuthExpired" timestamp="2017-06-30T04:06:00" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired and a user triggers onAuthExpired does not render node returned from children function" time="0" classname="does not render node returned from children function">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired and a user triggers onAuthExpired renders PasswordAuth" time="0" classname="renders PasswordAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired and a user triggers onAuthExpired does not render MultiFactorAuth" time="0" classname="does not render MultiFactorAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired and a user triggers onAuthExpired does not render a Modal" time="0" classname="does not render a Modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when promptWithinModal is true" timestamp="2017-06-30T04:06:00" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="and a user triggers onAuthExpired" timestamp="2017-06-30T04:06:00" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/AuthExpired.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired when promptWithinModal is true and a user triggers onAuthExpired renders node returned from children function" time="0.001" classname="renders node returned from children function">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired when promptWithinModal is true and a user triggers onAuthExpired renders PasswordAuth" time="0" classname="renders PasswordAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired when promptWithinModal is true and a user triggers onAuthExpired does not render MultiFactorAuth" time="0" classname="does not render MultiFactorAuth">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/AuthExpired when password is expired when promptWithinModal is true and a user triggers onAuthExpired renders a Modal" time="0" classname="renders a Modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/AuthExpired/MultiFactorAuth" timestamp="2017-06-30T04:06:00" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/MultiFactorAuth.spec.js" failures="0" time="0.004">
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth renders a authCode input box" time="0.003" classname="renders a authCode input box">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth does not render an error X" time="0.001" classname="does not render an error X">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth does not call our onSuccess function" time="0" classname="does not call our onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user enters an invalid password" timestamp="2017-06-30T04:06:00" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/MultiFactorAuth.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth when a user enters an invalid password renders an error X" time="0" classname="renders an error X">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth when a user enters an invalid password does not call our onSuccess function" time="0" classname="does not call our onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user enters a valid password" timestamp="2017-06-30T04:06:00" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/MultiFactorAuth.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth when a user enters a valid password does not render an error X" time="0.001" classname="does not render an error X">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/MultiFactorAuth when a user enters a valid password calls our onSuccess function" time="0" classname="calls our onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/AuthExpired/PasswordAuth" timestamp="2017-06-30T04:06:01" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/PasswordAuth.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth renders a password input box" time="0.001" classname="renders a password input box">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth does not render an error X" time="0" classname="does not render an error X">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth does not call our onSuccess function" time="0" classname="does not call our onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user enters an invalid password" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/PasswordAuth.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth when a user enters an invalid password renders an error X" time="0" classname="renders an error X">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth when a user enters an invalid password does not call our onSuccess function" time="0" classname="does not call our onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user enters a valid password" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AuthExpired/PasswordAuth.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth when a user enters a valid password does not render an error X" time="0" classname="does not render an error X">
+    </testcase>
+    <testcase name="bundles/common/components/AuthExpired/PasswordAuth when a user enters a valid password calls our onSuccess function" time="0" classname="calls our onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/AutoAdvanceInputs" timestamp="2017-06-30T04:06:01" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with inputType of &quot;code&quot;" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0.005">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered with inputType of &quot;code&quot; renders 6 input elements" time="0.002" classname="renders 6 input elements">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered with inputType of &quot;code&quot; each input element rendered has the correct name property" time="0.003" classname="each input element rendered has the correct name property">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with inputType of &quot;codeRecovery&quot;" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered with inputType of &quot;codeRecovery&quot; renders 8 input elements" time="0.001" classname="renders 8 input elements">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered with inputType of &quot;codeRecovery&quot; each input element rendered has the correct name property" time="0.001" classname="each input element rendered has the correct name property">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered does not render any visible icons" time="0.001" classname="does not render any visible icons">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters 1 value" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user enters 1 value does not call onComplete" time="0" classname="does not call onComplete">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user enters 1 value does not call onBlur" time="0" classname="does not call onBlur">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user enters 1 value calls the expected input element&apos;s focus function" time="0" classname="calls the expected input element&apos;s focus function">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user enters 1 value instance.getValue returns the internal value as a string" time="0" classname="instance.getValue returns the internal value as a string">
+    </testcase>
+  </testsuite>
+  <testsuite name="and every value is set" timestamp="2017-06-30T04:06:01" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and every value is set calls onComplete" time="0" classname="calls onComplete">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and every value is set calls onComplete with correct value" time="0.001" classname="calls onComplete with correct value">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and every value is set instance.getValue returns the internal value as a string" time="0" classname="instance.getValue returns the internal value as a string">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user deletes the last input&apos;s value" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and every value is set and a user deletes the last input&apos;s value calls focus on correct element" time="0" classname="calls focus on correct element">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and every value is set and a user deletes the last input&apos;s value instance.getValue returns the internal value as a string" time="0" classname="instance.getValue returns the internal value as a string">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user calls instance.reset()" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and every value is set and a user calls instance.reset() instance.getValue returns the internal value as a string" time="0" classname="instance.getValue returns the internal value as a string">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user pastes a valid value that is not the full length" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user pastes a valid value that is not the full length does not call onComplete" time="0" classname="does not call onComplete">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user pastes a valid value that is the full length" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user pastes a valid value that is the full length calls onComplete" time="0" classname="calls onComplete">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user pastes a valid value that is the full length calls onComplete with correct value" time="0" classname="calls onComplete with correct value">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user pastes an invalid valid" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and a user pastes an invalid valid does not call onComplete" time="0" classname="does not call onComplete">
+    </testcase>
+  </testsuite>
+  <testsuite name="and has an icon prop of &quot;spinner&quot;" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and has an icon prop of &quot;spinner&quot; shows the spinner icon" time="0.001" classname="shows the spinner icon">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and has an icon prop of &quot;spinner&quot; does not show the check icon" time="0.001" classname="does not show the check icon">
+    </testcase>
+  </testsuite>
+  <testsuite name="and has an icon prop of &quot;complete&quot;" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/AutoAdvanceInputs.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and has an icon prop of &quot;complete&quot; shows the complete icon" time="0.001" classname="shows the complete icon">
+    </testcase>
+    <testcase name="js/common/components/AutoAdvanceInputs when rendered and has an icon prop of &quot;complete&quot; does not show the spinner icon" time="0" classname="does not show the spinner icon">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/CollapsibleSection" timestamp="2017-06-30T04:06:01" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/CollapsibleSection.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when mounted" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/CollapsibleSection.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/CollapsibleSection when mounted does not call onHeadlineClick" time="0" classname="does not call onHeadlineClick">
+    </testcase>
+    <testcase name="js/common/components/CollapsibleSection when mounted renders headline text" time="0" classname="renders headline text">
+    </testcase>
+    <testcase name="js/common/components/CollapsibleSection when mounted renders open state" time="0.001" classname="renders open state">
+    </testcase>
+    <testcase name="js/common/components/CollapsibleSection when mounted renders children" time="0" classname="renders children">
+    </testcase>
+  </testsuite>
+  <testsuite name="when the headline is clicked" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/CollapsibleSection.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/CollapsibleSection when mounted when the headline is clicked calls onHeadlineClick" time="0" classname="calls onHeadlineClick">
+    </testcase>
+  </testsuite>
+  <testsuite name="when active is false" timestamp="2017-06-30T04:06:01" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/CollapsibleSection.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/CollapsibleSection when mounted when active is false renders headline text" time="0" classname="renders headline text">
+    </testcase>
+    <testcase name="js/common/components/CollapsibleSection when mounted when active is false does not render open state" time="0" classname="does not render open state">
+    </testcase>
+    <testcase name="js/common/components/CollapsibleSection when mounted when active is false does not render children" time="0" classname="does not render children">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/ContextSwitcher" timestamp="2017-06-30T04:06:01" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/ContextSwitcher.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with default props" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/ContextSwitcher.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/ContextSwitcher when rendered with default props shows GroupPicker" time="0" classname="shows GroupPicker">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/Edit2FA/Edit2FA" timestamp="2017-06-30T04:06:01" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with multi factor auth disabled" timestamp="2017-06-30T04:06:01" tests="7" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.004">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled updates the 2fa data from the server" time="0" classname="updates the 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled does not initially load new settings values" time="0" classname="does not initially load new settings values">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled creates four accordions" time="0.001" classname="creates four accordions">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled first accordion shows disabled text" time="0.001" classname="first accordion shows disabled text">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled every accordion is not active" time="0.001" classname="every accordion is not active">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled only one accordion shows preview text" time="0" classname="only one accordion shows preview text">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled first accordion shows correct preview text when not active" time="0.001" classname="first accordion shows correct preview text when not active">
+    </testcase>
+  </testsuite>
+  <testsuite name="and the settings model is updated with multifactor auth enabled" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and the settings model is updated with multifactor auth enabled updates the 2fa data from the server" time="0" classname="updates the 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and the settings model is updated with multifactor auth enabled does not load new settings values" time="0" classname="does not load new settings values">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on the first accordion" timestamp="2017-06-30T04:06:01" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.005">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and a user clicks on the first accordion expands the first accordion" time="0.001" classname="expands the first accordion">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and a user clicks on the first accordion every accordion but the first is not active" time="0.003" classname="every accordion but the first is not active">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and a user clicks on the first accordion first accordion still shows same text" time="0.001" classname="first accordion still shows same text">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on the accordion at index &quot;1&quot;" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and a user clicks on the accordion at index &quot;1&quot; does not the accordion active" time="0.001" classname="does not the accordion active">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on the accordion at index &quot;2&quot;" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and a user clicks on the accordion at index &quot;2&quot; does not the accordion active" time="0.001" classname="does not the accordion active">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on the accordion at index &quot;3&quot;" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with multi factor auth disabled and a user clicks on the accordion at index &quot;3&quot; does not the accordion active" time="0" classname="does not the accordion active">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with voice/sms multi factor auth enabled" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled updates the 2fa data from the server" time="0" classname="updates the 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled does not initially load new settings values" time="0.001" classname="does not initially load new settings values">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled creates four accordions" time="0.001" classname="creates four accordions">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled first accordion changes preview text to reflect new primary method" time="0" classname="first accordion changes preview text to reflect new primary method">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on backup accordion" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a user clicks on backup accordion renders setup phone" time="0.001" classname="renders setup phone">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a user clicks on backup accordion does not render a &quot;Remove Backup Phone&quot; button" time="0" classname="does not render a &quot;Remove Backup Phone&quot; button">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with voice/sms multi factor auth enabled and a backup device" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device updates the 2fa data from the server" time="0.001" classname="updates the 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device does not initially load new settings values" time="0" classname="does not initially load new settings values">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device creates four accordions" time="0.001" classname="creates four accordions">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device second accordion changes preview text to reflect backup method" time="0" classname="second accordion changes preview text to reflect backup method">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on backup accordion" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device and a user clicks on backup accordion expands the backup accordion" time="0" classname="expands the backup accordion">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device and a user clicks on backup accordion second accordion preview text persists" time="0.001" classname="second accordion preview text persists">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device and a user clicks on backup accordion does not render setup phone" time="0" classname="does not render setup phone">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device and a user clicks on backup accordion shows a &quot;Remove Backup Phone&quot; button" time="0" classname="shows a &quot;Remove Backup Phone&quot; button">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on &quot;Remove Backup Phone&quot; button" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with voice/sms multi factor auth enabled and a backup device and a user clicks on backup accordion and a user clicks on &quot;Remove Backup Phone&quot; button makes call to remove backup device" time="0" classname="makes call to remove backup device">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with authenticator multi factor auth enabled" timestamp="2017-06-30T04:06:01" tests="5" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled updates the 2fa data from the server" time="0" classname="updates the 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled does not initially load new settings values" time="0" classname="does not initially load new settings values">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled creates four accordions" time="0" classname="creates four accordions">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled primary method accordion shows correct preview text when not active" time="0" classname="primary method accordion shows correct preview text when not active">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled backup method accordion shows correct preview text when not active" time="0.001" classname="backup method accordion shows correct preview text when not active">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on disable accordion" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion expands the last accordion" time="0" classname="expands the last accordion">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion shows two buttons" time="0.001" classname="shows two buttons">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on disable button" timestamp="2017-06-30T04:06:01" tests="5" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button updates the 2fa data from the server" time="0" classname="updates the 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button loads new settings values" time="0" classname="loads new settings values">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button expands the first accordion" time="0" classname="expands the first accordion">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button contracts the last accordion" time="0" classname="contracts the last accordion">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button first accordion shows disabled text" time="0.001" classname="first accordion shows disabled text">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on disable button with multi factor required" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button with multi factor required does not fetch 2fa data from the server" time="0" classname="does not fetch 2fa data from the server">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button with multi factor required does not load new settings values" time="0" classname="does not load new settings values">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button with multi factor required keeps the last accordion active" time="0" classname="keeps the last accordion active">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with authenticator multi factor auth enabled and a user clicks on disable accordion and a user clicks on disable button with multi factor required last accordion shows error" time="0.001" classname="last accordion shows error">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with a description" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.003">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered with a description renders the description" time="0.003" classname="renders the description">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered without phone support" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered without phone support only creates 3 Accordions" time="0" classname="only creates 3 Accordions">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when rendered without phone support no accordions mention backup" time="0" classname="no accordions mention backup">
+    </testcase>
+  </testsuite>
+  <testsuite name="when hideDisableSection is true" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when hideDisableSection is true only creates 3 Accordions" time="0" classname="only creates 3 Accordions">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when hideDisableSection is true no accordions mention disable" time="0.001" classname="no accordions mention disable">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a custom title is given" timestamp="2017-06-30T04:06:01" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FA.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FA when a custom title is given renders the custom title" time="0.001" classname="renders the custom title">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/Edit2FA/Edit2FAGoogle" timestamp="2017-06-30T04:06:01" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAGoogle.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle does not render any error messages" time="0.001" classname="does not render any error messages">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle renders three setup steps" time="0" classname="renders three setup steps">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle renders the barcode" time="0.001" classname="renders the barcode">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks button to show the barcode" timestamp="2017-06-30T04:06:01" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAGoogle.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user clicks button to show the barcode shows account information" time="0" classname="shows account information">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user clicks button to show the barcode shows key information" time="0.001" classname="shows key information">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters an invalid auth value" timestamp="2017-06-30T04:06:01" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAGoogle.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters an invalid auth value calls verifyCode function" time="0" classname="calls verifyCode function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters an invalid auth value renders error message" time="0.001" classname="renders error message">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters an invalid auth value clears the state of the inputs" time="0.001" classname="clears the state of the inputs">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters an invalid auth value does not call onSuccess function" time="0" classname="does not call onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters a valid auth value" timestamp="2017-06-30T04:06:02" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAGoogle.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters a valid auth value calls verifyCode function" time="0" classname="calls verifyCode function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters a valid auth value calls enable2fa function" time="0" classname="calls enable2fa function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters a valid auth value calls update2FAData function" time="0" classname="calls update2FAData function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAGoogle and a user enters a valid auth value calls onSuccess function" time="0" classname="calls onSuccess function">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/Edit2FA/Edit2FAPrimary" timestamp="2017-06-30T04:06:02" tests="6" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAPrimary.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary shows correct subtitle text" time="0" classname="shows correct subtitle text">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary shows two buttons" time="0" classname="shows two buttons">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary both buttons are unselected" time="0" classname="both buttons are unselected">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary does not render setup google content" time="0" classname="does not render setup google content">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary does not render setup phone content" time="0" classname="does not render setup phone content">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary does not render any error messages" time="0" classname="does not render any error messages">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on &quot;Google Authenticator&quot;" timestamp="2017-06-30T04:06:02" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAPrimary.spec.js" failures="0" time="0.003">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Google Authenticator&quot; first button becomes selected" time="0.001" classname="first button becomes selected">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Google Authenticator&quot; second button remains unselected" time="0.001" classname="second button remains unselected">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Google Authenticator&quot; renders setup google content" time="0.001" classname="renders setup google content">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Google Authenticator&quot; does not render setup phone content" time="0" classname="does not render setup phone content">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on &quot;Voice/SMS Number&quot;" timestamp="2017-06-30T04:06:02" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAPrimary.spec.js" failures="0" time="0.004">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Voice/SMS Number&quot; second button becomes selected" time="0.001" classname="second button becomes selected">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Voice/SMS Number&quot; first button remains unselected" time="0.001" classname="first button remains unselected">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Voice/SMS Number&quot; renders setup phone content" time="0.001" classname="renders setup phone content">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and a user clicks on &quot;Voice/SMS Number&quot; does not render setup google content" time="0.001" classname="does not render setup google content">
+    </testcase>
+  </testsuite>
+  <testsuite name="and when phoneSupported is false" timestamp="2017-06-30T04:06:02" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FAPrimary.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and when phoneSupported is false does not render the &quot;Voice/SMS Number&quot; button" time="0.001" classname="does not render the &quot;Voice/SMS Number&quot; button">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FAPrimary and when phoneSupported is false still renders the &quot;Google Authenticator&quot; button" time="0" classname="still renders the &quot;Google Authenticator&quot; button">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/Edit2FA/Edit2FARecoveryCodes" timestamp="2017-06-30T04:06:02" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FARecoveryCodes.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FARecoveryCodes calls generateBackupCodes function on mount" time="0" classname="calls generateBackupCodes function on mount">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FARecoveryCodes renders every backupcode" time="0.001" classname="renders every backupcode">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/Edit2FA/Edit2FASetupPhone" timestamp="2017-06-30T04:06:02" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when requireVerification is &quot;true&quot;" timestamp="2017-06-30T04:06:02" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; renders two step groups" time="0.001" classname="renders two step groups">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; does not render any error messages" time="0.001" classname="does not render any error messages">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; renders a phone input element" time="0" classname="renders a phone input element">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters an invalid phone number" timestamp="2017-06-30T04:06:02" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters an invalid phone number calls sendCodeViaPhone function" time="0" classname="calls sendCodeViaPhone function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters an invalid phone number still renders only the phone input element" time="0.001" classname="still renders only the phone input element">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters an invalid phone number renders error message" time="0" classname="renders error message">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters a valid phone number" timestamp="2017-06-30T04:06:02" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number calls sendCodeViaPhone function" time="0" classname="calls sendCodeViaPhone function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number renders one AutoAdvanceInputs components" time="0.001" classname="renders one AutoAdvanceInputs components">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number does not render a save changes button" time="0.001" classname="does not render a save changes button">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters an invalid verification code" timestamp="2017-06-30T04:06:02" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters an invalid verification code calls verifyCode function once" time="0" classname="calls verifyCode function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters an invalid verification code renders one AutoAdvanceInputs components" time="0.001" classname="renders one AutoAdvanceInputs components">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters an invalid verification code renders error message" time="0.001" classname="renders error message">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters an invalid verification code clears the state of the inputs" time="0" classname="clears the state of the inputs">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters a valid verification code" timestamp="2017-06-30T04:06:02" tests="6" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters a valid verification code calls verifyCode function once" time="0.001" classname="calls verifyCode function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters a valid verification code calls save2faSettings function once" time="0" classname="calls save2faSettings function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters a valid verification code calls update2FAData function once" time="0" classname="calls update2FAData function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters a valid verification code calls onSuccess function once" time="0" classname="calls onSuccess function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters a valid verification code renders one AutoAdvanceInputs components" time="0" classname="renders one AutoAdvanceInputs components">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;true&quot; and a user enters a valid phone number and a user enters a valid verification code every input element in the AutoAdvanceInput components is still filled in" time="0" classname="every input element in the AutoAdvanceInput components is still filled in">
+    </testcase>
+  </testsuite>
+  <testsuite name="when requireVerification is &quot;false&quot;" timestamp="2017-06-30T04:06:02" tests="5" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; renders two step groups" time="0" classname="renders two step groups">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; does not render any error messages" time="0" classname="does not render any error messages">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; renders a phone input element" time="0" classname="renders a phone input element">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; renders a save changes button" time="0.001" classname="renders a save changes button">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; &quot;save changes&quot; button is disabled" time="0" classname="&quot;save changes&quot; button is disabled">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters an invalid phone number" timestamp="2017-06-30T04:06:02" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters an invalid phone number calls sendCodeViaPhone function" time="0" classname="calls sendCodeViaPhone function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters an invalid phone number still renders only the phone input element" time="0" classname="still renders only the phone input element">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters an invalid phone number renders error message" time="0" classname="renders error message">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user enters a valid phone number" timestamp="2017-06-30T04:06:02" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number calls sendCodeViaPhone function" time="0" classname="calls sendCodeViaPhone function">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number does not render a AutoAdvanceInputs component" time="0" classname="does not render a AutoAdvanceInputs component">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number &quot;save changes&quot; button is enabled" time="0" classname="&quot;save changes&quot; button is enabled">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks &quot;Save Changes&quot; button" timestamp="2017-06-30T04:06:02" tests="6" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Edit2FA/Edit2FASetupPhone.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number and a user clicks &quot;Save Changes&quot; button does not call verifyCode function once" time="0" classname="does not call verifyCode function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number and a user clicks &quot;Save Changes&quot; button calls save2faSettings function once" time="0" classname="calls save2faSettings function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number and a user clicks &quot;Save Changes&quot; button calls update2FAData function once" time="0" classname="calls update2FAData function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number and a user clicks &quot;Save Changes&quot; button calls onSuccess function once" time="0" classname="calls onSuccess function once">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number and a user clicks &quot;Save Changes&quot; button does not render a AutoAdvanceInputs component" time="0" classname="does not render a AutoAdvanceInputs component">
+    </testcase>
+    <testcase name="bundles/common/components/Edit2FA/Edit2FASetupPhone when requireVerification is &quot;false&quot; and a user enters a valid phone number and a user clicks &quot;Save Changes&quot; button every input element in the AutoAdvanceInput components is still filled in" time="0" classname="every input element in the AutoAdvanceInput components is still filled in">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/Modal" timestamp="2017-06-30T04:06:02" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with content" timestamp="2017-06-30T04:06:02" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/Modal when rendered with content then it renders the title as expected" time="0" classname="then it renders the title as expected">
+    </testcase>
+    <testcase name="bundles/common/components/Modal when rendered with content and it renders the children as expected" time="0.001" classname="and it renders the children as expected">
+    </testcase>
+    <testcase name="bundles/common/components/Modal when rendered with content and it does not render any action button" time="0.001" classname="and it does not render any action button">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with onClose and onConfirm" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Modal when rendered with onClose and onConfirm then neither functions are invoked" time="0" classname="then neither functions are invoked">
+    </testcase>
+  </testsuite>
+  <testsuite name="when the cancel button is clicked" timestamp="2017-06-30T04:06:02" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Modal when rendered with onClose and onConfirm when the cancel button is clicked then onClose is invoked" time="0" classname="then onClose is invoked">
+    </testcase>
+    <testcase name="bundles/common/components/Modal when rendered with onClose and onConfirm when the cancel button is clicked and onConfirm is NOT invoked" time="0" classname="and onConfirm is NOT invoked">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with size value" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/Modal when rendered with size value adds expected class to content container" time="0.001" classname="adds expected class to content container">
+    </testcase>
+  </testsuite>
+  <testsuite name="Modal.ConfirmationFooter" timestamp="2017-06-30T04:06:02" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with a confirmBtnLabel" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Modal Modal.ConfirmationFooter when rendered with a confirmBtnLabel it renders the action button correctly" time="0" classname="it renders the action button correctly">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with onClose and onConfirm" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Modal Modal.ConfirmationFooter when rendered with onClose and onConfirm then neither functions are invoked" time="0" classname="then neither functions are invoked">
+    </testcase>
+  </testsuite>
+  <testsuite name="when the cancel button is clicked" timestamp="2017-06-30T04:06:02" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Modal Modal.ConfirmationFooter when rendered with onClose and onConfirm when the cancel button is clicked then onClose is invoked" time="0" classname="then onClose is invoked">
+    </testcase>
+    <testcase name="bundles/common/components/Modal Modal.ConfirmationFooter when rendered with onClose and onConfirm when the cancel button is clicked and onConfirm is NOT invoked" time="0" classname="and onConfirm is NOT invoked">
+    </testcase>
+  </testsuite>
+  <testsuite name="when the confirm button is clicked" timestamp="2017-06-30T04:06:02" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Modal.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/Modal Modal.ConfirmationFooter when rendered with onClose and onConfirm when the confirm button is clicked then onClose is not invoked" time="0" classname="then onClose is not invoked">
+    </testcase>
+    <testcase name="bundles/common/components/Modal Modal.ConfirmationFooter when rendered with onClose and onConfirm when the confirm button is clicked and onConfirm is invoked" time="0" classname="and onConfirm is invoked">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/MultiStepWizard" timestamp="2017-06-30T04:06:02" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when one step is rendered" timestamp="2017-06-30T04:06:02" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/MultiStepWizard when one step is rendered renders 1 breadcrumb cell" time="0" classname="renders 1 breadcrumb cell">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when one step is rendered does not render back button" time="0" classname="does not render back button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when one step is rendered renders complete text button" time="0" classname="renders complete text button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when one step is rendered renders my step content" time="0.001" classname="renders my step content">
+    </testcase>
+  </testsuite>
+  <testsuite name="when nextEnabled is true" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/MultiStepWizard when nextEnabled is true each primary button is not disabled" time="0" classname="each primary button is not disabled">
+    </testcase>
+  </testsuite>
+  <testsuite name="when nextEnabled is false" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/MultiStepWizard when nextEnabled is false it makes each primary button disabled" time="0" classname="it makes each primary button disabled">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user clicks on onComplete button" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/MultiStepWizard when a user clicks on onComplete button it calls my onComplete function" time="0" classname="it calls my onComplete function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user clicks on onCancel button" timestamp="2017-06-30T04:06:02" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/MultiStepWizard when a user clicks on onCancel button it calls my onCancel function" time="0" classname="it calls my onCancel function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when three steps are rendered" timestamp="2017-06-30T04:06:02" tests="7" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered renders 3 breadcrumb cell" time="0.001" classname="renders 3 breadcrumb cell">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered does not render back button" time="0" classname="does not render back button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered renders next button" time="0" classname="renders next button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered renders my step content" time="0" classname="renders my step content">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered the first step is not disabled" time="0" classname="the first step is not disabled">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered the first step is active" time="0" classname="the first step is active">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered the second and third step are disabled" time="0.001" classname="the second and third step are disabled">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user proceeds to the 2nd step" timestamp="2017-06-30T04:06:03" tests="7" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step renders 3 breadcrumb cell" time="0.001" classname="renders 3 breadcrumb cell">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step renders back button" time="0" classname="renders back button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step renders next button" time="0" classname="renders next button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step renders my 2nd step content" time="0" classname="renders my 2nd step content">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step the first step is complete" time="0" classname="the first step is complete">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step the second step is active" time="0.001" classname="the second step is active">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step the third step is disabled" time="0" classname="the third step is disabled">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on onBack button" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step and a user clicks on onBack button it calls my onBack function" time="0" classname="it calls my onBack function">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on onNext button" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 2nd step and a user clicks on onNext button it calls my onNext function" time="0" classname="it calls my onNext function">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a user proceeds to the 3rd step" timestamp="2017-06-30T04:06:03" tests="7" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/MultiStepWizard.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step renders 3 breadcrumb cell" time="0" classname="renders 3 breadcrumb cell">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step renders back button" time="0.001" classname="renders back button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step renders complete text button" time="0" classname="renders complete text button">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step renders my 3rd step content" time="0" classname="renders my 3rd step content">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step the first step is complete" time="0" classname="the first step is complete">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step the second step is complete" time="0" classname="the second step is complete">
+    </testcase>
+    <testcase name="js/common/components/MultiStepWizard when three steps are rendered when a user proceeds to the 3rd step the third step is active" time="0" classname="the third step is active">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/SectionHeader/SectionHeaderTabs" timestamp="2017-06-30T04:06:03" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SectionHeader/SectionHeaderTabs.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with regular tabs" timestamp="2017-06-30T04:06:03" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SectionHeader/SectionHeaderTabs.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/SectionHeader/SectionHeaderTabs when rendered with regular tabs renders two anchor tags" time="0" classname="renders two anchor tags">
+    </testcase>
+    <testcase name="bundles/common/components/SectionHeader/SectionHeaderTabs when rendered with regular tabs renders one active tab" time="0" classname="renders one active tab">
+    </testcase>
+    <testcase name="bundles/common/components/SectionHeader/SectionHeaderTabs when rendered with regular tabs renders one custom tab component" time="0" classname="renders one custom tab component">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with react router tabs" timestamp="2017-06-30T04:06:03" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SectionHeader/SectionHeaderTabs.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/SectionHeader/SectionHeaderTabs when rendered with react router tabs renders two anchor tags" time="0" classname="renders two anchor tags">
+    </testcase>
+    <testcase name="bundles/common/components/SectionHeader/SectionHeaderTabs when rendered with react router tabs renders one active tab" time="0.001" classname="renders one active tab">
+    </testcase>
+    <testcase name="bundles/common/components/SectionHeader/SectionHeaderTabs when rendered with react router tabs renders first tab as active" time="0.001" classname="renders first tab as active">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/SiteFooter" timestamp="2017-06-30T04:06:03" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteFooter.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered with onprem" timestamp="2017-06-30T04:06:03" tests="5" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteFooter.spec.js" failures="0" time="0.003">
+    <testcase name="bundles/common/components/SiteFooter when rendered with onprem shows the Version pair in the sys info" time="0.001" classname="shows the Version pair in the sys info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with onprem shows the two expected pairs in the plan info" time="0" classname="shows the two expected pairs in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with onprem shows the central url pair in the plan info" time="0.001" classname="shows the central url pair in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with onprem shows the Group Crowd Name pair in the plan info" time="0.001" classname="shows the Group Crowd Name pair in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with onprem shows the one line in the company info" time="0" classname="shows the one line in the company info">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with a standard account" timestamp="2017-06-30T04:06:03" tests="8" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteFooter.spec.js" failures="0" time="0.009000000000000001">
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the two expected pairs in the sys info" time="0" classname="shows the two expected pairs in the sys info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the System Status pair in the sys info" time="0.001" classname="shows the System Status pair in the sys info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the Version pair in the sys info" time="0.002" classname="shows the Version pair in the sys info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the three expected pairs in the plan info" time="0.001" classname="shows the three expected pairs in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the plan pair in the plan info" time="0.001" classname="shows the plan pair in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the central url pair in the plan info" time="0.002" classname="shows the central url pair in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows the Group Crowd Name pair in the plan info" time="0.001" classname="shows the Group Crowd Name pair in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered with a standard account shows all the lines in the company info" time="0.001" classname="shows all the lines in the company info">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered without hasGlobalReadOnly" timestamp="2017-06-30T04:06:03" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteFooter.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/SiteFooter when rendered without hasGlobalReadOnly shows all the lines in the company info" time="0" classname="shows all the lines in the company info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered without hasGlobalReadOnly shows zero pairs in the plan info" time="0.001" classname="shows zero pairs in the plan info">
+    </testcase>
+    <testcase name="bundles/common/components/SiteFooter when rendered without hasGlobalReadOnly shows the System Status pair in the sys info" time="0.001" classname="shows the System Status pair in the sys info">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/SiteHeader" timestamp="2017-06-30T04:06:03" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered for Cloud Manager" timestamp="2017-06-30T04:06:03" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered for regular user with FREE_TIER" timestamp="2017-06-30T04:06:03" tests="11" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER shows Plan Type as Free" time="0" classname="shows Plan Type as Free">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER does not show Admin link" time="0" classname="does not show Admin link">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER does not show payment status" time="0" classname="does not show payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER shows Username" time="0" classname="shows Username">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER shows timezone picker" time="0.001" classname="shows timezone picker">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER show My Groups link in the Username dropdown" time="0" classname="show My Groups link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER does not show Account link in the Username dropdown" time="0" classname="does not show Account link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER shows Sign out link in the Username dropdown" time="0.001" classname="shows Sign out link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER shows Cloud Manager logo" time="0" classname="shows Cloud Manager logo">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER does not call getUsageSummary" time="0" classname="does not call getUsageSummary">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with FREE_TIER does not show Usage summary" time="0" classname="does not show Usage summary">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with STANDARD planType" timestamp="2017-06-30T04:06:03" tests="11" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.007">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType shows Plan Type as STANDARD" time="0.001" classname="shows Plan Type as STANDARD">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType does not show Admin link" time="0.001" classname="does not show Admin link">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType does not show payment status" time="0.001" classname="does not show payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType shows Username" time="0.001" classname="shows Username">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType shows timezone picker" time="0.001" classname="shows timezone picker">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType show My Groups link in the Username dropdown" time="0" classname="show My Groups link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType does not show Account link in the Username dropdown" time="0.001" classname="does not show Account link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType shows Sign out link in the Username dropdown" time="0" classname="shows Sign out link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType shows Cloud Manager logo" time="0.001" classname="shows Cloud Manager logo">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType does not call getUsageSummary" time="0" classname="does not call getUsageSummary">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with STANDARD planType does not show Usage summary" time="0" classname="does not show Usage summary">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for Global Read Only user" timestamp="2017-06-30T04:06:03" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for Global Read Only user shows Admin link" time="0.001" classname="shows Admin link">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for Global Read Only user shows payment status" time="0" classname="shows payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for Global Read Only user shows Username" time="0" classname="shows Username">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for user with hasCurrentGroup" timestamp="2017-06-30T04:06:03" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for user with hasCurrentGroup does not show payment status" time="0" classname="does not show payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for user with hasCurrentGroup shows Username" time="0" classname="shows Username">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for user with hasCurrentGroup shows Account link in the header dropdown" time="0" classname="shows Account link in the header dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for user with hasCurrentGroup does not show side bar" time="0" classname="does not show side bar">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered with showSideBar" timestamp="2017-06-30T04:06:03" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered with showSideBar does not show payment status" time="0" classname="does not show payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered with showSideBar shows Username" time="0.001" classname="shows Username">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered with showSideBar shows Account link in the header dropdown" time="0" classname="shows Account link in the header dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered with showSideBar shows side bar" time="0" classname="shows side bar">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered without showHeader" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered without showHeader does not show header" time="0" classname="does not show header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus OK" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus OK shows payment status in the header" time="0" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus OK" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus OK does not show payment status in the header" time="0" classname="does not show payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus WARNING" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus WARNING shows payment status in the header" time="0" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus WARNING" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus WARNING does not show payment status in the header" time="0" classname="does not show payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus SUSPENDED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus SUSPENDED shows payment status in the header" time="0.001" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus SUSPENDED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus SUSPENDED shows payment status in the header" time="0" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus CLOSING" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus CLOSING shows payment status in the header" time="0.001" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus CLOSING" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus CLOSING does not show payment status in the header" time="0" classname="does not show payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus LOCKED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus LOCKED shows payment status in the header" time="0" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus LOCKED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus LOCKED shows payment status in the header" time="0" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus DEAD" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus DEAD shows payment status in the header" time="0.001" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus DEAD" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus DEAD does not show payment status in the header" time="0.001" classname="does not show payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus CLOSED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus CLOSED shows payment status in the header" time="0" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus CLOSED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus CLOSED does not show payment status in the header" time="0.002" classname="does not show payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for globalReadOnly with paymentStatus EMBARGOED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for globalReadOnly with paymentStatus EMBARGOED shows payment status in the header" time="0.001" classname="shows payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for regular user with paymentStatus EMBARGOED" timestamp="2017-06-30T04:06:03" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for Cloud Manager when rendered for regular user with paymentStatus EMBARGOED does not show payment status in the header" time="0" classname="does not show payment status in the header">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for Atlas" timestamp="2017-06-30T04:06:03" tests="10" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0.005">
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas does not show Admin link" time="0" classname="does not show Admin link">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas does not show payment status" time="0" classname="does not show payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas shows Username" time="0" classname="shows Username">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas shows timezone picker" time="0" classname="shows timezone picker">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas show My Groups link in the Username dropdown" time="0.001" classname="show My Groups link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas does not show Account link in the Username dropdown" time="0.001" classname="does not show Account link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas shows Sign out link in the Username dropdown" time="0" classname="shows Sign out link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas shows Atlas logo" time="0.001" classname="shows Atlas logo">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas calls getUsageSummary" time="0.001" classname="calls getUsageSummary">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for Atlas shows Usage summary" time="0.001" classname="shows Usage summary">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for On-Prem" timestamp="2017-06-30T04:06:03" tests="11" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/SiteHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem does not show Admin link" time="0" classname="does not show Admin link">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem does not show payment status" time="0" classname="does not show payment status">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem shows Username" time="0" classname="shows Username">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem shows timezone picker" time="0" classname="shows timezone picker">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem show My Groups link in the Username dropdown" time="0" classname="show My Groups link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem does not show Account link in the Username dropdown" time="0" classname="does not show Account link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem shows Sign out link in the Username dropdown" time="0" classname="shows Sign out link in the Username dropdown">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem does not call getUsageSummary" time="0" classname="does not call getUsageSummary">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem does not show Usage summary" time="0" classname="does not show Usage summary">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem shows default logo" time="0" classname="shows default logo">
+    </testcase>
+    <testcase name="js/common/components/SiteHeader when rendered for On-Prem shows On Prem Version as plan name" time="0" classname="shows On Prem Version as plan name">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/Table/CellHeader" timestamp="2017-06-30T04:06:03" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/CellHeader.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when not sortable" timestamp="2017-06-30T04:06:03" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/CellHeader.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/Table/CellHeader when not sortable does not render an anchor element" time="0.001" classname="does not render an anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table/CellHeader when not sortable renders our text" time="0.001" classname="renders our text">
+    </testcase>
+  </testsuite>
+  <testsuite name="when sortable" timestamp="2017-06-30T04:06:03" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/CellHeader.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/Table/CellHeader when sortable renders an anchor element" time="0.001" classname="renders an anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table/CellHeader when sortable renders our text inside the anchor element" time="0" classname="renders our text inside the anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table/CellHeader when sortable does not apply descending class to anchor element" time="0" classname="does not apply descending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table/CellHeader when sortable does not apply ascending class to anchor element" time="0.001" classname="does not apply ascending class to anchor element">
+    </testcase>
+  </testsuite>
+  <testsuite name="and sortOrder is descending" timestamp="2017-06-30T04:06:03" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/CellHeader.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/Table/CellHeader when sortable and sortOrder is descending applies the descending class to anchor element" time="0.001" classname="applies the descending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table/CellHeader when sortable and sortOrder is descending does not apply ascending class to anchor element" time="0" classname="does not apply ascending class to anchor element">
+    </testcase>
+  </testsuite>
+  <testsuite name="and sortOrder is ascending" timestamp="2017-06-30T04:06:03" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/CellHeader.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/Table/CellHeader when sortable and sortOrder is ascending does not apply the descending class to anchor element" time="0" classname="does not apply the descending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table/CellHeader when sortable and sortOrder is ascending applies ascending class to anchor element" time="0" classname="applies ascending class to anchor element">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/components/Table" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when one column is rendered" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/Table when one column is rendered renders one th element" time="0.001" classname="renders one th element">
+    </testcase>
+    <testcase name="js/common/components/Table when one column is rendered renders just our header text" time="0.001" classname="renders just our header text">
+    </testcase>
+  </testsuite>
+  <testsuite name="when two columns are rendered" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/Table when two columns are rendered renders two th elements" time="0" classname="renders two th elements">
+    </testcase>
+    <testcase name="js/common/components/Table when two columns are rendered renders username column first" time="0" classname="renders username column first">
+    </testcase>
+    <testcase name="js/common/components/Table when two columns are rendered renders multiFactorAuth column second" time="0.001" classname="renders multiFactorAuth column second">
+    </testcase>
+  </testsuite>
+  <testsuite name="when header prop for a column is a" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="string" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/Table when header prop for a column is a string renders one th element" time="0" classname="renders one th element">
+    </testcase>
+    <testcase name="js/common/components/Table when header prop for a column is a string renders just our header text" time="0" classname="renders just our header text">
+    </testcase>
+  </testsuite>
+  <testsuite name="jsx node" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.003">
+    <testcase name="js/common/components/Table when header prop for a column is a jsx node renders our custom th element" time="0" classname="renders our custom th element">
+    </testcase>
+    <testcase name="js/common/components/Table when header prop for a column is a jsx node renders custom th element with our custom className" time="0.001" classname="renders custom th element with our custom className">
+    </testcase>
+    <testcase name="js/common/components/Table when header prop for a column is a jsx node renders an h1 tag" time="0.002" classname="renders an h1 tag">
+    </testcase>
+  </testsuite>
+  <testsuite name="function" timestamp="2017-06-30T04:06:04" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/Table when header prop for a column is a function calls our header function once" time="0" classname="calls our header function once">
+    </testcase>
+    <testcase name="js/common/components/Table when header prop for a column is a function calls our header function with expected props" time="0" classname="calls our header function with expected props">
+    </testcase>
+    <testcase name="js/common/components/Table when header prop for a column is a function renders one th element" time="0.001" classname="renders one th element">
+    </testcase>
+    <testcase name="js/common/components/Table when header prop for a column is a function renders our header text" time="0.001" classname="renders our header text">
+    </testcase>
+  </testsuite>
+  <testsuite name="when accessor prop for a column is a" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="string" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/components/Table when accessor prop for a column is a string renders one th element" time="0" classname="renders one th element">
+    </testcase>
+    <testcase name="js/common/components/Table when accessor prop for a column is a string renders four body rows" time="0.001" classname="renders four body rows">
+    </testcase>
+    <testcase name="js/common/components/Table when accessor prop for a column is a string renders the username prop from each data object" time="0" classname="renders the username prop from each data object">
+    </testcase>
+  </testsuite>
+  <testsuite name="function" timestamp="2017-06-30T04:06:04" tests="5" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.003">
+    <testcase name="js/common/components/Table when accessor prop for a column is a function renders one th element" time="0.001" classname="renders one th element">
+    </testcase>
+    <testcase name="js/common/components/Table when accessor prop for a column is a function renders four body rows" time="0.001" classname="renders four body rows">
+    </testcase>
+    <testcase name="js/common/components/Table when accessor prop for a column is a function renders the username prop from each data object" time="0.001" classname="renders the username prop from each data object">
+    </testcase>
+    <testcase name="js/common/components/Table when accessor prop for a column is a function calls our accessor function once for each data row" time="0" classname="calls our accessor function once for each data row">
+    </testcase>
+    <testcase name="js/common/components/Table when accessor prop for a column is a function calls our accessor function with the data object" time="0" classname="calls our accessor function with the data object">
+    </testcase>
+  </testsuite>
+  <testsuite name="when cell prop is a custom function" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/Table when cell prop is a custom function calls our cell function once for each data row" time="0" classname="calls our cell function once for each data row">
+    </testcase>
+    <testcase name="js/common/components/Table when cell prop is a custom function calls our cell function with our expected props object" time="0" classname="calls our cell function with our expected props object">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a column is sortable" timestamp="2017-06-30T04:06:04" tests="4" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/Table when a column is sortable renders an anchor element in our table header" time="0" classname="renders an anchor element in our table header">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable does not apply descending class to table header" time="0" classname="does not apply descending class to table header">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable does not apply ascending class to table header" time="0" classname="does not apply ascending class to table header">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable renders the data without sorting" time="0" classname="renders the data without sorting">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on the column" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/components/Table when a column is sortable and a user clicks on the column applies the descending class to anchor element" time="0.001" classname="applies the descending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable and a user clicks on the column does not apply ascending class to anchor element" time="0.001" classname="does not apply ascending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable and a user clicks on the column renders the data without sorting" time="0" classname="renders the data without sorting">
+    </testcase>
+  </testsuite>
+  <testsuite name="and a user clicks on the column again" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/Table/Table.spec.js" failures="0" time="0">
+    <testcase name="js/common/components/Table when a column is sortable and a user clicks on the column and a user clicks on the column again does not apply the descending class to anchor element" time="0" classname="does not apply the descending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable and a user clicks on the column and a user clicks on the column again applies ascending class to anchor element" time="0" classname="applies ascending class to anchor element">
+    </testcase>
+    <testcase name="js/common/components/Table when a column is sortable and a user clicks on the column and a user clicks on the column again renders the data without sorting" time="0" classname="renders the data without sorting">
+    </testcase>
+  </testsuite>
+  <testsuite name="bundles/common/components/TimeZonePicker" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when rendered for a group with no timezone set" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.002">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with no timezone set should ask to set a timezone" time="0.001" classname="should ask to set a timezone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with no timezone set does not show a modal" time="0.001" classname="does not show a modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when clicked to set a timezone" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with no timezone set when clicked to set a timezone should open a timezone select modal" time="0.001" classname="should open a timezone select modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone select form is submitted" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with no timezone set when clicked to set a timezone when timezone select form is submitted calls setTimeZone" time="0" classname="calls setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with no timezone set when clicked to set a timezone when timezone select form is submitted does not render the modal" time="0.001" classname="does not render the modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for a group with current timezone set to UTC" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC should display the UTC timezone" time="0" classname="should display the UTC timezone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC does not show a modal" time="0.001" classname="does not show a modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone button is clicked" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC when timezone button is clicked should only show 1 timezone in the dropdown" time="0" classname="should only show 1 timezone in the dropdown">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC when timezone button is clicked should show Other option in the dropdown" time="0" classname="should show Other option in the dropdown">
+    </testcase>
+  </testsuite>
+  <testsuite name="when clicked to change a timezone" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC when timezone button is clicked when clicked to change a timezone should open a timezone select modal" time="0" classname="should open a timezone select modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone select form is submitted" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC when timezone button is clicked when clicked to change a timezone when timezone select form is submitted calls setTimeZone" time="0" classname="calls setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone set to UTC when timezone button is clicked when clicked to change a timezone when timezone select form is submitted does not render the modal" time="0" classname="does not render the modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for a group with current timezone other than UTC" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC should display the Eastern timezone" time="0" classname="should display the Eastern timezone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC does not show a modal" time="0" classname="does not show a modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone button is clicked" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC when timezone button is clicked should show 2 timezones in the dropdown" time="0" classname="should show 2 timezones in the dropdown">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC when timezone button is clicked should show Other option in the dropdown" time="0" classname="should show Other option in the dropdown">
+    </testcase>
+  </testsuite>
+  <testsuite name="when clicked to change a timezone" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC when timezone button is clicked when clicked to change a timezone should open a timezone select modal" time="0.001" classname="should open a timezone select modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone select form is submitted" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC when timezone button is clicked when clicked to change a timezone when timezone select form is submitted calls setTimeZone" time="0.001" classname="calls setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with current timezone other than UTC when timezone button is clicked when clicked to change a timezone when timezone select form is submitted does not render the modal" time="0" classname="does not render the modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for a group with both default and current timezones set" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set should display the current timezone as Eastern timezone" time="0" classname="should display the current timezone as Eastern timezone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set does not show a modal" time="0.001" classname="does not show a modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone button is clicked" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set when timezone button is clicked should show 2 timezones in the dropdown" time="0" classname="should show 2 timezones in the dropdown">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set when timezone button is clicked should show Other option in the dropdown" time="0" classname="should show Other option in the dropdown">
+    </testcase>
+  </testsuite>
+  <testsuite name="when clicked to change a timezone" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set when timezone button is clicked when clicked to change a timezone should open a timezone select modal" time="0" classname="should open a timezone select modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone select form is submitted" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set when timezone button is clicked when clicked to change a timezone when timezone select form is submitted calls setTimeZone" time="0.001" classname="calls setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default and current timezones set when timezone button is clicked when clicked to change a timezone when timezone select form is submitted does not render the modal" time="0" classname="does not render the modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when rendered for a group with both default timezone set to non-UTC timezone" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone should display the current timezone as Pacific timezone" time="0" classname="should display the current timezone as Pacific timezone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone does not show a modal" time="0" classname="does not show a modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone button is clicked" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone when timezone button is clicked should show 3 timezones in the dropdown" time="0" classname="should show 3 timezones in the dropdown">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone when timezone button is clicked should show Other option in the dropdown" time="0" classname="should show Other option in the dropdown">
+    </testcase>
+  </testsuite>
+  <testsuite name="when clicked to change a timezone" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone when timezone button is clicked when clicked to change a timezone should open a timezone select modal" time="0.001" classname="should open a timezone select modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone is changed" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when timezone select form is submitted" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone when timezone button is clicked when clicked to change a timezone when timezone is changed when timezone select form is submitted calls setTimeZone" time="0" classname="calls setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone when timezone button is clicked when clicked to change a timezone when timezone is changed when timezone select form is submitted calls setTimeZone" time="0" classname="calls setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when rendered for a group with both default timezone set to non-UTC timezone when timezone button is clicked when clicked to change a timezone when timezone is changed when timezone select form is submitted does not render the modal" time="0" classname="does not render the modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when setting/updating a timezone fails" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when update timezone is clicked" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0.001">
+    <testcase name="bundles/common/components/TimeZonePicker when setting/updating a timezone fails when update timezone is clicked should open a timezone select modal" time="0.001" classname="should open a timezone select modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="when timezone select form is submitted" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/components/TimeZonePicker.spec.js" failures="0" time="0">
+    <testcase name="bundles/common/components/TimeZonePicker when setting/updating a timezone fails when update timezone is clicked when timezone select form is submitted does not call setTimeZone" time="0" classname="does not call setTimeZone">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when setting/updating a timezone fails when update timezone is clicked when timezone select form is submitted does not render the timezone select modal" time="0" classname="does not render the timezone select modal">
+    </testcase>
+    <testcase name="bundles/common/components/TimeZonePicker when setting/updating a timezone fails when update timezone is clicked when timezone select form is submitted renders the error modal" time="0" classname="renders the error modal">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/services/api/fetchWrapper" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/fetchWrapper.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="fetchWrapper" timestamp="2017-06-30T04:06:04" tests="5" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/fetchWrapper.spec.js" failures="0" time="0.002">
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper sets default options on fetch request" time="0.001" classname="sets default options on fetch request">
+    </testcase>
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper allows extending of headers object" time="0" classname="allows extending of headers object">
+    </testcase>
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper allows overwriding of Content-Type" time="0" classname="allows overwriding of Content-Type">
+    </testcase>
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper throws on a non-200 get api response" time="0.001" classname="throws on a non-200 get api response">
+    </testcase>
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper throws on a non-200 post api response" time="0" classname="throws on a non-200 post api response">
+    </testcase>
+  </testsuite>
+  <testsuite name="when csrf values are set" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/fetchWrapper.spec.js" failures="0" time="0.003">
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper when csrf values are set includes the values in headers when sent as a POST" time="0.002" classname="includes the values in headers when sent as a POST">
+    </testcase>
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper when csrf values are set does not include values in headers when sent as a GET" time="0.001" classname="does not include values in headers when sent as a GET">
+    </testcase>
+  </testsuite>
+  <testsuite name="when csrf tags are in the browser but have empty strings" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/fetchWrapper.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/fetchWrapper fetchWrapper when csrf tags are in the browser but have empty strings does not include the csrf header values when sent as a POST" time="0" classname="does not include the csrf header values when sent as a POST">
+    </testcase>
+  </testsuite>
+  <testsuite name="formParams" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/fetchWrapper.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/fetchWrapper formParams properly serializes an object" time="0" classname="properly serializes an object">
+    </testcase>
+  </testsuite>
+  <testsuite name="updateCsrfHeaders" timestamp="2017-06-30T04:06:04" tests="1" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/fetchWrapper.spec.js" failures="0" time="0.001">
+    <testcase name="js/common/services/api/fetchWrapper updateCsrfHeaders includes the csrf header values when sent as a POST" time="0.001" classname="includes the csrf header values when sent as a POST">
+    </testcase>
+  </testsuite>
+  <testsuite name="js/common/services/api/utils" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="isAuthExpired" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="when only a function is passed in" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="and multi factor expired" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/utils isAuthExpired when only a function is passed in and multi factor expired calls our spy" time="0" classname="calls our spy">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when only a function is passed in and multi factor expired returns &quot;multifactor&quot;" time="0" classname="returns &quot;multifactor&quot;">
+    </testcase>
+  </testsuite>
+  <testsuite name="and password expired" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/utils isAuthExpired when only a function is passed in and password expired calls our spy" time="0" classname="calls our spy">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when only a function is passed in and password expired returns &quot;password&quot;" time="0" classname="returns &quot;password&quot;">
+    </testcase>
+  </testsuite>
+  <testsuite name="and another error occurs" timestamp="2017-06-30T04:06:04" tests="2" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/utils isAuthExpired when only a function is passed in and another error occurs does not call our spy" time="0" classname="does not call our spy">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when only a function is passed in and another error occurs returns false" time="0" classname="returns false">
+    </testcase>
+  </testsuite>
+  <testsuite name="when a function is passed in for multifactor and password" timestamp="2017-06-30T04:06:04" tests="0" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+  </testsuite>
+  <testsuite name="and multi factor expired" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and multi factor expired calls our multifactor function" time="0" classname="calls our multifactor function">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and multi factor expired does not call our password function" time="0" classname="does not call our password function">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and multi factor expired returns &quot;multifactor&quot;" time="0" classname="returns &quot;multifactor&quot;">
+    </testcase>
+  </testsuite>
+  <testsuite name="and password expired" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and password expired does not call our multifactor function" time="0" classname="does not call our multifactor function">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and password expired calls our password function" time="0" classname="calls our password function">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and password expired returns &quot;password&quot;" time="0" classname="returns &quot;password&quot;">
+    </testcase>
+  </testsuite>
+  <testsuite name="and another error occurs" timestamp="2017-06-30T04:06:04" tests="3" file="/Users/jmoses/Library/Mobile Documents/com~apple~CloudDocs/github/10gen/mms/server/src/webapp-mms/static/test/common/services/api/utils.spec.js" failures="0" time="0">
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and another error occurs does not call our multifactor function" time="0" classname="does not call our multifactor function">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and another error occurs does not call our password function" time="0" classname="does not call our password function">
+    </testcase>
+    <testcase name="js/common/services/api/utils isAuthExpired when a function is passed in for multifactor and password and another error occurs returns false" time="0" classname="returns false">
+    </testcase>
+  </testsuite>
+</testsuites>
