@@ -131,10 +131,10 @@ func constructXMPPLogger(name, target string, info XMPPConnectionInfo) (Sender, 
 }
 
 func (s *xmppLogger) Send(m message.Composer) {
-	if s.level.ShouldLog(m) {
+	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 			return
 		}
 
@@ -145,7 +145,7 @@ func (s *xmppLogger) Send(m message.Composer) {
 		}
 
 		if _, err := s.info.client.Send(c); err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 		}
 	}
 }

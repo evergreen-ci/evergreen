@@ -42,14 +42,14 @@ func MakeSysLogger(network, raddr string) Sender {
 
 		if s.logger != nil {
 			if err := s.logger.Close(); err != nil {
-				s.errHandler(err, message.NewErrorWrapMessage(level.Error, err,
+				s.ErrorHandler(err, message.NewErrorWrapMessage(level.Error, err,
 					"problem closing syslogger"))
 			}
 		}
 
 		w, err := syslog.Dial(network, raddr, syslog.LOG_DEBUG, s.Name())
 		if err != nil {
-			s.errHandler(err, message.NewErrorWrapMessage(level.Error, err,
+			s.ErrorHandler(err, message.NewErrorWrapMessage(level.Error, err,
 				"error restarting syslog [%s] for logger: %s", err.Error(), s.Name()))
 			return
 		}
@@ -76,9 +76,9 @@ func MakeLocalSyslogLogger() Sender {
 func (s *syslogger) Close() error { return s.logger.Close() }
 
 func (s *syslogger) Send(m message.Composer) {
-	if s.level.ShouldLog(m) {
+	if s.Level().ShouldLog(m) {
 		if err := s.sendToSysLog(m.Priority(), m.String()); err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 		}
 	}
 }

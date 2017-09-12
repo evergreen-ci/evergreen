@@ -99,6 +99,6 @@ func (s *InternalSender) Send(m message.Composer) {
 		Message:  m,
 		Priority: m.Priority(),
 		Rendered: m.String(),
-		Logged:   s.level.ShouldLog(m),
+		Logged:   s.Level().ShouldLog(m),
 	}
 }

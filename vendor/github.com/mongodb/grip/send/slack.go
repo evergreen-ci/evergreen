@@ -72,19 +72,17 @@ func MakeSlackLogger(opts *SlackOptions) (Sender, error) {
 }
 
 func (s *slackJournal) Send(m message.Composer) {
-	if !s.level.ShouldLog(m) {
-		return
-	}
+	if s.Level().ShouldLog(m) {
+		msg := m.String()
 
-	msg := m.String()
+		s.Base.mutex.RLock()
+		defer s.Base.mutex.RUnlock()
 
-	s.Base.mutex.RLock()
-	defer s.Base.mutex.RUnlock()
-
-	params := s.opts.getParams(m)
-	if err := s.opts.client.ChatPostMessage(s.opts.Channel, msg, params); err != nil {
-		s.errHandler(err, message.NewFormattedMessage(m.Priority(),
-			"%s: %s\n", params.Attachments[0].Fallback, msg))
+		params := s.opts.getParams(m)
+		if err := s.opts.client.ChatPostMessage(s.opts.Channel, msg, params); err != nil {
+			s.ErrorHandler(err, message.NewFormattedMessage(m.Priority(),
+				"%s: %s\n", params.Attachments[0].Fallback, msg))
+		}
 	}
 }
 

@@ -56,10 +56,10 @@ func NewGithubIssuesLogger(name string, opts *GithubOptions) (Sender, error) {
 }
 
 func (s *githubLogger) Send(m message.Composer) {
-	if s.level.ShouldLog(m) {
+	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 			return
 		}
 
@@ -71,7 +71,7 @@ func (s *githubLogger) Send(m message.Composer) {
 
 		ctx := context.TODO()
 		if _, _, err := s.gh.Create(ctx, s.opts.Account, s.opts.Repo, issue); err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 		}
 	}
 }

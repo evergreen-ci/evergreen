@@ -103,7 +103,7 @@ func (s *GripInternalSuite) TestConditionalSend() {
 }
 
 func (s *GripInternalSuite) TestCatchMethods() {
-	sink, err := send.NewInternalLogger("sink", send.LevelInfo{level.Trace, level.Trace})
+	sink, err := send.NewInternalLogger("sink", send.LevelInfo{Default: level.Trace, Threshold: level.Trace})
 	s.NoError(err)
 	s.NoError(s.grip.SetSender(sink))
 

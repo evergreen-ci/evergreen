@@ -33,7 +33,7 @@ func TestSenderWriter(t *testing.T) {
 	assert.Equal(n, len(newLine))
 	assert.Equal(ws.buffer.Len(), 12)
 
-	ws.doSend()
+	assert.NoError(ws.doSend())
 
 	require.True(sink.HasMessage())
 	m := sink.GetMessage()
@@ -49,7 +49,7 @@ func TestSenderWriter(t *testing.T) {
 	assert.Equal(n, len(msg))
 	assert.Equal(ws.buffer.Len(), len(msg))
 
-	ws.doSend()
+	assert.NoError(ws.doSend())
 
 	assert.True(sink.HasMessage())
 	assert.Equal(sink.Len(), 2)

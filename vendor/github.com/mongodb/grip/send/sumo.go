@@ -1,13 +1,13 @@
 package send
 
 import (
-	"os"
-	"log"
 	"fmt"
+	"log"
 	"net/url"
+	"os"
 
-	sumo "github.com/nutmegdevelopment/sumologic/upload"
 	"github.com/mongodb/grip/message"
+	sumo "github.com/nutmegdevelopment/sumologic/upload"
 )
 
 type sumoLogger struct {
@@ -69,16 +69,16 @@ func NewSumo(name, endpoint string) (Sender, error) {
 }
 
 func (s *sumoLogger) Send(m message.Composer) {
-	if s.level.ShouldLog(m) {
+	if s.Level().ShouldLog(m) {
 		text, err := s.formatter(m)
 		if err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 			return
 		}
 
 		buf := []byte(text)
 		if err := s.client.Send(buf, s.name); err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 		}
 	}
 }

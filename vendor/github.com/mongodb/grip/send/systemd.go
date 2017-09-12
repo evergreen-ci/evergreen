@@ -54,10 +54,10 @@ func MakeSystemdLogger() (Sender, error) {
 }
 
 func (s *systemdJournal) Send(m message.Composer) {
-	if s.level.ShouldLog(m) {
+	if s.Level().ShouldLog(m) {
 		err := journal.Send(m.String(), s.level.convertPrioritySystemd(m.Priority()), s.options)
 		if err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 		}
 	}
 }

@@ -47,24 +47,27 @@ func GetSplunkConnectionInfo() SplunkConnectionInfo {
 	}
 }
 
+// Populated validates a SplunkConnectionInfo, and returns false if
+// there is missing data.
 func (info SplunkConnectionInfo) Populated() bool {
 	return info.ServerURL != "" && info.Token != ""
 }
 
 func (s *splunkLogger) Send(m message.Composer) {
-	if s.level.ShouldLog(m) {
+	if s.Level().ShouldLog(m) {
 		g, ok := m.(*message.GroupComposer)
 		if ok {
 			batch := []*hec.Event{}
+			level := s.Level()
 			for _, c := range g.Messages() {
-				if s.level.ShouldLog(c) {
+				if level.ShouldLog(c) {
 					e := hec.NewEvent(c.Raw())
 					e.SetHost(s.hostname)
 					batch = append(batch, e)
 				}
 			}
 			if err := s.client.WriteBatch(batch); err != nil {
-				s.errHandler(err, m)
+				s.ErrorHandler(err, m)
 			}
 			return
 		}
@@ -72,7 +75,7 @@ func (s *splunkLogger) Send(m message.Composer) {
 		e := hec.NewEvent(m.Raw())
 		e.SetHost(s.hostname)
 		if err := s.client.WriteEvent(e); err != nil {
-			s.errHandler(err, m)
+			s.ErrorHandler(err, m)
 		}
 	}
 }

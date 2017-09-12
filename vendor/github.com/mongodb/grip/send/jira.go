@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/andygrunwald/go-jira"
+	jira "github.com/andygrunwald/go-jira"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/trivago/tgo/tcontainer"
@@ -74,13 +74,11 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 
 // Send post issues via jiraJournal with information in the message.Composer
 func (j *jiraJournal) Send(m message.Composer) {
-	if !j.level.ShouldLog(m) {
-		return
-	}
-
-	issueFields := getFields(m)
-	if err := j.opts.client.PostIssue(issueFields); err != nil {
-		j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
+	if j.Level().ShouldLog(m) {
+		issueFields := getFields(m)
+		if err := j.opts.client.PostIssue(issueFields); err != nil {
+			j.errHandler(err, message.NewFormattedMessage(m.Priority(), m.String()))
+		}
 	}
 }
 

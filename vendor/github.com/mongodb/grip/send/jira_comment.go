@@ -61,11 +61,9 @@ func NewJiraCommentLogger(id string, opts *JiraOptions, l LevelInfo) (Sender, er
 
 // Send post issues via jiraCommentJournal with information in the message.Composer
 func (j *jiraCommentJournal) Send(m message.Composer) {
-	if !j.level.ShouldLog(m) {
-		return
-	}
-
-	if err := j.opts.client.PostComment(j.issueID, m.String()); err != nil {
-		j.errHandler(err, m)
+	if j.Level().ShouldLog(m) {
+		if err := j.opts.client.PostComment(j.issueID, m.String()); err != nil {
+			j.ErrorHandler(err, m)
+		}
 	}
 }

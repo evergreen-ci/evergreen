@@ -250,7 +250,7 @@ func MakeBuildlogger(name string, conf *BuildloggerConfig) (Sender, error) {
 }
 
 func (b *buildlogger) Send(m message.Composer) {
-	if b.level.ShouldLog(m) {
+	if b.Level().ShouldLog(m) {
 		req := [][]interface{}{
 			[]interface{}{float64(time.Now().Unix()), m.String()},
 		}
@@ -262,7 +262,7 @@ func (b *buildlogger) Send(m message.Composer) {
 		}
 
 		if err := b.postLines(bytes.NewBuffer(out)); err != nil {
-			b.errHandler(err, message.NewBytesMessage(b.level.Default, out))
+			b.ErrorHandler(err, message.NewBytesMessage(b.level.Default, out))
 		}
 	}
 }

@@ -80,9 +80,11 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 
 	partitions, err := disk.Partitions(true)
 	s.saveError("disk_part", err)
+
 	if err == nil {
+		var u *disk.UsageStat
 		for _, p := range partitions {
-			u, err := disk.Usage(p.Mountpoint)
+			u, err = disk.Usage(p.Mountpoint)
 			s.saveError("partition", err)
 			if err != nil {
 				continue
