@@ -111,6 +111,51 @@ func TestXMLParsing(t *testing.T) {
 				})
 			})
 		})
+
+		Convey("with a result file produced by a mocha junit reporter", func() {
+			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "mocha.xml"))
+			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
+
+			Convey("the file should parse without error", func() {
+				res, err := parseXMLResults(file)
+				So(err, ShouldBeNil)
+				So(len(res), ShouldEqual, 187)
+
+				Convey("and have proper values decoded (spot checking here)", func() {
+					So(res[0].Failures, ShouldEqual, 0)
+					So(res[0].Time, ShouldEqual, 0)
+					So(res[0].Tests, ShouldEqual, 0)
+					So(res[0].Name, ShouldEqual, "Root Suite")
+					So(res[1].Failures, ShouldEqual, 0)
+					So(res[1].Time, ShouldEqual, 0.003)
+					So(res[1].Tests, ShouldEqual, 4)
+					So(res[1].Name, ShouldEqual, "bundles/common/components/AuthExpired/AuthExpired")
+				})
+			})
+		})
+
+		Convey("with a result file with errors", func() {
+			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "results.xml"))
+			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
+
+			Convey("the file should parse without error", func() {
+				res, err := parseXMLResults(file)
+				So(err, ShouldBeNil)
+				So(len(res), ShouldEqual, 1)
+
+				Convey("and have proper values decoded", func() {
+					So(res[0].Failures, ShouldEqual, 0)
+					So(res[0].Time, ShouldEqual, 0.001)
+					So(res[0].Tests, ShouldEqual, 2)
+					So(res[0].Name, ShouldEqual, "unittest.loader.ModuleImportFailure-20170406180545")
+					So(res[0].Errors, ShouldEqual, 2)
+					So(res[0].TestCases[0].ClassName, ShouldEqual, "unittest.loader.ModuleImportFailure.tests")
+					So(res[0].TestCases[0].Error, ShouldNotBeNil)
+				})
+			})
+		})
 	})
 }
 

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+	<testsuite errors="2" failures="0" name="unittest.loader.ModuleImportFailure-20170406180545" skipped="0" tests="2" time="0.001">
+		<testcase classname="unittest.loader.ModuleImportFailure.tests" name="test_binder" time="0.000">
+			<error message="Failed to import test module: tests.test_binder
+Traceback (most recent call last):
+  File &quot;C:\Python27\lib\unittest\loader.py&quot;, line 254, in _find_tests
+    module = self._get_module_from_name(name)
+  File &quot;C:\Python27\lib\unittest\loader.py&quot;, line 232, in _get_module_from_name
+    __import__(name)
+  File &quot;D:\mongo\buildscripts\idl\tests\test_binder.py&quot;, line 28, in &lt;module&gt;
+    from context import idl
+ImportError: No module named context
+" type="ImportError">
+<![CDATA[ImportError: Failed to import test module: tests.test_binder
+Traceback (most recent call last):
+  File "C:\Python27\lib\unittest\loader.py", line 254, in _find_tests
+    module = self._get_module_from_name(name)
+  File "C:\Python27\lib\unittest\loader.py", line 232, in _get_module_from_name
+    __import__(name)
+  File "D:\mongo\buildscripts\idl\tests\test_binder.py", line 28, in <module>
+    from context import idl
+ImportError: No module named context
+
+]]>			</error>
+		</testcase>
+		<testcase classname="unittest.loader.ModuleImportFailure.tests" name="test_parser" time="0.001">
+			<error message="Failed to import test module: tests.test_parser
+Traceback (most recent call last):
+  File &quot;C:\Python27\lib\unittest\loader.py&quot;, line 254, in _find_tests
+    module = self._get_module_from_name(name)
+  File &quot;C:\Python27\lib\unittest\loader.py&quot;, line 232, in _get_module_from_name
+    __import__(name)
+  File &quot;D:\mongo\buildscripts\idl\tests\test_parser.py&quot;, line 28, in &lt;module&gt;
+    from context import idl
+ImportError: No module named context
+" type="ImportError">
+<![CDATA[ImportError: Failed to import test module: tests.test_parser
+Traceback (most recent call last):
+  File "C:\Python27\lib\unittest\loader.py", line 254, in _find_tests
+    module = self._get_module_from_name(name)
+  File "C:\Python27\lib\unittest\loader.py", line 232, in _get_module_from_name
+    __import__(name)
+  File "D:\mongo\buildscripts\idl\tests\test_parser.py", line 28, in <module>
+    from context import idl
+ImportError: No module named context
+
+]]>			</error>
+		</testcase>
+		<system-out>
+<![CDATA[]]>		</system-out>
+		<system-err>
+<![CDATA[]]>		</system-err>
+	</testsuite>
+</testsuites>
