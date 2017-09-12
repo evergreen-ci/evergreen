@@ -177,6 +177,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
 	if resp == nil {
+		grip.Error("response was nil, indicating a 409 or an empty response from the API server")
 		return nil
 	}
 	if resp.ShouldExit {
