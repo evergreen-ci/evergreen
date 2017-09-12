@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
@@ -26,7 +27,7 @@ func (s *CommandTestSuite) SetupTest() {
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,
-			LogPrefix:  "LOCAL",
+			LogPrefix:  evergreen.LocalLoggingOverride,
 		},
 		comm: client.NewMock("url"),
 	}

@@ -25,7 +25,7 @@ func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
 		HostID:            testHost.Id,
 		HostSecret:        testHost.Secret,
 		StatusPort:        2285,
-		LogPrefix:         "LOCAL",
+		LogPrefix:         evergreen.LocalLoggingOverride,
 		HeartbeatInterval: 5 * time.Second,
 	}
 	return New(initialOptions, client.NewCommunicator(testServer.URL))

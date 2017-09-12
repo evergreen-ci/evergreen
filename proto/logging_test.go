@@ -14,7 +14,7 @@ func TestGetSenderRemote(t *testing.T) {
 	_ = os.Setenv("GRIP_SPLUNK_SERVER_URL", "http://www.example.com/")
 	_ = os.Setenv("GRIP_SPLUNK_CLIENT_TOKEN", "token")
 	_ = os.Setenv("GRIP_SPLUNK_CHANNEL", "channel")
-	_, err := getSender("LOCAL", "task_id")
+	_, err := getSender(evergreen.LocalLoggingOverride, "task_id")
 	assert.NoError(err)
 }
 

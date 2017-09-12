@@ -31,7 +31,7 @@ func (s *AgentTestSuite) SetupTest() {
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,
-			LogPrefix:  "LOCAL",
+			LogPrefix:  evergreen.LocalLoggingOverride,
 		},
 		comm: client.NewMock("url"),
 	}
