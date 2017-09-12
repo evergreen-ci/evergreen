@@ -27,8 +27,6 @@ clientBuildDir := clients
 clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
-binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
-
 clientSource := cli/main/cli.go
 
 distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates ./notify/templates
@@ -80,12 +78,6 @@ plugins:$(buildDir)/.plugins
 $(buildDir)/.plugins:Plugins install_plugins.sh
 	./install_plugins.sh
 	@touch $@
-$(buildDir)/evergreen_runner:scripts/evergreen_runner
-	cp $< $@
-$(buildDir)/evergreen_api_server:scripts/evergreen_api_server
-	cp $< $@
-$(buildDir)/evergreen_ui_server:scripts/evergreen_ui_server
-	cp $< $@
 # end rules for building server binaries
 
 
@@ -158,9 +150,9 @@ $(buildDir)/make-tarball:scripts/make-tarball.go $(buildDir)/render-gopath
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries) $(clientBuildDir)/version
-	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
-$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(distTestContents) # $(binaries) #(distTestRaceContents)
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(clientBuildDir)/version
+	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item))
+$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(distTestContents) # $(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/"
@@ -168,7 +160,7 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 
 # userfacing targets for basic build and development operations
-build:$(binaries) cli
+build:cli
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
