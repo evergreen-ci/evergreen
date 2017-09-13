@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -228,10 +227,6 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--host_id='%s'", hostObj.Id),
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
-	}
-
-	if os.Getenv("LEGACY_AGENT") == "" {
-		agentCmdParts = append(agentCmdParts, "--new_agent")
 	}
 
 	// build the command to run on the remote machine

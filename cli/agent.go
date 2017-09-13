@@ -15,7 +15,6 @@ type AgentCommand struct {
 	ServiceURL string `long:"api_server" description:"URL of API server"`
 	LogPrefix  string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
 	StatusPort int    `long:"status_part" default:"2285" description:"port to run the status server on"`
-	NewAgent   bool   `long:"new_agent" description:"run new agent (defaults to legacy agent)"`
 }
 
 func (c *AgentCommand) Execute(_ []string) error {
@@ -32,13 +31,13 @@ func (c *AgentCommand) Execute(_ []string) error {
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
 
-	sender, err := agent.GetSender(agent.opts.LogPrefix, "init")
+	sender, err := agent.GetSender(opts.LogPrefix, "init")
 	if err != nil {
-		return nil, errors.Wrap(err, "problem configuring logger")
+		return errors.Wrap(err, "problem configuring logger")
 	}
 
 	if err := grip.SetSender(sender); err != nil {
-		return nil, errors.Wrap(err, "problem setting up logger")
+		return errors.Wrap(err, "problem setting up logger")
 	}
 
 	grip.SetName("evergreen.agent")
