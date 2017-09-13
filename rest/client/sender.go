@@ -81,8 +81,10 @@ backgroundSender:
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			s.flush(ctx, buffer)
-			buffer = []apimodels.LogMessage{}
+			if len(buffer) > 0 {
+				s.flush(ctx, buffer)
+				buffer = []apimodels.LogMessage{}
+			}
 			timer.Reset(bufferTime)
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))

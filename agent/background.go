@@ -73,6 +73,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idle
 			if !timer.Stop() {
 				<-timer.C
 			}
+			idleTimeoutInterval = d
 			timer.Reset(d)
 		case <-ctx.Done():
 			grip.Info("Idle timeout watch canceled")
