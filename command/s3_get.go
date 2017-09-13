@@ -143,7 +143,7 @@ func (c *s3get) Execute(ctx context.Context,
 			c.LocalFile = filepath.Join(conf.WorkDir, c.LocalFile)
 		}
 
-		if err = createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
+		if err := createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
 			return errors.WithStack(err)
 		}
 	}
@@ -153,7 +153,7 @@ func (c *s3get) Execute(ctx context.Context,
 			c.ExtractTo = filepath.Join(conf.WorkDir, c.ExtractTo)
 		}
 
-		if err = createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
+		if err := createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
 			return errors.WithStack(err)
 		}
 	}
