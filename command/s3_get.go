@@ -138,16 +138,20 @@ func (c *s3get) Execute(ctx context.Context,
 
 	// if the local file or extract_to is a relative path, join it to the
 	// working dir
-	if c.LocalFile != "" && !filepath.IsAbs(c.LocalFile) {
-		c.LocalFile = filepath.Join(conf.WorkDir, c.LocalFile)
+	if c.LocalFile != "" {
+		if !filepath.IsAbs(c.LocalFile) {
+			c.LocalFile = filepath.Join(conf.WorkDir, c.LocalFile)
+		}
 
 		if err = createEnclosingDirectoryIfNeeded(c.LocalFile); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
-	if c.ExtractTo != "" && !filepath.IsAbs(c.ExtractTo) {
-		c.ExtractTo = filepath.Join(conf.WorkDir, c.ExtractTo)
+	if c.ExtractTo != "" {
+		if !filepath.IsAbs(c.ExtractTo) {
+			c.ExtractTo = filepath.Join(conf.WorkDir, c.ExtractTo)
+		}
 
 		if err = createEnclosingDirectoryIfNeeded(c.ExtractTo); err != nil {
 			return errors.WithStack(err)

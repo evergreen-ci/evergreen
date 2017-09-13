@@ -48,7 +48,7 @@ func (c *taskDataGet) Execute(ctx context.Context,
 		return err
 	}
 
-	if c.File != "" && !filepath.IsAbs(c.File) {
+	if !filepath.IsAbs(c.File) {
 		c.File = filepath.Join(conf.WorkDir, c.File)
 	}
 
