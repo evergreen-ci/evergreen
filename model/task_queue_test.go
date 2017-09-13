@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -17,7 +16,6 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueueTestConf))
-	grip.Warning(grip.SetSender(testutil.SetupTestSender("/tmp/task_queue_test.log")))
 }
 
 func TestDequeueTask(t *testing.T) {

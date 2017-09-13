@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -16,7 +15,6 @@ var taskQueuePersisterTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueuePersisterTestConf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskQueuePersisterTestConf.Scheduler.LogFile)))
 }
 
 func TestDBTaskQueuePersister(t *testing.T) {

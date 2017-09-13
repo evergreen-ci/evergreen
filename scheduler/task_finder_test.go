@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -15,7 +14,6 @@ var taskFinderTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskFinderTestConf.Scheduler.LogFile)))
 }
 
 func TestDBTaskFinder(t *testing.T) {

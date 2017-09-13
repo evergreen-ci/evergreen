@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -16,7 +15,6 @@ var taskImportanceCmpTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskImportanceCmpTestConf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskImportanceCmpTestConf.Scheduler.LogFile)))
 }
 
 func TestTaskImportanceComparators(t *testing.T) {

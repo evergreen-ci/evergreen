@@ -7,14 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostAllocatorTestConf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(hostAllocatorTestConf.Scheduler.LogFile)))
 }
 
 func TestDeficitBasedHostAllocator(t *testing.T) {

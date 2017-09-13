@@ -33,9 +33,6 @@ func (self *MockUIPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (self *MockUIPlugin) NewCommand(commandName string) (plugin.Command, error) {
-	return nil, nil
-}
 func (self *MockUIPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	return self.Conf, nil
 }

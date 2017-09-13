@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -77,8 +76,6 @@ var (
 var TestConfig = testutil.TestConfig()
 
 func TestNotify(t *testing.T) {
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(TestConfig.Notify.LogFile)))
-
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(TestConfig))
 	emailSubjects = make([]string, 0)
 	emailBodies = make([]string, 0)

@@ -7,13 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
-	grip.Warning(grip.SetSender(testutil.SetupTestSender("/tmp/version_test.log")))
 }
 
 func TestLastKnownGoodConfig(t *testing.T) {

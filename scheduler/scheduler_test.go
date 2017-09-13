@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -23,7 +22,6 @@ var schedulerTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile)))
 }
 
 const versionProjectString = `

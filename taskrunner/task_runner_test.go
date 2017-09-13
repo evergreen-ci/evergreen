@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -16,7 +15,6 @@ var agtRevision = "abc"
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskRunnerTestConf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskRunnerTestConf.TaskRunner.LogFile)))
 }
 
 type MockHostGateway struct{}

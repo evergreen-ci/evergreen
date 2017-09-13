@@ -4,7 +4,6 @@ package subprocess
 // the agent code to compile on freebsd. it is not tested.
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 func TrackProcess(key string, pid int, logger grip.Journaler) {

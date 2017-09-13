@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -25,7 +24,6 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
-	grip.CatchError(grip.SetSender(testutil.SetupTestSender("")))
 }
 
 var depTaskIds = []Dependency{
