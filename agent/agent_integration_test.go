@@ -20,7 +20,7 @@ type testConfigPath struct {
 	testSpec string
 }
 
-func createAgent(testServer *service.TestServer, testHost *host.Host) (*Agent, error) {
+func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
 	initialOptions := Options{
 		HostID:            testHost.Id,
 		HostSecret:        testHost.Secret,
@@ -68,8 +68,7 @@ func (s *AgentIntegrationSuite) TestRunTask() {
 	defer testServer.Close()
 	s.testServer = testServer
 
-	s.a, err = createAgent(testServer, s.modelData.Host)
-	s.NoError(err)
+	s.a = createAgent(testServer, s.modelData.Host)
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     s.modelData.Task.Id,
@@ -95,8 +94,7 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	defer testServer.Close()
 	s.testServer = testServer
 
-	s.a, err = createAgent(testServer, s.modelData.Host)
-	s.NoError(err)
+	s.a = createAgent(testServer, s.modelData.Host)
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     s.modelData.Task.Id,

@@ -3,6 +3,8 @@ package cli
 import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -28,10 +30,20 @@ func (c *AgentCommand) Execute(_ []string) error {
 		LogPrefix:  c.LogPrefix,
 	}
 
-	agt, err := agent.New(opts, client.NewCommunicator(c.ServiceURL))
+	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
+
+	sender, err := agent.GetSender(agent.opts.LogPrefix, "init")
 	if err != nil {
-		return errors.Wrap(err, "problem configuring logging")
+		return nil, errors.Wrap(err, "problem configuring logger")
 	}
+
+	if err := grip.SetSender(sender); err != nil {
+		return nil, errors.Wrap(err, "problem setting up logger")
+	}
+
+	grip.SetName("evergreen.agent")
+	grip.SetDefaultLevel(level.Info)
+	grip.SetThreshold(level.Debug)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

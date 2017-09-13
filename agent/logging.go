@@ -27,8 +27,8 @@ func init() {
 
 func getInc() int { return <-idSource }
 
-// getSender configures the agent's local logging to a file.
-func getSender(prefix, taskId string) (send.Sender, error) {
+// GetSender configures the agent's local logging to a file.
+func GetSender(prefix, taskId string) (send.Sender, error) {
 	var (
 		err     error
 		sender  send.Sender

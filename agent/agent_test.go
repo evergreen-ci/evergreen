@@ -227,8 +227,7 @@ func (s *AgentTestSuite) TestAbort() {
 }
 
 func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {
-	agent, err := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
-	s.NoError(err)
+	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
 	s.Equal("host_id", agent.comm.GetHostID())
 	s.Equal("host_secret", agent.comm.GetHostSecret())
 }

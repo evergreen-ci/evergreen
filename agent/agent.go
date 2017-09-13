@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -45,7 +44,7 @@ type taskContext struct {
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run.
-func New(opts Options, comm client.Communicator) (*Agent, error) {
+func New(opts Options, comm client.Communicator) *Agent {
 	comm.SetHostID(opts.HostID)
 	comm.SetHostSecret(opts.HostSecret)
 	agent := &Agent{
@@ -53,20 +52,7 @@ func New(opts Options, comm client.Communicator) (*Agent, error) {
 		comm: comm,
 	}
 
-	sender, err := getSender(agent.opts.LogPrefix, "init")
-	if err != nil {
-		return nil, errors.Wrap(err, "problem configuring logger")
-	}
-
-	if err := grip.SetSender(sender); err != nil {
-		return nil, errors.Wrap(err, "problem setting up logger")
-	}
-
-	grip.SetName("evergreen.agent")
-	grip.SetDefaultLevel(level.Info)
-	grip.SetThreshold(level.Debug)
-
-	return agent, nil
+	return agent
 }
 
 // Start starts the agent loop. The agent polls the API server for new tasks
@@ -128,7 +114,7 @@ func (a *Agent) loop(ctx context.Context) error {
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	tc.logger = a.comm.GetLoggerProducer(context.TODO(), tc.task)
 
-	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
+	sender, err := GetSender(a.opts.LogPrefix, tc.task.ID)
 	if err != nil {
 		err = errors.Wrap(err, "problem getting sender")
 		grip.Error(err)
