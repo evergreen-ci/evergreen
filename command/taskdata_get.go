@@ -48,9 +48,14 @@ func (c *taskDataGet) Execute(ctx context.Context,
 		return err
 	}
 
-	if c.File != "" && !filepath.IsAbs(c.File) {
+	if !filepath.IsAbs(c.File) {
 		c.File = filepath.Join(conf.WorkDir, c.File)
 	}
+
+	if err = createEnclosingDirectoryIfNeeded(c.File); err != nil {
+		return errors.WithStack(err)
+	}
+
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	data, err := comm.GetJSONData(ctx, td, c.TaskName, c.DataName, c.Variant)
