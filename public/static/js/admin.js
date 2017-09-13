@@ -24,10 +24,5 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }
 
-  $scope.clearSettings = function() {
-    $scope.Settings.banner = "";
-    $scope.saveSettings();
-  }
-
   $scope.load()
 }]);

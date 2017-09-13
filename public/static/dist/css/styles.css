@@ -538,6 +538,20 @@ md-card-footer button {
 md-input-container label {
   font-size: medium;
 }
+md-radio-button .md-on {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+md-radio-button .md-off {
+  border-color: rgba(0, 0, 0, 0.7) !important;
+}
+md-radio-button {
+  -ms-transform: scale(0.85, 0.85);
+  -webkit-transform: scale(0.85, 0.85);
+  transform: scale(0.85, 0.85);
+}
+md-radio-group.md-focused:not(:empty) .md-checked .md-container:before {
+  background-color: rgba(21, 196, 8, 0.45) !important;
+}
 .remove-version {
   margin: 10px;
 }
@@ -2227,7 +2241,31 @@ path {
   width: 49%;
 }
 .control {
-  width: 85%;
+  width: 100%;
+}
+.flagsTable {
+  width: 100%;
+}
+.flagsTable md-radio-button {
+  display: inline-block;
+  width: 50%;
+}
+.flagsTable td {
+  padding-top: 6px;
+  font-size: 14px;
+}
+md-radio-button {
+  margin-bottom: 0;
+  bottom: 2px;
+}
+th {
+  font-weight: normal;
+}
+.squeezeTop {
+  padding-top: 0;
+}
+.squeezeAll {
+  padding: 4px;
 }
 .banner-container {
   height: 50px;
