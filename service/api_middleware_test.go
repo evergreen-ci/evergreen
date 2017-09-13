@@ -15,10 +15,21 @@ import (
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/urfave/negroni"
 )
 
 func init() {
 	reporting.QuietMode()
+}
+
+func (as *APIServer) Handler() (http.Handler, error) {
+	router := as.NewRouter()
+
+	n := negroni.New()
+	n.Use(NewLogger())
+	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
+	n.UseHandler(router)
+	return n, nil
 }
 
 func TestCheckHostWrapper(t *testing.T) {

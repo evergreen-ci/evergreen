@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
+	"github.com/urfave/negroni"
 )
 
 type TestServer struct {
@@ -34,19 +35,21 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 		return nil, err
 	}
 
-	apiServer, err := NewAPIServer(settings)
-	apiServer.UserManager = testutil.MockUserManager{}
+	as, err := NewAPIServer(settings)
 	if err != nil {
 		return nil, err
 	}
+	as.UserManager = testutil.MockUserManager{}
+
 	var l net.Listener
 	protocol := "http"
 
-	h, err := apiServer.Handler()
-	if err != nil {
-		return nil, err
-	}
-	server := httptest.NewUnstartedServer(h)
+	n := negroni.New()
+	n.Use(NewLogger())
+	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
+	n.UseHandler(as.NewRouter())
+
+	server := httptest.NewUnstartedServer(n)
 	server.TLS = tlsConfig
 
 	// We're not running ssl tests with the agent in any cases,
@@ -80,7 +83,7 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	ts := &TestServer{
 		URL:       fmt.Sprintf("%s://localhost%v", protocol, addr),
 		Listener:  l,
-		APIServer: apiServer,
+		APIServer: as,
 		ts:        server,
 	}
 

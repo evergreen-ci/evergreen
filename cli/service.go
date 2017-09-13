@@ -44,17 +44,15 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	n := negroni.New()
-	handler, err := getHandlerAPI(settings)
+	apiHandler, err := getHandlerAPI(settings)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	n.UseHandler(handler)
-	handler, err = getHandlerUI(settings)
+
+	uiHandler, err := getHandlerUI(settings)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	n.UseHandler(handler)
 
 	sender, err := settings.GetSender()
 	if err != nil {
@@ -81,13 +79,13 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	apiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, n)
+		err = service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, apiHandler)
 		close(apiWait)
 	}()
 
 	uiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, n)
+		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler)
 		close(uiWait)
 	}()
 
@@ -104,13 +102,13 @@ func getHandlerAPI(settings *evergreen.Settings) (http.Handler, error) {
 		return nil, err
 	}
 
-	handler, err := as.Handler()
-	if err != nil {
-		err = errors.Wrap(err, "failed to get API route handlers")
-		return nil, err
-	}
+	router := as.NewRouter()
 
-	return handler, nil
+	n := negroni.New()
+	n.Use(service.NewLogger())
+	n.Use(negroni.HandlerFunc(service.UserMiddleware(as.UserManager)))
+	n.UseHandler(router)
+	return n, nil
 }
 
 func getHandlerUI(settings *evergreen.Settings) (http.Handler, error) {

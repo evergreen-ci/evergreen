@@ -28,7 +28,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"github.com/urfave/negroni"
 )
 
 type (
@@ -689,8 +688,8 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
 }
 
-// Handler returns the root handler for all APIServer endpoints.
-func (as *APIServer) Handler() (http.Handler, error) {
+// NewRouter returns the root router for all APIServer endpoints.
+func (as *APIServer) NewRouter() *mux.Router {
 	root := mux.NewRouter()
 
 	// attaches the /rest/v1 routes
@@ -795,9 +794,5 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter.HandleFunc("/json/data/{task_name}/{name}", as.checkTask(false, as.getTaskJSONByName)).Methods("GET")
 	taskRouter.HandleFunc("/json/data/{task_name}/{name}/{variant}", as.checkTask(false, as.getTaskJSONForVariant)).Methods("GET")
 
-	n := negroni.New()
-	n.Use(NewLogger())
-	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
-	n.UseHandler(root)
-	return n, nil
+	return root
 }
