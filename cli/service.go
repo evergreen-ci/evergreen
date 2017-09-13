@@ -81,13 +81,13 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	apiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, handler)
+		err = service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, n)
 		close(apiWait)
 	}()
 
 	uiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, handler)
+		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, n)
 		close(uiWait)
 	}()
 
