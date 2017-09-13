@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	bufferTime  = 15 * time.Second
-	bufferCount = 100
+	defaultBufferTime = 15 * time.Second
+	bufferCount       = 100
 )
 
 type logSender struct {
@@ -26,6 +26,7 @@ type logSender struct {
 	lastBatch     chan struct{}
 	signalEnd     chan struct{}
 	updateTimeout bool
+	bufferTime    time.Duration
 	*send.Base
 }
 
@@ -45,12 +46,15 @@ func newLogSender(ctx context.Context, comm Communicator, channel string, taskDa
 		lastBatch:   make(chan struct{}),
 		signalEnd:   make(chan struct{}),
 	}
-
 	ctx, s.cancel = context.WithCancel(ctx)
 
 	go s.startBackgroundSender(ctx)
 
 	return s
+}
+
+func (s *logSender) setBufferTime(d time.Duration) {
+	s.bufferTime = d
 }
 
 func (s *logSender) Close() error {
@@ -69,7 +73,10 @@ func (s *logSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
 }
 
 func (s *logSender) startBackgroundSender(ctx context.Context) {
-	timer := time.NewTimer(bufferTime)
+	if s.bufferTime == 0 {
+		s.bufferTime = defaultBufferTime
+	}
+	timer := time.NewTimer(s.bufferTime)
 	buffer := []apimodels.LogMessage{}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -85,13 +92,13 @@ backgroundSender:
 				s.flush(ctx, buffer)
 				buffer = []apimodels.LogMessage{}
 			}
-			timer.Reset(bufferTime)
+			timer.Reset(s.bufferTime)
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= bufferCount/2 {
 				s.flush(ctx, buffer)
 				buffer = []apimodels.LogMessage{}
-				timer.Reset(bufferTime)
+				timer.Reset(s.bufferTime)
 			}
 		case <-s.signalEnd:
 			break backgroundSender
