@@ -28,6 +28,12 @@ type APIServiceFlags struct {
 	SchedulerDisabled     bool `json:"scheduler_disabled"`
 }
 
+// RestartTasksResponse is the response model returned from the /admin/restart route
+type RestartTasksResponse struct {
+	TasksRestarted []string `json:"tasks_restarted"`
+	TasksErrored   []string `json:"tasks_errored"`
+}
+
 // BuildFromService builds a model from the service layer
 func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
@@ -103,4 +109,21 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		SchedulerDisabled:     as.SchedulerDisabled,
 	}
 	return serviceFlags, nil
+}
+
+// BuildFromService builds a model from the service layer
+func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
+	switch v := h.(type) {
+	case *admin.TaskRestartResponse:
+		rtr.TasksRestarted = v.TasksRestarted
+		rtr.TasksErrored = v.TasksErrored
+	default:
+		return errors.Errorf("%T is the incorrect type for a restart task response", h)
+	}
+	return nil
+}
+
+// ToService is not implemented for /admin/restart
+func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
+	return nil, errors.New("ToService not implemented for RestartTasksResponse")
 }

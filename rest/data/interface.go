@@ -136,6 +136,7 @@ type Connector interface {
 	SetAdminBanner(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
+	RestartFailedTasks(time.Time, time.Time, string, bool) (*admin.TaskRestartResponse, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 }

@@ -28,6 +28,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/admin":                                               getAdminSettingsManager,
 		"/admin/banner":                                        getBannerRouteManager,
 		"/admin/service_flags":                                 getServiceFlagsRouteManager,
+		"/admin/restart":                                       getRestartRouteManager,
 		"/builds/{build_id}":                                   getBuildByIdRouteManager,
 		"/builds/{build_id}/abort":                             getBuildAbortRouteManager,
 		"/builds/{build_id}/restart":                           getBuildRestartManager,
