@@ -2261,10 +2261,6 @@ md-radio-button {
 th {
   font-weight: normal;
 }
-md-input-container .clearBtn {
-  top: 16px;
-  float: right;
-}
 .squeezeTop {
   padding-top: 0;
 }
