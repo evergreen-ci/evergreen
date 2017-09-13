@@ -14,7 +14,7 @@ import (
 type MetricsTestSuite struct {
 	suite.Suite
 	comm      *client.Mock
-	collector metricsCollector
+	collector *metricsCollector
 	id        string
 }
 
@@ -25,7 +25,7 @@ func TestMetricsTestSuite(t *testing.T) {
 func (s *MetricsTestSuite) SetupTest() {
 	s.comm = client.NewMock("")
 	s.id = "test_task_id"
-	s.collector = metricsCollector{
+	s.collector = &metricsCollector{
 		comm:     s.comm,
 		taskData: client.TaskData{ID: s.id},
 	}

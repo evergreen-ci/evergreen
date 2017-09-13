@@ -13,7 +13,7 @@ import (
 
 type BackgroundTestSuite struct {
 	suite.Suite
-	a                Agent
+	a                *Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
 }
@@ -23,7 +23,7 @@ func TestBackgroundTestSuite(t *testing.T) {
 }
 
 func (s *BackgroundTestSuite) SetupTest() {
-	s.a = Agent{
+	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
 			HostSecret: "secret",
