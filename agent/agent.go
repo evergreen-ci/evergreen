@@ -163,17 +163,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
 
-	idleTimeout := make(chan struct{})
+	timeout := make(chan struct{})
 	resetIdleTimeout := make(chan time.Duration)
-	go a.startIdleTimeoutWatch(ctx, tc, idleTimeout, resetIdleTimeout)
+	go a.startIdleTimeoutWatch(ctx, tc, timeout, resetIdleTimeout)
 
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
-	go a.startTask(ctx, tc, complete, execTimeout, resetIdleTimeout)
+	go a.startTask(ctx, tc, complete, timeout, resetIdleTimeout)
 
-	status, timeout := a.wait(ctx, tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, taskTimedOut := a.wait(ctx, tc, heartbeat, timeout, complete)
 
-	resp, err := a.finishTask(ctx, tc, status, timeout)
+	resp, err := a.finishTask(ctx, tc, status, taskTimedOut)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
@@ -187,19 +186,17 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, idleTimeout chan struct{}, complete chan string, execTimeout chan struct{}) (string, bool) {
+func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, timeout chan struct{}, complete chan string) (string, bool) {
 	status := evergreen.TaskFailed
-	timeout := false
+	taskTimedOut := false
 	select {
 	case status = <-complete:
 		grip.Infof("task complete: %s", tc.task.ID)
-	case <-execTimeout:
-		grip.Infof("recevied signal from execTimeout channel: %s", tc.task.ID)
 	case status = <-heartbeat:
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
-	case <-idleTimeout:
-		grip.Infof("received signal on idleTimeout channel: %s", tc.task.ID)
-		timeout = true
+	case <-timeout:
+		grip.Infof("recevied signal from timeout channel: %s", tc.task.ID)
+		taskTimedOut = true
 		if tc.taskConfig.Project.Timeout != nil {
 			tc.logger.Task().Info("Running task-timeout commands.")
 			start := time.Now()
@@ -212,12 +209,12 @@ func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string
 	case <-ctx.Done():
 		grip.Infof("task canceled: %s", tc.task.ID)
 	}
-	return status, timeout
+	return status, taskTimedOut
 }
 
 // finishTask sends the returned TaskEndResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, timeout)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, taskTimedOut bool) (*apimodels.EndTaskResponse, error) {
+	detail := a.endTaskResponse(tc, status, taskTimedOut)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
@@ -257,11 +254,11 @@ func (a *Agent) getCurrentCommandType(tc *taskContext) string {
 	return model.DefaultCommandType
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, timeout bool) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(tc *taskContext, status string, taskTimedOut bool) *apimodels.TaskEndDetail {
 	return &apimodels.TaskEndDetail{
 		Description: tc.currentCommand.DisplayName(),
 		Type:        tc.currentCommand.Type(),
-		TimedOut:    timeout,
+		TimedOut:    taskTimedOut,
 		Status:      status,
 	}
 }

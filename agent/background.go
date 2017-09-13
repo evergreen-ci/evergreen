@@ -50,22 +50,22 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	}
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idleTimeout chan<- struct{}, resetIdleTimeout chan time.Duration) {
-	idleTimeoutInterval := defaultIdleTimeout
+func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, timeout chan<- struct{}, resetIdleTimeout chan time.Duration) {
+	timeoutInterval := defaultIdleTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
-		idleTimeoutInterval = a.opts.IdleTimeoutInterval
+		timeoutInterval = a.opts.IdleTimeoutInterval
 	}
-	timer := time.NewTimer(idleTimeoutInterval)
+	timer := time.NewTimer(timeoutInterval)
 
 	defer timer.Stop()
 	for {
 		select {
 		case <-timer.C:
 			// check the last time the idle timeout was updated.
-			nextTimeout := idleTimeoutInterval - time.Now().Sub(a.comm.LastMessageAt())
+			nextTimeout := timeoutInterval - time.Now().Sub(a.comm.LastMessageAt())
 			if nextTimeout <= 0 {
 				tc.logger.Execution().Error("Hit idle timeout")
-				close(idleTimeout)
+				close(timeout)
 				return
 			}
 			a.checkIn(ctx, tc, tc.currentCommand, nextTimeout, resetIdleTimeout)
@@ -73,7 +73,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idle
 			if !timer.Stop() {
 				<-timer.C
 			}
-			idleTimeoutInterval = d
+			timeoutInterval = d
 			timer.Reset(d)
 		case <-ctx.Done():
 			grip.Info("Idle timeout watch canceled")
