@@ -257,10 +257,11 @@ retryLoop:
 
 				err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
 				if err != nil {
-					if !s3pc.isMulti() {
-						if s3pc.Optional && os.IsNotExist(err) {
-							return errors.Wrapf(err, "missing file %s", fpath)
-						}
+					// if we encounter a problem uploading a file, then we should:
+					//   - skip if it's a single update, not marked optional, and the local file doesn't exist
+					// retry in all other cases
+					if !s3pc.isMulti() && !s3pc.Optional && os.IsNotExist(err) {
+						return errors.Wrapf(err, "missing file %s", fpath)
 					}
 
 					grip.Error(err)

@@ -420,6 +420,10 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 
 // AttachFiles attaches task files.
 func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
+	if len(taskFiles) == 0 {
+		return nil
+	}
+
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
