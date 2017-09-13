@@ -50,7 +50,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	}
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, timeout chan<- struct{}, resetIdleTimeout chan time.Duration) {
+func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, timeout chan struct{}, resetIdleTimeout chan time.Duration) {
 	timeoutInterval := defaultIdleTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
 		timeoutInterval = a.opts.IdleTimeoutInterval
@@ -75,21 +75,29 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, time
 			}
 			timeoutInterval = d
 			timer.Reset(d)
+		// cancel by exec timeout watch
+		case <-timeout:
+			grip.Info("Idle timeout watch canceld by channel")
+			return
 		case <-ctx.Done():
-			grip.Info("Idle timeout watch canceled")
+			grip.Info("Idle timeout watch canceled context")
 			return
 		}
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, execTimeout chan<- struct{}) {
+func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, timeout chan struct{}) {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	for {
 		select {
 		case <-timer.C:
 			tc.logger.Execution().Error("Hit exec timeout")
-			close(execTimeout)
+			close(timeout)
+			return
+		// cancel by idle timeout watch
+		case <-timeout:
+			grip.Info("Exec timeout watch canceld by channel")
 			return
 		case <-ctx.Done():
 			grip.Info("Exec timeout watch canceled")

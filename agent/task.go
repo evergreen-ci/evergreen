@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, timeout chan<- struct{}, resetIdleTimeout chan<- time.Duration) {
+func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, timeout chan struct{}, resetIdleTimeout chan<- time.Duration) {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("problem during configuring initial state")
