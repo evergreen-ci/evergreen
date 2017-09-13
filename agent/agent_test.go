@@ -110,17 +110,17 @@ func (s *AgentTestSuite) TestFinishTaskEndTaskError() {
 }
 
 func (s *AgentTestSuite) TestCancelStartTask() {
-	idleTimeout := make(chan time.Duration)
+	resetIdleTimeout := make(chan time.Duration)
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
+	timeout := make(chan struct{})
 	go func() {
-		for _ = range idleTimeout {
+		for _ = range resetIdleTimeout {
 			// discard
 		}
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	s.a.startTask(ctx, s.tc, complete, execTimeout, idleTimeout)
+	s.a.startTask(ctx, s.tc, complete, timeout, resetIdleTimeout)
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Zero(len(msgs))
 }
@@ -135,8 +135,8 @@ func (s *AgentTestSuite) TestCancelRunCommands() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	idleTimeout := make(chan time.Duration)
-	err := s.a.runCommands(ctx, s.tc, cmds, false, idleTimeout)
+	resetIdleTimeout := make(chan time.Duration)
+	err := s.a.runCommands(ctx, s.tc, cmds, false, resetIdleTimeout)
 	s.Error(err)
 	s.Equal("runCommands canceled", err.Error())
 }
@@ -234,52 +234,48 @@ func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {
 
 func (s *AgentTestSuite) TestWaitCompleteSuccess() {
 	heartbeat := make(chan string)
-	idleTimeout := make(chan struct{})
+	timeout := make(chan struct{})
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
 	go func() {
 		complete <- evergreen.TaskSucceeded
 	}()
-	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(timeout)
+	s.False(taskTimedOut)
 }
 
 func (s *AgentTestSuite) TestWaitCompleteFailure() {
 	heartbeat := make(chan string)
-	idleTimeout := make(chan struct{})
+	timeout := make(chan struct{})
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
 	go func() {
 		complete <- evergreen.TaskFailed
 	}()
-	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.False(timeout)
+	s.False(taskTimedOut)
 }
 
 func (s *AgentTestSuite) TestWaitExecTimeout() {
 	heartbeat := make(chan string)
-	idleTimeout := make(chan struct{})
+	timeout := make(chan struct{})
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
-	close(execTimeout)
-	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	close(timeout)
+	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.False(timeout)
+	s.True(taskTimedOut)
 }
 
 func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
 	heartbeat := make(chan string)
-	idleTimeout := make(chan struct{})
+	resetIdleTimeout := make(chan struct{})
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
 	go func() {
 		heartbeat <- evergreen.TaskUndispatched
 	}()
-	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, resetIdleTimeout, complete)
 	s.Equal(evergreen.TaskUndispatched, status)
-	s.False(timeout)
+	s.False(taskTimedOut)
 }
 
 func (s *AgentTestSuite) TestWaitIdleTimeout() {
@@ -313,11 +309,10 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 	s.tc.currentCommand = factory()
 
 	heartbeat := make(chan string)
-	idleTimeout := make(chan struct{})
+	timeout := make(chan struct{})
 	complete := make(chan string)
-	execTimeout := make(chan struct{})
-	close(idleTimeout)
-	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	close(timeout)
+	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.True(timeout)
+	s.True(taskTimedOut)
 }

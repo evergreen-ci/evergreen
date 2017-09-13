@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
+func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, timeout chan struct{}, resetIdleTimeout chan<- time.Duration) {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("problem during configuring initial state")
@@ -19,7 +19,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	a.checkIn(ctx, tc, factory(), initialSetupTimeout, idleTimeout)
+	a.checkIn(ctx, tc, factory(), initialSetupTimeout, resetIdleTimeout)
 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
@@ -42,7 +42,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)
 
-	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), execTimeout)
+	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), timeout)
 
 	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
 	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
@@ -88,7 +88,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	a.killProcs(tc)
 	a.runPreTaskCommands(ctx, tc)
 
-	taskStatus := a.runTaskCommands(ctx, tc, idleTimeout)
+	taskStatus := a.runTaskCommands(ctx, tc, resetIdleTimeout)
 	if taskStatus != nil {
 		complete <- evergreen.TaskFailed
 	}
@@ -112,17 +112,17 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 
 // CheckIn updates the agent's execution stage and current timeout duration,
 // and resets its timer back to zero.
-func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command command.Command, duration time.Duration, idleTimeout chan<- time.Duration) {
+func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command command.Command, duration time.Duration, resetIdleTimeout chan<- time.Duration) {
 	if ctx.Err() != nil {
 		return
 	}
 
-	if idleTimeout == nil {
+	if resetIdleTimeout == nil {
 		return
 	}
 
 	select {
-	case idleTimeout <- duration:
+	case resetIdleTimeout <- duration:
 		tc.currentCommand = command
 		tc.logger.Execution().Infof("Command timeout set to %v", duration.String())
 	default:
