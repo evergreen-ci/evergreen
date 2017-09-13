@@ -57,7 +57,11 @@ func New(opts Options, comm client.Communicator) (*Agent, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "problem configuring logger")
 	}
-	grip.SetSender(sender)
+
+	if err := grip.SetSender(sender); err != nil {
+		return nil, errors.Wrap(err, "problem setting up logger")
+	}
+
 	grip.SetName("evergreen.agent")
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)

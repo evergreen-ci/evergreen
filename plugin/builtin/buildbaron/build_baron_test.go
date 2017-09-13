@@ -23,7 +23,7 @@ const (
 
 func TestTaskToJQL(t *testing.T) {
 	Convey("Given a task with with two failed tests and one successful test, "+
-		"the jql should contian only the failed test names", t, func() {
+		"the jql should contain only the failed test names", t, func() {
 		task1 := task.Task{}
 		task1.TestResults = []task.TestResult{
 			{Status: "fail", TestFile: "foo.js"},
@@ -37,7 +37,7 @@ func TestTaskToJQL(t *testing.T) {
 	})
 
 	Convey("Given a task with with oo failed tests, "+
-		"the jql should contian only the failed task name", t, func() {
+		"the jql should contain only the failed task name", t, func() {
 		task2 := task.Task{}
 		task2.TestResults = []task.TestResult{}
 		task2.DisplayName = "foobar"
@@ -49,7 +49,7 @@ func TestTaskToJQL(t *testing.T) {
 
 func TestNoteStorage(t *testing.T) {
 	Convey("With a test note to save", t, func() {
-		db.Clear(NotesCollection)
+		So(db.Clear(NotesCollection), ShouldBeNil)
 		n := Note{
 			TaskId:       "t1",
 			UnixNanoTime: time.Now().UnixNano(),

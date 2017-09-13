@@ -51,7 +51,10 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 		TaskId  string   `json:"task"`
 		TestIds []string `json:"tests"`
 	}
-	json.NewDecoder(r.Body).Decode(&input)
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+	}
 
 	// grab the task and user info to fill out the ticket
 	u := plugin.GetUser(r)
