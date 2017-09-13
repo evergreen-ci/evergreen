@@ -147,3 +147,15 @@ func (s *BackgroundTestSuite) TestExecTimeoutWatch() {
 		s.Equal("Hit exec timeout", v[0].Message)
 	}
 }
+
+func (s *BackgroundTestSuite) TestResetIdleTimeoutExpiresTimer() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	idleTimeout := make(chan struct{})
+	resetIdleTimeout := make(chan time.Duration)
+
+	go s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
+	resetIdleTimeout <- 10 * time.Millisecond
+	time.Sleep(20 * time.Millisecond)
+	s.Panics(func() { close(idleTimeout) })
+}
