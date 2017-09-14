@@ -145,7 +145,7 @@ func (c *Mock) GetProjectRef(ctx context.Context, taskData TaskData) (*serviceMo
 func (c *Mock) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
 	return &distro.Distro{
 		Id:      "mock_distro_id",
-		WorkDir: "/tmp",
+		WorkDir: ".",
 	}, nil
 }
 

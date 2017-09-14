@@ -2,6 +2,7 @@ package agent
 
 import (
 	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -35,8 +36,11 @@ func (s *CommandTestSuite) SetupTest() {
 }
 
 func (s *CommandTestSuite) TestShellExec() {
-	f, err := ioutil.TempFile("/tmp", "shell-exec-")
+	wd, err := os.Getwd()
 	s.Require().NoError(err)
+	f, err := ioutil.TempFile(wd, "shell-exec-")
+	s.Require().NoError(err)
+	defer os.Remove(f.Name())
 
 	tmpFile := f.Name()
 	s.mockCommunicator.ShellExecFilename = tmpFile
