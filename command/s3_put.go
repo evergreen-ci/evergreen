@@ -208,10 +208,10 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	defer timer.Stop()
 
 retryLoop:
-	for i := 1; i <= maxs3putAttempts; i++ {
+	for i := 1; i <= maxS3OpAttempts; i++ {
 		logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
 			s3pc.Bucket, s3pc.RemoteFile,
-			i, maxs3putAttempts)
+			i, maxS3OpAttempts)
 
 		select {
 		case <-ctx.Done():

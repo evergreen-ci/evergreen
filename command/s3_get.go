@@ -173,9 +173,9 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	for i := 1; i <= MaxS3GetAttempts; i++ {
+	for i := 1; i <= maxS3OpAttempts; i++ {
 		logger.Task().Infof("fetching %s from s3 bucket %s (attempt %d of %d)",
-			c.RemoteFile, c.Bucket, i, MaxS3GetAttempts)
+			c.RemoteFile, c.Bucket, i, maxS3OpAttempts)
 
 		select {
 		case <-ctx.Done():
@@ -192,7 +192,7 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 		}
 	}
 
-	return errors.Errorf("S3 get failed after %d attempts", MaxS3GetAttempts)
+	return errors.Errorf("S3 get failed after %d attempts", maxS3OpAttempts)
 }
 
 // Fetch the specified resource from s3.
