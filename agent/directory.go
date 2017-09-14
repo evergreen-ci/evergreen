@@ -95,12 +95,8 @@ func tryCleanupDirectory(dir string) {
 	}
 
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if path == dir {
+		if path == dir || err != nil {
 			return nil
-		}
-
-		if err != nil {
-			return err
 		}
 
 		if !info.IsDir() {
