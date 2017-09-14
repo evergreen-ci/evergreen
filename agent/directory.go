@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 // createTaskDirectory makes a directory for the agent to execute
@@ -95,7 +94,7 @@ func tryCleanupDirectory(dir string) {
 	}
 
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if path == dir || err != nil {
+		if path == dir {
 			return nil
 		}
 
@@ -105,7 +104,7 @@ func tryCleanupDirectory(dir string) {
 
 		if err = os.RemoveAll(path); err != nil {
 			grip.Notice(err)
-			return errors.WithStack(err)
+			return nil
 		}
 
 		return nil
