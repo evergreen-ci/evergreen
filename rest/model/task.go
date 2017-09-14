@@ -42,6 +42,7 @@ type APITask struct {
 	Logs             logLinks         `json:"logs"`
 	TimeTaken        APIDuration      `json:"time_taken_ms"`
 	ExpectedDuration APIDuration      `json:"expected_duration_ms"`
+	EstimatedCost    float64          `json:"estimated_cost"`
 }
 
 type logLinks struct {
@@ -93,6 +94,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Status:           APIString(v.Status),
 			TimeTaken:        NewAPIDuration(v.TimeTaken),
 			ExpectedDuration: NewAPIDuration(v.ExpectedDuration),
+			EstimatedCost:    v.Cost,
 		}
 
 		if len(v.DependsOn) > 0 {
@@ -150,6 +152,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Status:           string(ad.Status),
 		TimeTaken:        ad.TimeTaken.ToDuration(),
 		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
+		Cost:             ad.EstimatedCost,
 	}
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 
