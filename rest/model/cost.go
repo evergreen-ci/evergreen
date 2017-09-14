@@ -8,8 +8,9 @@ import (
 
 // APIVersionCost is the model to be returned by the API whenever cost data is fetched by version id.
 type APIVersionCost struct {
-	VersionId    APIString   `json:"version_id"`
-	SumTimeTaken APIDuration `json:"sum_time_taken"`
+	VersionId     APIString   `json:"version_id"`
+	SumTimeTaken  APIDuration `json:"sum_time_taken"`
+	EstimatedCost float64     `json:"estimated_cost"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -19,6 +20,7 @@ func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	case *task.VersionCost:
 		apiVersionCost.VersionId = APIString(v.VersionId)
 		apiVersionCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
+		apiVersionCost.EstimatedCost = v.SumEstimatedCost
 	default:
 		return errors.Errorf("incorrect type when fetching converting version cost type")
 	}
@@ -32,10 +34,11 @@ func (apiVersionCost *APIVersionCost) ToService() (interface{}, error) {
 
 // APIDistroCost is the model to be returned by the API whenever cost data is fetched by distro id.
 type APIDistroCost struct {
-	DistroId     APIString   `json:"distro_id"`
-	SumTimeTaken APIDuration `json:"sum_time_taken"`
-	Provider     APIString   `json:"provider"`
-	InstanceType APIString   `json:"instance_type,omitempty"`
+	DistroId      APIString   `json:"distro_id"`
+	SumTimeTaken  APIDuration `json:"sum_time_taken"`
+	Provider      APIString   `json:"provider"`
+	InstanceType  APIString   `json:"instance_type,omitempty"`
+	EstimatedCost float64     `json:"estimated_cost"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -46,6 +49,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 		apiDistroCost.DistroId = APIString(v.DistroId)
 		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiDistroCost.Provider = APIString(v.Provider)
+		apiDistroCost.EstimatedCost = v.SumEstimatedCost
 
 		// InstanceType field is only set if the provider is ec2 or ec2-spot.
 		// It will default to an empty string for other providers.

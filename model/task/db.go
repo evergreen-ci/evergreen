@@ -483,13 +483,15 @@ func CostDataByVersionIdPipeline(versionId string) []bson.M {
 	pipeline := []bson.M{
 		{"$match": bson.M{VersionKey: versionId}},
 		{"$group": bson.M{
-			"_id":            "$" + VersionKey,
-			"sum_time_taken": bson.M{"$sum": "$" + TimeTakenKey},
+			"_id":                "$" + VersionKey,
+			"sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
+			"sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
 		}},
 		{"$project": bson.M{
-			"_id":            0,
-			"version_id":     "$_id",
-			"sum_time_taken": 1,
+			"_id":                0,
+			"version_id":         "$_id",
+			"sum_time_taken":     1,
+			"sum_estimated_cost": 1,
 		}},
 	}
 
@@ -505,13 +507,15 @@ func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration t
 			FinishTimeKey: bson.M{"$gte": starttime, "$lte": starttime.Add(duration)},
 		}},
 		{"$group": bson.M{
-			"_id":            "$" + DistroIdKey,
-			"sum_time_taken": bson.M{"$sum": "$" + TimeTakenKey},
+			"_id":                "$" + DistroIdKey,
+			"sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
+			"sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
 		}},
 		{"$project": bson.M{
-			"_id":            0,
-			"distro_id":      "$_id",
-			"sum_time_taken": 1,
+			"_id":                0,
+			"distro_id":          "$_id",
+			"sum_time_taken":     1,
+			"sum_estimated_cost": 1,
 		}},
 	}
 

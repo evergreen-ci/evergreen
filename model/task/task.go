@@ -104,8 +104,9 @@ type Dependency struct {
 // VersionCost is service level model for representing cost data related to a version.
 // SumTimeTaken is the aggregation of time taken by all tasks associated with a version.
 type VersionCost struct {
-	VersionId    string        `bson:"version_id"`
-	SumTimeTaken time.Duration `bson:"sum_time_taken"`
+	VersionId        string        `bson:"version_id"`
+	SumTimeTaken     time.Duration `bson:"sum_time_taken"`
+	SumEstimatedCost float64       `bson:"sum_estimated_cost"`
 }
 
 // DistroCost is service level model for representing cost data related to a distro.
@@ -113,6 +114,7 @@ type VersionCost struct {
 type DistroCost struct {
 	DistroId         string                 `bson:"distro_id"`
 	SumTimeTaken     time.Duration          `bson:"sum_time_taken"`
+	SumEstimatedCost float64                `bson:"sum_estimated_cost"`
 	Provider         string                 `json:"provider"`
 	ProviderSettings map[string]interface{} `json:"provider_settings"`
 }
