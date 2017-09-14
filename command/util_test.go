@@ -23,7 +23,7 @@ func TestCreateEncluosingDirectory(t *testing.T) {
 	// write data to a temp file and then ensure that the directory existing predicate is valid
 	fileName := filepath.Join(dirname, "foo")
 	assert.False(dirExists(fileName))
-	ioutil.WriteFile(fileName, []byte("hello world"), 0744)
+	assert.NoError(ioutil.WriteFile(fileName, []byte("hello world"), 0744))
 	assert.False(dirExists(fileName))
 	_, err = os.Stat(fileName)
 	assert.True(!os.IsNotExist(err))
@@ -37,8 +37,8 @@ func TestCreateEncluosingDirectory(t *testing.T) {
 	assert.NoError(createEnclosingDirectoryIfNeeded(fileName))
 	assert.True(dirExists(filepath.Join(dirname, "foo")))
 
-	// ensure that dir existance is correct
+	// ensure that directory existence check is correct
 	assert.True(dirExists(dirname))
-	os.RemoveAll(dirname)
+	assert.NoError(os.RemoveAll(dirname))
 	assert.False(dirExists(dirname))
 }
