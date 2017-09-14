@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
@@ -39,6 +41,12 @@ func (c *AgentCommand) Execute(_ []string) error {
 	if err := grip.SetSender(sender); err != nil {
 		return errors.Wrap(err, "problem setting up logger")
 	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "problem getting working directory")
+	}
+	opts.WorkingDirectory = wd
 
 	grip.SetName("evergreen.agent")
 	grip.SetDefaultLevel(level.Info)

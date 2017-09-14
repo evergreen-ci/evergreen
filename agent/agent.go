@@ -28,6 +28,7 @@ type Options struct {
 	HostSecret          string
 	StatusPort          int
 	LogPrefix           string
+	WorkingDirectory    string
 	HeartbeatInterval   time.Duration
 	IdleTimeoutInterval time.Duration
 	AgentSleepInterval  time.Duration
@@ -60,6 +61,7 @@ func New(opts Options, comm client.Communicator) *Agent {
 func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(a.opts.StatusPort)
 	err := errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
+	tryCleanupDirectory(a.opts.WorkingDirectory)
 	grip.Emergency(err)
 	return err
 }
