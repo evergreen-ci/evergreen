@@ -176,6 +176,14 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", host.Id))
 			return
 		}
+		if host.Status == evergreen.HostUninitialized {
+			if err := host.SetTerminated(); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			uis.WriteJSON(w, http.StatusOK, "host terminated")
+			return
+		}
 		cloudHost, err := providers.GetCloudHost(host, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
