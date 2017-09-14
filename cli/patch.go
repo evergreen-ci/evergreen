@@ -31,7 +31,8 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 	     ID : {{.Patch.Id.Hex}}
 	Created : {{.Now.Sub .Patch.CreateTime}} ago
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
-	   Link : {{.Link}}
+      Configure : {{.ConfigureLink}}
+          Build : {{.Link}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
 	Summary :
@@ -187,25 +188,22 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	var out bytes.Buffer
 
 	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch       *patch.Patch
-		ShowSummary bool
-		Link        string
-		Now         time.Time
-	}{p, summarize, getPatchDisplayLink(p, uiHost), time.Now()})
+		Patch         *patch.Patch
+		ShowSummary   bool
+		ConfigureLink string
+		Link          string
+		Now           time.Time
+	}{
+		Patch:         p,
+		ShowSummary:   summarize,
+		ConfigureLink: uiHost + "/patch/" + p.Id.Hex(),
+		Link:          uiHost + "/version/" + p.Id.Hex(),
+		Now:           time.Now(),
+	})
 	if err != nil {
 		return "", err
 	}
 	return out.String(), nil
-}
-
-// getPatchDisplayLink will return a link to the running tasks for the patch
-// if it is activated, otherwise it will return the link to the patch directly.
-func getPatchDisplayLink(p *patch.Patch, uiHost string) string {
-	if p.Activated {
-		return uiHost + "/version/" + p.Id.Hex()
-	}
-
-	return uiHost + "/patch/" + p.Id.Hex()
 }
 
 func (rmc *RemoveModuleCommand) Execute(_ []string) error {
