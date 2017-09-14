@@ -83,8 +83,17 @@ func NewMock(serverURL string) *Mock {
 	}
 }
 
-func (c *Mock) LastMessageAt() time.Time { return c.LastMessageSent }
-func (c *Mock) UpdateLastMessageTime()   { c.LastMessageSent = time.Now() }
+func (c *Mock) LastMessageAt() time.Time {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.LastMessageSent
+}
+
+func (c *Mock) UpdateLastMessageTime() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.LastMessageSent = time.Now()
+}
 
 // StartTask returns nil.
 func (c *Mock) StartTask(ctx context.Context, taskData TaskData) error {
