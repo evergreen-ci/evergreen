@@ -56,3 +56,57 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 		grip.Criticalf("Error removing working directory for the task: %v", err)
 	}
 }
+
+// tryCleanupDirectory is a very conservative function that attempts
+// to cleanup the working directory when the agent starts. Without
+// this function, if an agent attempts to start on a system where a
+// previous agent has run but crashed for some reason, the new agent
+// could easily run out of disk space and will have no way to clean up
+// for itself, which leads to an increased maintenance burden for
+// static, and other long running hosts.
+//
+// By conservative, the operation does not return an error or attempt
+// to retry in the case of an error, so running this function does not
+// ensure that any files are necessarily removed, but the hope is that
+// its better than not doing anything.
+//
+// Additionally the function does *not* handle log rotation or
+// management, and only attempts to clean up the agent's working
+// directory, so files not located in a directory may still cause
+// issues.
+func tryCleanupDirectory(dir string) {
+	defer func() {
+		m := recover()
+		grip.Warning(m)
+	}()
+
+	if dir == "" {
+		return
+	}
+
+	stat, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		return
+	}
+
+	if !stat.IsDir() {
+		return
+	}
+
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if path == dir {
+			return nil
+		}
+
+		if !info.IsDir() {
+			return nil
+		}
+
+		if err = os.RemoveAll(path); err != nil {
+			grip.Notice(err)
+			return nil
+		}
+
+		return nil
+	})
+}
