@@ -191,11 +191,21 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 		ShowSummary bool
 		Link        string
 		Now         time.Time
-	}{p, summarize, uiHost + "/patch/" + p.Id.Hex(), time.Now()})
+	}{p, summarize, getPatchDisplayLink(p, uiHost), time.Now()})
 	if err != nil {
 		return "", err
 	}
 	return out.String(), nil
+}
+
+// getPatchDisplayLink will return a link to the running tasks for the patch
+// if it is activated, otherwise it will return the link to the patch directly.
+func getPatchDisplayLink(p *patch.Patch, uiHost string) string {
+	if p.Activated {
+		return uiHost + "/version/" + p.Id.Hex()
+	}
+
+	return uiHost + "/patch/" + p.Id.Hex()
 }
 
 func (rmc *RemoveModuleCommand) Execute(_ []string) error {
