@@ -1,6 +1,7 @@
 package client
 
 import (
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,6 +28,7 @@ type logSender struct {
 	signalEnd     chan struct{}
 	updateTimeout bool
 	bufferTime    time.Duration
+	sync.RWMutex
 	*send.Base
 }
 
@@ -53,7 +55,15 @@ func newLogSender(ctx context.Context, comm Communicator, channel string, taskDa
 	return s
 }
 
+func (s *logSender) getBufferTime() time.Duration {
+	s.RLock()
+	defer s.RUnlock()
+	return s.bufferTime
+}
+
 func (s *logSender) setBufferTime(d time.Duration) {
+	s.Lock()
+	defer s.Unlock()
 	s.bufferTime = d
 }
 
@@ -73,10 +83,11 @@ func (s *logSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
 }
 
 func (s *logSender) startBackgroundSender(ctx context.Context) {
-	if s.bufferTime == 0 {
-		s.bufferTime = defaultBufferTime
+	bufferTime := s.getBufferTime()
+	if bufferTime == 0 {
+		bufferTime = defaultBufferTime
 	}
-	timer := time.NewTimer(s.bufferTime)
+	timer := time.NewTimer(bufferTime)
 	buffer := []apimodels.LogMessage{}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -92,13 +103,13 @@ backgroundSender:
 				s.flush(ctx, buffer)
 				buffer = []apimodels.LogMessage{}
 			}
-			timer.Reset(s.bufferTime)
+			timer.Reset(bufferTime)
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= bufferCount/2 {
 				s.flush(ctx, buffer)
 				buffer = []apimodels.LogMessage{}
-				timer.Reset(s.bufferTime)
+				timer.Reset(bufferTime)
 			}
 		case <-s.signalEnd:
 			break backgroundSender
