@@ -32,6 +32,9 @@ func (s *MetricsTestSuite) SetupTest() {
 }
 
 func (s *MetricsTestSuite) TestRunForIntervalAndSendMessages() {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("skipping on windows")
+	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -49,6 +52,9 @@ func (s *MetricsTestSuite) TestRunForIntervalAndSendMessages() {
 }
 
 func (s *MetricsTestSuite) TestCollectSubProcesses() {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("skipping on windows")
+	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
 	s.NoError(cmd.Start())
@@ -61,18 +67,19 @@ func (s *MetricsTestSuite) TestCollectSubProcesses() {
 
 	s.NoError(cmd.Process.Kill())
 
-	if runtime.GOOS == "windows" {
-		s.True(s.comm.GetProcessInfoLength(s.id) >= 1)
-	} else {
-		s.True(s.comm.GetProcessInfoLength(s.id) >= 2)
-	}
+	s.True(s.comm.GetProcessInfoLength(s.id) >= 2)
 }
 
 func (s *MetricsTestSuite) TestPersistSystemStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go s.collector.sysInfoCollector(ctx, 750*time.Millisecond)
-	time.Sleep(time.Second)
+
+	if runtime.GOOS == "windows" {
+		time.Sleep(5 * time.Second)
+	} else {
+		time.Sleep(time.Second)
+	}
 	cancel()
 
 	s.True(s.comm.GetSystemInfoLength() >= 1)
