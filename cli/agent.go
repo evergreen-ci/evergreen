@@ -31,6 +31,12 @@ func (c *AgentCommand) Execute(_ []string) error {
 		LogPrefix:  c.LogPrefix,
 	}
 
+	wd, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "problem getting working directory")
+	}
+	opts.WorkingDirectory = wd
+
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
 
 	sender, err := agent.GetSender(opts.LogPrefix, "init")
@@ -41,12 +47,6 @@ func (c *AgentCommand) Execute(_ []string) error {
 	if err := grip.SetSender(sender); err != nil {
 		return errors.Wrap(err, "problem setting up logger")
 	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return errors.Wrap(err, "problem getting working directory")
-	}
-	opts.WorkingDirectory = wd
 
 	grip.SetName("evergreen.agent")
 	grip.SetDefaultLevel(level.Info)

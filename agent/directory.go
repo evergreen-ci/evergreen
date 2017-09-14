@@ -68,7 +68,8 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 //
 // By conservative, the operation does not return an error or attempt
 // to retry in the case of an error, so running this function does not
-// ensure.
+// ensure that any files are necessarily removed, but the hope is that
+// its better than not doing anything.
 //
 // Additionally the function does *not* handle log rotation or
 // management, and only attempts to clean up the agent's working
@@ -94,6 +95,10 @@ func tryCleanupDirectory(dir string) {
 	}
 
 	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if path == dir {
+			return nil
+		}
+
 		if err != nil {
 			return err
 		}
