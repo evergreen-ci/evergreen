@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
-	"github.com/jpillora/backoff"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -192,14 +191,8 @@ func (s3pc *s3put) Execute(ctx context.Context,
 }
 
 // Wrapper around the Put() function to retry it.
-func (s3pc *s3put) putWithRetry(ctx context.Context,
-	comm client.Communicator, logger client.LoggerProducer) error {
-	backoffCounter := &backoff.Backoff{
-		Min:    s3PutSleep,
-		Max:    maxs3putAttempts * s3PutSleep,
-		Factor: 2,
-		Jitter: true,
-	}
+func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, logger client.LoggerProducer) error {
+	backoffCounter := getS3OpBackoff()
 
 	auth := &aws.Auth{
 		AccessKey: s3pc.AwsKey,

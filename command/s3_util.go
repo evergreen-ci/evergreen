@@ -8,12 +8,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/s3"
+	"github.com/jpillora/backoff"
 )
 
 const (
-	maxs3putAttempts = 5
-	s3PutSleep       = 5 * time.Second
-	s3baseURL        = "https://s3.amazonaws.com/"
+	maxS3OpAttempts   = 10
+	s3OpSleep         = 2 * time.Second
+	s3OpRetryMaxSleep = 20 * time.Second
+	s3baseURL         = "https://s3.amazonaws.com/"
 )
 
 var (
@@ -62,4 +64,13 @@ func validS3Permissions(perm string) bool {
 		},
 		s3.ACL(perm),
 	)
+}
+
+func getS3OpBackoff() *backoff.Backoff {
+	return &backoff.Backoff{
+		Min:    s3OpSleep,
+		Max:    s3OpRetryMaxSleep,
+		Factor: 2,
+		Jitter: true,
+	}
 }

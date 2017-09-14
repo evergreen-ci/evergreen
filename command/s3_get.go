@@ -13,15 +13,9 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
-	"github.com/jpillora/backoff"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-)
-
-var (
-	MaxS3GetAttempts = 10
-	S3GetSleep       = 2 * time.Second
 )
 
 // A plugin command to fetch a resource from an s3 bucket and download it to
@@ -175,12 +169,7 @@ func (c *s3get) Execute(ctx context.Context,
 
 // Wrapper around the Get() function to retry it
 func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) error {
-	backoffCounter := &backoff.Backoff{
-		Min:    S3GetSleep,
-		Max:    time.Duration(MaxS3GetAttempts) * S3GetSleep,
-		Factor: 2,
-		Jitter: true,
-	}
+	backoffCounter := getS3OpBackoff()
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
