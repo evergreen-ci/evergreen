@@ -33,6 +33,11 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				return errors.New("runCommands canceled")
 			}
 
+			// SetType implementations only modify the
+			// command's type *if* the command's type is
+			// not otherwise set.
+			cmd.SetType(tc.taskConfig.Project.CommandType)
+
 			fullCommandName := a.getCommandName(commandInfo, cmd)
 
 			if !commandInfo.RunOnVariant(tc.taskConfig.BuildVariant.Name) {
