@@ -88,17 +88,17 @@ func (s *GripInternalSuite) TestConditionalSend() {
 	msgTwo := message.NewLineMessage(level.Notice, "bar")
 
 	// when the conditional argument is true, it should work
-	s.grip.conditionalSend(true, msg)
+	s.grip.sendConditional(true, msg)
 	s.Equal(sink.GetMessage().Message, msg)
 
 	// when the conditional argument is true, it should work, and the channel is fifo
-	s.grip.conditionalSend(false, msgTwo)
-	s.grip.conditionalSend(true, msg)
+	s.grip.sendConditional(false, msgTwo)
+	s.grip.sendConditional(true, msg)
 	s.Equal(sink.GetMessage().Message, msg)
 
 	// change the order
-	s.grip.conditionalSend(true, msg)
-	s.grip.conditionalSend(false, msgTwo)
+	s.grip.sendConditional(true, msg)
+	s.grip.sendConditional(false, msgTwo)
 	s.Equal(sink.GetMessage().Message, msg)
 }
 

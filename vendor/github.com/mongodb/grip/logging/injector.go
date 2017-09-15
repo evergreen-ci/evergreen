@@ -16,17 +16,19 @@ func (g *Grip) SetSender(s send.Sender) error {
 		return errors.New("cannot set the sender to nil")
 	}
 
-	if err := s.SetLevel(g.Sender.Level()); err != nil {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if err := s.SetLevel(g.impl.Level()); err != nil {
 		return err
 	}
 
-	if err := g.Close(); err != nil {
+	if err := g.impl.Close(); err != nil {
 		return err
 	}
 
-	s.SetName(g.Sender.Name())
-
-	g.Sender = s
+	s.SetName(g.impl.Name())
+	g.impl = s
 
 	return nil
 }
@@ -35,5 +37,7 @@ func (g *Grip) SetSender(s send.Sender) error {
 // combination with SetSender() to have multiple Journaler instances
 // backed by the same send.Sender instance.
 func (g *Grip) GetSender() send.Sender {
-	return g.Sender
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.impl
 }

@@ -154,8 +154,8 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 	system = send.NewConfiguredMultiSender(local, system)
 
 	return &logHarness{
-		execution: &logging.Grip{Sender: exec},
-		task:      &logging.Grip{Sender: task},
-		system:    &logging.Grip{Sender: system},
+		execution: logging.MakeGrip(exec),
+		task:      logging.MakeGrip(task),
+		system:    logging.MakeGrip(system),
 	}
 }
