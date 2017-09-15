@@ -2,6 +2,7 @@ package ec2
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math"
 	"net"
@@ -379,12 +380,13 @@ func fetchEBSPricing() (map[string]float64, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing price JSON")
 	}
+	fmt.Printf("%+v\n", prices)
 
 	pricePerRegion := map[string]float64{}
 	for _, r := range prices.Config.Regions {
 		for _, t := range r.Types {
 			// only cache "general purpose" pricing for now
-			if strings.Contains(t.Name, "gp2") {
+			if strings.Contains(t.Name, "ebsGPSSD") {
 				if len(t.Values) == 0 {
 					continue
 				}
