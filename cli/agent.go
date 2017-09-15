@@ -49,8 +49,8 @@ func (c *AgentCommand) Execute(_ []string) error {
 	}
 
 	grip.SetName("evergreen.agent")
-	grip.SetDefaultLevel(level.Info)
-	grip.SetThreshold(level.Debug)
+	grip.Warning(grip.SetDefaultLevel(level.Info))
+	grip.Warning(grip.SetThreshold(level.Debug))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

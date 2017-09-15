@@ -57,8 +57,8 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	evergreen.SetLegacyLogger()
 	grip.SetName("evg-runner")
-	grip.SetDefaultLevel(level.Info)
-	grip.SetThreshold(level.Debug)
+	grip.Warning(grip.SetDefaultLevel(level.Info))
+	grip.Warning(grip.SetThreshold(level.Debug))
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
