@@ -30,10 +30,10 @@ func TestSubtreeCleanup(t *testing.T) {
 			Environment: env,
 		}
 		So(localCmd.Start(), ShouldBeNil)
-		TrackProcess(id, localCmd.Cmd.Process.Pid, &logging.Grip{Sender: grip.GetSender()})
+		TrackProcess(id, localCmd.Cmd.Process.Pid, logging.MakeGrip(grip.GetSender()))
 
 		Convey("running KillSpawnedProcs should kill the process before it finishes", func() {
-			So(KillSpawnedProcs(id, &logging.Grip{Sender: grip.GetSender()}), ShouldBeNil)
+			So(KillSpawnedProcs(id, logging.MakeGrip(grip.GetSender())), ShouldBeNil)
 			So(localCmd.Cmd.Wait(), ShouldNotBeNil)
 			So(buf.String(), ShouldNotContainSubstring, "finish")
 		})
