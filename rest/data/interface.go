@@ -138,4 +138,7 @@ type Connector interface {
 	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
+
+	// FindRecentTasks finds tasks that have recently finished.
+	FindRecentTasks(int) ([]task.Task, *task.ResultCounts, error)
 }
