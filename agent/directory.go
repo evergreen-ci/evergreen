@@ -98,13 +98,11 @@ func tryCleanupDirectory(dir string) {
 			return nil
 		}
 
-		if !info.IsDir() {
-			return nil
-		}
-
-		if err = os.RemoveAll(path); err != nil {
-			grip.Notice(err)
-			return nil
+		if info.IsDir() {
+			if err = os.RemoveAll(path); err != nil {
+				grip.Notice(err)
+				return nil
+			}
 		}
 
 		return nil
