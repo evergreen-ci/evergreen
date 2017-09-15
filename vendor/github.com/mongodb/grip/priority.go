@@ -4,8 +4,8 @@ import "github.com/mongodb/grip/level"
 
 // SetDefaultLevel sets the default level for the package level
 // Journaler instance.
-func SetDefaultLevel(level interface{}) {
-	std.SetDefaultLevel(level)
+func SetDefaultLevel(level interface{}) error {
+	return std.SetDefaultLevel(level)
 }
 
 // DefaultLevel returns the current default level for the package
@@ -16,8 +16,8 @@ func DefaultLevel() level.Priority {
 
 // SetThreshold sets the threshold level for the package level
 // Journaler instance.
-func SetThreshold(level interface{}) {
-	std.SetThreshold(level)
+func SetThreshold(level interface{}) error {
+	return std.SetThreshold(level)
 }
 
 // ThresholdLevel returns the current threshold level for the package

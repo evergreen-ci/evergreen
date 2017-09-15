@@ -108,7 +108,7 @@ func NewSingleChannelLogHarness(name string, sender send.Sender) LoggerProducer 
 	sender.SetName(name)
 
 	l := &singleChannelLogHarness{
-		logger: &logging.Grip{Sender: sender},
+		logger: logging.MakeGrip(sender),
 	}
 
 	return l

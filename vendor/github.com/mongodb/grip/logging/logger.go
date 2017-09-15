@@ -2,6 +2,7 @@ package logging
 
 import (
 	"os"
+	"sync"
 
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -12,7 +13,17 @@ import (
 // interface is mirrored in the "grip" package's public interface, to
 // provide a single, global logging interface that requires minimal
 // configuration.
-type Grip struct{ send.Sender }
+type Grip struct {
+	impl send.Sender
+	mu   sync.RWMutex
+}
+
+// MakeGrip builds a new logging interface from a sender implmementation
+func MakeGrip(s send.Sender) *Grip {
+	return &Grip{
+		impl: s,
+	}
+}
 
 // NewGrip takes the name for a logging instance and creates a new
 // Grip instance with configured with a local, standard output logging.
@@ -24,7 +35,21 @@ func NewGrip(name string) *Grip {
 			Default:   level.Notice,
 		})
 
-	return &Grip{sender}
+	return &Grip{impl: sender}
+}
+
+func (g *Grip) Name() string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	return g.impl.Name()
+}
+
+func (g *Grip) SetName(n string) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	g.impl.SetName(n)
 }
 
 // Internal
@@ -35,8 +60,11 @@ func NewGrip(name string) *Grip {
 func (g *Grip) sendPanic(m message.Composer) {
 	// the Send method in the Sender interface will perform this
 	// check but to add fatal methods we need to do this here.
-	if g.Level().ShouldLog(m) {
-		g.Send(m)
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	if g.impl.Level().ShouldLog(m) {
+		g.impl.Send(m)
 		panic(m.String())
 	}
 }
@@ -44,8 +72,24 @@ func (g *Grip) sendPanic(m message.Composer) {
 func (g *Grip) sendFatal(m message.Composer) {
 	// the Send method in the Sender interface will perform this
 	// check but to add fatal methods we need to do this here.
-	if g.Level().ShouldLog(m) {
-		g.Send(m)
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	if g.impl.Level().ShouldLog(m) {
+		g.impl.Send(m)
 		os.Exit(1)
 	}
+}
+
+func (g *Grip) sendConditional(cond bool, m message.Composer) {
+	if cond {
+		g.send(m)
+	}
+}
+
+func (g *Grip) send(m message.Composer) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	g.impl.Send(m)
 }

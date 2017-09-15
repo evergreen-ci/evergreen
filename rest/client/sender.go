@@ -68,6 +68,9 @@ func (s *logSender) setBufferTime(d time.Duration) {
 }
 
 func (s *logSender) Close() error {
+	s.Lock()
+	defer s.Unlock()
+
 	close(s.signalEnd)
 	<-s.lastBatch
 	s.cancel()
@@ -134,10 +137,14 @@ backgroundSender:
 }
 
 func (s *logSender) Send(m message.Composer) {
+	s.RLock()
+	defer s.RUnlock()
+
 	defer func() {
 		// A command may call Send() after the agent has closed the logSender
 		_ = recover()
 	}()
+
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m
 	}

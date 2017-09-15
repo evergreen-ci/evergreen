@@ -18,9 +18,9 @@ type Journaler interface {
 
 	// Configure the default and threshold levels of the current
 	// sender.
-	SetThreshold(interface{})
+	SetThreshold(interface{}) error
 	ThresholdLevel() level.Priority
-	SetDefaultLevel(interface{})
+	SetDefaultLevel(interface{}) error
 	DefaultLevel() level.Priority
 
 	// Specify a log level as an argument rather than a method
