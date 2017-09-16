@@ -46,6 +46,7 @@ type Mock struct {
 	EndTaskShouldFail      bool
 	EndTaskResult          endTaskResult
 	ShellExecFilename      string
+	TimeoutFilename        string
 	HeartbeatShouldAbort   bool
 	HeartbeatShouldErr     bool
 
@@ -159,6 +160,8 @@ func (c *Mock) GetVersion(ctx context.Context, taskData TaskData) (*version.Vers
 		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "shellexec.yaml"))
 	case "s3copy":
 		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "s3copy.yaml"))
+	case "timeout":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "timeout.yaml"))
 	}
 	if err != nil {
 		panic(err)
@@ -185,6 +188,7 @@ func (c *Mock) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
 func (c *Mock) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{
 		"shellexec_fn": c.ShellExecFilename,
+		"timeout_fn":   c.TimeoutFilename,
 	}, nil
 }
 

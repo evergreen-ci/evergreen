@@ -77,7 +77,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, time
 			timer.Reset(d)
 		// cancel by exec timeout watch
 		case <-timeout:
-			grip.Info("Idle timeout watch canceld by channel")
+			grip.Info("Idle timeout watch canceled by channel")
 			return
 		case <-ctx.Done():
 			grip.Info("Idle timeout watch canceled context")
@@ -97,7 +97,7 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d
 			return
 		// cancel by idle timeout watch
 		case <-timeout:
-			grip.Info("Exec timeout watch canceld by channel")
+			grip.Info("Exec timeout watch canceled by channel")
 			return
 		case <-ctx.Done():
 			grip.Info("Exec timeout watch canceled")
