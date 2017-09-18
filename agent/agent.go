@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -41,6 +42,7 @@ type taskContext struct {
 	task           client.TaskData
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
+	sync.RWMutex
 }
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
@@ -154,13 +156,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	defer cancel()
 
 	// If the heartbeat aborts the task immediately, we should report that
-	// the task failed during initial task setup, even though checkIn, which
-	// will set tc.currentCommand in startTask has not yet run.
+	// the task failed during initial task setup.
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		return errors.New("problem during configuring initial state")
 	}
-	tc.currentCommand = factory()
+	tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
@@ -249,17 +250,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) getCurrentCommandType(tc *taskContext) string {
-	if tc.taskConfig != nil {
-		return tc.currentCommand.Type()
-	}
-	return model.DefaultCommandType
-}
-
 func (a *Agent) endTaskResponse(tc *taskContext, status string, taskTimedOut bool) *apimodels.TaskEndDetail {
 	return &apimodels.TaskEndDetail{
-		Description: tc.currentCommand.DisplayName(),
-		Type:        tc.currentCommand.Type(),
+		Description: tc.getCurrentCommand().DisplayName(),
+		Type:        tc.getCurrentCommand().Type(),
 		TimedOut:    taskTimedOut,
 		Status:      status,
 	}

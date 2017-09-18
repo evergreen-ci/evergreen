@@ -50,7 +50,7 @@ func (s *AgentTestSuite) SetupTest() {
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
-	s.tc.currentCommand = factory()
+	s.tc.setCurrentCommand(factory())
 
 }
 
@@ -164,8 +164,8 @@ func (s *AgentTestSuite) TestRunPreTaskCommands() {
 
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running pre-task commands.", msgs[0].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
+	s.Equal("Running pre-task commands.", msgs[1].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands")
 }
 
@@ -191,15 +191,15 @@ func (s *AgentTestSuite) TestRunPostTaskCommands() {
 	s.a.runPostTaskCommands(context.Background(), s.tc)
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
-	s.Equal("Running post-task commands.", msgs[0].Message)
-	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
+	s.Equal("Running post-task commands.", msgs[1].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 }
 
 func (s *AgentTestSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
-	s.tc.currentCommand = factory()
+	s.tc.setCurrentCommand(factory())
 
 	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, true)
 	s.True(detail.TimedOut)
@@ -306,7 +306,7 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
-	s.tc.currentCommand = factory()
+	s.tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string)
 	timeout := make(chan struct{})
