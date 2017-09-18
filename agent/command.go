@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, returnOnError bool, idleTimeout chan<- time.Duration) error {
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool, idleTimeout chan<- time.Duration) error {
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {
 			grip.Error("task canceled")
@@ -21,7 +21,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 		cmds, err := command.Render(commandInfo, tc.taskConfig.Project.Functions)
 		if err != nil {
 			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
-			if returnOnError {
+			if isTaskCommands {
 				return err
 			}
 			continue
@@ -64,8 +64,9 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				tc.taskConfig.Expansions.Put(key, newVal)
 			}
 
-			if idleTimeout != nil {
-				a.checkIn(ctx, tc, cmd, timeoutPeriod, idleTimeout)
+			if isTaskCommands {
+				tc.setCurrentCommand(cmd)
+				a.updateIdleTimeout(ctx, tc, timeoutPeriod, idleTimeout)
 			}
 
 			start := time.Now()
@@ -75,7 +76,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 
 			if err != nil {
 				tc.logger.Task().Errorf("Command failed: %v", err)
-				if returnOnError {
+				if isTaskCommands {
 					return errors.Wrap(err, "command failed")
 				}
 			}

@@ -19,7 +19,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	a.checkIn(ctx, tc, factory(), initialSetupTimeout, resetIdleTimeout)
+	tc.setCurrentCommand(factory())
+	a.updateIdleTimeout(ctx, tc, initialSetupTimeout, resetIdleTimeout)
 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
@@ -112,7 +113,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 
 // CheckIn updates the agent's execution stage and current timeout duration,
 // and resets its timer back to zero.
-func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command command.Command, duration time.Duration, resetIdleTimeout chan<- time.Duration) {
+func (a *Agent) updateIdleTimeout(ctx context.Context, tc *taskContext, duration time.Duration, resetIdleTimeout chan<- time.Duration) {
 	if ctx.Err() != nil {
 		return
 	}
@@ -121,12 +122,21 @@ func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command command.Co
 		return
 	}
 
-	select {
-	case resetIdleTimeout <- duration:
-		tc.currentCommand = command
-		tc.logger.Execution().Infof("Command timeout set to %v", duration.String())
-	default:
-	}
+	resetIdleTimeout <- duration
+	tc.logger.Execution().Infof("Command timeout set to %s", duration.String())
+}
+
+func (tc *taskContext) setCurrentCommand(command command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
+	tc.currentCommand = command
+	tc.logger.Execution().Infof("Current command set to '%s' (%s)", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
+}
+
+func (tc *taskContext) getCurrentCommand() command.Command {
+	tc.RLock()
+	defer tc.RUnlock()
+	return tc.currentCommand
 }
 
 // getTaskConfig fetches task configuration data required to run the task from the API server.

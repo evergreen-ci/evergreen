@@ -128,7 +128,7 @@ func (s *BackgroundTestSuite) TestIdleTimeoutWatchWithoutMessageTimeout() {
 
 	s.a.comm.(*client.Mock).LastMessageSent = time.Now().Add(time.Second)
 
-	s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
+	go s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
 	s.NotPanics(func() { close(idleTimeout) })
 	s.Panics(func() { close(idleTimeout) })
 	_, ok := <-idleTimeout
