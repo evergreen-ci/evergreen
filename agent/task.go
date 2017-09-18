@@ -127,15 +127,11 @@ func (a *Agent) checkIn(ctx context.Context, tc *taskContext, duration time.Dura
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
-	tc.Lock()
-	defer tc.Unlock()
 	tc.currentCommand = command
 	tc.logger.Execution().Infof("Current command set to '%s'", tc.currentCommand.DisplayName())
 }
 
 func (tc *taskContext) getCurrentCommand() command.Command {
-	tc.RLock()
-	defer tc.RUnlock()
 	return tc.currentCommand
 }
 

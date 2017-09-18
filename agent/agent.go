@@ -2,7 +2,6 @@ package agent
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -42,7 +41,6 @@ type taskContext struct {
 	task           client.TaskData
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
-	sync.RWMutex
 }
 
 // New creates a new Agent with some Options and a client.Communicator. Call the
