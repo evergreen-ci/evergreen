@@ -127,11 +127,15 @@ func (a *Agent) updateIdleTimeout(ctx context.Context, tc *taskContext, duration
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
+	tc.Lock()
+	defer tc.Unlock()
 	tc.currentCommand = command
 	tc.logger.Execution().Infof("Current command set to '%s' (%s)", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
 }
 
 func (tc *taskContext) getCurrentCommand() command.Command {
+	tc.RLock()
+	defer tc.RUnlock()
 	return tc.currentCommand
 }
 
