@@ -35,4 +35,13 @@ directives.eventlogs.directive('distroevent', function() {
   };
 });
 
-
+directives.eventlogs.directive('adminevent', function() {
+  return {
+    scope:{
+      userTz:"=tz",
+      e:"=event"
+    },
+    restrict : 'E',
+    templateUrl : '/static/partials/adminevent.html',
+  };
+});
