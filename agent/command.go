@@ -66,7 +66,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 
 			if isTaskCommands {
 				tc.setCurrentCommand(cmd)
-				a.checkIn(ctx, tc, timeoutPeriod, idleTimeout)
+				a.updateIdleTimeout(ctx, tc, timeoutPeriod, idleTimeout)
 			}
 
 			start := time.Now()

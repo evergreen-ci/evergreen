@@ -20,7 +20,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	tc.setCurrentCommand(factory())
-	a.checkIn(ctx, tc, initialSetupTimeout, resetIdleTimeout)
+	a.updateIdleTimeout(ctx, tc, initialSetupTimeout, resetIdleTimeout)
 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
@@ -113,7 +113,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 
 // CheckIn updates the agent's execution stage and current timeout duration,
 // and resets its timer back to zero.
-func (a *Agent) checkIn(ctx context.Context, tc *taskContext, duration time.Duration, resetIdleTimeout chan<- time.Duration) {
+func (a *Agent) updateIdleTimeout(ctx context.Context, tc *taskContext, duration time.Duration, resetIdleTimeout chan<- time.Duration) {
 	if ctx.Err() != nil {
 		return
 	}
@@ -128,7 +128,7 @@ func (a *Agent) checkIn(ctx context.Context, tc *taskContext, duration time.Dura
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
 	tc.currentCommand = command
-	tc.logger.Execution().Infof("Current command set to '%s'", tc.currentCommand.DisplayName())
+	tc.logger.Execution().Infof("Current command set to '%s' (%s)", tc.currentCommand.DisplayName(), tc.currentCommand.Type())
 }
 
 func (tc *taskContext) getCurrentCommand() command.Command {

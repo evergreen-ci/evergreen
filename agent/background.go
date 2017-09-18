@@ -68,7 +68,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, time
 				close(timeout)
 				return
 			}
-			go a.checkIn(ctx, tc, nextTimeout, resetIdleTimeout)
+			go a.updateIdleTimeout(ctx, tc, nextTimeout, resetIdleTimeout)
 		case d := <-resetIdleTimeout:
 			if !timer.Stop() {
 				<-timer.C

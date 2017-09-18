@@ -249,9 +249,13 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 }
 
 func (a *Agent) endTaskResponse(tc *taskContext, status string, taskTimedOut bool) *apimodels.TaskEndDetail {
+	commandType := tc.getCurrentCommand().Type()
+	if commandType == "" {
+		commandType = model.SystemCommandType
+	}
 	return &apimodels.TaskEndDetail{
 		Description: tc.getCurrentCommand().DisplayName(),
-		Type:        tc.getCurrentCommand().Type(),
+		Type:        commandType,
 		TimedOut:    taskTimedOut,
 		Status:      status,
 	}
