@@ -22,7 +22,7 @@ func (c *DBStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.Res
 
 	if tasks == nil {
 		return nil, nil, &rest.APIError{
-			StatusCode: http.StatusNotFound,
+			StatusCode: http.StatusOK,
 			Message:    fmt.Sprintf("no tasks found for last %d minutes", minutes),
 		}
 	}
