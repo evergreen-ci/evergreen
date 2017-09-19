@@ -63,43 +63,64 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		return errors.Wrap(err, "error fetching uninitialized hosts")
 	}
 
-	for _, h := range hostsToStart {
-		if ctx.Err() != nil {
-			return errors.New("hostinit run canceled")
-		}
-
-		grip.Info(message.Fields{
-			"GUID":    init.GUID,
-			"message": "attempting to start host",
-			"hostid":  h.Id,
-			"distro":  h.Distro.Id,
-			"tag":     h.Tag,
-		})
-
-		cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
-		if err != nil {
-			return errors.Wrapf(err, "error getting cloud provider for host %s", h.Id)
-		}
-
-		err = h.Remove()
-		if err != nil {
-			return errors.Wrapf(err, "error removing intent host %s", h.Id)
-		}
-
-		_, err = cloudManager.SpawnHost(&h)
-		if err != nil {
-			return errors.Wrapf(err, "error spawning host %s", h.Id)
-		}
-
-		h.Status = evergreen.HostStarting
-
-		_, err = h.Upsert()
-		if err != nil {
-			return errors.Wrapf(err, "error updating host %v", h.Id)
-		}
-
-		grip.Infof("successfully started host %s", h.Id)
+	hostPipe := make(chan Host, len(hostsToStart))
+	wg := &sync.WaitGroup{}
+	catcher := grip.NewSimpleCatcher()
+	for _, host := range hostsToStart {
+		hostPipe <- host
 	}
+	close(hostPipe)
+
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					catcher.Add(errors.New("hostinit run canceled"))
+					return
+				case h := <-hostPipe:
+					grip.Info(message.Fields{
+						"GUID":    init.GUID,
+						"message": "attempting to start host",
+						"hostid":  h.Id,
+						"distro":  h.Distro.Id,
+						"tag":     h.Tag,
+					})
+
+					cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "error getting cloud provider for host %s", h.Id))
+						continue
+					}
+
+					err = h.Remove()
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "error removing intent host %s", h.Id))
+						continue
+					}
+
+					_, err = cloudManager.SpawnHost(&h)
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "error spawning host %s", h.Id))
+						continue
+					}
+
+					h.Status = evergreen.HostStarting
+
+					_, err = h.Upsert()
+					if err != nil {
+						catcher.Add(errors.Wrapf(err, "error updating host %v", h.Id))
+						continue
+					}
+
+					grip.Infof("successfully started host %s", h.Id)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 
 	grip.Info(message.Fields{
 		"GUID":    init.GUID,
@@ -108,7 +129,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		"runtime": time.Since(startTime),
 	})
 
-	return nil
+	return catcher.Resolve()
 }
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
