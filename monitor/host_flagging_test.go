@@ -468,7 +468,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Minute * 40),
+				CreationTime: time.Now().Add(-time.Minute * 60),
 				Status:       evergreen.HostTerminated,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -484,7 +484,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Minute * 40),
+				CreationTime: time.Now().Add(-time.Minute * 60),
 				Provisioned:  true,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -501,7 +501,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
-				CreationTime: time.Now().Add(-time.Minute * 40),
+				CreationTime: time.Now().Add(-time.Minute * 60),
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
