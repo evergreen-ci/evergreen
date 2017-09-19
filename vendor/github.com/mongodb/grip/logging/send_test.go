@@ -27,7 +27,7 @@ func (s *GripInternalSuite) SetupSuite() {
 	s.name = "test"
 	s.grip = NewGrip(s.name)
 	s.Equal(s.grip.Name(), s.name)
-	s.grip.SetThreshold(level.Trace)
+	s.NoError(s.grip.SetThreshold(level.Trace))
 }
 
 func (s *GripInternalSuite) SetupTest() {
@@ -65,7 +65,7 @@ func (s *GripInternalSuite) TestSetSenderErrorsForNil() {
 }
 
 func (s *GripInternalSuite) TestPanicSenderRespectsTThreshold() {
-	s.grip.SetThreshold(level.Notice)
+	s.NoError(s.grip.SetThreshold(level.Notice))
 	s.True(level.Debug < s.grip.ThresholdLevel())
 
 	// test that there is a no panic if the message isn't "logabble"

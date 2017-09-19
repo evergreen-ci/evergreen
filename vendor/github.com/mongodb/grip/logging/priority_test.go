@@ -29,7 +29,7 @@ func (s *GripInternalSuite) TestPriorityConverter() {
 		s.Equal(name, out.String())
 		s.Equal(values[0], int(out))
 
-		s.grip.SetDefaultLevel(name)
+		s.NoError(s.grip.SetDefaultLevel(name))
 		s.Equal(name, s.grip.DefaultLevel().String())
 		s.Equal(out, s.grip.DefaultLevel())
 
@@ -37,7 +37,7 @@ func (s *GripInternalSuite) TestPriorityConverter() {
 			out = convertPriority(p, -1)
 			s.Equal(name, out.String())
 
-			s.grip.SetDefaultLevel(name)
+			s.NoError(s.grip.SetDefaultLevel(name))
 			s.Equal(name, s.grip.DefaultLevel().String())
 			s.Equal(out, s.grip.DefaultLevel())
 
@@ -56,12 +56,12 @@ func (s *GripInternalSuite) TestPriorityConverter() {
 		"invalid", "non", true, []string{"foo", "bar"}, nil,
 		101, 1000, 0, -1, -100, -1000,
 	}
-	s.grip.SetDefaultLevel(level.Info)
+	s.NoError(s.grip.SetDefaultLevel(level.Info))
 	s.Equal(level.Info, s.grip.DefaultLevel())
 
 	for _, p := range invalidCases {
 		out := convertPriority(p, level.Notice)
-		s.grip.SetDefaultLevel(p)
+		s.NoError(s.grip.SetDefaultLevel(p))
 		s.Equal("notice", out.String())
 		s.Equal(level.Notice, out)
 

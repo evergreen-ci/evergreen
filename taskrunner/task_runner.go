@@ -63,7 +63,7 @@ func (tr *TaskRunner) Run() error {
 	workers := runtime.NumCPU()
 	wg.Add(workers)
 
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 	// for each worker create a new goroutine
 	for i := 0; i < workers; i++ {
 		go func() {
