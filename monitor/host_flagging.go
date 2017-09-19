@@ -13,7 +13,7 @@ import (
 
 const (
 	// ProvisioningCutoff is the threshold to consider as too long for a host to take provisioning
-	ProvisioningCutoff = 35 * time.Minute
+	ProvisioningCutoff = 50 * time.Minute
 
 	// UnreachableCutoff is the threshold to wait for an unreachable host to become marked
 	// as reachable again before giving up and terminating it.
