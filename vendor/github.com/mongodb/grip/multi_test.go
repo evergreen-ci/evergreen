@@ -10,39 +10,45 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+func TestDeprecatedLegacyCatcherSuite(t *testing.T) {
+	s := new(CatcherSuite)
+	s.reset = func() Catcher { return NewCatcher() }
+	suite.Run(t, s)
+}
+
+func TestExtendedCatcherSuite(t *testing.T) {
+	s := new(CatcherSuite)
+	s.reset = func() Catcher { return NewExtendedCatcher() }
+	suite.Run(t, s)
+}
+
+func TestBasicCatcherSuite(t *testing.T) {
+	s := new(CatcherSuite)
+	s.reset = func() Catcher { return NewBasicCatcher() }
+	suite.Run(t, s)
+}
+
+func TestSimpleCatcherSuite(t *testing.T) {
+	s := new(CatcherSuite)
+	s.reset = func() Catcher { return NewSimpleCatcher() }
+	suite.Run(t, s)
+}
+
 // CatcherSuite provides
 type CatcherSuite struct {
-	catcher *MultiCatcher
+	catcher Catcher
+	reset   func() Catcher
 	suite.Suite
 }
 
 func (s *CatcherSuite) SetupTest() {
-	s.catcher = &MultiCatcher{}
-}
-
-func TestCatcherSuite(t *testing.T) {
-	suite.Run(t, new(CatcherSuite))
+	s.catcher = s.reset()
 }
 
 func (s *CatcherSuite) TestInitialValuesOfCatcherInterface() {
 	s.False(s.catcher.HasErrors())
 	s.Equal(0, s.catcher.Len())
 	s.Equal("", s.catcher.String())
-}
-
-func (s *CatcherSuite) TestConstructorProducesCompatibleObject() {
-	// we bypass the constructor in the suite fixture because it
-	// triggers the race detector in one of the tests, removing
-	// the constructor fixes that. Long term we should rename the
-	// type "Catcher" and remove the constructor, but there's a
-	// reasonable amount of client code that uses it, so we'll
-	// defer for the moment.
-	//
-	// This test just makes sure that the rest of the tests are
-	// valid, given the diversity of object creation patterns.
-
-	s.Exactly(s.catcher, NewCatcher())
-	s.Equal(s.catcher, NewCatcher())
 }
 
 func (s *CatcherSuite) TestAddMethodImpactsState() {
