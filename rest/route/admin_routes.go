@@ -251,6 +251,7 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 	if err := util.ReadJSONInto(r.Body, h); err != nil {
 		return err
 	}
+	defer r.Body.Close()
 	return nil
 }
 

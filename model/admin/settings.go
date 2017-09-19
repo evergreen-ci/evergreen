@@ -19,8 +19,3 @@ type ServiceFlags struct {
 	RepotrackerDisabled   bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
 	SchedulerDisabled     bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
 }
-
-type TaskRestartResponse struct {
-	TasksRestarted []string
-	TasksErrored   []string
-}

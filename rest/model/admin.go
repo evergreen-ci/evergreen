@@ -114,7 +114,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 // BuildFromService builds a model from the service layer
 func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *admin.TaskRestartResponse:
+	case *RestartTasksResponse:
 		rtr.TasksRestarted = v.TasksRestarted
 		rtr.TasksErrored = v.TasksErrored
 	default:

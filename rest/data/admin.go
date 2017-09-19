@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 )
 
@@ -67,13 +68,13 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) (*admin.TaskRestartResponse, error) {
+func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) (*restModel.RestartTasksResponse, error) {
 	grip.Infof("User %v attempting to restart all failed tasks between %v and %v", user, startTime.String(), endTime.String())
 	tasksRestarted, tasksErrored, err := model.RestartFailedTasks(startTime, endTime, user, dryRun)
 	if err != nil {
 		return nil, err
 	}
-	return &admin.TaskRestartResponse{
+	return &restModel.RestartTasksResponse{
 		TasksRestarted: tasksRestarted,
 		TasksErrored:   tasksErrored,
 	}, nil
@@ -113,12 +114,12 @@ func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.
 }
 
 // RestartFailedTasks mocks a response to restarting failed tasks
-func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) (*admin.TaskRestartResponse, error) {
+func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) (*restModel.RestartTasksResponse, error) {
 	var tasksErrored []string
 	if !dryRun {
 		tasksErrored = []string{"task4", "task5"}
 	}
-	return &admin.TaskRestartResponse{
+	return &restModel.RestartTasksResponse{
 		TasksRestarted: []string{"task1", "task2", "task3"},
 		TasksErrored:   tasksErrored,
 	}, nil

@@ -613,6 +613,9 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 // It returns a slice of task IDs that were successfully restarted as well as a slice
 // of task IDs that failed to restart
 func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) ([]string, []string, error) {
+	if endTime.Before(startTime) {
+		return nil, nil, errors.New("start time cannot be after end time")
+	}
 	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(startTime, endTime))
 	if err != nil {
 		return nil, nil, err
@@ -633,7 +636,8 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) 
 			grip.Error(message.Fields{
 				"task":    t.Id,
 				"status":  "failed",
-				"message": fmt.Sprintf("error retrieving project ref: %v", err.Error()),
+				"message": "error retrieving project ref",
+				"error":   err.Error(),
 			})
 			continue
 		}
@@ -643,7 +647,8 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) 
 			grip.Error(message.Fields{
 				"task":    t.Id,
 				"status":  "failed",
-				"message": fmt.Sprintf("error retrieving project: %v", err.Error()),
+				"message": "error retrieving project",
+				"error":   err.Error(),
 			})
 			continue
 		}
@@ -653,7 +658,8 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) 
 			grip.Error(message.Fields{
 				"task":    t.Id,
 				"status":  "failed",
-				"message": fmt.Sprintf("error restarting task: %v", err.Error()),
+				"message": "error restarting task",
+				"error":   err.Error(),
 			})
 		} else {
 			tasksRestarted = append(tasksRestarted, t.Id)

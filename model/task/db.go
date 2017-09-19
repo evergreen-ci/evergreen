@@ -296,7 +296,7 @@ func ByTimeStartedAndFailed(startTime, endTime time.Time) db.Q {
 	return db.Query(bson.M{
 		StartTimeKey: bson.M{"$lte": endTime},
 		StartTimeKey: bson.M{"$gte": startTime},
-		StatusKey:    bson.M{"$in": []string{evergreen.TaskFailed}},
+		StatusKey:    evergreen.TaskFailed,
 	})
 }
 

@@ -10,7 +10,7 @@ import (
 type AdminModelSuite struct {
 	serviceSettings admin.AdminSettings
 	apiSettings     APIAdminSettings
-	restartResp     *admin.TaskRestartResponse
+	restartResp     *RestartTasksResponse
 	suite.Suite
 }
 
@@ -37,7 +37,7 @@ func (s *AdminModelSuite) SetupSuite() {
 		},
 	}
 
-	s.restartResp = &admin.TaskRestartResponse{
+	s.restartResp = &RestartTasksResponse{
 		TasksRestarted: []string{"task1", "task2", "task3"},
 		TasksErrored:   []string{"task4", "task5"},
 	}
