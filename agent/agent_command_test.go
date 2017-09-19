@@ -84,9 +84,7 @@ func (s *CommandTestSuite) TestShellExec() {
 	s.False(detail.TimedOut)
 
 	data, err := ioutil.ReadFile(tmpFile)
-	if err != nil {
-		panic(err)
-	}
+	s.Require().NoError(err)
 	s.Equal("shell.exec test message", strings.Trim(string(data), "\r\n"))
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
@@ -184,9 +182,7 @@ func (s *CommandTestSuite) TestTimeout() {
 	s.True(detail.TimedOut)
 
 	data, err := ioutil.ReadFile(tmpFile)
-	if err != nil {
-		panic(err)
-	}
+	s.Require().NoError(err)
 	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData
