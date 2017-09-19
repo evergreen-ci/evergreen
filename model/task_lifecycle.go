@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -229,6 +230,9 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 // otherwise. Note that the setting is obtained from the top-level
 // project, if not explicitly set on the task.
 func getStepback(taskId string, project *Project) (bool, error) {
+	if project == nil {
+		return false, errors.New("error getting stepback decision: project is nil")
+	}
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return false, err
@@ -603,4 +607,60 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 		return errors.Wrapf(err, "error updating task cache in build %s", t.BuildId)
 	}
 	return nil
+}
+
+// RestartFailedTasks attempts to restart failed tasks that started between 2 times
+// It returns a slice of task IDs that were successfully restarted as well as a slice
+// of task IDs that failed to restart
+func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) ([]string, []string, error) {
+	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(startTime, endTime))
+	if err != nil {
+		return nil, nil, err
+	}
+	tasksRestarted := make([]string, 0)
+	var tasksErrored []string
+	if !dryRun {
+		tasksErrored = make([]string, 0)
+	}
+	for _, t := range tasksToRestart {
+		if dryRun {
+			tasksRestarted = append(tasksRestarted, t.Id)
+			continue
+		}
+		projectRef, err := FindOneProjectRef(t.Project)
+		if err != nil {
+			tasksErrored = append(tasksErrored, t.Id)
+			grip.Error(message.Fields{
+				"task":    t.Id,
+				"status":  "failed",
+				"message": "error retrieving project ref",
+				"error":   err.Error(),
+			})
+			continue
+		}
+		p, err := FindProject(t.Revision, projectRef)
+		if err != nil || p == nil {
+			tasksErrored = append(tasksErrored, t.Id)
+			grip.Error(message.Fields{
+				"task":    t.Id,
+				"status":  "failed",
+				"message": "error retrieving project",
+				"error":   err.Error(),
+			})
+			continue
+		}
+		err = TryResetTask(t.Id, user, evergreen.RESTV2Package, p, nil)
+		if err != nil {
+			tasksErrored = append(tasksErrored, t.Id)
+			grip.Error(message.Fields{
+				"task":    t.Id,
+				"status":  "failed",
+				"message": "error restarting task",
+				"error":   err.Error(),
+			})
+		} else {
+			tasksRestarted = append(tasksRestarted, t.Id)
+		}
+	}
+	return tasksRestarted, tasksErrored, nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -946,4 +947,88 @@ func TestGetstepback(t *testing.T) {
 		})
 
 	})
+}
+
+func TestFailedTaskRestart(t *testing.T) {
+	assert := assert.New(t)
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+		"Error clearing task and build collections")
+	userName := "testUser"
+	b := &build.Build{
+		Id:      "buildtest",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+	}
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	testTask1 := &task.Task{
+		Id:        "taskToRestart",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+	}
+	testTask2 := &task.Task{
+		Id:        "taskThatSucceeded",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskSucceeded,
+	}
+	testTask3 := &task.Task{
+		Id:        "taskOutsideOfTimeRange",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 11, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+	}
+	p := &ProjectRef{
+		Identifier: "sample",
+	}
+
+	b.Tasks = []build.TaskCache{
+		{
+			Id: testTask1.Id,
+		},
+		{
+			Id: testTask2.Id,
+		},
+		{
+			Id: testTask3.Id,
+		},
+	}
+	assert.NoError(b.Insert())
+	assert.NoError(v.Insert())
+	assert.NoError(testTask1.Insert())
+	assert.NoError(testTask2.Insert())
+	assert.NoError(testTask3.Insert())
+	assert.NoError(p.Insert())
+
+	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
+	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
+	tasksRestarted, tasksErrored, err := RestartFailedTasks(startTime, endTime, userName, false)
+	assert.NoError(err)
+	assert.Equal(0, len(tasksErrored))
+	assert.Equal(1, len(tasksRestarted))
+	assert.Equal(testTask1.Id, tasksRestarted[0])
+	dbTask, err := task.FindOne(task.ById(testTask1.Id))
+	assert.NoError(err)
+	assert.Equal(dbTask.Status, evergreen.TaskUndispatched)
+	assert.True(dbTask.Execution > 1)
+	dbTask, err = task.FindOne(task.ById(testTask2.Id))
+	assert.NoError(err)
+	assert.Equal(dbTask.Status, evergreen.TaskSucceeded)
+	assert.Equal(1, dbTask.Execution)
+	dbTask, err = task.FindOne(task.ById(testTask3.Id))
+	assert.NoError(err)
+	assert.Equal(dbTask.Status, evergreen.TaskFailed)
+	assert.Equal(1, dbTask.Execution)
 }

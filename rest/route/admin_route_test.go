@@ -5,11 +5,19 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
@@ -106,4 +114,98 @@ func (s *AdminRouteSuite) DoAuthenticationTests(authFunc func(context.Context, d
 
 	s.NoError(authFunc(superCtx, s.sc))
 	s.Error(authFunc(normalCtx, s.sc))
+}
+
+func TestRestartRoute(t *testing.T) {
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	testutil.HandleTestingErr(db.ClearCollections(admin.Collection, task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+		"Error clearing collections")
+	b := &build.Build{
+		Id:      "buildtest",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+	}
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	testTask1 := &task.Task{
+		Id:        "taskToRestart",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+	}
+	testTask2 := &task.Task{
+		Id:        "taskThatSucceeded",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskSucceeded,
+	}
+	testTask3 := &task.Task{
+		Id:        "taskOutsideOfTimeRange",
+		Activated: false,
+		BuildId:   b.Id,
+		Execution: 1,
+		Project:   "sample",
+		StartTime: time.Date(2017, time.June, 11, 12, 0, 0, 0, time.Local),
+		Status:    evergreen.TaskFailed,
+	}
+	p := &model.ProjectRef{
+		Identifier: "sample",
+	}
+
+	b.Tasks = []build.TaskCache{
+		{
+			Id: testTask1.Id,
+		},
+		{
+			Id: testTask2.Id,
+		},
+		{
+			Id: testTask3.Id,
+		},
+	}
+	testutil.HandleTestingErr(b.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(v.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(testTask1.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(testTask2.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(testTask3.Insert(), t, "error inserting documents")
+	testutil.HandleTestingErr(p.Insert(), t, "error inserting documents")
+
+	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
+	const route = "/admin/restart"
+	const version = 2
+	routeManager := getRestartRouteManager(route, version)
+	assert.NotNil(routeManager)
+	assert.Equal(route, routeManager.Route)
+	assert.Equal(version, routeManager.Version)
+	handler := routeManager.Methods[0]
+	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
+	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
+
+	body := struct {
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		DryRun    bool      `json:"dry_run"`
+	}{startTime, endTime, false}
+	jsonBody, err := json.Marshal(&body)
+	assert.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/restart", buffer)
+	assert.NoError(err)
+	assert.NoError(handler.ParseAndValidate(ctx, request))
+	resp, err := handler.Execute(ctx, &data.DBConnector{})
+	assert.NoError(err)
+	assert.NotNil(resp)
+	model, ok := resp.Result[0].(*restModel.RestartTasksResponse)
+	assert.True(ok)
+	assert.True(len(model.TasksRestarted) > 0)
+	assert.NotNil(model.TasksErrored)
 }

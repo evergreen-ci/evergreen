@@ -2,6 +2,7 @@ package route
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/admin"
@@ -215,5 +216,68 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}
 	return ResponseData{
 		Result: []model.Model{&h.Flags},
+	}, nil
+}
+
+// this manages the /admin/restart route, which restarts failed tasks
+func getRestartRouteManager(route string, version int) *RouteManager {
+	rh := &restartHandler{}
+	restartHandler := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &SuperUserAuthenticator{},
+		RequestHandler:    rh.Handler(),
+		MethodType:        evergreen.MethodPost,
+	}
+
+	restartRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{restartHandler},
+		Version: version,
+	}
+	return &restartRoute
+}
+
+type restartHandler struct {
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	DryRun    bool      `json:"dry_run"`
+}
+
+func (h *restartHandler) Handler() RequestHandler {
+	return &restartHandler{}
+}
+
+func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	if err := util.ReadJSONInto(r.Body, h); err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	if h.EndTime.Before(h.StartTime) {
+		return rest.APIError{
+			StatusCode: 400,
+			Message:    "End time cannot be before start time",
+		}
+	}
+	return nil
+}
+
+func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), h.DryRun)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Error restarting tasks")
+		}
+		return ResponseData{}, err
+	}
+	restartModel := &model.RestartTasksResponse{}
+	if err = restartModel.BuildFromService(resp); err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{
+		Result: []model.Model{restartModel},
 	}, nil
 }

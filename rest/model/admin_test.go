@@ -10,6 +10,7 @@ import (
 type AdminModelSuite struct {
 	serviceSettings admin.AdminSettings
 	apiSettings     APIAdminSettings
+	restartResp     *RestartTasksResponse
 	suite.Suite
 }
 
@@ -35,6 +36,11 @@ func (s *AdminModelSuite) SetupSuite() {
 			TaskrunnerDisabled:   true,
 		},
 	}
+
+	s.restartResp = &RestartTasksResponse{
+		TasksRestarted: []string{"task1", "task2", "task3"},
+		TasksErrored:   []string{"task4", "task5"},
+	}
 }
 
 func (s *AdminModelSuite) TestBuildFromService() {
@@ -52,10 +58,16 @@ func (s *AdminModelSuite) TestBuildFromService() {
 	s.NoError(apiFlags.BuildFromService(s.serviceSettings.ServiceFlags))
 	s.Equal(s.apiSettings.ServiceFlags, apiFlags)
 
+	restartResp := RestartTasksResponse{}
+	s.NoError(restartResp.BuildFromService(s.restartResp))
+	s.Equal(3, len(restartResp.TasksRestarted))
+	s.Equal(2, len(restartResp.TasksErrored))
+
 	// test that BuildFromService errors for invalid input
 	s.Error(apiSettings.BuildFromService(APIHost{}))
 	s.Error(apiBanner.BuildFromService(APIHost{}))
 	s.Error(apiFlags.BuildFromService(APIHost{}))
+	s.Error(restartResp.BuildFromService(APIHost{}))
 }
 
 func (s *AdminModelSuite) TestToService() {
