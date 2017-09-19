@@ -12,25 +12,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-var (
-	tasksToCache = []task.Task{
-		{Id: "task1"},
-		{Id: "task2"},
-	}
-	resultToCache = &task.ResultCounts{
-		Total:              1,
-		Inactive:           2,
-		Unstarted:          3,
-		Started:            4,
-		Succeeded:          5,
-		Failed:             6,
-		SystemFailed:       7,
-		SystemUnresponsive: 8,
-		SystemTimedOut:     9,
-		TestTimedOut:       10,
-	}
-)
-
 // StatusSuite enables testing for version related routes.
 type StatusSuite struct {
 	sc   *data.MockConnector
@@ -45,8 +26,22 @@ func TestStatusSuite(t *testing.T) {
 }
 func (s *StatusSuite) SetupSuite() {
 	s.data = data.MockStatusConnector{
-		CachedTasks:   tasksToCache,
-		CachedResults: resultToCache,
+		CachedTasks: []task.Task{
+			{Id: "task1"},
+			{Id: "task2"},
+		},
+		CachedResults: &task.ResultCounts{
+			Total:              1,
+			Inactive:           2,
+			Unstarted:          3,
+			Started:            4,
+			Succeeded:          5,
+			Failed:             6,
+			SystemFailed:       7,
+			SystemUnresponsive: 8,
+			SystemTimedOut:     9,
+			TestTimedOut:       10,
+		},
 	}
 	s.sc = &data.MockConnector{
 		MockStatusConnector: s.data,
@@ -106,8 +101,8 @@ func (s *StatusSuite) TestParseAndValidateNegativeMinutesAreParsedPositive() {
 	r, err := http.NewRequest("GET", "https://evergreen.mongodb.com/rest/v2/status/recent_tasks?minutes=-10", &bytes.Buffer{})
 	s.Require().NoError(err)
 	err = s.h.ParseAndValidate(context.Background(), r)
-	s.NoError(err)
-	s.Equal(10, s.h.minutes)
+	s.Error(err)
+	s.Equal(0, s.h.minutes)
 	s.Equal(false, s.h.verbose)
 }
 

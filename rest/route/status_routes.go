@@ -2,20 +2,19 @@ package route
 
 import (
 	"net/http"
-	"regexp"
-	"strconv"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 const (
-	defaultDurationMinutes = 30
-	maxDurationMinutes     = 24 * 60
+	defaultDurationStatusQuery    = 30
+	maxDurationStatusQueryMinutes = 24 * 60
 )
 
 type recentTasksGetHandler struct {
@@ -42,15 +41,17 @@ func (h *recentTasksGetHandler) Handler() RequestHandler {
 }
 
 func (h *recentTasksGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	minutes := r.URL.Query().Get("minutes")
-	minutesParsed, err := h.parseMinutes(minutes)
+	minutesInt, err := util.GetIntValue(r, "minutes", defaultDurationStatusQuery)
 	if err != nil {
 		return err
 	}
-	if minutesParsed > maxDurationMinutes {
-		return errors.Errorf("Cannot query for more than %d minutes", maxDurationMinutes)
+	if minutesInt > maxDurationStatusQueryMinutes {
+		return errors.Errorf("Cannot query for more than %d minutes", maxDurationStatusQueryMinutes)
 	}
-	h.minutes = minutesParsed
+	if minutesInt <= 0 {
+		return errors.Errorf("Minutes must be positive")
+	}
+	h.minutes = minutesInt
 
 	tasksStr := r.URL.Query().Get("verbose")
 	if tasksStr == "true" {
@@ -58,20 +59,6 @@ func (h *recentTasksGetHandler) ParseAndValidate(ctx context.Context, r *http.Re
 	}
 
 	return nil
-}
-
-func (h *recentTasksGetHandler) parseMinutes(minutes string) (minutesInt int, err error) {
-	re := regexp.MustCompile("[0-9]+")
-	minutesParsed := re.FindString(minutes)
-	if minutesParsed == "" {
-		minutesInt = defaultDurationMinutes
-	} else {
-		minutesInt, err = strconv.Atoi(minutesParsed)
-		if err != nil {
-			return 0, err
-		}
-	}
-	return minutesInt, nil
 }
 
 func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
