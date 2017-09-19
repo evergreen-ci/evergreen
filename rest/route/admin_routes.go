@@ -252,16 +252,16 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 		return err
 	}
 	defer r.Body.Close()
-	return nil
-}
-
-func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	if h.EndTime.Before(h.StartTime) {
-		return ResponseData{}, &rest.APIError{
+		return rest.APIError{
 			StatusCode: 400,
 			Message:    "End time cannot be before start time",
 		}
 	}
+	return nil
+}
+
+func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), h.DryRun)
 	if err != nil {
