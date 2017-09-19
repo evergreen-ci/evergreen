@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"os"
-
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
@@ -12,11 +10,12 @@ import (
 )
 
 type AgentCommand struct {
-	HostID     string `long:"host_id" description:"id of machine agent is running on"`
-	HostSecret string `long:"host_secret" description:"secret for the current host"`
-	ServiceURL string `long:"api_server" description:"URL of API server"`
-	LogPrefix  string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
-	StatusPort int    `long:"status_part" default:"2285" description:"port to run the status server on"`
+	HostID           string `long:"host_id" description:"id of machine agent is running on"`
+	HostSecret       string `long:"host_secret" description:"secret for the current host"`
+	ServiceURL       string `long:"api_server" description:"URL of API server"`
+	LogPrefix        string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
+	StatusPort       int    `long:"status_part" default:"2285" description:"port to run the status server on"`
+	WorkingDirectory string `long:"working_directory" default:"" description:"working directory"`
 }
 
 func (c *AgentCommand) Execute(_ []string) error {
@@ -25,17 +24,12 @@ func (c *AgentCommand) Execute(_ []string) error {
 	}
 
 	opts := agent.Options{
-		HostID:     c.HostID,
-		HostSecret: c.HostSecret,
-		StatusPort: c.StatusPort,
-		LogPrefix:  c.LogPrefix,
+		HostID:           c.HostID,
+		HostSecret:       c.HostSecret,
+		StatusPort:       c.StatusPort,
+		LogPrefix:        c.LogPrefix,
+		WorkingDirectory: c.WorkingDirectory,
 	}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return errors.Wrap(err, "problem getting working directory")
-	}
-	opts.WorkingDirectory = wd
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
 
