@@ -1031,8 +1031,4 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskFailed)
 	assert.Equal(1, dbTask.Execution)
-
-	//test invalid input
-	tasksRestarted, tasksErrored, err = RestartFailedTasks(endTime, startTime, userName, false)
-	assert.Error(err)
 }

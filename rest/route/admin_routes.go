@@ -256,13 +256,25 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 }
 
 func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	if h.EndTime.Before(h.StartTime) {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: 400,
+			Message:    "End time cannot be before start time",
+		}
+	}
 	u := MustHaveUser(ctx)
 	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), h.DryRun)
 	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Error restarting tasks")
+		}
 		return ResponseData{}, err
 	}
 	restartModel := &model.RestartTasksResponse{}
 	if err = restartModel.BuildFromService(resp); err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
 		return ResponseData{}, err
 	}
 	return ResponseData{

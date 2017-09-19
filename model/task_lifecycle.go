@@ -613,9 +613,6 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 // It returns a slice of task IDs that were successfully restarted as well as a slice
 // of task IDs that failed to restart
 func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) ([]string, []string, error) {
-	if endTime.Before(startTime) {
-		return nil, nil, errors.New("start time cannot be after end time")
-	}
 	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(startTime, endTime))
 	if err != nil {
 		return nil, nil, err
