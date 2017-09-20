@@ -1,12 +1,9 @@
 package data
 
 import (
-	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/rest"
 )
 
 // DBStatusConnector is a struct that implements the status related methods
@@ -21,10 +18,7 @@ func (c *DBStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.Res
 	}
 
 	if tasks == nil {
-		return nil, nil, &rest.APIError{
-			StatusCode: http.StatusOK,
-			Message:    fmt.Sprintf("no tasks found for last %d minutes", minutes),
-		}
+		return []task.Task{}, &task.ResultCounts{}, err
 	}
 	stats := task.GetResultCounts(tasks)
 	return tasks, stats, nil
