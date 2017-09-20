@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -149,7 +148,8 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 		if lastAlerted == nil || lastAlerted.TaskId == "" {
 			return false, nil
 		}
-		return reachedFailureLimit(lastAlerted.TaskId)
+
+		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId)
 	}
 	return false, nil
 }
@@ -165,9 +165,7 @@ func (trig TaskFailTransition) CreateAlertRecord(ctx triggerContext) *alertrecor
 	return rec
 }
 
-// reachedFailureLimit returns true if task for the previous failure transition alert
-// happened too long ago, as determined by some magic math.
-func reachedFailureLimit(taskId string) (bool, error) {
+func taskFinishedTwoOrMoreDaysAgo(taskId string) (bool, error) {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return false, err
@@ -175,28 +173,8 @@ func reachedFailureLimit(taskId string) (bool, error) {
 	if t == nil {
 		return false, errors.Errorf("task %s not found", taskId)
 	}
-	pr, err := model.FindOneProjectRef(t.Project)
-	if err != nil {
-		return false, err
-	}
-	if pr == nil {
-		return false, errors.Errorf("project ref %s not found", t.Project)
-	}
-	p, err := model.FindProject(t.Revision, pr)
-	if err != nil {
-		return false, err
-	}
-	if p == nil {
-		return false, errors.Errorf("project %v not found for revision %v", t.Project, t.Revision)
-	}
-	v := p.FindBuildVariant(t.BuildVariant)
-	if v == nil {
-		return false, errors.Errorf("build variant %v does not exist in project", t.BuildVariant)
-	}
-	batchTime := pr.GetBatchTime(v)
-	reached := time.Since(t.FinishTime) > (time.Duration(batchTime) * time.Minute * failureLimitMultiplier)
-	return reached, nil
 
+	return time.Since(t.FinishTime) >= 48*time.Hour, nil
 }
 
 type LastRevisionNotFound struct{}
