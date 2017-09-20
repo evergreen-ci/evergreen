@@ -1,5 +1,8 @@
 {{define "scripts"}}
 <script src="{{Static "js" "admin.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript">
+  window.events = {{.Data}};
+</script>
 <style type="text/css">
   body{ background-color: rgb(250,250,250); }
 </style>
@@ -107,9 +110,6 @@ Admin Settings
             <md-button class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
           </md-card-footer>
       </md-card>
-    </div>
-
-    <div class="admin-columnLayout">
 
       <md-card>
         <md-card-title>
@@ -122,6 +122,31 @@ Admin Settings
           Placeholder content
           <br/><br/><br/><br/><br/>
         </md-card-content>
+      </md-card>
+    </div>
+
+    <div class="admin-columnLayout">
+
+      <md-card>
+        <md-card-title>
+          <i class="fa fa-file-text"></i>
+          <md-card-title-text>
+            <span>Event Logs</span>
+          </md-card-title-text>
+        </md-card-title>
+
+        <md-card-content>
+          <md-list>
+            <md-list-item ng-repeat="event in Events">
+              <div ng-bind="event.displayText"></div>
+              <md-divider ng-if="!$last"></md-divider>
+            </md-list-item>
+          </md-list>
+        </md-card-content>
+
+        <md-card-footer>
+          <a ng-href="/event_log/admin/global">view all</a>
+        </md-card-footer>
       </md-card>
 
     </div>

@@ -1,6 +1,7 @@
 mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', function($scope, $window, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
+    $scope.Events = generateEventText(window.events);
     $scope.getSettings();
   }
 
@@ -24,5 +25,53 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }
 
-  $scope.load()
+  generateEventText = function(events) {
+    for (var i = 0; i < events.length; i++) {
+      var event = events[i];
+      switch(event.event_type) {
+        case "BANNER_CHANGED":
+          event.displayText = bannerChangeEventText(event);
+          break;
+        case "SERVICE_FLAGS_CHANGED":
+          event.displayText = flagChangeEventText(event);
+          break;
+      }
+    }
+    return events;
+  }
+
+  var flagDisplayNames = {
+    task_dispatch_disabled: "task dispatch",
+    hostinit_disabled: "hostinit",
+    monitor_disabled: "monitor",
+    notifications_disabled: "notifications",
+    alerts_disabled: "alerts",
+    taskrunner_disabled: "taskrunner",
+    repotracker_disabled: "repotracker",
+    scheduler_disabled: "scheduler"
+  }
+
+  bannerChangeEventText = function(event) {
+    var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
+    var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
+    return timestamp(event.timestamp) + event.data.user + " changed banner from " + oldVal + " to " + newVal;
+  }
+
+  flagChangeEventText = function(event) {
+    var changes = [];
+    for (var flag in flagDisplayNames) {
+      var newVal = event.data.new_flags[flag];
+      var oldVal = event.data.old_flags[flag];
+      if (oldVal !== newVal) {
+        changes.push((newVal?" disabled ":" enabled ") + flagDisplayNames[flag]);
+      }
+    }
+    return timestamp(event.timestamp) + event.data.user + changes.join(", ");
+  }
+
+  timestamp = function(ts) {
+    return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
+  }
+
+  $scope.load();
 }]);
