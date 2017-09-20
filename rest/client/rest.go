@@ -180,7 +180,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "/admin/service_flags",
+		path:    "/admin",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -188,12 +188,12 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 		return nil, errors.Wrap(err, "problem getting service flags")
 	}
 
-	flags := model.APIServiceFlags{}
-	if err = util.ReadJSONInto(resp.Body, &flags); err != nil {
+	settings := model.APIAdminSettings{}
+	if err = util.ReadJSONInto(resp.Body, &settings); err != nil {
 		return nil, errors.Wrap(err, "problem parsing service flag response")
 	}
 
-	return &flags, nil
+	return &settings.ServiceFlags, nil
 }
 
 // GetTaskByID ...
