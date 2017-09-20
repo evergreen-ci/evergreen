@@ -197,9 +197,14 @@ func TestTransitionResend(t *testing.T) {
 		for i := range ts {
 			ts[i].Id = fmt.Sprintf("t%v", i)
 			ts[i].BuildVariant = fmt.Sprintf("bv%v", i+1)
-			ts[i].FinishTime = time.Now().Add(-10 * time.Minute)
+			if i == 1 {
+				ts[i].FinishTime = time.Now().Add(-80 * time.Hour)
+			} else {
+				ts[i].FinishTime = time.Now().Add(-10 * time.Hour)
+			}
 			So(ts[i].Insert(), ShouldBeNil)
 		}
+
 		pastAlert := alertrecord.AlertRecord{
 			Id:        bson.NewObjectId(),
 			Type:      alertrecord.TaskFailTransitionId,
@@ -219,7 +224,7 @@ func TestTransitionResend(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(hasTrigger(triggers, TaskFailTransition{}), ShouldBeFalse)
 		})
-		Convey("a failure 10 minutes ago with a batch time of 1 should retrigger", func() {
+		Convey("a failure 2 days ago should retrigger", func() {
 			pastAlert.TaskId = ts[1].Id
 			pastAlert.Variant = ts[1].BuildVariant
 			So(pastAlert.Insert(), ShouldBeNil)
@@ -283,6 +288,7 @@ func TestReachedFailureLimit(t *testing.T) {
 			BuildVariant: "bv1",
 			FinishTime:   time.Now().Add(-time.Hour),
 		}
+
 		So(t.Insert(), ShouldBeNil)
 		t.Id = "t2"
 		t.BuildVariant = "bv2"
@@ -290,21 +296,27 @@ func TestReachedFailureLimit(t *testing.T) {
 		t.Id = "t3"
 		t.BuildVariant = "bv3"
 		So(t.Insert(), ShouldBeNil)
+		t.Id = "t4"
+		t.FinishTime = time.Now().Add(-72 * time.Hour)
+		So(t.Insert(), ShouldBeNil)
+
 		So(testProject.Insert(), ShouldBeNil)
 		So(testVersion.Insert(), ShouldBeNil)
 
-		Convey("a variant with batchtime of 60 should not hit the limit", func() {
-			out, err := reachedFailureLimit("t1")
+		Convey("failures that have repeated recently, shouldn't resend", func() {
+			out, err := taskFinishedTwoOrMoreDaysAgo("t1")
+			So(err, ShouldBeNil)
+			So(out, ShouldBeFalse)
+			out, err = taskFinishedTwoOrMoreDaysAgo("t2")
+			So(err, ShouldBeNil)
+			So(out, ShouldBeFalse)
+			out, err = taskFinishedTwoOrMoreDaysAgo("t3")
 			So(err, ShouldBeNil)
 			So(out, ShouldBeFalse)
 		})
-		Convey("a variant with batchtime of 1 should hit the limit", func() {
-			out, err := reachedFailureLimit("t2")
-			So(err, ShouldBeNil)
-			So(out, ShouldBeTrue)
-		})
-		Convey("a fallback batchtime of 5 should hit the limit", func() {
-			out, err := reachedFailureLimit("t3")
+
+		Convey("tasks that finished more than 2 days ago should resend", func() {
+			out, err := taskFinishedTwoOrMoreDaysAgo("t4")
 			So(err, ShouldBeNil)
 			So(out, ShouldBeTrue)
 		})
