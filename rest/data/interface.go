@@ -140,4 +140,7 @@ type Connector interface {
 	RestartFailedTasks(time.Time, time.Time, string, bool) (*restModel.RestartTasksResponse, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
+
+	// FindRecentTasks finds tasks that have recently finished.
+	FindRecentTasks(int) ([]task.Task, *task.ResultCounts, error)
 }
