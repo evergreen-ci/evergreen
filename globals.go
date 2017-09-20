@@ -94,6 +94,8 @@ const (
 
 	AgentAPIVersion = 2
 
+	DegradedLoggingPercent = 10
+
 	// Key used to store user information in request contexts
 	RequestUser requestUserContextKey = 0
 )

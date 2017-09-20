@@ -34,7 +34,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		})
 		return nil
 	}
-	grip.InfoWhen(sometimes.Percent(1), message.Fields{
+	grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
 		"time":    startTime,

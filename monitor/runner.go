@@ -29,7 +29,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.MonitorDisabled {
-		grip.InfoWhen(sometimes.Percent(1), message.Fields{
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  RunnerName,
 			"message": "monitor is disabled, exiting",
 		})

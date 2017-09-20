@@ -278,7 +278,7 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.AlertsDisabled {
-		grip.InfoWhen(sometimes.Percent(1), message.Fields{
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  qp.Name(),
 			"message": "alerts are disabled, exiting",
 		})
