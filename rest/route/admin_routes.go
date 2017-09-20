@@ -206,6 +206,7 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		}
 		return ResponseData{}, err
 	}
+
 	err = sc.SetServiceFlags(flags.(admin.ServiceFlags), u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {

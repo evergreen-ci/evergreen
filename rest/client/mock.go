@@ -665,3 +665,8 @@ func (c *Mock) GetSystemInfoLength() int {
 	c.mu.RUnlock()
 	return length
 }
+
+func (c *Mock) SetBannerMessage(ctx context.Context, m string) error                { return nil }
+func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                { return "", nil }
+func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error { return nil }
+func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) { return nil, nil }
