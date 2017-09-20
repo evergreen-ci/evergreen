@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -29,6 +28,8 @@ var (
 
 type ServiceWebCommand struct {
 	ConfigPath string `long:"conf" default:"/etc/mci_settings.yml" description:"path to the service configuration file"`
+	APIService bool   `long:"api" description:"run the API service (default port: 8080)"`
+	UIService  bool   `long:"ui" description:"run the UI service (default port: 9090)"`
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
@@ -53,7 +54,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		return errors.WithStack(err)
 	}
 
-	pprofHandler := getHandlerPprof(settings)
+	pprofHandler := service.GetHandlerPprof(settings)
 
 	sender, err := settings.GetSender()
 	if err != nil {
@@ -173,25 +174,4 @@ func getHandlerUI(settings *evergreen.Settings) (http.Handler, error) {
 	n.UseHandler(router)
 
 	return n, nil
-}
-
-func getHandlerPprof(settings *evergreen.Settings) http.Handler {
-	router := mux.NewRouter()
-
-	root := router.PathPrefix("/debug/pprof").Subrouter()
-	root.HandleFunc("/", http.HandlerFunc(util.Index))
-	root.HandleFunc("/heap", http.HandlerFunc(util.Index))
-	root.HandleFunc("/block", http.HandlerFunc(util.Index))
-	root.HandleFunc("/goroutine", http.HandlerFunc(util.Index))
-	root.HandleFunc("/mutex", http.HandlerFunc(util.Index))
-	root.HandleFunc("/threadcreate", http.HandlerFunc(util.Index))
-	root.HandleFunc("/cmdline", http.HandlerFunc(util.Cmdline))
-	root.HandleFunc("/profile", http.HandlerFunc(util.Profile))
-	root.HandleFunc("/symbol", http.HandlerFunc(util.Symbol))
-	root.HandleFunc("/trace", http.HandlerFunc(util.Trace))
-
-	n := negroni.New()
-	n.Use(service.NewLogger())
-	n.UseHandler(router)
-	return n
 }

@@ -1,8 +1,4 @@
-package util
-
-// This was copied from the standard library net/http/pprof because we want to
-// use our own router. This is identical with the exception of the init function
-// (which registered handlers), which has been deleted.
+package service
 
 import (
 	"bufio"
@@ -15,16 +11,48 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-	"runtime/trace"
+	runtimeTrace "runtime/trace"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/gorilla/mux"
+	"github.com/urfave/negroni"
 )
 
-// Cmdline responds with the running program's
+// GetHandlerPprof returns a handler for pprof endpoints.
+func GetHandlerPprof(settings *evergreen.Settings) http.Handler {
+	router := mux.NewRouter()
+
+	root := router.PathPrefix("/debug/pprof").Subrouter()
+	root.HandleFunc("/", http.HandlerFunc(index))
+	root.HandleFunc("/heap", http.HandlerFunc(index))
+	root.HandleFunc("/block", http.HandlerFunc(index))
+	root.HandleFunc("/goroutine", http.HandlerFunc(index))
+	root.HandleFunc("/mutex", http.HandlerFunc(index))
+	root.HandleFunc("/threadcreate", http.HandlerFunc(index))
+	root.HandleFunc("/cmdline", http.HandlerFunc(cmdline))
+	root.HandleFunc("/profile", http.HandlerFunc(profile))
+	root.HandleFunc("/symbol", http.HandlerFunc(symbol))
+	root.HandleFunc("/trace", http.HandlerFunc(trace))
+
+	n := negroni.New()
+	n.Use(NewLogger())
+	n.UseHandler(router)
+	return n
+}
+
+// ******************************************************************************
+// The below was copied from the standard library net/http/pprof because we want
+// to use our own router. This is identical with the exception of the init
+// function (which registered handlers), which has been deleted.
+// ******************************************************************************
+
+// cmdline responds with the running program's
 // command line, with arguments separated by NUL bytes.
 // The package initialization registers it as /debug/pprof/cmdline.
-func Cmdline(w http.ResponseWriter, r *http.Request) {
+func cmdline(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(w, strings.Join(os.Args, "\x00"))
 }
@@ -40,9 +68,9 @@ func sleep(w http.ResponseWriter, d time.Duration) {
 	}
 }
 
-// Profile responds with the pprof-formatted cpu profile.
+// profile responds with the pprof-formatted cpu profile.
 // The package initialization registers it as /debug/pprof/profile.
-func Profile(w http.ResponseWriter, r *http.Request) {
+func profile(w http.ResponseWriter, r *http.Request) {
 	sec, _ := strconv.ParseInt(r.FormValue("seconds"), 10, 64)
 	if sec == 0 {
 		sec = 30
@@ -64,10 +92,10 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 	pprof.StopCPUProfile()
 }
 
-// Trace responds with the execution trace in binary form.
+// trace responds with the execution trace in binary form.
 // Tracing lasts for duration specified in seconds GET parameter, or for 1 second if not specified.
 // The package initialization registers it as /debug/pprof/trace.
-func Trace(w http.ResponseWriter, r *http.Request) {
+func trace(w http.ResponseWriter, r *http.Request) {
 	sec, err := strconv.ParseFloat(r.FormValue("seconds"), 64)
 	if sec <= 0 || err != nil {
 		sec = 1
@@ -76,8 +104,8 @@ func Trace(w http.ResponseWriter, r *http.Request) {
 	// Set Content Type assuming trace.Start will work,
 	// because if it does it starts writing.
 	w.Header().Set("Content-Type", "application/octet-stream")
-	if err := trace.Start(w); err != nil {
-		// trace.Start failed, so no writes yet.
+	if err := runtimeTrace.Start(w); err != nil {
+		// runtimeTrace.Start failed, so no writes yet.
 		// Can change header back to text content and send error code.
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -85,13 +113,13 @@ func Trace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sleep(w, time.Duration(sec*float64(time.Second)))
-	trace.Stop()
+	runtimeTrace.Stop()
 }
 
-// Symbol looks up the program counters listed in the request,
+// symbol looks up the program counters listed in the request,
 // responding with a table mapping program counters to function names.
 // The package initialization registers it as /debug/pprof/symbol.
-func Symbol(w http.ResponseWriter, r *http.Request) {
+func symbol(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	// We have to read the whole POST body before
@@ -136,14 +164,14 @@ func Symbol(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf.Bytes())
 }
 
-// Handler returns an HTTP handler that serves the named profile.
-func Handler(name string) http.Handler {
+// handler returns an HTTP handler that serves the named profile.
+func handler(name string) http.Handler {
 	return handler(name)
 }
 
-type handler string
+type pprofHandler string
 
-func (name handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (name pprofHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	debug, _ := strconv.Atoi(r.FormValue("debug"))
 	p := pprof.Lookup(string(name))
@@ -160,15 +188,15 @@ func (name handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// Index responds with the pprof-formatted profile named by the request.
+// index responds with the pprof-formatted profile named by the request.
 // For example, "/debug/pprof/heap" serves the "heap" profile.
 // Index responds to a request for "/debug/pprof/" with an HTML page
 // listing the available profiles.
-func Index(w http.ResponseWriter, r *http.Request) {
+func index(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/debug/pprof/") {
 		name := strings.TrimPrefix(r.URL.Path, "/debug/pprof/")
 		if name != "" {
-			handler(name).ServeHTTP(w, r)
+			pprofHandler(name).serveHTTP(w, r)
 			return
 		}
 	}
