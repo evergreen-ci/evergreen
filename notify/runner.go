@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -28,7 +29,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.NotificationsDisabled {
-		grip.Info(message.Fields{
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  RunnerName,
 			"message": "notify is disabled, exiting",
 		})
