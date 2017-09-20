@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +38,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.RepotrackerDisabled {
-		grip.Info(message.Fields{
+		grip.InfoWhen(sometimes.Percent(1), message.Fields{
 			"runner":  RunnerName,
 			"message": "repotracker is disabled, exiting",
 		})

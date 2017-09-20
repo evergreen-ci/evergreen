@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -288,7 +289,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		as.WriteJSON(w, http.StatusInternalServerError, err)
 	}
 	if adminSettings.ServiceFlags.TaskDispatchDisabled {
-		grip.Info("task dispatch is disabled, returning no task")
+		grip.InfoWhen(sometimes.Percent(1), "task dispatch is disabled, returning no task")
 		as.WriteJSON(w, http.StatusOK, response)
 		return
 	}

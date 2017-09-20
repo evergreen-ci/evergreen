@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -277,7 +278,7 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.AlertsDisabled {
-		grip.Info(message.Fields{
+		grip.InfoWhen(sometimes.Percent(1), message.Fields{
 			"runner":  qp.Name(),
 			"message": "alerts are disabled, exiting",
 		})

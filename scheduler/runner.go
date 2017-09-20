@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -35,7 +36,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		})
 		return nil
 	}
-	grip.Info(message.Fields{
+	grip.InfoWhen(sometimes.Percent(1), message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
 		"time":    startTime,
