@@ -81,7 +81,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	pprofHandler := service.GetHandlerPprof(settings)
 	if settings.PprofPort != "" {
 		go func() {
-			err = service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler)
+			grip.Alert(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
 		}()
 	}
 
