@@ -161,7 +161,7 @@ func symbol(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Write(buf.Bytes())
+	_, _ = w.Write(buf.Bytes())
 }
 
 // handler returns an HTTP handler that serves the named profile.
@@ -184,7 +184,7 @@ func (name pprofHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if name == "heap" && gc > 0 {
 		runtime.GC()
 	}
-	p.WriteTo(w, debug)
+	_ = p.WriteTo(w, debug)
 	return
 }
 
