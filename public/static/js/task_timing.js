@@ -45,8 +45,11 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
             }
         }
     }
-
-
+    if (initialHash.onlySuccessful === true) {
+      $scope.onlySuccessful = true;
+    } else {
+      $scope.onlySuccessful = false;
+    }
 
     $scope.taskData = {};
     $scope.locked = false;
@@ -287,41 +290,42 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     $scope.load = function(before) {
       $scope.hoverInfo.hidden = true;
       $scope.locked = false;
-        // check that task exists in build variant
-        if (!$scope.checkTaskForGraph($scope.currentTask) && !$scope.isAllTasks()){
-            return;
-        }
+      // check that task exists in build variant
+      if (!$scope.checkTaskForGraph($scope.currentTask) && !$scope.isAllTasks()){
+          return;
+      }
 
-        var limit = $scope.numTasks;
-        var query = (!!before ? 'before=' + encodeURIComponent(before) : '');
-        query += (query.length > 0 && !!limit ? '&' : '');
-        query += (!!limit ? 'limit=' + encodeURIComponent(limit) : '');
-        url = '/json/task_timing/' +
-            encodeURIComponent($scope.currentProject.name) + '/' +
-            encodeURIComponent($scope.currentBV.name) + '/' +
-            encodeURIComponent($scope.currentRequest.requester) + '/' +
-            encodeURIComponent($scope.currentTask)
-        $http.get(
-        url + '?' + query).
-        success(function(data) {
-            $scope.taskData = ($scope.isAllTasks()) ? data.builds.reverse() : data.tasks.reverse();
-            $scope.versions = ($scope.currentRequest.requester == repotracker_requester) ? data.versions.reverse() : data.patches.reverse();
-            $scope.versions = _.filter($scope.versions, function(v, i){
-                return isValidDate($scope.taskData[i]);
-            })
-            $scope.taskData = _.filter($scope.taskData, isValidDate)
-            setTimeout(function(){$scope.drawDetailGraph()},0);
-        }).
-        error(function(data) {
-            notificationService.pushNotification("Error loading data: `" + data.error+"`", 'errorHeader', "error");
-            $scope.taskData = [];
-        });
+      var limit = $scope.numTasks;
+      var query = (!!before ? 'before=' + encodeURIComponent(before) : '');
+      query += (query.length > 0 && !!limit ? '&' : '');
+      query += (!!limit ? 'limit=' + encodeURIComponent(limit) : '');
+      query += $scope.onlySuccessful ? "&onlySuccessful=true" : "";
+      url = '/json/task_timing/' +
+          encodeURIComponent($scope.currentProject.name) + '/' +
+          encodeURIComponent($scope.currentBV.name) + '/' +
+          encodeURIComponent($scope.currentRequest.requester) + '/' +
+          encodeURIComponent($scope.currentTask)
+      $http.get(
+      url + '?' + query).
+      success(function(data) {
+          $scope.taskData = ($scope.isAllTasks()) ? data.builds.reverse() : data.tasks.reverse();
+          $scope.versions = ($scope.currentRequest.requester == repotracker_requester) ? data.versions.reverse() : data.patches.reverse();
+          $scope.versions = _.filter($scope.versions, function(v, i){
+              return isValidDate($scope.taskData[i]);
+          })
+          $scope.taskData = _.filter($scope.taskData, isValidDate)
+          setTimeout(function(){$scope.drawDetailGraph()},0);
+      }).
+      error(function(data) {
+          notificationService.pushNotification("Error loading data: `" + data.error+"`", 'errorHeader', "error");
+          $scope.taskData = [];
+      });
 
-        setTimeout( function(p, bv, t, r, l){
-            return function(){
-                $locationHash.set({ project: p, buildVariant: bv, taskName: t, requester:r, limit: l});
-            }
-        }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks), 0)
+      setTimeout(function(p, bv, t, r, l, o){
+          return function(){
+              $locationHash.set({ project: p, buildVariant: bv, taskName: t, requester:r, limit: l, onlySuccessful: o});
+          }
+      }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks, $scope.onlySuccessful), 0)
     };
 
     // formatting function for the way the y values should show up.
