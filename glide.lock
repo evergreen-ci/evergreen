@@ -104,6 +104,8 @@ imports:
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
   - name: github.com/jpillora/backoff
     version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d
+  - name: github.com/tychoish/tarjan
+    version: fcd3f3321826209eac4a6f41c0108624d948e499
 
   - name: google.golang.org/api
     version: e6586c9293b9d514c7f5d5076731ec977cff1be6
