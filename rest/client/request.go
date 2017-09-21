@@ -149,8 +149,10 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				return resp, nil
 			} else if resp.StatusCode == http.StatusConflict {
 				return nil, errors.New(HTTPConflictError)
+			} else if resp != nil {
+				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			}
-			grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
+
 			dur = backoff.Duration()
 			timer.Reset(dur)
 		}
