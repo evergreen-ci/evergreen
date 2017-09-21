@@ -116,6 +116,7 @@ func RecentSchedulerEvents(distroId string, n int) db.Q {
 func RecentAdminEvents(n int) db.Q {
 	return db.Query(bson.M{
 		DataKey + "." + ResourceTypeKey: ResourceTypeAdmin,
+		ResourceIdKey:                   "",
 	}).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
