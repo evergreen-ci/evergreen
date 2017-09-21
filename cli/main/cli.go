@@ -41,6 +41,11 @@ func main() {
 	service.AddCommand("runner", "start background task processing", "", &cli.ServiceRunnerCommand{})
 	service.AddCommand("web", "start web tier services for API and UI", "", &cli.ServiceWebCommand{})
 
+	admin, _ := parser.AddCommand("admin", "administer evergreen deployment", "", &struct{}{})
+	admin.AddCommand("banner", "modify content of site-wide display banner", "", &cli.AdminBannerCommand{GlobalOpts: opts})
+	admin.AddCommand("disable-service", "disable component services", "", &cli.AdminDisableServiceCommand{GlobalOpts: opts})
+	admin.AddCommand("enable-service", "enable component services", "", &cli.AdminEnableServiceCommand{GlobalOpts: opts})
+
 	// run commands
 	_, err := parser.Parse()
 	if err != nil {

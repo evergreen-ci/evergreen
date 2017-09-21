@@ -98,18 +98,24 @@ type Communicator interface {
 	// ---------------------------------------------------------------------
 	// Begin REST API V2 methods
 	// ---------------------------------------------------------------------
-	// Setters
+
+	// Client Configuration methods
 	//
-	// SetAPIUser sets the API user.
-	SetAPIUser(user string)
-	// SetAPIKey sets the API key.
-	SetAPIKey(apiKey string)
+	SetAPIUser(string)
+	SetAPIKey(string)
+
+	// Admin methods
+	//
+	SetBannerMessage(context.Context, string) error
+	GetBannerMessage(context.Context) (string, error)
+	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
+	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
 
 	// Host methods
 	//
 	GetAllHosts()
 	GetHostByID()
-	GetHostsByUser(ctx context.Context, user string) ([]*restmodel.APIHost, error)
+	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)
 	SetHostStatus()
 	SetHostStatuses()
 

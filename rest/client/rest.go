@@ -110,7 +110,6 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close()
 
 		err = util.ReadJSONInto(resp.Body, &hosts)
 		if err != nil {
@@ -124,6 +123,77 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) SetBannerMessage(ctx context.Context, m string) error {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin/banner",
+	}
+
+	_, err := c.retryRequest(ctx, info, struct {
+		Banner string `json:"banner"`
+	}{
+		Banner: m,
+	})
+
+	return errors.Wrap(err, "problem setting banner")
+}
+
+func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    "admin",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "problem getting current banner message")
+	}
+
+	settings := model.APIAdminSettings{}
+	if err = util.ReadJSONInto(resp.Body, &settings); err != nil {
+		return "", errors.Wrap(err, "problem parsing response from server")
+	}
+
+	return string(settings.Banner), nil
+}
+
+func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin/service_flags",
+	}
+
+	_, err := c.retryRequest(ctx, info, f)
+	if err != nil {
+		return errors.Wrap(err, "problem setting service flags")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    "admin",
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting service flags")
+	}
+
+	settings := model.APIAdminSettings{}
+	if err = util.ReadJSONInto(resp.Body, &settings); err != nil {
+		return nil, errors.Wrap(err, "problem parsing service flag response")
+	}
+
+	return &settings.ServiceFlags, nil
 }
 
 // GetTaskByID ...
