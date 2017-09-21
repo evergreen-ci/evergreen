@@ -99,9 +99,9 @@ func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFla
 
 	for _, f := range args {
 		switch f {
-		case "dispatch", "tasks", "taskdispatch", "task_dispatch":
+		case "dispatch", "tasks", "taskdispatch", "task-dispatch":
 			flags.TaskDispatchDisabled = target
-		case "hostinit":
+		case "hostinit", "host-init":
 			flags.HostinitDisabled = target
 		case "monitor":
 			flags.MonitorDisabled = target
@@ -111,7 +111,7 @@ func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFla
 			flags.AlertsDisabled = target
 		case "taskrunner", "new-agents", "agents":
 			flags.TaskrunnerDisabled = target
-		case "github", "repotracker", "gitter", "commits":
+		case "github", "repotracker", "gitter", "commits", "repo-tracker":
 			flags.RepotrackerDisabled = target
 		case "scheduler":
 			flags.SchedulerDisabled = target
