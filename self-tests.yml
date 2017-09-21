@@ -350,6 +350,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-plugin-builtin-attach
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-migrations
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-hostutil
@@ -473,6 +476,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-plugin-builtin-manifest
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-migrations
 
 
 buildvariants:

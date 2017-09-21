@@ -1,0 +1,13 @@
+package: github.com/tychoish/gimlet
+import:
+- package: github.com/codegangsta/negroni
+- package: github.com/gorilla/mux
+- package: github.com/phyber/negroni-gzip
+  subpackages:
+  - gzip
+- package: github.com/mongodb/grip
+- package: github.com/tylerb/graceful
+- package: github.com/stretchr/testify
+- package: github.com/stretchr/objx
+- package: github.com/pmezard/go-difflib
+- package: github.com/davecgh/go-spew

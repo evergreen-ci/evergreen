@@ -1,0 +1,32 @@
+hash: 0c38d4375fc2bd53de9c9aeac46d804a7f924334489936cca6f3702b086c483f
+updated: 2016-10-20T15:36:36.888753206-04:00
+imports:
+- name: github.com/gorilla/context
+  version: 50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
+- name: github.com/gorilla/mux
+  version: ac112f7d75a0714af1bd86ab17749b31f7809640
+- name: github.com/phyber/negroni-gzip
+  version: 13f05ed68248e012fcc773ecd829abcc0bb3abd8
+  subpackages:
+  - gzip
+- name: github.com/mongodb/grip
+  version: dd0a2c479652bd858db82525ad2db2ac87663571
+  subpackages:
+  - level
+  - logging
+  - send
+  - message
+- name: github.com/tylerb/graceful
+  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+- name: github.com/urfave/negroni
+  version: 3444e69ea1ef03a77998d11fc56e7f0a34f7213c
+
+- name: github.com/stretchr/objx
+  version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
+- name: github.com/stretchr/testify
+  version: d77da356e56a7428ad25149ca77381849a6a5232
+- name: github.com/pmezard/go-difflib
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
+- name: github.com/davecgh/go-spew
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
+devImports: []

@@ -46,6 +46,9 @@ func main() {
 	admin.AddCommand("disable-service", "disable component services", "", &cli.AdminDisableServiceCommand{GlobalOpts: opts})
 	admin.AddCommand("enable-service", "enable component services", "", &cli.AdminEnableServiceCommand{GlobalOpts: opts})
 
+	deploy, _ := service.AddCommand("deploy", "deployment helper (e.g. migration tools)", "", &struct{}{})
+	deploy.AddCommand("anser", "migration helper", "", &cli.MigrationCommand{})
+
 	// run commands
 	_, err := parser.Parse()
 	if err != nil {

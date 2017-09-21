@@ -1,0 +1,200 @@
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/anser
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+  - &run-build-with-mongodb
+    # runs a make target above, but only on systems that have a
+    # running mongod started for testing.
+    name: test
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/mongodb/anser
+      - func: set-up-mongodb
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  run-make:
+    command: shell.exec
+    params:
+       script: |
+         set -o errexit
+         set -o verbose
+
+         # Configure a local go path for this build.
+         export GOPATH=`pwd`/gopath
+
+         # on windows we need to turn the slashes the other way
+         if [ "Windows_NT" == "$OS" ]; then
+            export GOPATH=$(cygpath -m $GOPATH)
+         fi
+
+         cd gopath/src/github.com/mongodb/anser
+
+         # Run make, called with proper environment variables set,
+         # running the target.
+         ${build_env|} make vendor ${target}
+  set-up-mongodb:
+    - command: shell.exec
+      type: system
+      params:
+        script: |
+          set -o errexit
+          set -o verbose
+
+          rm -rf mongodb
+          mkdir mongodb
+          cd mongodb
+          curl ${mongodb_url} -o mongodb${archiveExt|.tgz}
+
+          ${decompress} mongodb${archiveExt|.tgz}
+          chmod +x ./mongodb-*/bin/*
+          mv ./mongodb-*/bin/* .
+          rm -rf db_files
+          rm -rf db_logs
+          mkdir db_files
+          mkdir db_logs
+    - command: shell.exec
+      type: system
+      params:
+        background: true
+        script: |
+          set -o errexit
+          set -o verbose
+
+          cd mongodb
+          echo "starting mongod..."
+          ./mongod${extension|} --dbpath ./db_files &
+          echo "waiting for mongod to start up"
+    - command: shell.exec
+      type: system
+      params:
+        script: |
+          set -o errexit
+          set -o verbose
+
+          cd mongodb
+          ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
+          echo "mongod is up."
+
+#######################################
+#                Tasks                #
+#######################################
+post:
+  - command: gotest.parse_files
+    params:
+      files:
+        - "gopath/src/github.com/mongodb/anser/build/output.*"
+        - "gopath/src/github.com/mongodb/anser/build/test.*.out"
+        - "gopath/src/github.com/mongodb/anser/build/race.*.out"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/mongodb/anser/build/output.*.coverage.html"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/html
+      permissions: public-read
+      display_name: "(html) coverage:"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/mongodb/anser/build/output.*.coverage"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: "(txt) coverage:"
+
+tasks:
+  # the build (with and without the race detector) and lint tasks use
+  # a template that does not include test result parsing.
+  - name: lint
+    tags: ["report"]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/anser
+      - func: run-make
+        vars: { target: "lint" }
+
+  - name: coverage
+    tags: [ "report" ]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/anser
+      - func: run-make
+        vars:
+          target: "coverage-html"
+          make_args: "-k"
+
+  - <<: *run-build-with-mongodb
+    tags: ["test"]
+    name: test
+
+  - <<: *run-build-with-mongodb
+    tags: ["race"]
+    name: race
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    expansions:
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+    run_on:
+      - archlinux-test
+      - archlinux-build
+    tasks: [ ".race", ".report" ]
+
+  - name: rhel62-gccgo
+    display_name: RHEL 6.2 (gccgo)
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+    run_on:
+      - rhel62-small
+    tasks: [ ".test" ]
+
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    expansions:
+      build_env: "PATH=/opt/go/bin:$PATH GOROOT=/opt/go"
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+    run_on:
+      - ubuntu1604-test
+    tasks: [ ".test" ]
+
+  - name: macos
+    display_name: macOS 10.12
+    expansions:
+      build_env: "PATH=/usr/local/go/bin:$PATH"
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
+    run_on:
+      - macos-1012
+    tasks: [ ".test" ]
