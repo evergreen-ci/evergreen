@@ -12,6 +12,7 @@ import (
 	// the repotracker which needs them to do command validation.
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/service"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
@@ -75,6 +76,13 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {
 		return runProcessByName(ctx, c.Single, settings)
+	}
+
+	pprofHandler := service.GetHandlerPprof(settings)
+	if settings.PprofPort != "" {
+		go func() {
+			grip.Alert(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
+		}()
 	}
 
 	// start and schedule runners

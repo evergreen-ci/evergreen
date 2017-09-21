@@ -54,6 +54,8 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		return errors.WithStack(err)
 	}
 
+	pprofHandler := service.GetHandlerPprof(settings)
+
 	sender, err := settings.GetSender()
 	if err != nil {
 		return errors.WithStack(err)
@@ -88,9 +90,19 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler)
 		close(uiWait)
 	}()
+	pprofWait := make(chan struct{})
+	if settings.PprofPort != "" {
+		go func() {
+			err = service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler)
+		}()
+		close(pprofWait)
+	} else {
+		close(pprofWait)
+	}
 
 	<-apiWait
 	<-uiWait
+	<-pprofWait
 
 	return err
 }
