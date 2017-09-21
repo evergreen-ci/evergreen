@@ -45,16 +45,16 @@ Evergreen - Task Timing
 
   <div class="col-lg-2" ng-show = "!isAllTasks()">
     <h3>Duration</h3>
-    <div class="row" ng-repeat="diff in timeDiffOptions" >  
-      <button class="btn btn-default col-lg-12" ng-class="{active: timeDiff == diff}" ng-click="setTimeDiff(diff)"> 
+    <div class="row" ng-repeat="diff in timeDiffOptions" >
+      <button class="btn btn-default col-lg-12" ng-class="{active: timeDiff == diff}" ng-click="setTimeDiff(diff)">
        [[diff.name]]
      </button>
    </div>
  </div>
  <div class="col-lg-2" ng-show = "isAllTasks()">
   <h3>Duration</h3>
-  <div class="row" ng-repeat="diff in allTasksOptions" >  
-    <button class="btn btn-default col-lg-12" ng-class="{active: allTasksView == diff}" ng-click="setAllTasksView(diff)"> 
+  <div class="row" ng-repeat="diff in allTasksOptions" >
+    <button class="btn btn-default col-lg-12" ng-class="{active: allTasksView == diff}" ng-click="setAllTasksView(diff)">
      [[diff.name]]
    </button>
  </div>
@@ -62,10 +62,13 @@ Evergreen - Task Timing
     <div class="col-lg-4">
       <h3>Number of Versions</h3>
       <div>
-        <button ng-repeat="num in numTasksOptions" ng-class="{active: numTasks == num}" class="btn btn-default" ng-class="{active: timeDiff == diff}" ng-click="setNumTasks(num)"> 
+        <button ng-repeat="num in numTasksOptions" ng-class="{active: numTasks == num}" class="btn btn-default" ng-class="{active: timeDiff == diff}" ng-click="setNumTasks(num)">
            [[num]]
         </button>
-    </div>
+      </div>
+      <div id="divChkSuccessful">
+        <input type="checkbox" id="chkSuccessful" ng-model="onlySuccessful" ng-click="load()">Only Show Successful</input>
+      </div>
     </div>
       </div>
     <div class="row">
@@ -76,7 +79,7 @@ Evergreen - Task Timing
         <div> duration: <b>[[hoverInfo.duration]]</b> </div>
         <div style="font-family:monospace"><a ng-href="[[getLink()]]">[[hoverInfo.revision| limitTo:7]]</a></div>
         <div>[[hoverInfo.create_time |  date: "MM/dd/yyyy 'at' h:mma"]] </div>
-        <div> <b> [[hoverInfo.author]]</b> </div><div>[[hoverInfo.message]] </div> 
+        <div> <b> [[hoverInfo.author]]</b> </div><div>[[hoverInfo.message]] </div>
       </div>
     </div>
     <div class="col-lg-8 task-timing-chart" id="tt-graph"></div>

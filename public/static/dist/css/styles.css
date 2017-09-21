@@ -2210,6 +2210,12 @@ path {
   stroke: black;
   shape-rendering: crispEdges;
 }
+#divChkSuccessful {
+  padding-top: 6px;
+}
+#chkSuccessful {
+  margin-right: 6px;
+}
 .log-elt {
   margin-right: 100px;
 }

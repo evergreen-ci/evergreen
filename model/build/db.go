@@ -84,10 +84,10 @@ func ByProject(proj string) db.Q {
 
 // ByProjectAndVariant creates a query that finds all completed builds for a given project
 // and variant, while also specifying a requester
-func ByProjectAndVariant(project, variant, requester string) db.Q {
+func ByProjectAndVariant(project, variant, requester string, statuses []string) db.Q {
 	return db.Query(bson.M{
 		ProjectKey:      project,
-		StatusKey:       bson.M{"$in": evergreen.CompletedStatuses},
+		StatusKey:       bson.M{"$in": statuses},
 		BuildVariantKey: variant,
 		RequesterKey:    requester,
 	})

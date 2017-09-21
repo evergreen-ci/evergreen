@@ -95,6 +95,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	beforeTaskId := r.FormValue("before")
+	onlySuccessful := r.FormValue("onlySuccessful")
 
 	limit, err := getIntValue(r, "limit", 50)
 	if err != nil {
@@ -118,11 +119,17 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	}
 	var versionIds []string
 	data := UIStats{}
+	var statuses []string
+	if onlySuccessful == "true" {
+		statuses = []string{evergreen.TaskSucceeded}
+	} else {
+		statuses = evergreen.CompletedStatuses
+	}
 
 	// if its all tasks find the build
 	if taskName == "" || taskName == "All Tasks" {
 		// TODO: switch this to be a query on the builds TaskCache
-		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request).
+		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.RevisionOrderNumberKey}).
@@ -185,7 +192,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, evergreen.CompletedStatuses,
+			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, statuses,
 				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
@@ -193,7 +200,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			}
 
 		} else {
-			tasks, err = task.Find(task.ByStatuses(evergreen.CompletedStatuses,
+			tasks, err = task.Find(task.ByStatuses(statuses,
 				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
