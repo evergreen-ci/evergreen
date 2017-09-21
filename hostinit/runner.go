@@ -1,6 +1,7 @@
 package hostinit
 
 import (
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -53,31 +54,49 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		"GUID":    init.GUID,
 	})
 
-	if err := init.startHosts(ctx); err != nil {
-		err = errors.Wrap(err, "Error starting hosts")
-		grip.Error(message.Fields{
-			"GUID":    init.GUID,
-			"runner":  RunnerName,
-			"error":   err.Error(),
-			"status":  "failed",
-			"method":  "startHosts",
-			"runtime": time.Since(startTime),
-			"span":    time.Since(startTime).String(),
-		})
-		return err
-	}
+	// starting hosts and provisioning hosts don't need to run serially since
+	// the hosts that were just started aren't immediately ready for provisioning
+	catcher := grip.NewSimpleCatcher()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := init.startHosts(ctx); err != nil {
+			err = errors.Wrap(err, "Error starting hosts")
+			grip.Error(message.Fields{
+				"GUID":    init.GUID,
+				"runner":  RunnerName,
+				"error":   err.Error(),
+				"status":  "failed",
+				"method":  "startHosts",
+				"runtime": time.Since(startTime),
+				"span":    time.Since(startTime).String(),
+			})
+			catcher.Add(err)
+		}
+	}()
 
-	if err := init.setupReadyHosts(ctx); err != nil {
-		err = errors.Wrap(err, "Error provisioning hosts")
-		grip.Error(message.Fields{
-			"GUID":    init.GUID,
-			"runner":  RunnerName,
-			"error":   err.Error(),
-			"status":  "failed",
-			"method":  "setupReadyHosts",
-			"runtime": time.Since(startTime),
-		})
-		return err
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := init.setupReadyHosts(ctx); err != nil {
+			err = errors.Wrap(err, "Error provisioning hosts")
+			grip.Error(message.Fields{
+				"GUID":    init.GUID,
+				"runner":  RunnerName,
+				"error":   err.Error(),
+				"status":  "failed",
+				"method":  "setupReadyHosts",
+				"runtime": time.Since(startTime),
+			})
+			catcher.Add(err)
+		}
+	}()
+
+	wg.Wait()
+
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {

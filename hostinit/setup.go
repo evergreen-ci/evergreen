@@ -68,12 +68,11 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			return errors.New("hostinit run canceled")
 		}
 
+		hostStartTime := time.Now()
 		grip.Info(message.Fields{
 			"GUID":    init.GUID,
 			"message": "attempting to start host",
 			"hostid":  h.Id,
-			"distro":  h.Distro.Id,
-			"tag":     h.Tag,
 		})
 
 		cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
@@ -98,7 +97,13 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			return errors.Wrapf(err, "error updating host %v", h.Id)
 		}
 
-		grip.Infof("successfully started host %s", h.Id)
+		grip.Info(message.Fields{
+			"GUID":    init.GUID,
+			"message": "successfully started host",
+			"hostid":  h.Id,
+			"DNS":     h.Host,
+			"runtime": time.Since(hostStartTime),
+		})
 	}
 
 	grip.Info(message.Fields{
@@ -142,24 +147,26 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 			"GUID":    init.GUID,
 			"message": "attempting to setup host",
 			"hostid":  h.Id,
-			"distro":  h.Distro.Id,
-			"tag":     h.Tag,
+			"DNS":     h.Host,
 		})
 
 		// check whether or not the host is ready for its setup script to be run
 		ready, err := init.IsHostReady(&h)
 		if err != nil {
-			grip.Infof("Error checking host %s for readiness: %+v", h.Id, err)
+			grip.Errorf("Error checking host %s for readiness: %+v", h.Id, err)
 			continue
 		}
 
 		// if the host isn't ready (for instance, it might not be up yet), skip it
 		if !ready {
-			grip.Debugf("Host %s not ready for setup", h.Id)
+			grip.Debug(message.Fields{
+				"GUID":    init.GUID,
+				"message": "host not ready for setup",
+				"hostid":  h.Id,
+				"DNS":     h.Host,
+			})
 			continue
 		}
-
-		grip.Infoln("Running setup script for host", h.Id)
 
 		// kick off the setup, in its own goroutine, so pending setups don't have
 		// to wait for it to finish
@@ -168,6 +175,14 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return
 			}
+
+			setupStartTime := time.Now()
+			grip.Info(message.Fields{
+				"GUID":    init.GUID,
+				"message": "running setup script for host",
+				"hostid":  h.Id,
+				"DNS":     h.Host,
+			})
 
 			if err := init.ProvisionHost(ctx, &h); err != nil {
 				grip.Errorf("Error provisioning host %s: %+v", h.Id, err)
@@ -182,6 +197,14 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					grip.Errorf("Error sending email: %+v", err)
 				}
 			}
+
+			grip.Info(message.Fields{
+				"GUID":    init.GUID,
+				"message": "setup script successfully ran for host",
+				"hostid":  h.Id,
+				"DNS":     h.Host,
+				"runtime": time.Since(setupStartTime),
+			})
 
 			wg.Done()
 
