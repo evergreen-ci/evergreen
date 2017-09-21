@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -168,6 +169,10 @@ func (c *communicatorImpl) getBackoff() *backoff.Backoff {
 }
 
 func (c *communicatorImpl) getPath(path string, version string) string {
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+
 	return fmt.Sprintf("%s%s/%s", c.serverURL, version, path)
 }
 
@@ -184,5 +189,9 @@ func (r *requestInfo) validateRequestInfo() error {
 }
 
 func (r *requestInfo) setTaskPathSuffix(path string) {
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+
 	r.path = fmt.Sprintf("task/%s/%s", r.taskData.ID, path)
 }
