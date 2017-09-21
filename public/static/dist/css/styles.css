@@ -2292,7 +2292,7 @@ th {
 .bannerText {
   padding-left: 22px;
   padding-top: 12px;
-  overflow: scroll;
+  overflow: auto;
   max-height: 45px;
   padding-right: 10px;
 }
