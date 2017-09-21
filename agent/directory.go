@@ -3,9 +3,12 @@ package agent
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
@@ -93,18 +96,47 @@ func tryCleanupDirectory(dir string) {
 		return
 	}
 
-	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	usr, err := user.Current()
+	if err != nil {
+		grip.Warning(err)
+		return
+	}
+
+	if strings.HasPrefix(dir, usr.HomeDir) {
+		grip.Notice("not cleaning up directory, because it is in the home directory.")
+		return
+	}
+
+	paths := []string{}
+
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
 		if path == dir {
 			return nil
 		}
 
+		if strings.HasSuffix(path, ".git") {
+			grip.Warning("don't run the agent in the development environment")
+			return errors.New("skip cleanup in development environments")
+		}
+
 		if info.IsDir() {
-			if err = os.RemoveAll(path); err != nil {
-				grip.Notice(err)
-				return nil
-			}
+			paths = append(paths, path)
 		}
 
 		return nil
 	})
+
+	if err != nil {
+		return
+	}
+
+	for _, p := range paths {
+		if err = os.RemoveAll(p); err != nil {
+			grip.Notice(err)
+		}
+	}
 }
