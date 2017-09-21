@@ -87,7 +87,7 @@ cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 $(clientBuildDir)/version:
 	@mkdir -p $(dir $@)
 	git rev-parse HEAD >| $@
@@ -134,7 +134,7 @@ lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	$(gopath)/bin/gometalinter --update --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
-	$(vendorGopath) go build -o $@ $<
+	go build -o $@ $<
 # end lint setup targets
 
 
@@ -143,8 +143,8 @@ $(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
 	@mkdir -p $(buildDir)
 	@GOOS="" GOOARCH="" go build -o $@ $<
 	@echo go build -o $@ $<
-$(buildDir)/make-tarball:scripts/make-tarball.go $(buildDir)/render-gopath
-	$(vendorGopath) go build -o $@ $<
+$(buildDir)/make-tarball:scripts/make-tarball.go
+	go build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
@@ -193,25 +193,6 @@ lint-%:$(buildDir)/output.%.lint
 
 
 # start vendoring configuration
-#    begin with configuration of dependencies
-vendorDeps := github.com/Masterminds/glide
-vendorDeps := $(addprefix $(gopath)/src/,$(vendorDeps))
-vendor-deps:$(vendorDeps)
-#   this allows us to store our vendored code in vendor and use
-#   symlinks to support vendored code both in the legacy style and with
-#   new-style vendor directories. When this codebase can drop support
-#   for go1.4, we can delete most of this.
--include $(buildDir)/makefile.vendor
-#   nested vendoring is used to support projects that have
-nestedVendored := vendor/github.com/mongodb/grip
-nestedVendored := $(foreach project,$(nestedVendored),$(project)/build/vendor)
-$(buildDir)/makefile.vendor:$(buildDir)/render-gopath makefile
-	@mkdir -p $(buildDir)
-	@echo "vendorGopath := \$$(shell \$$(buildDir)/render-gopath $(nestedVendored))" >| $@
-#   targets for the directory components and manipulating vendored files.
-vendor-sync:$(vendorDeps)
-	rm -rf vendor
-	glide install -s
 vendor-clean:
 	rm -rf vendor/github.com/stretchr/testify/vendor/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
@@ -221,25 +202,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio
-change-go-version:
-	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
-	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1
-vendor:$(buildDir)/vendor/src
-	$(MAKE) $(makeArgs) -C vendor/github.com/mongodb/grip $@
-$(buildDir)/vendor/src:$(buildDir)/make-vendor $(buildDir)/render-gopath
-	@./$(buildDir)/make-vendor
-#   targets to build the small programs used to support vendoring.
-$(buildDir)/make-vendor:scripts/make-vendor.go
-	@mkdir -p $(buildDir)
-	go build -o $@ $<
-$(buildDir)/render-gopath:scripts/render-gopath.go
-	@mkdir -p $(buildDir)
-	go build -o $@ $<
-#   define dependencies for scripts
-scripts/make-vendor.go:scripts/vendoring/vendoring.go
-scripts/render-gopath.go:scripts/vendoring/vendoring.go
-#   add phony targets
-phony += vendor vendor-deps vendor-clean vendor-sync change-go-version
+phony += vendor-clean
 # end vendoring tooling configuration
 
 
@@ -265,14 +228,14 @@ testArgs += -testify.m='$(RUN_CASE)'
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
+	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
-	$(vendorGopath) go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
+	go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles)
-	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
+	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
-	$(vendorGopath) go test -ldflags=$(ldFlags) -race -c -o $@ ./
+	go test -ldflags=$(ldFlags) -race -c -o $@ ./
 #  targets to run the tests and report the output
 $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
@@ -288,7 +251,7 @@ $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=./$@ 2>&1 | tee $(subst coverage,test,$@)
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
-	$(vendorGopath) go tool cover -html=$< -o $@
+	go tool cover -html=$< -o $@
 # end test and coverage artifacts
 
 
