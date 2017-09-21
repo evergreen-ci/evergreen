@@ -129,7 +129,7 @@ func (c *communicatorImpl) SetBannerMessage(ctx context.Context, m string) error
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    "/admin/banner",
+		path:    "admin/banner",
 	}
 
 	_, err := c.retryRequest(ctx, info, struct {
@@ -145,7 +145,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "/admin",
+		path:    "admin",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -165,7 +165,7 @@ func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServ
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    "/admin/service_flags",
+		path:    "admin/service_flags",
 	}
 
 	_, err := c.retryRequest(ctx, info, f)
@@ -180,7 +180,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "/admin",
+		path:    "admin",
 	}
 
 	resp, err := c.request(ctx, info, nil)
