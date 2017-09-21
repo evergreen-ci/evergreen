@@ -56,6 +56,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 
 	// starting hosts and provisioning hosts don't need to run serially since
 	// the hosts that were just started aren't immediately ready for provisioning
+	catcher := grip.NewSimpleCatcher()
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
@@ -71,6 +72,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 				"runtime": time.Since(startTime),
 				"span":    time.Since(startTime).String(),
 			})
+			catcher.Add(err)
 		}
 	}()
 
@@ -87,10 +89,15 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 				"method":  "setupReadyHosts",
 				"runtime": time.Since(startTime),
 			})
+			catcher.Add(err)
 		}
 	}()
 
 	wg.Wait()
+
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
 
 	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
 		grip.Error(errors.Wrap(err, "problem updating process status"))
