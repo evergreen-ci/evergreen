@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	collection = "testresults"
+	// Collection is the name of the test results collection in the database.
+	Collection = "testresults"
 )
 
 // TestResult contains test data for a task.
@@ -34,29 +35,29 @@ type TestResult struct {
 
 var (
 	// BSON fields for the task struct
-	testResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
-	testResultLineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
-	testResultTestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
-	testResultURLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
-	testResultLogIDKey     = bsonutil.MustHaveTag(TestResult{}, "LogID")
-	testResultURLRawKey    = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
-	testResultExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
-	testResultStartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
-	testResultEndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")
-	testResultTaskIDKey    = bsonutil.MustHaveTag(TestResult{}, "TaskID")
-	testResultExecutionKey = bsonutil.MustHaveTag(TestResult{}, "Execution")
+	StatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
+	LineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
+	TestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
+	URLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
+	LogIDKey     = bsonutil.MustHaveTag(TestResult{}, "LogID")
+	URLRawKey    = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
+	ExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
+	StartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
+	EndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")
+	TaskIDKey    = bsonutil.MustHaveTag(TestResult{}, "TaskID")
+	ExecutionKey = bsonutil.MustHaveTag(TestResult{}, "Execution")
 )
 
 // Insert writes a test result to the database.
 func (t *TestResult) Insert() error {
-	return db.Insert(collection, t)
+	return db.Insert(Collection, t)
 }
 
 // ByTaskIDAndExecution creates a query to return test results from the testresults collection for a given task.
 func ByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
 	q := db.Query(bson.M{
-		testResultTaskIDKey:    taskID,
-		testResultExecutionKey: execution,
+		TaskIDKey:    taskID,
+		ExecutionKey: execution,
 	})
 	return find(q)
 }
@@ -64,7 +65,7 @@ func ByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
 // find returns all test results that satisfy the query.
 func find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
-	err := db.FindAllQ(collection, query, &tests)
+	err := db.FindAllQ(Collection, query, &tests)
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
@@ -74,7 +75,7 @@ func find(query db.Q) ([]TestResult, error) {
 // FindOne returns one test result that satisfies the query.
 func findOne(query db.Q) (*TestResult, error) {
 	test := &TestResult{}
-	err := db.FindOneQ(collection, query, &test)
+	err := db.FindOneQ(Collection, query, &test)
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}

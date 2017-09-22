@@ -380,6 +380,7 @@ var (
 	})
 )
 
+// TODO Rewrite this rest v2 route for new test results collection after migration
 // getTestResultsPipeline returns an aggregation pipeline for fetching a list
 // of test from a task by its Id.
 func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
@@ -594,6 +595,13 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 		return nil, errors.Wrap(err, "problem with stats query")
 	}
 
+	for i, task := range out {
+		if err := task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
+		}
+		out[i] = task
+	}
+
 	return out, nil
 }
 
@@ -606,6 +614,9 @@ func FindOne(query db.Q) (*Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
+	if err := task.MergeNewTestResults(); err != nil {
+		return nil, errors.Wrap(err, "errors merging new test results")
+	}
 	return task, err
 }
 
@@ -615,6 +626,9 @@ func FindOneOld(query db.Q) (*Task, error) {
 	err := db.FindOneQ(OldCollection, query, task)
 	if err == mgo.ErrNotFound {
 		return nil, nil
+	}
+	if err := task.MergeNewTestResults(); err != nil {
+		return nil, errors.Wrap(err, "errors merging new test results")
 	}
 	return task, err
 }
@@ -626,6 +640,12 @@ func FindOld(query db.Q) ([]Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
+	for i, task := range tasks {
+		if err := task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
+		}
+		tasks[i] = task
+	}
 	return tasks, err
 }
 
@@ -635,6 +655,12 @@ func Find(query db.Q) ([]Task, error) {
 	err := db.FindAllQ(Collection, query, &tasks)
 	if err == mgo.ErrNotFound {
 		return nil, nil
+	}
+	for i, task := range tasks {
+		if err := task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
+		}
+		tasks[i] = task
 	}
 	return tasks, err
 }
