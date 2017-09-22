@@ -6,6 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -122,12 +124,17 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 	if ctx.previousCompleted == nil {
 		return true, nil
 	}
+
 	if ctx.previousCompleted.Status == evergreen.TaskSucceeded {
 		// the task transitioned to failure - but we will only trigger an alert if we haven't recorded
 		// a sent alert for a transition after the same previously passing task.
 		q := alertrecord.ByLastFailureTransition(ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
 		if err != nil {
+			errMessage := getShouldExecuteError(ctx)
+			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
+			errMessage["error"] = err.Error()
+			grip.Error(errMessage)
 			return false, err
 		}
 
@@ -142,16 +149,38 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 		// check if enough time has passed since our last transition alert
 		q := alertrecord.ByLastFailureTransition(ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
+
 		if err != nil {
+			errMessage := getShouldExecuteError(ctx)
+			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
+			errMessage["error"] = err.Error()
+			grip.Error(errMessage)
 			return false, err
 		}
+
 		if lastAlerted == nil || lastAlerted.TaskId == "" {
+			errMessage := getShouldExecuteError(ctx)
+			errMessage[message.FieldsMsgName] = "last alert record nil, or empty last alert task_id"
+			grip.Error(errMessage)
 			return false, nil
 		}
 
 		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId)
 	}
 	return false, nil
+}
+
+func getShouldExecuteError(ctx triggerContext) message.Fields {
+	return message.Fields{
+		"alert":   "transition to failure",
+		"outcome": "no alert",
+		"task_id": ctx.task.Id,
+		"query": map[string]string{
+			"display": ctx.task.DisplayName,
+			"variant": ctx.task.BuildVariant,
+			"project": ctx.task.Project,
+		},
+	}
 }
 
 func (trig TaskFailTransition) CreateAlertRecord(ctx triggerContext) *alertrecord.AlertRecord {
