@@ -9,12 +9,12 @@ mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginR
         $scope.credentials.password,
         {},
         {
-          success: function(data) {
+          success: function(resp) {
             redirect = $scope.redirect || "/";
             $window.location.href = decodeURIComponent(redirect);
           },
-          error: function(jqXHR, status, errorThrown) {
-            $scope.errorMessage = jqXHR.error;
+          error: function(resp) {
+            $scope.errorMessage = resp.data.error;
           }
         }
     );

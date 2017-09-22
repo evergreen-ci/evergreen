@@ -105,12 +105,12 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
         };
       }), function(v){return v.tasks.length > 0})
     }
-    $http.post('/patch/' + $scope.patch.Id, data).
-      success(function(data, status) {
-        window.location.replace("/version/" + data.version);
-      }).
-      error(function(data, status, errorThrown) {
-      	notificationService.pushNotification('Error retrieving logs: ' + JSON.stringify(data), 'errorHeader');
+    $http.post('/patch/' + $scope.patch.Id, data).then(
+      function(resp) {
+        window.location.replace("/version/" + resp.data.version);
+      },
+      function(resp) {
+      	notificationService.pushNotification('Error retrieving logs: ' + JSON.stringify(resp.data), 'errorHeader');
       });
   };
 

@@ -61,13 +61,14 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
               task_ids: $scope.checkedForRestartIds()
             },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     notifier.pushNotification( "Selected tasks are restarted.", 'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error restarting build: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error restarting build: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -79,7 +80,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
             'set_active',
             { active: active, abort: abort },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     notifier.pushNotification(
@@ -88,7 +90,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                       'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting version activation: ' + jqXHR.error,'errorModal');
+                    notifier.pushNotification('Error setting version activation: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -99,14 +101,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
             'set_priority',
             { priority: newPriority },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     var msg = "Priority for version set to " + newPriority + "."
                     notifier.pushNotification(msg, 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error changing priority: ' + jqXHR.error,'errorModal');
+                    notifier.pushNotification('Error changing priority: ' + resp.data.error,'errorModal');
                 }
             }
         );

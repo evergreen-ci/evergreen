@@ -166,16 +166,17 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   }
 
   $scope.load = function() {
-    $http.get('/version_json/' + $scope.version.Version.id).
-    success(function(data) {
+    $http.get('/version_json/' + $scope.version.Version.id).then(
+    function(resp) {
+      var data = resp.data;
       if (data.error) {
         notificationService.pushNotification(data.error);
       } else {
         $scope.setVersion(data);
       }
-    }).
-    error(function(data) {
-      notificationService.pushNotification("Error occurred - " + data.error);
+    },
+    function(resp) {
+      notificationService.pushNotification("Error occurred - " + resp.data.error);
     });
   };
 
@@ -225,7 +226,8 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   // make a backend call to get the drawer contents
   function fetchHistory() {
     historyDrawerService.fetchVersionHistory($scope.version.Version.id, 'surround', 20, {
-      success: function(data) {
+      success: function(resp) {
+        var data = resp.data;
 
         // save the revisions as a list
         $scope.revisions = data.revisions;
@@ -270,7 +272,8 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
       var anchorId = mostRecentRevision.version_id;
 
       historyDrawerService.fetchVersionHistory(anchorId, 'after', 20, {
-        success: function(data) {
+        success: function(resp) {
+          var data = resp.data;
           // no computation necessary
           if (!data) {
             return;
@@ -310,7 +313,8 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
         anchorId,
         'before',
         20, {
-          success: function(data) {
+          success: function(resp) {
+            var data = resp.data;
             // no computation necessary
             if (!data) {
               return;

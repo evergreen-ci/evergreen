@@ -22,15 +22,15 @@ mciModule.controller('SchedulerEventCtrl', function($scope, $window, $http) {
   {display: "1 day", value: "1"},
   {display: "1 week", value: 7},
   {display: "2 weeks", value: 14},
-  {display: "1 month",value: 30}, 
-  {display: "2 Months", value: 60}, 
+  {display: "1 month",value: 30},
+  {display: "2 Months", value: 60},
   {display: "3 months", value: 90}
   ];
 
   $scope.currentNumberDays = $scope.numberDays[0];
 
-  // disableDays sets the buttons to be disabled if the the granularity is a minute and 
-  // there are too many days to load. 
+  // disableDays sets the buttons to be disabled if the the granularity is a minute and
+  // there are too many days to load.
   $scope.disableDays = function(numberDays){
     if ($scope.currentGranularity.display== "minute") {
       if (numberDays.value >= 30) {
@@ -54,36 +54,36 @@ mciModule.controller('SchedulerEventCtrl', function($scope, $window, $http) {
 
   $scope.loadData = function(){
     switch($scope.tab){
-      case $scope.consts.logs: 
+      case $scope.consts.logs:
         if ($scope.events.length == 0){
-          $http.get("/scheduler/distro/" + $scope.distro + "/logs")
-          .success(function(data){
+          $http.get("/scheduler/distro/" + $scope.distro + "/logs").then(
+          function(resp){
+            var data = resp.data;
             $scope.events = data;
             $scope.fullEvents = _.filter($scope.events, function(event){
               return event.data.task_queue_info.task_queue_length > 0;
             });
             return
-          })
-          .error(function(data, status){
-            console.log(status);
+          },
+          function(resp){
+            console.log(resp.status);
           });
         }
         break;
-      case $scope.consts.stats: 
+      case $scope.consts.stats:
         if ($scope.stats.length == 0) {
-          var query = "granularity=" + encodeURIComponent($scope.currentGranularity.value) + 
+          var query = "granularity=" + encodeURIComponent($scope.currentGranularity.value) +
           "&numberDays=" + encodeURIComponent($scope.currentNumberDays.value);
-          $http.get("/scheduler/distro/"+ $scope.distro + "/stats?" + query)
-          .success(function(data){
-            $scope.stats = data;
-
-          })
-          .error(function(data, status){
-            console.log(status);
+          $http.get("/scheduler/distro/"+ $scope.distro + "/stats?" + query).then(
+          function(resp){
+            $scope.stats = resp.data;
+          },
+          function(resp){
+            console.log(resp.status);
           });
         }
         break;
-      } 
+      }
   }
 
   $scope.tab = $scope.consts.logs;

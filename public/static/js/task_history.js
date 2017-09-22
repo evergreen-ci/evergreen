@@ -90,7 +90,8 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       '/' +
       encodeURIComponent(ret.taskName) +
       '/test_names'
-      ).success(function(testNames) {
+    ).then(function(resp) {
+        var testNames = resp.data;
         ret.testNames = [];
         var testNamesMap = {};
         _.each(testNames, function(name) {
@@ -100,8 +101,8 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
         _.each(testNamesMap, function(value, key) {
           ret.testNames.push(key);
         });
-      }).error(function(data, status, headers, config) {
-        console.log("Error occurred when getting test names: `" + headers + "`");
+      }, function(resp) {
+        console.log("Error occurred when getting test names: `" + resp.headers + "`");
       });
 
       ret.constraints = {
@@ -238,7 +239,8 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       "&high=" + ret.constraints.high +
       "&only_matching_tasks=true" +
       "&filter=" + uriFilterStr
-      ).success(function(tasks) {
+    ).then(function(resp) {
+        var tasks = resp.data;
         ret.testsLoading = false;
         ret.taskMatchesFilter = {};
         if (tasks.length) {
@@ -246,9 +248,9 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
             ret.taskMatchesFilter[task.id] = true;
           });
         }
-      }).error(function(data, status, headers, config) {
+      }, function(resp) {
         ret.testsLoading = false;
-        console.log("Error occurred when filtering tasks: `" + headers + "`");
+        console.log("Error occurred when filtering tasks: `" + resp.headers + "`");
       });
     };
 
@@ -491,7 +493,8 @@ $scope.loadMore = function(before) {
       revision: revision,
       before: before,
     }, {
-      success: function(data, status) {
+      success: function(resp) {
+        var data = resp.data;
         if (data.Versions) {
           buildVersionsByRevisionMap(data.Versions, before);
 
@@ -518,8 +521,8 @@ $scope.loadMore = function(before) {
           }, 0);
         },
 
-        error: function(jqXHR, status, errorThrown) {
-          notificationService.pushNotification('Error getting task history: ' + jqXHR.error,'errorNearButton');
+        error: function(resp) {
+          notificationService.pushNotification('Error getting task history: ' + resp.data.error,'errorNearButton');
         }
       }
       );

@@ -13,14 +13,15 @@ mciModule.factory('$timeline', function($http, $filter) {
     $http.
     get(endpoint, {
       params: params
-    }).
-    success(function(result) {
+    }).then(
+    function(resp) {
+      var result = resp.data;
       data.TotalVersions = result.TotalVersions;
       data.Versions =
         data.Versions.concat(result.Versions);
-    }).
-    error(function(error) {
-      data.error = error.message;
+    },
+    function(resp) {
+      data.error = resp.data.message;
     });
   };
 
@@ -34,8 +35,9 @@ mciModule.factory('$timeline', function($http, $filter) {
     $http.
     get(endpoint, {
       params: params
-    }).
-    success(function(result) {
+    }).then(
+    function(resp) {
+      var result = resp.data;
       data.TotalVersions = result.TotalVersions;
       data.Versions = result.Versions;
 
@@ -51,9 +53,9 @@ mciModule.factory('$timeline', function($http, $filter) {
           });
         });
       });
-    }).
-    error(function(error) {
-      data.error = error.message;
+    },
+    function(resp) {
+      data.error = resp.data.message;
     });
   };
 

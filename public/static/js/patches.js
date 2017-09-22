@@ -27,8 +27,9 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
         page: $scope.currentPage
       }
     };
-    $http.get(endpoint, params).
-    success(function(data) {
+    $http.get(endpoint, params).then(
+    function(resp) {
+      var data = resp.data;
       $scope.loading = false;
       $scope.versionsMap = data['VersionsMap'];
       $scope.uiPatches = data['UIPatches'];
@@ -49,10 +50,10 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
           });
         });
       });
-    }).
-    error(function(err) {
+    },
+    function(resp) {
       $scope.loading = false;
-      $scope.patchesError = err;
+      $scope.patchesError = resp.err;
     });
   };
 

@@ -53,7 +53,8 @@ mciModule.controller('BuildVariantHistoryController',['$scope', '$filter','$wind
         format: 'json',
         before: $scope.lastVersionId,
       }, {
-        success: function(data, status) {
+        success: function(resp) {
+          var data = resp.data;
           if (data.Versions) {
             buildVersionsByRevisionMap(data.Versions);
             $scope.lastVersionId = $scope.versions[$scope.versions.length - 1].id;
@@ -64,8 +65,8 @@ mciModule.controller('BuildVariantHistoryController',['$scope', '$filter','$wind
           }
         },
 
-        error: function(jqXHR, status, errorThrown) {
-          notifier.pushNotification('Error getting build variant history: ' + jqXHR.error,'errorHeader');
+        error: function(resp) {
+          notifier.pushNotification('Error getting build variant history: ' + resp.data.error,'errorHeader');
         }
       }
     );

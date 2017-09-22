@@ -47,7 +47,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
   // make a backend call to get the drawer contents
   function fetchHistory() {
     historyDrawerService.fetchTaskHistory($scope.task.id, 'surround', 20, {
-      success: function(data) {
+      success: function(resp) {
+        var data = resp.data;
 
         // save the revisions as a list
         $scope.revisions = data.revisions;
@@ -69,8 +70,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             }
           }, 500)
       },
-      error: function(data) {
-        console.log('error fetching history: ' + JSON.stringify(data));
+      error: function(resp) {
+        console.log('error fetching history: ' + JSON.stringify(resp.data));
       }
     });
 
@@ -92,7 +93,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       var anchorId = mostRecentRevision.task.id;
 
       historyDrawerService.fetchTaskHistory(anchorId, 'after', 20, {
-        success: function(data) {
+        success: function(resp) {
+          var data = resp.data;
           // no computation necessary
           if (!data) {
             return
@@ -132,7 +134,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         anchorId,
         'before',
         20, {
-          success: function(data) {
+          success: function(resp) {
+            var data = resp.data;
             // no computation necessary
             if (!data) {
               return
@@ -572,8 +575,9 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
   }
 
   $scope.getLogs = function() {
-    $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).
-    success(function(data, status) {
+    $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
+    function(resp) {
+      var data = resp.data;
       if ($scope.currentLogs == $scope.eventLogs) {
         $scope.eventLogData = data.reverse()
       } else {
@@ -593,9 +597,9 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
           $scope.logs = [];
         }
       }
-    }).
-    error(function(jqXHR, status, errorThrown) {
-      	notifier.pushNotification('Error retrieving logs: ' + jqXHR, 'errorHeader');
+    },
+    function(resp) {
+      	notifier.pushNotification('Error retrieving logs: ' + resp.Data, 'errorHeader');
     });
 
     // If we already have an outstanding timeout, cancel it

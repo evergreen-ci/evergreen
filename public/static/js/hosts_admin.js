@@ -14,11 +14,11 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
       'updateStatus',
       { status: $scope.newStatus },
       {
-        success: function(data, status) {
+        success: function(resp) {
           window.location.reload();
         },
-        error: function(jqXHR, status, errorThrown) {
-          notifier.pushNotification('Error updating host status: ' + jqXHR.error, 'errorModal');
+        error: function(resp) {
+          notifier.pushNotification('Error updating host status: ' + resp.data.error, 'errorModal');
         }
       }
     );

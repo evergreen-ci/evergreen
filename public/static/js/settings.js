@@ -52,24 +52,25 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
       return
 
-    $http.post('/settings/newkey').
-      success(function(data, status) {
+    $http.post('/settings/newkey').then(
+      function(resp) {
+        var data = resp.data;
         $scope.userConf.api_key = data.key
         $scope.selectConf()
-      }).
-      error(function(data, status, errorThrown) {
-        console.log(data,status);
+      },
+      function(resp) {
+        console.log(resp.data,resp.status);
       });
   }
 
   $scope.updateUserSettings = function(new_tz, new_waterfall) {
     data = {timezone: new_tz, new_waterfall: new_waterfall};
-    $http.put('/settings/', data)
-      .success(function(data, status) {
+    $http.put('/settings/', data).then(
+      function(resp) {
         window.location.reload()
-      })
-      .error(function(jqXHR, status, errorThrown) {
-        notifier.pushNotification("Failed to save changes: " + jqXHR.error,'errorHeader');
+      },
+      function(resp) {
+        notifier.pushNotification("Failed to save changes: " + resp.data.error,'errorHeader');
       });
    };
 }]);

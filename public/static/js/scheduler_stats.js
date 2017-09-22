@@ -14,16 +14,16 @@ mciModule.controller('SchedulerStatsCtrl', function($scope, $http, $window, $fil
 	{display: "1 day", value: "1"},
 	{display: "1 week", value: 7},
 	{display: "2 weeks", value: 14},
-	{display: "1 month",value: 30}, 
-	{display: "2 Months", value: 60}, 
+	{display: "1 month",value: 30},
+	{display: "2 Months", value: 60},
 	{display: "3 months", value: 90}
 	];
 	$scope.currentNumberDays = $scope.numberDays[0];
 
 	$scope.utilizationData = {};
 
-	// disableDays sets the buttons to be disabled if the the granularity is a minute and 
-	// there are too many days to load. 
+	// disableDays sets the buttons to be disabled if the the granularity is a minute and
+	// there are too many days to load.
 	$scope.disableDays = function(numberDays){
 		if ($scope.currentGranularity.display== "minute") {
 			if (numberDays.value >= 30) {
@@ -33,14 +33,14 @@ mciModule.controller('SchedulerStatsCtrl', function($scope, $http, $window, $fil
 		return false;
 	}
 	$scope.getHostUtilizationData = function(){
-		var query = "granularity=" + encodeURIComponent($scope.currentGranularity.value) + 
+		var query = "granularity=" + encodeURIComponent($scope.currentGranularity.value) +
 		"&numberDays=" + encodeURIComponent($scope.currentNumberDays.value)
-		$http.get(url + "?" + query)
-		.success(function(data){
-			$scope.utilizationData = data.reverse();
-		})
-		.error(function(data, status){
-			console.log(status)
+		$http.get(url + "?" + query).then(
+		function(resp){
+			$scope.utilizationData = resp.data.reverse();
+		},
+		function(resp){
+			console.log(resp.status)
 		});
 	};
 
