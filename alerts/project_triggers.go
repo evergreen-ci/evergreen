@@ -161,8 +161,10 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 		if lastAlerted == nil || lastAlerted.TaskId == "" {
 			errMessage := getShouldExecuteError(ctx)
 			errMessage[message.FieldsMsgName] = "last alert record nil, or empty last alert task_id"
-			grip.Error(errMessage)
-			return false, nil
+			errMessage["lastAlert"] = lastAlerted
+			errMessage["outcome"] = "sending alert"
+			grip.Info(errMessage)
+			return true, nil
 		}
 
 		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId)
