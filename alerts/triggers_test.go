@@ -176,7 +176,7 @@ func TestExistingFailedTaskTriggers(t *testing.T) {
 			So(err, ShouldBeNil)
 			triggers, err := getActiveTaskFailureTriggers(*ctx)
 			So(err, ShouldBeNil)
-			So(len(triggers), ShouldEqual, 1)
+			So(len(triggers), ShouldEqual, 2)
 			So(triggers[0].Id(), ShouldEqual, TaskFailed{}.Id())
 		})
 	})
