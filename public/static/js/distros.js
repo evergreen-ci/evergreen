@@ -236,12 +236,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
         $scope.activeDistro, {
-          success: function(distros, status) {
+          success: function(resp) {
             $window.location.reload(true);
           },
-          error: function(jqXHR, status, errorThrown) {
+          error: function(resp) {
             $window.location.reload(true);
-            console.log(jqXHR.error);
+            console.log(resp.data.error);
           }
         }
       );
@@ -251,12 +251,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
         $scope.activeDistro,
         $scope.shouldDeco,
         {
-          success: function(distros, status) {
+          success: function(resp) {
             $window.location.reload(true);
           },
-          error: function(jqXHR, status, errorThrown) {
+          error: function(resp) {
             $window.location.reload(true);
-            console.log(jqXHR.error);
+            console.log(resp.data.error);
           }
         }
       );
@@ -270,12 +270,12 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
       $scope.activeDistro._id,
       $scope.shouldDeco,
       {
-        success: function(distros, status) {
+        success: function(resp) {
           $window.location.reload(true);
         },
-        error: function(jqXHR, status, errorThrown) {
+        error: function(resp) {
           $window.location.reload(true);
-          console.log(jqXHR.error);
+          console.log(resp.data.error);
         }
       }
     );

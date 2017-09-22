@@ -46,6 +46,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   }
 
   $scope.isValidAlertDefinition = function(spec) {
+    if (!spec) { return false; }
     if (spec.startsWith("JIRA:") && spec.split(":").length < 3) {
         return false
     }
@@ -122,39 +123,42 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     // if copyProject is set, copy the current project
     if ($scope.newProject.copyProject) {
       $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time);
-      $http.put('/project/' + $scope.newProject.identifier, $scope.newProject).
-        success(function(data_put, status_put) {
-          $http.post('/project/' + $scope.newProject.identifier, $scope.settingsFormData).
-            success(function(data_post, status_post) {
+      $http.put('/project/' + $scope.newProject.identifier, $scope.newProject).then(
+        function(resp) {
+          var data_put = resp.data;
+          $http.post('/project/' + $scope.newProject.identifier, $scope.settingsFormData).then(
+            function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
               $scope.loadProject(data_put.ProjectId);
               $scope.newProject = {};
-            }).
-            error(function(data, status, errorThrown) {
-              console.log("error saving data for new project: " + status);
+            },
+            function(resp) {
+              console.log("error saving data for new project: " + resp.status);
             });
-        }).
-        error(function(data, status, errorThrown) {
-          console.log("error creating new project: " + status);
+        },
+        function(resp) {
+          console.log("error creating new project: " + resp.status);
         });
 
     // otherwise, create a blank project
     } else {
-      $http.put('/project/' + $scope.newProject.identifier, $scope.newProject)
-        .success(function(data, status) {
+      $http.put('/project/' + $scope.newProject.identifier, $scope.newProject).then(
+        function(resp) {
+          var data = resp.data;
           $scope.refreshTrackedProjects(data.AllProjects);
           $scope.loadProject(data.ProjectId);
           $scope.newProject = {};
-        })
-        .error(function(data, status){
-          console.log("error creating project: " + status);
+        },
+        function(resp){
+          console.log("error creating project: " + resp.status);
         });
     }
   };
 
   $scope.loadProject = function(projectId) {
-    $http.get('/project/' + projectId)
-      .success(function(data, status){
+    $http.get('/project/' + projectId).then(
+      function(resp){
+        var data = resp.data;
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
          $scope.projectVars = data.ProjectVars.vars || {};
@@ -182,9 +186,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
         $location.hash($scope.projectRef.identifier);
         $scope.$emit('loadProject', $scope.projectRef.identifier, $scope.displayName);
-      })
-      .error(function(data, status) {
-        console.log(status);
+      },
+      function(resp) {
+        console.log(resp.status);
       });
   };
 
@@ -224,15 +228,16 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
-    $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).
-      success(function(data, status) {
+    $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).then(
+      function(resp) {
+        var data = resp.data;
         $scope.saveMessage = "Settings Saved.";
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
         $scope.isDirty = false;
-      }).
-      error(function(data, status, errorThrown) {
-        console.log(status);
+      },
+      function(resp) {
+        console.log(resp.status);
       });
   };
 
@@ -278,7 +283,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   }
 
   $scope.isValidMergeBaseRevision = function(revision){
-    return revision.length >= 40;
+    return revision && revision.length >= 40;
   }
 
   $scope.setLastRevision = function() {
@@ -288,13 +293,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         console.log("bad revision");
         return;
       }
-      $http.put(revisionUrl, $scope.settingsFormData.repotracker_error.merge_base_revision).
-        success(function(data, status) {
+      $http.put(revisionUrl, $scope.settingsFormData.repotracker_error.merge_base_revision).then(
+        function(data) {
           $scope.settingsFormData.repotracker_error.exists = false;
-        }).
-        error(function(data, status, errorThrown){
-          console.log(status);
-        })
+        },
+        function(resp){
+          console.log(resp.status);
+        });
     }
   }
 

@@ -28,11 +28,11 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             'abort',
             {},
             {
-                success: function(data, status) {
-                    doModalSuccess("Task aborted.", data);
+                success: function(resp) {
+                    doModalSuccess("Task aborted.", resp.data);
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error aborting: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error aborting: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -44,11 +44,11 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             'restart',
             {},
             {
-                success: function(data, status) {
-                    doModalSuccess("Task scheduled to restart.", data);
+                success: function(resp) {
+                    doModalSuccess("Task scheduled to restart.", resp.data);
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error restarting: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error restarting: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -60,11 +60,12 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             'set_priority',
             { priority: $scope.adminOptionVals.priority },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     doModalSuccess("Priority for task updated to "+ data.priority +".", data);
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting priority: ' + jqXHR,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error setting priority: ' + resp.data,'errorModal');
                 }
             }
         );
@@ -76,11 +77,12 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
             'set_active',
             { active: active },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     doModalSuccess("Task marked as " + (active ? "scheduled." : "unscheduled."), data);
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting active = ' + active + ': ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error setting active = ' + active + ': ' + resp.data.error,'errorModal');
                 }
             }
         );

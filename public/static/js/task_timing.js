@@ -306,8 +306,9 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
           encodeURIComponent($scope.currentRequest.requester) + '/' +
           encodeURIComponent($scope.currentTask)
       $http.get(
-      url + '?' + query).
-      success(function(data) {
+      url + '?' + query).then(
+      function(resp) {
+          var data = resp.data;
           $scope.taskData = ($scope.isAllTasks()) ? data.builds.reverse() : data.tasks.reverse();
           $scope.versions = ($scope.currentRequest.requester == repotracker_requester) ? data.versions.reverse() : data.patches.reverse();
           $scope.versions = _.filter($scope.versions, function(v, i){
@@ -315,9 +316,9 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
           })
           $scope.taskData = _.filter($scope.taskData, isValidDate)
           setTimeout(function(){$scope.drawDetailGraph()},0);
-      }).
-      error(function(data) {
-          notificationService.pushNotification("Error loading data: `" + data.error+"`", 'errorHeader', "error");
+      },
+      function(resp) {
+          notificationService.pushNotification("Error loading data: `" + resp.data.error+"`", 'errorHeader', "error");
           $scope.taskData = [];
       });
 

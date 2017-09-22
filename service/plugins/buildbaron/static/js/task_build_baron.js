@@ -1,6 +1,6 @@
 mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   $scope.conf = $window.plugins["buildbaron"];
-  
+
   var statusKeys = {
     "Blocked": 1,
     "Open": 1,
@@ -11,8 +11,9 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   };
 
   $scope.getBuildBaronResults = function() {
-    $http.get('/plugin/buildbaron/jira_bf_search/' + $scope.taskId + '/' + $scope.taskExec).
-      success(function(issues, status) {
+    $http.get('/plugin/buildbaron/jira_bf_search/' + $scope.taskId + '/' + $scope.taskExec).then(
+      function(resp) {
+        var issues = resp.data;
         if (issues && issues.length > 0 ) {
           // we must sort with native js, since Angular does not
           // allow us to use conditionals when comparing two entries.
@@ -42,15 +43,16 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
         } else {
           $scope.build_baron_status = "nothing";
         }
-      }).
-    error(function(jqXHR, status, errorThrown) {
+      },
+    function(resp) {
       $scope.build_baron_status = "error";
     });
   };
 
   $scope.getNote = function() {
-    $http.get('/plugin/buildbaron/note/' + $scope.taskId ).
-      success(function(data, status) {
+    $http.get('/plugin/buildbaron/note/' + $scope.taskId ).then(
+      function(resp) {
+        var data = resp.data;
         // the GET can return null, for empty notes
         if (data) {
           $scope.editTime = data.time;
@@ -58,25 +60,27 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
             $scope.note = data.content;
           }
         }
-      }).
-    error(function(jqXHR, status) {
+        $scope.loaded = true;
+      },
+    function(resp) {
       $scope.build_baron_status = "error";
-    }).finally(function(){
       $scope.loaded = true;
     });
   };
 
   $scope.saveNote = _.debounce(function() {
-    // we attach the previous editTime to ensure we 
+    // we attach the previous editTime to ensure we
     // don't overwrite more recent edits the user
     // might have missed
     $http.put('/plugin/buildbaron/note/' + $scope.taskId,
-        {content: $scope.note, time: $scope.editTime}).
-      success(function(data, status) {
+        {content: $scope.note, time: $scope.editTime}).then(
+      function(resp) {
+        var data = resp.data;
         $scope.editTime = data.time;
         $scope.editing = false;
-      }).
-    error(function(jqXHR, status) {
+      },
+    function(resp) {
+      var jqXHR = resp.data;
       var err = "error saving note";
       if (jqXHR) {
         // append an error message if we get one
@@ -91,19 +95,21 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   $scope.fileTicket = _.debounce(function(){
     $scope.creatingTicket = true;
     $http.post('/plugin/buildbaron/file_ticket',
-        {task: $scope.taskId, tests: $scope.ticketTests}).
-      success(function(data, status) {
+        {task: $scope.taskId, tests: $scope.ticketTests}).then(
+      function(resp) {
+        var data = resp.data;
         $scope.ticketKey = data.key
-      }).
-    error(function(jqXHR, status) {
+        $scope.creatingTicket = false;
+      },
+    function(resp) {
+      var jqXHR = resp.data;
       var err = "error filing ticket";
       if (jqXHR) {
         // append an error message if we get one
         err += ": " + jqXHR;
       }
       alert(err);
-    }).finally(function(){
-        $scope.creatingTicket = false;
+      $scope.creatingTicket = false;
     });
   });
 
@@ -128,10 +134,10 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
       $scope.ticketTests = [$scope.failed[0].test_file];
     }
   };
-  
+
   $scope.setTask($window.task_data);
   if ( $scope.conf.enabled && $scope.task.status == "failed" ) {
-    $scope.build_baron_status = "loading"; 
+    $scope.build_baron_status = "loading";
     $scope.getBuildBaronResults();
   }
   if($scope.conf.enabled){

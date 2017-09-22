@@ -23,9 +23,7 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
         config.method = method;
         config.url = [baseUrl, resource].concat(idents).join('/');
 
-        $http(config)
-            .success(callbacks.success || function() {})
-            .error(callbacks.error || function() {});
+        $http(config).then(callbacks.success || function() {}, callbacks.error || function() {});
     };
 
     ['delete', 'get', 'post', 'put'].forEach(function(method) {

@@ -7,10 +7,10 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.getSettings = function() {
     var successHandler = function(resp) {
-      $scope.Settings = resp;
+      $scope.Settings = resp.data;
     }
-    var errorHandler = function(jqXHR, status, errorThrown) {
-      notificationService.pushNotification("Error loading settings: " + jqXHR.error, "errorHeader");
+    var errorHandler = function(resp) {
+      notificationService.pushNotification("Error loading settings: " + resp.data.error, "errorHeader");
     }
     mciAdminRestService.getSettings({ success: successHandler, error: errorHandler });
   }
@@ -19,8 +19,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var successHandler = function(resp) {
       window.location.href = "/admin";
     }
-    var errorHandler = function(jqXHR, status, errorThrown) {
-      notificationService.pushNotification("Error saving settings: " + jqXHR.error, "errorHeader");
+    var errorHandler = function(resp) {
+      notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
     }
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }

@@ -43,13 +43,14 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
             'abort',
             {},
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     notifier.pushNotification("Build aborted.", 'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error aborting build: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error aborting build: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -63,13 +64,14 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
               taskIds: _.pluck(_.filter($scope.build.tasks, function(y){return y.checkedForRestart}),"id")
             },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     notifier.pushNotification("Build scheduled to restart.", 'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error restarting build: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error restarting build: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -81,14 +83,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
             'set_priority',
             { priority: $scope.adminOptionVals.priority },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     notifier.pushNotification("Priority for build updated to "+
                     $scope.adminOptionVals.priority + ".", 'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting build priority: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error setting build priority: ' + resp.data.error,'errorModal');
                 }
             }
         );
@@ -100,14 +103,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
             'set_active',
             { active: active },
             {
-                success: function(data, status) {
+                success: function(resp) {
+                    var data = resp.data;
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
                     var notifyString = "Build marked as " + (active ? "scheduled." : "unscheduled.");
                     notifier.pushNotification(notifyString, 'notifyHeader', 'success');
                 },
-                error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error scheduling build: ' + jqXHR.error,'errorModal');
+                error: function(resp) {
+                    notifier.pushNotification('Error scheduling build: ' + resp.data.error,'errorModal');
                 }
             }
         );

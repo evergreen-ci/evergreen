@@ -33,7 +33,8 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
   };
 
 
-  $scope.setBuilds = function(data) {
+  $scope.setBuilds = function(resp) {
+    var data = resp.data;
     var builds = data.builds;
     $scope.buildResults = {};
     if (data.lastSuccess) {
@@ -56,12 +57,12 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
   }
 
   $scope.loadHistory = function() {
-    $http.get('/json/build_history/' + $scope.buildId)
-      .success(function(data) {
-        $scope.setBuilds(data);
-      })
-      .error(function(data) {
-        console.log("Error getting build history: " + JSON.stringify(data));
+    $http.get('/json/build_history/' + $scope.buildId).then(
+      function(resp) {
+        $scope.setBuilds(resp);
+      },
+      function(resp) {
+        console.log("Error getting build history: " + JSON.stringify(resp.data));
       });
   };
 });
