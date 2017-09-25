@@ -330,7 +330,17 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       var config = {
           data: settings
       };
-      baseSvc.postResource(resource, [], config, callbacks)
+      baseSvc.postResource(resource, [], config, callbacks);
+    }
+
+    service.restartTasks = function(from, to, isDryRun, callbacks) {
+      var config = {}
+      config.data = {
+        start_time: from,
+        end_time: to,
+        dry_run: isDryRun
+      };
+      baseSvc.postResource(resource + "/restart", [], config, callbacks);
     }
 
     return service;

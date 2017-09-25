@@ -8,12 +8,14 @@
 
         <link rel="shortcut icon" href="/static/img/favicon.ico">
 
-        <!-- mongostrap (Bootstrap + MongoDB Theme) -->
+        <!-- mongostrap (Bootstrap + MongoDB) + angular material styles -->
         <link href="/static/css/mongostrap.min.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
         <link href="/static/css/angular-material{{if IsProd }}.min{{end}}.css" rel="stylesheet" />
+        <link href="/static/css/md-time-picker.css" rel="stylesheet" />
 
-        <!-- fontawesome icons -->
+        <!-- icons -->
         <link href="/static/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+        <link href="/static/material-design-icons/material-icons.css" rel="stylesheet" />
 
         <!-- our css -->
         <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
@@ -43,6 +45,7 @@
         <script type="text/javascript" src="/static/js/directives/directives.events.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/directives/directives.svg.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/directives/directives.confirm.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/md-time-picker.js"></script>
         <script type="text/javascript" src="/static/js/services/location_hash.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/services/rest.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/mci_module.js?hash={{ StaticsMD5 }}"></script>

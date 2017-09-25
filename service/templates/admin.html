@@ -116,12 +116,30 @@ Admin Settings
           <i class="fa fa-refresh"></i>
           <md-card-title-text>
             <span>Restart Tasks</span>
+            <span class="md-subhead">Restart failed tasks that ran between two times</span>
           </md-card-title-text>
         </md-card-title>
         <md-card-content>
-          Placeholder content
-          <br/><br/><br/><br/><br/>
+          <table>
+            <tr>
+              <td>From:</td>
+              <td>
+                <md-datepicker ng-model="fromDate" md-placeholder="Date"></md-datepicker>
+                <md-time-picker class="inline" ng-model="fromTime" message="message"></md-time-picker>
+              </td>
+            </tr>
+            <tr>
+              <td>To:</td>
+              <td>
+                <md-datepicker ng-model="toDate" md-placeholder="Date"></md-datepicker>
+                <md-time-picker class="inline" ng-model="toTime" message="message"></md-time-picker>
+              </td>
+            </tr>
+          </table>
         </md-card-content>
+        <md-card-footer class="squeezeTop">
+          <md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
+        </md-card-footer>
       </md-card>
     </div>
 
@@ -152,5 +170,28 @@ Admin Settings
     </div>
 
   </md-content>
+
+  <div id="tasks-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" style="width: 1000px">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="font-size: 35px">&times;</button>
+          <h2 class="modal-title">[[modalTitle]]</h2>
+        </div>
+        <div class="modal-body">
+          <div>The following [[tasks.length]] tasks will be restarted:</div>
+          <div id="tasksDisplay">
+            <li ng-repeat="task in tasks" class="link" ng-click="jumpToTask(task)">[[task]]</li>
+          </div>
+          <div>
+            <div class="justifyRight">
+              <md-button class="md-raised" ng-click="restartTasks(false)" ng-disabled="disableRestart">Restart</md-button>
+              <md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {{end}}
