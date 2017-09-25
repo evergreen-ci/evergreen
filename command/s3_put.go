@@ -86,43 +86,50 @@ func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
 		return errors.Wrapf(err, "error decoding %s params", s3pc.Name())
 	}
 
+	return s3pc.validate()
+}
+
+func (s3pc *s3put) validate() error {
+	catcher := grip.NewSimpleCatcher()
+
 	// make sure the command params are valid
 	if s3pc.AwsKey == "" {
-		return errors.New("aws_key cannot be blank")
+		catcher.Add(errors.New("aws_key cannot be blank"))
 	}
 	if s3pc.AwsSecret == "" {
-		return errors.New("aws_secret cannot be blank")
+		catcher.Add(errors.New("aws_secret cannot be blank"))
 	}
 	if s3pc.LocalFile == "" && len(s3pc.LocalFilesIncludeFilter) == 0 {
-		return errors.New("local_file and local_files_include_filter cannot both be blank")
+		catcher.Add(errors.New("local_file and local_files_include_filter cannot both be blank"))
 	}
 	if s3pc.LocalFile != "" && len(s3pc.LocalFilesIncludeFilter) != 0 {
-		return errors.New("local_file and local_files_include_filter cannot both be specified")
+		catcher.Add(errors.New("local_file and local_files_include_filter cannot both be specified"))
 	}
 	if s3pc.Optional && len(s3pc.LocalFilesIncludeFilter) != 0 {
-		return errors.New("cannot use optional upload with local_files_include_filter")
+		catcher.Add(errors.New("cannot use optional upload with local_files_include_filter"))
 	}
 	if s3pc.RemoteFile == "" {
-		return errors.New("remote_file cannot be blank")
+		catcher.Add(errors.New("remote_file cannot be blank"))
 	}
 	if s3pc.ContentType == "" {
-		return errors.New("content_type cannot be blank")
+		catcher.Add(errors.New("content_type cannot be blank"))
 	}
 
 	if !util.SliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
-		return errors.Errorf("invalid visibility setting: %v", s3pc.Visibility)
+		catcher.Add(errors.Errorf("invalid visibility setting: %v", s3pc.Visibility))
 	}
 
 	// make sure the bucket is valid
 	if err := validateS3BucketName(s3pc.Bucket); err != nil {
-		return errors.Wrapf(err, "%v is an invalid bucket name", s3pc.Bucket)
+		catcher.Add(errors.Wrapf(err, "%v is an invalid bucket name", s3pc.Bucket))
 	}
 
 	// make sure the s3 permissions are valid
 	if !validS3Permissions(s3pc.Permissions) {
-		return errors.Errorf("permissions '%v' are not valid", s3pc.Permissions)
+		catcher.Add(errors.Errorf("permissions '%v' are not valid", s3pc.Permissions))
 	}
-	return nil
+
+	return catcher.Resolve()
 }
 
 // Apply the expansions from the relevant task config to all appropriate
@@ -156,6 +163,11 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	if err := s3pc.expandParams(conf); err != nil {
 		return errors.WithStack(err)
 	}
+	// re-validate command here, in case an expansion is not defined
+	if err := s3pc.validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
 	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
