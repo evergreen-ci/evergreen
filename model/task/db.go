@@ -583,11 +583,10 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 		},
 	).Project(
 		bson.M{
-			IdKey:          0,
-			StatusKey:      1,
-			DetailsKey:     1,
-			ActivatedKey:   1,
-			TestResultsKey: 1,
+			IdKey:        0,
+			StatusKey:    1,
+			DetailsKey:   1,
+			ActivatedKey: 1,
 		})
 
 	out, err := Find(query)
