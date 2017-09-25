@@ -94,8 +94,8 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	if settings.PprofPort != "" {
 		go func() {
 			err = service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler)
+			close(pprofWait)
 		}()
-		close(pprofWait)
 	} else {
 		close(pprofWait)
 	}
