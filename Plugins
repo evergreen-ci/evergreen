@@ -1,2 +1,2 @@
-github.com/10gen/evg-perf                     3847c2c82a243098a84c3673b7ab3d4416c67f2e perf.go perf
-github.com/10gen/evg-perf-dashboard           746a9d055a612bb59b6bd0ba331adc8952f2dee6 perf_dashboard.go dashboard
+github.com/10gen/evg-perf                     bf477928d1c60325633d8b4989fad0548e42e6bd perf.go perf
+github.com/10gen/evg-perf-dashboard           2131d7c977f62812707ee631974ae3d22843a294 perf_dashboard.go dashboard
