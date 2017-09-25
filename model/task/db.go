@@ -595,13 +595,6 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 		return nil, errors.Wrap(err, "problem with stats query")
 	}
 
-	for i, task := range out {
-		if err := task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
-		}
-		out[i] = task
-	}
-
 	return out, nil
 }
 

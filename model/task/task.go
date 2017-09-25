@@ -975,7 +975,7 @@ func (t *Task) MergeNewTestResults() error {
 
 	tasks := []Task{}
 	if err := db.Aggregate(collection, pipeline, &tasks); err != nil {
-		return err
+		return errors.Wrap(err, "problem merging new test results")
 	}
 	*t = tasks[0]
 	return nil
