@@ -13,7 +13,7 @@ const (
 
 // TestResult contains test data for a task.
 type TestResult struct {
-	ID        bson.ObjectId `bson:"_id" json:"_id"`
+	ID        bson.ObjectId `bson:"_id" json:"id"`
 	Status    string        `json:"status" bson:"status"`
 	TestFile  string        `json:"test_file" bson:"test_file"`
 	URL       string        `json:"url" bson:"url,omitempty"`
@@ -53,15 +53,16 @@ func (t *TestResult) Insert() error {
 }
 
 // ByTaskIDAndExecution creates a query to return test results from the testresults collection for a given task.
-func ByTaskIDAndExecution(taskID string, execution int) db.Q {
-	return db.Query(bson.M{
+func ByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
+	q := db.Query(bson.M{
 		testResultTaskIDKey:    taskID,
 		testResultExecutionKey: execution,
 	})
+	return find(q)
 }
 
-// Find returns all test results that satisfy the query.
-func Find(query db.Q) ([]TestResult, error) {
+// find returns all test results that satisfy the query.
+func find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
 	err := db.FindAllQ(collection, query, &tests)
 	if err == mgo.ErrNotFound {
@@ -71,7 +72,7 @@ func Find(query db.Q) ([]TestResult, error) {
 }
 
 // FindOne returns one test result that satisfies the query.
-func FindOne(query db.Q) (*TestResult, error) {
+func findOne(query db.Q) (*TestResult, error) {
 	test := &TestResult{}
 	err := db.FindOneQ(collection, query, &test)
 	if err == mgo.ErrNotFound {

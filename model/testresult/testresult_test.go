@@ -13,7 +13,7 @@ import (
 
 type TestResultSuite struct {
 	suite.Suite
-	tests []*TestResult
+	tests []TestResult
 }
 
 func TestTestResultSuite(t *testing.T) {
@@ -23,9 +23,9 @@ func TestTestResultSuite(t *testing.T) {
 func (s *TestResultSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 
-	s.tests = []*TestResult{}
+	s.tests = []TestResult{}
 	for i := 0; i < 5; i++ {
-		s.tests = append(s.tests, &TestResult{
+		s.tests = append(s.tests, TestResult{
 			ID:        bson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
@@ -56,7 +56,7 @@ func (s *TestResultSuite) TestInsert() {
 	}
 
 	for i, t := range s.tests {
-		test, err := FindOne(db.Query(bson.M{
+		test, err := findOne(db.Query(bson.M{
 			"_id": t.ID,
 		}))
 		s.NoError(err)
@@ -80,9 +80,9 @@ func (s *TestResultSuite) TestByTaskIDAndExecution() {
 		s.Require().NoError(err)
 	}
 
-	additionalTests := []*TestResult{}
+	additionalTests := []TestResult{}
 	for i := 5; i < 10; i++ {
-		additionalTests = append(additionalTests, &TestResult{
+		additionalTests = append(additionalTests, TestResult{
 			ID:        bson.NewObjectId(),
 			Status:    "pass",
 			TestFile:  fmt.Sprintf("file-%d", i),
@@ -103,7 +103,7 @@ func (s *TestResultSuite) TestByTaskIDAndExecution() {
 		s.NoError(err)
 	}
 
-	tests, err := Find(ByTaskIDAndExecution(fmt.Sprintf("taskid-3"), 3))
+	tests, err := ByTaskIDAndExecution(fmt.Sprintf("taskid-3"), 3)
 	s.NoError(err)
 	s.Len(tests, 6)
 	for _, test := range tests {
