@@ -43,7 +43,7 @@ func (s *TestResultSuite) SetupSuite() {
 }
 
 func (s *TestResultSuite) SetupTest() {
-	err := db.Clear(collection)
+	err := db.Clear(Collection)
 	s.Require().NoError(err)
 
 }

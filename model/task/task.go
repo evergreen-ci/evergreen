@@ -8,9 +8,15 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	newresultsAllExecutionsField     = "newresults_all_executions"
+	newresultsCurrentExecutionsField = "newresults_current_execution"
 )
 
 var (
@@ -908,4 +914,72 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 	}
 
 	return expDurations, nil
+}
+
+// MergeNewTestResults returns the task with both old (embedded in
+// the tasks collection) and new (from the testresults collection) test results
+// merged in the Task's TestResults field.
+func (t *Task) MergeNewTestResults() error {
+	collection := Collection
+	lookupLocalField := IdKey
+	if t.Archived {
+		collection = OldCollection
+		lookupLocalField = OldTaskIdKey
+	}
+
+	// aggregation stages
+	matchStage := bson.M{"$match": bson.M{IdKey: t.Id}}
+	lookupStage := bson.M{"$lookup": bson.M{
+		"from":         testresult.Collection,
+		"localField":   lookupLocalField,
+		"foreignField": testresult.TaskIDKey,
+		"as":           newresultsAllExecutionsField,
+	}}
+	addNewResultsStage := bson.M{"$addFields": bson.M{
+		newresultsCurrentExecutionsField: bson.M{
+			"$filter": bson.M{
+				"input": "$" + newresultsAllExecutionsField,
+				"as":    "testresult",
+				"cond": bson.M{
+					"$eq": []string{
+						"$$" + "testresult" + "." + testresult.ExecutionKey,
+						"$" + ExecutionKey,
+					},
+				},
+			},
+		},
+	}}
+	deleteNewTestResultFieldsStage := bson.M{"$project": bson.M{
+		newresultsCurrentExecutionsField + "." + IdKey:                   0,
+		newresultsCurrentExecutionsField + "." + testresult.TaskIDKey:    0,
+		newresultsCurrentExecutionsField + "." + testresult.ExecutionKey: 0,
+	}}
+	concatStage := bson.M{"$addFields": bson.M{
+		TestResultsKey: bson.M{
+			"$setUnion": []string{
+				"$" + TestResultsKey,
+				"$" + newresultsCurrentExecutionsField,
+			},
+		},
+	}}
+	cleanupStage := bson.M{"$project": bson.M{
+		newresultsAllExecutionsField:     0,
+		newresultsCurrentExecutionsField: 0,
+	}}
+
+	pipeline := []bson.M{
+		matchStage,
+		lookupStage,
+		addNewResultsStage,
+		deleteNewTestResultFieldsStage,
+		concatStage,
+		cleanupStage,
+	}
+
+	tasks := []Task{}
+	if err := db.Aggregate(collection, pipeline, &tasks); err != nil {
+		return errors.Wrap(err, "problem merging new test results")
+	}
+	*t = tasks[0]
+	return nil
 }
