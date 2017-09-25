@@ -71,5 +71,4 @@ vendor/github.com/evergreen-ci/build-baron-plugin/
 vendor/github.com/evergreen-ci/keyval/
 fabfile.py
 *.pyc
-Plugins
 .idea
