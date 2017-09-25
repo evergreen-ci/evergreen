@@ -949,26 +949,29 @@ func (t *Task) MergeNewTestResults() error {
 			},
 		},
 	}}
+	deleteNewTestResultFieldsStage := bson.M{"$project": bson.M{
+		newresultsCurrentExecutionsField + "." + IdKey:                   0,
+		newresultsCurrentExecutionsField + "." + testresult.TaskIDKey:    0,
+		newresultsCurrentExecutionsField + "." + testresult.ExecutionKey: 0,
+	}}
 	concatStage := bson.M{"$addFields": bson.M{
 		TestResultsKey: bson.M{
-			"$concatArrays": []string{
+			"$setUnion": []string{
 				"$" + TestResultsKey,
 				"$" + newresultsCurrentExecutionsField,
 			},
 		},
 	}}
 	cleanupStage := bson.M{"$project": bson.M{
-		newresultsAllExecutionsField:                   0,
-		newresultsCurrentExecutionsField:               0,
-		TestResultsKey + "." + IdKey:                   0,
-		TestResultsKey + "." + testresult.TaskIDKey:    0,
-		TestResultsKey + "." + testresult.ExecutionKey: 0,
+		newresultsAllExecutionsField:     0,
+		newresultsCurrentExecutionsField: 0,
 	}}
 
 	pipeline := []bson.M{
 		matchStage,
 		lookupStage,
 		addNewResultsStage,
+		deleteNewTestResultFieldsStage,
 		concatStage,
 		cleanupStage,
 	}

@@ -220,7 +220,7 @@ func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 	s.Len(t.TestResults, 9)
 }
 
-func (s *TaskTestResultSuite) TestOldNewTestResults() {
+func (s *TaskTestResultSuite) TestDuplicateTestResults() {
 	t := &Task{
 		Id:         fmt.Sprintf("taskid-%d", 10),
 		Secret:     fmt.Sprintf("secret-%d", 10),
@@ -259,6 +259,82 @@ func (s *TaskTestResultSuite) TestOldNewTestResults() {
 
 	testResults := []testresult.TestResult{}
 	for i := 11; i < 20; i++ {
+		testResults = append(testResults, testresult.TestResult{
+			ID:        bson.NewObjectId(),
+			Status:    "pass",
+			TestFile:  fmt.Sprintf("file-%d", i),
+			URL:       fmt.Sprintf("url-%d", i),
+			URLRaw:    fmt.Sprintf("urlraw-%d", i),
+			LogID:     fmt.Sprintf("logid-%d", i),
+			LineNum:   i,
+			ExitCode:  i,
+			StartTime: float64(i),
+			EndTime:   float64(i),
+			TaskID:    "taskid-10",
+			Execution: 3,
+		})
+	}
+
+	for _, r := range testResults {
+		err = r.Insert()
+		s.NoError(err)
+	}
+
+	t, err = FindOne(ById("taskid-10"))
+	s.NoError(err)
+
+	err = t.MergeNewTestResults()
+	s.NoError(err)
+
+	s.Equal("taskid-10", t.Id)
+	s.Equal("secret-10", t.Secret)
+	s.Equal(time.Unix(int64(10), 0), t.CreateTime)
+	s.Equal("version-10", t.Version)
+	s.Equal("project-10", t.Project)
+	s.Equal("revision-10", t.Revision)
+
+	s.Len(t.TestResults, 9)
+}
+
+func (s *TaskTestResultSuite) TestOldNewTestResults() {
+	t := &Task{
+		Id:         fmt.Sprintf("taskid-%d", 10),
+		Secret:     fmt.Sprintf("secret-%d", 10),
+		CreateTime: time.Unix(int64(10), 0),
+		Version:    fmt.Sprintf("version-%d", 10),
+		Project:    fmt.Sprintf("project-%d", 10),
+		Revision:   fmt.Sprintf("revision-%d", 10),
+		Execution:  3,
+		TestResults: []TestResult{
+			TestResult{
+				Status:    "pass",
+				TestFile:  fmt.Sprintf("file-%d", 11),
+				URL:       fmt.Sprintf("url-%d", 11),
+				URLRaw:    fmt.Sprintf("urlraw-%d", 11),
+				LogId:     fmt.Sprintf("logid-%d", 11),
+				LineNum:   11,
+				ExitCode:  11,
+				StartTime: float64(11),
+				EndTime:   float64(11),
+			},
+			TestResult{
+				Status:    "pass",
+				TestFile:  fmt.Sprintf("file-%d", 12),
+				URL:       fmt.Sprintf("url-%d", 12),
+				URLRaw:    fmt.Sprintf("urlraw-%d", 12),
+				LogId:     fmt.Sprintf("logid-%d", 12),
+				LineNum:   12,
+				ExitCode:  12,
+				StartTime: float64(12),
+				EndTime:   float64(12),
+			},
+		},
+	}
+	err := t.Insert()
+	s.Require().NoError(err)
+
+	testResults := []testresult.TestResult{}
+	for i := 13; i < 22; i++ {
 		testResults = append(testResults, testresult.TestResult{
 			ID:        bson.NewObjectId(),
 			Status:    "pass",
