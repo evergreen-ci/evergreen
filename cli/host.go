@@ -1,6 +1,10 @@
 package cli
 
 import (
+	"encoding/json"
+	"io"
+	"io/ioutil"
+
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -92,7 +96,7 @@ func printHosts(hosts []*model.APIHost) error {
 // HostStatusCommand is the subcommand to return the status of a host
 type HostStatusCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-	HostID     string   `short:"h" long:"host" description:"terminates the specified host" required:"true"`
+	HostID     string   `short:"h" long:"host" description:"gets the status of the specified host" required:"true"`
 }
 
 // Execute will...
@@ -103,10 +107,42 @@ func (cmd *HostStatusCommand) Execute(_ []string) error {
 // HostTerminateCommand is the subcommand to terminate a host
 type HostTerminateCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-	HostID     string   `short:"h" long:"host" description:"terminates the specified host" required:"true"`
+	HostID     string   `long:"host" short:"h" description:"terminates the specified host" required:"true"`
 }
 
-// Execute will...
+// Execute terminates a given host
 func (cmd *HostTerminateCommand) Execute(_ []string) error {
-	return errors.New("not implemented")
+	if cmd.HostID == "" {
+		return errors.New("host ID cannot be blank")
+	}
+
+	client, _, _, err := getAPIClients(cmd.GlobalOpts)
+	if err != nil {
+		return err
+	}
+
+	data := struct {
+		HostID string `json:"host_id"`
+		Action string `json:"action"`
+	}{cmd.HostID, "terminate"}
+
+	rPipe, wPipe := io.Pipe()
+	encoder := json.NewEncoder(wPipe)
+	go func() {
+		grip.Warning(encoder.Encode(data))
+		grip.Warning(wPipe.Close())
+	}()
+	defer rPipe.Close()
+
+	resp, err := client.doReq("POST", "spawn", -1, rPipe)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	grip.Info(body)
+
+	return nil
 }

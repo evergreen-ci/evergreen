@@ -31,6 +31,7 @@ type APIClient struct {
 	User       string
 	APIKey     string
 	APIRootV2  string
+	UIRoot     string
 }
 
 // APIError is an implementation of error for reporting unexpected results from API calls.
@@ -67,6 +68,7 @@ func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, erro
 		APIRootV2: APIV2Root,
 		User:      settings.User,
 		APIKey:    settings.APIKey,
+		UIRoot:    settings.UIServerHost,
 	}
 
 	// create client for the REST APIs
@@ -80,6 +82,7 @@ func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, erro
 		APIRootV2: apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v2",
 		User:      settings.User,
 		APIKey:    settings.APIKey,
+		UIRoot:    settings.UIServerHost,
 	}
 
 	return ac, rc, settings, nil
@@ -108,8 +111,10 @@ func (ac *APIClient) doReq(method, path string, apiVersion int, body io.Reader) 
 		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRoot, path), body)
 	} else if apiVersion == 2 {
 		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRootV2, path), body)
+	} else if apiVersion == -1 {
+		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.UIRoot, path), body)
 	} else {
-		return nil, errors.Errorf("apiVersion must be 1 or 2")
+		return nil, errors.Errorf("invalid apiVersion")
 	}
 	if err != nil {
 		return nil, err
