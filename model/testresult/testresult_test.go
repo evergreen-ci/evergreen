@@ -103,7 +103,7 @@ func (s *TestResultSuite) TestByTaskIDAndExecution() {
 		s.NoError(err)
 	}
 
-	tests, err := ByTaskIDAndExecution(fmt.Sprintf("taskid-3"), 3)
+	tests, err := FindByTaskIDAndExecution(fmt.Sprintf("taskid-3"), 3)
 	s.NoError(err)
 	s.Len(tests, 6)
 	for _, test := range tests {

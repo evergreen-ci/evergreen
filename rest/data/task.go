@@ -90,7 +90,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	return ts, nil
 }
 
-func (tc *DBTestConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
+func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
 	status string, limit, sortDir int) ([]task.Task, error) {
 	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId,
 		status, limit, sortDir)
@@ -192,7 +192,7 @@ func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return nil, mtc.StoredError
 }
 
-// FindTestsBytaskId
+// FindTasksBytaskId
 func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
 	status string, limit, sortDir int) ([]task.Task, error) {
 	if mtc.StoredError != nil {
@@ -209,22 +209,22 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 	// loop until the filename is found
 	for ix, t := range ofProjectAndCommit {
 		if t.Id == taskId {
-			// We've found the test
-			var testsToReturn []task.Task
+			// We've found the task
+			var tasksToReturn []task.Task
 			if sortDir < 0 {
 				if ix-limit > 0 {
-					testsToReturn = ofProjectAndCommit[ix-(limit) : ix]
+					tasksToReturn = ofProjectAndCommit[ix-(limit) : ix]
 				} else {
-					testsToReturn = ofProjectAndCommit[:ix]
+					tasksToReturn = ofProjectAndCommit[:ix]
 				}
 			} else {
 				if ix+limit > len(ofProjectAndCommit) {
-					testsToReturn = ofProjectAndCommit[ix:]
+					tasksToReturn = ofProjectAndCommit[ix:]
 				} else {
-					testsToReturn = ofProjectAndCommit[ix : ix+limit]
+					tasksToReturn = ofProjectAndCommit[ix : ix+limit]
 				}
 			}
-			return testsToReturn, nil
+			return tasksToReturn, nil
 		}
 	}
 	return nil, nil

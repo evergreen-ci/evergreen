@@ -14,6 +14,7 @@ type DBTestConnector struct{}
 
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string, limit,
 	sortDir int) ([]task.TestResult, error) {
+
 	pipeline := task.TestResultsByTaskIdPipeline(taskId, testFilename, status, limit, sortDir)
 	res := []task.TestResult{}
 

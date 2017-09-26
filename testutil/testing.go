@@ -83,9 +83,6 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 			*settingsOverride, err))
 	}
 
-	// override the appropriate params
-	t.Logf("Loading cloud provider settings from %v", *settingsOverride)
-
 	testSettings.Providers = integrationSettings.Providers
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.AuthConfig = integrationSettings.AuthConfig
