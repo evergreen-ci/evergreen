@@ -130,7 +130,7 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 }
 
 // helper to terminate a single host
-func terminateHost(ctx cotnext.Context, h *host.Host, settings *evergreen.Settings) error {
+func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
 	// clear the running task of the host in case one has been assigned.
 	if h.RunningTask != "" {
 		grip.Warningf("Host has running task: %s. Clearing running task field for host"+

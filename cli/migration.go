@@ -41,7 +41,10 @@ func (c *MigrationCommand) Execute(_ []string) error {
 	}
 	defer env.Close()
 
-	app := migrations.Application(env)
+	app, err := migrations.Application(env)
+	if err != nil {
+		return errors.Wrap(err, "problem configuring migration application")
+	}
 	app.DryRun = c.DryRun
 	return errors.Wrap(app.Run(ctx), "problem running migration operation")
 }

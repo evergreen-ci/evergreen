@@ -17,7 +17,7 @@ const SSHTimeout = time.Minute * 10
 
 // RunRemoteScript executes a shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.
-func RunRemoteScript(ctx context.Contex, h *host.Host, script string, sshOptions []string) (string, error) {
+func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOptions []string) (string, error) {
 	// parse the hostname into the user, host and port
 	hostInfo, err := util.ParseSSHInfo(h.Host)
 	if err != nil {
