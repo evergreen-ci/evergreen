@@ -6,19 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const SSHTimeout = time.Minute * 10
 
 // RunRemoteScript executes a shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.
-func RunRemoteScript(h *host.Host, script string, sshOptions []string) (string, error) {
+func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOptions []string) (string, error) {
 	// parse the hostname into the user, host and port
 	hostInfo, err := util.ParseSSHInfo(h.Host)
 	if err != nil {
@@ -61,7 +60,7 @@ func RunRemoteScript(h *host.Host, script string, sshOptions []string) (string, 
 	}
 
 	// run the ssh command with given timeout
-	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
+	ctx, cancel := context.WithTimeout(ctx, SSHTimeout)
 	defer cancel()
 	err = cmd.Run(ctx)
 
