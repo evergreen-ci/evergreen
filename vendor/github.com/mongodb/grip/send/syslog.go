@@ -76,6 +76,12 @@ func MakeLocalSyslogLogger() Sender {
 func (s *syslogger) Close() error { return s.logger.Close() }
 
 func (s *syslogger) Send(m message.Composer) {
+	defer func() {
+		if err := recover(); err != nil {
+			s.ErrorHandler(fmt.Errorf("panic: %v", err), m)
+		}
+	}()
+
 	if s.Level().ShouldLog(m) {
 		if err := s.sendToSysLog(m.Priority(), m.String()); err != nil {
 			s.ErrorHandler(err, m)
