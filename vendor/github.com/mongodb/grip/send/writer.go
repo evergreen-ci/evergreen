@@ -77,11 +77,11 @@ func (s *WriterSender) doSend() error {
 		}
 
 		if err == nil {
-			s.Send(message.NewBytesMessage(s.priority, bytes.TrimRight(line, "\n\t ")))
+			s.Send(message.NewBytesMessage(s.priority, bytes.TrimRight(line, "\r\n\t ")))
 			continue
 		}
 
-		s.Send(message.NewBytesMessage(s.priority, bytes.TrimRight(line, "\n\t ")))
+		s.Send(message.NewBytesMessage(s.priority, bytes.TrimRight(line, "\r\n\t ")))
 		return err
 	}
 }
@@ -96,7 +96,7 @@ func (s *WriterSender) Close() error {
 		return err
 	}
 
-	s.Send(message.NewBytesMessage(s.priority, bytes.TrimRight(s.buffer.Bytes(), "\n\t ")))
+	s.Send(message.NewBytesMessage(s.priority, bytes.TrimRight(s.buffer.Bytes(), "\r\n\t ")))
 	s.buffer.Reset()
 	s.writer.Reset(s.buffer)
 	return nil
