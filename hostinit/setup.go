@@ -137,14 +137,15 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 	// used for making sure we don't exit before a setup script is done
 	wg := &sync.WaitGroup{}
-	hosts := make(chan host.Hosts, len(uninitializedHosts))
+	catcher := grip.NewSimpleCatcher()
+	hosts := make(chan host.Host, len(uninitializedHosts))
 	for _, idx := range rand.Perm(len(uninitializedHosts)) {
 		hosts <- uninitializedHosts[idx]
 	}
 	close(hosts)
 
 	var numThreads int
-	if len(hosts) <= 16 {
+	if len(hosts) >= 16 {
 		numThreads = 16
 	} else {
 		numThreads = len(hosts)
@@ -156,7 +157,8 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 			defer wg.Done()
 			for h := range hosts {
 				if ctx.Err() != nil {
-					return errors.New("hostinit run canceled")
+					catcher.Add(errors.New("hostinit run canceled"))
+					return
 				}
 
 				grip.Info(message.Fields{
@@ -169,7 +171,9 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 				// check whether or not the host is ready for its setup script to be run
 				ready, err := init.IsHostReady(&h)
 				if err != nil {
-					grip.Errorf("Error checking host %s for readiness: %+v", h.Id, err)
+					err = errors.Wrapf(err, "problem checking host %s for readiness", h.Id)
+					catcher.Add(err)
+					grip.Error(err.Error())
 					continue
 				}
 
@@ -185,6 +189,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 				}
 
 				if ctx.Err() != nil {
+					catcher.Add(errors.New("hostinit run canceled"))
 					return
 				}
 
@@ -206,7 +211,8 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
 						h.Distro.Id, h.Id, hostLink)
 					if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
-						grip.Errorf("Error sending email: %+v", err)
+						err = errors.Wrap(err, "problem sending host init error email")
+						catcher.Add(err)
 					}
 				}
 
@@ -231,7 +237,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 		"runtime": time.Since(startTime),
 	})
 
-	return nil
+	return catcher.Resolve()
 }
 
 // IsHostReady returns whether or not the specified host is ready for its setup script
