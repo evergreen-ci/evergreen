@@ -31,7 +31,6 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 	     ID : {{.Patch.Id.Hex}}
 	Created : {{.Now.Sub .Patch.CreateTime}} ago
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
-      Configure : {{.ConfigureLink}}
           Build : {{.Link}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
@@ -186,19 +185,24 @@ func (lpc *ListPatchesCommand) Execute(_ []string) error {
 // which can be written to the terminal.
 func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
 	var out bytes.Buffer
+	var url string
+
+	if p.Activated {
+		url = uiHost + "/version/" + p.Id.Hex()
+	} else {
+		url = uiHost + "/patch/" + p.Id.Hex()
+	}
 
 	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch         *patch.Patch
-		ShowSummary   bool
-		ConfigureLink string
-		Link          string
-		Now           time.Time
+		Patch       *patch.Patch
+		ShowSummary bool
+		Link        string
+		Now         time.Time
 	}{
-		Patch:         p,
-		ShowSummary:   summarize,
-		ConfigureLink: uiHost + "/patch/" + p.Id.Hex(),
-		Link:          uiHost + "/version/" + p.Id.Hex(),
-		Now:           time.Now(),
+		Patch:       p,
+		ShowSummary: summarize,
+		Link:        url,
+		Now:         time.Now(),
 	})
 	if err != nil {
 		return "", err
