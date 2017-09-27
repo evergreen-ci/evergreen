@@ -83,6 +83,25 @@ func (c *shellExec) Execute(ctx context.Context,
 
 	logger.Execution().Debug("Preparing script...")
 
+	if c.WorkingDir == "" {
+		c.WorkingDir = conf.WorkDir
+	} else {
+		c.WorkingDir = filepath.Join(conf.WorkDir, c.WorkingDir)
+	}
+
+	if stat, err := os.Stat(c.WorkingDir); os.IsNotExist(err) {
+		msg := fmt.Sprintf("cannot run %s because working directory %s does not exist",
+			c.Name(), c.WorkingDir)
+
+		logger.Execution().Warning(msg)
+		return errors.Wrap(err, msg)
+	} else if !stat.IsDir() {
+		msg := fmt.Sprintf("%s is not a directory, cannot run %s",
+			c.WorkingDir, c.Name())
+		logger.Execution().Warning(msg)
+		return errors.New(msg)
+	}
+
 	var logWriterInfo io.WriteCloser
 	var logWriterErr io.WriteCloser
 
@@ -98,10 +117,11 @@ func (c *shellExec) Execute(ctx context.Context,
 	defer logWriterErr.Close()
 
 	localCmd := &subprocess.LocalCommand{
-		CmdString:  c.Script,
-		Stdout:     logWriterInfo,
-		Stderr:     logWriterErr,
-		ScriptMode: true,
+		CmdString:        c.Script,
+		Stdout:           logWriterInfo,
+		Stderr:           logWriterErr,
+		WorkingDirectory: c.WorkingDir,
+		ScriptMode:       true,
 	}
 
 	if c.IgnoreStandardError {
@@ -112,12 +132,6 @@ func (c *shellExec) Execute(ctx context.Context,
 	}
 	if c.RedirectStandardErrorToOutput {
 		localCmd.Stderr = logWriterInfo
-	}
-
-	if c.WorkingDir != "" {
-		localCmd.WorkingDirectory = filepath.Join(conf.WorkDir, c.WorkingDir)
-	} else {
-		localCmd.WorkingDirectory = conf.WorkDir
 	}
 
 	if c.Shell != "" {
