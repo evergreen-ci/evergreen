@@ -97,7 +97,7 @@ func (c *shellExec) Execute(ctx context.Context,
 		return errors.Wrap(err, msg)
 	} else if !stat.IsDir() {
 		msg := fmt.Sprintf("%s is not a directory, cannot run %s",
-			c.WorkingDir, c.WorkingDir)
+			c.WorkingDir, c.Name())
 		logger.Execution().Warning(msg)
 		return errors.New(msg)
 	}
