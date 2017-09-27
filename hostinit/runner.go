@@ -74,8 +74,10 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 			hasErrors = true
 			msg["error"] = err.Error()
 			msg["status"] = "failed"
+		} else {
+			msg["status"] = "success"
 		}
-		msg["status"] = "success"
+
 		msg["runtime"] = time.Since(startTime)
 		msg["span"] = time.Since(startTime).String()
 
@@ -90,8 +92,6 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		msg := message.Fields{
 			"GUID":    init.GUID,
 			"runner":  RunnerName,
-			"error":   err.Error(),
-			"status":  "failed",
 			"method":  "setupReadyHosts",
 			"runtime": time.Since(startTime),
 		}
@@ -103,8 +103,10 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 			hadErrors = true
 			msg["error"] = err.Error()
 			msg["status"] = "failed"
+		} else {
+			msg["status"] = "success"
 		}
-		msg["status"] = "success"
+
 		msg["runtime"] = time.Since(startTime)
 		msg["span"] = time.Since(startTime).String()
 
