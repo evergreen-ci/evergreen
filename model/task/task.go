@@ -916,19 +916,14 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 	return expDurations, nil
 }
 
-// MergeNewTestResults returns the task with both old (embedded in
-// the tasks collection) and new (from the testresults collection) test results
-// merged in the Task's TestResults field.
-func (t *Task) MergeNewTestResults() error {
-	collection := Collection
+func mergeNewTestResultsPipeline(id string, archived bool) []bson.M {
 	lookupLocalField := IdKey
-	if t.Archived {
-		collection = OldCollection
+	if archived {
 		lookupLocalField = OldTaskIdKey
 	}
 
 	// aggregation stages
-	matchStage := bson.M{"$match": bson.M{IdKey: t.Id}}
+	matchStage := bson.M{"$match": bson.M{IdKey: id}}
 	lookupStage := bson.M{"$lookup": bson.M{
 		"from":         testresult.Collection,
 		"localField":   lookupLocalField,
@@ -967,7 +962,7 @@ func (t *Task) MergeNewTestResults() error {
 		newresultsCurrentExecutionsField: 0,
 	}}
 
-	pipeline := []bson.M{
+	return []bson.M{
 		matchStage,
 		lookupStage,
 		addNewResultsStage,
@@ -975,6 +970,18 @@ func (t *Task) MergeNewTestResults() error {
 		concatStage,
 		cleanupStage,
 	}
+}
+
+// MergeNewTestResults returns the task with both old (embedded in
+// the tasks collection) and new (from the testresults collection) test results
+// merged in the Task's TestResults field.
+func (t *Task) MergeNewTestResults() error {
+	collection := Collection
+	if t.Archived {
+		collection = OldCollection
+	}
+
+	pipeline := mergeNewTestResultsPipeline(t.Id, t.Archived)
 
 	tasks := []Task{}
 	if err := db.Aggregate(collection, pipeline, &tasks); err != nil {

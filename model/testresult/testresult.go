@@ -53,14 +53,16 @@ func (t *TestResult) Insert() error {
 	return db.Insert(Collection, t)
 }
 
-// ByTaskIDAndExecution creates a query to return test results from the testresults collection for a given task.
-func ByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
+// FindByTaskIDAndExecution returns test results from the testresults collection for a given task.
+func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error) {
 	q := db.Query(bson.M{
 		TaskIDKey:    taskID,
 		ExecutionKey: execution,
 	})
 	return find(q)
 }
+
+// RemoveByTaskIDAndExecution removes test result from the testresults collection for a given task.
 
 // find returns all test results that satisfy the query.
 func find(query db.Q) ([]TestResult, error) {

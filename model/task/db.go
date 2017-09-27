@@ -380,8 +380,7 @@ var (
 	})
 )
 
-// TODO Rewrite this rest v2 route for new test results collection after migration
-// getTestResultsPipeline returns an aggregation pipeline for fetching a list
+// TestResultsByTaskIdPipeline returns an aggregation pipeline for fetching a list
 // of test from a task by its Id.
 func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
 	sortDir int) []bson.M {
@@ -389,10 +388,12 @@ func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
 	if sortDir < 0 {
 		sortOperator = "$lte"
 	}
-	pipeline := []bson.M{
-		{"$match": bson.M{"_id": taskId}},
-		{"$unwind": fmt.Sprintf("$%s", TestResultsKey)},
-		{"$project": bson.M{
+
+	pipeline := mergeNewTestResultsPipeline(taskId, false)
+
+	pipeline = append(pipeline, bson.M{"$unwind": fmt.Sprintf("$%s", TestResultsKey)})
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
 			"status":    fmt.Sprintf("$%s.%s", TestResultsKey, TestResultStatusKey),
 			"test_file": fmt.Sprintf("$%s.%s", TestResultsKey, TestResultTestFileKey),
 			"log_id":    fmt.Sprintf("$%s.%s", TestResultsKey, TestResultLogIdKey),
@@ -403,8 +404,7 @@ func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
 			"start":     fmt.Sprintf("$%s.%s", TestResultsKey, TestResultStartTimeKey),
 			"end":       fmt.Sprintf("$%s.%s", TestResultsKey, TestResultEndTimeKey),
 			"_id":       0,
-		}},
-	}
+		}})
 	if testStatus != "" {
 		statusMatch := bson.M{
 			"$match": bson.M{TestResultStatusKey: testStatus},
@@ -606,7 +606,7 @@ func FindOne(query db.Q) (*Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	if err := task.MergeNewTestResults(); err != nil {
+	if err = task.MergeNewTestResults(); err != nil {
 		return nil, errors.Wrap(err, "errors merging new test results")
 	}
 	return task, err
@@ -619,7 +619,7 @@ func FindOneOld(query db.Q) (*Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	if err := task.MergeNewTestResults(); err != nil {
+	if err = task.MergeNewTestResults(); err != nil {
 		return nil, errors.Wrap(err, "errors merging new test results")
 	}
 	return task, err
@@ -633,7 +633,7 @@ func FindOld(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	for i, task := range tasks {
-		if err := task.MergeNewTestResults(); err != nil {
+		if err = task.MergeNewTestResults(); err != nil {
 			return nil, errors.Wrap(err, "error merging new test results")
 		}
 		tasks[i] = task
@@ -649,7 +649,7 @@ func Find(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	for i, task := range tasks {
-		if err := task.MergeNewTestResults(); err != nil {
+		if err = task.MergeNewTestResults(); err != nil {
 			return nil, errors.Wrap(err, "error merging new test results")
 		}
 		tasks[i] = task
