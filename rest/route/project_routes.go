@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -31,7 +30,7 @@ func getProjectRouteManager(route string, version int) *RouteManager {
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &NoAuthAuthenticator{},
 				RequestHandler:    p.Handler(),
-				MethodType:        evergreen.MethodGet,
+				MethodType:        http.MethodGet,
 			},
 		},
 	}

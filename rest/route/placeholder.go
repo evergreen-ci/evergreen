@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"golang.org/x/net/context"
@@ -16,7 +15,7 @@ func getPlaceHolderManger(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &placeHolderHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,

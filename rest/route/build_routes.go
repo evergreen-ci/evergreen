@@ -32,13 +32,13 @@ func getBuildByIdRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &buildGetHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    &buildChangeStatusHandler{},
-				MethodType:        evergreen.MethodPatch,
+				MethodType:        http.MethodPatch,
 			},
 		},
 	}
@@ -172,7 +172,7 @@ func getBuildAbortRouteManager(route string, version int) *RouteManager {
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    (&buildAbortHandler{}).Handler(),
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 			},
 		},
 	}
@@ -237,7 +237,7 @@ func getBuildRestartManager(route string, version int) *RouteManager {
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    (&buildRestartHandler{}).Handler(),
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 			},
 		},
 	}

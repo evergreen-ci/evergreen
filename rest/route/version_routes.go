@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -29,7 +28,7 @@ func getVersionIdRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &versionHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,
@@ -88,7 +87,7 @@ func getBuildsForVersionRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &buildsForVersionHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,
@@ -162,7 +161,7 @@ func getAbortVersionRouteManager(route string, version int) *RouteManager {
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    &versionAbortHandler{},
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 			},
 		},
 		Version: version,
@@ -231,7 +230,7 @@ func getRestartVersionRouteManager(route string, version int) *RouteManager {
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    &versionRestartHandler{},
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 			},
 		},
 		Version: version,

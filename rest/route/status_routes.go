@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -29,7 +28,7 @@ func getRecentTasksRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &recentTasksGetHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -28,7 +27,7 @@ func getCostByVersionIdRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &costByVersionHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,
@@ -85,7 +84,7 @@ func getCostByDistroIdRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &costByDistroHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,
@@ -186,7 +185,7 @@ func getCostTaskByProjectRouteManager(route string, version int) *RouteManager {
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    c.Handler(),
-				MethodType:        evergreen.MethodGet,
+				MethodType:        http.MethodGet,
 			},
 		},
 		Version: version,

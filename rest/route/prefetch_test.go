@@ -29,7 +29,7 @@ func TestPrefetchUser(t *testing.T) {
 			}
 		}
 		serviceContext.MockUserConnector.CachedUsers = users
-		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		Convey("When examining users", func() {
 
@@ -98,7 +98,7 @@ func TestPrefetchUser(t *testing.T) {
 func TestPrefetchProject(t *testing.T) {
 	Convey("When there is a data and a request", t, func() {
 		serviceContext := &data.MockConnector{}
-		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		Convey("When fetching the project context", func() {
 			ctx := context.Background()
