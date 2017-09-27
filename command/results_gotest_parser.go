@@ -97,9 +97,10 @@ func ToModelTestResults(results []*goTestResult) task.TestResults {
 type goTestParser struct {
 	Suite string
 	logs  []string
-	// map for storing tests during parsing
-	tests map[string]*goTestResult
-	order []string
+	// map for storing tests during parsing. this is an array to handle multiple
+	// executions of the same test in the same log
+	tests map[string][]*goTestResult
+	order []*goTestResult
 }
 
 // Logs returns an array of logs captured during test execution.
@@ -109,19 +110,13 @@ func (vp *goTestParser) Logs() []string {
 
 // Results returns an array of test results parsed during test execution.
 func (vp *goTestParser) Results() []*goTestResult {
-	out := []*goTestResult{}
-
-	for _, name := range vp.order {
-		out = append(out, vp.tests[name])
-	}
-
-	return out
+	return vp.order
 }
 
 // Parse reads in a test's output and stores the results and logs.
 func (vp *goTestParser) Parse(testOutput io.Reader) error {
 	testScanner := bufio.NewScanner(testOutput)
-	vp.tests = map[string]*goTestResult{}
+	vp.tests = map[string][]*goTestResult{}
 	for testScanner.Scan() {
 		if err := testScanner.Err(); err != nil {
 			return errors.Wrap(err, "error reading test output")
@@ -160,16 +155,17 @@ func (vp *goTestParser) handleEnd(line string, rgx *regexp.Regexp) error {
 	if err != nil {
 		return errors.Wrapf(err, "error parsing end line '%s'", line)
 	}
-	t := vp.tests[name]
-	if t == nil || t.Name == "" {
+	tAry := vp.tests[name]
+	if tAry == nil {
 		// if there's no existing test, just stub one out
-		t = vp.newTestResult(name)
-		vp.order = append(vp.order, name)
-		vp.tests[name] = t
+		t := vp.newTestResult(name)
+		tAry = []*goTestResult{t}
+		vp.order = append(vp.order, t)
 	}
-	t.Status = status
-	t.RunTime = duration
-	t.EndLine = len(vp.logs)
+	tAry[len(tAry)-1].Status = status
+	tAry[len(tAry)-1].RunTime = duration
+	tAry[len(tAry)-1].EndLine = len(vp.logs)
+	vp.tests[name] = tAry
 
 	return nil
 }
@@ -190,8 +186,14 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 		t.Status = PASS
 	}
 
-	vp.tests[name] = t
-	vp.order = append(vp.order, name)
+	tAry := vp.tests[name]
+	if tAry == nil {
+		tAry = []*goTestResult{t}
+	} else {
+		tAry = append(tAry, t)
+	}
+	vp.tests[name] = tAry
+	vp.order = append(vp.order, t)
 
 	return nil
 }
