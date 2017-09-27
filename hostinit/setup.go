@@ -133,7 +133,11 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 		return errors.Wrap(err, "error fetching starting hosts")
 	}
 
-	grip.Debugf("There are %d uninitialized hosts", len(uninitializedHosts))
+	grip.Info(message.Fields{
+		"message": "uninitialized hosts",
+		"number":  len(uninitializedHosts),
+		"GUID":    init.GUID,
+	})
 
 	// used for making sure we don't exit before a setup script is done
 	wg := &sync.WaitGroup{}
