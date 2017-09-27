@@ -137,83 +137,82 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 	// used for making sure we don't exit before a setup script is done
 	wg := &sync.WaitGroup{}
-
-	for _, h := range uninitializedHosts {
-		if ctx.Err() != nil {
-			return errors.New("hostinit run canceled")
-		}
-
-		grip.Info(message.Fields{
-			"GUID":    init.GUID,
-			"message": "attempting to setup host",
-			"hostid":  h.Id,
-			"DNS":     h.Host,
-		})
-
-		// check whether or not the host is ready for its setup script to be run
-		ready, err := init.IsHostReady(&h)
-		if err != nil {
-			grip.Errorf("Error checking host %s for readiness: %+v", h.Id, err)
-			continue
-		}
-
-		// if the host isn't ready (for instance, it might not be up yet), skip it
-		if !ready {
-			grip.Debug(message.Fields{
-				"GUID":    init.GUID,
-				"message": "host not ready for setup",
-				"hostid":  h.Id,
-				"DNS":     h.Host,
-			})
-			continue
-		}
-
-		// kick off the setup, in its own goroutine, so pending setups don't have
-		// to wait for it to finish
-		wg.Add(1)
-		go func(h host.Host) {
-			if ctx.Err() != nil {
-				return
-			}
-
-			setupStartTime := time.Now()
-			grip.Info(message.Fields{
-				"GUID":    init.GUID,
-				"message": "running setup script for host",
-				"hostid":  h.Id,
-				"DNS":     h.Host,
-			})
-
-			if err := init.ProvisionHost(ctx, &h); err != nil {
-				grip.Errorf("Error provisioning host %s: %+v", h.Id, err)
-
-				// notify the admins of the failure
-				subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
-					notify.ProvisionFailurePreface, h.Distro.Id)
-				hostLink := fmt.Sprintf("%v/host/%v", init.Settings.Ui.Url, h.Id)
-				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
-					h.Distro.Id, h.Id, hostLink)
-				if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
-					grip.Errorf("Error sending email: %+v", err)
-				}
-			}
-
-			grip.Info(message.Fields{
-				"GUID":    init.GUID,
-				"message": "setup script successfully ran for host",
-				"hostid":  h.Id,
-				"DNS":     h.Host,
-				"runtime": time.Since(setupStartTime),
-			})
-
-			wg.Done()
-
-		}(h)
-
+	catcher := grip.NewSimpleCatcher()
+	hosts := make(chan host.Hosts, len(uninitializedHosts))
+	for _, idx := range rand.Perm(len(uninitializedHosts)) {
+		hosts <- uninitializedHosts[idx]
 	}
+	close(hosts)
 
-	if ctx.Err() != nil {
-		return errors.New("hostinit run canceled")
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for h := range hosts {
+				if ctx.Err() != nil {
+					return errors.New("hostinit run canceled")
+				}
+
+				grip.Info(message.Fields{
+					"GUID":    init.GUID,
+					"message": "attempting to setup host",
+					"hostid":  h.Id,
+					"DNS":     h.Host,
+				})
+
+				// check whether or not the host is ready for its setup script to be run
+				ready, err := init.IsHostReady(&h)
+				if err != nil {
+					grip.Errorf("Error checking host %s for readiness: %+v", h.Id, err)
+					continue
+				}
+
+				// if the host isn't ready (for instance, it might not be up yet), skip it
+				if !ready {
+					grip.Debug(message.Fields{
+						"GUID":    init.GUID,
+						"message": "host not ready for setup",
+						"hostid":  h.Id,
+						"DNS":     h.Host,
+					})
+					continue
+				}
+
+				if ctx.Err() != nil {
+					return
+				}
+
+				setupStartTime := time.Now()
+				grip.Info(message.Fields{
+					"GUID":    init.GUID,
+					"message": "running setup script for host",
+					"hostid":  h.Id,
+					"DNS":     h.Host,
+				})
+
+				if err := init.ProvisionHost(ctx, &h); err != nil {
+					grip.Errorf("Error provisioning host %s: %+v", h.Id, err)
+
+					// notify the admins of the failure
+					subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
+						notify.ProvisionFailurePreface, h.Distro.Id)
+					hostLink := fmt.Sprintf("%v/host/%v", init.Settings.Ui.Url, h.Id)
+					message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
+						h.Distro.Id, h.Id, hostLink)
+					if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
+						grip.Errorf("Error sending email: %+v", err)
+					}
+				}
+
+				grip.Info(message.Fields{
+					"GUID":    init.GUID,
+					"message": "setup script successfully ran for host",
+					"hostid":  h.Id,
+					"DNS":     h.Host,
+					"runtime": time.Since(setupStartTime),
+				})
+			}
+		}()
 	}
 
 	// let all setup routines finish
