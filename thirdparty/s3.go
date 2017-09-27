@@ -233,15 +233,16 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 		return errors.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
 	}
 
-	localFileReader, err := os.Open(localFilePath)
-	if err != nil {
-		return err
-	}
-
 	fi, err := os.Stat(localFilePath)
 	if err != nil {
 		return err
 	}
+
+	localFileReader, err := os.Open(localFilePath)
+	if err != nil {
+		return err
+	}
+	defer localFileReader.Close()
 
 	session := NewS3Session(pushAuth, aws.USEast)
 	bucket := session.Bucket(urlParsed.Host)
