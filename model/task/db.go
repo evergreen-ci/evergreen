@@ -598,7 +598,7 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 		return nil, nil
 	}
 
-	return tasks, err
+	return tasks, nil
 }
 
 // DB Boilerplate
