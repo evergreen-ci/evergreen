@@ -68,7 +68,6 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	defer util.RecoverAndLogStackTrace()
 
-	evergreen.SetLegacyLogger()
 	grip.SetName("evergreen.service")
 	grip.Warning(grip.SetDefaultLevel(level.Info))
 	grip.Warning(grip.SetThreshold(level.Debug))

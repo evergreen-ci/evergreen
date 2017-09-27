@@ -1,12 +1,9 @@
 package evergreen
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/send"
-	"github.com/mongodb/grip/slogger"
 )
 
 type (
@@ -149,21 +146,10 @@ var (
 		HostProvisionFailed,
 	}
 
-	// Logger is our global logger. It can be changed for testing.
-	Logger slogger.Logger
-
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
 )
-
-// SetLegacyLogger sets the global (s)logger instance to wrap the current grip Logger.
-func SetLegacyLogger() {
-	Logger = slogger.Logger{
-		Name:      fmt.Sprintf("evg-log.%s", grip.Name()),
-		Appenders: []send.Sender{grip.GetSender()},
-	}
-}
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.
 func FindEvergreenHome() string {
@@ -173,12 +159,11 @@ func FindEvergreenHome() string {
 		return root
 	}
 
-	Logger.Logf(slogger.ERROR, "%s is unset", EvergreenHome)
+	grip.Errorf("%s is unset", EvergreenHome)
 	return ""
 }
 
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
-	return caller == DefaultTaskActivator ||
-		caller == APIServerTaskActivator
+	return caller == DefaultTaskActivator || caller == APIServerTaskActivator
 }

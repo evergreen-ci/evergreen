@@ -64,9 +64,6 @@ type ViewData struct {
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 	uis := &UIServer{}
-	if len(evergreen.Logger.Appenders) == 0 {
-		evergreen.SetLegacyLogger()
-	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	if err := settings.Validate(); err != nil {

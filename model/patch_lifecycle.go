@@ -17,6 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
@@ -229,11 +231,16 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 				remoteConfigPath, patchFilePath),
 		}
 
+		stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
+		defer stderr.Close()
+		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
+		defer stdout.Close()
+
 		patchCmd := &subprocess.LocalCommand{
 			CmdString:        strings.Join(patchCommandStrings, "\n"),
 			WorkingDirectory: workingDirectory,
-			Stdout:           evergreen.NewInfoLoggingWriter(&evergreen.Logger),
-			Stderr:           evergreen.NewErrorLoggingWriter(&evergreen.Logger),
+			Stdout:           stdout,
+			Stderr:           stderr,
 			ScriptMode:       true,
 		}
 
