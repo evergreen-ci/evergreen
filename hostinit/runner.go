@@ -71,7 +71,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		if err := init.startHosts(ctx); err != nil {
 			err = errors.Wrap(err, "Error starting hosts")
 			catcher.Add(err)
-			hasErrors = true
+			hadErrors = true
 			msg["error"] = err.Error()
 			msg["status"] = "failed"
 		} else {
