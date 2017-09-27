@@ -589,12 +589,16 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 			ActivatedKey: 1,
 		})
 
-	out, err := Find(query)
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, query, &tasks)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem with stats query")
 	}
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
 
-	return out, nil
+	return tasks, nil
 }
 
 // DB Boilerplate
