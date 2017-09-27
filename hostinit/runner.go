@@ -61,36 +61,55 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		msg := message.Fields{
+			"GUID":   init.GUID,
+			"runner": RunnerName,
+			"method": "startHosts",
+		}
+
+		var hadErrors bool
 		if err := init.startHosts(ctx); err != nil {
 			err = errors.Wrap(err, "Error starting hosts")
-			grip.Error(message.Fields{
-				"GUID":    init.GUID,
-				"runner":  RunnerName,
-				"error":   err.Error(),
-				"status":  "failed",
-				"method":  "startHosts",
-				"runtime": time.Since(startTime),
-				"span":    time.Since(startTime).String(),
-			})
 			catcher.Add(err)
+			hasErrors = true
+			msg["error"] = err.Error()
+			msg["status"] = "failed"
 		}
+		msg["status"] = "success"
+		msg["runtime"] = time.Since(startTime)
+		msg["span"] = time.Since(startTime).String()
+
+		grip.ErrorWhen(hadErrors, msg)
+		grip.InfoWhen(!hadErrors, msg)
+
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		msg := message.Fields{
+			"GUID":    init.GUID,
+			"runner":  RunnerName,
+			"error":   err.Error(),
+			"status":  "failed",
+			"method":  "setupReadyHosts",
+			"runtime": time.Since(startTime),
+		}
+
+		var hadErrors bool
 		if err := init.setupReadyHosts(ctx); err != nil {
 			err = errors.Wrap(err, "Error provisioning hosts")
-			grip.Error(message.Fields{
-				"GUID":    init.GUID,
-				"runner":  RunnerName,
-				"error":   err.Error(),
-				"status":  "failed",
-				"method":  "setupReadyHosts",
-				"runtime": time.Since(startTime),
-			})
 			catcher.Add(err)
+			hadErrors = true
+			msg["error"] = err.Error()
+			msg["status"] = "failed"
 		}
+		msg["status"] = "success"
+		msg["runtime"] = time.Since(startTime)
+		msg["span"] = time.Since(startTime).String()
+
+		grip.ErrorWhen(hadErrors, msg)
+		grip.InfoWhen(!hadErrors, msg)
 	}()
 
 	wg.Wait()
