@@ -145,8 +145,8 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	close(hosts)
 
 	var numThreads int
-	if len(hosts) >= 16 {
-		numThreads = 16
+	if len(hosts) >= 64 {
+		numThreads = 64
 	} else {
 		numThreads = len(hosts)
 	}
