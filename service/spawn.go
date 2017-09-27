@@ -17,6 +17,9 @@ import (
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -261,8 +264,10 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 		return nil, err
 	}
 
-	outputLineHandler := evergreen.NewInfoLoggingWriter(&evergreen.Logger)
-	errorLineHandler := evergreen.NewErrorLoggingWriter(&evergreen.Logger)
+	stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
+	defer stderr.Close()
+	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
+	defer stdout.Close()
 
 	updatePwdCmd := fmt.Sprintf("net user %v %v && sc config "+
 		"sshd obj= '.\\%v' password= \"%v\"", hostObj.User, password,
@@ -271,8 +276,8 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	// construct the required termination command
 	remoteCommand := &subprocess.RemoteCommand{
 		CmdString:       updatePwdCmd,
-		Stdout:          outputLineHandler,
-		Stderr:          errorLineHandler,
+		Stdout:          stdout,
+		Stderr:          stderr,
 		LoggingDisabled: true,
 		RemoteHostName:  hostInfo.Hostname,
 		User:            hostObj.User,
