@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -82,7 +81,7 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 }
 
 func GetGithubAPIStatus() (string, error) {
-	req, err := http.NewRequest(evergreen.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), nil)
 	if err != nil {
 		return "", err
 	}

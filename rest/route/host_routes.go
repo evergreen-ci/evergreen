@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -29,14 +28,14 @@ func getHostRouteManager(route string, version int) *RouteManager {
 	hostGet := MethodHandler{
 		Authenticator:  &NoAuthAuthenticator{},
 		RequestHandler: hgh.Handler(),
-		MethodType:     evergreen.MethodGet,
+		MethodType:     http.MethodGet,
 	}
 
 	hostPost := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    &hostPostHandler{},
-		MethodType:        evergreen.MethodPost,
+		MethodType:        http.MethodPost,
 	}
 
 	hostRoute := RouteManager{
@@ -52,7 +51,7 @@ func getHostIDRouteManager(route string, version int) *RouteManager {
 	hostGet := MethodHandler{
 		Authenticator:  &NoAuthAuthenticator{},
 		RequestHandler: high.Handler(),
-		MethodType:     evergreen.MethodGet,
+		MethodType:     http.MethodGet,
 	}
 
 	hostRoute := RouteManager{
@@ -72,7 +71,7 @@ func getHostsByUserManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        evergreen.MethodGet,
+				MethodType:        http.MethodGet,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    h.Handler(),
 			},

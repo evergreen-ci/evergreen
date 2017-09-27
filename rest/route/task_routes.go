@@ -29,7 +29,7 @@ func getTaskRestartRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    trh.Handler(),
-		MethodType:        evergreen.MethodPost,
+		MethodType:        http.MethodPost,
 	}
 
 	taskRoute := RouteManager{
@@ -46,7 +46,7 @@ func getTasksByBuildRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    tbh.Handler(),
-		MethodType:        evergreen.MethodGet,
+		MethodType:        http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -63,7 +63,7 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext, PrefetchUser},
 		Authenticator:     &NoAuthAuthenticator{},
 		RequestHandler:    tep.Handler(),
-		MethodType:        evergreen.MethodPatch,
+		MethodType:        http.MethodPatch,
 	}
 
 	tgh := &taskGetHandler{}
@@ -71,7 +71,7 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    tgh.Handler(),
-		MethodType:        evergreen.MethodGet,
+		MethodType:        http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -88,7 +88,7 @@ func getTasksByProjectAndCommitRouteManager(route string, version int) *RouteMan
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    tph.Handler(),
-		MethodType:        evergreen.MethodGet,
+		MethodType:        http.MethodGet,
 	}
 
 	taskRoute := RouteManager{
@@ -107,7 +107,7 @@ func getTaskAbortManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    t.Handler(),
 			},

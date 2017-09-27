@@ -3,7 +3,6 @@ package taskdata
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -86,9 +85,9 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	switch r.Method {
-	case evergreen.MethodDelete:
+	case http.MethodDelete:
 		err = model.DeleteTaskJSONTagFromTask(taskId, name)
-	case evergreen.MethodPost:
+	case http.MethodPost:
 		tc := model.TagContainer{}
 		err = util.ReadJSONInto(util.NewRequestReader(r), &tc)
 		if err != nil {

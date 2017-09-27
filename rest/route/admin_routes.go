@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -21,7 +20,7 @@ func getAdminSettingsManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    agh.Handler(),
-		MethodType:        evergreen.MethodGet,
+		MethodType:        http.MethodGet,
 	}
 
 	aph := &adminPostHandler{}
@@ -29,7 +28,7 @@ func getAdminSettingsManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    aph.Handler(),
-		MethodType:        evergreen.MethodPost,
+		MethodType:        http.MethodPost,
 	}
 
 	adminRoute := RouteManager{
@@ -121,7 +120,7 @@ func getBannerRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    bph.Handler(),
-		MethodType:        evergreen.MethodPost,
+		MethodType:        http.MethodPost,
 	}
 
 	bannerRoute := RouteManager{
@@ -172,7 +171,7 @@ func getServiceFlagsRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    fph.Handler(),
-		MethodType:        evergreen.MethodPost,
+		MethodType:        http.MethodPost,
 	}
 
 	flagsRoute := RouteManager{
@@ -227,7 +226,7 @@ func getRestartRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    rh.Handler(),
-		MethodType:        evergreen.MethodPost,
+		MethodType:        http.MethodPost,
 	}
 
 	restartRoute := RouteManager{

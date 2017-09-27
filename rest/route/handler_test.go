@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -124,7 +123,7 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 		Path:     testRoute,
 	}
 
-	req, err := http.NewRequest(evergreen.MethodGet, u.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
 	So(err, ShouldBeNil)
 
 	resp := httptest.NewRecorder()

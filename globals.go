@@ -117,20 +117,6 @@ const (
 	APIKeyHeader      = "Api-Key"
 )
 
-// HTTP constants. Added after Go1.4. Here for compatibility with GCCGO
-// compatibility. Copied from: https://golang.org/pkg/net/http/#pkg-constants
-const (
-	MethodGet     = "GET"
-	MethodHead    = "HEAD"
-	MethodPost    = "POST"
-	MethodPut     = "PUT"
-	MethodPatch   = "PATCH" // RFC 5789
-	MethodDelete  = "DELETE"
-	MethodConnect = "CONNECT"
-	MethodOptions = "OPTIONS"
-	MethodTrace   = "TRACE"
-)
-
 // cloud provider related constants
 const (
 	ProviderNameEc2OnDemand  = "ec2"
@@ -140,6 +126,16 @@ const (
 	ProviderNameGce          = "gce"
 	ProviderNameStatic       = "static"
 	ProviderNameOpenstack    = "openstack"
+)
+
+const (
+	// database and config directory, set to the testing version by default for safety
+	NotificationsFile = "mci-notifications.yml"
+	ClientDirectory   = "clients"
+
+	// version requester types
+	PatchVersionRequester       = "patch_request"
+	RepotrackerVersionRequester = "gitter_request"
 )
 
 var (
@@ -155,14 +151,6 @@ var (
 
 	// Logger is our global logger. It can be changed for testing.
 	Logger slogger.Logger
-
-	// database and config directory, set to the testing version by default for safety
-	NotificationsFile = "mci-notifications.yml"
-	ClientDirectory   = "clients"
-
-	// version requester types
-	PatchVersionRequester       = "patch_request"
-	RepotrackerVersionRequester = "gitter_request"
 
 	// constant arrays for db update logic
 	AbortableStatuses = []string{TaskStarted, TaskDispatched}

@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -20,7 +19,7 @@ func getTestRouteManager(route string, version int) *RouteManager {
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    tgh.Handler(),
-		MethodType:        evergreen.MethodGet,
+		MethodType:        http.MethodGet,
 	}
 
 	taskRoute := RouteManager{

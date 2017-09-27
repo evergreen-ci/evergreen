@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -31,7 +30,7 @@ func getTaskSystemMetricsManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &taskSystemMetricsHandler{},
 			},
@@ -136,7 +135,7 @@ func getTaskProcessMetricsManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &taskProcessMetricsHandler{},
 			},

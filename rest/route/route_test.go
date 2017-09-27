@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
@@ -29,7 +28,7 @@ func TestMakeRoute(t *testing.T) {
 		mockGet := MethodHandler{
 			Authenticator:  getAuth,
 			RequestHandler: getHandler,
-			MethodType:     evergreen.MethodGet,
+			MethodType:     http.MethodGet,
 		}
 
 		postAuth := &mockAuthenticator{}
@@ -43,7 +42,7 @@ func TestMakeRoute(t *testing.T) {
 		mockPost := MethodHandler{
 			Authenticator:  postAuth,
 			RequestHandler: postHandler,
-			MethodType:     evergreen.MethodPost,
+			MethodType:     http.MethodPost,
 		}
 
 		deleteAuth := &mockAuthenticator{}
@@ -57,7 +56,7 @@ func TestMakeRoute(t *testing.T) {
 		mockDelete := MethodHandler{
 			Authenticator:  deleteAuth,
 			RequestHandler: deleteHandler,
-			MethodType:     evergreen.MethodDelete,
+			MethodType:     http.MethodDelete,
 		}
 		Convey("then adding and registering should result in a correct route", func() {
 			sc := &data.MockConnector{}

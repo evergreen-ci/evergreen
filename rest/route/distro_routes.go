@@ -3,7 +3,6 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -20,7 +19,7 @@ func getDistroRouteManager(route string, version int) *RouteManager {
 			{
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &distroGetHandler{},
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 			},
 		},
 		Version: version,

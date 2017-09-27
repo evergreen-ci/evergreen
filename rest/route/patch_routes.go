@@ -28,13 +28,13 @@ func getPatchByIdManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: &patchByIdHandler{},
 			},
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        evergreen.MethodPatch,
+				MethodType:        http.MethodPatch,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    &patchChangeStatusHandler{},
 			},
@@ -168,7 +168,7 @@ func getPatchesByUserManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        evergreen.MethodGet,
+				MethodType:        http.MethodGet,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    p.Handler(),
 			},
@@ -285,7 +285,7 @@ func getPatchesByProjectManager(route string, version int) *RouteManager {
 		Version: version,
 		Methods: []MethodHandler{
 			{
-				MethodType:     evergreen.MethodGet,
+				MethodType:     http.MethodGet,
 				Authenticator:  &NoAuthAuthenticator{},
 				RequestHandler: p.Handler(),
 			},
@@ -403,7 +403,7 @@ func getPatchAbortManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    p.Handler(),
 			},
@@ -471,7 +471,7 @@ func getPatchRestartManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        evergreen.MethodPost,
+				MethodType:        http.MethodPost,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    p.Handler(),
 			},
