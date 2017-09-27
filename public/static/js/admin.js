@@ -1,8 +1,11 @@
-mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', function($scope, $window, mciAdminRestService, notificationService) {
+mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
     $scope.Events = generateEventText(window.events);
     $scope.getSettings();
+    $scope.disableRestart = false;
+    $scope.disableSubmit = false;
+    $("#tasks-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
   $scope.getSettings = function() {
@@ -71,6 +74,55 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   timestamp = function(ts) {
     return "[" + moment(ts, "YYYY-MM-DDTHH:mm:ss").format("lll") + "] ";
+  }
+
+  $scope.restartTasks = function(dryRun) {
+    if (!$scope.fromDate || !$scope.toDate || !$scope.toTime || !$scope.fromTime) {
+      alert("The from/to date and time must be populated to restart tasks");
+      return;
+    }
+    if (dryRun === false) {
+      $scope.disableRestart = true;
+      var successHandler = function(resp) {
+        window.location.href = "/admin";
+      }
+    }
+    else {
+      $scope.disableSubmit = true;
+      dryRun = true;
+      var successHandler = function(resp) {
+        $scope.tasks = resp.data.tasks_restarted;
+        $scope.modalTitle = "Restart Tasks";
+        $("#tasks-modal").modal("show");
+      }
+    }
+    var errorHandler = function(resp) {
+      notificationService.pushNotification("Error restarting tasks: " + resp.data.error, "errorHeader");
+    }
+    var from = combineDateTime($scope.fromDate, $scope.fromTime);
+    var to = combineDateTime($scope.toDate, $scope.toTime);
+    if (to < from) {
+      alert("From time cannot be after to time");
+      $scope.disableSubmit = false;
+      return;
+    }
+    mciAdminRestService.restartTasks(from, to, dryRun, { success: successHandler, error: errorHandler })
+  }
+
+  combineDateTime = function(date, time) {
+    date.setHours(time.getHours());
+    date.setMinutes(time.getMinutes());
+
+    return date;
+  }
+
+  $scope.enableSubmit = function() {
+    $scope.disableSubmit = false;
+    $scope.$apply();
+  }
+
+  $scope.jumpToTask = function(taskId) {
+    window.open("/task/" + taskId);
   }
 
   $scope.load();
