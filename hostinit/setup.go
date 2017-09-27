@@ -137,14 +137,20 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 	// used for making sure we don't exit before a setup script is done
 	wg := &sync.WaitGroup{}
-	catcher := grip.NewSimpleCatcher()
 	hosts := make(chan host.Hosts, len(uninitializedHosts))
 	for _, idx := range rand.Perm(len(uninitializedHosts)) {
 		hosts <- uninitializedHosts[idx]
 	}
 	close(hosts)
 
-	for i := 0; i < 16; i++ {
+	var numThreads int
+	if len(hosts) <= 16 {
+		numThreads = 16
+	} else {
+		numThreads = len(hosts)
+	}
+
+	for i := 0; i < numThreads; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
