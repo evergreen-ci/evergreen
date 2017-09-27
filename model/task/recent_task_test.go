@@ -40,5 +40,6 @@ func TestRecentTasks(t *testing.T) {
 	}
 
 	recent, err := GetRecentTasks(1 * time.Minute)
+	assert.NoError(err)
 	assert.Len(recent, 5)
 }
