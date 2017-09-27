@@ -243,6 +243,7 @@ retryLoop:
 			// reset to avoid duplicated uploaded references
 			uploadedFiles = []string{}
 
+		uploadLoop:
 			for _, fpath := range filesList {
 				if ctx.Err() != nil {
 					return errors.New("s3 put operation canceled")
@@ -262,13 +263,23 @@ retryLoop:
 
 				err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
 				if err != nil {
-					// if we encounter a problem uploading a file, then we should:
-					//   - skip if it's a single update, not marked optional, and the local file doesn't exist
-					// retry in all other cases
-					if !s3pc.isMulti() && !s3pc.Optional && os.IsNotExist(err) {
-						return errors.Wrapf(err, "missing file %s", fpath)
+					// retry errors other than "file doesn't exist", which we handle differently based on what
+					// kind of upload it is
+					if os.IsNotExist(err) {
+						if s3pc.isMulti() {
+							// try the remaining multi uploads in the group, effectively ignoring this
+							// error.
+							continue uploadLoop
+						} else if s3pc.Optional {
+							// single optional file uploads should return early.
+							return nil
+						} else {
+							// single required uploads should return an error asap.
+							return errors.Wrapf(err, "missing file %s", fpath)
+						}
 					}
 
+					// in all other cases, log an error and retry after an interval.
 					grip.Error(err)
 					timer.Reset(backoffCounter.Duration())
 					continue retryLoop
