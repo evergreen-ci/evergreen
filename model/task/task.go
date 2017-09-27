@@ -987,6 +987,8 @@ func (t *Task) MergeNewTestResults() error {
 	if err := db.Aggregate(collection, pipeline, &tasks); err != nil {
 		return errors.Wrap(err, "problem merging new test results")
 	}
-	*t = tasks[0]
+	if len(tasks) == 1 {
+		*t = tasks[0]
+	}
 	return nil
 }
