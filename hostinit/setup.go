@@ -356,7 +356,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 				setupScriptName, targetHost.Id, err)
 		}
 		var logs string
-		logs, err = hostutil.RunRemoteScript(targetHost, setupScriptName, sshOptions)
+		logs, err = hostutil.RunRemoteScript(ctx, targetHost, setupScriptName, sshOptions)
 		if err != nil {
 			return logs, errors.Errorf("error running setup script over ssh: %v", err)
 		}

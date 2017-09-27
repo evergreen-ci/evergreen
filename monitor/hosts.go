@@ -84,7 +84,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
-		if errs = terminateHosts(hostsToTerminate, settings, flagger.Reason); errs != nil {
+		if errs = terminateHosts(ctx, hostsToTerminate, settings, flagger.Reason); errs != nil {
 			for _, err := range errs {
 				errs = append(errs, errors.Wrap(err, "error terminating host"))
 			}
@@ -97,7 +97,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
-func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason string) []error {
+func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.Settings, reason string) []error {
 	errChan := make(chan error)
 	for _, h := range hosts {
 		grip.Infof("Terminating host %v", h.Id)
@@ -107,7 +107,7 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason stri
 			errChan <- func() error {
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
 				err := util.RunFunctionWithTimeout(func() error {
-					return terminateHost(&hostToTerminate, settings)
+					return terminateHost(ctx, &hostToTerminate, settings)
 				}, 12*time.Minute)
 				if err != nil {
 					if err == util.ErrTimedOut {
@@ -130,7 +130,7 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason stri
 }
 
 // helper to terminate a single host
-func terminateHost(h *host.Host, settings *evergreen.Settings) error {
+func terminateHost(ctx cotnext.Context, h *host.Host, settings *evergreen.Settings) error {
 	// clear the running task of the host in case one has been assigned.
 	if h.RunningTask != "" {
 		grip.Warningf("Host has running task: %s. Clearing running task field for host"+
@@ -153,7 +153,7 @@ func terminateHost(h *host.Host, settings *evergreen.Settings) error {
 			"host":    h.Id,
 		})
 
-		if err := runHostTeardown(h, cloudHost); err != nil {
+		if err := runHostTeardown(ctx, h, cloudHost); err != nil {
 			grip.Error(errors.Wrapf(err, "Error running teardown script for %s", h.Id))
 
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
@@ -172,13 +172,13 @@ func terminateHost(h *host.Host, settings *evergreen.Settings) error {
 	return nil
 }
 
-func runHostTeardown(h *host.Host, cloudHost *cloud.CloudHost) error {
+func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 	}
 	startTime := time.Now()
-	logs, err := hostutil.RunRemoteScript(h, "teardown.sh", sshOptions)
+	logs, err := hostutil.RunRemoteScript(ctx, h, "teardown.sh", sshOptions)
 	event.LogHostTeardown(h.Id, logs, err == nil, time.Since(startTime))
 	if err != nil {
 		return errors.Wrapf(err, "error running teardown.sh over ssh: %v", logs)
