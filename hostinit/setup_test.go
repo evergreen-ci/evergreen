@@ -62,7 +62,7 @@ func TestSetupReadyHosts(t *testing.T) {
 			}
 			Convey("when running setup", func() {
 				err := hostInit.setupReadyHosts(ctx)
-				So(err, ShouldBeNil)
+				So(err, ShouldNotBeNil)
 
 				Convey("then all of the hosts should be terminated", func() {
 					for id := range mock.MockInstances {
