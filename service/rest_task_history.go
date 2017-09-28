@@ -55,8 +55,6 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, chunk)
-	return
-
 }
 
 // logURL returns the full URL for linking to a test's logs.

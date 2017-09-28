@@ -132,12 +132,12 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 
 	uiBuilds := make([]uiBuild, len(dbBuilds))
 	for buildIdx, buildId := range buildIds {
-		build := buildsMap[buildId]
-		buildAsUI := uiBuild{Build: build}
+		b := buildsMap[buildId]
+		buildAsUI := uiBuild{Build: b}
 
 		//Use the build's task cache, instead of querying for each individual task.
-		uiTasks := make([]uiTask, len(build.Tasks))
-		for i, t := range build.Tasks {
+		uiTasks := make([]uiTask, len(b.Tasks))
+		for i, t := range b.Tasks {
 			uiTasks[i] = uiTask{
 				Task: task.Task{
 					Id:          t.Id,
@@ -194,8 +194,8 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 
 		uiBuilds := make([]uiBuild, len(dbBuilds))
 		for buildIdx, buildId := range buildIds {
-			build := buildsMap[buildId]
-			buildAsUI := uiBuild{Build: build}
+			b := buildsMap[buildId]
+			buildAsUI := uiBuild{Build: b}
 			uiBuilds[buildIdx] = buildAsUI
 		}
 		versionAsUI.Builds = uiBuilds
@@ -352,13 +352,13 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 		uiHosts[idx] = host
 		// get the task running on this host
 		if dbHost.RunningTask != "" {
-			task, err := task.FindOne(task.ById(dbHost.RunningTask))
+			t, err := task.FindOne(task.ById(dbHost.RunningTask))
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
-			grip.ErrorWhenf(task == nil, "Hosts page could not find task %s for host %s",
+			grip.ErrorWhenf(t == nil, "Hosts page could not find task %s for host %s",
 				dbHost.RunningTask, dbHost.Id)
-			uiHosts[idx].RunningTask = task
+			uiHosts[idx].RunningTask = t
 		}
 		uiHosts[idx].IdleTime = host.Host.IdleTime().Seconds()
 	}

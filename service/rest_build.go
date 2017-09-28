@@ -80,7 +80,6 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destBuild)
-	return
 }
 
 // Returns a JSON response with the status of the specified build.
@@ -109,6 +108,4 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, result)
-	return
-
 }

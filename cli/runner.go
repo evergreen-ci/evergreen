@@ -172,7 +172,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 // channel on which each runner is listening as soon as the signal
 // is received.
 func listenForSIGTERM(cancel context.CancelFunc) {
-	sigChan := make(chan os.Signal)
+	sigChan := make(chan os.Signal, 5)
 	// notify us when SIGTERM is received
 	signal.Notify(sigChan, syscall.SIGTERM)
 	<-sigChan

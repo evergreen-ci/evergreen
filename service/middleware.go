@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/urfave/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
@@ -18,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/urfave/negroni"
 )
 
 // Key used for storing variables in request context with type safety.
@@ -120,7 +120,6 @@ func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		uis.RedirectToLogin(w, r)
-		return
 	}
 }
 
@@ -156,7 +155,6 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		uis.RedirectToLogin(w, r)
-		return
 	}
 }
 

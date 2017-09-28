@@ -16,10 +16,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type testConfigPath struct {
-	testSpec string
-}
-
 func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
 	initialOptions := Options{
 		HostID:            testHost.Id,

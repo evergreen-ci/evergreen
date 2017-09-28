@@ -69,7 +69,7 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 	}
 
 	// fetch required data from the service layer
-	data, err := sc.FindTaskSystemMetrics(task, ts, limit*2, 1)
+	metrics, err := sc.FindTaskSystemMetrics(task, ts, limit*2, 1)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "database error")
@@ -87,28 +87,28 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 
 	// populate the page info structure
 	pages := &PageResult{}
-	if len(data) > limit {
+	if len(metrics) > limit {
 		pages.Next = &Page{
 			Relation: "next",
-			Key:      model.NewTime(data[limit].Base.Time).String(),
-			Limit:    len(data) - limit,
+			Key:      model.NewTime(metrics[limit].Base.Time).String(),
+			Limit:    len(metrics) - limit,
 		}
 	}
 	if len(prevData) > 1 {
 		pages.Prev = &Page{
 			Relation: "prev",
-			Key:      model.NewTime(data[0].Base.Time).String(),
+			Key:      model.NewTime(metrics[0].Base.Time).String(),
 			Limit:    len(prevData),
 		}
 	}
 
 	// truncate results data if there's a next page.
 	if pages.Next != nil {
-		data = data[:limit]
+		metrics = metrics[:limit]
 	}
 
-	models := make([]model.Model, len(data))
-	for idx, info := range data {
+	models := make([]model.Model, len(metrics))
+	for idx, info := range metrics {
 		sysinfoModel := &model.APISystemMetrics{}
 		if err = sysinfoModel.BuildFromService(info); err != nil {
 			return []model.Model{}, nil, rest.APIError{

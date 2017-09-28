@@ -164,11 +164,6 @@ func symbol(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(buf.Bytes())
 }
 
-// handler returns an HTTP handler that serves the named profile.
-func handler(name string) http.Handler {
-	return handler(name)
-}
-
 type pprofHandler string
 
 func (name pprofHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
@@ -185,7 +180,6 @@ func (name pprofHandler) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		runtime.GC()
 	}
 	_ = p.WriteTo(w, debug)
-	return
 }
 
 // index responds with the pprof-formatted profile named by the request.

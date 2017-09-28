@@ -134,11 +134,6 @@ func (c *communicatorImpl) LastMessageAt() time.Time {
 
 // GetLogProducer
 func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
-	const (
-		bufferTime  = 15 * time.Second
-		bufferCount = 100
-	)
-
 	local := grip.GetSender()
 
 	exec := newLogSender(ctx, c, apimodels.AgentLogPrefix, taskData)

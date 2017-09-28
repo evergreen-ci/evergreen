@@ -96,13 +96,22 @@ func (c *Mock) UpdateLastMessageTime() {
 	c.LastMessageSent = time.Now()
 }
 
-// StartTask returns nil.
-func (c *Mock) StartTask(ctx context.Context, taskData TaskData) error {
-	return nil
-}
+// nolint
+func (c *Mock) SetTimeoutStart(timeoutStart time.Duration) { c.timeoutStart = timeoutStart }
+func (c *Mock) SetTimeoutMax(timeoutMax time.Duration)     { c.timeoutMax = timeoutMax }
+func (c *Mock) SetMaxAttempts(attempts int)                { c.maxAttempts = attempts }
+func (c *Mock) SetHostID(hostID string)                    { c.hostID = hostID }
+func (c *Mock) SetHostSecret(hostSecret string)            { c.hostSecret = hostSecret }
+func (c *Mock) GetHostID() string                          { return c.hostID }
+func (c *Mock) GetHostSecret() string                      { return c.hostSecret }
+func (c *Mock) SetAPIUser(apiUser string)                  { c.apiUser = apiUser }
+func (c *Mock) SetAPIKey(apiKey string)                    { c.apiKey = apiKey }
+
+// nolint
+func (c *Mock) StartTask(ctx context.Context, td TaskData) error { return nil }
 
 // EndTask returns a mock EndTaskResponse.
-func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
+func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, td TaskData) (*apimodels.EndTaskResponse, error) {
 	if c.EndTaskShouldFail {
 		return nil, errors.New("end task should fail")
 	}
@@ -112,7 +121,7 @@ func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, tas
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.EndTaskResult.Detail = detail
-	c.EndTaskResult.TaskData = taskData
+	c.EndTaskResult.TaskData = td
 	return &apimodels.EndTaskResponse{}, nil
 }
 
@@ -124,7 +133,7 @@ func (c *Mock) GetEndTaskDetail() *apimodels.TaskEndDetail {
 }
 
 // GetTask returns a mock Task.
-func (c *Mock) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
+func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 	return &task.Task{
 		Id:           "mock_task_id",
 		Secret:       "mock_task_secret",
@@ -134,7 +143,7 @@ func (c *Mock) GetTask(ctx context.Context, taskData TaskData) (*task.Task, erro
 }
 
 // GetProjectRef returns a mock ProjectRef.
-func (c *Mock) GetProjectRef(ctx context.Context, taskData TaskData) (*serviceModel.ProjectRef, error) {
+func (c *Mock) GetProjectRef(ctx context.Context, td TaskData) (*serviceModel.ProjectRef, error) {
 	return &serviceModel.ProjectRef{
 		Owner:  "mock_owner",
 		Repo:   "mock_repo",
@@ -143,7 +152,7 @@ func (c *Mock) GetProjectRef(ctx context.Context, taskData TaskData) (*serviceMo
 }
 
 // GetDistro returns a mock Distro.
-func (c *Mock) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
+func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, error) {
 	return &distro.Distro{
 		Id:      "mock_distro_id",
 		WorkDir: ".",
@@ -151,11 +160,11 @@ func (c *Mock) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro
 }
 
 // GetVersion return a mock Version.
-func (c *Mock) GetVersion(ctx context.Context, taskData TaskData) (*version.Version, error) {
+func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, error) {
 	var err error
 	var data []byte
 
-	switch taskData.ID {
+	switch td.ID {
 	case "shellexec":
 		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "shellexec.yaml"))
 	case "s3copy":
@@ -174,7 +183,7 @@ func (c *Mock) GetVersion(ctx context.Context, taskData TaskData) (*version.Vers
 }
 
 // Heartbeat returns false, which indicates the heartbeat has succeeded.
-func (c *Mock) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
+func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
 	if c.HeartbeatShouldAbort {
 		return true, nil
 	}
@@ -185,7 +194,7 @@ func (c *Mock) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
 }
 
 // FetchExpansionVars returns a mock ExpansionVars.
-func (c *Mock) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
+func (c *Mock) FetchExpansionVars(ctx context.Context, td TaskData) (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{
 		"shellexec_fn": c.ShellExecFilename,
 		"timeout_fn":   c.TimeoutFilename,
@@ -216,7 +225,7 @@ func (c *Mock) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, er
 }
 
 // SendTaskLogMessages posts tasks messages to the api server
-func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
+func (c *Mock) SendLogMessages(ctx context.Context, td TaskData, msgs []apimodels.LogMessage) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -224,7 +233,7 @@ func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []ap
 		return errors.New("logging failed")
 	}
 
-	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
+	c.logMessages[td.ID] = append(c.logMessages[td.ID], msgs...)
 
 	return nil
 }
@@ -253,8 +262,8 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
-	return NewSingleChannelLogHarness(taskData.ID, newLogSender(ctx, c, apimodels.AgentLogPrefix, taskData))
+func (c *Mock) GetLoggerProducer(ctx context.Context, td TaskData) LoggerProducer {
+	return NewSingleChannelLogHarness(td.ID, newLogSender(ctx, c, apimodels.AgentLogPrefix, td))
 }
 
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
@@ -275,32 +284,12 @@ func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch
 	return &patchmodel.Patch{}, nil
 }
 
-// GetAllHosts ...
-func (*Mock) GetAllHosts() {
-	return
-}
-
-// GetHostByID ...
-func (*Mock) GetHostByID() {
-	return
-}
-
 // GetHostsByUser will return an array with a single mock host
 func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
 	hosts := make([]*model.APIHost, 1)
 	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key")
 	hosts = append(hosts, host)
 	return hosts, nil
-}
-
-// SetHostStatus ...
-func (*Mock) SetHostStatus() {
-	return
-}
-
-// SetHostStatuses ...
-func (*Mock) SetHostStatuses() {
-	return
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
@@ -327,286 +316,78 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key")
 	hosts = append(hosts, host)
 	err := f(hosts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-// GetTaskByID ...
-func (*Mock) GetTaskByID() {
-	return
-}
+// nolint
+func (*Mock) GetAllHosts()                        {}
+func (*Mock) GetHostByID()                        {}
+func (*Mock) SetHostStatus()                      {}
+func (*Mock) SetHostStatuses()                    {}
+func (*Mock) GetTaskByID()                        {}
+func (*Mock) GetTasksByBuild()                    {}
+func (*Mock) GetTasksByProjectAndCommit()         {}
+func (*Mock) SetTaskStatus()                      {}
+func (*Mock) AbortTask()                          {}
+func (*Mock) RestartTask()                        {}
+func (*Mock) GetKeys()                            {}
+func (*Mock) AddKey()                             {}
+func (*Mock) RemoveKey()                          {}
+func (*Mock) GetProjectByID()                     {}
+func (*Mock) EditProject()                        {}
+func (*Mock) CreateProject()                      {}
+func (*Mock) GetAllProjects()                     {}
+func (*Mock) GetBuildByID()                       {}
+func (*Mock) GetBuildByProjectAndHashAndVariant() {}
+func (*Mock) GetBuildsByVersion()                 {}
+func (*Mock) SetBuildStatus()                     {}
+func (*Mock) AbortBuild()                         {}
+func (*Mock) RestartBuild()                       {}
+func (*Mock) GetTestsByTaskID()                   {}
+func (*Mock) GetTestsByBuild()                    {}
+func (*Mock) GetTestsByTestName()                 {}
+func (*Mock) GetVersionByID()                     {}
+func (*Mock) GetVersions()                        {}
+func (*Mock) GetVersionByProjectAndCommit()       {}
+func (*Mock) GetVersionsByProject()               {}
+func (*Mock) SetVersionStatus()                   {}
+func (*Mock) AbortVersion()                       {}
+func (*Mock) RestartVersion()                     {}
+func (*Mock) GetAllDistros()                      {}
+func (*Mock) GetDistroByID()                      {}
+func (*Mock) CreateDistro()                       {}
+func (*Mock) EditDistro()                         {}
+func (*Mock) DeleteDistro()                       {}
+func (*Mock) GetDistroSetupScriptByID()           {}
+func (*Mock) GetDistroTeardownScriptByID()        {}
+func (*Mock) EditDistroSetupScript()              {}
+func (*Mock) EditDistroTeardownScript()           {}
+func (*Mock) GetPatchByID()                       {}
+func (*Mock) GetPatchesByProject()                {}
+func (*Mock) SetPatchStatus()                     {}
+func (*Mock) AbortPatch()                         {}
+func (*Mock) RestartPatch()                       {}
 
-// GetTasksByBuild ...
-func (*Mock) GetTasksByBuild() {
-	return
-}
-
-// GetTasksByProjectAndCommit ...
-func (*Mock) GetTasksByProjectAndCommit() {
-	return
-}
-
-// SetTaskStatus ...
-func (*Mock) SetTaskStatus() {
-	return
-}
-
-// AbortTask ...
-func (*Mock) AbortTask() {
-	return
-}
-
-// RestartTask ...
-func (*Mock) RestartTask() {
-	return
-}
-
-// GetKeys ...
-func (*Mock) GetKeys() {
-	return
-}
-
-// AddKey ...
-func (*Mock) AddKey() {
-	return
-}
-
-// RemoveKey ...
-func (*Mock) RemoveKey() {
-	return
-}
-
-// GetProjectByID ...
-func (*Mock) GetProjectByID() {
-	return
-}
-
-// EditProject ...
-func (*Mock) EditProject() {
-	return
-}
-
-// CreateProject ...
-func (*Mock) CreateProject() {
-	return
-}
-
-// GetAllProjects ...
-func (*Mock) GetAllProjects() {
-	return
-}
-
-// GetBuildByID ...
-func (*Mock) GetBuildByID() {
-	return
-}
-
-// GetBuildByProjectAndHashAndVariant ...
-func (*Mock) GetBuildByProjectAndHashAndVariant() {
-	return
-}
-
-// GetBuildsByVersion ...
-func (*Mock) GetBuildsByVersion() {
-	return
-}
-
-// SetBuildStatus ...
-func (*Mock) SetBuildStatus() {
-	return
-}
-
-// AbortBuild ...
-func (*Mock) AbortBuild() {
-	return
-}
-
-// RestartBuild ...
-func (*Mock) RestartBuild() {
-	return
-}
-
-// GetTestsByTaskID ...
-func (*Mock) GetTestsByTaskID() {
-	return
-}
-
-// GetTestsByBuild ...
-func (*Mock) GetTestsByBuild() {
-	return
-}
-
-// GetTestsByTestName ...
-func (*Mock) GetTestsByTestName() {
-	return
-}
-
-// GetVersionByID ...
-func (*Mock) GetVersionByID() {
-	return
-}
-
-// GetVersions ...
-func (*Mock) GetVersions() {
-	return
-}
-
-// GetVersionByProjectAndCommit ...
-func (*Mock) GetVersionByProjectAndCommit() {
-	return
-}
-
-// GetVersionsByProject ...
-func (*Mock) GetVersionsByProject() {
-	return
-}
-
-// SetVersionStatus ...
-func (*Mock) SetVersionStatus() {
-	return
-}
-
-// AbortVersion ...
-func (*Mock) AbortVersion() {
-	return
-}
-
-// RestartVersion ...
-func (*Mock) RestartVersion() {
-	return
-}
-
-// GetAllDistros ...
-func (*Mock) GetAllDistros() {
-	return
-}
-
-// GetDistroByID ...
-func (*Mock) GetDistroByID() {
-	return
-}
-
-// CreateDistro ...
-func (*Mock) CreateDistro() {
-	return
-}
-
-// EditDistro ...
-func (*Mock) EditDistro() {
-	return
-}
-
-// DeleteDistro ...
-func (*Mock) DeleteDistro() {
-	return
-}
-
-// GetDistroSetupScriptByID ...
-func (*Mock) GetDistroSetupScriptByID() {
-	return
-}
-
-// GetDistroTeardownScriptByID ...
-func (*Mock) GetDistroTeardownScriptByID() {
-	return
-}
-
-// EditDistroSetupScript ...
-func (*Mock) EditDistroSetupScript() {
-	return
-}
-
-// EditDistroTeardownScript ...
-func (*Mock) EditDistroTeardownScript() {
-	return
-}
-
-// GetPatchByID ...
-func (*Mock) GetPatchByID() {
-	return
-}
-
-// GetPatchesByProject ...
-func (*Mock) GetPatchesByProject() {
-	return
-}
-
-// SetPatchStatus ...
-func (*Mock) SetPatchStatus() {
-	return
-}
-
-// AbortPatch ...
-func (*Mock) AbortPatch() {
-	return
-}
-
-// RestartPatch ...
-func (*Mock) RestartPatch() {
-	return
-}
-
-// SetTimeoutStart sets the initial timeout for a request.
-func (c *Mock) SetTimeoutStart(timeoutStart time.Duration) {
-	c.timeoutStart = timeoutStart
-}
-
-// SetTimeoutMax sets the maximum timeout for a request.
-func (c *Mock) SetTimeoutMax(timeoutMax time.Duration) {
-	c.timeoutMax = timeoutMax
-}
-
-// SetMaxAttempts sets the number of attempts a request will be made.
-func (c *Mock) SetMaxAttempts(attempts int) {
-	c.maxAttempts = attempts
-}
-
-// SetHostID sets the host ID.
-func (c *Mock) SetHostID(hostID string) {
-	c.hostID = hostID
-}
-
-// SetHostSecret sets the host secret.
-func (c *Mock) SetHostSecret(hostSecret string) {
-	c.hostSecret = hostSecret
-}
-
-// GetHostID returns the host ID.
-func (c *Mock) GetHostID() string {
-	return c.hostID
-}
-
-// GetHostSecret returns the host secret.
-func (c *Mock) GetHostSecret() string {
-	return c.hostSecret
-}
-
-// SetAPIUser sets the API user.
-func (c *Mock) SetAPIUser(apiUser string) {
-	c.apiUser = apiUser
-}
-
-// SetAPIKey sets the API key.
-func (c *Mock) SetAPIKey(apiKey string) {
-	c.apiKey = apiKey
-}
+// nolint
+func (c *Mock) SetBannerMessage(ctx context.Context, m string) error                { return nil }
+func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                { return "", nil }
+func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error { return nil }
+func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) { return nil, nil }
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
-func (c *Mock) SendTestResults(ctx context.Context, taskData TaskData, results *task.TestResults) error {
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.TestResults) error {
 	return nil
 }
 
 // SendFiles attaches task files.
-func (c *Mock) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
+func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifact.File) error {
 	return nil
 }
 
 // SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
-func (c *Mock) SendTestLog(ctx context.Context, taskData TaskData, log *serviceModel.TestLog) (string, error) {
+func (c *Mock) SendTestLog(ctx context.Context, td TaskData, log *serviceModel.TestLog) (string, error) {
 	return "", nil
 }
 
@@ -631,9 +412,11 @@ func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyV
 func (c *Mock) PostJSONData(ctx context.Context, td TaskData, path string, data interface{}) error {
 	return nil
 }
+
 func (c *Mock) GetJSONData(ctx context.Context, td TaskData, tn, dn, vn string) ([]byte, error) {
 	return nil, nil
 }
+
 func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, dn string) ([]byte, error) {
 	return nil, nil
 }
@@ -665,8 +448,3 @@ func (c *Mock) GetSystemInfoLength() int {
 	c.mu.RUnlock()
 	return length
 }
-
-func (c *Mock) SetBannerMessage(ctx context.Context, m string) error                { return nil }
-func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                { return "", nil }
-func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error { return nil }
-func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error) { return nil, nil }

@@ -62,7 +62,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, time
 		select {
 		case <-timer.C:
 			// check the last time the idle timeout was updated.
-			nextTimeout := timeoutInterval - time.Now().Sub(a.comm.LastMessageAt())
+			nextTimeout := timeoutInterval - time.Since(a.comm.LastMessageAt())
 			if nextTimeout <= 0 {
 				tc.logger.Execution().Error("Hit idle timeout")
 				close(timeout)

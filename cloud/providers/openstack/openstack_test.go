@@ -307,6 +307,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 }
 
 func (s *OpenStackSuite) TestUtilToEvgStatus() {

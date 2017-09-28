@@ -55,7 +55,6 @@ func (as *APIServer) insertTaskJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	as.WriteJSON(w, http.StatusOK, "ok")
-	return
 }
 
 func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {

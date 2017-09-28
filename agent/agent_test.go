@@ -114,7 +114,7 @@ func (s *AgentTestSuite) TestCancelStartTask() {
 	complete := make(chan string)
 	timeout := make(chan struct{})
 	go func() {
-		for _ = range resetIdleTimeout {
+		for range resetIdleTimeout {
 			// discard
 		}
 	}()

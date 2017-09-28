@@ -11,8 +11,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var setupFuncsTestConf = testutil.TestConfig()
-
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
 }

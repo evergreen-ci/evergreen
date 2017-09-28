@@ -74,7 +74,7 @@ type VersionConnectorSuite struct {
 //   Initialize the ConnectorSuites                                           //
 //----------------------------------------------------------------------------//
 func TestVersionConnectorSuite(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	// Set up
 	s := new(VersionConnectorSuite)

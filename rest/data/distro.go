@@ -37,7 +37,7 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	starttime time.Time, duration time.Duration) (*task.DistroCost, error) {
 	// First look for the distro with the given ID.
 	// If the find fails, return an error.
-	distro, err := distro.FindOne(distro.ById(distroId))
+	d, err := distro.FindOne(distro.ById(distroId))
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding distro with id %s", distroId)
 	}
@@ -61,8 +61,8 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	// Add provider and provider settings of the distro to the
 	// DistroCost model.
 	dc := res[0]
-	dc.Provider = distro.Provider
-	dc.ProviderSettings = *(distro.ProviderSettings)
+	dc.Provider = d.Provider
+	dc.ProviderSettings = *(d.ProviderSettings)
 
 	return &dc, nil
 }

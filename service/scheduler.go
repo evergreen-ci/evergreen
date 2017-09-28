@@ -64,9 +64,6 @@ func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Req
 		return
 	}
 	uis.WriteJSON(w, http.StatusOK, bucketData)
-
-	return
-
 }
 
 func (uis *UIServer) averageSchedulerStats(w http.ResponseWriter, r *http.Request) {

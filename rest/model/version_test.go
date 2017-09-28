@@ -78,7 +78,7 @@ func TestVersionBuildFromService(t *testing.T) {
 }
 
 func TestVersionToService(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	apiVersion := &APIVersion{}
 	v, err := apiVersion.ToService()
 	assert.Nil(v)

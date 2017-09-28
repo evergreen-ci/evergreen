@@ -9,15 +9,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// GetAllHosts ...
-func (*communicatorImpl) GetAllHosts() {
-	return
-}
-
-// GetHostByID ...
-func (*communicatorImpl) GetHostByID() {
-	return
-}
+func (*communicatorImpl) GetAllHosts() {}
+func (*communicatorImpl) GetHostByID() {}
 
 // GetHostsByUser will return a slice of all hosts spawned by the given user
 // The API route is paginated, but we will add all pages to a local slice because
@@ -56,15 +49,8 @@ func (c *communicatorImpl) GetHostsByUser(ctx context.Context, user string) ([]*
 	return hosts, nil
 }
 
-// SetHostStatus ...
-func (*communicatorImpl) SetHostStatus() {
-	return
-}
-
-// SetHostStatuses ...
-func (*communicatorImpl) SetHostStatuses() {
-	return
-}
+func (*communicatorImpl) SetHostStatus()   {}
+func (*communicatorImpl) SetHostStatuses() {}
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
 func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.APIHost, error) {
@@ -196,217 +182,47 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 	return &settings.ServiceFlags, nil
 }
 
-// GetTaskByID ...
-func (*communicatorImpl) GetTaskByID() {
-	return
-}
-
-// GetTasksByBuild ...
-func (*communicatorImpl) GetTasksByBuild() {
-	return
-}
-
-// GetTasksByProjectAndCommit ...
-func (*communicatorImpl) GetTasksByProjectAndCommit() {
-	return
-}
-
-// SetTaskStatus ...
-func (*communicatorImpl) SetTaskStatus() {
-	return
-}
-
-// AbortTask ...
-func (*communicatorImpl) AbortTask() {
-	return
-}
-
-// RestartTask ...
-func (*communicatorImpl) RestartTask() {
-	return
-}
-
-// GetKeys ...
-func (*communicatorImpl) GetKeys() {
-	return
-}
-
-// AddKey ...
-func (*communicatorImpl) AddKey() {
-	return
-}
-
-// RemoveKey ...
-func (*communicatorImpl) RemoveKey() {
-	return
-}
-
-// GetProjectByID ...
-func (*communicatorImpl) GetProjectByID() {
-	return
-}
-
-// EditProject ...
-func (*communicatorImpl) EditProject() {
-	return
-}
-
-// CreateProject ...
-func (*communicatorImpl) CreateProject() {
-	return
-}
-
-// GetAllProjects ...
-func (*communicatorImpl) GetAllProjects() {
-	return
-}
-
-// GetBuildByID ...
-func (*communicatorImpl) GetBuildByID() {
-	return
-}
-
-// GetBuildByProjectAndHashAndVariant ...
-func (*communicatorImpl) GetBuildByProjectAndHashAndVariant() {
-	return
-}
-
-// GetBuildsByVersion ...
-func (*communicatorImpl) GetBuildsByVersion() {
-	return
-}
-
-// SetBuildStatus ...
-func (*communicatorImpl) SetBuildStatus() {
-	return
-}
-
-// AbortBuild ...
-func (*communicatorImpl) AbortBuild() {
-	return
-}
-
-// RestartBuild ...
-func (*communicatorImpl) RestartBuild() {
-	return
-}
-
-// GetTestsByTaskID ...
-func (*communicatorImpl) GetTestsByTaskID() {
-	return
-}
-
-// GetTestsByBuild ...
-func (*communicatorImpl) GetTestsByBuild() {
-	return
-}
-
-// GetTestsByTestName ...
-func (*communicatorImpl) GetTestsByTestName() {
-	return
-}
-
-// GetVersionByID ...
-func (*communicatorImpl) GetVersionByID() {
-	return
-}
-
-// GetVersions ...
-func (*communicatorImpl) GetVersions() {
-	return
-}
-
-// GetVersionByProjectAndCommit ...
-func (*communicatorImpl) GetVersionByProjectAndCommit() {
-	return
-}
-
-// GetVersionsByProject ...
-func (*communicatorImpl) GetVersionsByProject() {
-	return
-}
-
-// SetVersionStatus ...
-func (*communicatorImpl) SetVersionStatus() {
-	return
-}
-
-// AbortVersion ...
-func (*communicatorImpl) AbortVersion() {
-	return
-}
-
-// RestartVersion ...
-func (*communicatorImpl) RestartVersion() {
-	return
-}
-
-// GetAllDistros ...
-func (*communicatorImpl) GetAllDistros() {
-	return
-}
-
-// GetDistroByID ...
-func (*communicatorImpl) GetDistroByID() {
-	return
-}
-
-// CreateDistro ...
-func (*communicatorImpl) CreateDistro() {
-	return
-}
-
-// EditDistro ...
-func (*communicatorImpl) EditDistro() {
-	return
-}
-
-// DeleteDistro ...
-func (*communicatorImpl) DeleteDistro() {
-	return
-}
-
-// GetDistroSetupScriptByID ...
-func (*communicatorImpl) GetDistroSetupScriptByID() {
-	return
-}
-
-// GetDistroTeardownScriptByID ...
-func (*communicatorImpl) GetDistroTeardownScriptByID() {
-	return
-}
-
-// EditDistroSetupScript ...
-func (*communicatorImpl) EditDistroSetupScript() {
-	return
-}
-
-// EditDistroTeardownScript ...
-func (*communicatorImpl) EditDistroTeardownScript() {
-	return
-}
-
-// GetPatchByID ...
-func (*communicatorImpl) GetPatchByID() {
-	return
-}
-
-// GetPatchesByProject ...
-func (*communicatorImpl) GetPatchesByProject() {
-	return
-}
-
-// SetPatchStatus ...
-func (*communicatorImpl) SetPatchStatus() {
-	return
-}
-
-// AbortPatch ...
-func (*communicatorImpl) AbortPatch() {
-	return
-}
-
-// RestartPatch ...
-func (*communicatorImpl) RestartPatch() {
-	return
-}
+// nolint
+func (*communicatorImpl) GetTaskByID()                        {}
+func (*communicatorImpl) GetTasksByBuild()                    {}
+func (*communicatorImpl) GetTasksByProjectAndCommit()         {}
+func (*communicatorImpl) SetTaskStatus()                      {}
+func (*communicatorImpl) AbortTask()                          {}
+func (*communicatorImpl) RestartTask()                        {}
+func (*communicatorImpl) GetKeys()                            {}
+func (*communicatorImpl) AddKey()                             {}
+func (*communicatorImpl) RemoveKey()                          {}
+func (*communicatorImpl) GetProjectByID()                     {}
+func (*communicatorImpl) EditProject()                        {}
+func (*communicatorImpl) CreateProject()                      {}
+func (*communicatorImpl) GetAllProjects()                     {}
+func (*communicatorImpl) GetBuildByID()                       {}
+func (*communicatorImpl) GetBuildByProjectAndHashAndVariant() {}
+func (*communicatorImpl) GetBuildsByVersion()                 {}
+func (*communicatorImpl) SetBuildStatus()                     {}
+func (*communicatorImpl) AbortBuild()                         {}
+func (*communicatorImpl) RestartBuild()                       {}
+func (*communicatorImpl) GetTestsByTaskID()                   {}
+func (*communicatorImpl) GetTestsByBuild()                    {}
+func (*communicatorImpl) GetTestsByTestName()                 {}
+func (*communicatorImpl) GetVersionByID()                     {}
+func (*communicatorImpl) GetVersions()                        {}
+func (*communicatorImpl) GetVersionByProjectAndCommit()       {}
+func (*communicatorImpl) GetVersionsByProject()               {}
+func (*communicatorImpl) SetVersionStatus()                   {}
+func (*communicatorImpl) AbortVersion()                       {}
+func (*communicatorImpl) RestartVersion()                     {}
+func (*communicatorImpl) GetAllDistros()                      {}
+func (*communicatorImpl) GetDistroByID()                      {}
+func (*communicatorImpl) CreateDistro()                       {}
+func (*communicatorImpl) EditDistro()                         {}
+func (*communicatorImpl) DeleteDistro()                       {}
+func (*communicatorImpl) GetDistroSetupScriptByID()           {}
+func (*communicatorImpl) GetDistroTeardownScriptByID()        {}
+func (*communicatorImpl) EditDistroSetupScript()              {}
+func (*communicatorImpl) EditDistroTeardownScript()           {}
+func (*communicatorImpl) GetPatchByID()                       {}
+func (*communicatorImpl) GetPatchesByProject()                {}
+func (*communicatorImpl) SetPatchStatus()                     {}
+func (*communicatorImpl) AbortPatch()                         {}
+func (*communicatorImpl) RestartPatch()                       {}

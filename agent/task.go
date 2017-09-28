@@ -94,7 +94,6 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		complete <- evergreen.TaskFailed
 	}
 	complete <- evergreen.TaskSucceeded
-	return
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {

@@ -899,9 +899,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(buildId, ShouldNotEqual, "")
 
 				// find the build from the db
-				build, err := build.FindOne(build.ById(buildId))
+				b, err := build.FindOne(build.ById(buildId))
 				So(err, ShouldBeNil)
-				So(build.Activated, ShouldBeTrue)
+				So(b.Activated, ShouldBeTrue)
 
 				// find the tasks, make sure they were all created
 				tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey}))
@@ -915,13 +915,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[0].DistroId, ShouldEqual, "")
 				So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+					b.CreateTime.Truncate(time.Second))
 				So(tasks[0].PushTime.Truncate(time.Second), ShouldResemble,
-					build.PushTime.Truncate(time.Second))
+					b.PushTime.Truncate(time.Second))
 				So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(tasks[0].Activated, ShouldEqual, build.Activated)
-				So(tasks[0].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
-				So(tasks[0].Requester, ShouldEqual, build.Requester)
+				So(tasks[0].Activated, ShouldEqual, b.Activated)
+				So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
+				So(tasks[0].Requester, ShouldEqual, b.Requester)
 				So(tasks[0].Version, ShouldEqual, v.Id)
 				So(tasks[0].Revision, ShouldEqual, v.Revision)
 				So(tasks[0].Project, ShouldEqual, project.Identifier)
@@ -933,13 +933,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[1].DistroId, ShouldEqual, "")
 				So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+					b.CreateTime.Truncate(time.Second))
 				So(tasks[1].PushTime.Truncate(time.Second), ShouldResemble,
-					build.PushTime.Truncate(time.Second))
+					b.PushTime.Truncate(time.Second))
 				So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(tasks[1].Activated, ShouldEqual, build.Activated)
-				So(tasks[1].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
-				So(tasks[1].Requester, ShouldEqual, build.Requester)
+				So(tasks[1].Activated, ShouldEqual, b.Activated)
+				So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
+				So(tasks[1].Requester, ShouldEqual, b.Requester)
 				So(tasks[1].Version, ShouldEqual, v.Id)
 				So(tasks[1].Revision, ShouldEqual, v.Revision)
 				So(tasks[1].Project, ShouldEqual, project.Identifier)
@@ -951,13 +951,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[2].DistroId, ShouldEqual, "")
 				So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+					b.CreateTime.Truncate(time.Second))
 				So(tasks[2].PushTime.Truncate(time.Second), ShouldResemble,
-					build.PushTime.Truncate(time.Second))
+					b.PushTime.Truncate(time.Second))
 				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(tasks[2].Activated, ShouldEqual, build.Activated)
-				So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
-				So(tasks[2].Requester, ShouldEqual, build.Requester)
+				So(tasks[2].Activated, ShouldEqual, b.Activated)
+				So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
+				So(tasks[2].Requester, ShouldEqual, b.Requester)
 				So(tasks[2].Version, ShouldEqual, v.Id)
 				So(tasks[2].Revision, ShouldEqual, v.Revision)
 				So(tasks[2].Project, ShouldEqual, project.Identifier)
@@ -969,13 +969,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[3].DistroId, ShouldEqual, "")
 				So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
-					build.CreateTime.Truncate(time.Second))
+					b.CreateTime.Truncate(time.Second))
 				So(tasks[3].PushTime.Truncate(time.Second), ShouldResemble,
-					build.PushTime.Truncate(time.Second))
+					b.PushTime.Truncate(time.Second))
 				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(tasks[3].Activated, ShouldEqual, build.Activated)
-				So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
-				So(tasks[3].Requester, ShouldEqual, build.Requester)
+				So(tasks[3].Activated, ShouldEqual, b.Activated)
+				So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
+				So(tasks[3].Requester, ShouldEqual, b.Requester)
 				So(tasks[3].Version, ShouldEqual, v.Id)
 				So(tasks[3].Revision, ShouldEqual, v.Revision)
 				So(tasks[3].Project, ShouldEqual, project.Identifier)

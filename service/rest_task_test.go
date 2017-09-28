@@ -110,11 +110,11 @@ func TestGetTaskInfo(t *testing.T) {
 			Name: "Some Artifact",
 			Link: "some-url",
 		}
-		artifact := artifact.Entry{
+		a := artifact.Entry{
 			TaskId: taskId,
 			Files:  []artifact.File{file},
 		}
-		So(artifact.Upsert(), ShouldBeNil)
+		So(a.Upsert(), ShouldBeNil)
 
 		url, err := router.Get("task_info").URL("task_id", taskId)
 		So(err, ShouldBeNil)
@@ -133,7 +133,7 @@ func TestGetTaskInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-			fmt.Println(string(response.Body.Bytes()))
+			fmt.Println(response.Body.String())
 
 			rawJSONBody := map[string]*json.RawMessage{}
 			err = json.Unmarshal(response.Body.Bytes(), &rawJSONBody)

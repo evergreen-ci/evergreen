@@ -31,7 +31,7 @@ func TestDirectoryCleanup(t *testing.T) {
 	// cannot run the operation on a file, and it will not delete
 	// that files
 	tryCleanupDirectory(fn)
-	stat, err = os.Stat(fn)
+	_, err = os.Stat(fn)
 	assert.True(osExists(err))
 
 	// running the operation on the top level directory does not

@@ -109,10 +109,6 @@ func (trig FirstFailureInTaskType) ShouldExecute(ctx triggerContext) (bool, erro
 // the previous alert was sent.
 type TaskFailTransition struct{}
 
-// failureLimitMultiplier is a magic scalar for determining how often to resend transition failures.
-// If a failure reoccurs after 3*batchTime amount of time, we will resend transition emails.
-const failureLimitMultiplier = 3
-
 func (trig TaskFailTransition) Id() string { return alertrecord.TaskFailTransitionId }
 func (trig TaskFailTransition) Display() string {
 	return "a previously passing task fails"

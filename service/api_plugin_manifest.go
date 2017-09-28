@@ -106,5 +106,4 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	// no duplicate key error, use the manifest just created.
 
 	as.WriteJSON(w, http.StatusOK, newManifest)
-	return
 }

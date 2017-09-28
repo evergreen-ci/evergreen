@@ -50,7 +50,6 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destPatch)
-	return
 }
 
 // getPatchConfig returns the patched config for a given patch.

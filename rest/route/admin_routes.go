@@ -191,10 +191,7 @@ func (h *flagsPostHandler) Handler() RequestHandler {
 }
 
 func (h *flagsPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	if err := util.ReadJSONInto(r.Body, h); err != nil {
-		return err
-	}
-	return nil
+	return errors.WithStack(util.ReadJSONInto(r.Body, h))
 }
 
 func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {

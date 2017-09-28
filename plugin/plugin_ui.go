@@ -46,7 +46,6 @@ const (
 	PageCenter pagePosition = "Center"
 )
 
-type pluginContext int
 type pluginUser int
 
 const pluginUserKey pluginUser = 0

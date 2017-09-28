@@ -44,7 +44,7 @@ func (s *BackgroundTestSuite) SetupTest() {
 func (s *BackgroundTestSuite) TestWithCallbackTimeoutDefault() {
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()
-	s.True(deadline.Sub(time.Now()) > (defaultCallbackCmdTimeout - time.Second))
+	s.True(deadline.Sub(time.Now()) > (defaultCallbackCmdTimeout - time.Second)) // nolint
 	s.True(ok)
 }
 
@@ -52,7 +52,7 @@ func (s *BackgroundTestSuite) TestWithCallbackTimeoutSetByProject() {
 	s.tc.taskConfig.Project.CallbackTimeout = 100
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()
-	s.True(deadline.Sub(time.Now()) > (99))
+	s.True(deadline.Sub(time.Now()) > 99) // nolint
 	s.True(ok)
 }
 
@@ -63,7 +63,7 @@ func (s *BackgroundTestSuite) TestStartHeartbeat() {
 	heartbeat := make(chan string)
 	s.a.startHeartbeat(ctx, s.tc, heartbeat)
 	close(heartbeat)
-	for _ = range heartbeat {
+	for range heartbeat {
 		// There should be no values in the channel
 		s.True(false)
 	}

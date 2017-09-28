@@ -495,14 +495,14 @@ func getHostFromRequest(r *http.Request) (*host.Host, error) {
 		return nil, errors.New("no host tag supplied")
 	}
 	// find the host
-	host, err := host.FindOne(host.ById(tag))
-	if host == nil {
+	h, err := host.FindOne(host.ById(tag))
+	if h == nil {
 		return nil, errors.Errorf("no host with tag: %v", tag)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return host, nil
+	return h, nil
 }
 
 func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
