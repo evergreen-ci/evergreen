@@ -44,7 +44,7 @@ func (s *BackgroundTestSuite) SetupTest() {
 func (s *BackgroundTestSuite) TestWithCallbackTimeoutDefault() {
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()
-	s.True(time.Until(deadline) > (defaultCallbackCmdTimeout - time.Second))
+	s.True(deadline.Sub(time.Now()) > (defaultCallbackCmdTimeout - time.Second)) // nolint
 	s.True(ok)
 }
 
@@ -52,7 +52,7 @@ func (s *BackgroundTestSuite) TestWithCallbackTimeoutSetByProject() {
 	s.tc.taskConfig.Project.CallbackTimeout = 100
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()
-	s.True(time.Until(deadline) > 99)
+	s.True(deadline.Sub(time.Now()) > 99) // nolint
 	s.True(ok)
 }
 

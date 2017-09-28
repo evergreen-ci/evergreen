@@ -219,7 +219,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		// ensure this request is valid
 		addtHourDuration := time.Duration(addtHours) * time.Hour
 		futureExpiration := h.ExpirationTime.Add(addtHourDuration)
-		expirationExtensionDuration := time.Until(futureExpiration).Hours()
+		expirationExtensionDuration := futureExpiration.Sub(time.Now()).Hours() // nolint
 		if expirationExtensionDuration > MaxExpirationDurationHours {
 			http.Error(w, fmt.Sprintf("Can not extend %v expiration by %v hours. "+
 				"Maximum extension is limited to %v hours", hostId,
