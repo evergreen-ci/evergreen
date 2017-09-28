@@ -23,7 +23,6 @@ func TestFindAllDistros(t *testing.T) {
 
 	sc := &DBConnector{}
 
-	var distros []*distro.Distro
 	numDistros := 10
 	for i := 0; i < numDistros; i++ {
 		d := &distro.Distro{
