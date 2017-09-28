@@ -71,6 +71,7 @@ db.tasks.ensureIndex({ "branch": 1, "status": 1, "test_results.test_file" : 1, "
 db.tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
 db.tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
+db.tasks.ensureIndex({ "finish_time": 1})
 
 //======old_tasks======//
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
