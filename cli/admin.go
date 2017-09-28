@@ -11,9 +11,8 @@ import (
 
 type AdminRestartTasks struct {
 	GlobalOpts *Options `no-flag:"true"`
-	DryRun     bool     `long:"dry-run" short:"n" description:"run migration in a dry-run mode"`
-	StartTime  string   `long:"startAt" short:"s" description:"RFC339 formated date of the start time for the period of failed tasks to restart"`
-	EndTime    string   `long:"startAt" short:"s" description:"RFC339 formated date of the end time for the period of tasks to restart. Defaults to current time."`
+	StartTime  string   `long:"startAt" short:"s" description:"RFC3339 formated date of the start time for the period of failed tasks to restart"`
+	EndTime    string   `long:"startAt" short:"s" description:"RFC3339 formated date of the end time for the period of tasks to restart. Defaults to current time."`
 	Period     int      `long:"period" short:"p" description:"number of minutes. Specify either period or start time."`
 }
 
