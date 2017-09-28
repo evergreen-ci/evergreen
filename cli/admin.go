@@ -1,11 +1,70 @@
 package cli
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
+
+type AdminRestartTasks struct {
+	GlobalOpts *Options `no-flag:"true"`
+	DryRun     bool     `long:"dry-run" short:"n" description:"run migration in a dry-run mode"`
+	StartTime  string   `long:"startAt" short:"s" description:"RFC339 formated date of the start time for the period of failed tasks to restart"`
+	EndTime    string   `long:"startAt" short:"s" description:"RFC339 formated date of the end time for the period of tasks to restart. Defaults to current time."`
+	Period     int      `long:"period" short:"p" description:"number of minutes. Specify either period or start time."`
+}
+
+func (c *AdminRestartTasks) Execute(_ []string) error {
+	if c.StartTime != "" && c.Period == 0 {
+		return errors.New("you must specify either a period or a start time")
+	}
+
+	var (
+		err     error
+		startAt time.Time
+		endAt   time.Time
+	)
+
+	if c.EndTime == "" {
+		endAt = time.Now()
+	} else {
+		endAt, err = time.Parse(time.RFC3339, c.EndTime)
+		if err != nil {
+			return errors.Wrap(err, "problem formatting the startAt Time")
+		}
+	}
+
+	if c.StartTime == "" {
+		startAt = endAt.Add(-time.Duration(c.Period) * time.Minute)
+	} else {
+		startAt, err = time.Parse(time.RFC3339, c.StartTime)
+		if err != nil {
+			return errors.Wrap(err, "problem formatting the startAt Time")
+		}
+	}
+
+	client, settings, err := getAPIV2Client(c.GlobalOpts)
+	if err != nil {
+		return errors.Wrap(err, "problem configuring api client")
+	}
+
+	client.SetAPIUser(settings.User)
+	client.SetAPIKey(settings.APIKey)
+
+	ctx := context.Background()
+	if err = client.RestartRecentTasks(ctx, startAt, endAt); err != nil {
+		return errors.Wrapf(err, "problem restarting tasks for %s period starting at",
+			startAt.Sub(endAt), startAt)
+	}
+
+	grip.Infof("restarted failed tasks for %s period starting at %s",
+		startAt.Sub(endAt), startAt)
+
+	return nil
+}
 
 type AdminBannerCommand struct {
 	GlobalOpts            *Options `no-flag:"true"`

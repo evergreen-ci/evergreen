@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -226,3 +227,32 @@ func (*communicatorImpl) GetPatchesByProject()                {}
 func (*communicatorImpl) SetPatchStatus()                     {}
 func (*communicatorImpl) AbortPatch()                         {}
 func (*communicatorImpl) RestartPatch()                       {}
+
+func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endAt time.Time) error {
+	if endAt.Before(startAt) {
+		return errors.Errorf("start (%s) cannot be before end (%s)", startAt, endAt)
+	}
+
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin/restart",
+	}
+
+	payload := struct {
+		StartTime time.Time `json:"start_time"`
+		EndTime   time.Time `json:"end_time"`
+		DryRun    bool      `json:"dry_run"`
+	}{
+		DryRun:    false,
+		StartTime: startAt,
+		EndTime:   endAt,
+	}
+
+	_, err := c.request(ctx, info, &payload)
+	if err != nil {
+		return errors.Wrap(err, "problem restarting recent tasks")
+	}
+
+	return nil
+}

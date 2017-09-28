@@ -110,6 +110,7 @@ type Communicator interface {
 	GetBannerMessage(context.Context) (string, error)
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
 	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
+	RestartRecentTasks(context.Context, time.Time, time.Time) error
 
 	// Host methods
 	//
