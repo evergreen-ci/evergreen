@@ -239,7 +239,7 @@ retryLoop:
 		case <-ctx.Done():
 			return errors.New("s3 put operation canceled")
 		case <-timer.C:
-			filesList := []string{filepath.Join(s3pc.workDir + s3pc.LocalFile)}
+			filesList := []string{filepath.Join(s3pc.workDir, s3pc.LocalFile)}
 
 			if s3pc.isMulti() {
 				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
