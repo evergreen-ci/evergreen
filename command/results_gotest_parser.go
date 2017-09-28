@@ -186,8 +186,8 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 		t.Status = PASS
 	}
 
-	tAry := vp.tests[name]
-	if tAry == nil {
+	tAry, ok := vp.tests[name]
+	if !ok || tAry == nil {
 		tAry = []*goTestResult{t}
 	} else {
 		tAry = append(tAry, t)
