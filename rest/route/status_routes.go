@@ -70,17 +70,22 @@ func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) 
 	}
 
 	if h.verbose {
-		var taskModel *model.APITask
-		models := make([]model.Model, len(tasks))
+		response := make([]model.Model, len(tasks))
 		for i, t := range tasks {
-			taskModel = &model.APITask{}
-			if err := taskModel.BuildFromService(&t); err != nil {
+			taskModel := model.APITask{}
+			err = taskModel.BuildFromService(&t)
+			if err != nil {
+				if _, ok := err.(*rest.APIError); !ok {
+					err = errors.Wrap(err, "API model error")
+				}
 				return ResponseData{}, err
 			}
-			models[i] = taskModel
+
+			response[i] = &taskModel
+
 		}
 		return ResponseData{
-			Result: models,
+			Result: response,
 		}, nil
 	}
 

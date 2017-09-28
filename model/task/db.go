@@ -570,9 +570,7 @@ func FindCostTaskByProject(project, taskId string, starttime,
 	return tasks, err
 }
 
-// GetRecentTasks runs a query, returning a very limited projection of
-// the task results used in the GetTaskResultCounts query to support
-// returning tasks. Most fields are projected out.
+// GetRecentTasks returns the task results used by the recent_tasks endpoints.
 func GetRecentTasks(period time.Duration) ([]Task, error) {
 	query := db.Query(
 		bson.M{
@@ -581,13 +579,7 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 				"$gt": time.Now().Add(-period),
 			},
 		},
-	).Project(
-		bson.M{
-			IdKey:        0,
-			StatusKey:    1,
-			DetailsKey:   1,
-			ActivatedKey: 1,
-		})
+	)
 
 	tasks := []Task{}
 	err := db.FindAllQ(Collection, query, &tasks)
