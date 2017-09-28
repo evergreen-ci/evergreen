@@ -285,13 +285,13 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 }
 
 func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string, error) {
-	session, db, err := db.GetGlobalSessionFactory().GetSession()
+	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "problem getting database session")
 	}
 	defer session.Close()
 
-	pipeline := db.C(task.Collection).Pipe(
+	pipeline := mdb.C(task.Collection).Pipe(
 		[]bson.M{
 			{
 				"$match": bson.M{

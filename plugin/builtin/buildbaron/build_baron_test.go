@@ -17,10 +17,6 @@ func init() {
 	reporting.QuietMode()
 }
 
-const (
-	jiraFailure = "fake jira failed"
-)
-
 func TestTaskToJQL(t *testing.T) {
 	Convey("Given a task with with two failed tests and one successful test, "+
 		"the jql should contain only the failed test names", t, func() {

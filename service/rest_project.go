@@ -18,7 +18,6 @@ func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 	// unset alerts so we don't expose emails through the API
 	ref.Alerts = nil
 	restapi.WriteJSON(w, http.StatusOK, ref)
-	return
 }
 
 // getProjectsIds returns a JSON response of an array of active project Ids.
@@ -41,5 +40,4 @@ func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 	restapi.WriteJSON(w, http.StatusOK, struct {
 		Projects []string `json:"projects"`
 	}{projects})
-	return
 }

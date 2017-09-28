@@ -39,15 +39,16 @@ type ProviderSettings struct {
 	// HostIP is the IP address of the machine on which to start Docker containers. This
 	// host machine must already have Docker installed and the Docker API exposed at the
 	// client port, and preloaded Docker images.
-	HostIP     string     `mapstructure:"host_ip" json:"host_ip" bson:"host_ip"`
+	HostIP string `mapstructure:"host_ip" json:"host_ip" bson:"host_ip"`
 	// ImageID is the Docker image ID already loaded on the host machine.
-	ImageID    string     `mapstructure:"image_name" json:"image_name" bson:"image_name"`
+	ImageID string `mapstructure:"image_name" json:"image_name" bson:"image_name"`
 	// ClientPort is the port at which the Docker API is exposed on the host machine.
-	ClientPort int        `mapstructure:"client_port" json:"client_port" bson:"client_port"`
+	ClientPort int `mapstructure:"client_port" json:"client_port" bson:"client_port"`
 	// PortRange specifies potential ports to bind new containers to for SSH connections.
-	PortRange  *portRange `mapstructure:"port_range" json:"port_range" bson:"port_range"`
+	PortRange *portRange `mapstructure:"port_range" json:"port_range" bson:"port_range"`
 }
 
+// nolint
 var (
 	// bson fields for the ProviderSettings struct
 	hostIPKey     = bsonutil.MustHaveTag(ProviderSettings{}, "HostIP")
@@ -113,13 +114,13 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	}
 
 	grip.Info(message.Fields{
-		"message": "decoded Docker container settings",
-		"container": h.Id,
-		"host_ip": settings.HostIP,
-		"image_id": settings.ImageID,
+		"message":     "decoded Docker container settings",
+		"container":   h.Id,
+		"host_ip":     settings.HostIP,
+		"image_id":    settings.ImageID,
 		"client_port": settings.ClientPort,
-		"min_port": settings.PortRange.MinPort,
-		"max_port": settings.PortRange.MaxPort,
+		"min_port":    settings.PortRange.MinPort,
+		"max_port":    settings.PortRange.MaxPort,
 	})
 
 	// Create container
@@ -141,7 +142,7 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	}
 
 	grip.Info(message.Fields{
-		"message": "created and started Docker container",
+		"message":   "created and started Docker container",
 		"container": h.Id,
 	})
 
@@ -162,9 +163,9 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	h.Host = fmt.Sprintf("%s:%s", settings.HostIP, hostPort)
 
 	grip.Info(message.Fields{
-		"message": "retrieved open port binding",
+		"message":   "retrieved open port binding",
 		"container": h.Id,
-		"host_ip": settings.HostIP,
+		"host_ip":   settings.HostIP,
 		"host_port": hostPort,
 	})
 
@@ -210,7 +211,7 @@ func (m *Manager) TerminateInstance(h *host.Host) error {
 	}
 
 	grip.Info(message.Fields{
-		"message": "terminated Docker container",
+		"message":   "terminated Docker container",
 		"container": h.Id,
 	})
 

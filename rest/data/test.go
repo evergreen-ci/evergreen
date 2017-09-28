@@ -90,16 +90,3 @@ func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testFilename, status str
 	}
 	return nil, nil
 }
-
-type testSorter []task.TestResult
-
-func (ts testSorter) Len() int {
-	return len(ts)
-}
-
-func (ts testSorter) Less(i, j int) bool {
-	return ts[i].TestFile < ts[j].TestFile
-}
-func (ts testSorter) Swap(i, j int) {
-	ts[i], ts[j] = ts[j], ts[i]
-}

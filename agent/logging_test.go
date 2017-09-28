@@ -19,7 +19,7 @@ func TestGetSenderRemote(t *testing.T) {
 }
 
 func TestGetSenderLocal(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	_, err := GetSender(evergreen.LocalLoggingOverride, "task_id")
 	assert.NoError(err)
 }

@@ -64,10 +64,10 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 // dBTests are the database verification tests for standard one file execution
 func dBTests(taskId string) {
-	task, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(task.ById(taskId))
 	So(err, ShouldBeNil)
-	So(task, ShouldNotBeNil)
-	So(len(task.TestResults), ShouldNotEqual, 0)
+	So(t, ShouldNotBeNil)
+	So(len(t.TestResults), ShouldNotEqual, 0)
 
 	Convey("along with the proper logs", func() {
 		// junit_3.xml
@@ -83,9 +83,9 @@ func dBTests(taskId string) {
 
 // dBTestsWildcard are the database verification tests for globbed file execution
 func dBTestsWildcard(taskId string) {
-	task, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOne(task.ById(taskId))
 	So(err, ShouldBeNil)
-	So(len(task.TestResults), ShouldEqual, TotalResultCount)
+	So(len(t.TestResults), ShouldEqual, TotalResultCount)
 
 	Convey("along with the proper logs", func() {
 		// junit_1.xml

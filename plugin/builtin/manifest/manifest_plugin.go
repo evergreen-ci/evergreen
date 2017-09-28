@@ -123,6 +123,4 @@ func (m *ManifestPlugin) GetManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, foundManifest)
-	return
-
 }

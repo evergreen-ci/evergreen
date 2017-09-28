@@ -105,17 +105,17 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	// Sanity check to ensure that we have a distro object for each item in the
 	// task queue. Also pulls the distros we need for sorting
 	for distroId := range hostAllocatorData.taskQueueItems {
-		distro, ok := hostAllocatorData.distros[distroId]
+		d, ok := hostAllocatorData.distros[distroId]
 		if !ok {
 			return nil, errors.Errorf("No distro info available for distro %v",
 				distroId)
 		}
-		if distro.Id != distroId {
+		if d.Id != distroId {
 			return nil, errors.Errorf("Bad mapping between task queue distro "+
-				"name and host allocator distro data: %v != %v", distro.Id,
+				"name and host allocator distro data: %v != %v", d.Id,
 				distroId)
 		}
-		queueDistros = append(queueDistros, distro)
+		queueDistros = append(queueDistros, d)
 	}
 
 	// sort the distros by the number of static hosts available. why?

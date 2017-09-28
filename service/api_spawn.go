@@ -83,34 +83,34 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 	status := vars["status"]
 
 	// mark the host itself as provisioned
-	host, err := host.FindOne(host.ById(instanceId))
+	h, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	if host == nil {
+	if h == nil {
 		http.Error(w, "host not found", http.StatusNotFound)
 		return
 	}
 
 	if status == evergreen.HostStatusSuccess {
-		if err = host.SetRunning(); err != nil {
+		if err = h.SetRunning(); err != nil {
 			grip.Errorf("Error marking host id %s as %s: %+v",
 				instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
-		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(host)))
-		if err = host.SetDecommissioned(); err != nil {
+		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(h)))
+		if err = h.SetDecommissioned(); err != nil {
 			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",
-				host.Host, host.StartedBy, err)
+				h.Host, h.StartedBy, err)
 		}
 		grip.Infof("Decommissioned %s for user %s because provisioning failed",
-			host.Host, host.StartedBy)
+			h.Host, h.StartedBy)
 
 		// send notification to the Evergreen team about this provisioning failure
-		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, host.Distro.Id)
-		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", host.Distro.Id, host.Host, host.StartedBy)
+		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, h.Distro.Id)
+		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", h.Distro.Id, h.Host, h.StartedBy)
 		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			grip.Errorln("issue sending email:", err)
 		}
@@ -131,16 +131,16 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		Host with id %v spawned.
 		The host's dns name is %v.
 		To ssh in: ssh -i <your private key> %v@%v`,
-		host.Id, host.Host, host.User, host.Host)
+		h.Id, h.Host, h.User, h.Host)
 
 	if status == evergreen.HostStatusFailed {
 		message += fmt.Sprintf("\nUnfortunately, the host's setup script did not run fully - check the setup.log " +
 			"file in the machine's home directory to see more details")
 	}
-	err = notify.TrySendNotificationToUser(host.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.Settings.Notify))
+	err = notify.TrySendNotificationToUser(h.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.Settings.Notify))
 	grip.ErrorWhenln(err != nil, "Error sending email", err)
 
-	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *host})
+	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *h})
 }
 
 // returns info on the host specified
@@ -148,18 +148,18 @@ func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	instanceId := vars["instance_id"]
 
-	host, err := host.FindOne(host.ById(instanceId))
+	h, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	if host == nil {
+	if h == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *host})
+	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *h})
 }
 
 // returns info on all of the hosts spawned by a user
@@ -181,32 +181,32 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	instanceId := vars["instance_id"]
 	hostAction := r.FormValue("action")
 
-	host, err := host.FindOne(host.ById(instanceId))
+	h, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if host == nil {
+	if h == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
 	user := GetUser(r)
-	if user == nil || user.Id != host.StartedBy {
-		message := fmt.Sprintf("Only %v is authorized to terminate this host", host.StartedBy)
+	if user == nil || user.Id != h.StartedBy {
+		message := fmt.Sprintf("Only %v is authorized to terminate this host", h.StartedBy)
 		http.Error(w, message, http.StatusUnauthorized)
 		return
 	}
 
 	switch hostAction {
 	case "terminate":
-		if host.Status == evergreen.HostTerminated {
-			message := fmt.Sprintf("Host %v is already terminated", host.Id)
+		if h.Status == evergreen.HostTerminated {
+			message := fmt.Sprintf("Host %v is already terminated", h.Id)
 			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
 
-		cloudHost, err := providers.GetCloudHost(host, &as.Settings)
+		cloudHost, err := providers.GetCloudHost(h, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -215,7 +215,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Failed to terminate spawn host"))
 			return
 		}
-		as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *host})
+		as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *h})
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action %v", hostAction), http.StatusBadRequest)
 	}

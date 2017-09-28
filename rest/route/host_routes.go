@@ -289,11 +289,7 @@ func (hph *hostPostHandler) Handler() RequestHandler {
 }
 
 func (hph *hostPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	if err := util.ReadJSONInto(r.Body, hph); err != nil {
-		return err
-	}
-
-	return nil
+	return errors.WithStack(util.ReadJSONInto(r.Body, hph))
 }
 
 func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {

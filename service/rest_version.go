@@ -188,7 +188,6 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, result)
-	return
 }
 
 // Returns a JSON response with the marshaled output of the version
@@ -209,7 +208,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
-	return
 }
 
 // Returns a JSON response with the marshaled output of the version
@@ -225,7 +223,6 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte(projCtx.Version.Config))
 	grip.Warning(errors.Wrap(err, "problem writing response"))
-	return
 }
 
 // Returns a JSON response with the marshaled output of the version
@@ -258,8 +255,6 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
-	return
-
 }
 
 // Modifies part of the version specified in the request, and returns a
@@ -408,8 +403,6 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, result)
-	return
-
 }
 
 // Returns a JSON response with the status of the specified version
@@ -447,8 +440,6 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, result)
-	return
-
 }
 
 // lastGreen returns the most recent version for which the supplied variants completely pass.

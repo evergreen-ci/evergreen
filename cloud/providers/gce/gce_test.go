@@ -311,28 +311,28 @@ func (s *GCESuite) TestGetSSHOptions() {
 func (s *GCESuite) TestSpawnInvalidSettings() {
 	var err error
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
-	s.NotNil(host)
-	host, err = s.manager.SpawnHost(host)
+	h := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	s.NotNil(h)
+	h, err = s.manager.SpawnHost(h)
 	s.Error(err)
-	s.Nil(host)
+	s.Nil(h)
 
 	dSettingsNone := &distro.Distro{Provider: "gce"}
-	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
-	s.NotNil(host)
-	host, err = s.manager.SpawnHost(host)
-	s.Nil(host)
+	h = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	s.NotNil(h)
+	h, err = s.manager.SpawnHost(h)
+	s.Nil(h)
 	s.Error(err)
 
 	dSettingsInvalid := &distro.Distro{
 		Provider:         "gce",
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
-	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
-	s.NotNil(host)
-	host, err = s.manager.SpawnHost(host)
+	h = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	s.NotNil(h)
+	h, err = s.manager.SpawnHost(h)
 	s.Error(err)
-	s.Nil(host)
+	s.Nil(h)
 }
 
 func (s *GCESuite) TestSpawnDuplicateHostID() {
@@ -366,17 +366,17 @@ func (s *GCESuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host := cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
-	host, err := s.manager.SpawnHost(host)
+	h := cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	h, err := s.manager.SpawnHost(h)
 	s.NoError(err)
-	s.NotNil(host)
+	s.NotNil(h)
 
 	mock.failCreate = true
-	host = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
-	s.NotNil(host)
-	host, err = s.manager.SpawnHost(host)
+	h = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	s.NotNil(h)
+	h, err = s.manager.SpawnHost(h)
 	s.Error(err)
-	s.Nil(host)
+	s.Nil(h)
 }
 
 func (s *GCESuite) TestUtilToEvgStatus() {
@@ -429,7 +429,7 @@ func (s *GCESuite) TestUtilGenerateName() {
 
 func (s *GCESuite) TestUtilMakeLabels() {
 	str := "!nv@lid N@m3*"
-	host := &host.Host{
+	h := &host.Host{
 		Distro: distro.Distro{
 			Id: str,
 		},
@@ -437,7 +437,7 @@ func (s *GCESuite) TestUtilMakeLabels() {
 		CreationTime: time.Now(),
 	}
 
-	tags := makeLabels(host)
+	tags := makeLabels(h)
 	r, _ := regexp.Compile("^[a-z0-9_-]*$")
 	for _, v := range tags {
 		s.True(r.Match([]byte(v)))

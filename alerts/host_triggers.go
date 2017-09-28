@@ -23,8 +23,7 @@ func (sthw SpawnTwoHourWarning) CreateAlertRecord(ctx triggerContext) *alertreco
 }
 
 func (sthw SpawnTwoHourWarning) ShouldExecute(ctx triggerContext) (bool, error) {
-	if ctx.host == nil || ctx.host.ExpirationTime.IsZero() ||
-		ctx.host.ExpirationTime.Sub(time.Now()) > (2*time.Hour) {
+	if ctx.host == nil || ctx.host.ExpirationTime.IsZero() || time.Until(ctx.host.ExpirationTime) > (2*time.Hour) {
 		return false, nil
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(ctx.host.Id, alertrecord.SpawnHostTwoHourWarning))
@@ -48,8 +47,7 @@ func (sthw SpawnTwelveHourWarning) CreateAlertRecord(ctx triggerContext) *alertr
 }
 
 func (sthw SpawnTwelveHourWarning) ShouldExecute(ctx triggerContext) (bool, error) {
-	if ctx.host == nil || ctx.host.ExpirationTime.IsZero() ||
-		ctx.host.ExpirationTime.Sub(time.Now()) > (12*time.Hour) {
+	if ctx.host == nil || ctx.host.ExpirationTime.IsZero() || time.Until(ctx.host.ExpirationTime) > (12*time.Hour) {
 		return false, nil
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(ctx.host.Id, alertrecord.SpawnHostTwelveHourWarning))

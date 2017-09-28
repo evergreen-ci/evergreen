@@ -566,7 +566,7 @@ func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData
 }
 
 func (c *communicatorImpl) SendProcessInfo(ctx context.Context, td TaskData, procs []*message.ProcessInfo) error {
-	if procs == nil || len(procs) == 0 {
+	if len(procs) == 0 {
 		return nil
 	}
 

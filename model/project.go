@@ -624,17 +624,17 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if revision != "" {
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
-		version, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revision))
+		v, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revision))
 		if err != nil {
 			return nil, errors.Wrapf(err, "error fetching version for project %v revision %v", projectRef.Identifier, revision)
 		}
-		if version == nil {
+		if v == nil {
 			// fall back to the skeletal project
 			return project, nil
 		}
 
 		project = &Project{}
-		if err = LoadProjectInto([]byte(version.Config), projectRef.Identifier, project); err != nil {
+		if err = LoadProjectInto([]byte(v.Config), projectRef.Identifier, project); err != nil {
 			return nil, errors.Wrap(err, "Error loading project from version")
 		}
 	}

@@ -143,9 +143,8 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 // the host. any host passed into this function is assumed to have crossed
 // at least the least recent threshold
 func lastWarningThresholdCrossed(host *host.Host) time.Duration {
-
 	// how long til the host expires
-	tilExpiration := host.ExpirationTime.Sub(time.Now())
+	tilExpiration := time.Until(host.ExpirationTime)
 
 	// iterate through the thresholds - since they are kept in sorted order,
 	// the first one crossed will be the most recent one crossed

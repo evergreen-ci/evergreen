@@ -12,14 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
-)
-
-var (
-	testConfig = testutil.TestConfig()
 )
 
 type AdminRouteSuite struct {
@@ -116,7 +111,7 @@ func (s *AdminRouteSuite) DoAuthenticationTests(authFunc func(context.Context, d
 }
 
 func TestRestartRoute(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
 	const route = "/admin/restart"

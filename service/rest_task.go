@@ -176,8 +176,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destTask)
-	return
-
 }
 
 // getTaskStatus returns a JSON response with the status of the specified task.
@@ -213,6 +211,4 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, result)
-	return
-
 }

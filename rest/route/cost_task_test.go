@@ -17,7 +17,6 @@ type costTasksByProjectSuite struct {
 	sc        *data.MockConnector
 	data      data.MockTaskConnector
 	starttime time.Time
-	paginator PaginatorFunc
 	suite.Suite
 }
 

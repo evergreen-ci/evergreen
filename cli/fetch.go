@@ -431,13 +431,13 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
-				defer out.Close()
+				defer out.Close() // nolint
 				resp, err := http.Get(u.url)
 				if err != nil {
 					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
-				defer resp.Body.Close()
+				defer resp.Body.Close() // nolint
 
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.

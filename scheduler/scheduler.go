@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"runtime"
 	"sync"
 	"time"
@@ -244,13 +243,14 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 				return errors.New("scheduling run canceled")
 			}
 
+			makespan := taskQueueInfo.ExpectedDuration / time.Duration(len(hostsByDistro)+len(hostsSpawned))
 			grip.Info(message.Fields{
 				"runner":             RunnerName,
 				"distro":             distro,
 				"new_hosts":          hostList,
 				"queue":              taskQueueInfo,
 				"total_runtime":      taskQueueInfo.ExpectedDuration.String(),
-				"predicted_makespan": fmt.Sprintf("%s", taskQueueInfo.ExpectedDuration/time.Duration(len(hostsByDistro)+len(hostsSpawned))),
+				"predicted_makespan": makespan.String(),
 			})
 		}
 	} else {

@@ -98,13 +98,13 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["host_id"]
 
-	host, err := host.FindOne(host.ById(id))
+	h, err := host.FindOne(host.ById(id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	if host == nil {
+	if h == nil {
 		http.Error(w, "Host not found", http.StatusNotFound)
 		return
 	}
@@ -119,24 +119,24 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch opts.Action {
 	case "updateStatus":
-		currentStatus := host.Status
+		currentStatus := h.Status
 		newStatus := opts.Status
 		if !util.SliceContains(validUpdateToStatuses, newStatus) {
 			http.Error(w, fmt.Sprintf("'%v' is not a valid status", newStatus), http.StatusBadRequest)
 			return
 		}
 
-		if host.Provider == static.ProviderName && newStatus == evergreen.HostDecommissioned {
+		if h.Provider == static.ProviderName && newStatus == evergreen.HostDecommissioned {
 			http.Error(w, "cannot decommission static hosts", http.StatusBadRequest)
 			return
 		}
 
-		err := host.SetStatus(newStatus)
+		err := h.SetStatus(newStatus)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
 			return
 		}
-		msg := NewSuccessFlash(fmt.Sprintf("Host status successfully updated from '%v' to '%v'", currentStatus, host.Status))
+		msg := NewSuccessFlash(fmt.Sprintf("Host status successfully updated from '%v' to '%v'", currentStatus, h.Status))
 		PushFlash(uis.CookieStore, r, w, msg)
 		uis.WriteJSON(w, http.StatusOK, "Successfully updated host status")
 	default:

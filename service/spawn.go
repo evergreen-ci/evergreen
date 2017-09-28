@@ -145,8 +145,6 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host spawned"))
 	uis.WriteJSON(w, http.StatusOK, "Host successfully spawned")
-	return
-
 }
 
 func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
@@ -163,31 +161,31 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hostId := updateParams.HostId
-	host, err := host.FindOne(host.ById(hostId))
+	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
 		return
 	}
-	if host == nil {
+	if h == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("No host with id %v found", hostId))
 		return
 	}
 	// determine what action needs to be taken
 	switch updateParams.Action {
 	case HostTerminate:
-		if host.Status == evergreen.HostTerminated {
-			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", host.Id))
+		if h.Status == evergreen.HostTerminated {
+			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
 			return
 		}
-		if host.Status == evergreen.HostUninitialized {
-			if err := host.SetTerminated(); err != nil {
+		if h.Status == evergreen.HostUninitialized {
+			if err := h.SetTerminated(); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
 			uis.WriteJSON(w, http.StatusOK, "host terminated")
 			return
 		}
-		cloudHost, err := providers.GetCloudHost(host, &uis.Settings)
+		cloudHost, err := providers.GetCloudHost(h, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -199,7 +197,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, "host terminated")
 		return
 	case HostPasswordUpdate:
-		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.Settings, host, updateParams.RDPPwd)
+		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.Settings, h, updateParams.RDPPwd)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error constructing host RDP password"))
 			return
@@ -220,8 +218,8 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 		// ensure this request is valid
 		addtHourDuration := time.Duration(addtHours) * time.Hour
-		futureExpiration := host.ExpirationTime.Add(addtHourDuration)
-		expirationExtensionDuration := futureExpiration.Sub(time.Now()).Hours()
+		futureExpiration := h.ExpirationTime.Add(addtHourDuration)
+		expirationExtensionDuration := time.Until(futureExpiration).Hours()
 		if expirationExtensionDuration > MaxExpirationDurationHours {
 			http.Error(w, fmt.Sprintf("Can not extend %v expiration by %v hours. "+
 				"Maximum extension is limited to %v hours", hostId,
@@ -229,7 +227,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 
 		}
-		if err = host.SetExpirationTime(futureExpiration); err != nil {
+		if err = h.SetExpirationTime(futureExpiration); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}

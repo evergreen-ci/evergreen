@@ -221,11 +221,6 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 	plugin.WriteJSON(w, http.StatusOK, n)
 }
 
-// In order that we can write tests without an actual jira server handy
-type jqlSearcher interface {
-	JQLSearch(query string) (*thirdparty.JiraSearchResults, error)
-}
-
 // Generates a jira JQL string from the task
 // When we search in jira for a task we search in the specified JIRA project
 // If there are any test results, then we only search by test file

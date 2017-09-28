@@ -397,7 +397,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	as.WriteJSON(w, http.StatusOK, "Patch module updated")
-	return
 }
 
 // listPatches returns a user's "n" most recent patches.

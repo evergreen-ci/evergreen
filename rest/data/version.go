@@ -135,7 +135,7 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Ver
 func (mvc *MockVersionConnector) AbortVersion(versionId string) error {
 	for idx, t := range mvc.CachedTasks {
 		if t.Version == versionId && (t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched) {
-			if t.Aborted == false {
+			if !t.Aborted {
 				pt := &mvc.CachedTasks[idx]
 				pt.Aborted = true
 			}

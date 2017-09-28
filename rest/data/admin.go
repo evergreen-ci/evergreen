@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type DBAdminConnector struct{}
@@ -39,12 +40,7 @@ func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
 		return err
 	}
 
-	err = event.LogBannerChanged(oldSettings.Banner, text, u)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return errors.WithStack(event.LogBannerChanged(oldSettings.Banner, text, u))
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
@@ -59,12 +55,7 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 		return err
 	}
 
-	err = event.LogServiceChanged(oldSettings.ServiceFlags, flags, u)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return errors.WithStack(event.LogServiceChanged(oldSettings.ServiceFlags, flags, u))
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times

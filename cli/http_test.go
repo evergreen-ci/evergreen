@@ -10,7 +10,6 @@ import (
 
 type CliHttpTestSuite struct {
 	suite.Suite
-	globalOpts *Options
 }
 
 const testFileName = ".evergreen_test.yml"

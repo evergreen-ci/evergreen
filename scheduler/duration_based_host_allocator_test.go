@@ -1067,8 +1067,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := task.Task{Id: runningTaskId}
-				So(task.Insert(), ShouldBeNil)
+				t := task.Task{Id: runningTaskId}
+				So(t.Insert(), ShouldBeNil)
 			}
 
 			newHosts, err := durationBasedHostAllocator.
@@ -1135,8 +1135,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := task.Task{Id: runningTaskId}
-				So(task.Insert(), ShouldBeNil)
+				t := task.Task{Id: runningTaskId}
+				So(t.Insert(), ShouldBeNil)
 			}
 
 			// total running duration here is
@@ -1301,8 +1301,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := task.Task{Id: runningTaskId}
-				So(task.Insert(), ShouldBeNil)
+				t := task.Task{Id: runningTaskId}
+				So(t.Insert(), ShouldBeNil)
 			}
 
 			newHosts, err := durationBasedHostAllocator.
@@ -1354,8 +1354,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := task.Task{Id: runningTaskId}
-				So(task.Insert(), ShouldBeNil)
+				t := task.Task{Id: runningTaskId}
+				So(t.Insert(), ShouldBeNil)
 			}
 
 			// estimates based on data
@@ -1413,8 +1413,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := task.Task{Id: runningTaskId}
-				So(task.Insert(), ShouldBeNil)
+				t := task.Task{Id: runningTaskId}
+				So(t.Insert(), ShouldBeNil)
 			}
 
 			// estimates based on data

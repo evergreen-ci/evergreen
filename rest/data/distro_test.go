@@ -29,7 +29,6 @@ func TestFindAllDistros(t *testing.T) {
 		d := &distro.Distro{
 			Id: fmt.Sprintf("distro_%d", rand.Int()),
 		}
-		distros = append(distros, d)
 		assert.Nil(d.Insert())
 	}
 
@@ -50,7 +49,7 @@ type DistroCostConnectorSuite struct {
 
 // Initialize the ConnectorSuites
 func TestDistroCostConnectorSuite(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	// Set up
 	s := new(DistroCostConnectorSuite)

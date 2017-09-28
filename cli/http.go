@@ -95,9 +95,9 @@ func getAPIV2Client(o *Options) (client.Communicator, *model.CLISettings, error)
 		return nil, nil, err
 	}
 
-	client := client.NewCommunicator(settings.APIServerHost)
+	c := client.NewCommunicator(settings.APIServerHost)
 
-	return client, settings, nil
+	return c, settings, nil
 }
 
 // doReq performs a request of the given method type against path.
