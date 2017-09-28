@@ -155,8 +155,8 @@ func (vp *goTestParser) handleEnd(line string, rgx *regexp.Regexp) error {
 	if err != nil {
 		return errors.Wrapf(err, "error parsing end line '%s'", line)
 	}
-	tAry := vp.tests[name]
-	if tAry == nil {
+	tAry, ok := vp.tests[name]
+	if !ok || tAry == nil {
 		// if there's no existing test, just stub one out
 		t := vp.newTestResult(name)
 		tAry = []*goTestResult{t}
