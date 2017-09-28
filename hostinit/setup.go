@@ -164,7 +164,11 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 				case <-ctx.Done():
 					catcher.Add(errors.New("hostinit run canceled"))
 					return
-				case h := <-hosts:
+				case h, ok := <-hosts:
+					if !ok {
+						return
+					}
+
 					grip.Info(message.Fields{
 						"GUID":    init.GUID,
 						"message": "attempting to setup host",
@@ -218,8 +222,8 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 							err = errors.Wrap(err, "problem sending host init error email")
 							catcher.Add(err)
 						}
+						continue
 					}
-
 					grip.Info(message.Fields{
 						"GUID":    init.GUID,
 						"message": "setup script successfully ran for host",
