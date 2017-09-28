@@ -215,6 +215,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd = &s3put{}
 			conf = &model.TaskConfig{
 				Expansions: util.NewExpansions(map[string]string{}),
+				WorkDir:    "working_directory",
 			}
 
 			Convey("all appropriate values should be expanded, if they"+
@@ -248,6 +249,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				So(cmd.ContentType, ShouldEqual, "ct")
 				So(cmd.ResourceDisplayName, ShouldEqual, "file")
 				So(cmd.Visibility, ShouldEqual, "private")
+				So(cmd.workDir, ShouldEqual, "working_directory")
 
 			})
 

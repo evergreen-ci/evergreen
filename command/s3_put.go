@@ -73,6 +73,10 @@ type s3put struct {
 	// for missing files.
 	Optional bool `mapstructure:"optional"`
 
+	// workDir sets the working directory relative to which s3put should look for files to upload.
+	// workDir will be empty if an absolute path is provided to the file.
+	workDir string
+
 	taskdata client.TaskData
 	base
 }
@@ -99,13 +103,13 @@ func (s3pc *s3put) validate() error {
 	if s3pc.AwsSecret == "" {
 		catcher.Add(errors.New("aws_secret cannot be blank"))
 	}
-	if s3pc.LocalFile == "" && len(s3pc.LocalFilesIncludeFilter) == 0 {
+	if s3pc.LocalFile == "" && !s3pc.isMulti() {
 		catcher.Add(errors.New("local_file and local_files_include_filter cannot both be blank"))
 	}
-	if s3pc.LocalFile != "" && len(s3pc.LocalFilesIncludeFilter) != 0 {
+	if s3pc.LocalFile != "" && s3pc.isMulti() {
 		catcher.Add(errors.New("local_file and local_files_include_filter cannot both be specified"))
 	}
-	if s3pc.Optional && len(s3pc.LocalFilesIncludeFilter) != 0 {
+	if s3pc.Optional && s3pc.isMulti() {
 		catcher.Add(errors.New("cannot use optional upload with local_files_include_filter"))
 	}
 	if s3pc.RemoteFile == "" {
@@ -113,6 +117,9 @@ func (s3pc *s3put) validate() error {
 	}
 	if s3pc.ContentType == "" {
 		catcher.Add(errors.New("content_type cannot be blank"))
+	}
+	if s3pc.isMulti() && filepath.IsAbs(s3pc.LocalFile) {
+		catcher.Add(errors.New("cannot use absolute path with local_files_include_filter"))
 	}
 
 	if !util.SliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
@@ -135,6 +142,12 @@ func (s3pc *s3put) validate() error {
 // Apply the expansions from the relevant task config to all appropriate
 // fields of the s3put.
 func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
+	if filepath.IsAbs(s3pc.LocalFile) {
+		s3pc.workDir = ""
+	} else {
+		s3pc.workDir = conf.WorkDir
+	}
+
 	return errors.WithStack(util.ExpandValues(s3pc, conf.Expansions))
 }
 
@@ -180,9 +193,6 @@ func (s3pc *s3put) Execute(ctx context.Context,
 		logger.Task().Infof("Putting files matching filter %v into path %v in s3 bucket %v",
 			s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
 	} else {
-		if !filepath.IsAbs(s3pc.LocalFile) {
-			s3pc.LocalFile = filepath.Join(conf.WorkDir, s3pc.LocalFile)
-		}
 		logger.Task().Infof("Putting %v into path %v in s3 bucket %v",
 			s3pc.LocalFile, s3pc.RemoteFile, s3pc.Bucket)
 	}
@@ -229,10 +239,10 @@ retryLoop:
 		case <-ctx.Done():
 			return errors.New("s3 put operation canceled")
 		case <-timer.C:
-			filesList := []string{s3pc.LocalFile}
+			filesList := []string{s3pc.workDir + s3pc.LocalFile}
 
 			if s3pc.isMulti() {
-				filesList, err = util.BuildFileList(".", s3pc.LocalFilesIncludeFilter...)
+				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
 				if err != nil {
 					grip.Error(err)
 					return errors.Errorf("could not parse includes filter %s",
