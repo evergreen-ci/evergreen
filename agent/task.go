@@ -121,8 +121,13 @@ func (a *Agent) updateIdleTimeout(ctx context.Context, tc *taskContext, duration
 		return
 	}
 
-	resetIdleTimeout <- duration
-	tc.logger.Execution().Infof("Command timeout set to %s", duration.String())
+	select {
+	case resetIdleTimeout <- duration:
+		tc.logger.Execution().Infof("Command timeout set to %s", duration.String())
+	default:
+		tc.logger.Execution().Debug("Called command update but found timeout setting blocked")
+	}
+
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
