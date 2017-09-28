@@ -160,6 +160,22 @@ func TestParserFunctionality(t *testing.T) {
 		So(results[18].Name, ShouldEqual, "TestClientSuite/TestURLGeneratiorWithoutDefaultPortInResult")
 		So(results[18].Status, ShouldEqual, PASS)
 	})
+	Convey("gotest log with multiple executions of the same test", t, func() {
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "5_simple.log"))
+		So(err, ShouldBeNil)
+
+		parser := &goTestParser{Suite: "test"}
+		err = parser.Parse(bytes.NewBuffer(logdata))
+		So(err, ShouldBeNil)
+
+		results := parser.Results()
+		So(len(results), ShouldEqual, 3)
+		So(results[0].Name, ShouldEqual, "Test1")
+		So(results[1].Name, ShouldEqual, "TestSameName")
+		So(results[2].Name, ShouldEqual, "TestSameName")
+		So(results[1].Status, ShouldEqual, PASS)
+		So(results[2].Status, ShouldEqual, FAIL)
+	})
 }
 
 func matchResultWithLog(tr *goTestResult, logs []string) {

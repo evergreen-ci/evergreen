@@ -1,0 +1,15 @@
+=== RUN   Test1
+
+3 total assertions
+
+--- PASS: Test1 (1.00s)
+=== RUN   TestSameName
+
+8 total assertions
+
+--- PASS: TestSameName (0.20s)
+=== RUN   TestSameName
+
+12 total assertions
+
+--- FAIL: TestSameName (0.10s)
