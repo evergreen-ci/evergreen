@@ -520,6 +520,7 @@ func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration t
 			"_id":                "$" + DistroIdKey,
 			"sum_time_taken":     bson.M{"$sum": "$" + TimeTakenKey},
 			"sum_estimated_cost": bson.M{"$sum": "$" + CostKey},
+			"num_hosts":          bson.M{"$count": 1},
 		}},
 		{"$project": bson.M{
 			"_id":                0,
