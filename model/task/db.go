@@ -557,6 +557,7 @@ func FindCostTaskByProject(project, taskId string, starttime,
 		FinishTimeKey:   1,
 		TimeTakenKey:    1,
 		RevisionKey:     1,
+		CostKey:         1,
 	}
 
 	tasks := []Task{} // Tasks to be returned
