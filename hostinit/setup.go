@@ -75,10 +75,10 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 		if idx >= 16 {
 			grip.Warning(message.Fields{
-				"message":           "pausing hosts",
+				"message":           "pausing host starting",
 				"GUID":              init.GUID,
 				"runner":            "hostinit",
-				"num_started":       idx - 1,
+				"num_started":       idx + 1,
 				"num_pending_hosts": len(hostsToStart),
 			})
 			return nil
