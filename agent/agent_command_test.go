@@ -154,6 +154,7 @@ func (s *CommandTestSuite) TestTimeout() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		timedOut: true,
 	}
 	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)

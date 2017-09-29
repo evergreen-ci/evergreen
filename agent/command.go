@@ -62,9 +62,9 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				tc.taskConfig.Expansions.Put(key, newVal)
 			}
 
-			tc.setCurrentTimeout(a.getTimeout(commandInfo))
 			if isTaskCommands {
 				tc.setCurrentCommand(cmd)
+				tc.setCurrentTimeout(a.getTimeout(commandInfo))
 				a.comm.UpdateLastMessageTime()
 			}
 

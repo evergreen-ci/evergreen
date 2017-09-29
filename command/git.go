@@ -110,8 +110,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 	case <-ctx.Done():
 		logger.Execution().Info("Got kill signal during git.get_project command")
-		if fetchSourceCmd.Cmd != nil {
-			logger.Execution().Infof("Stopping process: %d", fetchSourceCmd.Cmd.Process.Pid)
+		if pid := fetchSourceCmd.GetPid(); pid > 0 {
+			logger.Execution().Infof("Stopping process: %d", pid)
 			if err := fetchSourceCmd.Stop(); err != nil {
 				logger.Execution().Errorf("Error occurred stopping process: %v", err)
 			}
@@ -175,8 +175,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			}
 		case <-ctx.Done():
 			logger.Execution().Info("Got kill signal")
-			if moduleFetchCmd.Cmd != nil {
-				logger.Execution().Infof("Stopping process: %d", moduleFetchCmd.Cmd.Process.Pid)
+			if pid := moduleFetchCmd.GetPid(); pid > 0 {
+				logger.Execution().Infof("Stopping process: %d", pid)
 				if err := moduleFetchCmd.Stop(); err != nil {
 					logger.Execution().Errorf("Error occurred stopping process: %v", err)
 				}

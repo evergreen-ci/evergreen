@@ -128,7 +128,8 @@ func (s *BackgroundTestSuite) TestIdleTimeoutWatchWithoutMessageTimeout() {
 func (s *BackgroundTestSuite) TestExecTimeoutWatch() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	s.a.startMaxExecTimeoutWatch(ctx, s.tc, time.Millisecond)
+	s.a.startMaxExecTimeoutWatch(ctx, s.tc, time.Millisecond, cancel)
+	s.Error(ctx.Err())
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Len(msgs, 1)

@@ -115,7 +115,7 @@ func (s *AgentTestSuite) TestFinishTaskReturnsEndTaskResponse() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, true)
+	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded)
 	s.Equal(endTaskResponse, resp)
 	s.NoError(err)
 }
@@ -125,7 +125,7 @@ func (s *AgentTestSuite) TestFinishTaskEndTaskError() {
 	defer cancel()
 
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded, true)
+	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded)
 	s.Nil(resp)
 	s.Error(err)
 }
@@ -226,19 +226,23 @@ func (s *AgentTestSuite) TestEndTaskResponse() {
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, true)
+	s.tc.timedOut = true
+	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, false)
+	s.tc.timedOut = false
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, true)
+	s.tc.timedOut = true
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, false)
+	s.tc.timedOut = false
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 }
@@ -268,9 +272,9 @@ func (s *AgentTestSuite) TestWaitCompleteSuccess() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	status, taskTimedOut := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitCompleteFailure() {
@@ -282,9 +286,9 @@ func (s *AgentTestSuite) TestWaitCompleteFailure() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	status, taskTimedOut := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.False(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitExecTimeout() {
@@ -292,9 +296,9 @@ func (s *AgentTestSuite) TestWaitExecTimeout() {
 	complete := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	status, taskTimedOut := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.True(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
@@ -306,9 +310,9 @@ func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	status, taskTimedOut := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskUndispatched, status)
-	s.False(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitIdleTimeout() {
@@ -347,7 +351,7 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
 	cancel()
-	status, taskTimedOut := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.True(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }

@@ -72,6 +72,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 			nextTimeout := timeoutInterval - time.Since(a.comm.LastMessageAt())
 			if nextTimeout <= 0 {
 				tc.logger.Execution().Error("Hit idle timeout")
+				tc.reachTimeOut()
 				cancel()
 			}
 			timer.Reset(nextTimeout)
@@ -79,7 +80,8 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration) {
+func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, cancel context.CancelFunc) {
+	defer cancel()
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	for {
@@ -89,6 +91,7 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d
 			return
 		case <-timer.C:
 			tc.logger.Execution().Error("Hit exec timeout")
+			tc.reachTimeOut()
 			return
 		}
 	}

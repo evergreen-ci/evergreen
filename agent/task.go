@@ -12,6 +12,9 @@ import (
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("problem during configuring initial state")
@@ -43,7 +46,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)
 
-	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig))
+	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), cancel)
 
 	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
 	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
@@ -137,6 +140,20 @@ func (tc *taskContext) getCurrentTimeout() time.Duration {
 	defer tc.RUnlock()
 
 	return tc.timeout
+}
+
+func (tc *taskContext) reachTimeOut() {
+	tc.Lock()
+	defer tc.Unlock()
+
+	tc.timedOut = true
+}
+
+func (tc *taskContext) hadTimedOut() bool {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	return tc.timedOut
 }
 
 // getTaskConfig fetches task configuration data required to run the task from the API server.
