@@ -527,7 +527,7 @@ func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration t
 			"distro_id":          "$_id",
 			"sum_time_taken":     1,
 			"sum_estimated_cost": 1,
-			"num_tasks": 1
+			"num_tasks":          1,
 		}},
 	}
 
