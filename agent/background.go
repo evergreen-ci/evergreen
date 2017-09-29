@@ -60,6 +60,16 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, time
 	defer timer.Stop()
 	for {
 		select {
+		case <-ctx.Done():
+			grip.Info("Idle timeout watch canceled context")
+			return
+		case <-timeout:
+			// cancel by exec timeout watch
+			grip.Info("Idle timeout watch canceled by channel")
+			return
+		case d := <-resetIdleTimeout:
+			timeoutInterval = d
+			timer.Reset(d)
 		case <-timer.C:
 			// check the last time the idle timeout was updated.
 			nextTimeout := timeoutInterval - time.Since(a.comm.LastMessageAt())
@@ -69,19 +79,6 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, time
 				return
 			}
 			a.updateIdleTimeout(ctx, tc, nextTimeout, resetIdleTimeout)
-		case d := <-resetIdleTimeout:
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timeoutInterval = d
-			timer.Reset(d)
-		// cancel by exec timeout watch
-		case <-timeout:
-			grip.Info("Idle timeout watch canceled by channel")
-			return
-		case <-ctx.Done():
-			grip.Info("Idle timeout watch canceled context")
-			return
 		}
 	}
 }
