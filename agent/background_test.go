@@ -95,9 +95,7 @@ func (s *BackgroundTestSuite) TestIdleTimeoutWatch() {
 	s.a.opts.IdleTimeoutInterval = time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	idleTimeout := make(chan struct{})
-	resetIdleTimeout := make(chan time.Duration)
-	s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
+	s.a.startIdleTimeoutWatch(ctx, s.tc, cancel)
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Len(msgs, 1)
@@ -110,36 +108,27 @@ func (s *BackgroundTestSuite) TestIdleTimeoutWatchMessageTimeout() {
 	s.a.opts.IdleTimeoutInterval = time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	idleTimeout := make(chan struct{})
-	resetIdleTimeout := make(chan time.Duration)
 	s.a.comm.(*client.Mock).LastMessageSent = time.Now().Add(-time.Minute)
-	s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
-	_, ok := <-idleTimeout
-	s.False(ok)
-	s.Panics(func() { close(idleTimeout) })
+	s.a.startIdleTimeoutWatch(ctx, s.tc, cancel)
+	s.Error(ctx.Err())
 }
 
 func (s *BackgroundTestSuite) TestIdleTimeoutWatchWithoutMessageTimeout() {
 	s.a.opts.IdleTimeoutInterval = time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
-	idleTimeout := make(chan struct{})
-	resetIdleTimeout := make(chan time.Duration)
 
 	s.a.comm.(*client.Mock).LastMessageSent = time.Now().Add(time.Second)
 
-	go s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
-	s.NotPanics(func() { close(idleTimeout) })
-	s.Panics(func() { close(idleTimeout) })
-	_, ok := <-idleTimeout
-	s.False(ok)
+	go s.a.startIdleTimeoutWatch(ctx, s.tc, cancel)
+
+	s.NoError(ctx.Err())
 }
 
 func (s *BackgroundTestSuite) TestExecTimeoutWatch() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	execTimeout := make(chan struct{})
-	s.a.startMaxExecTimeoutWatch(ctx, s.tc, time.Millisecond, execTimeout)
+	s.a.startMaxExecTimeoutWatch(ctx, s.tc, time.Millisecond)
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Len(msgs, 1)
@@ -151,11 +140,8 @@ func (s *BackgroundTestSuite) TestExecTimeoutWatch() {
 func (s *BackgroundTestSuite) TestResetIdleTimeoutExpiresTimer() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	idleTimeout := make(chan struct{})
-	resetIdleTimeout := make(chan time.Duration)
 
-	go s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
-	resetIdleTimeout <- 10 * time.Millisecond
+	go s.a.startIdleTimeoutWatch(ctx, s.tc, cancel)
 	time.Sleep(20 * time.Millisecond)
-	s.Panics(func() { close(idleTimeout) })
+	s.NoError(ctx.Err())
 }
