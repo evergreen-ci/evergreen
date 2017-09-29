@@ -646,12 +646,12 @@ func Find(query db.Q) ([]Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	for i, task := range tasks {
-		if err = task.MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging new test results")
-		}
-		tasks[i] = task
-	}
+	// for i, task := range tasks {
+	// 	if err = task.MergeNewTestResults(); err != nil {
+	// 		return nil, errors.Wrap(err, "error merging new test results")
+	// 	}
+	// 	tasks[i] = task
+	// }
 	return tasks, err
 }
 
