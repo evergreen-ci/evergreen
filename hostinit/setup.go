@@ -148,14 +148,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	}
 	close(hosts)
 
-	var numThreads int
-	if len(hosts) >= 64 {
-		numThreads = 64
-	} else {
-		numThreads = len(hosts)
-	}
-
-	for i := 0; i < numThreads; i++ {
+	for i := 0; i < 4; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
