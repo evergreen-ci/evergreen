@@ -123,7 +123,7 @@ type DistroCost struct {
 	SumEstimatedCost float64                `bson:"sum_estimated_cost"`
 	Provider         string                 `json:"provider"`
 	ProviderSettings map[string]interface{} `json:"provider_settings"`
-	NumHosts         int                    `bson:"num_hosts"`
+	NumTasks         int                    `bson:"num_tasks"`
 }
 
 // SetBSON allows us to use dependency representation of both

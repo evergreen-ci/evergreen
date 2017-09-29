@@ -39,7 +39,7 @@ type APIDistroCost struct {
 	Provider      APIString   `json:"provider"`
 	InstanceType  APIString   `json:"instance_type,omitempty"`
 	EstimatedCost float64     `json:"estimated_cost"`
-	NumHosts      int         `json:"num_hosts"`
+	NumTasks      int         `json:"num_tasks"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -51,7 +51,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiDistroCost.Provider = APIString(v.Provider)
 		apiDistroCost.EstimatedCost = v.SumEstimatedCost
-		apiDistroCost.NumHosts = v.NumHosts
+		apiDistroCost.NumTasks = v.NumTasks
 
 		// InstanceType field is only set if the provider is ec2 or ec2-spot.
 		// It will default to an empty string for other providers.
