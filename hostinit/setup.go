@@ -45,7 +45,7 @@ var (
 
 // Longest duration allowed for running setup script.
 var (
-	SSHTimeoutSeconds = int64(300) // 5 minutes
+	SSHTimeoutSeconds = int64(120) // 2 minutes
 )
 
 // HostInit is responsible for running setup scripts on Evergreen hosts.
@@ -63,9 +63,24 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		return errors.Wrap(err, "error fetching uninitialized hosts")
 	}
 
-	for _, h := range hostsToStart {
+	startQueue := make([]host.Host, len(hostsToStart))
+	for _, idx := range rand.Perm(len(hostsToStart)) {
+		startQueue[idx] = hostsToStart[idx]
+	}
+
+	for idx, h := range startQueue {
 		if ctx.Err() != nil {
 			return errors.New("hostinit run canceled")
+		}
+
+		if idx >= 16 {
+			grip.Warning(message.Fields{
+				"message":           "pausing hosts",
+				"GUID":              init.GUID,
+				"runner":            "hostinit",
+				"num_started":       idx - 1,
+				"num_pending_hosts": len(hostsToStart),
+			})
 		}
 
 		hostStartTime := time.Now()
@@ -148,7 +163,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	}
 	close(hosts)
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 8; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
