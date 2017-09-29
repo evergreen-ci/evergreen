@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, timeout chan struct{}, resetIdleTimeout chan<- time.Duration) {
+func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	if !ok {
 		tc.logger.Execution().Error("problem during configuring initial state")
@@ -20,7 +20,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	tc.setCurrentCommand(factory())
-	a.updateIdleTimeout(ctx, tc, initialSetupTimeout, resetIdleTimeout)
+	a.comm.UpdateLastMessageTime()
 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
@@ -43,7 +43,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)
 
-	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), timeout)
+	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig))
 
 	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
 	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
@@ -89,7 +89,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	a.killProcs(tc)
 	a.runPreTaskCommands(ctx, tc)
 
-	taskStatus := a.runTaskCommands(ctx, tc, resetIdleTimeout)
+	taskStatus := a.runTaskCommands(ctx, tc)
 	if taskStatus != nil {
 		complete <- evergreen.TaskFailed
 	}
@@ -102,32 +102,12 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false, nil)
+		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false)
 		if err != nil {
 			tc.logger.Execution().Errorf("Running pre-task script failed: %v", err)
 		}
 		tc.logger.Execution().Info("Finished running pre-task commands.")
 	}
-}
-
-// CheckIn updates the agent's execution stage and current timeout duration,
-// and resets its timer back to zero.
-func (a *Agent) updateIdleTimeout(ctx context.Context, tc *taskContext, duration time.Duration, resetIdleTimeout chan<- time.Duration) {
-	if ctx.Err() != nil {
-		return
-	}
-
-	if resetIdleTimeout == nil {
-		return
-	}
-
-	select {
-	case resetIdleTimeout <- duration:
-		tc.logger.Execution().Infof("Command timeout set to %s", duration.String())
-	default:
-		tc.logger.Execution().Debug("Called command update but found timeout setting blocked")
-	}
-
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
@@ -141,6 +121,22 @@ func (tc *taskContext) getCurrentCommand() command.Command {
 	tc.RLock()
 	defer tc.RUnlock()
 	return tc.currentCommand
+}
+
+func (tc *taskContext) setCurrentTimeout(dur time.Duration) {
+	tc.Lock()
+	defer tc.Unlock()
+
+	tc.timeout = dur
+	tc.logger.Execution().Debugf("Set command timeout for '%s' (%s) to %s",
+		tc.currentCommand.DisplayName(), tc.currentCommand.Type(), dur)
+}
+
+func (tc *taskContext) getCurrentTimeout() time.Duration {
+	tc.RLock()
+	defer tc.RUnlock()
+
+	return tc.timeout
 }
 
 // getTaskConfig fetches task configuration data required to run the task from the API server.

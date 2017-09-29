@@ -42,6 +42,7 @@ type taskContext struct {
 	task           client.TaskData
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
+	timeout        time.Duration
 	sync.RWMutex
 }
 
@@ -165,15 +166,12 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
-
-	timeout := make(chan struct{})
-	resetIdleTimeout := make(chan time.Duration)
-	go a.startIdleTimeoutWatch(ctx, tc, timeout, resetIdleTimeout)
+	go a.startIdleTimeoutWatch(ctx, tc, cancel)
 
 	complete := make(chan string)
-	go a.startTask(ctx, tc, complete, timeout, resetIdleTimeout)
+	go a.startTask(ctx, tc, complete)
 
-	status, taskTimedOut := a.wait(ctx, tc, heartbeat, timeout, complete)
+	status, taskTimedOut := a.wait(ctx, tc, heartbeat, complete)
 
 	resp, err := a.finishTask(ctx, tc, status, taskTimedOut)
 	if err != nil {
@@ -189,28 +187,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, timeout chan struct{}, complete chan string) (string, bool) {
+func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, complete chan string) (string, bool) {
 	status := evergreen.TaskFailed
 	taskTimedOut := false
 	select {
+	case <-ctx.Done():
+		grip.Infof("task canceled: %s", tc.task.ID)
 	case status = <-complete:
 		grip.Infof("task complete: %s", tc.task.ID)
 	case status = <-heartbeat:
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
-	case <-timeout:
-		grip.Infof("recevied signal from timeout channel: %s", tc.task.ID)
-		taskTimedOut = true
-		if tc.taskConfig.Project.Timeout != nil {
-			tc.logger.Task().Info("Running task-timeout commands.")
-			start := time.Now()
-			err := a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false, nil)
-			if err != nil {
-				tc.logger.Execution().Errorf("Error running task-timeout command: %v", err)
-			}
-			tc.logger.Task().Infof("Finished running task-timeout commands in %v.", time.Since(start).String())
-		}
-	case <-ctx.Done():
-		grip.Infof("task canceled: %s", tc.task.ID)
 	}
 	return status, taskTimedOut
 }
@@ -267,7 +253,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false, nil)
+		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false)
 		if err != nil {
 			tc.logger.Execution().Errorf("Error running post-task command: %v", err)
 		} else {

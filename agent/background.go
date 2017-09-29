@@ -50,54 +50,45 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	}
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, timeout chan struct{}, resetIdleTimeout chan time.Duration) {
+func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
 	timeoutInterval := defaultIdleTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
 		timeoutInterval = a.opts.IdleTimeoutInterval
 	}
-	timer := time.NewTimer(timeoutInterval)
 
+	timer := time.NewTimer(timeoutInterval)
 	defer timer.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			grip.Info("Idle timeout watch canceled context")
 			return
-		case <-timeout:
-			// cancel by exec timeout watch
-			grip.Info("Idle timeout watch canceled by channel")
-			return
-		case d := <-resetIdleTimeout:
-			timeoutInterval = d
-			timer.Reset(d)
 		case <-timer.C:
+			if taskTimeout := tc.getCurrentTimeout(); taskTimeout != 0 {
+				timeoutInterval = taskTimeout
+			}
+
 			// check the last time the idle timeout was updated.
 			nextTimeout := timeoutInterval - time.Since(a.comm.LastMessageAt())
 			if nextTimeout <= 0 {
 				tc.logger.Execution().Error("Hit idle timeout")
-				close(timeout)
-				return
+				cancel()
 			}
-			a.updateIdleTimeout(ctx, tc, nextTimeout, resetIdleTimeout)
+			timer.Reset(nextTimeout)
 		}
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, timeout chan struct{}) {
+func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration) {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	for {
 		select {
-		case <-timer.C:
-			tc.logger.Execution().Error("Hit exec timeout")
-			close(timeout)
-			return
-		// cancel by idle timeout watch
-		case <-timeout:
-			grip.Info("Exec timeout watch canceled by channel")
-			return
 		case <-ctx.Done():
 			grip.Info("Exec timeout watch canceled")
+			return
+		case <-timer.C:
+			tc.logger.Execution().Error("Hit exec timeout")
 			return
 		}
 	}
