@@ -64,8 +64,8 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 	}
 
 	startQueue := make([]host.Host, len(hostsToStart))
-	for _, idx := range rand.Perm(len(hostsToStart)) {
-		startQueue[idx] = hostsToStart[idx]
+	for i, r := range rand.Perm(len(hostsToStart)) {
+		startQueue[i] = hostsToStart[r]
 	}
 
 	for idx, h := range startQueue {
