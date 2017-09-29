@@ -81,6 +81,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 				"num_started":       idx - 1,
 				"num_pending_hosts": len(hostsToStart),
 			})
+			return nil
 		}
 
 		hostStartTime := time.Now()
