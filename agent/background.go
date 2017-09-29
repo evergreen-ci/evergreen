@@ -51,7 +51,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
-	timeoutInterval := defaultIdleTimeout
+	timeoutInterval := defaultCmdTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
 		timeoutInterval = a.opts.IdleTimeoutInterval
 	}

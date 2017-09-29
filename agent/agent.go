@@ -167,12 +167,16 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
+
+	var innerCtx context.Context
+	innerCtx, cancel = context.WithCancel(ctx)
+
 	go a.startIdleTimeoutWatch(ctx, tc, cancel)
 
 	complete := make(chan string)
-	go a.startTask(ctx, tc, complete)
+	go a.startTask(innerCtx, tc, complete)
 
-	status := a.wait(ctx, tc, heartbeat, complete)
+	status := a.wait(innerCtx, tc, heartbeat, complete)
 
 	resp, err := a.finishTask(ctx, tc, status)
 	if err != nil {

@@ -70,7 +70,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 
 			start := time.Now()
 			err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
-			tc.setCurrentTimeout(0)
+			tc.setCurrentTimeout(defaultCmdTimeout)
 
 			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
 			if err != nil {

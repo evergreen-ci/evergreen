@@ -46,10 +46,14 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)
 
+	var innerCtx context.Context
+	innerCtx, cancel = context.WithCancel(ctx)
+	defer cancel()
+
 	go a.startMaxExecTimeoutWatch(ctx, tc, a.getExecTimeoutSecs(taskConfig), cancel)
 
 	tc.logger.Execution().Infof("Fetching expansions for project %s", taskConfig.Task.Project)
-	expVars, err := a.comm.FetchExpansionVars(ctx, tc.task)
+	expVars, err := a.comm.FetchExpansionVars(innerCtx, tc.task)
 	if err != nil {
 		tc.logger.Execution().Errorf("error fetching project expansion variables: %s", err)
 		complete <- evergreen.TaskFailed
@@ -66,7 +70,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		"df -h",
 		"${ps|ps}",
 	)
-	tc.statsCollector.logStats(ctx, tc.taskConfig.Expansions)
+	tc.statsCollector.logStats(innerCtx, tc.taskConfig.Expansions)
 
 	if ctx.Err() != nil {
 		tc.logger.Task().Info("task canceled")
@@ -90,9 +94,9 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	a.killProcs(tc)
-	a.runPreTaskCommands(ctx, tc)
+	a.runPreTaskCommands(innerCtx, tc)
 
-	taskStatus := a.runTaskCommands(ctx, tc)
+	taskStatus := a.runTaskCommands(innerCtx, tc)
 	if taskStatus != nil {
 		complete <- evergreen.TaskFailed
 	}
