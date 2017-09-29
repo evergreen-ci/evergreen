@@ -50,57 +50,48 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	}
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, timeout chan struct{}, resetIdleTimeout chan time.Duration) {
-	timeoutInterval := defaultIdleTimeout
+func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+	timeoutInterval := defaultCmdTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
 		timeoutInterval = a.opts.IdleTimeoutInterval
 	}
-	timer := time.NewTimer(timeoutInterval)
 
+	timer := time.NewTimer(timeoutInterval)
 	defer timer.Stop()
 	for {
 		select {
+		case <-ctx.Done():
+			grip.Info("Idle timeout watch canceled context")
+			return
 		case <-timer.C:
+			if taskTimeout := tc.getCurrentTimeout(); taskTimeout != 0 {
+				timeoutInterval = taskTimeout
+			}
+
 			// check the last time the idle timeout was updated.
 			nextTimeout := timeoutInterval - time.Since(a.comm.LastMessageAt())
 			if nextTimeout <= 0 {
 				tc.logger.Execution().Error("Hit idle timeout")
-				close(timeout)
-				return
+				tc.reachTimeOut()
+				cancel()
 			}
-			go a.updateIdleTimeout(ctx, tc, nextTimeout, resetIdleTimeout)
-		case d := <-resetIdleTimeout:
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timeoutInterval = d
-			timer.Reset(d)
-		// cancel by exec timeout watch
-		case <-timeout:
-			grip.Info("Idle timeout watch canceled by channel")
-			return
-		case <-ctx.Done():
-			grip.Info("Idle timeout watch canceled context")
-			return
+			timer.Reset(nextTimeout)
 		}
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, timeout chan struct{}) {
+func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, cancel context.CancelFunc) {
+	defer cancel()
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	for {
 		select {
-		case <-timer.C:
-			tc.logger.Execution().Error("Hit exec timeout")
-			close(timeout)
-			return
-		// cancel by idle timeout watch
-		case <-timeout:
-			grip.Info("Exec timeout watch canceled by channel")
-			return
 		case <-ctx.Done():
 			grip.Info("Exec timeout watch canceled")
+			return
+		case <-timer.C:
+			tc.logger.Execution().Error("Hit exec timeout")
+			tc.reachTimeOut()
 			return
 		}
 	}

@@ -166,23 +166,23 @@ func (c *shellExec) Execute(ctx context.Context,
 		if err != nil {
 			logger.System().Debugf("error spawning shell process: %v", err)
 		} else {
-			logger.System().Debugf("spawned shell process with pid %d", localCmd.Cmd.Process.Pid)
+			logger.System().Debugf("spawned shell process with pid %d", localCmd.GetPid())
 
 			// Call the platform's process-tracking function. On some OSes this will be a noop,
 			// on others this may need to do some additional work to track the process so that
 			// it can be cleaned up later.
-			subprocess.TrackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, logger.System())
+			subprocess.TrackProcess(conf.Task.Id, localCmd.GetPid(), logger.System())
 
 			if c.Background {
 				logger.Execution().Debug("running command in the background")
 				close(doneStatus)
 			} else {
 				select {
-				case doneStatus <- localCmd.Cmd.Wait():
-					logger.System().Debugf("shell process %d completed", localCmd.Cmd.Process.Pid)
+				case doneStatus <- localCmd.Wait():
+					logger.System().Debugf("shell process %d completed", localCmd.GetPid())
 				case <-ctx.Done():
 					doneStatus <- localCmd.Stop()
-					logger.System().Infof("shell process %d terminated", localCmd.Cmd.Process.Pid)
+					logger.System().Infof("shell process %d terminated", localCmd.GetPid())
 				}
 			}
 		}
@@ -206,8 +206,8 @@ func (c *shellExec) Execute(ctx context.Context,
 		logger.Execution().Info("Got kill signal")
 
 		// need to check command has started
-		if localCmd.Cmd.Process != nil {
-			logger.Execution().Infof("Stopping process: %d", localCmd.Cmd.Process.Pid)
+		if pid := localCmd.GetPid(); pid > 0 {
+			logger.Execution().Infof("Stopping process: %d", pid)
 
 			// try and stop the process
 			if err := localCmd.Stop(); err != nil {

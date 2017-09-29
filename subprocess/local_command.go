@@ -21,7 +21,7 @@ type LocalCommand struct {
 	ScriptMode       bool
 	Stdout           io.Writer
 	Stderr           io.Writer
-	Cmd              *exec.Cmd
+	cmd              *exec.Cmd
 	mutex            sync.RWMutex
 }
 
@@ -36,12 +36,12 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- lc.Cmd.Wait()
+		errChan <- lc.cmd.Wait()
 	}()
 
 	select {
 	case <-ctx.Done():
-		err = lc.Cmd.Process.Kill()
+		err = lc.cmd.Process.Kill()
 		return errors.Wrapf(err,
 			"operation '%s' was canceled and terminated.",
 			lc.CmdString)
@@ -50,15 +50,22 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 	}
 }
 
+func (lc *LocalCommand) Wait() error {
+	lc.mutex.RLock()
+	defer lc.mutex.RUnlock()
+
+	return lc.cmd.Wait()
+}
+
 func (lc *LocalCommand) GetPid() int {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
-	if lc.Cmd == nil {
+	if lc.cmd == nil {
 		return -1
 	}
 
-	return lc.Cmd.Process.Pid
+	return lc.cmd.Process.Pid
 }
 
 func (lc *LocalCommand) Start() error {
@@ -89,7 +96,7 @@ func (lc *LocalCommand) Start() error {
 	cmd.Stderr = lc.Stderr
 
 	// cache the command running
-	lc.Cmd = cmd
+	lc.cmd = cmd
 
 	// start the command
 	return cmd.Start()
@@ -99,8 +106,8 @@ func (lc *LocalCommand) Stop() error {
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
-	if lc.Cmd != nil && lc.Cmd.Process != nil {
-		return lc.Cmd.Process.Kill()
+	if lc.cmd != nil && lc.cmd.Process != nil {
+		return lc.cmd.Process.Kill()
 	}
 	grip.Warning("Trying to stop command but Cmd / Process was nil")
 	return nil

@@ -19,6 +19,7 @@ type AgentTestSuite struct {
 	a                Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
+	canceler         context.CancelFunc
 }
 
 func TestAgentTestSuite(t *testing.T) {
@@ -46,20 +47,26 @@ func (s *AgentTestSuite) SetupTest() {
 			Project: &model.Project{},
 		},
 	}
-	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+	ctx, cancel := context.WithCancel(context.Background())
+	s.canceler = cancel
+	s.tc.logger = s.a.comm.GetLoggerProducer(ctx, s.tc.task)
 
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
-
 }
+
+func (s *AgentTestSuite) TearDownTest() { s.canceler() }
 
 func (s *AgentTestSuite) TestNextTaskResponseShouldExit() {
 	s.mockCommunicator.NextTaskResponse = &apimodels.NextTaskResponse{
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: true}
-	err := s.a.loop(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := s.a.loop(ctx)
 	s.Error(err)
 }
 
@@ -68,13 +75,19 @@ func (s *AgentTestSuite) TestTaskWithoutSecret() {
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
 		ShouldExit: false}
-	err := s.a.loop(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := s.a.loop(ctx)
 	s.Error(err)
 }
 
 func (s *AgentTestSuite) TestErrorGettingNextTask() {
 	s.mockCommunicator.NextTaskShouldFail = true
-	err := s.a.loop(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := s.a.loop(ctx)
 	s.Error(err)
 }
 
@@ -89,22 +102,30 @@ func (s *AgentTestSuite) TestCanceledContext() {
 
 func (s *AgentTestSuite) TestAgentEndTaskShouldExit() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
-	err := s.a.loop(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := s.a.loop(ctx)
 	s.Error(err)
 }
 
 func (s *AgentTestSuite) TestFinishTaskReturnsEndTaskResponse() {
 	endTaskResponse := &apimodels.EndTaskResponse{Message: "end task response"}
 	s.mockCommunicator.EndTaskResponse = endTaskResponse
-	resp, err := s.a.finishTask(context.Background(), s.tc, evergreen.TaskSucceeded, true)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded)
 	s.Equal(endTaskResponse, resp)
 	s.NoError(err)
 }
 
 func (s *AgentTestSuite) TestFinishTaskEndTaskError() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(context.Background(), s.tc, evergreen.TaskSucceeded, true)
+	resp, err := s.a.finishTask(ctx, s.tc, evergreen.TaskSucceeded)
 	s.Nil(resp)
 	s.Error(err)
 }
@@ -112,7 +133,6 @@ func (s *AgentTestSuite) TestFinishTaskEndTaskError() {
 func (s *AgentTestSuite) TestCancelStartTask() {
 	resetIdleTimeout := make(chan time.Duration)
 	complete := make(chan string)
-	timeout := make(chan struct{})
 	go func() {
 		for range resetIdleTimeout {
 			// discard
@@ -120,7 +140,7 @@ func (s *AgentTestSuite) TestCancelStartTask() {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	s.a.startTask(ctx, s.tc, complete, timeout, resetIdleTimeout)
+	s.a.startTask(ctx, s.tc, complete)
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Zero(len(msgs))
 }
@@ -135,8 +155,7 @@ func (s *AgentTestSuite) TestCancelRunCommands() {
 		},
 	}
 	cmds := []model.PluginCommandConf{cmd}
-	resetIdleTimeout := make(chan time.Duration)
-	err := s.a.runCommands(ctx, s.tc, cmds, false, resetIdleTimeout)
+	err := s.a.runCommands(ctx, s.tc, cmds, false)
 	s.Error(err)
 	s.Equal("runCommands canceled", err.Error())
 }
@@ -160,7 +179,10 @@ func (s *AgentTestSuite) TestRunPreTaskCommands() {
 			},
 		},
 	}
-	s.a.runPreTaskCommands(context.Background(), s.tc)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.a.runPreTaskCommands(ctx, s.tc)
 
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
@@ -188,7 +210,10 @@ func (s *AgentTestSuite) TestRunPostTaskCommands() {
 			},
 		},
 	}
-	s.a.runPostTaskCommands(context.Background(), s.tc)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.a.runPostTaskCommands(ctx, s.tc)
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running post-task commands.", msgs[1].Message)
@@ -201,26 +226,32 @@ func (s *AgentTestSuite) TestEndTaskResponse() {
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, true)
+	s.tc.timedOut = true
+	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, false)
+	s.tc.timedOut = false
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, true)
+	s.tc.timedOut = true
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, false)
+	s.tc.timedOut = false
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 }
 
 func (s *AgentTestSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
-	err := s.a.runTask(context.Background(), s.tc)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err := s.a.runTask(ctx, s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
@@ -234,48 +265,54 @@ func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {
 
 func (s *AgentTestSuite) TestWaitCompleteSuccess() {
 	heartbeat := make(chan string)
-	timeout := make(chan struct{})
 	complete := make(chan string)
 	go func() {
 		complete <- evergreen.TaskSucceeded
 	}()
-	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
-	s.False(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitCompleteFailure() {
 	heartbeat := make(chan string)
-	timeout := make(chan struct{})
 	complete := make(chan string)
 	go func() {
 		complete <- evergreen.TaskFailed
 	}()
-	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.False(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitExecTimeout() {
 	heartbeat := make(chan string)
-	timeout := make(chan struct{})
 	complete := make(chan string)
-	close(timeout)
-	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.True(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
 	heartbeat := make(chan string)
-	resetIdleTimeout := make(chan struct{})
 	complete := make(chan string)
 	go func() {
 		heartbeat <- evergreen.TaskUndispatched
 	}()
-	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, resetIdleTimeout, complete)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskUndispatched, status)
-	s.False(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }
 
 func (s *AgentTestSuite) TestWaitIdleTimeout() {
@@ -303,16 +340,18 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 			},
 		},
 	}
-	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.tc.logger = s.a.comm.GetLoggerProducer(ctx, s.tc.task)
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
 
 	heartbeat := make(chan string)
-	timeout := make(chan struct{})
 	complete := make(chan string)
-	close(timeout)
-	status, taskTimedOut := s.a.wait(context.Background(), s.tc, heartbeat, timeout, complete)
+	cancel()
+	status := s.a.wait(ctx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
-	s.True(taskTimedOut)
+	s.False(s.tc.hadTimedOut())
 }

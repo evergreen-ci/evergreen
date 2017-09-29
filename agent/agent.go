@@ -42,6 +42,8 @@ type taskContext struct {
 	task           client.TaskData
 	taskConfig     *model.TaskConfig
 	taskDirectory  string
+	timeout        time.Duration
+	timedOut       bool
 	sync.RWMutex
 }
 
@@ -166,16 +168,17 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
 
-	timeout := make(chan struct{})
-	resetIdleTimeout := make(chan time.Duration)
-	go a.startIdleTimeoutWatch(ctx, tc, timeout, resetIdleTimeout)
+	var innerCtx context.Context
+	innerCtx, cancel = context.WithCancel(ctx)
+
+	go a.startIdleTimeoutWatch(ctx, tc, cancel)
 
 	complete := make(chan string)
-	go a.startTask(ctx, tc, complete, timeout, resetIdleTimeout)
+	go a.startTask(innerCtx, tc, complete)
 
-	status, taskTimedOut := a.wait(ctx, tc, heartbeat, timeout, complete)
+	status := a.wait(innerCtx, tc, heartbeat, complete)
 
-	resp, err := a.finishTask(ctx, tc, status, taskTimedOut)
+	resp, err := a.finishTask(ctx, tc, status)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
@@ -189,35 +192,33 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, timeout chan struct{}, complete chan string) (string, bool) {
+func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
 	status := evergreen.TaskFailed
-	taskTimedOut := false
 	select {
+	case <-ctx.Done():
+		grip.Infof("task canceled: %s", tc.task.ID)
 	case status = <-complete:
 		grip.Infof("task complete: %s", tc.task.ID)
 	case status = <-heartbeat:
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
-	case <-timeout:
-		grip.Infof("recevied signal from timeout channel: %s", tc.task.ID)
-		taskTimedOut = true
-		if tc.taskConfig.Project.Timeout != nil {
-			tc.logger.Task().Info("Running task-timeout commands.")
-			start := time.Now()
-			err := a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false, nil)
-			if err != nil {
-				tc.logger.Execution().Errorf("Error running task-timeout command: %v", err)
-			}
-			tc.logger.Task().Infof("Finished running task-timeout commands in %v.", time.Since(start).String())
-		}
-	case <-ctx.Done():
-		grip.Infof("task canceled: %s", tc.task.ID)
 	}
-	return status, taskTimedOut
+
+	if tc.hadTimedOut() && tc.taskConfig.Project.Timeout != nil {
+		tc.logger.Task().Info("Running task-timeout commands.")
+		start := time.Now()
+		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false)
+		if err != nil {
+			tc.logger.Execution().Errorf("Error running task-timeout command: %v", err)
+		}
+		tc.logger.Task().Infof("Finished running task-timeout commands in %v.", time.Since(start).String())
+	}
+
+	return status
 }
 
 // finishTask sends the returned TaskEndResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, taskTimedOut bool) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, taskTimedOut)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
+	detail := a.endTaskResponse(tc, status)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
@@ -250,11 +251,11 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, taskTimedOut bool) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskEndDetail {
 	return &apimodels.TaskEndDetail{
 		Description: tc.getCurrentCommand().DisplayName(),
 		Type:        tc.getCurrentCommand().Type(),
-		TimedOut:    taskTimedOut,
+		TimedOut:    tc.hadTimedOut(),
 		Status:      status,
 	}
 }
@@ -267,7 +268,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false, nil)
+		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false)
 		if err != nil {
 			tc.logger.Execution().Errorf("Error running post-task command: %v", err)
 		} else {

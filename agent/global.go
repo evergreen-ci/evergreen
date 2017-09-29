@@ -18,10 +18,6 @@ const (
 	// if exec_timeout_secs is not specified in the project file.
 	defaultExecTimeoutSecs = 60 * 60 * 6
 
-	// defaultIdleTimeout specifies the duration after which agent sends an
-	// IdleTimeout signal if a task produces no logs.
-	defaultIdleTimeout = 20 * time.Minute
-
 	// defaultHeartbeatInterval is the interval after which agent sends a
 	// heartbeat to API server.
 	defaultHeartbeatInterval = 30 * time.Second

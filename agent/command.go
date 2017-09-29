@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool, idleTimeout chan<- time.Duration) error {
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) error {
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {
 			grip.Error("task canceled")
@@ -53,8 +53,6 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, i+1, idx+1, len(commands))
 			}
 
-			timeoutPeriod := a.getTimeout(&commandInfo)
-
 			for key, val := range commandInfo.Vars {
 				var newVal string
 				newVal, err = tc.taskConfig.Expansions.ExpandString(val)
@@ -66,14 +64,15 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 
 			if isTaskCommands {
 				tc.setCurrentCommand(cmd)
-				a.updateIdleTimeout(ctx, tc, timeoutPeriod, idleTimeout)
+				tc.setCurrentTimeout(a.getTimeout(commandInfo))
+				a.comm.UpdateLastMessageTime()
 			}
 
 			start := time.Now()
 			err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
+			tc.setCurrentTimeout(defaultCmdTimeout)
 
 			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
-
 			if err != nil {
 				tc.logger.Task().Errorf("Command failed: %v", err)
 				if isTaskCommands {
@@ -87,7 +86,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 
 // runTaskCommands runs all commands for the task currently assigned to the agent and
 // returns the task status
-func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext, idleTimeout chan<- time.Duration) error {
+func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 	conf := tc.taskConfig
 	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
 
@@ -102,7 +101,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext, idleTimeou
 	}
 	tc.logger.Execution().Info("Running task commands.")
 	start := time.Now()
-	err := a.runCommands(ctx, tc, task.Commands, true, idleTimeout)
+	err := a.runCommands(ctx, tc, task.Commands, true)
 	tc.logger.Execution().Infof("Finished running task commands in %v.", time.Since(start).String())
 	if err != nil {
 		tc.logger.Execution().Errorf("Task failed: %v", err)
@@ -111,7 +110,7 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext, idleTimeou
 	return nil
 }
 
-func (a *Agent) getTimeout(commandInfo *model.PluginCommandConf) time.Duration {
+func (a *Agent) getTimeout(commandInfo model.PluginCommandConf) time.Duration {
 	var timeoutPeriod = defaultCmdTimeout
 	if commandInfo.TimeoutSecs > 0 {
 		timeoutPeriod = time.Duration(commandInfo.TimeoutSecs) * time.Second
