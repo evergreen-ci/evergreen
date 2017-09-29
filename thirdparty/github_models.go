@@ -132,6 +132,10 @@ func (u *GithubLoginUser) Username() string {
 	return u.Login
 }
 
+func (u *GithubLoginUser) IsNil() bool {
+	return u == nil
+}
+
 type GithubAuthParameters struct {
 	ClientId     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`

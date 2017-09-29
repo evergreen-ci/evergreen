@@ -9,6 +9,7 @@ type User interface {
 	DisplayName() string
 	Email() string
 	Username() string
+	IsNil() bool
 }
 
 // User describes an Evergreen user that is going through the API.
@@ -48,4 +49,8 @@ func (u *simpleUser) Email() string {
 
 func (u *simpleUser) Username() string {
 	return u.UserId
+}
+
+func (u *simpleUser) IsNil() bool {
+	return u == nil
 }
