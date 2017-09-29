@@ -167,12 +167,13 @@ func (ad *APITask) ToService() (interface{}, error) {
 // APITaskCost is the model to be returned by the API whenever tasks
 // for the cost route are fetched.
 type APITaskCost struct {
-	Id           APIString   `json:"task_id"`
-	DisplayName  APIString   `json:"display_name"`
-	DistroId     APIString   `json:"distro"`
-	BuildVariant APIString   `json:"build_variant"`
-	TimeTaken    APIDuration `json:"time_taken"`
-	Githash      APIString   `json:"githash"`
+	Id            APIString   `json:"task_id"`
+	DisplayName   APIString   `json:"display_name"`
+	DistroId      APIString   `json:"distro"`
+	BuildVariant  APIString   `json:"build_variant"`
+	TimeTaken     APIDuration `json:"time_taken"`
+	Githash       APIString   `json:"githash"`
+	EstimatedCost float64     `json:"estimated_cost"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -187,6 +188,7 @@ func (atc *APITaskCost) BuildFromService(t interface{}) error {
 		atc.BuildVariant = APIString(v.BuildVariant)
 		atc.TimeTaken = NewAPIDuration(v.TimeTaken)
 		atc.Githash = APIString(v.Revision)
+		atc.EstimatedCost = v.Cost
 	default:
 		return errors.New("Incorrect type when unmarshalling task")
 	}
