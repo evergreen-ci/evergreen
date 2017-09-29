@@ -73,7 +73,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			return errors.New("hostinit run canceled")
 		}
 
-		if idx >= 16 {
+		if idx >= 8 {
 			grip.Warning(message.Fields{
 				"message":           "pausing host starting",
 				"GUID":              init.GUID,
