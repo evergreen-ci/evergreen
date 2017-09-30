@@ -648,10 +648,10 @@ func Find(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	// for i, task := range tasks {
-	// 	if err = task.MergeNewTestResults(); err != nil {
-	// 		return nil, errors.Wrap(err, "error merging new test results")
-	// 	}
-	// 	tasks[i] = task
+	//	if err = task.MergeNewTestResults(); err != nil {
+	//		return nil, errors.Wrap(err, "error merging new test results")
+	//	}
+	//	tasks[i] = task
 	// }
 	return tasks, err
 }

@@ -187,6 +187,11 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	hostPlanningStart := time.Now()
 
+	grip.Notice("removing all initializing hosts")
+	if err := host.RemoveAllInitializing(); err != nil {
+		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.")
+	}
+
 	// get hosts that we can use
 	hostsByDistro, err := s.findUsableHosts()
 	if err != nil {

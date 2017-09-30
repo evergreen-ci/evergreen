@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-const SSHTimeout = time.Minute * 10
+const SSHTimeout = 2 * time.Minute
 
 // RunRemoteScript executes a shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.

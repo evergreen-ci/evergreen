@@ -334,6 +334,15 @@ func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 	})
 }
 
+func RemoveAllInitializing() error {
+	return db.Remove(
+		Collection,
+		db.Query(bson.M{
+			StatusKey:   evergreen.HostUninitialized,
+			UserHostKey: false,
+		}))
+}
+
 // === DB Logic ===
 
 // FindOne gets one Host for the given query.
