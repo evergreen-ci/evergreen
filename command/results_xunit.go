@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -131,7 +130,18 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.Wrap(err, "error closing xunit file")
 		}
 
-		tests, logs, logIdxToTestIdx = generateLogsForOneFile(testSuites, conf.Task, tests, logs, logIdxToTestIdx)
+		// go through all the tests
+		for _, suite := range testSuites {
+			for _, tc := range suite.TestCases {
+				// logs are only created when a test case does not succeed
+				test, log := tc.toModelTestResultAndLog(conf.Task)
+				if log != nil {
+					logs = append(logs, log)
+					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
+				}
+				tests = append(tests, test)
+			}
+		}
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
@@ -151,40 +161,4 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 	}
 
 	return sendJSONResults(ctx, conf, logger, comm, &task.TestResults{tests})
-}
-
-func generateLogsForOneFile(testSuites []testSuite, t *task.Task, tests []task.TestResult, logs []*model.TestLog, logIdxToTestIdx []int) ([]task.TestResult, []*model.TestLog, []int) {
-	// go through all the tests
-	for _, suite := range testSuites {
-		for _, tc := range suite.TestCases {
-			// logs are only created when a test case does not succeed
-			test, log := tc.toModelTestResultAndLog(t)
-			if log != nil {
-				logs = append(logs, log)
-				logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
-			}
-			tests = append(tests, test)
-		}
-
-		if suite.SysOut != "" {
-			log := model.TestLog{
-				Name:          suite.Name,
-				Task:          t.Id,
-				TaskExecution: t.Execution,
-				Lines:         []string{fmt.Sprintf("system-out: %s", suite.SysOut)},
-			}
-			logs = append(logs, &log)
-		}
-		if suite.SysErr != "" {
-			log := model.TestLog{
-				Name:          suite.Name,
-				Task:          t.Id,
-				TaskExecution: t.Execution,
-				Lines:         []string{fmt.Sprintf("system-err: %s", suite.SysErr)},
-			}
-			logs = append(logs, &log)
-		}
-	}
-
-	return tests, logs, logIdxToTestIdx
 }
