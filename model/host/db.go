@@ -335,7 +335,7 @@ func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 }
 
 func RemoveAllInitializing() error {
-	return db.Remove(
+	return db.RemoveAll(
 		Collection,
 		db.Query(bson.M{
 			StatusKey:   evergreen.HostUninitialized,
