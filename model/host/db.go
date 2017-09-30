@@ -335,12 +335,11 @@ func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 }
 
 func RemoveAllInitializing() error {
-	return db.RemoveAll(
-		Collection,
-		db.Query(bson.M{
+	return db.RemoveAll(Collection,
+		bson.M{
 			StatusKey:   evergreen.HostUninitialized,
 			UserHostKey: false,
-		}))
+		})
 }
 
 // === DB Logic ===
