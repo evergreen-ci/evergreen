@@ -171,7 +171,15 @@ func TestXMLToModelConversion(t *testing.T) {
 		testTask := &task.Task{Id: "TEST", Execution: 5}
 
 		Convey("when converting the results to model struct", func() {
-			tests, logs, _ := generateLogsForOneFile(res, testTask, []task.TestResult{}, []*model.TestLog{}, []int{})
+			tests := []task.TestResult{}
+			logs := []*model.TestLog{}
+			for _, testCase := range res[0].TestCases {
+				test, log := testCase.toModelTestResultAndLog(testTask)
+				if log != nil {
+					logs = append(logs, log)
+				}
+				tests = append(tests, test)
+			}
 			Convey("the proper amount of each failure should be correct", func() {
 				skipCount := 0
 				failCount := 0
@@ -197,10 +205,6 @@ func TestXMLToModelConversion(t *testing.T) {
 					So(len(logs[0].Lines), ShouldNotEqual, 0)
 					So(logs[0].URL(), ShouldContainSubstring,
 						"TEST/5/test.test_auth.TestAuthURIOptions.test_uri_options")
-					Convey("and system-out and system-err should be present", func() {
-						So(logs[len(logs)-1].Lines[0], ShouldContainSubstring, "system-err: system error text")
-						So(logs[len(logs)-2].Lines[0], ShouldContainSubstring, "system-out: system out text")
-					})
 				})
 			})
 		})
@@ -215,7 +219,15 @@ func TestXMLToModelConversion(t *testing.T) {
 		testTask := &task.Task{Id: "TEST", Execution: 5}
 
 		Convey("when converting the results to model struct", func() {
-			tests, logs, _ := generateLogsForOneFile(res, testTask, []task.TestResult{}, []*model.TestLog{}, []int{})
+			tests := []task.TestResult{}
+			logs := []*model.TestLog{}
+			for _, testCase := range res[0].TestCases {
+				test, log := testCase.toModelTestResultAndLog(testTask)
+				if log != nil {
+					logs = append(logs, log)
+				}
+				tests = append(tests, test)
+			}
 			Convey("the proper amount of each failure should be correct", func() {
 				skipCount := 0
 				failCount := 0
@@ -252,7 +264,17 @@ func TestXMLToModelConversion(t *testing.T) {
 		testTask := &task.Task{Id: "TEST", Execution: 5}
 
 		Convey("when converting the results to model struct", func() {
-			tests, logs, _ := generateLogsForOneFile(res, testTask, []task.TestResult{}, []*model.TestLog{}, []int{})
+			tests := []task.TestResult{}
+			logs := []*model.TestLog{}
+			for _, testCase := range res[0].TestCases {
+				test, log := testCase.toModelTestResultAndLog(testTask)
+				grip.Info("@@@@@")
+				grip.Info(log)
+				if log != nil {
+					logs = append(logs, log)
+				}
+				tests = append(tests, test)
+			}
 			Convey("the proper amount of each failure should be correct", func() {
 				skipCount := 0
 				failCount := 0
@@ -274,16 +296,13 @@ func TestXMLToModelConversion(t *testing.T) {
 				So(passCount+skipCount+failCount, ShouldEqual, len(tests))
 
 				Convey("and logs should be of the proper form", func() {
-					grip.Info(logs[0])
-					grip.Info(logs[3])
+					grip.Info(logs)
 					So(logs[0].Name, ShouldEqual, "unittest.loader.ModuleImportFailure.tests.test_binder")
 					So(len(logs[0].Lines), ShouldNotEqual, 0)
-					Convey("and system-out and system-err should be present", func() {
-						So(logs[len(logs)-1].Lines[0], ShouldContainSubstring, "system-err:")
-						So(logs[len(logs)-2].Lines[0], ShouldContainSubstring, "system-out:")
-					})
 				})
 			})
 		})
 	})
 }
+
+//TODO: implement a mock logger and test the sendLogsForOneFile function

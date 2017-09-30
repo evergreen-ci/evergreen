@@ -104,13 +104,13 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 	logger client.LoggerProducer, comm client.Communicator) error {
 
 	tests := []task.TestResult{}
-	logs := []*model.TestLog{}
-	logIdxToTestIdx := []int{}
 
 	reportFilePaths, err := getFilePaths(conf.WorkDir, c.Files)
 	if err != nil {
 		return err
 	}
+
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for _, reportFileLoc := range reportFilePaths {
 		if ctx.Err() != nil {
@@ -131,60 +131,43 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.Wrap(err, "error closing xunit file")
 		}
 
-		tests, logs, logIdxToTestIdx = generateLogsForOneFile(testSuites, conf.Task, tests, logs, logIdxToTestIdx)
-	}
-
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
-	for i, log := range logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
-		}
-
-		logId, err := sendJSONLogs(ctx, logger, comm, td, log)
-		if err != nil {
-			logger.Task().Warningf("problem uploading logs for %s", log.Name)
-			continue
-		}
-		tests[logIdxToTestIdx[i]].LogId = logId
-		tests[logIdxToTestIdx[i]].LineNum = 1
+		tests = sendLogsForOneFile(ctx, logger, comm, testSuites, conf.Task, tests, td)
 	}
 
 	return sendJSONResults(ctx, conf, logger, comm, &task.TestResults{tests})
 }
 
-func generateLogsForOneFile(testSuites []testSuite, t *task.Task, tests []task.TestResult, logs []*model.TestLog, logIdxToTestIdx []int) ([]task.TestResult, []*model.TestLog, []int) {
+func sendLogsForOneFile(ctx context.Context, logger client.LoggerProducer, comm client.Communicator,
+	testSuites []testSuite, t *task.Task, tests []task.TestResult, td client.TaskData) []task.TestResult {
 	// go through all the tests
 	for _, suite := range testSuites {
+
 		for _, tc := range suite.TestCases {
 			// logs are only created when a test case does not succeed
 			test, log := tc.toModelTestResultAndLog(t)
-			if log != nil {
-				logs = append(logs, log)
-				logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
-			}
-			tests = append(tests, test)
-		}
 
-		if suite.SysOut != "" {
-			log := model.TestLog{
-				Name:          suite.Name,
-				Task:          t.Id,
-				TaskExecution: t.Execution,
-				Lines:         []string{fmt.Sprintf("system-out: %s", suite.SysOut)},
+			if log != nil {
+				// system-out and -err are at the suite level, so this gets appended to each log
+				if suite.SysOut != "" {
+					log.Lines = append(log.Lines, fmt.Sprintf("system-out: %s", suite.SysOut))
+				}
+				if suite.SysErr != "" {
+					log.Lines = append(log.Lines, fmt.Sprintf("system-err: %s", suite.SysErr))
+				}
+
+				// send the logs, then track the log ID in the test
+				logId, err := sendJSONLogs(ctx, logger, comm, td, log)
+				if err != nil {
+					logger.Task().Warningf("problem uploading logs for %s", log.Name)
+					continue
+				}
+				test.LogId = logId
+				test.LineNum = 1
 			}
-			logs = append(logs, &log)
-		}
-		if suite.SysErr != "" {
-			log := model.TestLog{
-				Name:          suite.Name,
-				Task:          t.Id,
-				TaskExecution: t.Execution,
-				Lines:         []string{fmt.Sprintf("system-err: %s", suite.SysErr)},
-			}
-			logs = append(logs, &log)
+
+			tests = append(tests, test)
 		}
 	}
 
-	return tests, logs, logIdxToTestIdx
+	return tests
 }
