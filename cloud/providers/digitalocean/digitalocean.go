@@ -17,6 +17,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -232,7 +233,7 @@ func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath stri
 		return false, errors.WithStack(err)
 	}
 
-	ok, err := hostutil.CheckSSHResponse(host, sshOpts)
+	ok, err := hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 	return ok, errors.WithStack(err)
 }
 

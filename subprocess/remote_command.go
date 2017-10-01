@@ -5,6 +5,7 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -35,7 +36,7 @@ type RemoteCommand struct {
 
 func (rc *RemoteCommand) Run(ctx context.Context) error {
 	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
-	err := rc.Start()
+	err := rc.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -46,28 +47,50 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 		grip.Warningf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 
+	chckCtx, cancel := context.WithCancel(ctx)
+
 	errChan := make(chan error)
+
 	go func() {
 		errChan <- rc.Cmd.Wait()
 	}()
 
+	go func() {
+		timer := time.NewTimer(0)
+		defer timer.Stop()
+		startAt := time.Now()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				if rc.Cmd.ProcessState.Exited() {
+					grip.Info(message.Fields{
+						"message": "remote command process ended early",
+						"id":      rc.Id,
+						"cmd":     rc.CmdString,
+						"runtime": time.Since(startAt),
+						"span":    time.Since(startAt).String(),
+					})
+					cancel()
+				}
+				timer.Reset(100 * time.Millisecond)
+			}
+		}
+	}()
+
 	select {
-	case <-ctx.Done():
-		err = rc.Cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"operation '%s' was canceled and terminated.",
-			rc.CmdString)
 	case err = <-errChan:
 		return errors.WithStack(err)
+	case <-chckCtx.Done():
+		return nil
+	case <-ctx.Done():
+		return errors.Errorf("operation '%s' was canceled and terminated.",
+			rc.CmdString)
 	}
 }
 
-func (rc *RemoteCommand) Wait() error {
-	return rc.Cmd.Wait()
-}
-
-func (rc *RemoteCommand) Start() error {
-
+func (rc *RemoteCommand) Start(ctx context.Context) error {
 	// build the remote connection, in user@host format
 	remote := rc.RemoteHostName
 	if rc.User != "" {
@@ -103,7 +126,7 @@ func (rc *RemoteCommand) Start() error {
 		})
 
 	// set up execution
-	cmd := exec.Command("ssh", cmdArray...)
+	cmd := exec.CommandContext(ctx, "ssh", cmdArray...)
 	cmd.Stdout = rc.Stdout
 	cmd.Stderr = rc.Stderr
 

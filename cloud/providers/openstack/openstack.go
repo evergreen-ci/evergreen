@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"golang.org/x/net/context"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/mitchellh/mapstructure"
@@ -196,7 +197,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 		return false, err
 	}
 
-	return hostutil.CheckSSHResponse(host, opts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the private IP address of the host.

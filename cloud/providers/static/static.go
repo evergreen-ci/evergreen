@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const ProviderName = "static"
@@ -93,7 +94,7 @@ func (staticMgr *StaticManager) IsSSHReachable(host *host.Host, keyPath string) 
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(host, sshOpts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 }
 
 func (staticMgr *StaticManager) IsUp(host *host.Host) (bool, error) {

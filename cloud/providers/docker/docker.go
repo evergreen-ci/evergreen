@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -242,7 +243,7 @@ func (m *Manager) IsSSHReachable(h *host.Host, keyPath string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(h, sshOpts)
+	return hostutil.CheckSSHResponse(context.TODO(), h, sshOpts)
 }
 
 //IsUp checks the container's state by querying the Docker API and

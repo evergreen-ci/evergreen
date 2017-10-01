@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 	"golang.org/x/oauth2/jwt"
 )
 
@@ -213,7 +214,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 		return false, err
 	}
 
-	return hostutil.CheckSSHResponse(host, opts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the external IPv4 address of the host.

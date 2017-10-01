@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // EC2Manager implements the CloudManager interface for Amazon EC2
@@ -93,7 +94,7 @@ func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, keyPath string) 
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(host, sshOpts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 }
 
 func (cloudManager *EC2Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
