@@ -84,9 +84,9 @@ func (a *Agent) loop(ctx context.Context) error {
 		cancel context.CancelFunc
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
-	cancel()
+	defer cancel()
 	tskCtx, cancel = context.WithCancel(ctx)
-	cancel()
+	defer cancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
