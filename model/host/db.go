@@ -334,11 +334,12 @@ func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 	})
 }
 
-func RemoveAllInitializing() error {
+func RemoveAllStaleInitializing() error {
 	return db.RemoveAll(Collection,
 		bson.M{
-			StatusKey:   evergreen.HostUninitialized,
-			UserHostKey: false,
+			StatusKey:     evergreen.HostUninitialized,
+			UserHostKey:   false,
+			CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
 		})
 }
 

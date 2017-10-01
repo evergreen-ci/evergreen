@@ -187,24 +187,12 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	hostPlanningStart := time.Now()
 
-	catcher := grip.NewCatcher()
-	existing, err := host.Count(host.IsUninitialized)
-	catcher.Add(err)
-	running, err := host.Count(host.IsRunning)
-	catcher.Add(err)
-
-	if catcher.HasErrors() {
-		return errors.WithStack(catcher.Resolve())
-	}
-
 	grip.Notice(message.Fields{
 		"runner":    RunnerName,
-		"operation": "removing stale intent hosts",
-		"existing":  existing,
-		"running":   running,
+		"operation": "removing stale intent hosts older than 3 minutes",
 	})
 
-	if err := host.RemoveAllInitializing(); err != nil {
+	if err := host.RemoveAllStaleInitializing(); err != nil {
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.")
 	}
 
