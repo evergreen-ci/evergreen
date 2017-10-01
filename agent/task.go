@@ -1,17 +1,43 @@
 package agent
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {
+	defer func() {
+		if p := recover(); p != nil {
+			var pmsg string
+			if ps, ok := p.(string); ok {
+				pmsg = ps
+			} else {
+				pmsg = fmt.Sprintf("%+v", p)
+			}
+
+			m := message.Fields{
+				"operation": "running task",
+				"panic":     pmsg,
+				"stack":     message.NewStack(1, "").Raw(),
+			}
+			grip.Alert(m)
+			select {
+			case complete <- evergreen.TaskSystemFailed:
+				grip.Debug("marked task as system-failed after panic")
+			default:
+				grip.Debug("marking task system failed during panic handling, but complete channel was blocked")
+			}
+		}
+	}()
+
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -99,6 +125,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	taskStatus := a.runTaskCommands(innerCtx, tc)
 	if taskStatus != nil {
 		complete <- evergreen.TaskFailed
+		return
 	}
 	complete <- evergreen.TaskSucceeded
 }

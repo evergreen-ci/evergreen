@@ -40,12 +40,14 @@ func (c *attachResults) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *attachResults) expandAttachResultsParams(
-	taskConfig *model.TaskConfig) (err error) {
+func (c *attachResults) expandAttachResultsParams(taskConfig *model.TaskConfig) error {
+	var err error
+
 	c.FileLoc, err = taskConfig.Expansions.ExpandString(c.FileLoc)
 	if err != nil {
 		return errors.Wrap(err, "error expanding file_location")
 	}
+
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -363,6 +364,7 @@ func (s *Settings) GetSender() (send.Sender, error) {
 // In general, the collector should run in the background of the API
 // server and the UI server.
 func SystemInfoCollector(ctx context.Context) {
+	defer util.RecoverLogStackTraceAndContinue("system info collector")
 	const sysInfoLoggingInterval = 15 * time.Second
 	timer := time.NewTimer(0)
 	defer timer.Stop()

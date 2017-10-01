@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -78,10 +79,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 // directory, so files not located in a directory may still cause
 // issues.
 func tryCleanupDirectory(dir string) {
-	defer func() {
-		m := recover()
-		grip.Warning(m)
-	}()
+	defer util.RecoverLogStackTraceAndContinue("clean up directories")
 
 	if dir == "" {
 		return
