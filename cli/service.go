@@ -75,7 +75,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go evergreen.SystemInfoCollector(ctx)
+	go util.SystemInfoCollector(ctx)
 
 	apiWait := make(chan struct{})
 	go func() {

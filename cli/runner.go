@@ -71,7 +71,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go evergreen.SystemInfoCollector(ctx)
+	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
