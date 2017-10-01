@@ -73,6 +73,7 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 						"span":    time.Since(startAt).String(),
 					})
 					cancel()
+					return
 				}
 				timer.Reset(100 * time.Millisecond)
 			}
