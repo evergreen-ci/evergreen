@@ -75,6 +75,19 @@ func (a *Agent) loop(ctx context.Context) error {
 		agentSleepInterval = a.opts.AgentSleepInterval
 	}
 
+	// we want to have seperate context trees for tasks and
+	// loggers, so that when a task is canceled by a context, it
+	// can log its clean up.
+	var (
+		lgrCtx context.Context
+		tskCtx context.Context
+		cancel context.CancelFunc
+	)
+	lgrCtx, cancel = context.WithCancel(ctx)
+	cancel()
+	tskCtx, cancel = context.WithCancel(ctx)
+	cancel()
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	for {
@@ -97,10 +110,10 @@ func (a *Agent) loop(ctx context.Context) error {
 						Secret: nextTask.TaskSecret,
 					},
 				}
-				if err := a.resetLogging(ctx, &tc); err != nil {
+				if err := a.resetLogging(lgrCtx, &tc); err != nil {
 					return errors.WithStack(err)
 				}
-				if err := a.runTask(ctx, &tc); err != nil {
+				if err := a.runTask(tskCtx, &tc); err != nil {
 					return errors.WithStack(err)
 				}
 				timer.Reset(0)
