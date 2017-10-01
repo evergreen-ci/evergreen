@@ -187,6 +187,15 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	hostPlanningStart := time.Now()
 
+	grip.Notice(message.Fields{
+		"runner":    RunnerName,
+		"operation": "removing stale intent hosts older than 3 minutes",
+	})
+
+	if err := host.RemoveAllStaleInitializing(); err != nil {
+		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.")
+	}
+
 	// get hosts that we can use
 	hostsByDistro, err := s.findUsableHosts()
 	if err != nil {
