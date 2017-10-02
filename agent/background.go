@@ -74,6 +74,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 				tc.logger.Execution().Error("Hit idle timeout")
 				tc.reachTimeOut()
 				cancel()
+				return
 			}
 			timer.Reset(nextTimeout)
 		}

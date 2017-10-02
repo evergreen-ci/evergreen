@@ -176,8 +176,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
 
-	status := a.wait(innerCtx, tc, heartbeat, complete)
-
+	status := a.wait(ctx, tc, heartbeat, complete)
 	resp, err := a.finishTask(ctx, tc, status)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
