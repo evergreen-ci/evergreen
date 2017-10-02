@@ -432,14 +432,14 @@ func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]
 // and return the count of hosts as well as how many are running tasks
 func hostStatsByDistroPipeline() []bson.M {
 	return []bson.M{
-		bson.M{
+		{
 			"$match": bson.M{
 				StatusKey: bson.M{
 					"$in": evergreen.UphostStatus,
 				},
 			},
 		},
-		bson.M{
+		{
 			"$group": bson.M{
 				"_id": bson.M{
 					"distro": "$distro._id",
@@ -453,7 +453,7 @@ func hostStatsByDistroPipeline() []bson.M {
 				},
 			},
 		},
-		bson.M{
+		{
 			"$project": bson.M{
 				"distro":            "$_id.distro",
 				"status":            "$_id.status",
