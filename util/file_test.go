@@ -48,7 +48,7 @@ func TestFileExists(t *testing.T) {
 }
 
 func TestBuildFileList(t *testing.T) {
-	wd, err := ioutil.TempDir("", t.Name())
+	wd, err := ioutil.TempDir("", "evg")
 
 	testutil.HandleTestingErr(err, t, "error getting working directory")
 
