@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 var ()
@@ -91,7 +92,16 @@ func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
 // Execute transfers the fields from a TestHistoryCommand to a TestHistoryParameter
 // and validates them. It then gets the test history from the api endpoint
 func (thc *TestHistoryCommand) Execute(_ []string) error {
-	_, rc, _, err := getAPIClients(thc.GlobalOpts)
+	if thc.Format == "" {
+		thc.Format = prettyFormat
+	}
+
+	if thc.Format != prettyFormat && thc.Filepath == "" {
+		return errors.New("must specify a filepath for csv and json output")
+	}
+
+	ctx := context.Background()
+	_, rc, _, err := getAPIClients(ctx, thc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -140,9 +150,6 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 		return errors.Errorf("before revision must be a 40 character revision")
 	}
 
-	if thc.Format == "" {
-		thc.Format = prettyFormat
-	}
 	beforeDate := time.Time{}
 	if thc.BeforeDate != "" {
 		beforeDate, err = time.Parse(timeFormat, thc.BeforeDate)
@@ -207,5 +214,4 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 	}
 
 	return WriteToFile(body, thc.Filepath)
-
 }

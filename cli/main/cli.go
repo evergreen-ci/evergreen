@@ -3,9 +3,8 @@ package main
 import (
 	"os"
 
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
-
 	"github.com/evergreen-ci/evergreen/cli"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	flags "github.com/jessevdk/go-flags"
 )
 

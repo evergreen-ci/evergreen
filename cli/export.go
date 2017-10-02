@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -31,13 +32,18 @@ type ExportCommand struct {
 }
 
 func (ec *ExportCommand) Execute(_ []string) error {
-	_, rc, _, err := getAPIClients(ec.GlobalOpts)
-	if err != nil {
-		return err
+	if ec.Filepath == "" {
+		return errors.New("must specify a filepath to write output")
 	}
 
 	if ec.StatsType == "" {
 		return errors.New("Must specify a stats type, host")
+	}
+
+	ctx := context.Background()
+	_, rc, _, err := getAPIClients(ctx, ec.GlobalOpts)
+	if err != nil {
+		return err
 	}
 
 	// default granularity to an hour
@@ -114,16 +120,16 @@ func convertGranularityToSeconds(granString string) (int, error) {
 // WriteToFile takes in a body and filepath and writes out the data in the body
 func WriteToFile(body io.ReadCloser, filepath string) error {
 	defer body.Close()
-	file := os.Stdout
-	var err error
-	if filepath != "" {
-		file, err = os.Create(filepath)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+	if filepath == "" {
+		return errors.New("cannot write output to an unspecified ")
 	}
+
+	file, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
 	_, err = io.Copy(file, body)
 	return err
-
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // APIClient manages requests to the API server endpoints, and unmarshaling the results into
@@ -55,49 +56,67 @@ func NewAPIError(resp *http.Response) APIError {
 
 // getAPIClients loads and returns user settings along with two APIClients: one configured for the API
 // server endpoints, and another for the REST api.
-func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, error) {
+func getAPIClients(ctx context.Context, o *Options) (*APIClient, *APIClient, *model.CLISettings, error) {
 	settings, err := LoadSettings(o)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	// create a client for the API servers
-	APIV2Root := settings.APIServerHost + "/rest/v2"
-	ac := &APIClient{
-		APIRoot:   settings.APIServerHost,
-		APIRootV2: APIV2Root,
-		User:      settings.User,
-		APIKey:    settings.APIKey,
-		UIRoot:    settings.UIServerHost,
-	}
-
 	// create client for the REST APIs
-	apiUrl, err := url.Parse(settings.APIServerHost)
+	apiURL, err := url.Parse(settings.APIServerHost)
 	if err != nil {
 		return nil, nil, nil, errors.Errorf("Settings file contains an invalid url: %v", err)
 	}
 
-	rc := &APIClient{
-		APIRoot:   apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v1",
-		APIRootV2: apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v2",
+	ac := &APIClient{
+		APIRoot:   settings.APIServerHost,
+		APIRootV2: apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
 		User:      settings.User,
 		APIKey:    settings.APIKey,
 		UIRoot:    settings.UIServerHost,
 	}
+
+	rc := &APIClient{
+		APIRoot:   apiURL.Scheme + "://" + apiURL.Host + "/rest/v1",
+		APIRootV2: apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
+		User:      settings.User,
+		APIKey:    settings.APIKey,
+		UIRoot:    settings.UIServerHost,
+	}
+
+	// this operation is just to get the side effect of logging
+	// the degraded mode banner.
+	_, err = getRestClientCommunicator(ctx, settings.APIServerHost)
+	grip.Warning(err)
 
 	return ac, rc, settings, nil
 }
 
 // returns a client and settings for the REST V2 APIs
-func getAPIV2Client(o *Options) (client.Communicator, *model.CLISettings, error) {
+func getAPIV2Client(ctx context.Context, o *Options) (client.Communicator, *model.CLISettings, error) {
 	settings, err := LoadSettings(o)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.WithStack(err)
 	}
 
-	c := client.NewCommunicator(settings.APIServerHost)
+	comm, err := getRestClientCommunicator(ctx, settings.APIServerHost)
+	if err != nil {
+		return nil, nil, errors.WithStack(err)
+	}
 
-	return c, settings, nil
+	return comm, settings, nil
+}
+
+func getRestClientCommunicator(ctx context.Context, url string) (client.Communicator, error) {
+	c := client.NewCommunicator(url)
+
+	banner, err := c.GetBannerMessage(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	grip.Notice(banner)
+
+	return c, nil
 }
 
 // doReq performs a request of the given method type against path.

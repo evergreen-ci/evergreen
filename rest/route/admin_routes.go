@@ -18,7 +18,7 @@ func getAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &adminGetHandler{}
 	adminGet := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
+		Authenticator:     &RequireUserAuthenticator{},
 		RequestHandler:    agh.Handler(),
 		MethodType:        http.MethodGet,
 	}

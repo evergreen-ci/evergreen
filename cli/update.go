@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // GetUpdateCommand attempts to fetch the latest version of the client binary and install it over
@@ -158,7 +159,8 @@ func notifyUserUpdate(ac *APIClient) {
 }
 
 func (uc *GetUpdateCommand) Execute(_ []string) error {
-	ac, _, _, err := getAPIClients(uc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, uc.GlobalOpts)
 	if err != nil {
 		return err
 	}

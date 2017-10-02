@@ -20,15 +20,15 @@ type HostCreateCommand struct {
 
 // Execute will run the evergreen host create command
 func (cmd *HostCreateCommand) Execute(_ []string) error {
+	ctx := context.Background()
 
-	client, settings, err := getAPIV2Client(cmd.GlobalOpts)
+	client, settings, err := getAPIV2Client(ctx, cmd.GlobalOpts)
 	if err != nil {
 		return err
 	}
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
-	ctx := context.Background()
 
 	host, err := client.CreateSpawnHost(ctx, cmd.Distro, cmd.PubKey)
 	if host == nil {
@@ -54,12 +54,12 @@ func (cmd *HostListCommand) Execute(_ []string) error {
 		return errors.New("Must specify exactly one of --all or --mine")
 	}
 
-	client, settings, err := getAPIV2Client(cmd.GlobalOpts)
+	ctx := context.Background()
+	client, settings, err := getAPIV2Client(ctx, cmd.GlobalOpts)
 	if err != nil {
 		return err
 	}
 
-	ctx := context.Background()
 	if cmd.Mine {
 		var hosts []*model.APIHost
 		client.SetAPIUser(settings.User)
@@ -116,7 +116,8 @@ func (cmd *HostTerminateCommand) Execute(_ []string) error {
 		return errors.New("host ID cannot be blank")
 	}
 
-	client, _, _, err := getAPIClients(cmd.GlobalOpts)
+	ctx := context.Background()
+	client, _, _, err := getAPIClients(ctx, cmd.GlobalOpts)
 	if err != nil {
 		return err
 	}
