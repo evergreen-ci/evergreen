@@ -271,8 +271,9 @@ func (s *AgentTestSuite) TestWaitCompleteSuccess() {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	status := s.a.wait(ctx, s.tc, heartbeat, complete)
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskSucceeded, status)
 	s.False(s.tc.hadTimedOut())
 }
@@ -285,8 +286,9 @@ func (s *AgentTestSuite) TestWaitCompleteFailure() {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	status := s.a.wait(ctx, s.tc, heartbeat, complete)
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
 }
@@ -296,7 +298,9 @@ func (s *AgentTestSuite) TestWaitExecTimeout() {
 	complete := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	status := s.a.wait(ctx, s.tc, heartbeat, complete)
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
 }
@@ -309,8 +313,10 @@ func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
 	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	innerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	status := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskUndispatched, status)
 	s.False(s.tc.hadTimedOut())
 }
@@ -350,8 +356,10 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 
 	heartbeat := make(chan string)
 	complete := make(chan string)
+	var innerCtx context.Context
+	innerCtx, cancel = context.WithCancel(context.Background())
 	cancel()
-	status := s.a.wait(ctx, s.tc, heartbeat, complete)
+	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
 }
