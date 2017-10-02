@@ -239,7 +239,7 @@ retryLoop:
 		case <-ctx.Done():
 			return errors.New("s3 put operation canceled")
 		case <-timer.C:
-			filesList := []string{filepath.Join(s3pc.workDir, s3pc.LocalFile)}
+			filesList := []string{s3pc.LocalFile}
 
 			if s3pc.isMulti() {
 				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
@@ -271,6 +271,7 @@ retryLoop:
 					Path:   remoteName,
 				}
 
+				fpath = filepath.Join(s3pc.workDir, fpath)
 				err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
