@@ -114,7 +114,7 @@ func (s *StatusSuite) TestExecuteDefault() {
 	s.NoError(err)
 	s.NotNil(resp)
 	s.Len(resp.Result, 1)
-	res := resp.Result[0].(*model.APIStats)
+	res := resp.Result[0].(*model.APITaskStats)
 	s.Equal(1, res.Total)
 	s.Equal(2, res.Inactive)
 	s.Equal(3, res.Unstarted)
