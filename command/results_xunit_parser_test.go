@@ -196,8 +196,8 @@ func TestXMLToModelConversion(t *testing.T) {
 					So(logs[0].URL(), ShouldContainSubstring,
 						"TEST/5/test.test_auth.TestAuthURIOptions.test_uri_options")
 					Convey("and system-out and system-err should be present", func() {
-						So(logs[0].Lines[len(logs[0].Lines)-1], ShouldContainSubstring, "system-err: system error text")
-						So(logs[0].Lines[len(logs[0].Lines)-2], ShouldContainSubstring, "system-out: system out text")
+						So(logs[0].Lines[len(logs[0].Lines)-1], ShouldContainSubstring, "system error text")
+						So(logs[0].Lines[len(logs[0].Lines)-3], ShouldContainSubstring, "system out text")
 					})
 				})
 				Convey("and logs should correspond to unsuccessful tests", func() {
@@ -287,8 +287,8 @@ func TestXMLToModelConversion(t *testing.T) {
 					So(logs[0].Name, ShouldEqual, "unittest.loader.ModuleImportFailure.tests.test_binder")
 					So(len(logs[0].Lines), ShouldNotEqual, 0)
 					Convey("and system-out and system-err should be present but empty", func() {
-						So(logs[0].Lines[len(logs[0].Lines)-1], ShouldContainSubstring, "system-err:")
-						So(logs[0].Lines[len(logs[0].Lines)-2], ShouldContainSubstring, "system-out:")
+						So(logs[0].Lines[len(logs[0].Lines)-2], ShouldEqual, "system-err:")
+						So(logs[0].Lines[len(logs[0].Lines)-4], ShouldEqual, "system-out:")
 					})
 				})
 				Convey("and logs should correspond to unsuccessful tests", func() {

@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -173,10 +172,10 @@ func generateLogsForOneFile(testSuites []testSuite, t *task.Task) ([]task.TestRe
 			tests = append(tests, test)
 			if log != nil {
 				if suite.SysOut != "" {
-					log.Lines = append(log.Lines, fmt.Sprintf("system-out: %s", suite.SysOut))
+					log.Lines = append(log.Lines, "system-out:", suite.SysOut)
 				}
 				if suite.SysErr != "" {
-					log.Lines = append(log.Lines, fmt.Sprintf("system-err: %s", suite.SysErr))
+					log.Lines = append(log.Lines, "system-err:", suite.SysErr)
 				}
 				logs = append(logs, log)
 				logIdxToTestIdx[len(logs)-1] = len(tests) - 1
