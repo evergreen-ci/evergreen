@@ -320,55 +320,6 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 }
 
 // nolint
-func (*Mock) GetAllHosts()                        {}
-func (*Mock) GetHostByID()                        {}
-func (*Mock) SetHostStatus()                      {}
-func (*Mock) SetHostStatuses()                    {}
-func (*Mock) GetTaskByID()                        {}
-func (*Mock) GetTasksByBuild()                    {}
-func (*Mock) GetTasksByProjectAndCommit()         {}
-func (*Mock) SetTaskStatus()                      {}
-func (*Mock) AbortTask()                          {}
-func (*Mock) RestartTask()                        {}
-func (*Mock) GetKeys()                            {}
-func (*Mock) AddKey()                             {}
-func (*Mock) RemoveKey()                          {}
-func (*Mock) GetProjectByID()                     {}
-func (*Mock) EditProject()                        {}
-func (*Mock) CreateProject()                      {}
-func (*Mock) GetAllProjects()                     {}
-func (*Mock) GetBuildByID()                       {}
-func (*Mock) GetBuildByProjectAndHashAndVariant() {}
-func (*Mock) GetBuildsByVersion()                 {}
-func (*Mock) SetBuildStatus()                     {}
-func (*Mock) AbortBuild()                         {}
-func (*Mock) RestartBuild()                       {}
-func (*Mock) GetTestsByTaskID()                   {}
-func (*Mock) GetTestsByBuild()                    {}
-func (*Mock) GetTestsByTestName()                 {}
-func (*Mock) GetVersionByID()                     {}
-func (*Mock) GetVersions()                        {}
-func (*Mock) GetVersionByProjectAndCommit()       {}
-func (*Mock) GetVersionsByProject()               {}
-func (*Mock) SetVersionStatus()                   {}
-func (*Mock) AbortVersion()                       {}
-func (*Mock) RestartVersion()                     {}
-func (*Mock) GetAllDistros()                      {}
-func (*Mock) GetDistroByID()                      {}
-func (*Mock) CreateDistro()                       {}
-func (*Mock) EditDistro()                         {}
-func (*Mock) DeleteDistro()                       {}
-func (*Mock) GetDistroSetupScriptByID()           {}
-func (*Mock) GetDistroTeardownScriptByID()        {}
-func (*Mock) EditDistroSetupScript()              {}
-func (*Mock) EditDistroTeardownScript()           {}
-func (*Mock) GetPatchByID()                       {}
-func (*Mock) GetPatchesByProject()                {}
-func (*Mock) SetPatchStatus()                     {}
-func (*Mock) AbortPatch()                         {}
-func (*Mock) RestartPatch()                       {}
-
-// nolint
 func (c *Mock) SetBannerMessage(ctx context.Context, m string) error                  { return nil }
 func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                  { return "", nil }
 func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error   { return nil }

@@ -113,85 +113,10 @@ type Communicator interface {
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 
 	// Host methods
-	//
-	GetAllHosts()
-	GetHostByID()
 	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)
-	SetHostStatus()
-	SetHostStatuses()
 
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, string, string) (*restmodel.APIHost, error)
 	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
-
-	// Task methods
-	//
-	GetTaskByID()
-	GetTasksByBuild()
-	GetTasksByProjectAndCommit()
-	SetTaskStatus()
-	AbortTask()
-	RestartTask()
-
-	// SSH keys methods
-	//
-	GetKeys()
-	AddKey()
-	RemoveKey()
-
-	// Project methods
-	//
-	GetProjectByID()
-	EditProject()
-	CreateProject()
-	GetAllProjects()
-
-	// Build methods
-	//
-	GetBuildByID()
-	GetBuildByProjectAndHashAndVariant()
-	GetBuildsByVersion()
-	SetBuildStatus()
-	AbortBuild()
-	RestartBuild()
-
-	// Test methods
-	//
-	GetTestsByTaskID()
-	GetTestsByBuild()
-	GetTestsByTestName()
-
-	// Version methods
-	//
-	GetVersionByID()
-	GetVersions()
-	GetVersionByProjectAndCommit()
-	GetVersionsByProject()
-	SetVersionStatus()
-	AbortVersion()
-	RestartVersion()
-
-	// Distro methods
-	//
-	GetAllDistros()
-	GetDistroByID()
-	CreateDistro()
-	EditDistro()
-	DeleteDistro()
-	GetDistroSetupScriptByID()
-	GetDistroTeardownScriptByID()
-	EditDistroSetupScript()
-	EditDistroTeardownScript()
-
-	// Patch methods
-	//
-	GetPatchByID()
-	GetPatchesByProject()
-	SetPatchStatus()
-	AbortPatch()
-	RestartPatch()
-	// ---------------------------------------------------------------------
-	// End REST API V2 methods
-	// ---------------------------------------------------------------------
 }
