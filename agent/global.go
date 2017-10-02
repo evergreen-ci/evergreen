@@ -33,8 +33,4 @@ const (
 	// maxHeartbeats is the number of failed heartbeats after which an agent
 	// reports an error
 	maxHeartbeats = 10
-
-	// initialSetupTimeout indicates the time allowed for the agent to collect
-	// relevant information - for running a task - from the API server.
-	initialSetupTimeout = 20 * time.Minute
 )

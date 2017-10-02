@@ -193,7 +193,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	})
 
 	if err := host.RemoveAllStaleInitializing(); err != nil {
-		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.")
+		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 
 	// get hosts that we can use
