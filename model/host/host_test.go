@@ -849,3 +849,85 @@ func TestHostUpsert(t *testing.T) {
 	assert.NotNil(hostFromDB)
 	assert.NotEqual(testHost.Secret, hostFromDB.Secret)
 }
+
+func TestHostStats(t *testing.T) {
+	const d1 = "distro1"
+	const d2 = "distro2"
+
+	assert := assert.New(t)
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing hosts collection")
+	host1 := &Host{
+		Id:          "host1",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task",
+	}
+	host2 := &Host{
+		Id:     "host2",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostStarting,
+	}
+	host3 := &Host{
+		Id:     "host3",
+		Distro: distro.Distro{Id: d1},
+		Status: evergreen.HostTerminated,
+	}
+	host4 := &Host{
+		Id:          "host4",
+		Distro:      distro.Distro{Id: d1},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task2",
+	}
+	host5 := &Host{
+		Id:     "host5",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostInitializing,
+	}
+	host6 := &Host{
+		Id:     "host6",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostInitializing,
+	}
+	host7 := &Host{
+		Id:          "host7",
+		Distro:      distro.Distro{Id: d2},
+		Status:      evergreen.HostRunning,
+		RunningTask: "task3",
+	}
+	host8 := &Host{
+		Id:     "host8",
+		Distro: distro.Distro{Id: d2},
+		Status: evergreen.HostRunning,
+	}
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+	assert.NoError(host5.Insert())
+	assert.NoError(host6.Insert())
+	assert.NoError(host7.Insert())
+	assert.NoError(host8.Insert())
+
+	// test GetHostStatsByDistro
+	stats, err := GetHostStatsByDistro()
+	assert.NoError(err)
+	for _, entry := range stats {
+		if entry.Distro == d1 {
+			if entry.Status == evergreen.HostRunning {
+				assert.Equal(2, entry.Count)
+				assert.Equal(2, entry.NumTasks)
+			} else if entry.Status == evergreen.HostStarting {
+				assert.Equal(1, entry.Count)
+				assert.Equal(0, entry.NumTasks)
+			}
+		} else if entry.Distro == d2 {
+			if entry.Status == evergreen.HostRunning {
+				assert.Equal(2, entry.Count)
+				assert.Equal(1, entry.NumTasks)
+			} else if entry.Status == evergreen.HostInitializing {
+				assert.Equal(2, entry.Count)
+				assert.Equal(0, entry.NumTasks)
+			}
+		}
+	}
+}

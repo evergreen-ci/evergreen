@@ -83,6 +83,17 @@ type ProvisionOptions struct {
 	OwnerId string `bson:"owner_id" json:"owner_id"`
 }
 
+type HostStatsByDistro struct {
+	// ID of the distro the below stats are for
+	Distro string `bson:"distro"`
+	// Host status that the below stats are for
+	Status string `bson:"status"`
+	// Number of hosts in this status
+	Count int `bson:"count"`
+	// Number of tasks running on hosts in the above group (should only be nonzero for running hosts)
+	NumTasks int `bson:"num_tasks_running"`
+}
+
 const (
 	MaxLCTInterval = time.Minute * 10
 )
@@ -568,4 +579,13 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	}
 
 	return host, nil
+}
+
+// GetHostStatsByDistro returns counts of up hosts broken down by distro
+func GetHostStatsByDistro() ([]HostStatsByDistro, error) {
+	stats := []HostStatsByDistro{}
+	if err := db.Aggregate(Collection, hostStatsByDistroPipeline(), &stats); err != nil {
+		return nil, err
+	}
+	return stats, nil
 }

@@ -427,3 +427,40 @@ func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]
 	}
 	return hosts, nil
 }
+
+// hostStatsByDistroPipeline returns a pipeline that will group all up hosts by distro
+// and return the count of hosts as well as how many are running tasks
+func hostStatsByDistroPipeline() []bson.M {
+	return []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": evergreen.UphostStatus,
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					"distro": "$distro._id",
+					"status": "$" + StatusKey,
+				},
+				"count": bson.M{
+					"$sum": 1,
+				},
+				"tasks": bson.M{
+					"$addToSet": "$" + RunningTaskKey,
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"distro":            "$_id.distro",
+				"status":            "$_id.status",
+				"count":             1,
+				"num_tasks_running": bson.M{"$size": "$tasks"},
+				"_id":               0,
+			},
+		},
+	}
+}
