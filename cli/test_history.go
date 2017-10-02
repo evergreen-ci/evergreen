@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 var ()
@@ -91,7 +92,8 @@ func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
 // Execute transfers the fields from a TestHistoryCommand to a TestHistoryParameter
 // and validates them. It then gets the test history from the api endpoint
 func (thc *TestHistoryCommand) Execute(_ []string) error {
-	_, rc, _, err := getAPIClients(thc.GlobalOpts)
+	ctx := context.Background()
+	_, rc, _, err := getAPIClients(ctx, thc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -207,5 +209,4 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 	}
 
 	return WriteToFile(body, thc.Filepath)
-
 }

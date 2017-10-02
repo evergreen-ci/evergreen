@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const defaultCloneDepth = 500
@@ -39,7 +40,8 @@ type FetchCommand struct {
 // FetchCommand allows the user to download the artifacts for a task (and optionally its dependencies),
 // clone the source that a task was derived from, or both.
 func (fc *FetchCommand) Execute(_ []string) error {
-	ac, rc, _, err := getAPIClients(fc.GlobalOpts)
+	ctx := context.Background()
+	ac, rc, _, err := getAPIClients(ctx, fc.GlobalOpts)
 	if err != nil {
 		return err
 	}

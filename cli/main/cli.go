@@ -3,13 +3,29 @@ package main
 import (
 	"os"
 
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
-
 	"github.com/evergreen-ci/evergreen/cli"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 )
 
 func main() {
+
+	// reconfigure default logger to write output to standard
+	// error. this is mostly so operations that write to stdout
+	// (e.g. export and maybe test_history) are trivially serverable from
+	// logging output.
+	//
+	// the agent and services reconfigure the logger early in
+	// their execute methods to write to files/syslog/external
+	// services as needed.
+	if err := grip.SetSender(send.MakeErrorLogger()); err != nil {
+		grip.Error(errors.Wrap(err, "cannot configure logger"))
+		os.Exit(1)
+	}
+
 	opts := &cli.Options{}
 	parser := flags.NewParser(opts, flags.Default)
 

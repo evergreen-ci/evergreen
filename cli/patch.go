@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 var noProjectError = errors.New("must specify a project with -p/--project or a path to a config file with -f/--file")
@@ -31,7 +32,7 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 	     ID : {{.Patch.Id.Hex}}
 	Created : {{.Now.Sub .Patch.CreateTime}} ago
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
-          Build : {{.Link}}
+	  Build : {{.Link}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
 	Summary :
@@ -159,7 +160,8 @@ type RemoveModuleCommand struct {
 }
 
 func (lpc *ListPatchesCommand) Execute(_ []string) error {
-	ac, _, settings, err := getAPIClients(lpc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, settings, err := getAPIClients(ctx, lpc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -211,7 +213,8 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 }
 
 func (rmc *RemoveModuleCommand) Execute(_ []string) error {
-	ac, _, _, err := getAPIClients(rmc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, rmc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -230,7 +233,8 @@ func (vc *ValidateCommand) Execute(_ []string) error {
 		return errors.New("must supply path to a file to validate.")
 	}
 
-	ac, _, _, err := getAPIClients(vc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, vc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -273,7 +277,8 @@ func getModuleBranch(moduleName string, proj *model.Project) (string, error) {
 }
 
 func (smc *SetModuleCommand) Execute(args []string) error {
-	ac, rc, _, err := getAPIClients(smc.GlobalOpts)
+	ctx := context.Background()
+	ac, rc, _, err := getAPIClients(ctx, smc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -372,7 +377,8 @@ func (pfc *PatchFileCommand) Execute(_ []string) error {
 }
 
 func (cpc *CancelPatchCommand) Execute(_ []string) error {
-	ac, _, _, err := getAPIClients(cpc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, cpc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -387,7 +393,8 @@ func (cpc *CancelPatchCommand) Execute(_ []string) error {
 }
 
 func (fpc *FinalizePatchCommand) Execute(_ []string) error {
-	ac, _, _, err := getAPIClients(fpc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, fpc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -402,7 +409,8 @@ func (fpc *FinalizePatchCommand) Execute(_ []string) error {
 }
 
 func (lgc *LastGreenCommand) Execute(_ []string) error {
-	ac, rc, settings, err := getAPIClients(lgc.GlobalOpts)
+	ctx := context.Background()
+	ac, rc, settings, err := getAPIClients(ctx, lgc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -446,7 +454,8 @@ func (lc *ListCommand) Execute(_ []string) error {
 }
 
 func (lc *ListCommand) listProjects() error {
-	ac, _, _, err := getAPIClients(lc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -481,7 +490,8 @@ func (lc *ListCommand) listProjects() error {
 }
 
 func (lc *ListCommand) listDistros() error {
-	ac, _, _, err := getAPIClients(lc.GlobalOpts)
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -516,8 +526,9 @@ func loadLocalConfig(filepath string) (*model.Project, error) {
 
 func (lc *ListCommand) listTasks() error {
 	var tasks []model.ProjectTask
+	ctx := context.Background()
 	if lc.Project != "" {
-		ac, _, _, err := getAPIClients(lc.GlobalOpts)
+		ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
 		if err != nil {
 			return err
 		}
@@ -548,8 +559,9 @@ func (lc *ListCommand) listTasks() error {
 
 func (lc *ListCommand) listVariants() error {
 	var variants []model.BuildVariant
+	ctx := context.Background()
 	if lc.Project != "" {
-		ac, _, _, err := getAPIClients(lc.GlobalOpts)
+		ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
 		if err != nil {
 			return err
 		}
@@ -592,7 +604,8 @@ func (lc *ListCommand) listVariants() error {
 
 // Performs validation for patch or patch-file
 func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *model.CLISettings, ref *model.ProjectRef, err error) {
-	ac, _, settings, err = getAPIClients(params.GlobalOpts)
+	ctx := context.Background()
+	ac, _, settings, err = getAPIClients(ctx, params.GlobalOpts)
 	if err != nil {
 		return
 	}

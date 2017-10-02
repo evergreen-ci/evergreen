@@ -45,7 +45,9 @@ func (c *AdminRestartTasks) Execute(_ []string) error {
 		}
 	}
 
-	client, settings, err := getAPIV2Client(c.GlobalOpts)
+	ctx := context.Background()
+
+	client, settings, err := getAPIV2Client(ctx, c.GlobalOpts)
 	if err != nil {
 		return errors.Wrap(err, "problem configuring api client")
 	}
@@ -53,7 +55,6 @@ func (c *AdminRestartTasks) Execute(_ []string) error {
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
 
-	ctx := context.Background()
 	if err = client.RestartRecentTasks(ctx, startAt, endAt); err != nil {
 		return errors.Wrapf(err, "problem restarting tasks for %s period starting at",
 			startAt.Sub(endAt), startAt)
@@ -85,14 +86,14 @@ func (c *AdminBannerCommand) Execute(_ []string) error {
 		return nil
 	}
 
-	client, settings, err := getAPIV2Client(c.GlobalOpts)
+	ctx := context.Background()
+	client, settings, err := getAPIV2Client(ctx, c.GlobalOpts)
 	if err != nil {
 		return err
 	}
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
-	ctx := context.Background()
 
 	return errors.Wrap(client.SetBannerMessage(ctx, c.Message),
 		"problem setting the site-wide banner message")
@@ -103,14 +104,14 @@ type AdminDisableServiceCommand struct {
 }
 
 func (c *AdminDisableServiceCommand) Execute(args []string) error {
-	client, settings, err := getAPIV2Client(c.GlobalOpts)
+	ctx := context.Background()
+	client, settings, err := getAPIV2Client(ctx, c.GlobalOpts)
 	if err != nil {
 		return err
 	}
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
-	ctx := context.Background()
 	flags, err := client.GetServiceFlags(ctx)
 	if err != nil {
 		return errors.Wrap(err, "problem getting current service flag state")
@@ -129,14 +130,14 @@ type AdminEnableServiceCommand struct {
 }
 
 func (c *AdminEnableServiceCommand) Execute(args []string) error {
-	client, settings, err := getAPIV2Client(c.GlobalOpts)
+	ctx := context.Background()
+	client, settings, err := getAPIV2Client(ctx, c.GlobalOpts)
 	if err != nil {
 		return err
 	}
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
-	ctx := context.Background()
 
 	flags, err := client.GetServiceFlags(ctx)
 	if err != nil {

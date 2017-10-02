@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -31,7 +32,8 @@ type ExportCommand struct {
 }
 
 func (ec *ExportCommand) Execute(_ []string) error {
-	_, rc, _, err := getAPIClients(ec.GlobalOpts)
+	ctx := context.Background()
+	_, rc, _, err := getAPIClients(ctx, ec.GlobalOpts)
 	if err != nil {
 		return err
 	}
