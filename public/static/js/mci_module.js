@@ -381,4 +381,6 @@ var mciModule = angular.module('MCI', [
   return $time;
 }]).config(['$compileProvider', function ($compileProvider) {
   //$compileProvider.debugInfoEnabled(false);
+}]).config(['$locationProvider', function($locationProvider) {
+  $locationProvider.hashPrefix('');
 }]);
