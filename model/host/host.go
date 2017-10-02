@@ -584,7 +584,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 // GetHostStatsByDistro returns counts of up hosts broken down by distro
 func GetHostStatsByDistro() ([]HostStatsByDistro, error) {
 	stats := []HostStatsByDistro{}
-	if err := db.Aggregate(Collection, HostStatsByDistroPipeline(), &stats); err != nil {
+	if err := db.Aggregate(Collection, hostStatsByDistroPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil

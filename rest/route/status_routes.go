@@ -108,7 +108,7 @@ func getHostStatsByDistroManager(route string, version int) *RouteManager {
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				Authenticator:  &NoAuthAuthenticator{},
+				Authenticator:  &RequireUserAuthenticator{},
 				RequestHandler: &hostStatsByDistroHandler{},
 				MethodType:     http.MethodGet,
 			},

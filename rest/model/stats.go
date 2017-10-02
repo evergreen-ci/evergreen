@@ -48,20 +48,20 @@ func (apiStatus *APITaskStats) ToService() (interface{}, error) {
 // APIHostStatsByDistro is a slice of host stats for a distro
 // the 3 structs below are nested within it
 type APIHostStatsByDistro struct {
-	Distros []APIHostStatsForDistro `json:"distros"`
+	Distros []apiHostStatsForDistro `json:"distros"`
 }
 
-type APIHostStatsForDistro struct {
+type apiHostStatsForDistro struct {
 	Distro string                   `json:"distro"`
-	Stats  APISingleDistroHostStats `json:"stats"`
+	Stats  apiSingleDistroHostStats `json:"stats"`
 }
 
-type APISingleDistroHostStats struct {
+type apiSingleDistroHostStats struct {
 	Status string                   `json:"status"`
-	Counts APISingleStatusHostStats `json:"counts"`
+	Counts apiSingleStatusHostStats `json:"counts"`
 }
 
-type APISingleStatusHostStats struct {
+type apiSingleStatusHostStats struct {
 	NumHosts int `json:"num_hosts"`
 	NumTasks int `json:"running_tasks"`
 }
@@ -72,11 +72,11 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case []host.HostStatsByDistro:
 		for _, entry := range v {
-			d := APIHostStatsForDistro{
+			d := apiHostStatsForDistro{
 				Distro: entry.Distro,
-				Stats: APISingleDistroHostStats{
+				Stats: apiSingleDistroHostStats{
 					Status: entry.Status,
-					Counts: APISingleStatusHostStats{
+					Counts: apiSingleStatusHostStats{
 						NumHosts: entry.Count,
 						NumTasks: entry.NumTasks,
 					},

@@ -428,40 +428,39 @@ func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]
 	return hosts, nil
 }
 
-// HostStatsByDistroPipeline returns a pipeline that will group all up hosts by distro
+// hostStatsByDistroPipeline returns a pipeline that will group all up hosts by distro
 // and return the count of hosts as well as how many are running tasks
-func HostStatsByDistroPipeline() []bson.M {
-	pipeline := make([]bson.M, 0)
-	pipeline = append(pipeline, bson.M{
-		"$match": bson.M{
-			StatusKey: bson.M{
-				"$in": evergreen.UphostStatus,
+func hostStatsByDistroPipeline() []bson.M {
+	return []bson.M{
+		bson.M{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": evergreen.UphostStatus,
+				},
 			},
 		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$group": bson.M{
-			"_id": bson.M{
-				"distro": "$distro._id",
-				"status": "$" + StatusKey,
-			},
-			"count": bson.M{
-				"$sum": 1,
-			},
-			"tasks": bson.M{
-				"$addToSet": "$" + RunningTaskKey,
+		bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
+					"distro": "$distro._id",
+					"status": "$" + StatusKey,
+				},
+				"count": bson.M{
+					"$sum": 1,
+				},
+				"tasks": bson.M{
+					"$addToSet": "$" + RunningTaskKey,
+				},
 			},
 		},
-	})
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			"distro":            "$_id.distro",
-			"status":            "$_id.status",
-			"count":             1,
-			"num_tasks_running": bson.M{"$size": "$tasks"},
-			"_id":               0,
+		bson.M{
+			"$project": bson.M{
+				"distro":            "$_id.distro",
+				"status":            "$_id.status",
+				"count":             1,
+				"num_tasks_running": bson.M{"$size": "$tasks"},
+				"_id":               0,
+			},
 		},
-	})
-
-	return pipeline
+	}
 }
