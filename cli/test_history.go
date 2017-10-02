@@ -92,6 +92,14 @@ func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
 // Execute transfers the fields from a TestHistoryCommand to a TestHistoryParameter
 // and validates them. It then gets the test history from the api endpoint
 func (thc *TestHistoryCommand) Execute(_ []string) error {
+	if thc.Format == "" {
+		thc.Format = prettyFormat
+	}
+
+	if thc.Format != prettyFormat && thc.Filepath == "" {
+		return errors.New("must specify a filepath for csv and json output")
+	}
+
 	ctx := context.Background()
 	_, rc, _, err := getAPIClients(ctx, thc.GlobalOpts)
 	if err != nil {
@@ -142,9 +150,6 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 		return errors.Errorf("before revision must be a 40 character revision")
 	}
 
-	if thc.Format == "" {
-		thc.Format = prettyFormat
-	}
 	beforeDate := time.Time{}
 	if thc.BeforeDate != "" {
 		beforeDate, err = time.Parse(timeFormat, thc.BeforeDate)
