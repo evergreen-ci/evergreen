@@ -32,9 +32,8 @@ import (
 )
 
 const (
-	schedulerInterval  = 20 * time.Second
-	hostinitInterval   = 20 * time.Second
-	defaultRunInterval = 60 * time.Second
+	frequentRunInterval = 20 * time.Second
+	defaultRunInterval  = 60 * time.Second
 )
 
 type ServiceRunnerCommand struct {
@@ -148,17 +147,25 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 		duration = time.Duration(s.Runner.IntervalSeconds) * time.Second
 	}
 
-	grip.Noticef("runner periodicity set to %s (default: %s, scheduler: %s)",
-		time.Duration(s.Runner.IntervalSeconds)*time.Second,
-		defaultRunInterval, schedulerInterval)
+	frequentRunners := []string{
+		scheduler.RunnerName,
+		hostinit.RunnerName,
+		taskrunner.RunnerName,
+	}
+
+	grip.Notice(message.Fields{
+		"default_duration":  duration,
+		"default_span":      duration.String(),
+		"frequent_duration": frequentRunInterval,
+		"frequent_span":     frequentRunInterval.String(),
+		"frequent_runners":  frequentRunners,
+	})
 
 	for _, r := range backgroundRunners {
 		wg.Add(1)
 
-		if r.Name() == scheduler.RunnerName {
-			go runnerBackgroundWorker(ctx, r, s, schedulerInterval, wg)
-		} else if r.Name() == hostinit.RunnerName {
-			go runnerBackgroundWorker(ctx, r, s, hostinitInterval, wg)
+		if util.SliceContains(frequentRunners, r.Name()) {
+			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
 		} else {
 			go runnerBackgroundWorker(ctx, r, s, duration, wg)
 		}
