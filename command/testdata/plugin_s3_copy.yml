@@ -11,7 +11,7 @@ tasks:
     params:
       aws_key: ${aws_key}
       aws_secret: ${aws_secret}
-      local_file: ${pwd}/testdata/test.tgz
+      local_file: command/testdata/test.tgz
       remote_file: ${push_path}/test.tgz
       bucket: ${push_source_bucket}
       permissions: public-read-write

@@ -40,7 +40,6 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		conf.Expansions.Update(map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,
 			"aws_secret": testConfig.Providers.AWS.Secret,
-			"pwd":        pwd,
 		})
 
 		Convey("the s3 copy command should execute successfully", func() {
