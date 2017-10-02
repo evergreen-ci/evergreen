@@ -176,7 +176,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	complete := make(chan string)
 	go a.startTask(innerCtx, tc, complete)
 
-	status := a.wait(ctx, tc, heartbeat, complete)
+	status := a.wait(ctx, innerCtx, tc, heartbeat, complete)
 	resp, err := a.finishTask(ctx, tc, status)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
@@ -191,10 +191,10 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
+func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {
 	status := evergreen.TaskFailed
 	select {
-	case <-ctx.Done():
+	case <-taskCtx.Done():
 		grip.Infof("task canceled: %s", tc.task.ID)
 	case status = <-complete:
 		grip.Infof("task complete: %s", tc.task.ID)
