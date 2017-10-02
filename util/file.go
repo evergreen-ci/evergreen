@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	ignore "github.com/sabhiram/go-git-ignore"
 )
@@ -46,9 +47,12 @@ func WriteToTempFile(data string) (string, error) {
 type fileListBuilder struct {
 	fileNames []string
 	ignorer   *ignore.GitIgnore
+	prefix    string
 }
 
 func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, _ error) error {
+	path = strings.TrimPrefix(path, fb.prefix)
+	path = strings.TrimLeft(path, string(os.PathSeparator))
 	if !info.IsDir() && fb.ignorer.MatchesPath(path) {
 		fb.fileNames = append(fb.fileNames, path)
 	}
@@ -68,6 +72,7 @@ func BuildFileList(startPath string, expressions ...string) ([]string, error) {
 	fb := &fileListBuilder{
 		fileNames: []string{},
 		ignorer:   ignorer,
+		prefix:    startPath,
 	}
 	err = filepath.Walk(startPath, fb.walkFunc)
 	if err != nil {
