@@ -70,7 +70,7 @@ func getAPIClients(ctx context.Context, o *Options) (*APIClient, *APIClient, *mo
 
 	ac := &APIClient{
 		APIRoot:   settings.APIServerHost,
-		APIRootV2: apiURL.Scheme + "://" + apiURL.Host + "/rest/v2",
+		APIRootV2: settings.APIServerHost + "/rest/v2",
 		User:      settings.User,
 		APIKey:    settings.APIKey,
 		UIRoot:    settings.UIServerHost,
