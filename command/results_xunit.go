@@ -102,14 +102,12 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator) error {
 
-	tests := []task.TestResult{}
-	logs := []*model.TestLog{}
-	logIdxToTestIdx := []int{}
-
+	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	reportFilePaths, err := getFilePaths(conf.WorkDir, c.Files)
 	if err != nil {
 		return err
 	}
+	catcher := grip.NewSimpleCatcher()
 
 	for _, reportFileLoc := range reportFilePaths {
 		if ctx.Err() != nil {
@@ -130,35 +128,60 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.Wrap(err, "error closing xunit file")
 		}
 
-		// go through all the tests
-		for _, suite := range testSuites {
-			for _, tc := range suite.TestCases {
-				// logs are only created when a test case does not succeed
-				test, log := tc.toModelTestResultAndLog(conf.Task)
-				if log != nil {
-					logs = append(logs, log)
-					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
+		// parse tests and logs for this file
+		tests, logs, logIdxToTestIdx := generateLogsForOneFile(testSuites, conf.Task)
+
+		// send the logs to the API server and get log IDs back
+		for i, log := range logs {
+			if ctx.Err() != nil {
+				return errors.New("operation canceled")
+			}
+
+			logId, err := sendJSONLogs(ctx, logger, comm, td, log)
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "problem uploading logs for %s", log.Name))
+				continue
+			}
+
+			//store log IDs in the tests
+			index := logIdxToTestIdx[i]
+			if index >= 0 && index < len(tests) {
+				tests[index].LogId = logId
+				tests[index].LineNum = 1
+			}
+		}
+
+		// send tests to API server
+		if err = sendJSONResults(ctx, conf, logger, comm, &task.TestResults{tests}); err != nil {
+			catcher.Add(errors.Wrapf(err, "problem uploading test data from file %s", reportFileLoc))
+		}
+	}
+
+	return catcher.Resolve()
+}
+
+func generateLogsForOneFile(testSuites []testSuite, t *task.Task) ([]task.TestResult, []*model.TestLog, map[int]int) {
+	tests := []task.TestResult{}
+	logs := []*model.TestLog{}
+	logIdxToTestIdx := make(map[int]int)
+	// go through all the tests
+	for _, suite := range testSuites {
+		for _, tc := range suite.TestCases {
+			// logs are only created when a test case does not succeed
+			test, log := tc.toModelTestResultAndLog(t)
+			tests = append(tests, test)
+			if log != nil {
+				if suite.SysOut != "" {
+					log.Lines = append(log.Lines, "system-out:", suite.SysOut)
 				}
-				tests = append(tests, test)
+				if suite.SysErr != "" {
+					log.Lines = append(log.Lines, "system-err:", suite.SysErr)
+				}
+				logs = append(logs, log)
+				logIdxToTestIdx[len(logs)-1] = len(tests) - 1
 			}
 		}
 	}
 
-	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-
-	for i, log := range logs {
-		if ctx.Err() != nil {
-			return errors.New("operation canceled")
-		}
-
-		logId, err := sendJSONLogs(ctx, logger, comm, td, log)
-		if err != nil {
-			logger.Task().Warningf("problem uploading logs for %s", log.Name)
-			continue
-		}
-		tests[logIdxToTestIdx[i]].LogId = logId
-		tests[logIdxToTestIdx[i]].LineNum = 1
-	}
-
-	return sendJSONResults(ctx, conf, logger, comm, &task.TestResults{tests})
+	return tests, logs, logIdxToTestIdx
 }

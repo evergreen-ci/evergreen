@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -170,16 +169,7 @@ func TestXMLToModelConversion(t *testing.T) {
 		testTask := &task.Task{Id: "TEST", Execution: 5}
 
 		Convey("when converting the results to model struct", func() {
-			tests := []task.TestResult{}
-			logs := []*model.TestLog{}
-			for _, testCase := range res[0].TestCases {
-				test, log := testCase.toModelTestResultAndLog(testTask)
-				if log != nil {
-					logs = append(logs, log)
-				}
-				tests = append(tests, test)
-			}
-
+			tests, logs, logIdxToTestIdx := generateLogsForOneFile(res, testTask)
 			Convey("the proper amount of each failure should be correct", func() {
 				skipCount := 0
 				failCount := 0
@@ -205,6 +195,107 @@ func TestXMLToModelConversion(t *testing.T) {
 					So(len(logs[0].Lines), ShouldNotEqual, 0)
 					So(logs[0].URL(), ShouldContainSubstring,
 						"TEST/5/test.test_auth.TestAuthURIOptions.test_uri_options")
+					Convey("and system-out and system-err should be present", func() {
+						So(logs[0].Lines[len(logs[0].Lines)-1], ShouldContainSubstring, "system error text")
+						So(logs[0].Lines[len(logs[0].Lines)-3], ShouldContainSubstring, "system out text")
+					})
+				})
+				Convey("and logs should correspond to unsuccessful tests", func() {
+					for i, _ := range logs {
+						test := tests[logIdxToTestIdx[i]]
+						So(test.Status, ShouldNotEqual, evergreen.TestSucceededStatus)
+					}
+				})
+			})
+		})
+	})
+	Convey("With a mocha file that has no failures", t, func() {
+		file, err := os.Open(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit", "mocha.xml"))
+		testutil.HandleTestingErr(err, t, "Error reading file")
+		defer file.Close()
+		res, err := parseXMLResults(file)
+		So(err, ShouldBeNil)
+		So(len(res), ShouldBeGreaterThan, 0)
+		testTask := &task.Task{Id: "TEST", Execution: 5}
+
+		Convey("when converting the results to model struct", func() {
+			tests, logs, logIdxToTestIdx := generateLogsForOneFile(res, testTask)
+			Convey("the proper amount of each failure should be correct", func() {
+				skipCount := 0
+				failCount := 0
+				passCount := 0
+				for _, t := range tests {
+					switch t.Status {
+					case evergreen.TestFailedStatus:
+						failCount++
+					case evergreen.TestSkippedStatus:
+						skipCount++
+					case evergreen.TestSucceededStatus:
+						passCount++
+					}
+				}
+
+				So(failCount, ShouldEqual, res[0].Failures+res[0].Errors)
+				So(skipCount, ShouldEqual, res[0].Skip)
+				//make sure we didn't miss anything
+				So(passCount+skipCount+failCount, ShouldEqual, len(tests))
+
+				Convey("no failures should mean no logs", func() {
+					So(len(logs), ShouldEqual, 0)
+				})
+				Convey("and logs should correspond to unsuccessful tests", func() {
+					for i, _ := range logs {
+						test := tests[logIdxToTestIdx[i]]
+						So(test.Status, ShouldNotEqual, evergreen.TestSucceededStatus)
+					}
+				})
+			})
+		})
+	})
+	Convey("With a file that has an empty sys-out/err field", t, func() {
+		file, err := os.Open(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit", "results.xml"))
+		testutil.HandleTestingErr(err, t, "Error reading file")
+		defer file.Close()
+		res, err := parseXMLResults(file)
+		So(err, ShouldBeNil)
+		So(len(res), ShouldBeGreaterThan, 0)
+		testTask := &task.Task{Id: "TEST", Execution: 5}
+
+		Convey("when converting the results to model struct", func() {
+			tests, logs, logIdxToTestIdx := generateLogsForOneFile(res, testTask)
+			Convey("the proper amount of each failure should be correct", func() {
+				skipCount := 0
+				failCount := 0
+				passCount := 0
+				for _, t := range tests {
+					switch t.Status {
+					case evergreen.TestFailedStatus:
+						failCount++
+					case evergreen.TestSkippedStatus:
+						skipCount++
+					case evergreen.TestSucceededStatus:
+						passCount++
+					}
+				}
+
+				So(failCount, ShouldEqual, res[0].Failures+res[0].Errors)
+				So(skipCount, ShouldEqual, res[0].Skip)
+				//make sure we didn't miss anything
+				So(passCount+skipCount+failCount, ShouldEqual, len(tests))
+
+				Convey("and logs should be of the proper form", func() {
+					So(logs[0].Name, ShouldEqual, "unittest.loader.ModuleImportFailure.tests.test_binder")
+					So(len(logs[0].Lines), ShouldNotEqual, 0)
+					Convey("and system-out and system-err should be present but empty", func() {
+						So(logs[0].Lines[len(logs[0].Lines)-2], ShouldEqual, "system-err:")
+						So(logs[0].Lines[len(logs[0].Lines)-4], ShouldEqual, "system-out:")
+					})
+				})
+				Convey("and logs should correspond to unsuccessful tests", func() {
+					for i, _ := range logs {
+						test := tests[logIdxToTestIdx[i]]
+						So(test.Status, ShouldNotEqual, evergreen.TestSucceededStatus)
+					}
 				})
 			})
 		})
