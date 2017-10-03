@@ -1,0 +1,34 @@
+command_type: system
+exec_timeout_secs: 1
+
+functions:
+  "task":
+    - command: shell.exec
+      type: test
+      params:
+        shell: bash
+        script: |
+          sleep 2
+
+  "timeout":
+    - command: shell.exec
+      params:
+        shell: bash
+        script: |
+          echo "timeout test message" > "${timeout_fn}"
+
+tasks:
+  - name: build
+    commands:
+      - func: "task"
+
+timeout:
+  - func: "timeout"
+
+
+buildvariants:
+- name: mock_build_variant
+  display_name: Mock Buildvariant
+  run_on:
+  - mock_distro_id
+  tasks: ["*"]

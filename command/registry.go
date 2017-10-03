@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
@@ -157,6 +158,7 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 		}
 		cmd.SetType(c.Type)
 		cmd.SetDisplayName(c.DisplayName)
+		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
 
 		out = append(out, cmd)
 	}

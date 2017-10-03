@@ -26,14 +26,13 @@ type Agent struct {
 
 // Options contains startup options for the Agent.
 type Options struct {
-	HostID              string
-	HostSecret          string
-	StatusPort          int
-	LogPrefix           string
-	WorkingDirectory    string
-	HeartbeatInterval   time.Duration
-	IdleTimeoutInterval time.Duration
-	AgentSleepInterval  time.Duration
+	HostID             string
+	HostSecret         string
+	StatusPort         int
+	LogPrefix          string
+	WorkingDirectory   string
+	HeartbeatInterval  time.Duration
+	AgentSleepInterval time.Duration
 }
 
 type taskContext struct {
@@ -212,6 +211,9 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 	if tc.hadTimedOut() && tc.taskConfig.Project.Timeout != nil {
 		tc.logger.Task().Info("Running task-timeout commands.")
 		start := time.Now()
+		var cancel context.CancelFunc
+		ctx, cancel = a.withCallbackTimeout(ctx, tc)
+		defer cancel()
 		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false)
 		if err != nil {
 			tc.logger.Execution().Errorf("Error running task-timeout command: %v", err)

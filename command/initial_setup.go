@@ -6,7 +6,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-type initialSetup struct{}
+type initialSetup struct {
+	base
+}
 
 func initialSetupFactory() Command                                    { return &initialSetup{} }
 func (*initialSetup) Type() string                                    { return model.SystemCommandType }

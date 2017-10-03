@@ -1,16 +1,16 @@
 command_type: system
-exec_timeout_secs: 1
 
 functions:
-  "foo":
+  "task":
     - command: shell.exec
+      timeout_secs: 1
       type: test
       params:
         shell: bash
         script: |
           sleep 2
 
-  "bar":
+  "timeout":
     - command: shell.exec
       params:
         shell: bash
@@ -20,10 +20,10 @@ functions:
 tasks:
   - name: build
     commands:
-      - func: "foo"
+      - func: "task"
 
 timeout:
-  - func: "bar"
+  - func: "timeout"
 
 
 buildvariants:
