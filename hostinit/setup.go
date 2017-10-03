@@ -68,21 +68,24 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		startQueue[i] = hostsToStart[r]
 	}
 
-	for idx, h := range startQueue {
+	var started int
+	for _, h := range startQueue {
 		if ctx.Err() != nil {
 			return errors.New("hostinit run canceled")
 		}
 
-		if idx >= 8 {
-			grip.Warning(message.Fields{
-				"message":           "pausing host starting",
-				"GUID":              init.GUID,
-				"runner":            "hostinit",
-				"num_started":       idx + 1,
-				"num_pending_hosts": len(hostsToStart),
-			})
-			return nil
+		if h.UserHost {
+			// pass:
+			//    always start spawn hosts asap
+		} else if started > 4 {
+			// throttle hosts, so that we're starting very
+			// few hosts on every pass. Hostinit runs very
+			// frequently, lets not start too many all at
+			// once.
+
+			continue
 		}
+		started++
 
 		hostStartTime := time.Now()
 		grip.Info(message.Fields{
@@ -123,10 +126,11 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 	}
 
 	grip.Info(message.Fields{
-		"GUID":    init.GUID,
-		"runner":  RunnerName,
-		"method":  "startHosts",
-		"runtime": time.Since(startTime),
+		"GUID":      init.GUID,
+		"runner":    RunnerName,
+		"method":    "startHosts",
+		"num_hosts": started,
+		"runtime":   time.Since(startTime),
 	})
 
 	return nil
@@ -164,7 +168,12 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	}
 	close(hosts)
 
-	for i := 0; i < 8; i++ {
+	numThreads := 12
+	if len(uninitializedHosts) < 12 {
+		numThreads = len(uninitializedHosts)
+	}
+
+	for i := 0; i < numThreads; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
