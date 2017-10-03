@@ -285,7 +285,6 @@ tasks:
       - func: run-make
         vars:
           target: "${task_name}"
-          xc: ""
       - command: s3.put
         type: system
         params:
