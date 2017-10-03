@@ -46,23 +46,27 @@ func RecoverLogStackTraceAndContinue(opName string) {
 	}
 }
 
-func RecoverAndError(err error, opName string) {
-	if p := recover(); p != nil {
-		catcher := grip.NewSimpleCatcher()
-		catcher.Add(err)
+func HandlePanicWithError(p interface{}, err error, opName string) error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(err)
+
+	if p != nil {
 		ps := panicString(p)
 		catcher.Add(errors.New(ps))
 		m := message.Fields{
-			"message": "hit panic; adding error",
-			"stack":   message.NewStack(1, "").Raw(),
-			"error":   catcher.Resolve(),
+			"message":   "hit panic; adding error",
+			"stack":     message.NewStack(1, "").Raw(),
+			"panic":     ps,
+			"operation": opName,
+			"error":     catcher.Resolve(),
 		}
 		if opName != "" {
 			m["operation"] = opName
 		}
 		grip.Alert(m)
-		err = catcher.Resolve()
 	}
+
+	return catcher.Resolve()
 }
 
 func panicString(p interface{}) string {

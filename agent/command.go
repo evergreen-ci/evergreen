@@ -12,12 +12,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) error {
-	var (
-		err  error
-		cmds []command.Command
-	)
-	defer util.RecoverAndError(err, "run commands")
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) (err error) {
+	var cmds []command.Command
+	defer func() { err = util.HandlePanicWithError(recover(), err, "run commands") }()
 
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {

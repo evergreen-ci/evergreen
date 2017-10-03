@@ -139,9 +139,8 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
-	var err error
-	defer util.RecoverAndError(err, "running task")
+func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
+	defer func() { err = util.HandlePanicWithError(recover(), err, "running task") }()
 
 	ctx, cancel := context.WithCancel(ctx)
 	grip.Info(message.Fields{

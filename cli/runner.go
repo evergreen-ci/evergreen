@@ -62,7 +62,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	grip.SetName("evg-runner")
 	grip.Warning(grip.SetDefaultLevel(level.Info))
 	grip.Warning(grip.SetThreshold(level.Debug))
-	defer util.RecoverAndError(err, "evergreen.runner")
+	defer util.RecoverLogStackTraceAndExit()
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
