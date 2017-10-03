@@ -100,7 +100,7 @@ func tryCleanupDirectory(dir string) {
 		return
 	}
 
-	if strings.HasPrefix(dir, usr.HomeDir) {
+	if strings.HasPrefix(dir, usr.HomeDir) || strings.Contains(dir, "cygwin") {
 		grip.Notice("not cleaning up directory, because it is in the home directory.")
 		return
 	}
@@ -113,6 +113,9 @@ func tryCleanupDirectory(dir string) {
 		}
 
 		if path == dir {
+			return nil
+		}
+		if strings.HasPrefix(info.Name(), ".") {
 			return nil
 		}
 
