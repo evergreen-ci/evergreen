@@ -89,6 +89,7 @@ type ListCommand struct {
 	Variants   bool     `long:"variants" description:"list all variants for a project"`
 	Tasks      bool     `long:"tasks" description:"list all tasks for a project"`
 	Distros    bool     `long:"distros" description:"list all distros for a project"`
+	Spawnable  bool     `long:"spawnable" description:"list all spawnable distros for a project"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -428,7 +429,7 @@ func (lgc *LastGreenCommand) Execute(_ []string) error {
 
 func (lc *ListCommand) Execute(_ []string) error {
 	// stop the user from using > 1 type flag
-	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros}
+	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros, lc.Spawnable}
 	var numOpts int
 	for _, opt := range opts {
 		if opt {
@@ -436,7 +437,7 @@ func (lc *ListCommand) Execute(_ []string) error {
 		}
 	}
 	if numOpts != 1 {
-		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, or --distros")
+		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, --distros, or --spawnable")
 	}
 
 	if lc.Projects {
@@ -448,8 +449,8 @@ func (lc *ListCommand) Execute(_ []string) error {
 	if lc.Variants {
 		return lc.listVariants()
 	}
-	if lc.Distros {
-		return lc.listDistros()
+	if lc.Distros || lc.Spawnable {
+		return lc.listDistros(lc.Spawnable)
 	}
 	return errors.Errorf("this code should not be reachable")
 }
@@ -490,7 +491,7 @@ func (lc *ListCommand) listProjects() error {
 	return errors.WithStack(w.Flush())
 }
 
-func (lc *ListCommand) listDistros() error {
+func (lc *ListCommand) listDistros(onlySpawnable bool) error {
 	ctx := context.Background()
 	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
 	if err != nil {
@@ -503,17 +504,26 @@ func (lc *ListCommand) listDistros() error {
 		return err
 	}
 
-	spawnableDistros := []*distro.Distro{}
-	for _, distro := range distros {
-		if distro.SpawnAllowed {
-			spawnableDistros = append(spawnableDistros, &distro)
+	if onlySpawnable {
+		var spawnableDistros []*distro.Distro
+		for _, distro := range distros {
+			if distro.SpawnAllowed {
+				spawnableDistros = append(spawnableDistros, &distro)
+			}
+		}
+
+		fmt.Println(len(spawnableDistros), "spawnable distros:")
+		for _, distro := range spawnableDistros {
+			fmt.Println(distro.Id)
+		}
+
+	} else {
+		fmt.Println(len(distros), "distros:")
+		for _, distro := range distros {
+			fmt.Println(distro.Id)
 		}
 	}
 
-	fmt.Println(len(spawnableDistros), "distros:")
-	for _, distro := range spawnableDistros {
-		fmt.Println((*distro).Id)
-	}
 	return nil
 }
 
