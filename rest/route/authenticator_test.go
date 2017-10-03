@@ -10,8 +10,13 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 	"golang.org/x/net/context"
 )
+
+func init() {
+	reporting.QuietMode()
+}
 
 func TestAdminAuthenticator(t *testing.T) {
 	Convey("When there is an http request, "+

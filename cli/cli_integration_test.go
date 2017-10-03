@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -125,7 +126,7 @@ func TestCLIFetchSource(t *testing.T) {
 			false}
 
 		// Set up a test patch that contains module changes
-		ac, rc, _, err := getAPIClients(&Options{testSetup.settingsFilePath})
+		ac, rc, _, err := getAPIClients(context.Background(), &Options{testSetup.settingsFilePath})
 		So(err, ShouldBeNil)
 		newPatch, err := ac.PutPatch(patchSub)
 		So(err, ShouldBeNil)
@@ -203,7 +204,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		}).Upsert()
 		So(err, ShouldBeNil)
 
-		_, rc, _, err := getAPIClients(&Options{testSetup.settingsFilePath})
+		_, rc, _, err := getAPIClients(context.Background(), &Options{testSetup.settingsFilePath})
 		So(err, ShouldBeNil)
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
@@ -312,7 +313,7 @@ func TestCLIFunctions(t *testing.T) {
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
 
-		ac, _, _, err := getAPIClients(&Options{testSetup.settingsFilePath})
+		ac, _, _, err := getAPIClients(context.Background(), &Options{testSetup.settingsFilePath})
 		So(err, ShouldBeNil)
 
 		Convey("check that creating a patch works", func() {

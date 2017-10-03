@@ -17,9 +17,11 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 func init() {
+	reporting.QuietMode()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
@@ -50,8 +52,9 @@ func TestSetupReadyHosts(t *testing.T) {
 			h := hostsForTest[i]
 			So(h.Status, ShouldNotEqual, evergreen.HostRunning)
 		}
-		err := hostInit.startHosts(ctx)
-		So(err, ShouldBeNil)
+		// call it twice to get around rate-limiting
+		So(hostInit.startHosts(ctx), ShouldBeNil)
+		So(hostInit.startHosts(ctx), ShouldBeNil)
 		Convey("and all of the hosts have failed", func() {
 			for id := range mock.MockInstances {
 				instance := mock.MockInstances[id]
@@ -61,8 +64,7 @@ func TestSetupReadyHosts(t *testing.T) {
 				mock.MockInstances[id] = instance
 			}
 			Convey("when running setup", func() {
-				err := hostInit.setupReadyHosts(ctx)
-				So(err, ShouldNotBeNil)
+				So(hostInit.setupReadyHosts(ctx), ShouldNotBeNil)
 
 				Convey("then all of the hosts should be terminated", func() {
 					for id := range mock.MockInstances {

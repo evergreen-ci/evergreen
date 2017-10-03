@@ -86,8 +86,7 @@ func getAPIClients(ctx context.Context, o *Options) (*APIClient, *APIClient, *mo
 
 	// this operation is just to get the side effect of logging
 	// the degraded mode banner.
-	_, err = getRestClientCommunicator(ctx, settings.APIServerHost)
-	grip.Warning(err)
+	_ = getRestClientCommunicator(ctx, settings.APIServerHost)
 
 	return ac, rc, settings, nil
 }
@@ -99,24 +98,22 @@ func getAPIV2Client(ctx context.Context, o *Options) (client.Communicator, *mode
 		return nil, nil, errors.WithStack(err)
 	}
 
-	comm, err := getRestClientCommunicator(ctx, settings.APIServerHost)
-	if err != nil {
-		return nil, nil, errors.WithStack(err)
-	}
+	comm := getRestClientCommunicator(ctx, settings.APIServerHost)
 
 	return comm, settings, nil
 }
 
-func getRestClientCommunicator(ctx context.Context, url string) (client.Communicator, error) {
+func getRestClientCommunicator(ctx context.Context, url string) client.Communicator {
 	c := client.NewCommunicator(url)
 
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		grip.Debug(err)
+	} else {
+		grip.Notice(banner)
 	}
-	grip.Notice(banner)
 
-	return c, nil
+	return c
 }
 
 // doReq performs a request of the given method type against path.
