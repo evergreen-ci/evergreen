@@ -163,7 +163,7 @@ functions:
         tar -zxvf dist-test.tar.gz
 
         export EVGHOME=`pwd`/evergreen-test
-        export SETTINGS_OVERRIDE=`pwd`/creds.yml
+        export SETTINGS_OVERRIDE=`pwd`/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
         export EVERGREEN_ALL=true
 
         $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
@@ -175,7 +175,10 @@ functions:
       script: |
         set -o errexit
 
+        mkdir -p gopath/src/github.com/evergreen-ci/evergreen
+
         echo "building creds file!"
+
         cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
         client_binaries_dir: "clients"
         credentials: {
