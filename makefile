@@ -138,10 +138,12 @@ $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
 	@mkdir -p $(buildDir)
-	@GOOS="" GOOARCH="" go build -o $@ $<
+	@GOOS="" GOARCH="" go build -o $@ $<
 	@echo go build -o $@ $<
 $(buildDir)/make-tarball:scripts/make-tarball.go
-	go build -o $@ $<
+	@mkdir -p $(buildDir)
+	@GOOS="" GOARCH="" go build -o $@ $<
+	@echo go build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz

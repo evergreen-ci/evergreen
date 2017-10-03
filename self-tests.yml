@@ -38,6 +38,16 @@ post:
 #         YAML Templates              #
 #######################################
 variables:
+  - &generic-linux-distros
+    - archlinux-test
+    - rhel62-test
+    - rhel70-small
+    - rhel62-small
+    - linux-64-amzn-test
+    - debian81-test
+    - debian71-test
+    - ubuntu1604-test
+    - ubuntu1404-test
   - &run-build
     # runs a build operations. The task name in evergreen should
     # correspond to a make target for the build operation.
@@ -87,6 +97,25 @@ variables:
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
+  - &run-xc-test-suite
+    name: test
+    depends_on:
+      - name: dist-test
+    commands:
+      - func: get-dist-test
+      - func: setup-credentials
+      - func: run-cross
+        vars: { target: "${task_name}" }
+  - &run-xc-test-suite-with-mongodb
+    name: test
+    depends_on:
+      - name: dist-test
+    commands:
+      - func: get-dist-test
+      - func: setup-credentials
+      - func: set-up-mongodb
+      - func: run-cross
+        vars: { target: "${task_name}" }
 
 #######################################
 #              Functions              #
@@ -116,41 +145,66 @@ functions:
          # Run make, called with proper environment variables set,
          # running the target.
          ${build_env} make ${make_args|} ${target}
+  get-dist-test:
+    command: s3.get
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
+      bucket: mciuploads
+      local_file: dist-test.tar.gz
+  run-cross:
+    command: shell.exec
+    param:
+      script: |
+        set -o errexit
+        set -o verbose
+
+        tar -zxvf dist-test.tar.gz
+
+        export EVGHOME=`pwd`/evergreen-test
+        export SETTINGS_OVERRIDE=`pwd`/gopath/src/github.com/evergreen-ci/evergreen/creds.yml
+        export EVERGREEN_ALL=true
+
+        $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
   setup-credentials:
-    - command: shell.exec
-      type: system
-      params:
-        silent: true
-        script: |
-          set -o errexit
+    command: shell.exec
+    type: system
+    params:
+      silent: true
+      script: |
+        set -o errexit
 
-          echo "building creds file!"
-          cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
-          client_binaries_dir: "clients"
-          credentials: {
-            github: "${github_token}",
-          }
+        mkdir -p gopath/src/github.com/evergreen-ci/evergreen
 
-          jira:
-            host: ${jiraserver}
+        echo "building creds file!"
+
+        cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
+        client_binaries_dir: "clients"
+        credentials: {
+          github: "${github_token}",
+        }
+
+        jira:
+          host: ${jiraserver}
+          username: ${crowduser}
+          password: ${crowdpw}
+
+        providers:
+          aws:
+            aws_id: "${aws_key}"
+            aws_secret: "${aws_secret}"
+
+        auth:
+          crowd:
             username: ${crowduser}
             password: ${crowdpw}
+            urlroot: ${crowdserver}
 
-          providers:
-            aws:
-              aws_id: "${aws_key}"
-              aws_secret: "${aws_secret}"
-
-          auth:
-            crowd:
-              username: ${crowduser}
-              password: ${crowdpw}
-              urlroot: ${crowdserver}
-
-          plugins:
-            manifest:
-              github_token: "${github_token}"
-          EOF
+        plugins:
+          manifest:
+            github_token: "${github_token}"
+        EOF
   set-up-mongodb:
     - command: shell.exec
       type: system
@@ -222,6 +276,27 @@ tasks:
       - func: run-make
         vars: { target: "${task_name}" }
         make_args: "-k"
+  - name: dist-test
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: run-make
+        vars:
+          target: "${task_name}"
+      - command: s3.put
+        type: system
+        params:
+          optional: true
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/${task_name}.tar.gz
+          remote_file: evergreen/${build_id}-${build_variant}/dist-test-${build_id}.tar.gz
+          bucket: mciuploads
+          content_type: application/x-gzip
+          permissions: public-read
+          display_name: dist-test-${distro_id}.tar.gz
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -267,19 +342,19 @@ tasks:
     tags: ["db", "test"]
     name: test-cloud-providers
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "gccgo"]
+    tags: ["db", "test"]
     name: test-cloud-providers-docker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-cloud-providers-ec2
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "gccgo"]
+    tags: ["db", "test"]
     name: test-cloud-providers-gce
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-cloud-providers-openstack
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "gccgo"]
+    tags: ["db", "test"]
     name: test-cloud-providers-vsphere
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -339,7 +414,7 @@ tasks:
     tags: ["db", "test"]
     name: test-model-task
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
+    tags: ["db", "test"]
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -353,6 +428,8 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
+
+  # race detector tests
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-hostutil
@@ -480,6 +557,32 @@ tasks:
     tags: ["db", "race"]
     name: race-migrations
 
+  # cross compiled test suites
+  - <<: *run-xc-test-suite
+    tags: ["nodb", "xc", "agent"]
+    name: xc-rest-client
+  - <<: *run-xc-test-suite
+    tags: ["nodb", "xc", "agent"]
+    name: xc-subprocess
+  - <<: *run-xc-test-suite-with-mongodb
+    tags: ["xc", "agent"]
+    name: xc-command
+  - <<: *run-xc-test-suite-with-mongodb
+    tags: ["db", "xc", "agent"]
+    name: xc-agent
+  - <<: *run-xc-test-suite-with-mongodb
+    tags: ["db", "xc", "cli"]
+    name: xc-cli
+  - <<: *run-xc-test-suite-with-mongodb
+    tags: ["db", "xc", "agent"]
+    name: xc-util
+  - <<: *run-xc-test-suite-with-mongodb
+    tags: ["db", "xc", "agent"]
+    name: xc-plugin-builtin-manifest
+  - <<: *run-xc-test-suite-with-mongodb
+    tags: ["db", "xc", "agent"]
+    name: xc-plugin-builtin-attach
+
 
 buildvariants:
   - name: ubuntu1604
@@ -493,6 +596,7 @@ buildvariants:
     tasks:
       - name: "dist"
       - name: ".test"
+
   - name: race-detector
     display_name: Race Detector
     run_on:
@@ -505,6 +609,7 @@ buildvariants:
       - name: "dist"
       - name: ".race"
       - name: ".report"
+
   - name: osx
     display_name: OSX
     batchtime: 2880
@@ -516,6 +621,7 @@ buildvariants:
     tasks:
       - name: "dist"
       - name: ".test"
+
   - name: windows
     display_name: Windows
     run_on:
@@ -537,3 +643,48 @@ buildvariants:
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: rhel71-power8
+    display_name: RHEL 7.1 POWER8
+    batchtime: 2880
+    run_on:
+      - rhel71-power8-build
+      - rhel71-power8-test
+    expansions:
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le"
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.4.7.tgz
+    tasks:
+      - name: "dist-test"
+        distros:
+          *generic-linux-distros
+      - name: ".xc"
+
+  - name: rhel72-s390x
+    display_name: RHEL 7.2 zLinux
+    batchtime: 2880
+    run_on:
+      - rhel72-zseries-build
+      - rhel72-zseries-test
+    expansions:
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=s390x"
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
+    tasks:
+      - name: "dist-test"
+        distros:
+          *generic-linux-distros
+      - name: ".xc"
+
+  - name: ubuntu1604-arm64
+    display_name: Ubunt 16.04 ARM
+    batchtime: 2880
+    run_on:
+      - ubuntu1604-arm64-large
+      - ubuntu1604-arm64-small
+    expansions:
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=arm64"
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
+    tasks:
+      - name: "dist-test"
+        distros:
+          *generic-linux-distros
+      - name: ".xc"
