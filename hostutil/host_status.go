@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"golang.org/x/net/context"
 )
 
@@ -42,12 +43,8 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 		Background:     false,
 	}
 
-	err = remoteCommand.Start(ctx)
-	if err != nil {
-		return false, err
-	}
-
 	if err = remoteCommand.Run(ctx); err != nil {
+		grip.Warning(err)
 		return false, nil
 	}
 

@@ -38,7 +38,7 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
 	err := rc.Start(ctx)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
@@ -53,6 +53,7 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 
 	go func() {
 		errChan <- rc.Cmd.Wait()
+		close(errChan)
 	}()
 
 	go func() {
