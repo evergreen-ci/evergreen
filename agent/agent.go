@@ -75,7 +75,7 @@ func (a *Agent) loop(ctx context.Context) error {
 		agentSleepInterval = a.opts.AgentSleepInterval
 	}
 
-	// we want to have seperate context trees for tasks and
+	// we want to have separate context trees for tasks and
 	// loggers, so that when a task is canceled by a context, it
 	// can log its clean up.
 	var (
