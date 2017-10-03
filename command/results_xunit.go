@@ -137,7 +137,8 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 				return errors.New("operation canceled")
 			}
 
-			logId, err := sendJSONLogs(ctx, logger, comm, td, log)
+			var logId string
+			logId, err = sendJSONLogs(ctx, logger, comm, td, log)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem uploading logs for %s", log.Name))
 				continue
