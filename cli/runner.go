@@ -42,7 +42,11 @@ type ServiceRunnerCommand struct {
 }
 
 func (c *ServiceRunnerCommand) Execute(_ []string) error {
-	settings, err := evergreen.NewSettings(c.ConfigPath)
+	var (
+		err      error
+		settings *evergreen.Settings
+	)
+	settings, err = evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
 	}
@@ -58,6 +62,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	grip.SetName("evg-runner")
 	grip.Warning(grip.SetDefaultLevel(level.Info))
 	grip.Warning(grip.SetThreshold(level.Debug))
+	defer util.RecoverLogStackTraceAndExit()
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
@@ -66,9 +71,8 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go evergreen.SystemInfoCollector(ctx)
+	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
-	defer util.RecoverAndLogStackTrace()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	// just run a single runner if only one was passed in.
@@ -79,6 +83,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	pprofHandler := service.GetHandlerPprof(settings)
 	if settings.PprofPort != "" {
 		go func() {
+			defer util.RecoverLogStackTraceAndContinue("pprof threads")
 			grip.Alert(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
 		}()
 	}
@@ -88,10 +93,11 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	go listenForSIGTERM(cancel)
 	startRunners(ctx, settings)
 
-	return nil
+	return errors.WithStack(err)
 }
 
 func taskStatsCollector(ctx context.Context) {
+	defer util.RecoverLogStackTraceAndContinue("stats collector")
 	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -206,6 +212,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 	timer := time.NewTimer(0)
 	defer wg.Done()
 	defer timer.Stop()
+	defer util.RecoverLogStackTraceAndContinue(fmt.Sprintf("background runner process for %s", r.Name()))
 
 	grip.Infoln("Starting runner process:", r.Name())
 

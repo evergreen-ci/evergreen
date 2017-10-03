@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
 )
@@ -204,7 +205,8 @@ func (s *AgentTestSuite) TestRunPostTaskCommands() {
 				SingleCommand: &model.PluginCommandConf{
 					Command: "shell.exec",
 					Params: map[string]interface{}{
-						"script": "echo hi",
+						"working_dir": testutil.GetDirectoryOfFile(),
+						"script":      "echo hi",
 					},
 				},
 			},

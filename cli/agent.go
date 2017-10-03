@@ -48,6 +48,8 @@ func (c *AgentCommand) Execute(_ []string) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	err = agt.Start(ctx)
+	grip.Emergency(err)
 
-	return errors.WithStack(agt.Start(ctx))
+	return err
 }

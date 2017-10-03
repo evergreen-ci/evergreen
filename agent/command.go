@@ -6,24 +6,29 @@ import (
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) error {
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) (err error) {
+	var cmds []command.Command
+	defer func() { err = util.HandlePanicWithError(recover(), err, "run commands") }()
+
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {
 			grip.Error("task canceled")
 			return errors.New("runCommands canceled")
 		}
 
-		cmds, err := command.Render(commandInfo, tc.taskConfig.Project.Functions)
+		cmds, err = command.Render(commandInfo, tc.taskConfig.Project.Functions)
 		if err != nil {
 			tc.logger.Task().Errorf("Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
 			if isTaskCommands {
 				return err
 			}
+			err = nil
 			continue
 		}
 
@@ -81,7 +86,8 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			}
 		}
 	}
-	return nil
+
+	return errors.WithStack(err)
 }
 
 // runTaskCommands runs all commands for the task currently assigned to the agent and

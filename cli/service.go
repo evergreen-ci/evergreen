@@ -33,6 +33,7 @@ type ServiceWebCommand struct {
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
+	defer util.RecoverLogStackTraceAndExit()
 	settings, err := evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
@@ -66,8 +67,6 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		return errors.Wrap(err, "problem setting up logger")
 	}
 
-	defer util.RecoverAndLogStackTrace()
-
 	grip.SetName("evergreen.service")
 	grip.Warning(grip.SetDefaultLevel(level.Info))
 	grip.Warning(grip.SetThreshold(level.Debug))
@@ -76,7 +75,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go evergreen.SystemInfoCollector(ctx)
+	go util.SystemInfoCollector(ctx)
 
 	apiWait := make(chan struct{})
 	go func() {

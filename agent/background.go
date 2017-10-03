@@ -5,12 +5,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- string) {
+	defer util.RecoverLogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
@@ -51,6 +53,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
+	defer util.RecoverLogStackTraceAndContinue("idle timeout watcher")
 	timeoutInterval := defaultCmdTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
 		timeoutInterval = a.opts.IdleTimeoutInterval
@@ -82,9 +85,10 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 }
 
 func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, cancel context.CancelFunc) {
-	defer cancel()
 	timer := time.NewTimer(d)
+	defer util.RecoverLogStackTraceAndContinue("exec timeout watcher")
 	defer timer.Stop()
+	defer cancel()
 	for {
 		select {
 		case <-ctx.Done():

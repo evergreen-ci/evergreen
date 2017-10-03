@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -11,27 +12,68 @@ import (
 // RecoverAndLogStackTrace captures a panic stack trace and writes it
 // to the log file rather than allowing it to be printed to standard
 // error, where it would be lost (in the case of agents.)
-func RecoverAndLogStackTrace() {
+func RecoverLogStackTraceAndExit() {
 	if p := recover(); p != nil {
-		panicMsg, ok := p.(string)
-		if !ok {
-			panicMsg = fmt.Sprintf("%+v", panicMsg)
+		m := message.Fields{
+			"message": "hit panic; exiting",
+			"panic":   panicString(p),
+			"stack":   message.NewStack(1, "").Raw(),
 		}
-		m := message.NewStackFormatted(1, "encountered panic '%s' at top level; recovering trace:", panicMsg)
-		grip.Alert(m)
-
-		r := m.Raw().(message.StackTrace)
-		for idx, f := range r.Frames {
-			grip.Criticalf("call #%d\n\t%s\n\t\t%s:%d", idx, f.Function, f.File, f.Line)
-		}
-
-		exitMsg := message.NewFormatted("hit panic '%s' at top level; exiting", panicMsg)
 
 		// check this env var so that we can avoid exiting in the test.
 		if os.Getenv("EVERGREEN_TEST") == "" {
-			grip.EmergencyFatal(exitMsg)
+			grip.EmergencyFatal(m)
 		} else {
-			grip.Emergency(exitMsg)
+			grip.Emergency(m)
 		}
 	}
+}
+
+func RecoverLogStackTraceAndContinue(opName string) {
+	if p := recover(); p != nil {
+		m := message.Fields{
+			"message":   "hit panic; recovering",
+			"operation": opName,
+			"panic":     panicString(p),
+			"stack":     message.NewStack(1, "").Raw(),
+		}
+
+		if opName != "" {
+			m["operation"] = opName
+		}
+
+		grip.Alert(m)
+	}
+}
+
+func HandlePanicWithError(p interface{}, err error, opName string) error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(err)
+
+	if p != nil {
+		ps := panicString(p)
+		catcher.Add(errors.New(ps))
+		m := message.Fields{
+			"message":   "hit panic; adding error",
+			"stack":     message.NewStack(1, "").Raw(),
+			"panic":     ps,
+			"operation": opName,
+			"error":     catcher.Resolve(),
+		}
+		if opName != "" {
+			m["operation"] = opName
+		}
+		grip.Alert(m)
+	}
+
+	return catcher.Resolve()
+}
+
+func panicString(p interface{}) string {
+	panicMsg, ok := p.(string)
+	if !ok {
+		panicMsg = fmt.Sprintf("%+v", panicMsg)
+	}
+
+	return panicMsg
 }

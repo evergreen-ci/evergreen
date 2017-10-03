@@ -99,14 +99,18 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	}
 
 	errChan := make(chan error)
-	ctx, cancel := context.WithCancel(context.Background())
+
+	ctx := context.Background()
+	tskCtx, cancel := context.WithCancel(ctx)
+	lgrCtx, lgrCancel := context.WithCancel(ctx)
+	defer lgrCancel()
 	go func() {
-		err = s.a.resetLogging(ctx, s.tc)
+		err = s.a.resetLogging(lgrCtx, s.tc)
 		if err != nil {
 			errChan <- err
 			return
 		}
-		err = s.a.runTask(ctx, s.tc)
+		err = s.a.runTask(tskCtx, s.tc)
 		errChan <- err
 	}()
 	cancel()

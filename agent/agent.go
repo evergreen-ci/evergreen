@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -64,10 +65,8 @@ func New(opts Options, comm client.Communicator) *Agent {
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(a.opts.StatusPort)
-	err := errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 	tryCleanupDirectory(a.opts.WorkingDirectory)
-	grip.Emergency(err)
-	return err
+	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
 
 func (a *Agent) loop(ctx context.Context) error {
@@ -75,6 +74,19 @@ func (a *Agent) loop(ctx context.Context) error {
 	if a.opts.AgentSleepInterval != 0 {
 		agentSleepInterval = a.opts.AgentSleepInterval
 	}
+
+	// we want to have seperate context trees for tasks and
+	// loggers, so that when a task is canceled by a context, it
+	// can log its clean up.
+	var (
+		lgrCtx context.Context
+		tskCtx context.Context
+		cancel context.CancelFunc
+	)
+	lgrCtx, cancel = context.WithCancel(ctx)
+	defer cancel()
+	tskCtx, cancel = context.WithCancel(ctx)
+	defer cancel()
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -86,27 +98,23 @@ func (a *Agent) loop(ctx context.Context) error {
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx)
 			if err != nil {
-				err = errors.Wrap(err, "error getting next task")
-				grip.Error(err)
-				return err
+				return errors.Wrap(err, "error getting next task")
 			}
 			if nextTask.TaskId != "" {
 				if nextTask.TaskSecret == "" {
-					err = errors.New("task response missing secret")
-					grip.Error(err)
-					return err
+					return errors.New("task response missing secret")
 				}
-				tc := &taskContext{
+				tc := taskContext{
 					task: client.TaskData{
 						ID:     nextTask.TaskId,
 						Secret: nextTask.TaskSecret,
 					},
 				}
-				if err := a.resetLogging(ctx, tc); err != nil {
-					return err
+				if err := a.resetLogging(lgrCtx, &tc); err != nil {
+					return errors.WithStack(err)
 				}
-				if err := a.runTask(ctx, tc); err != nil {
-					return err
+				if err := a.runTask(tskCtx, &tc); err != nil {
+					return errors.WithStack(err)
 				}
 				timer.Reset(0)
 				continue
@@ -118,24 +126,22 @@ func (a *Agent) loop(ctx context.Context) error {
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
-	tc.logger = a.comm.GetLoggerProducer(context.TODO(), tc.task)
+	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
 
 	sender, err := GetSender(a.opts.LogPrefix, tc.task.ID)
 	if err != nil {
-		err = errors.Wrap(err, "problem getting sender")
-		grip.Error(err)
-		return err
+		return errors.Wrap(err, "problem getting sender")
 	}
 	err = grip.SetSender(sender)
 	if err != nil {
-		err = errors.Wrap(err, "problem setting sender")
-		grip.Error(err)
-		return err
+		return errors.Wrap(err, "problem setting sender")
 	}
 	return nil
 }
 
-func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
+func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
+	defer func() { err = util.HandlePanicWithError(recover(), err, "running task") }()
+
 	ctx, cancel := context.WithCancel(ctx)
 	grip.Info(message.Fields{
 		"message":     "running task",
@@ -148,7 +154,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 		taskData: tc.task,
 	}
 
-	if err := metrics.start(ctx); err != nil {
+	if err = metrics.start(ctx); err != nil {
 		return errors.Wrap(err, "problem setting up metrics collection")
 	}
 
@@ -177,7 +183,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	go a.startTask(innerCtx, tc, complete)
 
 	status := a.wait(ctx, innerCtx, tc, heartbeat, complete)
-	resp, err := a.finishTask(ctx, tc, status)
+	var resp *apimodels.EndTaskResponse
+	resp, err = a.finishTask(ctx, tc, status)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
@@ -188,7 +195,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	if resp.ShouldExit {
 		return errors.New("task response indicates that agent should exit")
 	}
-	return nil
+	return errors.WithStack(err)
 }
 
 func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat chan string, complete chan string) string {

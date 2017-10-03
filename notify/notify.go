@@ -356,6 +356,7 @@ func ProcessNotifications(ae *web.App, mciNotification *MCINotification, updateT
 // This function is responsible for managing the sending triggered email notifications
 func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotification,
 	emails map[NotificationKey][]Email, mailer Mailer) (err error) {
+
 	grip.Info("Sending notifications...")
 
 	// parse all notifications, sending it to relevant recipients

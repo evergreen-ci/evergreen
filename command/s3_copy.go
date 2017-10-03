@@ -79,7 +79,7 @@ func (c *s3copy) ParseParams(params map[string]interface{}) error {
 
 // validateParams is a helper function that ensures all
 // the fields necessary for carrying out an S3 copy operation are present
-func (c *s3copy) validateParams() (err error) {
+func (c *s3copy) validateParams() error {
 	if c.AwsKey == "" {
 		return errors.New("s3 AWS key cannot be blank")
 	}
