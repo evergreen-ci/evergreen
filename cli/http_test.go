@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 type CliHttpTestSuite struct {
@@ -35,14 +36,16 @@ func (s *CliHttpTestSuite) TestV2Client() {
 	opts := &Options{
 		ConfFile: testFileName,
 	}
+	ctx := context.Background()
 
-	client, settings, err := getAPIV2Client(opts)
-	s.NoError(err)
-	s.NotNil(client)
-	s.NotNil(settings)
-	s.Equal(testApiKey, settings.APIKey)
-	s.Equal(testApiServer, settings.APIServerHost)
-	s.Equal(testUserName, settings.User)
+	client, settings, err := getAPIV2Client(ctx, opts)
+	if s.NoError(err) {
+		s.NotNil(client)
+		s.NotNil(settings)
+		s.Equal(testApiKey, settings.APIKey)
+		s.Equal(testApiServer, settings.APIServerHost)
+		s.Equal(testUserName, settings.User)
+	}
 }
 
 // cleans up the test settings file

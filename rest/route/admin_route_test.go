@@ -88,14 +88,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 }
 
 func (s *AdminRouteSuite) TestGetAuthentication() {
-	s.DoAuthenticationTests(s.getHandler.Authenticate)
-}
-
-func (s *AdminRouteSuite) TestPostAuthentication() {
-	s.DoAuthenticationTests(s.postHandler.Authenticate)
-}
-
-func (s *AdminRouteSuite) DoAuthenticationTests(authFunc func(context.Context, data.Connector) error) {
 	superUser := user.DBUser{
 		Id: "super_user",
 	}
@@ -103,11 +95,28 @@ func (s *AdminRouteSuite) DoAuthenticationTests(authFunc func(context.Context, d
 		Id: "normal_user",
 	}
 	s.sc.SetSuperUsers([]string{"super_user"})
+
 	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
 	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
 
-	s.NoError(authFunc(superCtx, s.sc))
-	s.Error(authFunc(normalCtx, s.sc))
+	s.NoError(s.getHandler.Authenticate(superCtx, s.sc))
+	s.NoError(s.getHandler.Authenticate(normalCtx, s.sc))
+}
+
+func (s *AdminRouteSuite) TestPostAuthentication() {
+	superUser := user.DBUser{
+		Id: "super_user",
+	}
+	normalUser := user.DBUser{
+		Id: "normal_user",
+	}
+	s.sc.SetSuperUsers([]string{"super_user"})
+
+	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
+	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
+
+	s.NoError(s.postHandler.Authenticate(superCtx, s.sc))
+	s.Error(s.postHandler.Authenticate(normalCtx, s.sc))
 }
 
 func TestRestartRoute(t *testing.T) {
