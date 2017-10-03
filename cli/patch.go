@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -501,9 +502,17 @@ func (lc *ListCommand) listDistros() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(len(distros), "distros:")
+
+	spawnableDistros := []*distro.Distro{}
 	for _, distro := range distros {
-		fmt.Println(distro.Id)
+		if distro.SpawnAllowed {
+			spawnableDistros = append(spawnableDistros, &distro)
+		}
+	}
+
+	fmt.Println(len(spawnableDistros), "distros:")
+	for _, distro := range spawnableDistros {
+		fmt.Println((*distro).Id)
 	}
 	return nil
 }
