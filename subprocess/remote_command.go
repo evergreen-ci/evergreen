@@ -47,7 +47,11 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 		grip.Warningf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 
-	chckCtx, cancel := context.WithCancel(ctx)
+	// we want this context to be separate as it is only used to
+	// signal that the command has returned successfully, or died
+	// remotely.
+	chckCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	errChan := make(chan error)
 
@@ -63,6 +67,8 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 		for {
 			select {
 			case <-ctx.Done():
+				return
+			case <-chckCtx.Done():
 				return
 			case <-timer.C:
 				if rc.Cmd.ProcessState.Exited() {
