@@ -90,10 +90,9 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	go func() {
 		defer wg.Done()
 		msg := message.Fields{
-			"GUID":    init.GUID,
-			"runner":  RunnerName,
-			"method":  "setupReadyHosts",
-			"runtime": time.Since(startTime),
+			"GUID":   init.GUID,
+			"runner": RunnerName,
+			"method": "setupReadyHosts",
 		}
 
 		var hadErrors bool
