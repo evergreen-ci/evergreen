@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -44,6 +45,11 @@ func RunTaskFailureTriggers(taskId string) error {
 	if err != nil {
 		return err
 	}
+
+	if t == nil {
+		return errors.Errorf("could not find task for %s", taskId)
+	}
+
 	ctx, err := getTaskTriggerContext(t)
 	if err != nil {
 		return err
