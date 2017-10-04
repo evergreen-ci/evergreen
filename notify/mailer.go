@@ -104,6 +104,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 		"MIME-Version: 1.0",
 		"Content-Type: text/plain; charset=\"utf-8\"",
 		"Content-Transfer-Encoding: base64",
+		"",
 		base64.StdEncoding.EncodeToString([]byte(body)),
 	}
 
