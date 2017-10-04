@@ -34,7 +34,7 @@ import (
 
 const (
 	SCPTimeout         = time.Minute
-	setupScriptTimeout = 3 * time.Minute
+	setupScriptTimeout = 150 * time.Second
 	setupScriptName    = "setup.sh"
 	teardownScriptName = "teardown.sh"
 )
