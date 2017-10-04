@@ -1,4 +1,4 @@
-package plugin_test
+package plugin
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -18,7 +17,7 @@ import (
 // simple plugin type that has a name and ui config
 type MockUIPlugin struct {
 	NickName string
-	Conf     *plugin.PanelConfig
+	Conf     *PanelConfig
 }
 
 func (self *MockUIPlugin) Name() string {
@@ -33,41 +32,41 @@ func (self *MockUIPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (self *MockUIPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
+func (self *MockUIPlugin) GetPanelConfig() (*PanelConfig, error) {
 	return self.Conf, nil
 }
 
 // ===== Tests =====
 
 func TestPanelManagerRegistration(t *testing.T) {
-	var ppm plugin.PanelManager
+	var ppm PanelManager
 	Convey("With a simple plugin panel manager", t, func() {
-		ppm = &plugin.SimplePanelManager{}
+		ppm = &SimplePanelManager{}
 
 		Convey("and a registered set of test plugins without panels", func() {
-			uselessPlugins := []plugin.UIPlugin{
+			uselessPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "no_ui_config",
 					Conf:     nil,
 				},
 				&MockUIPlugin{
 					NickName: "config_with_no_panels",
-					Conf:     &plugin.PanelConfig{},
+					Conf:     &PanelConfig{},
 				},
 			}
 			err := ppm.RegisterPlugins(uselessPlugins)
 			So(err, ShouldBeNil)
 
 			Convey("no ui panel data should be returned for any scope", func() {
-				data, err := ppm.UIData(plugin.UIContext{}, plugin.TaskPage)
+				data, err := ppm.UIData(UIContext{}, TaskPage)
 				So(err, ShouldBeNil)
 				So(data["no_ui_config"], ShouldBeNil)
 				So(data["config_with_no_panels"], ShouldBeNil)
-				data, err = ppm.UIData(plugin.UIContext{}, plugin.BuildPage)
+				data, err = ppm.UIData(UIContext{}, BuildPage)
 				So(err, ShouldBeNil)
 				So(data["no_ui_config"], ShouldBeNil)
 				So(data["config_with_no_panels"], ShouldBeNil)
-				data, err = ppm.UIData(plugin.UIContext{}, plugin.VersionPage)
+				data, err = ppm.UIData(UIContext{}, VersionPage)
 				So(err, ShouldBeNil)
 				So(data["no_ui_config"], ShouldBeNil)
 				So(data["config_with_no_panels"], ShouldBeNil)
@@ -75,11 +74,11 @@ func TestPanelManagerRegistration(t *testing.T) {
 		})
 
 		Convey("registering a plugin panel with no page should fail", func() {
-			badPanelPlugins := []plugin.UIPlugin{
+			badPanelPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "bad_panel",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{PanelHTML: "<marquee> PANEL </marquee>"},
 						},
 					},
@@ -91,14 +90,14 @@ func TestPanelManagerRegistration(t *testing.T) {
 		})
 
 		Convey("registering the same plugin name twice should fail", func() {
-			conflictingPlugins := []plugin.UIPlugin{
+			conflictingPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "a",
 					Conf:     nil,
 				},
 				&MockUIPlugin{
 					NickName: "a",
-					Conf:     &plugin.PanelConfig{},
+					Conf:     &PanelConfig{},
 				},
 			}
 			err := ppm.RegisterPlugins(conflictingPlugins)
@@ -108,19 +107,19 @@ func TestPanelManagerRegistration(t *testing.T) {
 
 		Convey("registering more than one data function to the same page "+
 			"for the same plugin should fail", func() {
-			dataPlugins := []plugin.UIPlugin{
+			dataPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "data_function_fan",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page: plugin.TaskPage,
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								Page: TaskPage,
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return 100, nil
 								}},
 							{
-								Page: plugin.TaskPage,
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								Page: TaskPage,
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return nil, errors.New("this function just errors")
 								}},
 						},
@@ -135,10 +134,10 @@ func TestPanelManagerRegistration(t *testing.T) {
 }
 
 func TestPanelManagerRetrieval(t *testing.T) {
-	var ppm plugin.PanelManager
+	var ppm PanelManager
 
 	Convey("With a simple plugin panel manager", t, func() {
-		ppm = &plugin.SimplePanelManager{}
+		ppm = &SimplePanelManager{}
 
 		Convey("and a registered set of test plugins with panels", func() {
 			// These 3 plugins exist to check the sort output of the manager.
@@ -146,26 +145,26 @@ func TestPanelManagerRetrieval(t *testing.T) {
 			// and then by the order of their declaration in the Panels array.
 			// This test asserts that the panels in A come before B which come
 			// before C, even though they are not in the plugin array in that order.
-			testPlugins := []plugin.UIPlugin{
+			testPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "A_the_first_letter",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
+								Page:     TaskPage,
+								Position: PageCenter,
 								Includes: []template.HTML{
 									"0",
 									"1",
 								},
 								PanelHTML: "0",
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return 1000, nil
 								},
 							},
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
+								Page:     TaskPage,
+								Position: PageCenter,
 								Includes: []template.HTML{
 									"2",
 									"3",
@@ -173,8 +172,8 @@ func TestPanelManagerRetrieval(t *testing.T) {
 								PanelHTML: "1",
 							},
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageLeft,
+								Page:     TaskPage,
+								Position: PageLeft,
 								Includes: []template.HTML{
 									"4",
 								},
@@ -185,17 +184,17 @@ func TestPanelManagerRetrieval(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "C_the_third_letter",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
+								Page:     TaskPage,
+								Position: PageCenter,
 								Includes: []template.HTML{
 									"7",
 									"8",
 								},
 								PanelHTML: "3",
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return 2112, nil
 								},
 							},
@@ -204,22 +203,22 @@ func TestPanelManagerRetrieval(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "B_the_middle_letter",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
+								Page:     TaskPage,
+								Position: PageCenter,
 								Includes: []template.HTML{
 									"5",
 								},
 								PanelHTML: "2",
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return 1776, nil
 								},
 							},
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageLeft,
+								Page:     TaskPage,
+								Position: PageLeft,
 								Includes: []template.HTML{
 									"6",
 								},
@@ -235,7 +234,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 
 			Convey("retrieved includes for the task page should be in correct "+
 				"stable alphabetical order by plugin name", func() {
-				includes, err := ppm.Includes(plugin.TaskPage)
+				includes, err := ppm.Includes(TaskPage)
 				So(err, ShouldBeNil)
 				So(includes, ShouldNotBeNil)
 
@@ -246,7 +245,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 			})
 			Convey("retrieved panel HTML for the task page should be in correct "+
 				"stable alphabetical order by plugin name", func() {
-				panels, err := ppm.Panels(plugin.TaskPage)
+				panels, err := ppm.Panels(TaskPage)
 				So(err, ShouldBeNil)
 				So(len(panels.Right), ShouldEqual, 0)
 				So(len(panels.Left), ShouldBeGreaterThan, 0)
@@ -261,7 +260,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 				}
 			})
 			Convey("data functions populate the results map with their return values", func() {
-				uiData, err := ppm.UIData(plugin.UIContext{}, plugin.TaskPage)
+				uiData, err := ppm.UIData(UIContext{}, TaskPage)
 				So(err, ShouldBeNil)
 				So(len(uiData), ShouldBeGreaterThan, 0)
 				So(uiData["A_the_first_letter"], ShouldEqual, 1000)
@@ -273,21 +272,21 @@ func TestPanelManagerRetrieval(t *testing.T) {
 }
 
 func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
-	var ppm plugin.PanelManager
+	var ppm PanelManager
 
 	Convey("With a simple plugin panel manager", t, func() {
-		ppm = &plugin.SimplePanelManager{}
+		ppm = &SimplePanelManager{}
 
 		Convey("and a set of plugins, some with erroring data functions", func() {
-			errorPlugins := []plugin.UIPlugin{
+			errorPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "error1",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return nil, errors.New("Error #1")
 								},
 							},
@@ -296,12 +295,12 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "error2",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(context plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(context UIContext) (interface{}, error) {
 									return nil, errors.New("Error #2")
 								},
 							},
@@ -310,12 +309,12 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "error3 not found",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(_ plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(_ UIContext) (interface{}, error) {
 									return nil, errors.New("Error")
 								},
 							},
@@ -324,12 +323,12 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "good",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(_ plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(_ UIContext) (interface{}, error) {
 									return "fine", nil
 								},
 							},
@@ -339,7 +338,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 			}
 			err := ppm.RegisterPlugins(errorPlugins)
 			So(err, ShouldBeNil)
-			data, err := ppm.UIData(plugin.UIContext{}, plugin.TaskPage)
+			data, err := ppm.UIData(UIContext{}, TaskPage)
 			So(err, ShouldNotBeNil)
 
 			Convey("non-broken functions should succeed", func() {
@@ -355,15 +354,15 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 			})
 		})
 		Convey("and a plugin that panics", func() {
-			errorPlugins := []plugin.UIPlugin{
+			errorPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "busted",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(_ plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(_ UIContext) (interface{}, error) {
 									panic("BOOM")
 								},
 							},
@@ -372,12 +371,12 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "good",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(_ plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(_ UIContext) (interface{}, error) {
 									return "still fine", nil
 								},
 							},
@@ -389,7 +388,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 			Convey("reasonable error messages should be produced", func() {
 				err := ppm.RegisterPlugins(errorPlugins)
 				So(err, ShouldBeNil)
-				data, err := ppm.UIData(plugin.UIContext{}, plugin.TaskPage)
+				data, err := ppm.UIData(UIContext{}, TaskPage)
 				So(err, ShouldNotBeNil)
 				So(data["good"], ShouldEqual, "still fine")
 				So(err.Error(), ShouldContainSubstring, "panic")
@@ -401,21 +400,21 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 }
 
 func TestUIDataInjection(t *testing.T) {
-	var ppm plugin.PanelManager
+	var ppm PanelManager
 
 	Convey("With a simple plugin panel manager", t, func() {
-		ppm = &plugin.SimplePanelManager{}
+		ppm = &SimplePanelManager{}
 
 		Convey("and a registered set of test plugins with injection needs", func() {
-			funcPlugins := []plugin.UIPlugin{
+			funcPlugins := []UIPlugin{
 				&MockUIPlugin{
 					NickName: "combine",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(ctx plugin.UIContext) (interface{}, error) {
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(ctx UIContext) (interface{}, error) {
 									return ctx.Task.Id + ctx.Build.Id + ctx.Version.Id, nil
 								},
 							},
@@ -424,13 +423,13 @@ func TestUIDataInjection(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "userhttpapiserver",
-					Conf: &plugin.PanelConfig{
-						Panels: []plugin.UIPanel{
+					Conf: &PanelConfig{
+						Panels: []UIPanel{
 							{
-								Page:     plugin.TaskPage,
-								Position: plugin.PageCenter,
-								DataFunc: func(ctx plugin.UIContext) (interface{}, error) {
-									return fmt.Sprintf("%v.%v@%v", ctx.User.Email, ctx.Settings.ApiUrl), nil
+								Page:     TaskPage,
+								Position: PageCenter,
+								DataFunc: func(ctx UIContext) (interface{}, error) {
+									return fmt.Sprintf("%v.%v@%v", ctx.User.Email, ctx.Settings.ApiUrl, nil), nil
 								},
 							},
 						},
@@ -450,8 +449,8 @@ func TestUserInjection(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("the user should possible to set and retrieve", func() {
-			r = plugin.SetUser(u, r)
-			So(plugin.GetUser(r), ShouldResemble, u)
+			r = SetUser(u, r)
+			So(GetUser(r), ShouldResemble, u)
 		})
 	})
 }

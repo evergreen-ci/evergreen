@@ -609,6 +609,8 @@ buildvariants:
       - name: "dist"
       - name: ".race"
       - name: ".report"
+        distros:
+          - archlinux-build
 
   - name: osx
     display_name: OSX

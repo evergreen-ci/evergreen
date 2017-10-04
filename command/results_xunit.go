@@ -109,17 +109,22 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 	}
 	catcher := grip.NewSimpleCatcher()
 
+	var (
+		file       *os.File
+		testSuites []testSuite
+		logId      string
+	)
 	for _, reportFileLoc := range reportFilePaths {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
 		}
 
-		file, err := os.Open(reportFileLoc)
+		file, err = os.Open(reportFileLoc)
 		if err != nil {
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
 
-		testSuites, err := parseXMLResults(file)
+		testSuites, err = parseXMLResults(file)
 		if err != nil {
 			return errors.Wrap(err, "error parsing xunit file")
 		}
@@ -137,7 +142,6 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 				return errors.New("operation canceled")
 			}
 
-			var logId string
 			logId, err = sendJSONLogs(ctx, logger, comm, td, log)
 			if err != nil {
 				catcher.Add(errors.Wrapf(err, "problem uploading logs for %s", log.Name))

@@ -44,7 +44,7 @@ ldFlags := "-w -s -X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHa
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give linters 40s to run to avoid timeouts
-lintArgs := --tests --deadline=3m --vendor --aggregate --sort=line
+lintArgs := --tests --deadline=5m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
