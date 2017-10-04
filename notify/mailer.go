@@ -97,25 +97,18 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	}
 	defer wc.Close()
 
-	// set header information
-	header := make(map[string]string)
-	header["From"] = from.String()
-	header["To"] = strings.Join(recipients, ", ")
-	header["Subject"] = encodeRFC2047(subject)
-	header["MIME-Version"] = "1.0"
-	header["Content-Type"] = "text/html; charset=\"utf-8\""
-	header["Content-Transfer-Encoding"] = "base64"
-
-	message := ""
-	for k, v := range header {
-		message += fmt.Sprintf("%s: %s\r\n", k, v)
+	contents := []string{
+		fmt.Sprintf("From: %s", from.String()),
+		fmt.Sprintf("To: %s", strings.Join(recipients, ", ")),
+		fmt.Sprintf("Subject: %s", subject),
+		"MIME-Version: 1.0",
+		"Content-Type: text/plain; charset=\"utf-8\"",
+		"Content-Transfer-Encoding: base64",
+		"",
+		base64.StdEncoding.EncodeToString([]byte(body)),
 	}
 
-	message += "\r\n" + base64.StdEncoding.EncodeToString([]byte(body))
-
-	// write the body
-	buf := bytes.NewBufferString(message)
-	_, err = buf.WriteTo(wc)
+	_, err = bytes.NewBufferString(strings.Join(contents, "\r\n")).WriteTo(wc)
 
 	return errors.WithStack(err)
 }
