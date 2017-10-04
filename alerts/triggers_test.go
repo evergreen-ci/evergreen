@@ -172,6 +172,7 @@ func TestExistingFailedTaskTriggers(t *testing.T) {
 				Version:             "testVersion2",
 				RevisionOrderNumber: testTask.RevisionOrderNumber + 2,
 			}
+			So(t2.Insert(), ShouldBeNil)
 			ctx, err := getTaskTriggerContext(t2)
 			So(err, ShouldBeNil)
 			triggers, err := getActiveTaskFailureTriggers(*ctx)
