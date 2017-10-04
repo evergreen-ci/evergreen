@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"golang.org/x/net/context"
 )
 
 const HostCheckTimeout = 10 * time.Second
@@ -16,7 +17,11 @@ const HostCheckTimeout = 10 * time.Second
 //CheckSSHResponse runs a test command over SSH to check whether or not the host
 //appears to be up and accepting ssh connections. Returns true/false if the check
 //passes or fails, or an error if the command cannot be attempted.
-func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) {
+func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []string) (bool, error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, HostCheckTimeout)
+	defer cancel()
+
 	hostInfo, err := util.ParseSSHInfo(hostObject.Host)
 	if err != nil {
 		return false, err
@@ -38,24 +43,10 @@ func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) 
 		Background:     false,
 	}
 
-	done := make(chan error)
-	err = remoteCommand.Start()
-	if err != nil {
-		return false, err
-	}
-
-	go func() {
-		done <- remoteCommand.Wait()
-	}()
-
-	select {
-	case <-time.After(HostCheckTimeout):
-		grip.Warning(remoteCommand.Stop())
+	if err = remoteCommand.Run(ctx); err != nil {
+		grip.Warning(err)
 		return false, nil
-	case err = <-done:
-		if err != nil {
-			return false, nil
-		}
-		return true, nil
 	}
+
+	return true, nil
 }
