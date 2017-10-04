@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -70,6 +72,7 @@ type AdminBannerCommand struct {
 	GlobalOpts            *Options `no-flag:"true"`
 	Message               string   `long:"message" short:"m" description:"content of new message"`
 	Clear                 bool     `long:"clear" description:"cleat the banner"`
+	Theme                 string   `long:"theme" short:"t" description:"color theme to use for banner"`
 	disableNetworkForTest bool
 }
 
@@ -80,6 +83,14 @@ func (c *AdminBannerCommand) Execute(_ []string) error {
 
 	if c.Message == "" && !c.Clear {
 		return errors.New("cannot set the message to the empty string. Use --clear to unset the message")
+	}
+
+	var theme admin.BannerTheme
+	var ok bool
+	if c.Theme != "" {
+		if ok, theme = admin.IsValidBannerTheme(c.Theme); !ok {
+			return fmt.Errorf("%s is not a valid banner theme", c.Theme)
+		}
 	}
 
 	if c.disableNetworkForTest {
@@ -95,7 +106,7 @@ func (c *AdminBannerCommand) Execute(_ []string) error {
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
 
-	return errors.Wrap(client.SetBannerMessage(ctx, c.Message),
+	return errors.Wrap(client.SetBannerMessage(ctx, c.Message, theme),
 		"problem setting the site-wide banner message")
 }
 

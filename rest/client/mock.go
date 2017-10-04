@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -320,11 +321,11 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 }
 
 // nolint
-func (c *Mock) SetBannerMessage(ctx context.Context, m string) error                  { return nil }
-func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                  { return "", nil }
-func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error   { return nil }
-func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)   { return nil, nil }
-func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error { return nil }
+func (c *Mock) SetBannerMessage(ctx context.Context, m string, t admin.BannerTheme) error { return nil }
+func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                      { return "", nil }
+func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error       { return nil }
+func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)       { return nil, nil }
+func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error     { return nil }
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.

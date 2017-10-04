@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -112,7 +113,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost
 	return nil
 }
 
-func (c *communicatorImpl) SetBannerMessage(ctx context.Context, m string) error {
+func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme admin.BannerTheme) error {
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
@@ -121,8 +122,10 @@ func (c *communicatorImpl) SetBannerMessage(ctx context.Context, m string) error
 
 	_, err := c.retryRequest(ctx, info, struct {
 		Banner string `json:"banner"`
+		Theme  string `json:"theme"`
 	}{
-		Banner: m,
+		Banner: message,
+		Theme:  string(theme),
 	})
 
 	return errors.Wrap(err, "problem setting banner")
