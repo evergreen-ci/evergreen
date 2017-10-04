@@ -138,8 +138,6 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func (init *HostInit) setupReadyHosts(ctx context.Context) error {
-	startTime := time.Now()
-
 	// set SSH timeout duration
 	if timeoutSecs := init.Settings.HostInit.SSHTimeoutSeconds; timeoutSecs <= 0 {
 		grip.Warningf("SSH timeout set to %vs (<= 0s) using %vs instead", timeoutSecs, SSHTimeoutSeconds)
@@ -256,13 +254,6 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 	// let all setup routines finish
 	wg.Wait()
-
-	grip.Info(message.Fields{
-		"GUID":    init.GUID,
-		"runner":  RunnerName,
-		"method":  "setupReadyHosts",
-		"runtime": time.Since(startTime),
-	})
 
 	return catcher.Resolve()
 }
