@@ -35,7 +35,7 @@ type RemoteCommand struct {
 
 func (rc *RemoteCommand) Run(ctx context.Context) error {
 	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
-	err := rc.Start(ctx)
+	err := rc.Start()
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -64,12 +64,17 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 			return nil
 		}
 
-		return errors.Errorf("operation '%s' was canceled and terminated.",
-			rc.CmdString)
+		// this is a bug: we return an error only if Stop
+		// returns an error, effectively swallowing errors
+		// from the command itself. However, for running
+		// scripts on windows hosts we (apparently) rely on
+		// this behavior.
+		return errors.Wrapf(rc.Stop(),
+			"operation '%s' was canceled and terminated.", rc.CmdString)
 	}
 }
 
-func (rc *RemoteCommand) Start(ctx context.Context) error {
+func (rc *RemoteCommand) Start() error {
 	// build the remote connection, in user@host format
 	remote := rc.RemoteHostName
 	if rc.User != "" {
@@ -105,7 +110,7 @@ func (rc *RemoteCommand) Start(ctx context.Context) error {
 		})
 
 	// set up execution
-	cmd := exec.CommandContext(ctx, "ssh", cmdArray...)
+	cmd := exec.Command("ssh", cmdArray...)
 	cmd.Stdout = rc.Stdout
 	cmd.Stderr = rc.Stderr
 
@@ -115,14 +120,27 @@ func (rc *RemoteCommand) Start(ctx context.Context) error {
 }
 
 func (rc *RemoteCommand) Stop() error {
-	if rc.Cmd != nil && rc.Cmd.Process != nil {
-		grip.Debugf("RemoteCommand(%s) killing process %d", rc.Id, rc.Cmd.Process.Pid)
-		err := rc.Cmd.Process.Kill()
-		if err == nil || strings.Contains(err.Error(), "process already finished") {
-			return nil
+	if rc.Cmd != nil {
+		if rc.Cmd.Process != nil {
+			grip.Debugf("RemoteCommand(%s) killing process %d", rc.Id, rc.Cmd.Process.Pid)
+			err := rc.Cmd.Process.Kill()
+			if err == nil || strings.Contains(err.Error(), "process already finished") {
+				return nil
+			}
+			return errors.WithStack(err)
 		}
-		return errors.WithStack(err)
+
+		if rc.Cmd.ProcessState != nil {
+			if rc.Cmd.ProcessState.Success() {
+				return nil
+			}
+
+			return errors.Errorf("RemoteCommand(%s) exited with status %s",
+				rc.Id, rc.Cmd.ProcessState.String())
+		}
 	}
+
 	grip.Warningf("RemoteCommand(%s) Trying to stop command but Cmd / Process was nil", rc.Id)
+
 	return nil
 }
