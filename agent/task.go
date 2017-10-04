@@ -48,6 +48,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
+	if ctx.Err() != nil {
+		grip.Info("task canceled")
+		return
+	}
 	tc.setCurrentCommand(factory())
 	a.comm.UpdateLastMessageTime()
 
