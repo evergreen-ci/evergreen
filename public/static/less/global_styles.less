@@ -708,7 +708,9 @@ md-card-title-text {
 md-card-footer button {
   float: right;
 }
-.md-input-focused,.md-input-focused label, .md-input-focused input {
+.md-input-focused,.md-input-focused label, .md-input-focused input,
+md-input-container.md-input-focused:not(.md-input-has-value) md-select .md-select-value,
+md-select:not([disabled]):focus .md-select-value {
   color: rgba(0,0,0,0.82) !important;
   border-color: rgba(0,0,0,0.82) !important;
 }

@@ -5,6 +5,7 @@ package admin
 type AdminSettings struct {
 	Id           string       `bson:"_id"`
 	Banner       string       `bson:"banner" json:"banner"`
+	BannerTheme  BannerTheme  `bson:"banner_theme" json:"banner_theme"`
 	ServiceFlags ServiceFlags `bson:"service_flags" json:"service_flags"`
 }
 
@@ -18,4 +19,31 @@ type ServiceFlags struct {
 	TaskrunnerDisabled    bool `bson:"taskrunner_disabled" json:"taskrunner_disabled"`
 	RepotrackerDisabled   bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
 	SchedulerDisabled     bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
+}
+
+// supported banner themes in Evergreen
+type BannerTheme string
+
+const (
+	Announcement BannerTheme = "announcement"
+	Information              = "information"
+	Warning                  = "warning"
+	Important                = "important"
+)
+
+func IsValidBannerTheme(input string) (bool, BannerTheme) {
+	switch input {
+	case "":
+		return true, ""
+	case "announcement":
+		return true, Announcement
+	case "information":
+		return true, Information
+	case "warning":
+		return true, Warning
+	case "important":
+		return true, Important
+	default:
+		return false, ""
+	}
 }

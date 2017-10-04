@@ -52,6 +52,16 @@ func (s *AdminEventSuite) TestBannerEvent() {
 	newEvents, err := Find(AllLogCollection, RecentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
+
+	// test that changing the theme logs correctly
+	s.NoError(LogBannerThemeChanged(admin.Announcement, admin.Important, s.u))
+	events, err = Find(AllLogCollection, RecentAdminEvents(1))
+	s.NoError(err)
+	eventData, ok = events[0].Data.Data.(*AdminEventData)
+	s.True(ok)
+	s.True(eventData.IsValid())
+	s.Equal(string(admin.Important), eventData.NewVal)
+	s.Equal(string(admin.Announcement), eventData.OldVal)
 }
 
 func (s *AdminEventSuite) TestFlagsEvent() {

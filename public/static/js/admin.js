@@ -5,6 +5,7 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     $scope.getSettings();
     $scope.disableRestart = false;
     $scope.disableSubmit = false;
+    $scope.ValidThemes = [ "announcement", "information", "warning", "important"];
     $("#tasks-modal").on("hidden.bs.modal", $scope.enableSubmit);
   }
 
@@ -35,6 +36,9 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
         case "BANNER_CHANGED":
           event.displayText = bannerChangeEventText(event);
           break;
+        case "THEME_CHANGED":
+          event.displayText = themeChangeEventText(event);
+          break;
         case "SERVICE_FLAGS_CHANGED":
           event.displayText = flagChangeEventText(event);
           break;
@@ -58,6 +62,12 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
     var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
     return timestamp(event.timestamp) + event.data.user + " changed banner from " + oldVal + " to " + newVal;
+  }
+
+  themeChangeEventText = function(event) {
+    var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
+    var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
+    return timestamp(event.timestamp) + event.data.user + " changed banner theme from " + oldVal + " to " + newVal;
   }
 
   flagChangeEventText = function(event) {
@@ -123,6 +133,30 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.jumpToTask = function(taskId) {
     window.open("/task/" + taskId);
+  }
+
+  bannerPreview = function bannerPreview(theme) {
+    switch(theme) {
+      case "important":
+        $("#bannerIcon").append("<i class='fa fa-exclamation'></i>");
+        $("#bannerIcon").addClass("banner-icon-important");
+        $("#bannerBack").addClass("banner-text-important");
+        break;
+      case "warning":
+        $("#bannerIcon").append("<i class='fa fa-exclamation-triangle'></i>");
+        $("#bannerIcon").addClass("banner-icon-warning");
+        $("#bannerBack").addClass("banner-text-warning");
+        break;
+      case "information":
+        $("#bannerIcon").append("<i class='fa fa-info-circle'></i>");
+        $("#bannerIcon").addClass("banner-icon-information");
+        $("#bannerBack").addClass("banner-text-information");
+        break;
+      default:
+        $("#bannerIcon").append("<i class='fa fa-bullhorn'></i>");
+        $("#bannerIcon").addClass("banner-icon-announcement");
+        $("#bannerBack").addClass("banner-text-announcement");
+    }
   }
 
   $scope.load();

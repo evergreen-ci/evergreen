@@ -101,6 +101,12 @@ Admin Settings
                   <label>Site-wide banner:</label>
                   <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
                 </md-input-container>
+                <md-input-container class="control">
+                  <label>Banner style:</label>
+                  <md-select ng-model="Settings.banner_theme">
+                    <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
+                  </md-select>
+                </md-input-container>
               </md-card-content>
 
             </md-card>

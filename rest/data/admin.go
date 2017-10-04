@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -9,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 type DBAdminConnector struct{}
@@ -21,8 +21,10 @@ func (ac *DBAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
 
 // SetAdminSettings sets the admin settings document in the DB and event logs it
 func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u *user.DBUser) error {
-	err := ac.SetAdminBanner(settings.Banner, u)
-	if err != nil {
+	if err := ac.SetAdminBanner(settings.Banner, u); err != nil {
+		return err
+	}
+	if err := ac.SetBannerTheme(string(settings.BannerTheme), u); err != nil {
 		return err
 	}
 	return ac.SetServiceFlags(settings.ServiceFlags, u)
@@ -40,7 +42,27 @@ func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
 		return err
 	}
 
-	return errors.WithStack(event.LogBannerChanged(oldSettings.Banner, text, u))
+	return event.LogBannerChanged(oldSettings.Banner, text, u)
+}
+
+// SetBannerTheme sets the banner theme in the DB and event logs it
+func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) error {
+	valid, theme := admin.IsValidBannerTheme(themeString)
+	if !valid {
+		return fmt.Errorf("%s is not a valid banner theme type", themeString)
+	}
+
+	oldSettings, err := admin.GetSettings()
+	if err != nil {
+		return err
+	}
+
+	err = admin.SetBannerTheme(theme)
+	if err != nil {
+		return err
+	}
+
+	return event.LogBannerThemeChanged(oldSettings.BannerTheme, theme, u)
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
@@ -55,7 +77,7 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 		return err
 	}
 
-	return errors.WithStack(event.LogServiceChanged(oldSettings.ServiceFlags, flags, u))
+	return event.LogServiceChanged(oldSettings.ServiceFlags, flags, u)
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
@@ -92,6 +114,18 @@ func (ac *MockAdminConnector) SetAdminBanner(text string, u *user.DBUser) error 
 		ac.MockSettings = &admin.AdminSettings{}
 	}
 	ac.MockSettings.Banner = text
+	return nil
+}
+
+func (ac *MockAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) error {
+	valid, theme := admin.IsValidBannerTheme(themeString)
+	if !valid {
+		return fmt.Errorf("%s is not a valid banner theme type", themeString)
+	}
+	if ac.MockSettings == nil {
+		ac.MockSettings = &admin.AdminSettings{}
+	}
+	ac.MockSettings.BannerTheme = theme
 	return nil
 }
 
