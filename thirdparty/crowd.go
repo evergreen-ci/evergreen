@@ -55,6 +55,10 @@ func (self *CrowdUser) Username() string {
 	return self.Name
 }
 
+func (self *CrowdUser) IsNil() bool {
+	return self == nil
+}
+
 type RESTCrowdService struct {
 	crowdUsername string
 	crowdPassword string

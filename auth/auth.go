@@ -63,7 +63,7 @@ func setLoginToken(token string, w http.ResponseWriter) {
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
 func IsSuperUser(superUsers []string, u User) bool {
-	if u == nil {
+	if u == nil || u.IsNil() {
 		return false
 	}
 	if util.SliceContains(superUsers, u.Username()) ||
