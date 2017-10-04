@@ -72,6 +72,7 @@ func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 
 type adminPostHandler struct {
 	Banner       model.APIString       `json:"banner"`
+	BannerTheme  model.APIString       `json:"banner_theme"`
 	ServiceFlags model.APIServiceFlags `json:"service_flags"`
 	model        model.APIAdminSettings
 }
@@ -86,6 +87,7 @@ func (h *adminPostHandler) ParseAndValidate(ctx context.Context, r *http.Request
 	}
 	h.model = model.APIAdminSettings{
 		Banner:       h.Banner,
+		BannerTheme:  h.BannerTheme,
 		ServiceFlags: h.ServiceFlags,
 	}
 	return nil
@@ -133,6 +135,7 @@ func getBannerRouteManager(route string, version int) *RouteManager {
 
 type bannerPostHandler struct {
 	Banner model.APIString `json:"banner"`
+	Theme  model.APIString `json:"theme"`
 	model  model.APIBanner
 }
 
@@ -145,15 +148,21 @@ func (h *bannerPostHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 		return err
 	}
 	h.model = model.APIBanner{
-		Text: h.Banner,
+		Text:  h.Banner,
+		Theme: h.Theme,
 	}
 	return nil
 }
 
 func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	err := sc.SetAdminBanner(string(h.Banner), u)
-	if err != nil {
+	if err := sc.SetAdminBanner(string(h.Banner), u); err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	if err := sc.SetBannerTheme(string(h.Theme), u); err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}

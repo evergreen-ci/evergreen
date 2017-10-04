@@ -51,7 +51,8 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 
 	// test parsing the POST body
 	body := admin.AdminSettings{
-		Banner: "banner text",
+		Banner:      "banner text",
+		BannerTheme: admin.Information,
 		ServiceFlags: admin.ServiceFlags{
 			TaskDispatchDisabled: true,
 			RepotrackerDisabled:  true,
@@ -65,6 +66,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 	h := s.postHandler.RequestHandler.(*adminPostHandler)
 	s.Equal(body.Banner, string(h.Banner))
+	s.Equal(string(body.BannerTheme), string(h.BannerTheme))
 	s.Equal(body.ServiceFlags.TaskDispatchDisabled, h.ServiceFlags.TaskDispatchDisabled)
 	s.Equal(body.ServiceFlags.RepotrackerDisabled, h.ServiceFlags.RepotrackerDisabled)
 
@@ -83,6 +85,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	settings, ok := settingsResp.(admin.AdminSettings)
 	s.True(ok)
 	s.Equal(body.Banner, settings.Banner)
+	s.Equal(body.BannerTheme, settings.BannerTheme)
 	s.Equal(body.ServiceFlags.TaskDispatchDisabled, settings.ServiceFlags.TaskDispatchDisabled)
 	s.Equal(body.ServiceFlags.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
 }

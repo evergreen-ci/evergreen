@@ -96,7 +96,8 @@ func TestMockConnectorSuite(t *testing.T) {
 func (s *AdminDataSuite) TestSetAndGetSettings() {
 	u := &user.DBUser{Id: "user"}
 	settings := &admin.AdminSettings{
-		Banner: "test banner",
+		Banner:      "test banner",
+		BannerTheme: admin.Warning,
 		ServiceFlags: admin.ServiceFlags{
 			NotificationsDisabled: true,
 			TaskrunnerDisabled:    true,
@@ -110,6 +111,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.NoError(err)
 	s.Equal(settings.Banner, settingsFromConnector.Banner)
 	s.Equal(settings.ServiceFlags, settingsFromConnector.ServiceFlags)
+	s.Equal(admin.Warning, string(settings.BannerTheme))
 }
 
 func (s *AdminDataSuite) TestRestart() {

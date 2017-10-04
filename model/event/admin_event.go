@@ -13,8 +13,9 @@ const (
 	ResourceTypeAdmin = "ADMIN"
 
 	// event types
-	BannerChanged  = "BANNER_CHANGED"
-	ServiceChanged = "SERVICE_FLAGS_CHANGED"
+	BannerChanged      = "BANNER_CHANGED"
+	ServiceChanged     = "SERVICE_FLAGS_CHANGED"
+	BannerThemeChanged = "THEME_CHANGED"
 )
 
 // AdminEventData holds all potential data properties of a logged admin event
@@ -54,6 +55,14 @@ func LogBannerChanged(oldText, newText string, u *user.DBUser) error {
 		return nil
 	}
 	return logAdminEventBase(BannerChanged, AdminEventData{OldVal: oldText, NewVal: newText, User: u.Username()})
+}
+
+// LogBannerThemeChanged will log a change to the banner theme field
+func LogBannerThemeChanged(oldTheme, newTheme admin.BannerTheme, u *user.DBUser) error {
+	if oldTheme == newTheme {
+		return nil
+	}
+	return logAdminEventBase(BannerThemeChanged, AdminEventData{OldVal: string(oldTheme), NewVal: string(newTheme), User: u.Username()})
 }
 
 // LogServiceChanged will log a change to the service flags

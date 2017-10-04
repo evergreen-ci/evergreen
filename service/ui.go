@@ -60,6 +60,7 @@ type ViewData struct {
 	ProjectData projectContext
 	Flashes     []interface{}
 	Banner      string
+	BannerTheme string
 }
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
@@ -339,6 +340,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
 	}
 	viewData.Banner = settings.Banner
+	viewData.BannerTheme = string(settings.BannerTheme)
 	viewData.User = userCtx
 	viewData.ProjectData = projectCtx
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)

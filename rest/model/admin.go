@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/pkg/errors"
 )
@@ -8,12 +10,14 @@ import (
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
 	Banner       APIString       `json:"banner"`
+	BannerTheme  APIString       `json:"banner_theme"`
 	ServiceFlags APIServiceFlags `json:"service_flags"`
 }
 
 // APIBanner is a public structure representing the banner part of the admin settings
 type APIBanner struct {
-	Text APIString `json:"banner"`
+	Text  APIString `json:"banner"`
+	Theme APIString `json:"theme"`
 }
 
 // APIServiceFlags is a public structure representing the admin service flags
@@ -39,6 +43,7 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *admin.AdminSettings:
 		as.Banner = APIString(v.Banner)
+		as.BannerTheme = APIString(v.BannerTheme)
 		err := as.ServiceFlags.BuildFromService(v.ServiceFlags)
 		if err != nil {
 			return err
@@ -55,8 +60,13 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	valid, theme := admin.IsValidBannerTheme(string(as.BannerTheme))
+	if !valid {
+		return nil, fmt.Errorf("%s is not a valid banner theme type", as.BannerTheme)
+	}
 	settings := admin.AdminSettings{
 		Banner:       string(as.Banner),
+		BannerTheme:  theme,
 		ServiceFlags: flags.(admin.ServiceFlags),
 	}
 	return settings, nil
@@ -64,9 +74,10 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 
 // BuildFromService builds a model from the service layer
 func (ab *APIBanner) BuildFromService(h interface{}) error {
-	switch h.(type) {
-	case string:
-		ab.Text = APIString(h.(string))
+	switch v := h.(type) {
+	case APIBanner:
+		ab.Text = v.Text
+		ab.Theme = v.Theme
 	default:
 		return errors.Errorf("%T is not a supported admin banner type", h)
 	}

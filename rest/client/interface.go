@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -106,7 +107,7 @@ type Communicator interface {
 
 	// Admin methods
 	//
-	SetBannerMessage(context.Context, string) error
+	SetBannerMessage(context.Context, string, admin.BannerTheme) error
 	GetBannerMessage(context.Context) (string, error)
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
 	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)

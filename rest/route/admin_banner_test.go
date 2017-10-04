@@ -32,7 +32,7 @@ func TestAdminBannerRoute(t *testing.T) {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
 
-	// test parsing the POST body
+	// test changing the banner with no change in theme
 	body := model.APIBanner{
 		Text: "hello evergreen users!",
 	}
@@ -44,12 +44,46 @@ func TestAdminBannerRoute(t *testing.T) {
 	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
 	h := postHandler.RequestHandler.(*bannerPostHandler)
 	assert.Equal(body.Text, h.Banner)
-
-	// test executing the POST request
 	resp, err := postHandler.RequestHandler.Execute(ctx, sc)
 	assert.NoError(err)
 	assert.NotNil(resp)
 	settings, err := sc.GetAdminSettings()
 	assert.NoError(err)
 	assert.Equal(string(body.Text), settings.Banner)
+
+	// test changing the theme
+	body = model.APIBanner{
+		Text:  "banner is changing again",
+		Theme: "important",
+	}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/banner", buffer)
+	assert.NoError(err)
+	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	h = postHandler.RequestHandler.(*bannerPostHandler)
+	assert.Equal(body.Theme, h.Theme)
+	resp, err = postHandler.RequestHandler.Execute(ctx, sc)
+	assert.NoError(err)
+	assert.NotNil(resp)
+	settings, err = sc.GetAdminSettings()
+	assert.NoError(err)
+	assert.Equal(string(body.Theme), string(settings.BannerTheme))
+
+	// test invalid theme enum
+	body = model.APIBanner{
+		Text:  "",
+		Theme: "foo",
+	}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/banner", buffer)
+	assert.NoError(err)
+	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	h = postHandler.RequestHandler.(*bannerPostHandler)
+	assert.Equal(body.Theme, h.Theme)
+	_, err = postHandler.RequestHandler.Execute(ctx, sc)
+	assert.Error(err)
 }

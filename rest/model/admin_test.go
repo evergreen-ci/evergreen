@@ -20,7 +20,8 @@ func TestAdminModelSuite(t *testing.T) {
 
 func (s *AdminModelSuite) SetupSuite() {
 	s.serviceSettings = admin.AdminSettings{
-		Banner: "banner text",
+		Banner:      "banner text",
+		BannerTheme: admin.Information,
 		ServiceFlags: admin.ServiceFlags{
 			TaskDispatchDisabled: true,
 			MonitorDisabled:      true,
@@ -29,7 +30,8 @@ func (s *AdminModelSuite) SetupSuite() {
 	}
 
 	s.apiSettings = APIAdminSettings{
-		Banner: "banner text",
+		Banner:      "banner text",
+		BannerTheme: admin.Information,
 		ServiceFlags: APIServiceFlags{
 			TaskDispatchDisabled: true,
 			MonitorDisabled:      true,
@@ -51,8 +53,12 @@ func (s *AdminModelSuite) TestBuildFromService() {
 	s.Equal(s.apiSettings.ServiceFlags, apiSettings.ServiceFlags)
 
 	apiBanner := APIBanner{}
-	s.NoError(apiBanner.BuildFromService(s.serviceSettings.Banner))
+	s.NoError(apiBanner.BuildFromService(APIBanner{
+		Text:  APIString(s.serviceSettings.Banner),
+		Theme: APIString(s.serviceSettings.BannerTheme),
+	}))
 	s.Equal(s.apiSettings.Banner, apiBanner.Text)
+	s.Equal(s.apiSettings.BannerTheme, apiBanner.Theme)
 
 	apiFlags := APIServiceFlags{}
 	s.NoError(apiFlags.BuildFromService(s.serviceSettings.ServiceFlags))
@@ -77,6 +83,7 @@ func (s *AdminModelSuite) TestToService() {
 	s.IsType(admin.AdminSettings{}, serviceSettings)
 	adminSettings := serviceSettings.(admin.AdminSettings)
 	s.Equal(s.serviceSettings.Banner, adminSettings.Banner)
+	s.Equal(s.serviceSettings.BannerTheme, adminSettings.BannerTheme)
 	s.Equal(s.serviceSettings.ServiceFlags, adminSettings.ServiceFlags)
 
 	serviceFlags, err := s.apiSettings.ServiceFlags.ToService()

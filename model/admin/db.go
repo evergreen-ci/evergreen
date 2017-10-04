@@ -15,6 +15,7 @@ const (
 var (
 	idKey            = bsonutil.MustHaveTag(AdminSettings{}, "Id")
 	bannerKey        = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
+	bannerThemeKey   = bsonutil.MustHaveTag(AdminSettings{}, "BannerTheme")
 	serviceFlagsKey  = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
 	taskDispatchKey  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostinitKey      = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
@@ -54,6 +55,20 @@ func SetBanner(bannerText string) error {
 		settingsQuery,
 		bson.M{
 			"$set": bson.M{idKey: systemSettingsDocID, bannerKey: bannerText},
+		},
+	)
+
+	return err
+}
+
+// SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
+// string here means that there is no banner
+func SetBannerTheme(theme BannerTheme) error {
+	_, err := db.Upsert(
+		Collection,
+		settingsQuery,
+		bson.M{
+			"$set": bson.M{idKey: systemSettingsDocID, bannerThemeKey: theme},
 		},
 	)
 

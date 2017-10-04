@@ -18,7 +18,6 @@ type AdminSuite struct {
 
 func TestAdminSuite(t *testing.T) {
 	s := new(AdminSuite)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestAdminSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	db.Clear(Collection)
 
@@ -34,6 +33,13 @@ func (s *AdminSuite) TestBanner() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(bannerText, settings.Banner)
+
+	err = SetBannerTheme(Important)
+	s.NoError(err)
+	settings, err = GetSettings()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(Important, string(settings.BannerTheme))
 }
 
 func (s *AdminSuite) TestServiceFlags() {
