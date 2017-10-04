@@ -5,7 +5,6 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -47,51 +46,19 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 		grip.Warningf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 
-	// we want this context to be separate as it is only used to
-	// signal that the command has returned successfully, or died
-	// remotely.
-	chckCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	errChan := make(chan error)
-
 	go func() {
 		errChan <- rc.Cmd.Wait()
 		close(errChan)
 	}()
 
-	go func() {
-		timer := time.NewTimer(0)
-		defer timer.Stop()
-		startAt := time.Now()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-chckCtx.Done():
-				return
-			case <-timer.C:
-				if rc.Cmd.ProcessState != nil && rc.Cmd.ProcessState.Exited() {
-					grip.Info(message.Fields{
-						"message": "remote command process ended early",
-						"id":      rc.Id,
-						"cmd":     rc.CmdString,
-						"runtime": time.Since(startAt),
-						"span":    time.Since(startAt).String(),
-					})
-					cancel()
-					return
-				}
-				timer.Reset(100 * time.Millisecond)
-			}
-		}
-	}()
-
 	select {
 	case err = <-errChan:
+		if rc.Cmd.ProcessState != nil && rc.Cmd.ProcessState.Success() {
+			return nil
+		}
+
 		return errors.WithStack(err)
-	case <-chckCtx.Done():
-		return nil
 	case <-ctx.Done():
 		return errors.Errorf("operation '%s' was canceled and terminated.",
 			rc.CmdString)

@@ -173,6 +173,9 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 }
 
 func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
 		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)

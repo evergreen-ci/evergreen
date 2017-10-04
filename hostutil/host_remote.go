@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-const SSHTimeout = 2 * time.Minute
+const maxWaitTimeSSH = 5 * time.Minute
 
 // RunRemoteScript executes a shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.
@@ -60,7 +60,7 @@ func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOption
 	}
 
 	// run the ssh command with given timeout
-	ctx, cancel := context.WithTimeout(ctx, SSHTimeout)
+	ctx, cancel := context.WithTimeout(ctx, maxWaitTimeSSH)
 	defer cancel()
 	err = cmd.Run(ctx)
 

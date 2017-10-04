@@ -34,6 +34,7 @@ import (
 
 const (
 	SCPTimeout         = time.Minute
+	setupScriptTimeout = 3 * time.Minute
 	setupScriptName    = "setup.sh"
 	teardownScriptName = "teardown.sh"
 )
@@ -393,7 +394,13 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 			return "", errors.Errorf("error copying script %v to host %v: %v",
 				setupScriptName, targetHost.Id, err)
 		}
-		var logs string
+		var (
+			logs   string
+			cancel context.CancelFunc
+		)
+
+		ctx, cancel = context.WithTimeout(ctx, setupScriptTimeout)
+		defer cancel()
 		logs, err = hostutil.RunRemoteScript(ctx, targetHost, setupScriptName, sshOptions)
 		if err != nil {
 			return logs, errors.Errorf("error running setup script over ssh: %v", err)
@@ -473,11 +480,10 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	grip.Infof("Directories command: '%#v'", makeDirectoryCmd)
 
 	// run the make shell command with a timeout
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, SCPTimeout)
+	mkDirCtx, cancel := context.WithTimeout(ctx, SCPTimeout)
 	defer cancel()
 
-	if err = makeDirectoryCmd.Run(ctx); err != nil {
+	if err = makeDirectoryCmd.Run(mkDirCtx); err != nil {
 		if err == util.ErrTimedOut {
 			grip.Notice(makeDirectoryCmd.Stop())
 			return errors.Errorf("creating remote directories timed out: %s",
