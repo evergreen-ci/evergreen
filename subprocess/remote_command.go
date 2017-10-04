@@ -71,7 +71,7 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 			case <-chckCtx.Done():
 				return
 			case <-timer.C:
-				if rc.Cmd.ProcessState.Exited() {
+				if rc.Cmd.ProcessState != nil && rc.Cmd.ProcessState.Exited() {
 					grip.Info(message.Fields{
 						"message": "remote command process ended early",
 						"id":      rc.Id,
