@@ -8,7 +8,7 @@ import (
 // APIDistro is the model to be returned by the API whenever distros are fetched.
 // EVG-1717 will implement the remainder of the distro model.
 type APIDistro struct {
-	Id APIString `json:"_id"`
+	Name APIString `json:"name"`
 }
 
 // BuildFromService converts from service level structs to an APIDistro.
