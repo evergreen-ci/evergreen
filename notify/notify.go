@@ -3,7 +3,6 @@ package notify
 import (
 	"fmt"
 	"io/ioutil"
-	"net/mail"
 	"os"
 	"path"
 	"path/filepath"
@@ -570,15 +569,6 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 		changeInfo.Revision = patch.Id.Hex()
 	}
 	return
-}
-
-// use mail's rfc2047 to encode any string
-func encodeRFC2047(String string) string {
-	addr := mail.Address{
-		Name:    String,
-		Address: "",
-	}
-	return strings.Trim(addr.String(), " <>")
 }
 
 // get the display name for a build variant's
