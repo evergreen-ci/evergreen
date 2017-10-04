@@ -181,8 +181,7 @@ type PluginCommandConf struct {
 	// variants.
 	Variants []string `yaml:"variants,omitempty" bson:"variants"`
 
-	// TimeoutSecs indicates the maximum duration the command is allowed to run
-	// for. If undefined, it is unbounded.
+	// TimeoutSecs indicates the maximum duration the command is allowed to run for.
 	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
 
 	// Params are used to supply configuratiion specific information.

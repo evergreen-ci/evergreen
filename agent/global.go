@@ -9,13 +9,15 @@ const (
 	// polling for a new task if no new task is found
 	defaultAgentSleepInterval = 30 * time.Second
 
-	// defaultCmdTimeout specifies the duration after which agent sends
-	// an IdleTimeout signal if a task's command does not run to completion.
-	defaultCmdTimeout = 2 * time.Hour
+	// defaultCmdTimeout specifies the duration after which the agent sends
+	// an IdleTimeout signal if a task's command does not produce logs on stdout.
+	// timeout_secs can be specified only on a command.
+	defaultIdleTimeout = 2 * time.Hour
 
 	// defaultExecTimeoutSecs specifies in seconds the maximum time a task
 	// is allowed to run for, even if it is not idle. This default is used
 	// if exec_timeout_secs is not specified in the project file.
+	// exec_timeout_secs can be specified only at the project and task level.
 	defaultExecTimeoutSecs = 60 * 60 * 6
 
 	// defaultHeartbeatInterval is the interval after which agent sends a

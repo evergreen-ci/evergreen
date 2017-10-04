@@ -54,32 +54,23 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
 	defer util.RecoverLogStackTraceAndContinue("idle timeout watcher")
-	timeoutInterval := defaultCmdTimeout
-	if a.opts.IdleTimeoutInterval != 0 {
-		timeoutInterval = a.opts.IdleTimeoutInterval
-	}
-
-	timer := time.NewTimer(timeoutInterval)
-	defer timer.Stop()
+	defer cancel()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("Idle timeout watch canceled context")
+			grip.Info("Idle timeout watch canceled")
 			return
-		case <-timer.C:
-			if taskTimeout := tc.getCurrentTimeout(); taskTimeout != 0 {
-				timeoutInterval = taskTimeout
-			}
+		case <-ticker.C:
+			timeout := tc.getCurrentTimeout()
+			timeSinceLastMessage := time.Since(a.comm.LastMessageAt())
 
-			// check the last time the idle timeout was updated.
-			nextTimeout := timeoutInterval - time.Since(a.comm.LastMessageAt())
-			if nextTimeout <= 0 {
-				tc.logger.Execution().Error("Hit idle timeout")
+			if timeSinceLastMessage > timeout {
+				tc.logger.Execution().Errorf("Hit idle timeout (no message on stdout for more than %s)", timeout)
 				tc.reachTimeOut()
-				cancel()
 				return
 			}
-			timer.Reset(nextTimeout)
 		}
 	}
 }
@@ -95,7 +86,7 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d
 			grip.Info("Exec timeout watch canceled")
 			return
 		case <-timer.C:
-			tc.logger.Execution().Error("Hit exec timeout")
+			tc.logger.Execution().Errorf("Hit exec timeout (%s)", d)
 			tc.reachTimeOut()
 			return
 		}
