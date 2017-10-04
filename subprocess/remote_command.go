@@ -60,6 +60,10 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 
 		return errors.WithStack(err)
 	case <-ctx.Done():
+		if rc.Cmd.ProcessState != nil && rc.Cmd.ProcessState.Success() {
+			return nil
+		}
+
 		return errors.Errorf("operation '%s' was canceled and terminated.",
 			rc.CmdString)
 	}
