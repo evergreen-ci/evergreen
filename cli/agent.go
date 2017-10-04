@@ -38,7 +38,7 @@ func (c *AgentCommand) Execute(_ []string) error {
 		return errors.Wrap(err, "problem configuring logger")
 	}
 
-	if err := grip.SetSender(sender); err != nil {
+	if err = grip.SetSender(sender); err != nil {
 		return errors.Wrap(err, "problem setting up logger")
 	}
 
