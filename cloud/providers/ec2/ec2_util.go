@@ -30,8 +30,8 @@ const (
 	NameTimeFormat       = "20060102150405"
 	OnDemandProviderName = "ec2"
 	SpotProviderName     = "ec2-spot"
-	SpawnHostExpireDays  = 90
-	MciHostExpireDays    = 30
+	SpawnHostExpireDays  = 30
+	MciHostExpireDays    = 10
 )
 
 type MountPoint struct {
