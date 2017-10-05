@@ -10,6 +10,10 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   hash = $location.hash();
   path = $location.path();
   $scope.collapsed = localStorage.getItem("collapsed") == "true";
+  if (window.hasBanner) {
+    $("#drawer").addClass("bannerMargin");
+    $("#content").addClass("bannerMargin");
+  }
 
   // If a tab number is specified in the URL, parse it out and set the tab
   // number in the scope so that the correct tab is open when the page loads.
