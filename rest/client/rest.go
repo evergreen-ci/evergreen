@@ -214,3 +214,26 @@ func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endA
 
 	return nil
 }
+
+func (c *communicatorImpl) GetDistributionsList(ctx context.Context) (*[]model.APIDistro, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    "distros",
+	}
+
+	resp, client_err := c.request(ctx, info, "")
+	if client_err != nil {
+		return nil, errors.Wrap(client_err, "problem fetching distribution list")
+	}
+	defer resp.Body.Close()
+
+	allDistros := &[]model.APIDistro{}
+
+	err := util.ReadJSONInto(resp.Body, allDistros)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing distribution list")
+	}
+
+	return allDistros, nil
+}

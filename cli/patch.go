@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -491,36 +491,37 @@ func (lc *ListCommand) listProjects() error {
 	return errors.WithStack(w.Flush())
 }
 
-func (lc *ListCommand) listDistros(onlySpawnable bool) error {
+func (lc *ListCommand) listDistros(onlyUserSpawnable bool) error {
 	ctx := context.Background()
-	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
-	if err != nil {
-		return errors.WithStack(err)
+	client, settings, client_err := getAPIV2Client(ctx, lc.GlobalOpts)
+	if client_err != nil {
+		return errors.WithStack(client_err)
 	}
-	notifyUserUpdate(ac)
+	client.SetAPIUser(settings.User)
+	client.SetAPIKey(settings.APIKey)
 
-	distros, err := ac.ListDistros()
-	if err != nil {
-		return err
+	distros, req_err := client.GetDistributionsList(ctx)
+	if req_err != nil {
+		return errors.WithStack(req_err)
 	}
 
-	if onlySpawnable {
-		var spawnableDistros []*distro.Distro
-		for _, distro := range distros {
-			if distro.SpawnAllowed {
-				spawnableDistros = append(spawnableDistros, &distro)
+	if onlyUserSpawnable {
+		spawnableDistros := []restmodel.APIDistro{}
+		for _, distro := range *distros {
+			if distro.UserSpawnAllowed {
+				spawnableDistros = append(spawnableDistros, distro)
 			}
 		}
 
 		fmt.Println(len(spawnableDistros), "spawnable distros:")
 		for _, distro := range spawnableDistros {
-			fmt.Println(distro.Id)
+			fmt.Println(distro.Name)
 		}
 
 	} else {
-		fmt.Println(len(distros), "distros:")
-		for _, distro := range distros {
-			fmt.Println(distro.Id)
+		fmt.Println(len(*distros), "distros:")
+		for _, distro := range *distros {
+			fmt.Println(distro.Name)
 		}
 	}
 
