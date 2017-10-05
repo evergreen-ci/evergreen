@@ -173,7 +173,10 @@ func (tc *taskContext) getCurrentTimeout() time.Duration {
 	tc.RLock()
 	defer tc.RUnlock()
 
-	return tc.timeout
+	if tc.timeout > 0 {
+		return tc.timeout
+	}
+	return defaultIdleTimeout
 }
 
 func (tc *taskContext) reachTimeOut() {
