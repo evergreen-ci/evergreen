@@ -3,6 +3,7 @@ package message
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/mongodb/grip/level"
 	"github.com/shirou/gopsutil/cpu"
@@ -52,32 +53,46 @@ func CollectProcessInfoSelf() Composer {
 // ProcessInfo message.Composer instances for the current process and
 // all children processes.
 func CollectProcessInfoSelfWithChildren() []Composer {
+	p, _ := CollectProcessInfoWithChildren(int32(os.Getpid()))
+	return p
+}
+
+//TODO: remove
+func CollectProcessInfoSelfWithLogging() ([]Composer, []string) {
 	return CollectProcessInfoWithChildren(int32(os.Getpid()))
 }
 
 // CollectProcessInfoWithChildren returns a slice of populated
 // ProcessInfo message.Composer instances for the process with the
 // specified pid and all children processes for that process.
-func CollectProcessInfoWithChildren(pid int32) []Composer {
+func CollectProcessInfoWithChildren(pid int32) ([]Composer, []string) {
 	var results []Composer
+	tempLogs := make([]string, 0)
+	start := time.Now()
+	tempLogs = append(tempLogs, fmt.Sprintf("start CollectProcessInfoWithChildren: %d", time.Since(start)))
 	parent, err := process.NewProcess(pid)
 	if err != nil {
-		return results
+		return results, nil
 	}
+	tempLogs = append(tempLogs, fmt.Sprintf("create parent process: %d", time.Since(start)))
 
 	parentMsg := &ProcessInfo{}
 	parentMsg.loggable = true
 	parentMsg.populate(parent)
 	results = append(results, parentMsg)
+	tempLogs = append(tempLogs, fmt.Sprintf("populate parent: %d", time.Since(start)))
 
-	for _, child := range getChildrenRecursively(parent) {
+	children := getChildrenRecursively(parent)
+	tempLogs = append(tempLogs, fmt.Sprintf("get children: %d", time.Since(start)))
+	for _, child := range children {
 		cm := &ProcessInfo{}
 		cm.loggable = true
 		cm.populate(child)
 		results = append(results, cm)
+		tempLogs = append(tempLogs, fmt.Sprintf("append child %d: %d", child.Pid, time.Since(start)))
 	}
 
-	return results
+	return results, tempLogs
 }
 
 func getChildrenRecursively(proc *process.Process) []*process.Process {
