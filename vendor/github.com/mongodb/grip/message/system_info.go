@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/mongodb/grip/level"
 	"github.com/shirou/gopsutil/cpu"
@@ -33,28 +34,41 @@ type SystemInfo struct {
 // CollectSystemInfo returns a populated SystemInfo object,
 // without a message.
 func CollectSystemInfo() Composer {
-	return NewSystemInfo(level.Trace, "")
+	info, _ := NewSystemInfo(level.Trace, "")
+	return info
 }
 
 // MakeSystemInfo builds a populated SystemInfo object with the
 // specified message.
 func MakeSystemInfo(message string) Composer {
-	return NewSystemInfo(level.Info, message)
+	info, _ := NewSystemInfo(level.Info, message)
+	return info
+}
+
+// TODO: remove this
+func CollectSystemInfoWithLogging() (Composer, []string) {
+	return NewSystemInfo(level.Trace, "")
 }
 
 // NewSystemInfo returns a fully configured and populated SystemInfo
 // object.
-func NewSystemInfo(priority level.Priority, message string) Composer {
+func NewSystemInfo(priority level.Priority, message string) (Composer, []string) {
 	var err error
+	tempLogs := make([]string, 0)
+	start := time.Now()
 	s := &SystemInfo{
 		Message: message,
 		NumCPU:  runtime.NumCPU(),
 	}
 
+	tempLogs = append(tempLogs, fmt.Sprintf("create sysinfo: %d", time.Since(start)))
+
 	if err = s.SetPriority(priority); err != nil {
 		s.Errors = append(s.Errors, err.Error())
-		return s
+		return s, nil
 	}
+
+	tempLogs = append(tempLogs, fmt.Sprintf("set priority: %d", time.Since(start)))
 
 	s.loggable = true
 
@@ -66,11 +80,15 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 		s.CPU = times[0]
 	}
 
+	tempLogs = append(tempLogs, fmt.Sprintf("cup_times: %d", time.Since(start)))
+
 	vmstat, err := mem.VirtualMemory()
 	s.saveError("vmstat", err)
 	if err == nil && vmstat != nil {
 		s.VMStat = *vmstat
 	}
+
+	tempLogs = append(tempLogs, fmt.Sprintf("virtual_memory: %d", time.Since(start)))
 
 	netstat, err := net.IOCounters(false)
 	s.saveError("netstat", err)
@@ -78,8 +96,12 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 		s.NetStat = netstat[0]
 	}
 
+	tempLogs = append(tempLogs, fmt.Sprintf("netstat: %d", time.Since(start)))
+
 	partitions, err := disk.Partitions(true)
 	s.saveError("disk_part", err)
+
+	tempLogs = append(tempLogs, fmt.Sprintf("disk_part: %d", time.Since(start)))
 
 	if err == nil {
 		var u *disk.UsageStat
@@ -96,13 +118,17 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 		s.Partitions = partitions
 	}
 
+	tempLogs = append(tempLogs, fmt.Sprintf("partition: %d", time.Since(start)))
+
 	iostatMap, err := disk.IOCounters()
 	s.saveError("iostat", err)
 	for _, stat := range iostatMap {
 		s.IOStat = append(s.IOStat, stat)
 	}
 
-	return s
+	tempLogs = append(tempLogs, fmt.Sprintf("iostat: %d", time.Since(start)))
+
+	return s, tempLogs
 }
 
 // Loggable returns true when the Processinfo structure has been

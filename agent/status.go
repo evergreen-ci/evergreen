@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/urfave/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/urfave/negroni"
 )
 
 func (agt *Agent) startStatusServer(port int) {
@@ -96,14 +96,17 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 // buildResponse produces the response document for the current
 // process, and is separate to facilitate testing.
 func buildResponse(opts Options) statusResponse {
+	sysInfo, slogs := message.CollectSystemInfoWithLogging()
 	out := statusResponse{
 		BuildId:    evergreen.BuildRevision,
 		AgentPid:   os.Getpid(),
 		HostId:     opts.HostID,
-		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
+		SystemInfo: sysInfo.(*message.SystemInfo),
 	}
+	grip.Info(slogs)
 
-	psTree := message.CollectProcessInfoSelfWithChildren()
+	psTree, plogs := message.CollectProcessInfoSelfWithLogging()
+	grip.Info(plogs)
 	out.ProcessTree = make([]*message.ProcessInfo, len(psTree))
 	for idx, p := range psTree {
 		out.ProcessTree[idx] = p.(*message.ProcessInfo)
