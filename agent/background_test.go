@@ -5,24 +5,25 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
 )
 
-type BackgroundTestSuite struct {
+type BackgroundSuite struct {
 	suite.Suite
 	a                *Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
 }
 
-func TestBackgroundTestSuite(t *testing.T) {
-	suite.Run(t, new(BackgroundTestSuite))
+func TestBackgroundSuite(t *testing.T) {
+	suite.Run(t, new(BackgroundSuite))
 }
 
-func (s *BackgroundTestSuite) SetupTest() {
+func (s *BackgroundSuite) SetupTest() {
 	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
@@ -41,14 +42,14 @@ func (s *BackgroundTestSuite) SetupTest() {
 	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 }
 
-func (s *BackgroundTestSuite) TestWithCallbackTimeoutDefault() {
+func (s *BackgroundSuite) TestWithCallbackTimeoutDefault() {
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()
 	s.True(deadline.Sub(time.Now()) > (defaultCallbackCmdTimeout - time.Second)) // nolint
 	s.True(ok)
 }
 
-func (s *BackgroundTestSuite) TestWithCallbackTimeoutSetByProject() {
+func (s *BackgroundSuite) TestWithCallbackTimeoutSetByProject() {
 	s.tc.taskConfig.Project.CallbackTimeout = 100
 	ctx, _ := s.a.withCallbackTimeout(context.Background(), s.tc)
 	deadline, ok := ctx.Deadline()
@@ -56,7 +57,7 @@ func (s *BackgroundTestSuite) TestWithCallbackTimeoutSetByProject() {
 	s.True(ok)
 }
 
-func (s *BackgroundTestSuite) TestStartHeartbeat() {
+func (s *BackgroundSuite) TestStartHeartbeat() {
 	s.a.opts.HeartbeatInterval = 10 * time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
@@ -69,7 +70,7 @@ func (s *BackgroundTestSuite) TestStartHeartbeat() {
 	}
 }
 
-func (s *BackgroundTestSuite) TestTaskAbort() {
+func (s *BackgroundSuite) TestTaskAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -80,7 +81,7 @@ func (s *BackgroundTestSuite) TestTaskAbort() {
 	s.Equal(evergreen.TaskUndispatched, beat)
 }
 
-func (s *BackgroundTestSuite) TestMaxHeartbeats() {
+func (s *BackgroundSuite) TestMaxHeartbeats() {
 	s.mockCommunicator.HeartbeatShouldErr = true
 	s.a.opts.HeartbeatInterval = time.Millisecond
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -89,4 +90,17 @@ func (s *BackgroundTestSuite) TestMaxHeartbeats() {
 	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
 	beat := <-heartbeat
 	s.Equal(evergreen.TaskFailed, beat)
+}
+
+func (s *BackgroundSuite) TestGetCurrentTimeout() {
+	cmdFactory, exists := command.GetCommandFactory("shell.exec")
+	s.True(exists)
+	cmd := cmdFactory()
+	s.tc.setCurrentCommand(cmd)
+	s.tc.setCurrentTimeout(time.Second)
+	s.Equal(time.Second, s.tc.getCurrentTimeout())
+}
+
+func (s *BackgroundSuite) TestGetTimeoutDefault() {
+	s.Equal(defaultIdleTimeout, s.tc.getCurrentTimeout())
 }
