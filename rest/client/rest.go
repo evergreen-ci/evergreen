@@ -215,7 +215,7 @@ func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endA
 	return nil
 }
 
-func (c *communicatorImpl) GetDistributionsList(ctx context.Context) (*[]model.APIDistro, error) {
+func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
@@ -228,12 +228,12 @@ func (c *communicatorImpl) GetDistributionsList(ctx context.Context) (*[]model.A
 	}
 	defer resp.Body.Close()
 
-	allDistros := &[]model.APIDistro{}
+	distros := []model.APIDistro{}
 
-	err := util.ReadJSONInto(resp.Body, allDistros)
+	err := util.ReadJSONInto(resp.Body, &distros)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing distribution list")
 	}
 
-	return allDistros, nil
+	return distros, nil
 }

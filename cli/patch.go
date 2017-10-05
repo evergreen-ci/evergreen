@@ -82,14 +82,14 @@ type ListPatchesCommand struct {
 }
 
 type ListCommand struct {
-	GlobalOpts *Options `no-flag:"true"`
-	Project    string   `short:"p" long:"project" description:"project whose variants or tasks should be listed (use with --variants/--tasks)"`
-	File       string   `short:"f" long:"file" description:"path to config file whose variants or tasks should be listed (use with --variants/--tasks)"`
-	Projects   bool     `long:"projects" description:"list all available projects"`
-	Variants   bool     `long:"variants" description:"list all variants for a project"`
-	Tasks      bool     `long:"tasks" description:"list all tasks for a project"`
-	Distros    bool     `long:"distros" description:"list all distros for a project"`
-	Spawnable  bool     `long:"spawnable" description:"list all spawnable distros for a project"`
+	GlobalOpts           *Options `no-flag:"true"`
+	Project              string   `short:"p" long:"project" description:"project whose variants or tasks should be listed (use with --variants/--tasks)"`
+	File                 string   `short:"f" long:"file" description:"path to config file whose variants or tasks should be listed (use with --variants/--tasks)"`
+	Projects             bool     `long:"projects" description:"list all available projects"`
+	Variants             bool     `long:"variants" description:"list all variants for a project"`
+	Tasks                bool     `long:"tasks" description:"list all tasks for a project"`
+	Distros              bool     `long:"distros" description:"list all distros for a project"`
+	UserSpawnableDistros bool     `long:"spawnable" description:"list all spawnable distros for a project"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -429,7 +429,7 @@ func (lgc *LastGreenCommand) Execute(_ []string) error {
 
 func (lc *ListCommand) Execute(_ []string) error {
 	// stop the user from using > 1 type flag
-	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros, lc.Spawnable}
+	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros, lc.UserSpawnableDistros}
 	var numOpts int
 	for _, opt := range opts {
 		if opt {
@@ -449,8 +449,8 @@ func (lc *ListCommand) Execute(_ []string) error {
 	if lc.Variants {
 		return lc.listVariants()
 	}
-	if lc.Distros || lc.Spawnable {
-		return lc.listDistros(lc.Spawnable)
+	if lc.Distros || lc.UserSpawnableDistros {
+		return lc.listDistros(lc.UserSpawnableDistros)
 	}
 	return errors.Errorf("this code should not be reachable")
 }
@@ -500,14 +500,14 @@ func (lc *ListCommand) listDistros(onlyUserSpawnable bool) error {
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
 
-	distros, req_err := client.GetDistributionsList(ctx)
+	distros, req_err := client.GetDistrosList(ctx)
 	if req_err != nil {
 		return errors.WithStack(req_err)
 	}
 
 	if onlyUserSpawnable {
 		spawnableDistros := []restmodel.APIDistro{}
-		for _, distro := range *distros {
+		for _, distro := range distros {
 			if distro.UserSpawnAllowed {
 				spawnableDistros = append(spawnableDistros, distro)
 			}
@@ -519,8 +519,8 @@ func (lc *ListCommand) listDistros(onlyUserSpawnable bool) error {
 		}
 
 	} else {
-		fmt.Println(len(*distros), "distros:")
-		for _, distro := range *distros {
+		fmt.Println(len(distros), "distros:")
+		for _, distro := range distros {
 			fmt.Println(distro.Name)
 		}
 	}

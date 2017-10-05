@@ -122,5 +122,5 @@ type Communicator interface {
 	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
 
 	// Fetch list of distributions evergreen can spawn
-	GetDistributionsList(context.Context) (*[]restmodel.APIDistro, error)
+	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)
 }

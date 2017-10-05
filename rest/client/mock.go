@@ -406,7 +406,7 @@ func (c *Mock) GetSystemInfoLength() int {
 	return length
 }
 
-func (c *Mock) GetDistributionsList(ctx context.Context) (*[]model.APIDistro, error) {
+func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{
 		{
 			Name:             model.APIString("archlinux-build"),
@@ -417,5 +417,5 @@ func (c *Mock) GetDistributionsList(ctx context.Context) (*[]model.APIDistro, er
 			UserSpawnAllowed: false,
 		},
 	}
-	return &mockDistros, nil
+	return mockDistros, nil
 }
