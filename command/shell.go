@@ -211,7 +211,9 @@ func (c *shellExec) Execute(ctx context.Context,
 
 			// try and stop the process
 			if err := localCmd.Stop(); err != nil {
-				logger.Execution().Error(errors.Wrap(err, "error while stopping process"))
+				err := errors.Wrap(err, "error while stopping process")
+				logger.Execution().Error(err)
+				return err
 			}
 		}
 
