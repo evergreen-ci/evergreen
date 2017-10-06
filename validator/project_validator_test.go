@@ -11,6 +11,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 var projectValidatorConf = tu.TestConfig()
@@ -1299,38 +1300,52 @@ func TestCheckProjectSemantics(t *testing.T) {
 }
 
 func TestEnsureHasNecessaryProjectFields(t *testing.T) {
-	Convey("When ensuring necessary project fields are set, ensure that", t, func() {
-		Convey("projects validate all necessary fields exist", func() {
-			Convey("an error should be thrown if the batch_time field is "+
-				"set to a negative value", func() {
-				project := &model.Project{
-					Enabled:     true,
-					Identifier:  "identifier",
-					Owner:       "owner",
-					Repo:        "repo",
-					Branch:      "branch",
-					DisplayName: "test",
-					RepoKind:    "github",
-					BatchTime:   -10,
-				}
-				So(ensureHasNecessaryProjectFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryProjectFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("an error should be thrown if the command type "+
-				"field is invalid", func() {
-				project := &model.Project{
-					BatchTime:   10,
-					CommandType: "random",
-				}
-				So(ensureHasNecessaryProjectFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryProjectFields(project)),
-					ShouldEqual, 1)
-			})
-		})
-	})
+	assert := assert.New(t)
+	{
+		project := &model.Project{
+			Enabled:     true,
+			Identifier:  "identifier",
+			Owner:       "owner",
+			Repo:        "repo",
+			Branch:      "branch",
+			DisplayName: "test",
+			RepoKind:    "github",
+			BatchTime:   -10,
+		}
+		validation := ensureHasNecessaryProjectFields(project)
+
+		assert.Len(validation, 1)
+		assert.Contains(validation[0].Message, "non-negative 'batchtime'",
+			"Project 'batchtime' must not be negative")
+	}
+	{
+		project := &model.Project{
+			BatchTime:   10,
+			CommandType: "random",
+		}
+		validation := ensureHasNecessaryProjectFields(project)
+
+		assert.Len(validation, 1)
+		assert.Contains(validation[0].Message, "invalid command type: random",
+			"Project must not contain unknown or invalid fields")
+	}
+	{
+		project := &model.Project{
+			Enabled:     true,
+			Identifier:  "identifier",
+			Owner:       "owner",
+			Repo:        "repo",
+			Branch:      "branch",
+			DisplayName: "test",
+			RepoKind:    "github",
+			BatchTime:   153722867,
+		}
+		validation := ensureHasNecessaryProjectFields(project)
+
+		assert.Len(validation, 1)
+		assert.Contains(validation[0].Message, "field 'batchtime' must not exceed",
+			"Project 'batchtime' must not exceed 2^42")
+	}
 }
 
 func TestEnsureHasNecessaryBVFields(t *testing.T) {

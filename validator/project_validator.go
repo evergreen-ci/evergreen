@@ -20,6 +20,7 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
+	MaxBatchTime = 140737488355328 // 2 ^ 42
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -307,6 +308,15 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 			ValidationError{
 				Message: fmt.Sprintf("project '%v' must have a "+
 					"non-negative 'batchtime' set", project.Identifier),
+			},
+		)
+	}
+
+	if project.BatchTime > MaxBatchTime {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' field 'batchtime' must not exceed "+
+					"%d (2^42)", project.Identifier, MaxBatchTime),
 			},
 		)
 	}
