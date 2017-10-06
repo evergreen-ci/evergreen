@@ -67,10 +67,10 @@ func TestShellExecuteCommand(t *testing.T) {
 
 		Convey("canceling the context should cancel the command", func() {
 			cmd := &shellExec{
-				Script:     "sleep 5",
+				Script:     "sleep 1",
 				WorkingDir: testutil.GetDirectoryOfFile(),
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
 			defer cancel()
 
 			err := cmd.Execute(ctx, comm, logger, conf)
