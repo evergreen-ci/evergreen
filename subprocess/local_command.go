@@ -103,8 +103,8 @@ func (lc *LocalCommand) Start() error {
 }
 
 func (lc *LocalCommand) Stop() error {
-	lc.mutex.Lock()
-	defer lc.mutex.Unlock()
+	lc.mutex.RLock()
+	defer lc.mutex.RUnlock()
 
 	if lc.cmd != nil && lc.cmd.Process != nil {
 		return lc.cmd.Process.Kill()
