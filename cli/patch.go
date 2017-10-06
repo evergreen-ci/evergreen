@@ -493,12 +493,10 @@ func (lc *ListCommand) listProjects() error {
 
 func (lc *ListCommand) listDistros(onlyUserSpawnable bool) error {
 	ctx := context.Background()
-	client, settings, client_err := getAPIV2Client(ctx, lc.GlobalOpts)
+	client, _, client_err := getAPIV2Client(ctx, lc.GlobalOpts)
 	if client_err != nil {
 		return errors.WithStack(client_err)
 	}
-	client.SetAPIUser(settings.User)
-	client.SetAPIKey(settings.APIKey)
 
 	distros, req_err := client.GetDistrosList(ctx)
 	if req_err != nil {
