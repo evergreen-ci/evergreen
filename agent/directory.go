@@ -23,7 +23,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskConfig *model.TaskConfi
 	h := md5.New()
 
 	_, err := h.Write([]byte(
-		fmt.Sprintf("%s_%d_%d_%d", taskConfig.Task.Id, taskConfig.Task.Execution, os.Getpid(), rand.Float64())))
+		fmt.Sprintf("%s_%d_%d_%f", taskConfig.Task.Id, taskConfig.Task.Execution, os.Getpid(), rand.Float64())))
 	if err != nil {
 		tc.logger.Execution().Errorf("Error creating task directory name: %v", err)
 		return "", err
