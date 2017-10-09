@@ -115,3 +115,23 @@ func (c *ResultCounts) String() string { // nolint: golint
 
 	return c.cachedMessage
 }
+
+// FilterTasksOnStatus tasks in a slice of tasks and removes tasks whose result
+// status do not match the passed-in statuses
+func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
+	l := len(tasks)
+	for i := l - 1; i >= 0; i-- {
+		t := tasks[i]
+		match := false
+		for _, status := range statuses {
+			if t.ResultStatus() == status {
+				match = true
+			}
+		}
+		if !match {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+		}
+	}
+
+	return tasks
+}

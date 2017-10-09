@@ -83,13 +83,16 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
 func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun, onlyRed, onlyPurple bool) (*restModel.RestartTasksResponse, error) {
 	grip.Infof("User %v attempting to restart all failed tasks between %v and %v", user, startTime.String(), endTime.String())
-	tasksRestarted, tasksErrored, err := model.RestartFailedTasks(startTime, endTime, user, dryRun, onlyRed, onlyPurple)
+	results, err := model.RestartFailedTasks(startTime, endTime, user, model.RestartTaskOptions{
+		DryRun:     dryRun,
+		OnlyRed:    onlyRed,
+		OnlyPurple: onlyPurple})
 	if err != nil {
 		return nil, err
 	}
 	return &restModel.RestartTasksResponse{
-		TasksRestarted: tasksRestarted,
-		TasksErrored:   tasksErrored,
+		TasksRestarted: results.TasksRestarted,
+		TasksErrored:   results.TasksErrored,
 	}, nil
 }
 
