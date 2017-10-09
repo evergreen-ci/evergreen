@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -314,11 +313,14 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 	}
 
 	if project.BatchTime > math.MaxInt32 {
-		// We issue a warning instead of a ValidationError for better
-		// backwards compatibility. project_ref will bring the value
-		// down to MaxInt32
-		grip.Warning(fmt.Sprintf("project '%v' field 'batchtime' should not exceed %d (2^32)",
-			project.Identifier, math.MaxInt32))
+		// Error level is warning for backwards compatibility
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' field 'batchtime' should not exceed %d (2^32)",
+					project.Identifier, math.MaxInt32),
+				Level: Warning,
+			},
+		)
 	}
 
 	if project.CommandType != "" {

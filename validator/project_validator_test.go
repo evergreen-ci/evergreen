@@ -1313,10 +1313,10 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 			RepoKind:    "github",
 			BatchTime:   -10,
 		}
-		validation := ensureHasNecessaryProjectFields(project)
+		validationError := ensureHasNecessaryProjectFields(project)
 
-		assert.Len(validation, 1)
-		assert.Contains(validation[0].Message, "non-negative 'batchtime'",
+		assert.Len(validationError, 1)
+		assert.Contains(validationError[0].Message, "non-negative 'batchtime'",
 			"Project 'batchtime' must not be negative")
 	}
 	{
@@ -1324,10 +1324,10 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 			BatchTime:   10,
 			CommandType: "random",
 		}
-		validation := ensureHasNecessaryProjectFields(project)
+		validationError := ensureHasNecessaryProjectFields(project)
 
-		assert.Len(validation, 1)
-		assert.Contains(validation[0].Message, "invalid command type: random",
+		assert.Len(validationError, 1)
+		assert.Contains(validationError[0].Message, "invalid command type: random",
 			"Project must not contain unknown or invalid fields")
 	}
 	{
@@ -1341,10 +1341,11 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 			RepoKind:    "github",
 			BatchTime:   math.MaxInt32 + 1,
 		}
-		validation := ensureHasNecessaryProjectFields(project)
+		validationError := ensureHasNecessaryProjectFields(project)
 
-		assert.Len(validation, 0)
-		// TODO: warning should have been printed, can we detect?
+		assert.Len(validationError, 1)
+		assert.Equal(validationError[0].Level, Warning,
+			"Large batch time validation error should be a warning")
 	}
 }
 
