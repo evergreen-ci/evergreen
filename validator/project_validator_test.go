@@ -1309,7 +1309,7 @@ func TestEnsureHasNecessaryProjectFieldSuite(t *testing.T) {
 	suite.Run(t, new(EnsureHasNecessaryProjectFieldSuite))
 }
 
-func (s *EnsureHasNecessaryProjectFieldSuite) TestBatchTimeValueMustBePositive() {
+func (s *EnsureHasNecessaryProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
 	assert := assert.New(s.T())
 	project := &model.Project{
 		Enabled:     true,
