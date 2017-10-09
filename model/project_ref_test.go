@@ -1,39 +1,61 @@
 package model
 
 import (
+	"math"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
-	Convey("With an existing repository ref", t, func() {
-		testutil.HandleTestingErr(db.Clear(ProjectRefCollection), t,
-			"Error clearing collection")
-		projectRef := &ProjectRef{
-			Owner:      "mongodb",
-			Repo:       "mci",
-			Branch:     "master",
-			RepoKind:   "github",
-			Enabled:    true,
-			BatchTime:  10,
-			Identifier: "ident",
-		}
-		Convey("all fields should be returned accurately for the "+
-			"corresponding project ref", func() {
-			So(projectRef.Insert(), ShouldBeNil)
-			projectRefFromDB, err := FindOneProjectRef("ident")
-			So(err, ShouldBeNil)
-			So(projectRefFromDB, ShouldNotEqual, nil)
-			So(projectRefFromDB.Owner, ShouldEqual, "mongodb")
-			So(projectRefFromDB.Repo, ShouldEqual, "mci")
-			So(projectRefFromDB.Branch, ShouldEqual, "master")
-			So(projectRefFromDB.RepoKind, ShouldEqual, "github")
-			So(projectRefFromDB.Enabled, ShouldEqual, true)
-			So(projectRefFromDB.BatchTime, ShouldEqual, 10)
-			So(projectRefFromDB.Identifier, ShouldEqual, "ident")
-		})
-	})
+	assert := assert.New(t)
+	testutil.HandleTestingErr(db.Clear(ProjectRefCollection), t,
+		"Error clearing collection")
+	projectRef := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "master",
+		RepoKind:   "github",
+		Enabled:    true,
+		BatchTime:  10,
+		Identifier: "ident",
+	}
+	assert.Nil(projectRef.Insert())
+
+	projectRefFromDB, err := FindOneProjectRef("ident")
+	assert.Nil(err)
+	assert.NotNil(projectRefFromDB)
+
+	assert.Equal(projectRef.Owner, "mongodb")
+	assert.Equal(projectRef.Repo, "mci")
+	assert.Equal(projectRef.Branch, "master")
+	assert.Equal(projectRef.RepoKind, "github")
+	assert.Equal(projectRef.Enabled, true)
+	assert.Equal(projectRef.BatchTime, 10)
+	assert.Equal(projectRef.Identifier, "ident")
+}
+
+func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
+	assert := assert.New(t)
+	projectRef := &ProjectRef{
+		Owner:      "mongodb",
+		Repo:       "mci",
+		Branch:     "master",
+		RepoKind:   "github",
+		Enabled:    true,
+		BatchTime:  math.MaxInt64,
+		Identifier: "ident",
+	}
+
+	emptyVariant := &BuildVariant{}
+
+	assert.Equal(projectRef.GetBatchTime(emptyVariant), math.MaxInt32,
+		"ProjectRef.GetBatchTime() is not capping BatchTime to MaxInt32")
+
+	projectRef.BatchTime = 55
+	assert.Equal(projectRef.GetBatchTime(emptyVariant), 55,
+		"ProjectRef.GetBatchTime() is not returning the correct BatchTime")
+
 }

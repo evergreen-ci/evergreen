@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -307,6 +308,19 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 			ValidationError{
 				Message: fmt.Sprintf("project '%v' must have a "+
 					"non-negative 'batchtime' set", project.Identifier),
+			},
+		)
+	}
+
+	if project.BatchTime > math.MaxInt32 {
+		// Error level is warning for backwards compatibility with
+		// existing projects. This value will be capped at MaxInt32
+		// in ProjectRef.GetBatchTime()
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%s' field 'batchtime' should not exceed %d)",
+					project.Identifier, math.MaxInt32),
+				Level: Warning,
 			},
 		)
 	}

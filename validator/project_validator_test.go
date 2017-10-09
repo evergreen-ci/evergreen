@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"math"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 )
 
 var projectValidatorConf = tu.TestConfig()
@@ -1298,39 +1300,53 @@ func TestCheckProjectSemantics(t *testing.T) {
 	})
 }
 
-func TestEnsureHasNecessaryProjectFields(t *testing.T) {
-	Convey("When ensuring necessary project fields are set, ensure that", t, func() {
-		Convey("projects validate all necessary fields exist", func() {
-			Convey("an error should be thrown if the batch_time field is "+
-				"set to a negative value", func() {
-				project := &model.Project{
-					Enabled:     true,
-					Identifier:  "identifier",
-					Owner:       "owner",
-					Repo:        "repo",
-					Branch:      "branch",
-					DisplayName: "test",
-					RepoKind:    "github",
-					BatchTime:   -10,
-				}
-				So(ensureHasNecessaryProjectFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryProjectFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("an error should be thrown if the command type "+
-				"field is invalid", func() {
-				project := &model.Project{
-					BatchTime:   10,
-					CommandType: "random",
-				}
-				So(ensureHasNecessaryProjectFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryProjectFields(project)),
-					ShouldEqual, 1)
-			})
-		})
-	})
+type EnsureHasNecessaryProjectFieldSuite struct {
+	suite.Suite
+	project model.Project
+}
+
+func TestEnsureHasNecessaryProjectFieldSuite(t *testing.T) {
+	suite.Run(t, new(EnsureHasNecessaryProjectFieldSuite))
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) SetupTest() {
+	s.project = model.Project{
+		Enabled:     true,
+		Identifier:  "identifier",
+		Owner:       "owner",
+		Repo:        "repo",
+		Branch:      "branch",
+		DisplayName: "test",
+		RepoKind:    "github",
+		BatchTime:   10,
+	}
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) TestBatchTimeValueMustNonNegative() {
+	s.project.BatchTime = -10
+	validationError := ensureHasNecessaryProjectFields(&s.project)
+
+	s.Len(validationError, 1)
+	s.Contains(validationError[0].Message, "non-negative 'batchtime'",
+		"Project 'batchtime' must not be negative")
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) TestFailOnInvalidCommandType() {
+	s.project.CommandType = "random"
+	validationError := ensureHasNecessaryProjectFields(&s.project)
+
+	s.Len(validationError, 1)
+	s.Contains(validationError[0].Message, "invalid command type: random",
+		"Project 'CommandType' must be valid")
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
+	s.project.BatchTime = math.MaxInt32 + 1
+	validationError := ensureHasNecessaryProjectFields(&s.project)
+
+	s.Len(validationError, 1)
+	s.Equal(validationError[0].Level, Warning,
+		"Large batch time validation error should be a warning")
 }
 
 func TestEnsureHasNecessaryBVFields(t *testing.T) {
