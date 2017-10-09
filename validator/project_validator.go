@@ -314,10 +314,11 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 
 	if project.BatchTime > math.MaxInt32 {
 		// Error level is warning for backwards compatibility with
-		// existing projects
+		// existing projects. This value will be capped at MaxInt32
+		// in ProjectRef.GetBatchTime()
 		errs = append(errs,
 			ValidationError{
-				Message: fmt.Sprintf("project '%v' field 'batchtime' should not exceed %d)",
+				Message: fmt.Sprintf("project '%s' field 'batchtime' should not exceed %d)",
 					project.Identifier, math.MaxInt32),
 				Level: Warning,
 			},
