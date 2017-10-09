@@ -18,6 +18,7 @@ type TimeoutSuite struct {
 	mockCommunicator *client.Mock
 	tmpFile          *os.File
 	tmpFileName      string
+	tmpDirName       string
 }
 
 func TestTimeoutSuite(t *testing.T) {
@@ -35,10 +36,11 @@ func (s *TimeoutSuite) SetupTest() {
 		comm: client.NewMock("url"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
+	var err error
 
-	wd, err := os.Getwd()
+	s.tmpDirName, err = ioutil.TempDir("", "agent-timeout-suite-")
 	s.Require().NoError(err)
-	s.tmpFile, err = ioutil.TempFile(wd, "timeout")
+	s.tmpFile, err = ioutil.TempFile(s.tmpDirName, "timeout")
 	s.Require().NoError(err)
 
 	s.tmpFileName = s.tmpFile.Name()
@@ -48,8 +50,8 @@ func (s *TimeoutSuite) SetupTest() {
 }
 
 func (s *TimeoutSuite) TearDownTest() {
-	err := os.Remove(s.tmpFileName)
-	s.Require().NoError(err)
+	s.Require().NoError(os.Remove(s.tmpFileName))
+	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
 // TestExecTimeoutProject tests exec_timeout_secs set on a project.
