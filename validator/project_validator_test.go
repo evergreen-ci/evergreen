@@ -13,6 +13,7 @@ import (
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 var projectValidatorConf = tu.TestConfig()
@@ -1300,53 +1301,63 @@ func TestCheckProjectSemantics(t *testing.T) {
 	})
 }
 
-func TestEnsureHasNecessaryProjectFields(t *testing.T) {
-	assert := assert.New(t)
-	{
-		project := &model.Project{
-			Enabled:     true,
-			Identifier:  "identifier",
-			Owner:       "owner",
-			Repo:        "repo",
-			Branch:      "branch",
-			DisplayName: "test",
-			RepoKind:    "github",
-			BatchTime:   -10,
-		}
-		validationError := ensureHasNecessaryProjectFields(project)
+type EnsureHasNecessaryProjectFieldSuite struct {
+	suite.Suite
+}
 
-		assert.Len(validationError, 1)
-		assert.Contains(validationError[0].Message, "non-negative 'batchtime'",
-			"Project 'batchtime' must not be negative")
-	}
-	{
-		project := &model.Project{
-			BatchTime:   10,
-			CommandType: "random",
-		}
-		validationError := ensureHasNecessaryProjectFields(project)
+func TestEnsureHasNecessaryProjectFieldSuite(t *testing.T) {
+	suite.Run(t, new(EnsureHasNecessaryProjectFieldSuite))
+}
 
-		assert.Len(validationError, 1)
-		assert.Contains(validationError[0].Message, "invalid command type: random",
-			"Project 'CommandType' must be valid")
+func (s *EnsureHasNecessaryProjectFieldSuite) TestBatchTimeValueMustBePositive() {
+	assert := assert.New(s.T())
+	project := &model.Project{
+		Enabled:     true,
+		Identifier:  "identifier",
+		Owner:       "owner",
+		Repo:        "repo",
+		Branch:      "branch",
+		DisplayName: "test",
+		RepoKind:    "github",
+		BatchTime:   -10,
 	}
-	{
-		project := &model.Project{
-			Enabled:     true,
-			Identifier:  "identifier",
-			Owner:       "owner",
-			Repo:        "repo",
-			Branch:      "branch",
-			DisplayName: "test",
-			RepoKind:    "github",
-			BatchTime:   math.MaxInt32 + 1,
-		}
-		validationError := ensureHasNecessaryProjectFields(project)
+	validationError := ensureHasNecessaryProjectFields(project)
 
-		assert.Len(validationError, 1)
-		assert.Equal(validationError[0].Level, Warning,
-			"Large batch time validation error should be a warning")
+	assert.Len(validationError, 1)
+	assert.Contains(validationError[0].Message, "non-negative 'batchtime'",
+		"Project 'batchtime' must not be negative")
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) TestFailOnInvalidCommandType() {
+	assert := assert.New(s.T())
+	project := &model.Project{
+		BatchTime:   10,
+		CommandType: "random",
 	}
+	validationError := ensureHasNecessaryProjectFields(project)
+
+	assert.Len(validationError, 1)
+	assert.Contains(validationError[0].Message, "invalid command type: random",
+		"Project 'CommandType' must be valid")
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) TestWarnOnLargeBatchTimeValue() {
+	assert := assert.New(s.T())
+	project := &model.Project{
+		Enabled:     true,
+		Identifier:  "identifier",
+		Owner:       "owner",
+		Repo:        "repo",
+		Branch:      "branch",
+		DisplayName: "test",
+		RepoKind:    "github",
+		BatchTime:   math.MaxInt32 + 1,
+	}
+	validationError := ensureHasNecessaryProjectFields(project)
+
+	assert.Len(validationError, 1)
+	assert.Equal(validationError[0].Level, Warning,
+		"Large batch time validation error should be a warning")
 }
 
 func TestEnsureHasNecessaryBVFields(t *testing.T) {
