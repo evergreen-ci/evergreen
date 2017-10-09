@@ -16,6 +16,7 @@ type CommandTestSuite struct {
 	suite.Suite
 	a                Agent
 	mockCommunicator *client.Mock
+	tmpDirName       string
 }
 
 func TestCommandTestSuite(t *testing.T) {
@@ -33,12 +34,18 @@ func (s *CommandTestSuite) SetupTest() {
 		comm: client.NewMock("url"),
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
+
+	var err error
+	s.tmpDirName, err = ioutil.TempDir("", "agent-command-suite-")
+	s.Require().NoError(err)
+}
+
+func (s *CommandTestSuite) TearDownTest() {
+	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
 func (s *CommandTestSuite) TestShellExec() {
-	wd, err := os.Getwd()
-	s.Require().NoError(err)
-	f, err := ioutil.TempFile(wd, "shell-exec-")
+	f, err := ioutil.TempFile(s.tmpDirName, "shell-exec-")
 	s.Require().NoError(err)
 	defer os.Remove(f.Name())
 
