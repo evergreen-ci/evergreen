@@ -1328,7 +1328,7 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 
 		assert.Len(validationError, 1)
 		assert.Contains(validationError[0].Message, "invalid command type: random",
-			"Project must not contain unknown or invalid fields")
+			"Project 'CommandType' must be valid")
 	}
 	{
 		project := &model.Project{
