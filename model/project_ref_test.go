@@ -38,6 +38,7 @@ func TestFindOneProjectRef(t *testing.T) {
 }
 
 func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
+	assert := assert.New(t)
 	projectRef := &ProjectRef{
 		Owner:      "mongodb",
 		Repo:       "mci",
@@ -48,6 +49,13 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 		Identifier: "ident",
 	}
 
-	assert.Equal(t, projectRef.GetBatchTime(&BuildVariant{}), math.MaxInt32,
+	emptyVariant := &BuildVariant{}
+
+	assert.Equal(projectRef.GetBatchTime(emptyVariant), math.MaxInt32,
 		"ProjectRef.GetBatchTime() is not capping BatchTime to MaxInt32")
+
+	projectRef.BatchTime = 55
+	assert.Equal(projectRef.GetBatchTime(emptyVariant), 55,
+		"ProjectRef.GetBatchTime() is not returning the correct BatchTime")
+
 }
