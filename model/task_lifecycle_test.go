@@ -971,6 +971,7 @@ func TestFailedTaskRestart(t *testing.T) {
 		Project:   "sample",
 		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:    evergreen.TaskFailed,
+		Details:   apimodels.TaskEndDetail{Type: "system"},
 	}
 	testTask2 := &task.Task{
 		Id:        "taskThatSucceeded",
@@ -989,6 +990,7 @@ func TestFailedTaskRestart(t *testing.T) {
 		Project:   "sample",
 		StartTime: time.Date(2017, time.June, 11, 12, 0, 0, 0, time.Local),
 		Status:    evergreen.TaskFailed,
+		Details:   apimodels.TaskEndDetail{Type: "test"},
 	}
 	p := &ProjectRef{
 		Identifier: "sample",
@@ -1012,9 +1014,23 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(testTask3.Insert())
 	assert.NoError(p.Insert())
 
-	startTime := time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
+	// test a dry run getting only red or purple tasks
+	startTime := time.Date(2017, time.June, 11, 11, 0, 0, 0, time.Local)
 	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
-	tasksRestarted, tasksErrored, err := RestartFailedTasks(startTime, endTime, userName, false)
+	tasksRestarted, tasksErrored, err := RestartFailedTasks(startTime, endTime, userName, true, true, false)
+	assert.NoError(err)
+	assert.Nil(tasksErrored)
+	assert.Equal(1, len(tasksRestarted))
+	assert.Equal("taskOutsideOfTimeRange", tasksRestarted[0])
+	tasksRestarted, tasksErrored, err = RestartFailedTasks(startTime, endTime, userName, true, false, true)
+	assert.NoError(err)
+	assert.Nil(tasksErrored)
+	assert.Equal(1, len(tasksRestarted))
+	assert.Equal("taskToRestart", tasksRestarted[0])
+
+	// test restarting all tasks
+	startTime = time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
+	tasksRestarted, tasksErrored, err = RestartFailedTasks(startTime, endTime, userName, false, false, false)
 	assert.NoError(err)
 	assert.Equal(0, len(tasksErrored))
 	assert.Equal(1, len(tasksRestarted))

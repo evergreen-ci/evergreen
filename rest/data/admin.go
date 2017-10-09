@@ -81,9 +81,9 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) (*restModel.RestartTasksResponse, error) {
+func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun, onlyRed, onlyPurple bool) (*restModel.RestartTasksResponse, error) {
 	grip.Infof("User %v attempting to restart all failed tasks between %v and %v", user, startTime.String(), endTime.String())
-	tasksRestarted, tasksErrored, err := model.RestartFailedTasks(startTime, endTime, user, dryRun)
+	tasksRestarted, tasksErrored, err := model.RestartFailedTasks(startTime, endTime, user, dryRun, onlyRed, onlyPurple)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.
 }
 
 // RestartFailedTasks mocks a response to restarting failed tasks
-func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) (*restModel.RestartTasksResponse, error) {
+func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, dryRun, onlyRed, onlyPurple bool) (*restModel.RestartTasksResponse, error) {
 	var tasksErrored []string
 	if !dryRun {
 		tasksErrored = []string{"task4", "task5"}

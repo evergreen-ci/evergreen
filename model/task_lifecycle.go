@@ -612,11 +612,37 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
 // It returns a slice of task IDs that were successfully restarted as well as a slice
 // of task IDs that failed to restart
-func RestartFailedTasks(startTime, endTime time.Time, user string, dryRun bool) ([]string, []string, error) {
+// the dryRun parameter will return the tasks that will be restarted if sent true
+// the red and purple params will only restart tasks that were failed due to the test
+// or due to the system, respectively
+func RestartFailedTasks(startTime, endTime time.Time, user string,
+	dryRun, onlyRed, onlyPurple bool) ([]string, []string, error) {
+	if onlyRed && onlyPurple {
+		onlyRed = false
+		onlyPurple = false
+	}
 	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(startTime, endTime))
 	if err != nil {
 		return nil, nil, err
 	}
+	// if only want red or purple, remove the other color tasks from the slice
+	if onlyRed || onlyPurple {
+		l := len(tasksToRestart)
+		for i := l - 1; i >= 0; i-- {
+			t := tasksToRestart[i]
+			switch t.ResultStatus() {
+			case evergreen.TaskSystemFailed, evergreen.TaskSystemTimedOut, evergreen.TaskSystemUnresponse:
+				if onlyRed {
+					tasksToRestart = append(tasksToRestart[:i], tasksToRestart[i+1:]...)
+				}
+			case evergreen.TaskFailed, evergreen.TaskTestTimedOut:
+				if onlyPurple {
+					tasksToRestart = append(tasksToRestart[:i], tasksToRestart[i+1:]...)
+				}
+			}
+		}
+	}
+
 	tasksRestarted := make([]string, 0)
 	var tasksErrored []string
 	if !dryRun {
