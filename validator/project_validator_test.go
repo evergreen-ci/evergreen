@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"math"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -1338,13 +1339,12 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 			Branch:      "branch",
 			DisplayName: "test",
 			RepoKind:    "github",
-			BatchTime:   153722867,
+			BatchTime:   math.MaxInt32 + 1,
 		}
 		validation := ensureHasNecessaryProjectFields(project)
 
-		assert.Len(validation, 1)
-		assert.Contains(validation[0].Message, "field 'batchtime' must not exceed",
-			"Project 'batchtime' must not exceed 2^42")
+		assert.Len(validation, 0)
+		// TODO: warning should have been printed, can we detect?
 	}
 }
 

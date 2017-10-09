@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +22,6 @@ type ValidationErrorLevel int64
 const (
 	Error ValidationErrorLevel = iota
 	Warning
-	MaxBatchTime = 140737488355328 // 2 ^ 42
 )
 
 func (vel ValidationErrorLevel) String() string {
@@ -312,13 +313,12 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 		)
 	}
 
-	if project.BatchTime > MaxBatchTime {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project '%v' field 'batchtime' must not exceed "+
-					"%d (2^42)", project.Identifier, MaxBatchTime),
-			},
-		)
+	if project.BatchTime > math.MaxInt32 {
+		// We issue a warning instead of a ValidationError for better
+		// backwards compatibility. project_ref will bring the value
+		// down to MaxInt32
+		grip.Warning(fmt.Sprintf("project '%v' field 'batchtime' should not exceed %d (2^32)",
+			project.Identifier, math.MaxInt32))
 	}
 
 	if project.CommandType != "" {
