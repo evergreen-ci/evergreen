@@ -71,11 +71,12 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				tc.setCurrentCommand(cmd)
 				tc.setCurrentTimeout(a.getTimeout(cmd))
 				a.comm.UpdateLastMessageTime()
+			} else {
+				tc.setCurrentTimeout(defaultIdleTimeout)
 			}
 
 			start := time.Now()
 			err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
-			tc.setCurrentTimeout(defaultIdleTimeout)
 
 			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
 			if err != nil {
