@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -81,13 +82,14 @@ type ListPatchesCommand struct {
 }
 
 type ListCommand struct {
-	GlobalOpts *Options `no-flag:"true"`
-	Project    string   `short:"p" long:"project" description:"project whose variants or tasks should be listed (use with --variants/--tasks)"`
-	File       string   `short:"f" long:"file" description:"path to config file whose variants or tasks should be listed (use with --variants/--tasks)"`
-	Projects   bool     `long:"projects" description:"list all available projects"`
-	Variants   bool     `long:"variants" description:"list all variants for a project"`
-	Tasks      bool     `long:"tasks" description:"list all tasks for a project"`
-	Distros    bool     `long:"distros" description:"list all distros for a project"`
+	GlobalOpts           *Options `no-flag:"true"`
+	Project              string   `short:"p" long:"project" description:"project whose variants or tasks should be listed (use with --variants/--tasks)"`
+	File                 string   `short:"f" long:"file" description:"path to config file whose variants or tasks should be listed (use with --variants/--tasks)"`
+	Projects             bool     `long:"projects" description:"list all available projects"`
+	Variants             bool     `long:"variants" description:"list all variants for a project"`
+	Tasks                bool     `long:"tasks" description:"list all tasks for a project"`
+	Distros              bool     `long:"distros" description:"list all distros for a project"`
+	UserSpawnableDistros bool     `long:"spawnable" description:"list all spawnable distros for a project"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -427,7 +429,7 @@ func (lgc *LastGreenCommand) Execute(_ []string) error {
 
 func (lc *ListCommand) Execute(_ []string) error {
 	// stop the user from using > 1 type flag
-	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros}
+	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros, lc.UserSpawnableDistros}
 	var numOpts int
 	for _, opt := range opts {
 		if opt {
@@ -435,7 +437,7 @@ func (lc *ListCommand) Execute(_ []string) error {
 		}
 	}
 	if numOpts != 1 {
-		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, or --distros")
+		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, --distros, or --spawnable")
 	}
 
 	if lc.Projects {
@@ -447,8 +449,8 @@ func (lc *ListCommand) Execute(_ []string) error {
 	if lc.Variants {
 		return lc.listVariants()
 	}
-	if lc.Distros {
-		return lc.listDistros()
+	if lc.Distros || lc.UserSpawnableDistros {
+		return lc.listDistros(lc.UserSpawnableDistros)
 	}
 	return errors.Errorf("this code should not be reachable")
 }
@@ -489,22 +491,38 @@ func (lc *ListCommand) listProjects() error {
 	return errors.WithStack(w.Flush())
 }
 
-func (lc *ListCommand) listDistros() error {
+func (lc *ListCommand) listDistros(onlyUserSpawnable bool) error {
 	ctx := context.Background()
-	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
-	if err != nil {
-		return errors.WithStack(err)
+	client, _, client_err := getAPIV2Client(ctx, lc.GlobalOpts)
+	if client_err != nil {
+		return errors.WithStack(client_err)
 	}
-	notifyUserUpdate(ac)
 
-	distros, err := ac.ListDistros()
-	if err != nil {
-		return err
+	distros, req_err := client.GetDistrosList(ctx)
+	if req_err != nil {
+		return errors.WithStack(req_err)
 	}
-	fmt.Println(len(distros), "distros:")
-	for _, distro := range distros {
-		fmt.Println(distro.Id)
+
+	if onlyUserSpawnable {
+		spawnableDistros := []restmodel.APIDistro{}
+		for _, distro := range distros {
+			if distro.UserSpawnAllowed {
+				spawnableDistros = append(spawnableDistros, distro)
+			}
+		}
+
+		fmt.Println(len(spawnableDistros), "spawnable distros:")
+		for _, distro := range spawnableDistros {
+			fmt.Println(distro.Name)
+		}
+
+	} else {
+		fmt.Println(len(distros), "distros:")
+		for _, distro := range distros {
+			fmt.Println(distro.Name)
+		}
 	}
+
 	return nil
 }
 

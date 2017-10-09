@@ -405,3 +405,17 @@ func (c *Mock) GetSystemInfoLength() int {
 	c.mu.RUnlock()
 	return length
 }
+
+func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
+	mockDistros := []model.APIDistro{
+		{
+			Name:             model.APIString("archlinux-build"),
+			UserSpawnAllowed: true,
+		},
+		{
+			Name:             model.APIString("baas-linux"),
+			UserSpawnAllowed: false,
+		},
+	}
+	return mockDistros, nil
+}
