@@ -151,16 +151,19 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 			continue
 		}
 
-		cmd := factory()
-		if err = cmd.ParseParams(c.Params); err != nil {
+		command := factory()
+		if err = command.ParseParams(c.Params); err != nil {
 			errs = append(errs, "problem parsing input of %s (%s)", c.Command, c.DisplayName)
 			continue
 		}
-		cmd.SetType(c.Type)
-		cmd.SetDisplayName(c.DisplayName)
-		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
+		command.SetType(c.Type)
+		command.SetDisplayName(c.DisplayName)
+		command.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
+		if cmd.TimeoutSecs > 0 {
+			command.SetIdleTimeout(time.Duration(cmd.TimeoutSecs) * time.Second)
+		}
 
-		out = append(out, cmd)
+		out = append(out, command)
 	}
 
 	if len(errs) > 0 {

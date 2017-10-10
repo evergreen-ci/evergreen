@@ -174,8 +174,10 @@ func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, e
 		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "exec_timeout_project.yaml"))
 	case "exec_timeout_task":
 		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "exec_timeout_task.yaml"))
-	case "idle_timeout":
-		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout.yaml"))
+	case "idle_timeout_func":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout_func.yaml"))
+	case "idle_timeout_task":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout_task.yaml"))
 	}
 	if err != nil {
 		panic(err)

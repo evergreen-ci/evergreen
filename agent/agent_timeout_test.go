@@ -168,13 +168,68 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	s.Equal(taskSecret, taskData.Secret)
 }
 
-// TestIdleTimeout tests timeout_secs set on a command. timeout_secs has an effect
-// only on commands.
-func (s *TimeoutSuite) TestIdleTimeout() {
+// TestIdleTimeoutFunc tests timeout_secs set in a function.
+func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	taskID := "idle_timeout"
+	taskID := "idle_timeout_func"
+	taskSecret := "mock_task_secret"
+	tc := &taskContext{
+		task: client.TaskData{
+			ID:     taskID,
+			Secret: taskSecret,
+		},
+	}
+	err := s.a.resetLogging(ctx, tc)
+	s.NoError(err)
+	err = s.a.runTask(ctx, tc)
+	s.NoError(err)
+
+	messages := s.mockCommunicator.GetMockMessages()
+	s.Len(messages, 1)
+	foundSuccessLogMessage := false
+	foundShellLogMessage := false
+	foundTimeoutMessage := false
+	for _, msg := range messages[taskID] {
+		if msg.Message == "Task completed - FAILURE." {
+			foundSuccessLogMessage = true
+		}
+		if strings.HasPrefix(msg.Message, "Hit idle timeout (no message on stdout for more than 1s)") {
+			foundTimeoutMessage = true
+		}
+		if strings.HasPrefix(msg.Message, "Running task-timeout commands") {
+			foundShellLogMessage = true
+		}
+		if strings.HasPrefix(msg.Message, "Finished 'shell.exec' in \"timeout\"") {
+			foundShellLogMessage = true
+		}
+	}
+	s.True(foundSuccessLogMessage)
+	s.True(foundShellLogMessage)
+	s.True(foundTimeoutMessage)
+
+	detail := s.mockCommunicator.GetEndTaskDetail()
+	s.Equal(evergreen.TaskFailed, detail.Status)
+	s.Equal("test", detail.Type)
+	s.Contains(detail.Description, "shell.exec")
+	s.True(detail.TimedOut)
+
+	data, err := ioutil.ReadFile(s.tmpFileName)
+	s.Require().NoError(err)
+	s.Equal("timeout test message", strings.Trim(string(data), "\r\n"))
+
+	taskData := s.mockCommunicator.EndTaskResult.TaskData
+	s.Equal(taskID, taskData.ID)
+	s.Equal(taskSecret, taskData.Secret)
+}
+
+// TestIdleTimeout tests timeout_secs set on a function in a command.
+func (s *TimeoutSuite) TestIdleTimeoutCommand() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	taskID := "idle_timeout_task"
 	taskSecret := "mock_task_secret"
 	tc := &taskContext{
 		task: client.TaskData{
