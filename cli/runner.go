@@ -10,6 +10,7 @@ import (
 
 	// import the plugins here so that they're loaded for use in
 	// the repotracker which needs them to do command validation.
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
@@ -73,6 +74,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	defer cancel()
 	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
+	go hostStatsCollector(ctx)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	// just run a single runner if only one was passed in.
@@ -97,7 +99,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 }
 
 func taskStatsCollector(ctx context.Context) {
-	defer util.RecoverLogStackTraceAndContinue("stats collector")
+	defer util.RecoverLogStackTraceAndContinue("task stats collector")
 	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -105,7 +107,7 @@ func taskStatsCollector(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("system logging operation canceled")
+			grip.Info("task stats logging operation canceled")
 			return
 		case <-timer.C:
 			tasks, err := task.GetRecentTasks(interval)
@@ -116,6 +118,35 @@ func taskStatsCollector(ctx context.Context) {
 			}
 
 			grip.Info(task.GetResultCounts(tasks))
+			timer.Reset(interval)
+		}
+	}
+}
+
+func hostStatsCollector(ctx context.Context) {
+	defer util.RecoverLogStackTraceAndContinue("host stats collector")
+	const interval = time.Minute
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			grip.Info("host status logging operation canceled")
+			return
+		case <-timer.C:
+			hosts, err := host.GetStatsByDistro()
+			if err != nil {
+				grip.Warningf("problem getting host stats: %s", err.Error())
+				timer.Reset(interval)
+				continue
+			}
+
+			grip.Info(message.Fields{
+				"report": "host stats by distro",
+				"data":   host.PivotStatsByDistro(hosts),
+			})
+
 			timer.Reset(interval)
 		}
 	}

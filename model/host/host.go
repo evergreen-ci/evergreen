@@ -83,15 +83,15 @@ type ProvisionOptions struct {
 	OwnerId string `bson:"owner_id" json:"owner_id"`
 }
 
-type HostStatsByDistro struct {
+type StatsByDistro struct {
 	// ID of the distro the below stats are for
-	Distro string `bson:"distro"`
+	Distro string `bson:"distro" json:"distro,omitempty"`
 	// Host status that the below stats are for
-	Status string `bson:"status"`
+	Status string `bson:"status" json:"status"`
 	// Number of hosts in this status
-	Count int `bson:"count"`
+	Count int `bson:"count" json:"count"`
 	// Number of tasks running on hosts in the above group (should only be nonzero for running hosts)
-	NumTasks int `bson:"num_tasks_running"`
+	NumTasks int `bson:"num_tasks_running" json:"num_tasks_running"`
 }
 
 const (
@@ -581,11 +581,23 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
-// GetHostStatsByDistro returns counts of up hosts broken down by distro
-func GetHostStatsByDistro() ([]HostStatsByDistro, error) {
-	stats := []HostStatsByDistro{}
-	if err := db.Aggregate(Collection, hostStatsByDistroPipeline(), &stats); err != nil {
+// GetStatsByDistro returns counts of up hosts broken down by distro
+func GetStatsByDistro() ([]StatsByDistro, error) {
+	stats := []StatsByDistro{}
+	if err := db.Aggregate(Collection, statsByDistroPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil
+}
+
+func PivotStatsByDistro(hosts []StatsByDistro) map[string]StatsByDistro {
+	out := make(map[string]StatsByDistro)
+	var name string
+	for _, h := range hosts {
+		name = h.Distro
+		h.Distro = ""
+		out[name] = h
+	}
+	return out
+
 }

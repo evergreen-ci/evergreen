@@ -26,8 +26,8 @@ func (c *DBStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.Res
 }
 
 // GetHostStatsByDistro returns counts of up hosts broken down by distro
-func (c *DBStatusConnector) GetHostStatsByDistro() ([]host.HostStatsByDistro, error) {
-	return host.GetHostStatsByDistro()
+func (c *DBStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error) {
+	return host.GetStatsByDistro()
 }
 
 // MockStatusConnector is a struct that implements mock versions of
@@ -35,7 +35,7 @@ func (c *DBStatusConnector) GetHostStatsByDistro() ([]host.HostStatsByDistro, er
 type MockStatusConnector struct {
 	CachedTasks     []task.Task
 	CachedResults   *task.ResultCounts
-	CachedHostStats []host.HostStatsByDistro
+	CachedHostStats []host.StatsByDistro
 }
 
 // FindRecentTasks is a mock implementation for testing.
@@ -44,6 +44,6 @@ func (c *MockStatusConnector) FindRecentTasks(minutes int) ([]task.Task, *task.R
 }
 
 // GetHostStatsByDistro returns mock stats for hosts broken down by distro
-func (c *MockStatusConnector) GetHostStatsByDistro() ([]host.HostStatsByDistro, error) {
+func (c *MockStatusConnector) GetHostStatsByDistro() ([]host.StatsByDistro, error) {
 	return c.CachedHostStats, nil
 }
