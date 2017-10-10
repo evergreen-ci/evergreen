@@ -2,7 +2,7 @@ package distro
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
 )
 

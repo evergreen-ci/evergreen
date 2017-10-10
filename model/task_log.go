@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

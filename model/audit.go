@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"

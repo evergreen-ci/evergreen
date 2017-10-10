@@ -17,7 +17,7 @@ import (
 
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"

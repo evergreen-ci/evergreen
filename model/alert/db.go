@@ -1,7 +1,7 @@
 package alert
 
 import (
-	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/mongodb/anser/bsonutil"
 )
 
 const (
