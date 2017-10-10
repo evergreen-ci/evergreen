@@ -106,7 +106,7 @@ func (r *commandRegistry) getCommandFactory(name string) (CommandFactory, bool) 
 	return factory, ok
 }
 
-func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
+func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 	funcs map[string]*model.YAMLCommandSet) ([]Command, error) {
 
 	var (
@@ -116,7 +116,7 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 		err    error
 	)
 
-	if name := cmd.Function; name != "" {
+	if name := commandInfo.Function; name != "" {
 		cmds, ok := funcs[name]
 		if !ok {
 			errs = append(errs, fmt.Sprintf("function '%s' not found in project functions", name))
@@ -130,18 +130,22 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 
 				// if no command specific type, use the function's command type
 				if c.Type == "" {
-					c.Type = cmd.Type
+					c.Type = commandInfo.Type
 				}
 
 				if c.DisplayName == "" {
 					c.DisplayName = fmt.Sprintf(`'%v' in "%v"`, c.Command, name)
 				}
 
+				if c.TimeoutSecs == 0 {
+					c.TimeoutSecs = commandInfo.TimeoutSecs
+				}
+
 				parsed = append(parsed, c)
 			}
 		}
 	} else {
-		parsed = append(parsed, cmd)
+		parsed = append(parsed, commandInfo)
 	}
 
 	for _, c := range parsed {
@@ -151,19 +155,16 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 			continue
 		}
 
-		command := factory()
-		if err = command.ParseParams(c.Params); err != nil {
+		cmd := factory()
+		if err = cmd.ParseParams(c.Params); err != nil {
 			errs = append(errs, "problem parsing input of %s (%s)", c.Command, c.DisplayName)
 			continue
 		}
-		command.SetType(c.Type)
-		command.SetDisplayName(c.DisplayName)
-		command.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
-		if cmd.TimeoutSecs > 0 {
-			command.SetIdleTimeout(time.Duration(cmd.TimeoutSecs) * time.Second)
-		}
+		cmd.SetType(c.Type)
+		cmd.SetDisplayName(c.DisplayName)
+		cmd.SetIdleTimeout(time.Duration(c.TimeoutSecs) * time.Second)
 
-		out = append(out, command)
+		out = append(out, cmd)
 	}
 
 	if len(errs) > 0 {
