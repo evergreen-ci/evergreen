@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	dataModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -244,9 +245,11 @@ func getRestartRouteManager(route string, version int) *RouteManager {
 }
 
 type restartHandler struct {
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	DryRun    bool      `json:"dry_run"`
+	StartTime  time.Time `json:"start_time"`
+	EndTime    time.Time `json:"end_time"`
+	DryRun     bool      `json:"dry_run"`
+	OnlyRed    bool      `json:"only_red"`
+	OnlyPurple bool      `json:"only_purple"`
 }
 
 func (h *restartHandler) Handler() RequestHandler {
@@ -269,7 +272,11 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 
 func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), h.DryRun)
+	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), dataModel.RestartTaskOptions{
+		DryRun:     h.DryRun,
+		OnlyRed:    h.OnlyRed,
+		OnlyPurple: h.OnlyPurple,
+	})
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Error restarting tasks")

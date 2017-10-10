@@ -120,13 +120,19 @@ func (s *AdminDataSuite) TestRestart() {
 	userName := "user"
 
 	// test dry run
-	dryRunResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, true)
+	dryRunResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, model.RestartTaskOptions{
+		DryRun:     true,
+		OnlyRed:    false,
+		OnlyPurple: false})
 	s.NoError(err)
 	s.NotZero(len(dryRunResp.TasksRestarted))
 	s.Nil(dryRunResp.TasksErrored)
 
 	// test restarting tasks
-	realResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, false)
+	realResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, model.RestartTaskOptions{
+		DryRun:     false,
+		OnlyRed:    false,
+		OnlyPurple: false})
 	s.NoError(err)
 	s.NotZero(len(realResp.TasksRestarted))
 	s.NotNil(realResp.TasksErrored)

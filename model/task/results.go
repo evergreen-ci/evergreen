@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 )
 
@@ -114,4 +115,18 @@ func (c *ResultCounts) String() string { // nolint: golint
 	}
 
 	return c.cachedMessage
+}
+
+// FilterTasksOnStatus tasks in a slice of tasks and removes tasks whose result
+// status do not match the passed-in statuses
+func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
+	out := make([]Task, 0)
+	for _, task := range tasks {
+		status := task.ResultStatus()
+		if util.SliceContains(statuses, status) {
+			out = append(out, task)
+		}
+	}
+
+	return out
 }
