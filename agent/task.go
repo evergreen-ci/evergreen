@@ -233,7 +233,6 @@ func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.Task
 }
 
 func (a *Agent) getExecTimeoutSecs(taskConfig *model.TaskConfig) time.Duration {
-
 	pt := taskConfig.Project.FindProjectTask(taskConfig.Task.DisplayName)
 	if pt.ExecTimeoutSecs == 0 {
 		// if unspecified in the project task and the project, use the default value

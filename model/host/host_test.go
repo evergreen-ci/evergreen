@@ -908,8 +908,8 @@ func TestHostStats(t *testing.T) {
 	assert.NoError(host7.Insert())
 	assert.NoError(host8.Insert())
 
-	// test GetHostStatsByDistro
-	stats, err := GetHostStatsByDistro()
+	// test GetStatsByDistro
+	stats, err := GetStatsByDistro()
 	assert.NoError(err)
 	for _, entry := range stats {
 		if entry.Distro == d1 {

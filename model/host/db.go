@@ -428,9 +428,9 @@ func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]
 	return hosts, nil
 }
 
-// hostStatsByDistroPipeline returns a pipeline that will group all up hosts by distro
+// statsByDistroPipeline returns a pipeline that will group all up hosts by distro
 // and return the count of hosts as well as how many are running tasks
-func hostStatsByDistroPipeline() []bson.M {
+func statsByDistroPipeline() []bson.M {
 	return []bson.M{
 		{
 			"$match": bson.M{
