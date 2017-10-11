@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type SingleRunnerSuite struct {

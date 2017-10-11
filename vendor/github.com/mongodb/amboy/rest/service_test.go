@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mongodb/amboy"
@@ -8,7 +9,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type RestServiceSuite struct {

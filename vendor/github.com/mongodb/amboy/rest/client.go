@@ -2,6 +2,7 @@ package rest
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,8 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/tychoish/gimlet"
-	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 )
 
 const (
@@ -169,7 +168,14 @@ func (c *Client) getURL(endpoint string) string {
 ////////////////////////////////////////////////////////////////////////
 
 func (c *Client) getStats(ctx context.Context) (*status, error) {
-	resp, err := ctxhttp.Get(ctx, c.client, c.getURL("/v1/status"))
+
+	req, err := http.NewRequest(http.MethodGet, c.getURL("/v1/status"), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +224,14 @@ func (c *Client) SubmitJob(ctx context.Context, j amboy.Job) (string, error) {
 		return "", err
 	}
 
-	resp, err := ctxhttp.Post(ctx, c.client, c.getURL("/v1/job/create"),
-		"application/json", bytes.NewBuffer(b))
+	req, err := http.NewRequest(http.MethodPost, c.getURL("/v1/job/create"), bytes.NewBuffer(b))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +253,13 @@ func (c *Client) SubmitJob(ctx context.Context, j amboy.Job) (string, error) {
 // FetchJob takes the name of a queue, and returns if possible a
 // representation of that job object.
 func (c *Client) FetchJob(ctx context.Context, name string) (amboy.Job, error) {
-	resp, err := ctxhttp.Get(ctx, c.client, c.getURL(fmt.Sprintf("/v1/job/%s", name)))
+	req, err := http.NewRequest(http.MethodGet, c.getURL(fmt.Sprintf("/v1/job/%s", name)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +279,13 @@ func (c *Client) FetchJob(ctx context.Context, name string) (amboy.Job, error) {
 }
 
 func (c *Client) jobStatus(ctx context.Context, name string) (*jobStatusResponse, error) {
-	resp, err := ctxhttp.Get(ctx, c.client, c.getURL(fmt.Sprintf("/v1/job/status/%s", name)))
+	req, err := http.NewRequest(http.MethodGet, c.getURL(fmt.Sprintf("/v1/job/status/%s", name)), nil)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +320,13 @@ func (c *Client) Wait(ctx context.Context, name string) bool {
 		timeout = time.Since(deadline)
 	}
 
-	resp, err := ctxhttp.Get(ctx, c.client, c.getURL(fmt.Sprintf("/v1/job/wait/%s?timeout=%s", name, timeout)))
+	req, err := http.NewRequest(http.MethodGet, c.getURL(fmt.Sprintf("/v1/job/wait/%s?timeout=%s", name, timeout)), nil)
+	if err != nil {
+		return false
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		grip.Info(err)
 		grip.Debugf("%+v", resp)
@@ -313,7 +343,13 @@ func (c *Client) WaitAll(ctx context.Context) bool {
 		timeout = time.Since(deadline)
 	}
 
-	resp, err := ctxhttp.Get(ctx, c.client, c.getURL(fmt.Sprintf("/v1/status/wait?timeout=%s", timeout)))
+	req, err := http.NewRequest(http.MethodGet, c.getURL(fmt.Sprintf("/v1/status/wait?timeout=%s", timeout)), nil)
+	if err != nil {
+		return false
+	}
+	req = req.WithContext(ctx)
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		grip.Info(err)
 		grip.Debugf("%+v", resp)

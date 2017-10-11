@@ -1,14 +1,14 @@
 package driver
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2"
 )
 

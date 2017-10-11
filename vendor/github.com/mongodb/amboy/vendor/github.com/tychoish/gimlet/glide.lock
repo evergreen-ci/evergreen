@@ -10,12 +10,7 @@ imports:
   subpackages:
   - gzip
 - name: github.com/mongodb/grip
-  version: dd0a2c479652bd858db82525ad2db2ac87663571
-  subpackages:
-  - level
-  - logging
-  - send
-  - message
+  version: 4beebb80a809873037c5d9b370a9235f33cd3096
 - name: github.com/tylerb/graceful
   version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
 - name: github.com/urfave/negroni

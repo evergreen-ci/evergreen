@@ -1,13 +1,13 @@
 package driver
 
 import (
+	"context"
 	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	"golang.org/x/net/context"
 )
 
 // Internal implements the driver interface, but rather than

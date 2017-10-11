@@ -11,13 +11,13 @@ through the runner.
 package pool
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // NewSimpleRateLimitedWorkers returns a worker pool that sleeps for

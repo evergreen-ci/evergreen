@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )

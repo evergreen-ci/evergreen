@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2"
 )
 

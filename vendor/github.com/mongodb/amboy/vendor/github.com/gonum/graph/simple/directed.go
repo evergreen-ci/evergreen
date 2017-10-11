@@ -7,6 +7,8 @@ package simple
 import (
 	"fmt"
 
+	"golang.org/x/tools/container/intsets"
+
 	"github.com/gonum/graph"
 )
 
@@ -18,7 +20,8 @@ type DirectedGraph struct {
 
 	self, absent float64
 
-	maxUsed int
+	freeIDs intsets.Sparse
+	usedIDs intsets.Sparse
 }
 
 // NewDirectedGraph returns a DirectedGraph with the specified self and absent
@@ -44,17 +47,18 @@ func (g *DirectedGraph) NewNodeID() int {
 		panic(fmt.Sprintf("simple: cannot allocate node: no slot"))
 	}
 
-	if len(g.nodes) == g.maxUsed {
-		g.maxUsed++
-		return g.maxUsed
+	var id int
+	if g.freeIDs.Len() != 0 && g.freeIDs.TakeMin(&id) {
+		return id
 	}
-
-	for i := 0; i <= len(g.nodes); i++ {
-		if _, ok := g.nodes[i]; !ok {
-			return i
+	if id = g.usedIDs.Max(); id < maxInt {
+		return id + 1
+	}
+	for id = 0; id < maxInt; id++ {
+		if !g.usedIDs.Has(id) {
+			return id
 		}
 	}
-
 	panic("unreachable")
 }
 
@@ -66,6 +70,9 @@ func (g *DirectedGraph) AddNode(n graph.Node) {
 	g.nodes[n.ID()] = n
 	g.from[n.ID()] = make(map[int]graph.Edge)
 	g.to[n.ID()] = make(map[int]graph.Edge)
+
+	g.freeIDs.Remove(n.ID())
+	g.usedIDs.Insert(n.ID())
 }
 
 // RemoveNode removes n from the graph, as well as any edges attached to it. If the node
@@ -85,6 +92,9 @@ func (g *DirectedGraph) RemoveNode(n graph.Node) {
 		delete(g.from[to], n.ID())
 	}
 	delete(g.to, n.ID())
+
+	g.freeIDs.Insert(n.ID())
+	g.usedIDs.Remove(n.ID())
 }
 
 // SetEdge adds e, an edge from one node to another. If the nodes do not exist, they are added.

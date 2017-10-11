@@ -25,7 +25,7 @@ type AppLogging struct {
 // with Negroni. Sets the logging configuration to be the same as the
 // default global grip logging object.
 func NewAppLogger() *AppLogging {
-	l := &AppLogging{&logging.Grip{grip.GetSender()}}
+	l := &AppLogging{logging.MakeGrip(grip.GetSender())}
 
 	return l
 }

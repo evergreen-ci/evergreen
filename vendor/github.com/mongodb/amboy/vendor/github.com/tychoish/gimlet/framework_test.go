@@ -1,6 +1,7 @@
 package gimlet
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -8,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type mockHandler struct {

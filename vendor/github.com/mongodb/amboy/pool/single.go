@@ -1,10 +1,11 @@
 package pool
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // single is an implementation of of the amboy.Runner interface

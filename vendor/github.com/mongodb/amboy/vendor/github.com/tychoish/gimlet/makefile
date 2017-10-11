@@ -62,9 +62,9 @@ lint:$(gopath)/src/$(projectPath) $(lintDeps)
 	$(gopath)/bin/gometalinter $(lintArgs) ./...
 lint-deps:$(lintDeps)
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
-	$(vendorGopath) go build ./.
+	go build ./.
 build-race:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
-	$(vendorGopath) go build -race $(subst -,/,$(foreach pkg,$(packages),./$(pkg)))
+	go build -race $(subst -,/,$(foreach pkg,$(packages),./$(pkg)))
 test:$(testOutput)
 race:$(raceOutput)
 coverage:$(coverageOutput)
@@ -82,9 +82,9 @@ $(gopath)/src/$(orgPath):
 $(gopath)/src/$(projectPath):$(gopath)/src/$(orgPath)
 	@[ -L $@ ] || ln -s $(shell pwd) $@
 $(buildDir)/$(name):$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
-	$(vendorGopath) go build -o $@ main/$(name).go
+	go build -o $@ main/$(name).go
 $(buildDir)/$(name).race:$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
-	$(vendorGopath) go build -race -o $@ main/$(name).go
+	go build -race -o $@ main/$(name).go
 # end main build
 
 
@@ -115,40 +115,23 @@ testArgs := -v --timeout=1m
 $(buildDir)/coverage.%.html:$(buildDir)/coverage.%.out
 	go tool cover -html=$(buildDir)/coverage.$(subst /,-,$*).out -o $(buildDir)/coverage.$(subst /,-,$*).html
 $(buildDir)/coverage.%.out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) -covermode=count -coverprofile=$(buildDir)/coverage.$(subst /,-,$*).out $(projectPath)/$(subst -,/,$*)
+	go test $(testArgs) -covermode=count -coverprofile=$(buildDir)/coverage.$(subst /,-,$*).out $(projectPath)/$(subst -,/,$*)
 	@-[ -f $(buildDir)/coverage.$(subst /,-,$*).out ] && go tool cover -func=$(buildDir)/coverage.$(subst /,-,$*).out | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/coverage.$(name).out:$(testRunDeps)
-	$(vendorGopath) go test -covermode=count -coverprofile=$@ $(projectPath)
+	go test -covermode=count -coverprofile=$@ $(projectPath)
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/test.%.out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) ./$(subst -,/,$*) | tee $(buildDir)/test.$(subst /,-,$*).out
+	go test $(testArgs) ./$(subst -,/,$*) | tee $(buildDir)/test.$(subst /,-,$*).out
 $(buildDir)/race.%.out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) -race ./$(subst -,/,$*) | tee $(buildDir)/race.$(subst /,-,$*).out
+	go test $(testArgs) -race ./$(subst -,/,$*) | tee $(buildDir)/race.$(subst /,-,$*).out
 $(buildDir)/test.$(name).out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) ./ | tee $@
+	go test $(testArgs) ./ | tee $@
 $(buildDir)/race.$(name).out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) -race ./ | tee $@
+	go test $(testArgs) -race ./ | tee $@
 # end test and coverage artifacts
 
 
 # start vendoring configuration
-#    begin with configuration of dependencies
-vendorDeps := github.com/Masterminds/glide
-vendorDeps := $(addprefix $(gopath)/src/,$(vendorDeps))
-vendor-deps:$(vendorDeps)
-#   this allows us to store our vendored code in vendor and use
-#   symlinks to support vendored code both in the legacy style and with
-#   new-style vendor directories. When this codebase can drop support
-#   for go1.4, we can delete most of this.
--include $(buildDir)/makefile.vendor
-nestedVendored := vendor/github.com/mongodb/grip
-nestedVendored := $(foreach project,$(nestedVendored),$(project)/build/vendor)
-$(buildDir)/makefile.vendor:$(buildDir)/render-gopath makefile
-	@mkdir -p $(buildDir)
-	@echo "vendorGopath := \$$(shell \$$(buildDir)/render-gopath $(nestedVendored))" >| $@
-#   targets for the directory components and manipulating vendored files.
-vendor-sync:$(vendorDeps)
-	glide install -s
 vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
 	rm -rf vendor/github.com/stretchr/testify/vendor/
@@ -156,24 +139,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pmezard/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
-change-go-version:
-	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
-	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1
-vendor:$(buildDir)/vendor/src
-$(buildDir)/vendor/src:$(buildDir)/make-vendor $(buildDir)/render-gopath
-	@./$(buildDir)/make-vendor
-#   targets to build the small programs used to support vendoring.
-$(buildDir)/make-vendor:buildscripts/make-vendor.go
-	@mkdir -p $(buildDir)
-	go build -o $@ $<
-$(buildDir)/render-gopath:buildscripts/render-gopath.go
-	@mkdir -p $(buildDir)
-	go build -o $@ $<
-#   define dependencies for buildscripts
-buildscripts/make-vendor.go:buildscripts/vendoring/vendoring.go
-buildscripts/render-gopath.go:buildscripts/vendoring/vendoring.go
-#   add phony targets
-phony += vendor vendor-deps vendor-clean vendor-sync change-go-version
+phony += vendor-clean
 # end vendoring tooling configuration
 
 

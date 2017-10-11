@@ -81,7 +81,7 @@ functions:
 
          # Run make, called with proper environment variables set,
          # running the target.
-         ${build_env} make vendor ${target}
+         ${build_env} make ${target}
   set-up-mongodb:
     # TODO replace this configuration with something more robust.
     # Current version is borrowed directly rom the Evergreen self tests.
@@ -261,24 +261,24 @@ buildvariants:
       - ".race"
       - ".report"
 
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
+    run_on:
+      - ubuntu1604-test
+    expansions:
+      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes"
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
+    tasks:
+      - name: ".dist"
+      - name: ".test"
+
   - name: rhel70
     display_name: RHEL 7.0
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-3.2.9.tgz
       build_env: "PATH=/opt/go/bin:$PATH"
     run_on:
-      - rhel70
-    tasks:
-      - ".dist"
-      - ".test"
-
-  - name: rhel62-gccgo
-    display_name: RHEL 6.2 (gccgo)
-    expansions:
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
-    run_on:
-      - rhel62-test
+      - rhel70-small
     tasks:
       - ".dist"
       - ".test"

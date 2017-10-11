@@ -1,10 +1,11 @@
 package driver
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	"golang.org/x/net/context"
 )
 
 ////////////////////////////////////////////////////////////////////////

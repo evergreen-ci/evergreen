@@ -1,8 +1,9 @@
 package driver
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy"
-	"golang.org/x/net/context"
 )
 
 // Driver describes the interface between a queue and an out of

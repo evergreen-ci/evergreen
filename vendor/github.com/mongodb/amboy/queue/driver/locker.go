@@ -1,12 +1,12 @@
 package driver
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type lockPings map[string]time.Time

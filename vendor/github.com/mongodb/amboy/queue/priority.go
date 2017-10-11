@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // LocalPriorityQueue is an amboy.Queue implementation that dispatches
