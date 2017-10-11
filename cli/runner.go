@@ -144,7 +144,7 @@ func hostStatsCollector(ctx context.Context) {
 
 			grip.Info(message.Fields{
 				"report": "host stats by distro",
-				"data":   host.PivotStatsByDistro(hosts),
+				"data":   hosts,
 			})
 
 			timer.Reset(interval)

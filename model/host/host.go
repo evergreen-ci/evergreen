@@ -589,15 +589,3 @@ func GetStatsByDistro() ([]StatsByDistro, error) {
 	}
 	return stats, nil
 }
-
-func PivotStatsByDistro(hosts []StatsByDistro) map[string]StatsByDistro {
-	out := make(map[string]StatsByDistro)
-	var name string
-	for _, h := range hosts {
-		name = h.Distro
-		h.Distro = ""
-		out[name] = h
-	}
-	return out
-
-}
