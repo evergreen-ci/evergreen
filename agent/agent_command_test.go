@@ -12,18 +12,18 @@ import (
 	"golang.org/x/net/context"
 )
 
-type CommandTestSuite struct {
+type CommandSuite struct {
 	suite.Suite
 	a                Agent
 	mockCommunicator *client.Mock
 	tmpDirName       string
 }
 
-func TestCommandTestSuite(t *testing.T) {
-	suite.Run(t, new(CommandTestSuite))
+func TestCommandSuite(t *testing.T) {
+	suite.Run(t, new(CommandSuite))
 }
 
-func (s *CommandTestSuite) SetupTest() {
+func (s *CommandSuite) SetupTest() {
 	s.a = Agent{
 		opts: Options{
 			HostID:     "host",
@@ -40,11 +40,11 @@ func (s *CommandTestSuite) SetupTest() {
 	s.Require().NoError(err)
 }
 
-func (s *CommandTestSuite) TearDownTest() {
+func (s *CommandSuite) TearDownTest() {
 	s.Require().NoError(os.RemoveAll(s.tmpDirName))
 }
 
-func (s *CommandTestSuite) TestShellExec() {
+func (s *CommandSuite) TestShellExec() {
 	f, err := ioutil.TempFile(s.tmpDirName, "shell-exec-")
 	s.Require().NoError(err)
 	defer os.Remove(f.Name())
@@ -99,7 +99,7 @@ func (s *CommandTestSuite) TestShellExec() {
 	s.Equal(taskSecret, taskData.Secret)
 }
 
-func (s *CommandTestSuite) TestS3Copy() {
+func (s *CommandSuite) TestS3Copy() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
