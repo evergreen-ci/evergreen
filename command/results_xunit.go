@@ -140,6 +140,12 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 				// logs are only created when a test case does not succeed
 				test, log := tc.toModelTestResultAndLog(conf.Task)
 				if log != nil {
+					if suite.SysOut != "" {
+						log.Lines = append(log.Lines, "system-out:", suite.SysOut)
+					}
+					if suite.SysErr != "" {
+						log.Lines = append(log.Lines, "system-err:", suite.SysErr)
+					}
 					logs = append(logs, log)
 					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
 				}
