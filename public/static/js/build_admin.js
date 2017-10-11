@@ -101,7 +101,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
         buildRestService.takeActionOnBuild(
             $scope.buildId,
             'set_active',
-            { active: active },
+            { active: active,
+              abort: $scope.adminOptionVals.abort },
             {
                 success: function(resp) {
                     var data = resp.data;
@@ -202,6 +203,10 @@ mciModule.directive('adminUnscheduleBuild', function() {
         'Unschedule current build?' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
         '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="setActive(false)">Yes</button>' +
+        '<div style="margin-top: 6px;">' +
+          '<input type="checkbox" id="abort" name="passed" ng-model="adminOptionVals.abort" class="ng-valid ng-dirty">' +
+          '<label for="abort" style="font-weight:normal;">Abort tasks that have already started</label>' +
+        '</div>' +
       '</div>' +
     '</div>'
   }

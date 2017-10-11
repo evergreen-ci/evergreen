@@ -167,6 +167,12 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.StatusInternalServerError)
 			return
 		}
+		if !putParams.Active && putParams.Abort {
+			if err = task.AbortBuild(projCtx.Build.Id); err != nil {
+				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
+				return
+			}
+		}
 	case "restart":
 		if err := model.RestartBuild(projCtx.Build.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
