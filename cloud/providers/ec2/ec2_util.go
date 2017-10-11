@@ -17,10 +17,10 @@ import (
 
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -282,25 +282,44 @@ func attachTags(ec2Handle *ec2.EC2,
 	return err
 }
 
-// determine how long until a payment is due for the specified host. since ec2
-// bills per full hour the host has been up this number is just how long until,
-// the host has been up the next round number of hours
-func timeTilNextEC2Payment(host *host.Host) time.Duration {
+func timeTilNextEC2Payment(h *host.Host) time.Duration {
+	if usesHourlyBilling(h) {
+		return timeTilNextHourlyPayment(h)
+	}
+	return 1 * time.Second
+}
+
+func usesHourlyBilling(h *host.Host) bool {
+	if strings.Contains(h.Distro.Arch, "linux") {
+		return false
+	}
+	return true
+}
+
+// Determines how long until a payment is due for the specified host, for hosts
+// that bill hourly. Returns the next time that it would take for the host to be
+// up for an integer number of hours
+func timeTilNextHourlyPayment(host *host.Host) time.Duration {
 
 	now := time.Now()
+	var startTime time.Time
+	if host.StartTime.After(host.CreationTime) {
+		startTime = host.StartTime
+	} else {
+		startTime = host.CreationTime
+	}
 
-	// the time since the host was created
-	timeSinceCreation := now.Sub(host.CreationTime)
+	// the time since the host was started
+	timeSinceCreation := now.Sub(startTime)
 
 	// the hours since the host was created, rounded up
 	hoursRoundedUp := time.Duration(math.Ceil(timeSinceCreation.Hours()))
 
 	// the next round number of hours the host will have been up - the time
 	// that the next payment will be due
-	nextPaymentTime := host.CreationTime.Add(hoursRoundedUp * time.Hour)
+	nextPaymentTime := startTime.Add(hoursRoundedUp * time.Hour)
 
 	return nextPaymentTime.Sub(now)
-
 }
 
 // ebsRegex extracts EBS Price JSON data from Amazon's UI.
