@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -27,6 +28,9 @@ const (
 	// to account for when alternate distros are unable to satisfy the
 	// turnaround requirement as determined by MaxDurationPerDistroHost
 	SharedTasksAllocationProportion = 0.8
+
+	staticDistroRuntimeAlertThreshold  = 7 * 24 * time.Hour
+	dynamicDistroRuntimeAlertThreshold = 24 * time.Hour
 )
 
 // DistroScheduleData contains bookkeeping data that is used by distros to
@@ -466,7 +470,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		numFreeHosts, durationBasedNumNewHosts, len(taskQueueItems))
 
 	// create an entry for this distro in the scheduling map
-	distroScheduleData[distro.Id] = DistroScheduleData{
+	distroData := DistroScheduleData{
 		nominalNumNewHosts:   numNewHosts,
 		numFreeHosts:         numFreeHosts,
 		poolSize:             distro.PoolSize,
@@ -476,6 +480,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		numExistingHosts:     len(existingDistroHosts),
 		totalTasksDuration:   scheduledTasksDuration + runningTasksDuration,
 	}
+	distroScheduleData[distro.Id] = distroData
 
 	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 	if err != nil {
@@ -492,9 +497,36 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		grip.Error(err)
 		return 0, nil
 	}
+
+	underWaterAlert := message.Fields{
+		"distro":    distro.Id,
+		"runtime":   scheduledTasksDuration + runningTasksDuration,
+		"runner":    RunnerName,
+		"message":   "distro underwater",
+		"num_hosts": existingDistroHosts,
+	}
+
 	if !can {
+		underWaterAlert["action"] = []string{
+			"reduce workload;",
+			"add additional hosts to pool;",
+			"deactivate tasks;",
+		}
+		grip.AlertWhen(time.Duration(distroData.totalTasksDuration/float64(distro.PoolSize)) > staticDistroRuntimeAlertThreshold,
+			underWaterAlert)
+
 		return 0, nil
 	}
+
+	underWaterAlert["max_hosts"] = distro.PoolSize
+	underWaterAlert["actions"] = []string{
+		"provision additional hosts;",
+		"increase maximum pool size;",
+		"reduce workload;",
+		"deactivate tasks;",
+	}
+	grip.AlertWhen(time.Duration(distroData.totalTasksDuration/float64(distro.PoolSize)) > dynamicDistroRuntimeAlertThreshold,
+		underWaterAlert)
 
 	// revise the nominal number of new hosts if needed
 	numNewHosts = orderedScheduleNumNewHosts(distroScheduleData, distro.Id,
