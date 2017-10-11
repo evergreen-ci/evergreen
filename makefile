@@ -211,6 +211,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/urfave/negroni/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net
 phony += vendor-clean
 # end vendoring tooling configuration
 
