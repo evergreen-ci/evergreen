@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 )
 
 // createTaskDirectory makes a directory for the agent to execute
@@ -75,7 +75,7 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 // directory, so files not located in a directory may still cause
 // issues.
 func tryCleanupDirectory(dir string) {
-	defer util.RecoverLogStackTraceAndContinue("clean up directories")
+	defer recovery.LogStackTraceAndContinue("clean up directories")
 
 	if dir == "" {
 		return

@@ -29,6 +29,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -63,7 +64,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	grip.SetName("evg-runner")
 	grip.Warning(grip.SetDefaultLevel(level.Info))
 	grip.Warning(grip.SetThreshold(level.Debug))
-	defer util.RecoverLogStackTraceAndExit()
+	defer recovery.LogStackTraceAndExit("evergreen runner")
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
@@ -85,7 +86,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	pprofHandler := service.GetHandlerPprof(settings)
 	if settings.PprofPort != "" {
 		go func() {
-			defer util.RecoverLogStackTraceAndContinue("pprof threads")
+			defer recovery.LogStackTraceAndContinue("pprof threads")
 			grip.Alert(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
 		}()
 	}
@@ -99,7 +100,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 }
 
 func taskStatsCollector(ctx context.Context) {
-	defer util.RecoverLogStackTraceAndContinue("task stats collector")
+	defer recovery.LogStackTraceAndContinue("task stats collector")
 	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -124,7 +125,7 @@ func taskStatsCollector(ctx context.Context) {
 }
 
 func hostStatsCollector(ctx context.Context) {
-	defer util.RecoverLogStackTraceAndContinue("host stats collector")
+	defer recovery.LogStackTraceAndContinue("host stats collector")
 	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -243,7 +244,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 	timer := time.NewTimer(0)
 	defer wg.Done()
 	defer timer.Stop()
-	defer util.RecoverLogStackTraceAndContinue(fmt.Sprintf("background runner process for %s", r.Name()))
+	defer recovery.LogStackTraceAndContinue("background runner process for", r.Name())
 
 	grip.Infoln("Starting runner process:", r.Name())
 

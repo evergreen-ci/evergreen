@@ -6,13 +6,13 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
 func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- string) {
-	defer util.RecoverLogStackTraceAndContinue("heartbeat background process")
+	defer recovery.LogStackTraceAndContinue("heartbeat background process")
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
@@ -53,7 +53,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
-	defer util.RecoverLogStackTraceAndContinue("idle timeout watcher")
+	defer recovery.LogStackTraceAndContinue("idle timeout watcher")
 	defer cancel()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -77,7 +77,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, canc
 
 func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, cancel context.CancelFunc) {
 	timer := time.NewTimer(d)
-	defer util.RecoverLogStackTraceAndContinue("exec timeout watcher")
+	defer recovery.LogStackTraceAndContinue("exec timeout watcher")
 	defer timer.Stop()
 	defer cancel()
 	for {

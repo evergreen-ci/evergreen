@@ -12,9 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -139,7 +139,7 @@ func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 }
 
 func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
-	defer func() { err = util.HandlePanicWithError(recover(), err, "running task") }()
+	defer func() { err = recovery.HandlePanicWithError(recover(), err, "running task") }()
 
 	ctx, cancel := context.WithCancel(ctx)
 	grip.Info(message.Fields{

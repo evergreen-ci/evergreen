@@ -6,6 +6,8 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
+	"golang.org/x/net/context"
 )
 
 // SystemInfoCollector is meant to run in a goroutine and log
@@ -16,7 +18,7 @@ import (
 // In general, the collector should run in the background of the API
 // server and the UI server.
 func SystemInfoCollector(ctx context.Context) {
-	defer RecoverLogStackTraceAndContinue("system info collector")
+	defer recovery.LogStackTraceAndContinue("system info collector")
 	const sysInfoLoggingInterval = 15 * time.Second
 	timer := time.NewTimer(0)
 	defer timer.Stop()

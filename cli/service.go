@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"github.com/urfave/negroni"
 )
@@ -34,7 +35,7 @@ type ServiceWebCommand struct {
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
-	defer util.RecoverLogStackTraceAndExit()
+	defer recovery.LogStackTraceAndExit("evergreen service")
 	settings, err := evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")

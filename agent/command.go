@@ -7,14 +7,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
 func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, isTaskCommands bool) (err error) {
 	var cmds []command.Command
-	defer func() { err = util.HandlePanicWithError(recover(), err, "run commands") }()
+	defer func() { err = recovery.HandlePanicWithError(recover(), err, "run commands") }()
 
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {
