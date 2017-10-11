@@ -1,12 +1,12 @@
 package cli
 
 import (
+	"context"
 	"io/ioutil"
 	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type CliHttpTestSuite struct {

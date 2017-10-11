@@ -15,26 +15,26 @@ var (
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
 type APIBuild struct {
-	Id                  APIString     `json:"_id"`
-	ProjectId           APIString     `json:"project_id"`
-	CreateTime          APITime       `json:"create_time"`
-	StartTime           APITime       `json:"start_time"`
-	FinishTime          APITime       `json:"finish_time"`
-	Version             APIString     `json:"version"`
-	Branch              APIString     `json:"branch"`
-	Revision            APIString     `json:"git_hash"`
-	BuildVariant        APIString     `json:"build_variant"`
-	Status              APIString     `json:"status"`
-	Activated           bool          `json:"activated"`
-	ActivatedBy         APIString     `json:"activated_by"`
-	ActivatedTime       APITime       `json:"activated_time"`
-	RevisionOrderNumber int           `json:"order"`
-	Tasks               []string      `json:"tasks"`
+	Id                  APIString   `json:"_id"`
+	ProjectId           APIString   `json:"project_id"`
+	CreateTime          APITime     `json:"create_time"`
+	StartTime           APITime     `json:"start_time"`
+	FinishTime          APITime     `json:"finish_time"`
+	Version             APIString   `json:"version"`
+	Branch              APIString   `json:"branch"`
+	Revision            APIString   `json:"git_hash"`
+	BuildVariant        APIString   `json:"build_variant"`
+	Status              APIString   `json:"status"`
+	Activated           bool        `json:"activated"`
+	ActivatedBy         APIString   `json:"activated_by"`
+	ActivatedTime       APITime     `json:"activated_time"`
+	RevisionOrderNumber int         `json:"order"`
+	Tasks               []string    `json:"tasks"`
 	TimeTaken           APIDuration `json:"time_taken_ms"`
-	DisplayName         APIString     `json:"display_name"`
+	DisplayName         APIString   `json:"display_name"`
 	PredictedMakespan   APIDuration `json:"predicted_makespan_ms"`
 	ActualMakespan      APIDuration `json:"actual_makespan_ms"`
-	Origin              APIString     `json:"origin"`
+	Origin              APIString   `json:"origin"`
 }
 
 // BuildFromService converts from service level structs to an APIBuild.

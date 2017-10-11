@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
-	"golang.org/x/net/context"
 )
 
 const (

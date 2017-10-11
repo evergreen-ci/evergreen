@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type BackgroundSuite struct {

@@ -3,6 +3,7 @@ package route
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"golang.org/x/net/context"
 )
 
 const (

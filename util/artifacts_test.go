@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"github.com/mongodb/grip/logging"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"golang.org/x/net/context"
 )
 
 func init() {

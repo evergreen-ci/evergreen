@@ -1,12 +1,12 @@
 package subprocess
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"golang.org/x/net/context"
 )
 
 func TestRemoteCommand(t *testing.T) {

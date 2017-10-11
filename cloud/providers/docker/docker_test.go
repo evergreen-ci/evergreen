@@ -44,8 +44,8 @@ func (s *DockerSuite) SetupTest() {
 	s.distro = &distro.Distro{
 		Provider: "docker",
 		ProviderSettings: &map[string]interface{}{
-			"host_ip": "127.0.0.1",
-			"image_name": "docker_image",
+			"host_ip":     "127.0.0.1",
+			"image_name":  "docker_image",
 			"client_port": 4243,
 			"port_range": map[string]interface{}{
 				"min_port": 5000,
@@ -62,7 +62,7 @@ func (s *DockerSuite) TestValidateSettings() {
 		HostIP:     "127.0.0.1",
 		ImageID:    "docker_image",
 		ClientPort: 4243,
-		PortRange:  &portRange{
+		PortRange: &portRange{
 			MinPort: 5000,
 			MaxPort: 5010,
 		},
@@ -73,7 +73,7 @@ func (s *DockerSuite) TestValidateSettings() {
 	settingsNoHostIP := &ProviderSettings{
 		ImageID:    "docker_image",
 		ClientPort: 4243,
-		PortRange:  &portRange{
+		PortRange: &portRange{
 			MinPort: 5000,
 			MaxPort: 5010,
 		},
@@ -84,7 +84,7 @@ func (s *DockerSuite) TestValidateSettings() {
 	settingsNoImageID := &ProviderSettings{
 		HostIP:     "127.0.0.1",
 		ClientPort: 4243,
-		PortRange:  &portRange{
+		PortRange: &portRange{
 			MinPort: 5000,
 			MaxPort: 5010,
 		},
@@ -93,9 +93,9 @@ func (s *DockerSuite) TestValidateSettings() {
 
 	// error when missing client port
 	settingsNoClientPort := &ProviderSettings{
-		HostIP:     "127.0.0.1",
-		ImageID:    "docker_image",
-		PortRange:  &portRange{
+		HostIP:  "127.0.0.1",
+		ImageID: "docker_image",
+		PortRange: &portRange{
 			MinPort: 5000,
 			MaxPort: 5010,
 		},
@@ -107,7 +107,7 @@ func (s *DockerSuite) TestValidateSettings() {
 		HostIP:     "127.0.0.1",
 		ImageID:    "docker_image",
 		ClientPort: 4243,
-		PortRange:  &portRange{
+		PortRange: &portRange{
 			MinPort: 5010,
 			MaxPort: 5000,
 		},
@@ -396,7 +396,7 @@ func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {
 
 	containerNoPortBindings := &types.ContainerJSON{
 		ContainerJSONBase: &types.ContainerJSONBase{
-			ID: mock.generateContainerID(),
+			ID:    mock.generateContainerID(),
 			State: &types.ContainerState{Running: true},
 		},
 		Config: &container.Config{
@@ -411,7 +411,7 @@ func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {
 	hostPort := "5000"
 	containerOpenPortBinding := &types.ContainerJSON{
 		ContainerJSONBase: &types.ContainerJSONBase{
-			ID: mock.generateContainerID(),
+			ID:    mock.generateContainerID(),
 			State: &types.ContainerState{Running: true},
 		},
 		Config: &container.Config{

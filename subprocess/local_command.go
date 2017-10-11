@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
@@ -10,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type LocalCommand struct {

@@ -3,6 +3,7 @@ package util
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // TarContentsFile represents a tar file on disk.

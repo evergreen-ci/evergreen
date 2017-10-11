@@ -1,13 +1,13 @@
 package route
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type distroGetHandler struct{}

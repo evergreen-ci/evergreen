@@ -3,8 +3,8 @@ package openstack
 import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/pkg/errors"
 )
 
@@ -12,7 +12,7 @@ import (
 type client interface {
 	Init(gophercloud.AuthOptions, gophercloud.EndpointOpts) error
 	CreateInstance(servers.CreateOpts, string) (*servers.Server, error)
-	GetInstance(string) (*servers.Server, error)	
+	GetInstance(string) (*servers.Server, error)
 	DeleteInstance(string) error
 }
 
@@ -44,7 +44,7 @@ func (c *clientImpl) CreateInstance(opts servers.CreateOpts, keyName string) (*s
 	}
 	server, err := servers.Create(c.ServiceClient, optsExt).Extract()
 	return server, errors.Wrap(err, "OpenStack Create API call failed")
-}	
+}
 
 // GetInstance requests details on a single server, by ID.
 func (c *clientImpl) GetInstance(id string) (*servers.Server, error) {

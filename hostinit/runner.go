@@ -1,6 +1,7 @@
 package hostinit
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Runner executes the hostinit process.

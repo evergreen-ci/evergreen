@@ -3,6 +3,7 @@
 package vsphere
 
 import (
+	"context"
 	"net/url"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
@@ -47,9 +47,9 @@ func (c *clientImpl) Init(ao *authOptions) error {
 	ctx := context.TODO()
 	u := &url.URL{
 		Scheme: "https",
-		User: url.UserPassword(ao.Username, ao.Password),
-		Host: ao.Host,
-		Path: "sdk",
+		User:   url.UserPassword(ao.Username, ao.Password),
+		Host:   ao.Host,
+		Path:   "sdk",
 	}
 
 	// Note: this turns off certificate validation.
@@ -71,7 +71,7 @@ func (c *clientImpl) Init(ao *authOptions) error {
 	// Set datacenter path for finder to search for objects.
 	dc, err := c.Finder.DefaultDatacenter(ctx)
 	if err != nil {
-		 return errors.Wrap(err, "could not find default datacenter")
+		return errors.Wrap(err, "could not find default datacenter")
 	}
 	c.Finder.SetDatacenter(dc)
 	c.Datacenter = dc
@@ -120,13 +120,13 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 
 	// Locate and organize resources for creating a virtual machine.
 	grip.Info(message.Fields{
-		"message": "locating and organizing resources for creating a vm",
-		"datacenter": c.Datacenter,
-		"template": s.Template,
-		"datastore": s.Datastore,
+		"message":       "locating and organizing resources for creating a vm",
+		"datacenter":    c.Datacenter,
+		"template":      s.Template,
+		"datastore":     s.Datastore,
 		"resource_pool": s.ResourcePool,
-		"num_cpus": s.NumCPUs,
-		"memory_mb": s.MemoryMB,
+		"num_cpus":      s.NumCPUs,
+		"memory_mb":     s.MemoryMB,
 	})
 
 	t, err := c.getInstance(ctx, s.Template)
@@ -154,9 +154,9 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	}
 
 	grip.Info(message.Fields{
-		"message": "cloning vm, may take a few minutes to start up...",
+		"message":  "cloning vm, may take a few minutes to start up...",
 		"template": s.Template,
-		"host_id": h.Id,
+		"host_id":  h.Id,
 	})
 
 	return h.Id, nil

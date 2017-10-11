@@ -1,11 +1,11 @@
 package cli
 
 import (
+	"context"
 	"io"
 	"os"
 
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 var (

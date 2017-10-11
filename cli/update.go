@@ -1,7 +1,7 @@
 package cli
 
 import (
-	//"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // GetUpdateCommand attempts to fetch the latest version of the client binary and install it over

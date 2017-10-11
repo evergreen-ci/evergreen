@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
-	"golang.org/x/net/context"
 )
 
 func init() {

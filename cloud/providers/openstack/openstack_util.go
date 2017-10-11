@@ -11,15 +11,15 @@ import (
 
 const (
 	// NameTimeFormat is the format in which to log times like instance start time.
-	NameTimeFormat     = "20060102150405"
+	NameTimeFormat = "20060102150405"
 	// OSStatusActive means the instance is currently running.
-	OSStatusActive     = "ACTIVE"
+	OSStatusActive = "ACTIVE"
 	// OSStatusInProgress means the instance is currently running and processing a request.
 	OSStatusInProgress = "IN_PROGRESS"
 	// OSStatusShutOff means the instance has been temporarily stopped.
-	OSStatusShutOff    = "SHUTOFF"
+	OSStatusShutOff = "SHUTOFF"
 	// OSStatusBuilding means the instance is starting up.
-	OSStatusBuilding   = "BUILD"
+	OSStatusBuilding = "BUILD"
 )
 
 func osStatusToEvgStatus(status string) cloud.CloudStatus {

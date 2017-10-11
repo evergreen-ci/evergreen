@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // this manages the /admin route, which allows getting/setting the admin settings

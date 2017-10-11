@@ -3,13 +3,13 @@
 package gce
 
 import (
-	"time"
-	"regexp"
-	"strconv"
-	"strings"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -53,9 +53,9 @@ type computePrices struct {
 	// StandardMachine maps a standard machine type >> price per hour.
 	StandardMachine map[machineType]float64
 	// CustomCPUs maps a region >> price per CPU per hour.
-	CustomCPUs      map[string]float64
+	CustomCPUs map[string]float64
 	// CustomMemory maps a region >> price per MB memory per hour.
-	CustomMemory    map[string]float64
+	CustomMemory map[string]float64
 }
 
 // TimeTilNextPayment returns the time until when the host should be destroyed.
@@ -75,12 +75,12 @@ func (m *Manager) TimeTilNextPayment(h *host.Host) time.Duration {
 	tilEndBufferTime := endBufferTime.Sub(now)
 
 	// check that last task completed time is not zero
-	if (util.IsZeroTime(h.LastTaskCompletedTime)) {
+	if util.IsZeroTime(h.LastTaskCompletedTime) {
 		return tilEndMinUptime
 	}
 
 	// return the greater of the two durations
-	if (tilEndBufferTime.Minutes() < tilEndMinUptime.Minutes()) {
+	if tilEndBufferTime.Minutes() < tilEndMinUptime.Minutes() {
 		return tilEndMinUptime
 	}
 	return tilEndBufferTime
@@ -212,8 +212,8 @@ func getComputePrices() (*computePrices, error) {
 	// Parse the data into a compute prices struct.
 	prices := &computePrices{
 		StandardMachine: make(map[machineType]float64),
-		CustomCPUs: make(map[string]float64),
-		CustomMemory: make(map[string]float64),
+		CustomCPUs:      make(map[string]float64),
+		CustomMemory:    make(map[string]float64),
 	}
 
 	allGCPPrices, ok := obj["gcp_price_list"].(map[string]interface{})
@@ -245,7 +245,7 @@ func getComputePrices() (*computePrices, error) {
 					machineName := strings.ToLower(vmImage[1])
 					machine := machineType{
 						Region: r,
-						Name: machineName,
+						Name:   machineName,
 					}
 					prices.StandardMachine[machine] = f
 				} else if matchVMCore {

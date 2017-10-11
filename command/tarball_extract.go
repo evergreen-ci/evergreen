@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"os"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -8,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Plugin command responsible for unpacking a tgz archive.

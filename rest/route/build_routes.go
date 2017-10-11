@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 ////////////////////////////////////////////////////////////////////////

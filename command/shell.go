@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // shellExec is responsible for running the shell code.

@@ -4,8 +4,8 @@ package docker
 
 import (
 	"fmt"
-	"time"
 	"math/rand"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type clientMock struct{
+type clientMock struct {
 	// API call options
 	failInit   bool
 	failCreate bool
@@ -53,7 +53,7 @@ func (c *clientMock) GetContainer(_ *host.Host) (*types.ContainerJSON, error) {
 
 	container := &types.ContainerJSON{
 		ContainerJSONBase: &types.ContainerJSONBase{
-			ID: c.generateContainerID(),
+			ID:    c.generateContainerID(),
 			State: &types.ContainerState{Running: true},
 		},
 		Config: &container.Config{

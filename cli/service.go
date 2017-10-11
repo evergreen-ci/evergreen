@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/negroni"
-	"golang.org/x/net/context"
 )
 
 var (

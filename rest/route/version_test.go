@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 // VersionSuite enables testing for version related routes.
