@@ -193,7 +193,6 @@ lint-%:$(buildDir)/output.%.lint
 
 # start vendoring configuration
 vendor-clean:
-	rm -rf vendor/github.com/stretchr/testify/vendor/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/davecgh/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pmezard/
