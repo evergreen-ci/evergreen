@@ -2,6 +2,7 @@ package hostutil
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 const SSHTimeout = 2 * time.Minute

@@ -378,8 +378,8 @@ func benchmarkWalkAllBreadthFirst(b *testing.B, g graph.Undirected) {
 	for i := 0; i < b.N; i++ {
 		bft.WalkAll(g, nil, nil, nil)
 	}
-	if len(bft.visited) != n {
-		b.Fatalf("unexpected number of nodes visited: want: %d got %d", n, len(bft.visited))
+	if bft.visited.Len() != n {
+		b.Fatalf("unexpected number of nodes visited: want: %d got %d", n, bft.visited.Len())
 	}
 }
 
@@ -409,8 +409,8 @@ func benchmarkWalkAllDepthFirst(b *testing.B, g graph.Undirected) {
 	for i := 0; i < b.N; i++ {
 		dft.WalkAll(g, nil, nil, nil)
 	}
-	if len(dft.visited) != n {
-		b.Fatalf("unexpected number of nodes visited: want: %d got %d", n, len(dft.visited))
+	if dft.visited.Len() != n {
+		b.Fatalf("unexpected number of nodes visited: want: %d got %d", n, dft.visited.Len())
 	}
 }
 

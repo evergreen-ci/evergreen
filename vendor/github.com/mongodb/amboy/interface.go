@@ -1,10 +1,10 @@
 package amboy
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/amboy/dependency"
-	"golang.org/x/net/context"
 )
 
 // Job describes a unit of work. Implementations of Job instances are

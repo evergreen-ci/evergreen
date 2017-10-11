@@ -1,8 +1,9 @@
 package amboy
 
 import (
+	"context"
+
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // ResolveErrors takes a queue object and iterates over the results

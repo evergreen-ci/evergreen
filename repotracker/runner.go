@@ -1,10 +1,9 @@
 package repotracker
 
 import (
+	"context"
 	"sync"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"

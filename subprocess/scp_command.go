@@ -1,13 +1,13 @@
 package subprocess
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type ScpCommand struct {

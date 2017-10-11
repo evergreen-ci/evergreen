@@ -1,15 +1,15 @@
 package rest
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/tychoish/gimlet"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // Service is used as a place holder for application state and configuration.

@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 ////////////////////////////////////////////////////////////////////////

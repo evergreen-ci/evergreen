@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type taskDataHistory struct {

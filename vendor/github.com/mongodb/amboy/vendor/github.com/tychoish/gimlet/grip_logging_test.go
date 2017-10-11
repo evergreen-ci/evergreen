@@ -18,7 +18,7 @@ func TestReqestLogger(t *testing.T) {
 	sender, err := send.NewInternalLogger("test", grip.GetSender().Level())
 	assert.NoError(err)
 	middlewear := &AppLogging{
-		Journaler: &logging.Grip{sender},
+		Journaler: logging.MakeGrip(sender),
 	}
 
 	next := func(w http.ResponseWriter, r *http.Request) {

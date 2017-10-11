@@ -3,13 +3,14 @@
 package vsphere
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
-	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Powered on means the instance is powered on and running.
@@ -68,9 +69,9 @@ func (c *clientImpl) relocateSpec(s *ProviderSettings) (types.VirtualMachineRelo
 	}
 
 	grip.Info(message.Fields{
-		"message": "created spec to relocate clone",
+		"message":       "created spec to relocate clone",
 		"resource_pool": morRP,
-		"datastore": morDS,
+		"datastore":     morDS,
 	})
 
 	return spec, nil
@@ -85,8 +86,8 @@ func (c *clientImpl) configSpec(s *ProviderSettings) types.VirtualMachineConfigS
 
 	// the new vm will default to the clone's original values if either option is 0
 	grip.Info(message.Fields{
-		"message": "created spec to reconfigure clone",
-		"num_cpus": spec.NumCPUs,
+		"message":   "created spec to reconfigure clone",
+		"num_cpus":  spec.NumCPUs,
 		"memory_mb": spec.MemoryMB,
 	})
 

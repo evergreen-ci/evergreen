@@ -10,13 +10,13 @@ tasks.
 package pool
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // Group is a Runner implementation that can, potentially, run

@@ -1,11 +1,10 @@
 package alerts
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"

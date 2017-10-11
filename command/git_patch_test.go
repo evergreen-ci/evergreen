@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"golang.org/x/net/context"
 )
 
 func TestPatchPluginAPI(t *testing.T) {

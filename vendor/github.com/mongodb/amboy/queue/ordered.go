@@ -15,6 +15,7 @@ amboy.Runner interface.
 package queue
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -27,7 +28,6 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // LocalOrdered implements a dependency aware local queue. The queue

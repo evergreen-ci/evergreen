@@ -14,14 +14,14 @@ of amboy.Runner interface.
 package queue
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
-	"github.com/pkg/errors"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
+	"github.com/pkg/errors"
 )
 
 // LocalUnordered implements a local-only, channel based, queue

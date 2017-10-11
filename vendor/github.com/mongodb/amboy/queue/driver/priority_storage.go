@@ -2,10 +2,10 @@ package driver
 
 import (
 	"container/heap"
+	"context"
 	"sync"
 
 	"github.com/mongodb/amboy"
-	"golang.org/x/net/context"
 )
 
 // PriorityStorage is a local storage system for Jobs in priority

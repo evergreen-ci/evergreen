@@ -4,6 +4,10 @@
 
 package graph
 
+import (
+	"golang.org/x/tools/container/intsets"
+)
+
 // Undirect converts a directed graph to an undirected graph, resolving
 // edge weight conflicts.
 type Undirect struct {
@@ -45,19 +49,18 @@ func (g Undirect) Nodes() []Node { return g.G.Nodes() }
 func (g Undirect) From(u Node) []Node {
 	var (
 		nodes []Node
+		seen  intsets.Sparse
 	)
-	seen := make(map[int]struct{})
-
 	for _, n := range g.G.From(u) {
-		seen[n.ID()] = struct{}{}
+		seen.Insert(n.ID())
 		nodes = append(nodes, n)
 	}
 	for _, n := range g.G.To(u) {
 		id := n.ID()
-		if _, ok := seen[id]; ok {
+		if seen.Has(id) {
 			continue
 		}
-		seen[id] = struct{}{}
+		seen.Insert(id)
 		nodes = append(nodes, n)
 	}
 	return nodes

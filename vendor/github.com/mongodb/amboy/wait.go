@@ -15,9 +15,8 @@ a specific job to complete.
 package amboy
 
 import (
+	"context"
 	"time"
-
-	"golang.org/x/net/context"
 )
 
 // Wait takes a queue and blocks until all tasks are completed. This

@@ -1,11 +1,12 @@
 package migrations
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Setup configures the migration environment, configuring the backing
