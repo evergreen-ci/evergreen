@@ -50,6 +50,7 @@ type Mock struct {
 	TimeoutFilename        string
 	HeartbeatShouldAbort   bool
 	HeartbeatShouldErr     bool
+	TaskExecution          int
 
 	// metrics collection
 	ProcInfo map[string][]*message.ProcessInfo
@@ -140,6 +141,7 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 		Secret:       "mock_task_secret",
 		BuildVariant: "mock_build_variant",
 		DisplayName:  "build",
+		Execution:    c.TaskExecution,
 	}, nil
 }
 
