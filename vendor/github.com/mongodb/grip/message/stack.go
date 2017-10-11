@@ -51,7 +51,7 @@ type StackFrame struct {
 
 // StackTrace structs are returned by the Raw method of the stackMessage type
 type StackTrace struct {
-	Message string       `bson:"message" json:"message" yaml:"message"`
+	Message string       `bson:"message,omitempty" json:"message,omitempty" yaml:"message,omitempty"`
 	Frames  []StackFrame `bson:"frames" json:"frames" yaml:"frames"`
 	Time    time.Time    `bson:"time" json:"time" yaml:"time"`
 }
