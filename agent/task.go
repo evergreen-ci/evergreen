@@ -106,13 +106,13 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		tc.logger.Task().Info("task canceled")
 		return
 	}
-	newDir, err := a.createTaskDirectory(tc, taskConfig)
-	tc.taskDirectory = newDir
+	newDir, err := a.createTaskDirectory(tc)
 	if err != nil {
 		tc.logger.Execution().Errorf("error creating task directory: %s", err)
 		complete <- evergreen.TaskFailed
 		return
 	}
+	tc.taskDirectory = newDir
 	taskConfig.Expansions.Put("workdir", newDir)
 
 	// notify API server that the task has been started.

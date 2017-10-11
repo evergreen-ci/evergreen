@@ -65,6 +65,10 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			Secret: taskSecret,
 		},
 	}
+	// Windows may not have finished deleting task directories when
+	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
+	// tests in this suite to create differently-named task directories.
+	s.mockCommunicator.TaskExecution = 0
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -125,6 +129,11 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			Secret: taskSecret,
 		},
 	}
+	// Windows may not have finished deleting task directories when
+	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
+	// tests in this suite to create differently-named task directories.
+	s.mockCommunicator.TaskExecution = 1
+
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	err = s.a.runTask(ctx, tc)
@@ -181,6 +190,11 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 			Secret: taskSecret,
 		},
 	}
+	// Windows may not have finished deleting task directories when
+	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
+	// tests in this suite to create differently-named task directories.
+	s.mockCommunicator.TaskExecution = 2
+
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	err = s.a.runTask(ctx, tc)
@@ -237,6 +251,11 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			Secret: taskSecret,
 		},
 	}
+	// Windows may not have finished deleting task directories when
+	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
+	// tests in this suite to create differently-named task directories.
+	s.mockCommunicator.TaskExecution = 3
+
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	err = s.a.runTask(ctx, tc)
