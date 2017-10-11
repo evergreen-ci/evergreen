@@ -1,13 +1,13 @@
 package anser
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/mock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
-	"github.com/mongodb/anser/mock"
-	"golang.org/x/net/context"
 )
 
 type ApplicationSuite struct {

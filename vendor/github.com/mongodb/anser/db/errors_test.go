@@ -4,9 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	mgo "gopkg.in/mgo.v2"
-
 	"github.com/stretchr/testify/assert"
+	mgo "gopkg.in/mgo.v2"
 )
 
 func TestResultsPredicate(t *testing.T) {

@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/mongodb/amboy/dependency"
-	"github.com/stretchr/testify/assert"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestInterfaces(t *testing.T) {

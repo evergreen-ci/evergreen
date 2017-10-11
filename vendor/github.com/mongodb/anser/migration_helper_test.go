@@ -1,6 +1,7 @@
 package anser
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 )
 

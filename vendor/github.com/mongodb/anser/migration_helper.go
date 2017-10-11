@@ -4,10 +4,10 @@ import (
 	"sync"
 
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 

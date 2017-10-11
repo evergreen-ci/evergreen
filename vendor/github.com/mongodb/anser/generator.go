@@ -14,9 +14,9 @@ package anser
 import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
+	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"github.com/mongodb/anser/model"
 )
 
 // Generator is a amboy.Job super set used to store

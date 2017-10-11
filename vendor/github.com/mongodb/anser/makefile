@@ -23,9 +23,9 @@ gobin := $(shell which go)
 deps := github.com/mongodb/amboy
 deps += github.com/mongodb/grip
 deps += github.com/pkg/errors
-deps += golang.org/x/net/context
-deps += gopkg.in/mgo.v2
 deps += github.com/stretchr/testify
+deps += github.com/tychoish/tarjan
+deps += gopkg.in/mgo.v2
 # end project dependencies
 
 

@@ -1,6 +1,7 @@
 package anser
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 // proofOfConcept is a simple mock "main" to demonstrate how you could

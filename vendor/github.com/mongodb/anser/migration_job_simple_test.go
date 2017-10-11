@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/mongodb/amboy/registry"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSimpleMigrationJob(t *testing.T) {

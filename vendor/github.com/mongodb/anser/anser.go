@@ -21,12 +21,12 @@ a proparety of the queue object configured in the anser.Environment.
 package anser
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Application define the root level of a database

@@ -2,10 +2,10 @@ package anser
 
 import (
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
 )
 
 // this has to be implemeneted in the anser package because of the

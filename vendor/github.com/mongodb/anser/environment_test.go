@@ -1,17 +1,17 @@
 package anser
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/mongodb/anser/db"
-	"github.com/mongodb/anser/model"
-	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 )
 
