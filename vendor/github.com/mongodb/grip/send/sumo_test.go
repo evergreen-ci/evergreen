@@ -10,9 +10,9 @@ import (
 )
 
 type SumoSuite struct {
-	endpoint    string
-	client      sumoClient
-	sender      sumoLogger
+	endpoint string
+	client   sumoClient
+	sender   sumoLogger
 	suite.Suite
 }
 
@@ -24,9 +24,9 @@ func (s *SumoSuite) SetupSuite() {}
 
 func (s *SumoSuite) SetupTest() {
 	s.endpoint = "http://endpointVal"
-	s.client   = &sumoClientMock{}
+	s.client = &sumoClientMock{}
 
-	s.sender   = sumoLogger{
+	s.sender = sumoLogger{
 		endpoint: s.endpoint,
 		client:   s.client,
 		Base:     NewBase("name"),

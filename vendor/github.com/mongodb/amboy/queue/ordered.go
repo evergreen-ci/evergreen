@@ -15,19 +15,19 @@ amboy.Runner interface.
 package queue
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
 
-	"github.com/gonum/graph"
-	"github.com/gonum/graph/simple"
-	"github.com/gonum/graph/topo"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
+	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/simple"
+	"gonum.org/v1/gonum/graph/topo"
 )
 
 // LocalOrdered implements a dependency aware local queue. The queue
@@ -43,8 +43,8 @@ type LocalOrdered struct {
 	channel    chan amboy.Job
 	tasks      struct {
 		m         map[string]amboy.Job
-		ids       map[string]int
-		nodes     map[int]amboy.Job
+		ids       map[string]int64
+		nodes     map[int64]amboy.Job
 		completed map[string]bool
 		graph     *simple.DirectedGraph
 	}
@@ -61,10 +61,10 @@ func NewLocalOrdered(workers int) *LocalOrdered {
 		channel: make(chan amboy.Job, 100),
 	}
 	q.tasks.m = make(map[string]amboy.Job)
-	q.tasks.ids = make(map[string]int)
-	q.tasks.nodes = make(map[int]amboy.Job)
+	q.tasks.ids = make(map[string]int64)
+	q.tasks.nodes = make(map[int64]amboy.Job)
 	q.tasks.completed = make(map[string]bool)
-	q.tasks.graph = simple.NewDirectedGraph(1, 0)
+	q.tasks.graph = simple.NewDirectedGraph()
 
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
@@ -92,8 +92,8 @@ func (q *LocalOrdered) Put(j amboy.Job) error {
 		return nil
 	}
 
-	id := q.tasks.graph.NewNodeID()
-	node := simple.Node(id)
+	node := q.tasks.graph.NewNode()
+	id := node.ID()
 
 	q.tasks.m[name] = j
 	q.tasks.ids[name] = id
@@ -218,7 +218,6 @@ func (q *LocalOrdered) buildGraph() error {
 			edge := simple.Edge{
 				F: simple.Node(id),
 				T: simple.Node(edgeID),
-				W: 2,
 			}
 			q.tasks.graph.SetEdge(edge)
 		}

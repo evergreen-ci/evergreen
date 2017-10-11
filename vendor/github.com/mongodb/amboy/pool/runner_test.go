@@ -1,13 +1,13 @@
 package pool
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type RunnerSuite struct {

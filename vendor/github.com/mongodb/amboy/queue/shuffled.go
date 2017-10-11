@@ -15,12 +15,12 @@ cap the number of pending tasks.
 package queue
 
 import (
+	"context"
 	"sync"
 
 	"github.com/mongodb/amboy"
-	"github.com/pkg/errors"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
+	"github.com/pkg/errors"
 )
 
 // LocalShuffled provides a queue implementation that shuffles the

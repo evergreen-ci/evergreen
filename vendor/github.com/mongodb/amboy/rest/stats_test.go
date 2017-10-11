@@ -3,12 +3,12 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func TestStatusOuputGenerator(t *testing.T) {

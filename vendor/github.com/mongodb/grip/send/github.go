@@ -1,13 +1,13 @@
 package send
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip/message"
-	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
 

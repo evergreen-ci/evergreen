@@ -7,7 +7,7 @@ import (
 type sumoClientMock struct {
 	failSend bool
 
-	numSent  int
+	numSent int
 }
 
 func (c *sumoClientMock) Create(_ string) {}

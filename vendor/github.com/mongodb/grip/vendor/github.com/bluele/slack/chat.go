@@ -50,8 +50,8 @@ type ChatPostMessageAPIResponse struct {
 	Ts      string `json:"ts"`
 }
 
-func (sl *Slack) buildRequestBodyForm(text string) (*bytes.Buffer) {
-    return bytes.NewBuffer([]byte("text=" + text))
+func (sl *Slack) buildRequestBodyForm(text string) *bytes.Buffer {
+	return bytes.NewBuffer([]byte("text=" + text))
 }
 
 func (sl *Slack) buildChatPostMessageUrlValues(opt *ChatPostMessageOpt) (*url.Values, error) {

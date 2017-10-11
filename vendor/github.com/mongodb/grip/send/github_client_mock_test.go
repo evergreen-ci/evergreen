@@ -1,10 +1,10 @@
 package send
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/go-github/github"
-	"golang.org/x/net/context"
 )
 
 type githubClientMock struct {

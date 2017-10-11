@@ -1,38 +1,16 @@
 hash: 8ee8e1a14968cf6c24ca5741992e229bd8d88f06ec31ba649860cdd240102a9d
 updated: 2016-06-16T13:39:28.50048459-04:00
 imports:
-- name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
-- name: github.com/gonum/blas
-  version: cadec4b2f438d716d8205fd6456cbfbcbba6ff1c
+- name: gonum.org/v1/gonum
+  version: aff0e10c44138b1247d90efb9117f68ba7c76f0c
+
+- name: golang.org/x/tools
+  version: 9deed8c6c1c89e0b6d68d727f215de8e851d1064
   subpackages:
-  - blas64
-  - native
-  - native/internal/math32
-- name: github.com/gonum/floats
-  version: 3818baedee3067cb265df0d4aab6d72ae2fdc1fa
-- name: github.com/gonum/graph
-  version: 50b27dea7ebbfb052dfaf91681afc6fde28d8796
-  subpackages:
-  - simple
-  - topo
-  - internal/ordered
-  - internal/set
-  - traverse
-  - internal/linear
-- name: github.com/gonum/internal
-  version: 1e4f90128ceb812ff6e569376595abafc132d921
-  subpackages:
-  - asm
-- name: github.com/gonum/lapack
-  version: 04e1e221b7b8b21a8f22b1634b340177c3b4e018
-  subpackages:
-  - lapack64
-  - native
-- name: github.com/gonum/matrix
-  version: bc376b0c3bde35e6d38bf6033c9fdbe3e498342b
-  subpackages:
-  - mat64
+    - container/intsets
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
+
 - name: github.com/pkg/errors
   version: a22138067af1c4942683050411a841ade67fe1eb
 
@@ -46,16 +24,12 @@ imports:
   version: 792786c7400a136282c1664665ae0a8db921c6c2
 
 - name: github.com/mongodb/grip
-  version: 12ffd76df22398938c74a01d4d237be9631bc1f0
+  version: 4beebb80a809873037c5d9b370a9235f33cd3096
 
 - name: github.com/tychoish/gimlet
-  version: efde070a6840e91815e554de155dd8cec5f10ce8
+  version: 47913accb7804b3a72b1c0ad3e44ff94d9447f03
 - name: github.com/pkg/errors
   version: 17b591df37844cde689f4d5813e5cea0927d8dd2
-- name: golang.org/x/net
-  version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
-  subpackages:
-  - context
 - name: gopkg.in/mgo.v2
   version: 3f83fa5005286a7fe593b055f0d7771a7dce4655
   subpackages:
@@ -65,6 +39,7 @@ imports:
   - internal/scram
 - name: gopkg.in/yaml.v2
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+
 - name: github.com/VividCortex/ewma
   version: 43880d236f695d39c62cf7aa4ebd4508c258e6c0
 devImports: []

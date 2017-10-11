@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/mongodb/grip/message"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSlackError(t *testing.T) {

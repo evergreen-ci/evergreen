@@ -3,8 +3,8 @@ package grip
 import (
 	"testing"
 
-	"github.com/stretchr/testify/suite"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/suite"
 )
 
 type GripSuite struct {

@@ -1,14 +1,14 @@
 package queue
 
 import (
+	"context"
 	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue/driver"
-	"github.com/pkg/errors"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
+	"github.com/pkg/errors"
 )
 
 // LocalLimitedSize implements the amboy.Queue interface, and unlike

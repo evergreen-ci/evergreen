@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 )
 
 // RequestInfo holds metadata about a request
@@ -104,11 +103,13 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}
+
 	return r, nil
 }
 
 func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *http.Request) (*http.Response, error) {
-	response, err := ctxhttp.Do(ctx, c.httpClient, r)
+	r = r.WithContext(ctx)
+	response, err := c.httpClient.Do(r)
 	if err != nil {
 		return nil, err
 	}

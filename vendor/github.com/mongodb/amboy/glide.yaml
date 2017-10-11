@@ -1,22 +1,14 @@
 package: github.com/mongodb/amboy
 import:
-- package: github.com/gonum/graph
-  subpackages:
-  - simple
-  - topo
-- package: github.com/tychoish/grip
-- package: github.com/tychoish/gimlet
-- package: github.com/gonum/matrix
-- package: github.com/stretchr/testify
-- package: github.com/stretchr/objx
-- package: github.com/pmezard/go-difflib
+- package: github.com/VividCortex/ewma
 - package: github.com/davecgh/go-spew
-- package: github.com/satori/go.uuid
+- package: github.com/mongodb/grip
 - package: github.com/pkg/errors
-- package: golang.org/x/net
+- package: github.com/pmezard/go-difflib
+- package: github.com/satori/go.uuid
+- package: github.com/stretchr/objx
+- package: github.com/stretchr/testify
+- package: github.com/tychoish/gimlet
+- package: gonum.org/v1/gonum
 - package: gopkg.in/mgo.v2
 - package: gopkg.in/yaml.v2
-- package: github.com/VividCortex/ewma
-- package: golang.org/x/net
-  subpackages:
-  - context

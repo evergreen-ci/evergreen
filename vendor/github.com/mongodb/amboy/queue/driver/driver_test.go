@@ -1,15 +1,15 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/grip"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // All drivers should be able to pass this suite of tests which

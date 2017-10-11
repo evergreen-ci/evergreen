@@ -1,10 +1,9 @@
 package pool
 
 import (
+	"context"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"

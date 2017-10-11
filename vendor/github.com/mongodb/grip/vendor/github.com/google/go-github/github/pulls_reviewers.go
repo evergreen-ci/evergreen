@@ -6,8 +6,8 @@
 package github
 
 import (
+	"context"
 	"fmt"
-	"golang.org/x/net/context"
 )
 
 // RequestReviewers creates a review request for the provided GitHub users for the specified pull request.

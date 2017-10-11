@@ -8,8 +8,8 @@
 package tests
 
 import (
+	"context"
 	"fmt"
-	"golang.org/x/net/context"
 	"math/rand"
 	"net/http"
 	"os"

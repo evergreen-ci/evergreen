@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -43,20 +44,27 @@ func (q queryWrapper) Select(p interface{}) Query       { return queryWrapper{q.
 
 func (c collectionWrapper) RemoveAll(q interface{}) (*ChangeInfo, error) {
 	i, err := c.Collection.RemoveAll(q)
-	return &ChangeInfo{Updated: i.Updated, Removed: i.Removed}, err
+	return buildChangeInfo(i), errors.WithStack(err)
 }
 
 func (c collectionWrapper) UpdateAll(q, u interface{}) (*ChangeInfo, error) {
 	i, err := c.Collection.UpdateAll(q, u)
-	return &ChangeInfo{Updated: i.Updated, Removed: i.Removed}, err
+	return buildChangeInfo(i), errors.WithStack(err)
 }
 
 func (c collectionWrapper) Upsert(q, u interface{}) (*ChangeInfo, error) {
 	i, err := c.Collection.Upsert(q, u)
-	return &ChangeInfo{i.Updated, i.Removed, i.UpsertedId}, err
+	return buildChangeInfo(i), errors.WithStack(err)
 }
 
 func (c collectionWrapper) UpsertId(q, u interface{}) (*ChangeInfo, error) {
 	i, err := c.Collection.UpsertId(q, u)
-	return &ChangeInfo{i.Updated, i.Removed, i.UpsertedId}, err
+	return buildChangeInfo(i), errors.WithStack(err)
+}
+
+func buildChangeInfo(i *mgo.ChangeInfo) *ChangeInfo {
+	if i == nil {
+		return nil
+	}
+	return &ChangeInfo{i.Updated, i.Removed, i.UpsertedId}
 }

@@ -17,10 +17,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"golang.org/x/net/context"
 	"os"
 	"reflect"
 	"strings"

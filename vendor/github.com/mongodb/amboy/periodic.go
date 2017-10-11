@@ -1,12 +1,12 @@
 package amboy
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // QueueOperation is a named function literal for use in the

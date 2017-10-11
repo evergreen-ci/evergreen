@@ -1,11 +1,11 @@
 package pool
 
 import (
+	"context"
 	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type QueueTester struct {

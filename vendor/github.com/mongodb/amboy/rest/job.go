@@ -1,15 +1,15 @@
 package rest
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/tychoish/gimlet"
-	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 type jobStatusResponse struct {

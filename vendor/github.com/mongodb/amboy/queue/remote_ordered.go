@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -8,7 +9,6 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"golang.org/x/net/context"
 )
 
 // SimpleRemoteOrdered queue implements the amboy.Queue interface and

@@ -23,4 +23,3 @@ import:
 - package: github.com/google/go-querystring
 - package: github.com/google/go-github
 - package: golang.org/x/oauth2
-- package: golang.org/x/net

@@ -5,7 +5,7 @@
 
 package github
 
-import "golang.org/x/net/context"
+import "context"
 
 // UserEmail represents user's email address
 type UserEmail struct {

@@ -1,13 +1,13 @@
 package driver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type PriorityStorageSuite struct {

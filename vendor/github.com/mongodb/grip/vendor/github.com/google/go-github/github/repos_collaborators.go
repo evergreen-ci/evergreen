@@ -6,8 +6,8 @@
 package github
 
 import (
+	"context"
 	"fmt"
-	"golang.org/x/net/context"
 )
 
 // ListCollaborators lists the GitHub users that have access to the repository.

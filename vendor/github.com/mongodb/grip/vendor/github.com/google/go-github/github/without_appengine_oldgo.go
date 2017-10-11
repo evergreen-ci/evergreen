@@ -8,7 +8,7 @@ package github
 import (
 	"net/http"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 func withContext(ctx context.Context, req *http.Request) (context.Context, *http.Request) {

@@ -51,7 +51,7 @@ functions:
 
          # Run make, called with proper environment variables set,
          # running the target.
-         ${build_env|} make vendor ${target}
+         ${build_env|} make ${target}
   set-up-mongodb:
     - command: shell.exec
       type: system

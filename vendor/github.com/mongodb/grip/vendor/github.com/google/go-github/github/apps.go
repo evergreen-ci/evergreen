@@ -5,7 +5,7 @@
 
 package github
 
-import "golang.org/x/net/context"
+import "context"
 
 // AppsService provides access to the installation related functions
 // in the GitHub API.

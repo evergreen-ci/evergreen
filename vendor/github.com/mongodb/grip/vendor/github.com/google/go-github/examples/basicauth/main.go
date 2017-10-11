@@ -10,8 +10,8 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
-	"golang.org/x/net/context"
 	"os"
 	"strings"
 	"syscall"

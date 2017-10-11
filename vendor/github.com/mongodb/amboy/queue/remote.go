@@ -1,12 +1,12 @@
 package queue
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // RemoteUnordered are queues that use a Driver as backend for job

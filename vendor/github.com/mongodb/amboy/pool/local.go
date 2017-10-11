@@ -8,11 +8,11 @@ consume work items from the Queue's Next() method.
 package pool
 
 import (
+	"context"
 	"errors"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"golang.org/x/net/context"
 )
 
 // NewLocalWorkers is a constructor for pool of worker processes that
