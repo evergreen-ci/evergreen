@@ -235,6 +235,9 @@ endif
 ifneq (,$(RUN_CASE))
 testArgs += -testify.m='$(RUN_CASE)'
 endif
+ifneq (,$(RUN_COUNT))
+testArgs += -test.count='$(RUN_COUNT)'
+endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
 	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
