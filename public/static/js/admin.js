@@ -1,4 +1,4 @@
-mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', function($scope, $window, mciAdminRestService, notificationService) {
+mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
     $scope.Events = generateEventText(window.events);
