@@ -28,6 +28,9 @@ const (
 	// to account for when alternate distros are unable to satisfy the
 	// turnaround requirement as determined by MaxDurationPerDistroHost
 	SharedTasksAllocationProportion = 0.8
+
+	staticDistroRuntimeAlertThreshold  = 7 * 24 * time.Hour
+	dynamicDistroRuntimeAlertThreshold = 24 * time.Hour
 )
 
 // DistroScheduleData contains bookkeeping data that is used by distros to
@@ -509,7 +512,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 			"add additional hosts to pool;",
 			"deactivate tasks;",
 		}
-		grip.AlertWhen(time.Duration(distroData.totalTasksDuration/float64(distro.PoolSize)) > 7*24*time.Hour,
+		grip.AlertWhen(time.Duration(distroData.totalTasksDuration/float64(distro.PoolSize)) > staticDistroRuntimeAlertThreshold,
 			underWaterAlert)
 
 		return 0, nil
@@ -522,7 +525,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		"reduce workload;",
 		"deactivate tasks;",
 	}
-	grip.AlertWhen(time.Duration(distroData.totalTasksDuration/float64(distro.PoolSize)) > 24*time.Hour,
+	grip.AlertWhen(time.Duration(distroData.totalTasksDuration/float64(distro.PoolSize)) > dynamicDistroRuntimeAlertThreshold,
 		underWaterAlert)
 
 	// revise the nominal number of new hosts if needed
