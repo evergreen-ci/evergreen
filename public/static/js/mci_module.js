@@ -16,7 +16,8 @@ var mciModule = angular.module('MCI', [
   'mciServices.locationHash',
   'md5',
   'ngSanitize',
-  'ngMaterial'
+  'ngMaterial',
+  'md.time.picker'
 ], function($interpolateProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
   $interpolateProvider.startSymbol('[[');
