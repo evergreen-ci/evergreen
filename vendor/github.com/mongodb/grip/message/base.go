@@ -17,6 +17,7 @@ type Base struct {
 	Hostname string         `bson:"hostname,omitempty" json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Time     time.Time      `bson:"time,omitempty" json:"time,omitempty" yaml:"time,omitempty"`
 	Process  string         `bson:"process,omitempty" json:"process,omitempty" yaml:"process,omitempty"`
+	Pid      int            `bson:"pid,omitempty" json:"pid,omitempty" yaml:"pid,omitempty"`
 }
 
 // Collect records the time, process name, and hostname. Useful in the
@@ -34,6 +35,7 @@ func (b *Base) Collect() error {
 
 	b.Time = time.Now()
 	b.Process = os.Args[0]
+	b.Pid = os.Getpid()
 
 	return nil
 }
