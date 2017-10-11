@@ -178,6 +178,13 @@ func getShouldExecuteError(ctx triggerContext) message.Fields {
 			"variant": ctx.task.BuildVariant,
 			"project": ctx.task.Project,
 		},
+		"previous": map[string]interface{}{
+			"id":          ctx.previousCompleted.Id,
+			"variant":     ctx.previousCompleted.BuildVariant,
+			"project":     ctx.previousCompleted.Project,
+			"finish_time": ctx.previousCompleted.FinishTime,
+			"status":      ctx.previousCompleted.Status,
+		},
 	}
 }
 

@@ -71,12 +71,12 @@ func RunTaskFailureTriggers(taskId string) error {
 			PatchId:   "",
 			CreatedAt: time.Now(),
 		}
-		err := alert.EnqueueAlertRequest(req)
-		if err != nil {
+
+		if err = alert.EnqueueAlertRequest(req); err != nil {
 			return err
 		}
-		err = storeTriggerBookkeeping(*ctx, []Trigger{trigger})
-		if err != nil {
+
+		if err = storeTriggerBookkeeping(*ctx, []Trigger{trigger}); err != nil {
 			return err
 		}
 	}
