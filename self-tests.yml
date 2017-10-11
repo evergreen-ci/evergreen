@@ -320,9 +320,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-subprocess
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
-    name: test-db-bsonutil
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "agent"]
     name: test-command
@@ -442,9 +439,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
     name: race-subprocess
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-db-bsonutil
   - <<: *run-go-test-suite-with-mongodb
     tags: ["race", "agent"]
     name: race-command
