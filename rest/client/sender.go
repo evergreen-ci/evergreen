@@ -28,6 +28,7 @@ type logSender struct {
 	signalEnd     chan struct{}
 	updateTimeout bool
 	bufferTime    time.Duration
+	closed        bool
 	sync.RWMutex
 	*send.Base
 }
@@ -68,12 +69,12 @@ func (s *logSender) setBufferTime(d time.Duration) {
 }
 
 func (s *logSender) Close() error {
-	s.RLock()
-	defer s.RUnlock()
-
+	s.Lock()
 	close(s.signalEnd)
+	s.closed = true
+	s.Unlock()
+
 	<-s.lastBatch
-	s.cancel()
 	return s.Base.Close()
 }
 
@@ -137,11 +138,11 @@ backgroundSender:
 }
 
 func (s *logSender) Send(m message.Composer) {
-	defer func() {
-		// A command may call Send() after the agent has closed the logSender
-		_ = recover()
-	}()
-
+	s.RLock()
+	defer s.RUnlock()
+	if s.closed {
+		return
+	}
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m
 	}
