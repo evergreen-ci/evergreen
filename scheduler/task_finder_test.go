@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 )
 
 var taskFinderTestConf = testutil.TestConfig()
@@ -16,84 +16,87 @@ func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
 }
 
+type DBTaskFinderSuite struct {
+	suite.Suite
+	taskFinder *DBTaskFinder
+	tasks      []task.Task
+	depTasks   []task.Task
+}
+
 func TestDBTaskFinder(t *testing.T) {
+	s := new(DBTaskFinderSuite)
 
-	var taskIds []string
-	var tasks []*task.Task
-	var depTaskIds []string
-	var depTasks []*task.Task
-	var taskFinder *DBTaskFinder
+	suite.Run(t, s)
+}
 
-	Convey("With a DBTaskFinder", t, func() {
+func (s *DBTaskFinderSuite) SetupTest() {
+	s.taskFinder = &DBTaskFinder{}
 
-		taskFinder = &DBTaskFinder{}
+	taskIds := []string{"t1", "t2", "t3", "t4"}
+	s.tasks = []task.Task{
+		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
+		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true},
+		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true},
+		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
+	}
 
-		taskIds = []string{"t1", "t2", "t3", "t4"}
-		tasks = []*task.Task{
-			{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
-			{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true},
-			{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true},
-			{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
-		}
+	depTaskIds := []string{"td1", "td2"}
+	s.depTasks = []task.Task{
+		{Id: depTaskIds[0]},
+		{Id: depTaskIds[1]},
+	}
 
-		depTaskIds = []string{"td1", "td2"}
-		depTasks = []*task.Task{
-			{Id: depTaskIds[0]},
-			{Id: depTaskIds[1]},
-		}
+	s.Nil(db.Clear(task.Collection))
+}
 
-		So(db.Clear(task.Collection), ShouldBeNil)
+func (s *DBTaskFinderSuite) insertTasks() {
+	for _, task := range s.tasks {
+		s.Nil(task.Insert())
+	}
+	for _, task := range s.depTasks {
+		s.Nil(task.Insert())
+	}
+}
 
-		Convey("if there are no runnable tasks, an empty slice (with no error)"+
-			" should be returned", func() {
-			runnableTasks, err := taskFinder.FindRunnableTasks()
-			So(err, ShouldBeNil)
-			So(len(runnableTasks), ShouldEqual, 0)
-		})
+func (s *DBTaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
+	// XXX: collection is empty without running insertTasks
+	runnableTasks, err := s.taskFinder.FindRunnableTasks()
+	s.Nil(err)
+	s.Empty(runnableTasks)
+}
 
-		Convey("inactive tasks should not be returned", func() {
+func (s *DBTaskFinderSuite) TestInactiveTasksNeverReturned() {
+	// insert the tasks, setting one to inactive
+	s.tasks[2].Activated = false
+	s.insertTasks()
 
-			// insert the tasks, setting one to inactive
-			tasks[2].Activated = false
-			for _, testTask := range tasks {
-				So(testTask.Insert(), ShouldBeNil)
-			}
+	// finding the runnable tasks should return two tasks
+	runnableTasks, err := s.taskFinder.FindRunnableTasks()
+	s.Nil(err)
+	s.Len(runnableTasks, 2)
+	pp.Print(runnableTasks)
+}
 
-			// finding the runnable tasks should return two tasks
-			runnableTasks, err := taskFinder.FindRunnableTasks()
-			So(err, ShouldBeNil)
-			So(len(runnableTasks), ShouldEqual, 2)
+func (s *DBTaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 
-		})
+	// edit the dependency tasks, setting one to have finished
+	// successfully and one to have finished unsuccessfully
+	s.depTasks[0].Status = evergreen.TaskFailed
+	s.depTasks[1].Status = evergreen.TaskSucceeded
 
-		Convey("tasks with unmet dependencies should not be returned", func() {
+	// edit the tasks, setting one to have unmet dependencies, one to
+	// have no dependencies, and one to have successfully met
+	// dependencies
+	s.tasks[0].DependsOn = []task.Dependency{}
+	s.tasks[1].DependsOn = []task.Dependency{{s.depTasks[0].Id, evergreen.TaskSucceeded}}
+	s.tasks[2].DependsOn = []task.Dependency{{s.depTasks[1].Id, evergreen.TaskSucceeded}}
 
-			// insert the dependency tasks, setting one to have finished
-			// successfully and one to have finished unsuccessfully
-			depTasks[0].Status = evergreen.TaskFailed
-			depTasks[1].Status = evergreen.TaskSucceeded
-			for _, depTask := range depTasks {
-				So(depTask.Insert(), ShouldBeNil)
-			}
+	s.insertTasks()
 
-			// insert the tasks, setting one to have unmet dependencies, one to
-			// have no dependencies, and one to have successfully met
-			// dependencies
-			tasks[0].DependsOn = []task.Dependency{}
-			tasks[1].DependsOn = []task.Dependency{{depTasks[0].Id, evergreen.TaskSucceeded}}
-			tasks[2].DependsOn = []task.Dependency{{depTasks[1].Id, evergreen.TaskSucceeded}}
-			for _, testTask := range tasks {
-				So(testTask.Insert(), ShouldBeNil)
-			}
-
-			// finding the runnable tasks should return two tasks (the one with
-			// no dependencies and the one with successfully met dependencies
-			runnableTasks, err := taskFinder.FindRunnableTasks()
-			So(err, ShouldBeNil)
-			So(len(runnableTasks), ShouldEqual, 2)
-
-		})
-
-	})
+	// finding the runnable tasks should return two tasks (the one with
+	// no dependencies and the one with successfully met dependencies
+	runnableTasks, err := s.taskFinder.FindRunnableTasks()
+	s.Nil(err)
+	s.Len(runnableTasks, 2)
 
 }
