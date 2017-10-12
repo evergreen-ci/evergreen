@@ -16,8 +16,6 @@ type TaskFinder interface {
 // of using $graphLookup
 type LegacyDBTaskFinder struct{}
 
-// Old FindRunnableTasks that implements the graph in code, instead of using
-// MongoDB's $graphLookup aggregation operator.
 func (self *LegacyDBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 	// find all of the undispatched tasks
 	undispatchedTasks, err := task.Find(task.IsUndispatched)

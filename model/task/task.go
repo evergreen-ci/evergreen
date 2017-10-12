@@ -237,7 +237,6 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
 
-	// deps -> fetch Task with id in depends_on
 	for _, dep := range t.DependsOn {
 		if cachedDep, ok := depCaches[dep.TaskId]; !ok {
 			depIdsToQueryFor = append(depIdsToQueryFor, dep.TaskId)
@@ -246,7 +245,6 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		}
 	}
 
-	// fetch if not available
 	if len(depIdsToQueryFor) > 0 {
 		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey))
 		if err != nil {
