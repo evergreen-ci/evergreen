@@ -16,7 +16,7 @@ func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
 }
 
-type DBTaskFinderSuite struct {
+type TaskFinderSuite struct {
 	suite.Suite
 	taskFinder TaskFinder
 	tasks      []task.Task
@@ -24,22 +24,20 @@ type DBTaskFinderSuite struct {
 }
 
 func TestDBTaskFinder(t *testing.T) {
-	s := new(DBTaskFinderSuite)
+	s := new(TaskFinderSuite)
 	s.taskFinder = &DBTaskFinder{}
 
 	suite.Run(t, s)
 }
 
 func TestLegacyDBTaskFinder(t *testing.T) {
-	s := new(DBTaskFinderSuite)
+	s := new(TaskFinderSuite)
 	s.taskFinder = &LegacyDBTaskFinder{}
 
 	suite.Run(t, s)
 }
 
-func (s *DBTaskFinderSuite) SetupTest() {
-	s.taskFinder = &DBTaskFinder{}
-
+func (s *TaskFinderSuite) SetupTest() {
 	taskIds := []string{"t1", "t2", "t3", "t4"}
 	s.tasks = []task.Task{
 		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
@@ -57,7 +55,7 @@ func (s *DBTaskFinderSuite) SetupTest() {
 	s.Nil(db.Clear(task.Collection))
 }
 
-func (s *DBTaskFinderSuite) insertTasks() {
+func (s *TaskFinderSuite) insertTasks() {
 	for _, task := range s.tasks {
 		s.Nil(task.Insert())
 	}
@@ -66,14 +64,14 @@ func (s *DBTaskFinderSuite) insertTasks() {
 	}
 }
 
-func (s *DBTaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
+func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 	// XXX: collection is deliberately empty
 	runnableTasks, err := s.taskFinder.FindRunnableTasks()
 	s.Nil(err)
 	s.Empty(runnableTasks)
 }
 
-func (s *DBTaskFinderSuite) TestInactiveTasksNeverReturned() {
+func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	// insert the tasks, setting one to inactive
 	s.tasks[2].Activated = false
 	s.insertTasks()
@@ -84,7 +82,7 @@ func (s *DBTaskFinderSuite) TestInactiveTasksNeverReturned() {
 	s.Len(runnableTasks, 2)
 }
 
-func (s *DBTaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
+func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	// edit the dependency tasks, setting one to have finished
 	// successfully and one to have finished unsuccessfully
 	s.depTasks[0].Status = evergreen.TaskFailed
