@@ -32,19 +32,16 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 			Handler: n,
 		},
 	}
-	grip.Infoln("starting status service on:", addr)
+	grip.Infoln("starting status server on:", addr)
 
 	go func() {
 		srv.ListenAndServe()
 	}()
 
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				srv.Shutdown(ctx)
-			}
-		}
+		<-ctx.Done()
+		grip.Info("shutting down status server")
+		srv.Shutdown(ctx)
 	}()
 }
 
