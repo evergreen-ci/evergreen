@@ -1,10 +1,11 @@
 package cli
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type MigrationCommand struct {

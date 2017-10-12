@@ -3,6 +3,7 @@ package command
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // A plugin command to fetch a resource from an s3 bucket and download it to

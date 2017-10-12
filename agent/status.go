@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/urfave/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/urfave/negroni"
 )
 
 func (agt *Agent) startStatusServer(port int) {

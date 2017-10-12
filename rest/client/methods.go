@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,7 +22,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // StartTask marks the task as started.

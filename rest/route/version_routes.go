@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest"
@@ -8,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // getVersionIdFromRequest is a helpfer function that fetches versionId from

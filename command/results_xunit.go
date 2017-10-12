@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // xunitResults reads in an xml file of xunit

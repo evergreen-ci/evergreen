@@ -3,6 +3,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {

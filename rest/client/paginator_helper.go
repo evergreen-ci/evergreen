@@ -1,13 +1,13 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"golang.org/x/net/context"
 )
 
 // paginatorHelper is a struct to handle paginated GET requests

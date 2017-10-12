@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest"
@@ -8,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 const (

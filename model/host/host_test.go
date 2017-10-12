@@ -851,10 +851,11 @@ func TestHostUpsert(t *testing.T) {
 }
 
 func TestHostStats(t *testing.T) {
+	assert := assert.New(t)
+
 	const d1 = "distro1"
 	const d2 = "distro2"
 
-	assert := assert.New(t)
 	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing hosts collection")
 	host1 := &Host{
 		Id:          "host1",

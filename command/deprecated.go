@@ -1,9 +1,10 @@
 package command
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"golang.org/x/net/context"
 )
 
 // gitApplyPatch is deprecated. Its functionality is now a part of GitGetProjectCommand.

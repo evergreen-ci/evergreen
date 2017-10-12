@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"golang.org/x/net/context"
 )
 
 // StatsCollector samples machine statistics and logs them

@@ -1,12 +1,12 @@
 package command
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // manifestLoad

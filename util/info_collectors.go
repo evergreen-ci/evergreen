@@ -1,11 +1,11 @@
 package util
 
 import (
+	"context"
 	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"golang.org/x/net/context"
 )
 
 // SystemInfoCollector is meant to run in a goroutine and log

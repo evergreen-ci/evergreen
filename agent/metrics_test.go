@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"os/exec"
 	"runtime"
 	"testing"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type MetricsTestSuite struct {

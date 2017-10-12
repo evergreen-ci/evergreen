@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"strings"
@@ -11,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
-	"golang.org/x/net/context"
 )
 
 type StatusTestSuite struct {

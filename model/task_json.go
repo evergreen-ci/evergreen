@@ -6,8 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )

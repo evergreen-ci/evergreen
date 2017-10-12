@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -14,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip/message"
-	"golang.org/x/net/context"
 )
 
 // Communicator is an interface for communicating with the API server.

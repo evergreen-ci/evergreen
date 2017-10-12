@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // A plugin command to put a resource to an s3 bucket and download it to

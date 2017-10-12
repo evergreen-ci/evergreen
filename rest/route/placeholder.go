@@ -1,11 +1,11 @@
 package route
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"golang.org/x/net/context"
 )
 
 func getPlaceHolderManger(route string, version int) *RouteManager {

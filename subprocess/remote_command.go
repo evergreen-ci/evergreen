@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -9,7 +10,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type RemoteCommand struct {

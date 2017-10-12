@@ -1,13 +1,13 @@
 package command
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // update reads in a set of new expansions and updates the

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string) {

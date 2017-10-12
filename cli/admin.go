@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type AdminRestartTasks struct {

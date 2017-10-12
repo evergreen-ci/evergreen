@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/urfave/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
@@ -22,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/urfave/negroni"
 )
 
 var versionTestConfig = testutil.TestConfig()

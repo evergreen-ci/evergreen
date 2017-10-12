@@ -2,11 +2,12 @@ package command
 
 // sendJSONResults is responsible for sending the
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // specified file to the API Server

@@ -1,12 +1,11 @@
 package client
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"sync"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"

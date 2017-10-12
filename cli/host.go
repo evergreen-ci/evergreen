@@ -5,10 +5,11 @@ import (
 	"io"
 	"io/ioutil"
 
+	"context"
+
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // HostCreateCommand is the subcommand to spawn a host

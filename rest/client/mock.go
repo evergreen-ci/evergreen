@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -21,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Mock mocks EvergreenREST for testing.

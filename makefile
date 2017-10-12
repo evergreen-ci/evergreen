@@ -48,7 +48,7 @@ lintArgs := --tests --deadline=5m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo"
+lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="maligned"
 lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
 lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
@@ -203,6 +203,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/gorilla/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/tylerb/graceful/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/urfave/negroni/
+	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 phony += vendor-clean

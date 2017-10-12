@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 
+	"context"
+
 	humanize "github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -20,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 const defaultCloneDepth = 500

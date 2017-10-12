@@ -1,12 +1,13 @@
 package cli
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type AgentCommand struct {

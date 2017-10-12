@@ -2,6 +2,7 @@ package route
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
-	"golang.org/x/net/context"
 )
 
 func TestHostParseAndValidate(t *testing.T) {

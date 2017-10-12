@@ -45,8 +45,8 @@ func (c *clientMock) GetInstance(_ *host.Host) (*compute.Instance, error) {
 	}
 
 	instance := &compute.Instance{
-		Status: "RUNNING",
-		Zone: "us-east1-c",
+		Status:      "RUNNING",
+		Zone:        "us-east1-c",
 		MachineType: "zones/us-east1-c/machineTypes/n1-standard-8",
 	}
 

@@ -7,6 +7,8 @@ import (
 	textTemplate "text/template"
 	"time"
 
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/service"
@@ -17,7 +19,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"github.com/urfave/negroni"
-	"golang.org/x/net/context"
 )
 
 var (

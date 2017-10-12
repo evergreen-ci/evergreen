@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -20,7 +21,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )

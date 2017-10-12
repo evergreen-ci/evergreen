@@ -646,11 +646,8 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartT
 			evergreen.TaskSystemUnresponse)
 	}
 
-	results.TasksRestarted = make([]string, 0)
 	var tasksErrored []string
-	if !opts.DryRun {
-		results.TasksErrored = make([]string, 0)
-	}
+
 	for _, t := range tasksToRestart {
 		if opts.DryRun {
 			results.TasksRestarted = append(results.TasksRestarted, t.Id)
@@ -691,5 +688,10 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartT
 			results.TasksRestarted = append(results.TasksRestarted, t.Id)
 		}
 	}
+
+	if !opts.DryRun {
+		results.TasksErrored = tasksErrored
+	}
+
 	return results, nil
 }

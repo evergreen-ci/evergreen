@@ -3,8 +3,8 @@
 package vsphere
 
 import (
-	"github.com/pkg/errors"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
 	"github.com/vmware/govmomi/vim25/types"
 )
 

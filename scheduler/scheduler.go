@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"runtime"
 	"sync"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro

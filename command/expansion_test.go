@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -8,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"golang.org/x/net/context"
 )
 
 func TestExpansionsPlugin(t *testing.T) {

@@ -39,6 +39,7 @@ func TestFindOneProjectRef(t *testing.T) {
 
 func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 	assert := assert.New(t)
+
 	projectRef := &ProjectRef{
 		Owner:      "mongodb",
 		Repo:       "mci",

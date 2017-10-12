@@ -1,11 +1,11 @@
 package route
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"golang.org/x/net/context"
 )
 
 type mockRequestHandler struct {

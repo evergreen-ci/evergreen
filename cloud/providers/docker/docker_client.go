@@ -3,15 +3,16 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"net"
-	"time"
 	"net/http"
+	"time"
 
-	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	docker "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // The client interface wraps the Docker client interaction.
@@ -32,7 +32,7 @@ type client interface {
 	StartContainer(*host.Host) error
 }
 
-type clientImpl struct{
+type clientImpl struct {
 	// apiVersion specifies the version of the Docker API.
 	apiVersion string
 	// httpClient for making HTTP requests within the Docker client wrapper.
@@ -59,9 +59,9 @@ func (c *clientImpl) generateClient(d *distro.Distro) (*docker.Client, error) {
 	client, err := docker.NewClient(endpoint, c.apiVersion, c.httpClient, nil)
 	if err != nil {
 		grip.Error(message.Fields{
-			"message": "Docker initialize client API call failed",
-			"error": err,
-			"endpoint": endpoint,
+			"message":     "Docker initialize client API call failed",
+			"error":       err,
+			"endpoint":    endpoint,
 			"api_version": c.apiVersion,
 		})
 		return nil, errors.Wrapf(err, "Docker initialize client API call failed at endpoint '%s'", endpoint)
@@ -136,9 +136,9 @@ func (c *clientImpl) CreateContainer(id string, d *distro.Distro, s *ProviderSet
 	networkConf := &network.NetworkingConfig{}
 
 	grip.Info(message.Fields{
-		"message": "Creating docker container",
-		"name": id,
-		"image_id": containerConf.Image,
+		"message":       "Creating docker container",
+		"name":          id,
+		"image_id":      containerConf.Image,
 		"exposed_ports": containerConf.ExposedPorts,
 		"port_bindings": hostConf.PortBindings,
 	})

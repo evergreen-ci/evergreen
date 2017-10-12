@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 )

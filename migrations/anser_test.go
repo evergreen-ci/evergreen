@@ -1,9 +1,8 @@
 package migrations
 
 import (
+	"context"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/mock"

@@ -332,7 +332,7 @@ func RestartBuildTasks(buildId string, caller string) error {
 			err = resetTask(t.Id)
 			if err != nil {
 				return errors.Wrapf(err,
-				"Restarting build %v failed, could not task.reset on task",
+					"Restarting build %v failed, could not task.reset on task",
 					buildId, t.Id)
 			}
 		}

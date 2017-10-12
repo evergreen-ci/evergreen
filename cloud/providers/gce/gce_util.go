@@ -3,15 +3,15 @@
 package gce
 
 import (
+	"fmt"
 	"os"
 	"os/user"
-	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 )
 
 const (

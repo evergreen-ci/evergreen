@@ -1,11 +1,11 @@
 package command
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"golang.org/x/net/context"
 )
 
 type initialSetup struct{}
