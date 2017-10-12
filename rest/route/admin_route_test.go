@@ -167,5 +167,5 @@ func TestRestartRoute(t *testing.T) {
 	model, ok := resp.Result[0].(*restModel.RestartTasksResponse)
 	assert.True(ok)
 	assert.True(len(model.TasksRestarted) > 0)
-	assert.NotNil(model.TasksErrored)
+	assert.Nil(model.TasksErrored)
 }
