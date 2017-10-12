@@ -236,7 +236,6 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	deps := make([]Task, 0, len(t.DependsOn))
 
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
-
 	for _, dep := range t.DependsOn {
 		if cachedDep, ok := depCaches[dep.TaskId]; !ok {
 			depIdsToQueryFor = append(depIdsToQueryFor, dep.TaskId)
@@ -1002,12 +1001,8 @@ func (t *Task) MergeNewTestResults() error {
 }
 
 // Like Task DependenciesMet, but uses the aggregated results instead of
-// querying the database 1-by-1 for additional Tasks
+// querying the database 1-by-1 for the Tasks
 func (t *DependencyNode) DependenciesMet() bool {
-	if len(t.DependsOn) == 0 && len(t.Predecessors) == 0 {
-		return true
-	}
-
 	if len(t.DependsOn) != len(t.Predecessors) {
 		return false
 	}
