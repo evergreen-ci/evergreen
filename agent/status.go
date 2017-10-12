@@ -1,34 +1,46 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/tylerb/graceful"
 	"github.com/urfave/negroni"
 )
 
-func (agt *Agent) startStatusServer(port int) {
+func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	r := mux.NewRouter().StrictSlash(false)
+	r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
+	r.HandleFunc("/terminate", terminateAgentHandler).Methods("DELETE")
+
+	n := negroni.New()
+	n.Use(negroni.NewRecovery())
+	n.UseHandler(r)
+	srv := &graceful.Server{
+		Timeout: 10 * time.Second,
+		Server: &http.Server{
+			Addr:    addr,
+			Handler: n,
+		},
+	}
+	grip.Infoln("starting status server on:", addr)
+
+	go srv.ListenAndServe()
 
 	go func() {
-		r := mux.NewRouter().StrictSlash(false)
-		r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
-		r.HandleFunc("/terminate", terminateAgentHandler).Methods("DELETE")
-
-		n := negroni.New()
-		n.Use(negroni.NewRecovery())
-		n.UseHandler(r)
-
-		grip.CatchEmergencyFatal(http.ListenAndServe(addr, n))
+		<-ctx.Done()
+		grip.Info("shutting down status server")
+		srv.Shutdown(context.Background())
 	}()
-
-	grip.Infoln("starting status service on:", addr)
 }
 
 // statusResponse is the structure of the response objects produced by
