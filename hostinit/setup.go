@@ -110,6 +110,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		}
 
 		h.Status = evergreen.HostStarting
+		h.StartTime = time.Now()
 
 		_, err = h.Upsert()
 		if err != nil {

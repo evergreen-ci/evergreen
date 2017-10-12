@@ -4,9 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 var testConfig = testutil.TestConfig()
@@ -335,3 +338,41 @@ func TestCostForDuration(t *testing.T) {
 	}
 	fmt.Println("PRICE AGAIN", cost)
 }*/
+
+func TestTimeTilNextPayment(t *testing.T) {
+	assert := assert.New(t)
+	hourlyHost := host.Host{
+		Id: "hourlyHost",
+		Distro: distro.Distro{
+			Arch: "windows_amd64",
+		},
+		CreationTime: time.Date(2017, 1, 1, 0, 30, 0, 0, time.Local),
+		StartTime:    time.Date(2017, 1, 1, 1, 0, 0, 0, time.Local),
+	}
+	secondlyHost := host.Host{
+		Id: "secondlyHost",
+		Distro: distro.Distro{
+			Arch: "linux_amd64",
+		},
+		CreationTime: time.Date(2017, 1, 1, 0, 0, 0, 0, time.Local),
+		StartTime:    time.Date(2017, 1, 1, 0, 30, 0, 0, time.Local),
+	}
+	hourlyHostNoStartTime := host.Host{
+		Id: "hourlyHostNoStartTime",
+		Distro: distro.Distro{
+			Arch: "windows_amd64",
+		},
+		CreationTime: time.Date(2017, 1, 1, 0, 0, 0, 0, time.Local),
+	}
+	now := time.Now()
+	timeTilNextHour := int(time.Hour) - (now.Minute()*int(time.Minute) + now.Second()*int(time.Second) + now.Nanosecond()*int(time.Nanosecond))
+
+	timeNextPayment := timeTilNextEC2Payment(&hourlyHost)
+	assert.InDelta(timeTilNextHour, timeNextPayment.Nanoseconds(), float64(1*time.Millisecond))
+
+	timeNextPayment = timeTilNextEC2Payment(&secondlyHost)
+	assert.InDelta(1*time.Second, timeNextPayment.Nanoseconds(), float64(1*time.Millisecond))
+
+	timeNextPayment = timeTilNextEC2Payment(&hourlyHostNoStartTime)
+	assert.InDelta(timeTilNextHour, timeNextPayment.Nanoseconds(), float64(1*time.Millisecond))
+}

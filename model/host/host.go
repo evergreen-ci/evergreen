@@ -42,8 +42,10 @@ type Host struct {
 	// duplicate of the DispatchTime field in the above task
 	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
 	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
-	CreationTime     time.Time `bson:"creation_time" json:"creation_time"`
-	TerminationTime  time.Time `bson:"termination_time" json:"termination_time"`
+	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
+	CreationTime    time.Time `bson:"creation_time" json:"creation_time"`
+	StartTime       time.Time `bson:"start_time" json:"start_time"`
+	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
 	LastTaskCompleted     string    `bson:"last_task" json:"last_task"`
