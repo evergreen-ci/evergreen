@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -20,8 +21,9 @@ import (
 
 // Agent manages the data necessary to run tasks on a host.
 type Agent struct {
-	comm client.Communicator
-	opts Options
+	comm         client.Communicator
+	statusServer *http.Server
+	opts         Options
 }
 
 // Options contains startup options for the Agent.
@@ -63,7 +65,7 @@ func New(opts Options, comm client.Communicator) *Agent {
 // Start starts the agent loop. The agent polls the API server for new tasks
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
-	a.startStatusServer(a.opts.StatusPort)
+	a.startStatusServer(ctx, a.opts.StatusPort)
 	tryCleanupDirectory(a.opts.WorkingDirectory)
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
@@ -93,6 +95,9 @@ func (a *Agent) loop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			grip.Info("agent loop canceled")
+			if a.statusServer != nil {
+				a.statusServer.Shutdown(ctx)
+			}
 			return nil
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx)

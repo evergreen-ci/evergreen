@@ -22,9 +22,11 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 	defer testApiServer.Close()
 
 	const (
-		url     = "http://localhost:8181/api/patches/%s/%s/modules"
+		path    = "/api/patches/%s/%s/modules"
 		githash = "1e5232709595db427893826ce19289461cba3f75"
 	)
+
+	url := testApiServer.URL + path
 
 	Convey("list modules endpoint should function adequately", t, func() {
 		Convey("without data there should be nothing found", func() {

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 	"github.com/urfave/negroni"
 )
 
-func (agt *Agent) startStatusServer(port int) {
+func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
 	go func() {
@@ -24,8 +25,16 @@ func (agt *Agent) startStatusServer(port int) {
 		n := negroni.New()
 		n.Use(negroni.NewRecovery())
 		n.UseHandler(r)
+		agt.statusServer = &http.Server{
+			Addr:    addr,
+			Handler: n,
+		}
 
-		grip.CatchEmergencyFatal(http.ListenAndServe(addr, n))
+		err := agt.statusServer.ListenAndServe()
+		// ListenAndServe always returns an error, but let's log it anyway
+		if err != nil {
+			grip.Info(err.Error())
+		}
 	}()
 
 	grip.Infoln("starting status service on:", addr)
