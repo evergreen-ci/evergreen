@@ -3,43 +3,28 @@ updated: 2016-06-16T13:39:28.50048459-04:00
 imports:
 - name: gonum.org/v1/gonum
   version: aff0e10c44138b1247d90efb9117f68ba7c76f0c
-
+- name: github.com/VividCortex/ewma
+  version: 43880d236f695d39c62cf7aa4ebd4508c258e6c0
 - name: golang.org/x/tools
   version: 9deed8c6c1c89e0b6d68d727f215de8e851d1064
   subpackages:
     - container/intsets
+
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
-
 - name: github.com/pkg/errors
-  version: a22138067af1c4942683050411a841ade67fe1eb
-
-- name: github.com/davecgh/go-spew
-  version: adab96458c51a58dc1783b3335dcce5461522e75
-- name: github.com/stretchr/objx
-  version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
+  version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
 - name: github.com/stretchr/testify
   version: 890a5c3458b43e6104ff5da8dfa139d013d77544
-- name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
 
-- name: github.com/mongodb/grip
-  version: 4beebb80a809873037c5d9b370a9235f33cd3096
-
-- name: github.com/tychoish/gimlet
-  version: 47913accb7804b3a72b1c0ad3e44ff94d9447f03
-- name: github.com/pkg/errors
-  version: 17b591df37844cde689f4d5813e5cea0927d8dd2
 - name: gopkg.in/mgo.v2
   version: 3f83fa5005286a7fe593b055f0d7771a7dce4655
-  subpackages:
-  - bson
-  - internal/json
-  - internal/sasl
-  - internal/scram
 - name: gopkg.in/yaml.v2
   version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
 
-- name: github.com/VividCortex/ewma
-  version: 43880d236f695d39c62cf7aa4ebd4508c258e6c0
+- name: github.com/mongodb/grip
+  version: 4beebb80a809873037c5d9b370a9235f33cd3096
+- name: github.com/tychoish/gimlet
+  version: 284c3fcf374004b80be297839a0e7d031df50ef5
+
 devImports: []

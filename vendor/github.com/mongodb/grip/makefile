@@ -163,9 +163,8 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
 # start vendoring configuration
 #    begin with configuration of dependencies
 vendor-clean:
-	rm -rf vendor/gopkg.in/mgo.v2/harness/
-	rm -rf vendor/github.com/stretchr/testify/vendor/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/grip/
+	rm -rf vendor/github.com/mattn/go-xmpp/_example/
+	rm -rf vendor/github.com/bluele/slack/examples/
 	sed -ri 's%(\tlog.*)%// \1%g' `find vendor/github.com/nutmegdevelopment/sumologic/upload/upload.go`
 	sed -ri 's/json:"(.*)"/json:"\1" bson:"\1,omitempty"/' `grep -R -l 'json:\".*\" [^bson]' vendor/github.com/shirou/gopsutil/*` || true
 	find vendor/ -name "*.go" | xargs gofmt -w -r '"golang.org/x/net/context" -> "context"'

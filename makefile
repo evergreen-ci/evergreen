@@ -193,23 +193,18 @@ lint-%:$(buildDir)/output.%.lint
 
 # start vendoring configuration
 vendor-clean:
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/davecgh/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pmezard/
-	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/mgo.v2/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/yaml.v2/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/davecgh/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/gorilla/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/tylerb/graceful/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/urfave/negroni/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
-	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio
+	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 phony += vendor-clean
 # end vendoring tooling configuration
 

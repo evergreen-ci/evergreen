@@ -170,14 +170,9 @@ vendor-sync:$(vendorDeps)
 	glide install -s
 vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/harness/
-	rm -rf vendor/github.com/stretchr/testify/vendor/
-	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/davecgh/
-	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/pmezard/
+	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/mongodb/grip/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/davecgh/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pmezard/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
 #   define dependencies for buildscripts
 phony += vendor-deps vendor-clean

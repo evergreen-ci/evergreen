@@ -89,9 +89,9 @@ func (c *Cluster) WriteBatch(events []*Event) error {
 }
 
 func (c *Cluster) WriteRaw(reader io.ReadSeeker, metadata *EventMetadata) error {
-	startAt, _ := reader.Seek(0, ioSeekCurrent)
+	startAt, _ := reader.Seek(0, io.SeekCurrent)
 	return c.retry(func(client *Client) error {
-		reader.Seek(startAt, ioSeekStart)
+		reader.Seek(startAt, io.SeekStart)
 		return client.WriteRaw(reader, metadata)
 	})
 }

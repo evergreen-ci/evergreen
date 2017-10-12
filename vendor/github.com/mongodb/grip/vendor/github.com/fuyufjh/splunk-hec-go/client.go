@@ -14,7 +14,7 @@ import (
 const (
 	retryWaitTime = 1 * time.Second
 
-	defaultMaxContentLength = 1000000176
+	defaultMaxContentLength = 1000000
 )
 
 type Client struct {
@@ -171,7 +171,7 @@ func breakStream(reader io.ReadSeeker, max int, callback func(chunk []byte) erro
 		data := buf[0 : writeAt+n]
 
 		// Cut after the last LF character
-		cut := lastIndexByte(data, '\n') + 1
+		cut := bytes.LastIndexByte(data, '\n') + 1
 		if cut == 0 {
 			// This line is too long, but just let it break here
 			cut = len(data)
@@ -212,7 +212,7 @@ func (res *Response) String() string {
 func (hec *Client) write(endpoint string, data []byte) error {
 	retries := 0
 RETRY:
-	req, err := http.NewRequest(httpMethodPost, hec.serverURL+endpoint, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPost, hec.serverURL+endpoint, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
