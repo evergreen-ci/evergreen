@@ -157,6 +157,7 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
 			errMessage["lastAlert"] = lastAlerted
+			errMessage["outcome"] = "not sending alert"
 			grip.Error(errMessage)
 			return false, err
 		}
@@ -167,7 +168,10 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 			errMessage[message.FieldsMsgName] = "empty last alert task_id"
 			errMessage["lastAlert"] = lastAlerted
 			if maybeSend {
-				errMessage["outcome"] = "sending alert 25% of the time"
+				errMessage["outcome"] = "sending alert (25%)"
+			} else {
+				errMessage["outcome"] = "not sending alert (75%)"
+
 			}
 			grip.Warning(errMessage)
 
