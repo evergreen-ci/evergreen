@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
@@ -38,6 +37,7 @@ type Options struct {
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
 	SetupAsSudo        bool
+	SetupOnly          bool
 }
 
 type taskContext struct {
@@ -71,6 +71,9 @@ func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(a.opts.StatusPort)
 	if out, err := a.runSetupScript(ctx); err != nil {
 		return errors.Wrap(err, out)
+	}
+	if a.opts.SetupOnly {
+		return nil
 	}
 	tryCleanupDirectory(a.opts.WorkingDirectory)
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
@@ -307,7 +310,7 @@ func (a *Agent) killProcs(tc *taskContext) {
 }
 
 func (a *Agent) runSetupScript(ctx context.Context) (string, error) {
-	script := filepath.Join(a.opts.WorkingDirectory, hostinit.SetupScriptName)
+	script := filepath.Join(a.opts.WorkingDirectory, evergreen.SetupScriptName)
 	if _, err := os.Stat(script); os.IsNotExist(err) {
 		return "", nil
 	}

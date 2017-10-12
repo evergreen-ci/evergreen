@@ -95,6 +95,9 @@ const (
 
 	// Key used to store user information in request contexts
 	RequestUser requestUserContextKey = 0
+
+	SetupScriptName    = "setup.sh"
+	TeardownScriptName = "teardown.sh"
 )
 
 // evergreen package names
