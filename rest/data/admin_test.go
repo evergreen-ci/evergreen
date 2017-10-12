@@ -135,6 +135,6 @@ func (s *AdminDataSuite) TestRestart() {
 		OnlyPurple: false})
 	s.NoError(err)
 	s.NotZero(len(realResp.TasksRestarted))
-	s.NotNil(realResp.TasksErrored)
+	s.Nil(realResp.TasksErrored)
 	s.Equal(len(dryRunResp.TasksRestarted), len(realResp.TasksRestarted))
 }
