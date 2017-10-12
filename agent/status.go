@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -16,24 +18,18 @@ import (
 
 func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	r := mux.NewRouter().StrictSlash(false)
+	r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
+	r.HandleFunc("/terminate", terminateAgentHandler).Methods("DELETE")
+
+	n := negroni.New()
+	n.Use(negroni.NewRecovery())
+	n.UseHandler(r)
 
 	go func() {
-		r := mux.NewRouter().StrictSlash(false)
-		r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
-		r.HandleFunc("/terminate", terminateAgentHandler).Methods("DELETE")
-
-		n := negroni.New()
-		n.Use(negroni.NewRecovery())
-		n.UseHandler(r)
-		agt.statusServer = &http.Server{
-			Addr:    addr,
-			Handler: n,
-		}
-
-		err := agt.statusServer.ListenAndServe()
-		// ListenAndServe always returns an error, but let's log it anyway
+		err := service.RunGracefully(addr, 10*time.Second, n)
 		if err != nil {
-			grip.Info(err.Error())
+			grip.Notice(err.Error())
 		}
 	}()
 

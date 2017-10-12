@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
@@ -21,9 +20,8 @@ import (
 
 // Agent manages the data necessary to run tasks on a host.
 type Agent struct {
-	comm         client.Communicator
-	statusServer *http.Server
-	opts         Options
+	comm client.Communicator
+	opts Options
 }
 
 // Options contains startup options for the Agent.
@@ -95,9 +93,6 @@ func (a *Agent) loop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			grip.Info("agent loop canceled")
-			if a.statusServer != nil {
-				a.statusServer.Shutdown(ctx)
-			}
 			return nil
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx)
