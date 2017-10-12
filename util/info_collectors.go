@@ -7,7 +7,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
-	"golang.org/x/net/context"
 )
 
 // SystemInfoCollector is meant to run in a goroutine and log
