@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -98,5 +99,148 @@ func (s *DBTaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() 
 	runnableTasks, err := s.taskFinder.FindRunnableTasks()
 	s.Nil(err)
 	s.Len(runnableTasks, 2)
+}
 
+type TaskFinderComparisonSuite struct {
+	suite.Suite
+}
+
+func TestTaskFinderComparisonSuite(t *testing.T) {
+	s := new(TaskFinderComparisonSuite)
+
+	suite.Run(t, s)
+}
+
+func (s *TaskFinderComparisonSuite) SetupTest() {
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	s.NotNil(session)
+	s.NoError(session.DB(taskFinderTestConf.Database.DB).DropDatabase())
+
+	for _, task := range tasks {
+		s.NoError(task.Insert())
+	}
+}
+
+func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
+	taskFinder := &DBTaskFinder{}
+
+	oldRunnableTasks, err := taskFinder.FindRunnableTasks()
+	s.Nil(err)
+	newRunnableTasks, err1 := taskFinder.FindRunnableTasksWithGraph()
+	s.Nil(err1)
+
+	s.NotEmpty(oldRunnableTasks)
+	s.NotEmpty(newRunnableTasks)
+
+	// clear Predecessors
+	for i := range newRunnableTasks {
+		newRunnableTasks[i].Predecessors = []task.Task{}
+	}
+	s.Equal(oldRunnableTasks, newRunnableTasks)
+	pp.Print(oldRunnableTasks)
+	pp.Print(newRunnableTasks)
+
+	// parent0 must not be runnable
+}
+
+// A suitably complex set of tasks for comparing the old method to the new method
+var tasks = []task.Task{
+	// Successful parent
+	task.Task{
+		Id:        "parent0",
+		Status:    evergreen.TaskSucceeded,
+		Activated: true,
+	},
+	task.Task{
+		Id:        "parent0-child0",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		// discrepancy between depends_on and the actual task's Status
+		// is deliberate
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent0",
+				Status: evergreen.TaskFailed,
+			},
+		},
+	},
+	task.Task{
+		Id:        "parent0-child0-child0",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent0-child0",
+				Status: evergreen.TaskUndispatched,
+			},
+		},
+	},
+
+	// Failed parent
+	task.Task{
+		Id:        "parent1",
+		Status:    evergreen.TaskFailed,
+		Activated: true,
+	},
+	task.Task{
+		Id:        "parent1-child0",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent1",
+				Status: evergreen.TaskFailed,
+			},
+		},
+	},
+
+	// other parent
+	task.Task{
+		Id:        "parent2",
+		Status:    evergreen.TaskSystemFailed,
+		Activated: true,
+	},
+	task.Task{
+		Id:        "parent2-child0",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent2",
+				Status: evergreen.TaskUndispatched,
+			},
+		},
+	},
+
+	// parent with negative priority
+	task.Task{
+		Id:        "parent3",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		Priority:  -1,
+	},
+	task.Task{
+		Id:        "parent3-child1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent3",
+				Status: evergreen.TaskUndispatched,
+			},
+		},
+	},
+
+	// undispatched task with no dependencies
+	task.Task{
+		Id:        "parent4",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+	},
+
+	// undispatched, inactive task
+	task.Task{
+		Id:     "parent5",
+		Status: evergreen.TaskUndispatched,
+	},
 }
