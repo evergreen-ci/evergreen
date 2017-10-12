@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -138,6 +139,11 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 			// Either this alert has never been triggered before, or it was triggered for a
 			// transition from failure after an older success than this one - so we need to
 			// execute this trigger again.
+			errMessage := getShouldExecuteError(ctx)
+			errMessage["outcome"] = "sending alert"
+			errMessage[message.FieldsMsgName] = "identified transition to failure!"
+			grip.Info(errMessage)
+
 			return true, nil
 		}
 	}
@@ -146,21 +152,30 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 		q := alertrecord.ByLastFailureTransition(ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
 		lastAlerted, err := alertrecord.FindOne(q)
 
-		if err != nil {
+		if err != nil || lastAlerted == nil {
 			errMessage := getShouldExecuteError(ctx)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
 			errMessage["error"] = err.Error()
+			errMessage["lastAlert"] = lastAlerted
+			errMessage["outcome"] = "not sending alert"
 			grip.Error(errMessage)
 			return false, err
 		}
 
-		if lastAlerted == nil || lastAlerted.TaskId == "" {
+		if lastAlerted.TaskId == "" {
+			maybeSend := sometimes.Quarter()
 			errMessage := getShouldExecuteError(ctx)
-			errMessage[message.FieldsMsgName] = "last alert record nil, or empty last alert task_id"
+			errMessage[message.FieldsMsgName] = "empty last alert task_id"
 			errMessage["lastAlert"] = lastAlerted
-			errMessage["outcome"] = "sending alert"
-			grip.Info(errMessage)
-			return true, nil
+			if maybeSend {
+				errMessage["outcome"] = "sending alert (25%)"
+			} else {
+				errMessage["outcome"] = "not sending alert (75%)"
+
+			}
+			grip.Warning(errMessage)
+
+			return maybeSend, nil
 		}
 
 		return taskFinishedTwoOrMoreDaysAgo(lastAlerted.TaskId)
@@ -169,7 +184,7 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 }
 
 func getShouldExecuteError(ctx triggerContext) message.Fields {
-	return message.Fields{
+	m := message.Fields{
 		"alert":   "transition to failure",
 		"outcome": "no alert",
 		"task_id": ctx.task.Id,
@@ -179,6 +194,20 @@ func getShouldExecuteError(ctx triggerContext) message.Fields {
 			"project": ctx.task.Project,
 		},
 	}
+
+	if ctx.previousCompleted == nil {
+		m["previous"] = nil
+	} else {
+		m["previous"] = map[string]interface{}{
+			"id":          ctx.previousCompleted.Id,
+			"variant":     ctx.previousCompleted.BuildVariant,
+			"project":     ctx.previousCompleted.Project,
+			"finish_time": ctx.previousCompleted.FinishTime,
+			"status":      ctx.previousCompleted.Status,
+		}
+	}
+
+	return m
 }
 
 func (trig TaskFailTransition) CreateAlertRecord(ctx triggerContext) *alertrecord.AlertRecord {
