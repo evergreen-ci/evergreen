@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/service"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/tylerb/graceful"
 	"github.com/urfave/negroni"
 )
 
@@ -25,15 +25,27 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.UseHandler(r)
+	srv := &graceful.Server{
+		Timeout: 10 * time.Second,
+		Server: &http.Server{
+			Addr:    addr,
+			Handler: n,
+		},
+	}
+	grip.Infoln("starting status service on:", addr)
 
 	go func() {
-		err := service.RunGracefully(addr, 10*time.Second, n)
-		if err != nil {
-			grip.Notice(err.Error())
-		}
+		srv.ListenAndServe()
 	}()
 
-	grip.Infoln("starting status service on:", addr)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				srv.Shutdown(ctx)
+			}
+		}
+	}()
 }
 
 // statusResponse is the structure of the response objects produced by
