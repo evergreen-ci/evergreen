@@ -319,13 +319,15 @@ func (a *Agent) runSetupScript(ctx context.Context) (string, error) {
 	ctx, cancel = context.WithTimeout(ctx, setupTimeout)
 	defer cancel()
 	cmd := a.getShCommandWithSudo(ctx, script)
-	out, scriptErr := cmd.CombinedOutput()
+	catcher := grip.NewSimpleCatcher()
+	out, err := cmd.CombinedOutput()
+	catcher.Add(err)
 
 	if err := os.Remove(script); err != nil {
-		return "", err
+		catcher.Add(err)
 	}
 
-	return string(out), scriptErr
+	return string(out), catcher.Resolve()
 }
 
 func (a *Agent) getShCommandWithSudo(ctx context.Context, script string) *exec.Cmd {

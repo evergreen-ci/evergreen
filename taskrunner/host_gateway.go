@@ -85,6 +85,10 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 
 	err = startAgentOnRemote(settings, &hostObj, sshOptions)
 	if err != nil {
+		// mark the host's provisioning as failed
+		if err := hostObj.SetUnprovisioned(); err != nil {
+			grip.Errorf("unprovisioning host %s failed: %+v", hostObj.Id, err)
+		}
 		return errors.WithStack(err)
 	}
 	grip.Infof("Agent successfully started for host %v", hostObj.Id)

@@ -38,5 +38,5 @@ const (
 
 	// setupTimeout is how long the agent will wait before timing out running
 	// the setup script.
-	setupTimeout = 1 * time.Minute
+	setupTimeout = 2 * time.Minute
 )

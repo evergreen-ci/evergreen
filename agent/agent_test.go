@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -385,7 +384,7 @@ func (s *AgentSuite) TestSetupScript() {
 	s.Empty(out)
 
 	// With a setup script, run the script
-	script := filepath.Join(dir, hostinit.SetupScriptName)
+	script := filepath.Join(dir, evergreen.SetupScriptName)
 	content := []byte("echo \"hello, world\"")
 	err = ioutil.WriteFile(script, content, 0755)
 	s.Require().NoError(err)
