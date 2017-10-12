@@ -1,6 +1,7 @@
 package util
 
 import (
+	"math/rand"
 	"time"
 )
 
@@ -45,4 +46,10 @@ func ToPythonTime(t time.Time) float64 {
 
 	res := float64(timeAsInt64) / fromNano
 	return res
+}
+
+// JitterInterval returns a duration that some value between the
+// interval and 2x the interval.
+func JitterInterval(interval time.Duration) time.Duration {
+	return time.Duration(rand.Float64()*float64(interval)) + interval
 }

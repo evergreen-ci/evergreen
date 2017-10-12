@@ -78,9 +78,10 @@ func (a *Agent) loop(ctx context.Context) error {
 	// loggers, so that when a task is canceled by a context, it
 	// can log its clean up.
 	var (
-		lgrCtx context.Context
-		tskCtx context.Context
-		cancel context.CancelFunc
+		lgrCtx        context.Context
+		tskCtx        context.Context
+		cancel        context.CancelFunc
+		jitteredSleep time.Duration
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -118,8 +119,9 @@ func (a *Agent) loop(ctx context.Context) error {
 				timer.Reset(0)
 				continue
 			}
-			grip.Debugf("Agent sleeping %s", agentSleepInterval)
-			timer.Reset(agentSleepInterval)
+			jitteredSleep = util.JitterInterval(agentSleepInterval)
+			grip.Debugf("Agent sleeping %s", jitteredSleep)
+			timer.Reset(jitteredSleep)
 		}
 	}
 }
