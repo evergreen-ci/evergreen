@@ -52,9 +52,9 @@ func (self *DBTaskFinder) FindRunnableTasksWithGraph() ([]task.Task, error) {
 
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	// filter out any tasks whose dependencies are not met
-	for _, task := range undispatchedTasks {
-		if task.DependenciesMetAsPredecessors() {
-			runnableTasks = append(runnableTasks, task)
+	for _, graphItem := range undispatchedTasks {
+		if graphItem.DependenciesMet() {
+			runnableTasks = append(runnableTasks, graphItem.Task)
 		}
 	}
 

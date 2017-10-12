@@ -51,15 +51,13 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated    bool         `bson:"activated" json:"activated"`
-	ActivatedBy  string       `bson:"activated_by" json:"activated_by"`
-	BuildId      string       `bson:"build_id" json:"build_id"`
-	DistroId     string       `bson:"distro" json:"distro"`
-	BuildVariant string       `bson:"build_variant" json:"build_variant"`
-	DependsOn    []Dependency `bson:"depends_on" json:"depends_on"`
-	// TODO: agg result in Task? kinda nasty
-	Predecessors  []Task `bson:"predecessors"`
-	NumDependents int    `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	Activated     bool         `bson:"activated" json:"activated"`
+	ActivatedBy   string       `bson:"activated_by" json:"activated_by"`
+	BuildId       string       `bson:"build_id" json:"build_id"`
+	DistroId      string       `bson:"distro" json:"distro"`
+	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
+	DependsOn     []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -100,6 +98,12 @@ type Task struct {
 
 	// test results captured and sent back by agent
 	TestResults []TestResult `bson:"test_results" json:"test_results"`
+}
+
+// Represent graphLookup of Tasks and their dependencies
+type DependencyGraph struct {
+	Task         `bson:",inline"`
+	Predecessors []Task `bson:"predecessors"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -999,9 +1003,15 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-func (t *Task) DependenciesMetAsPredecessors() bool {
+// Like Task DependenciesMet, but uses the aggregated results instead of
+// querying the database 1-by-1 for additional Tasks
+func (t *DependencyGraph) DependenciesMet() bool {
 	if len(t.DependsOn) == 0 && len(t.Predecessors) == 0 {
 		return true
+	}
+
+	if len(t.DependsOn) != len(t.Predecessors) {
+		return false
 	}
 
 	for _, depTask := range t.Predecessors {
