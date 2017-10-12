@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -32,7 +33,7 @@ func (s *HostSuite) SetupSuite() {
 
 func (s *HostSuite) TestFindByIdFirst() {
 	handler := &hostIDGetHandler{hostId: "host1"}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -44,7 +45,7 @@ func (s *HostSuite) TestFindByIdFirst() {
 
 func (s *HostSuite) TestFindByIdLast() {
 	handler := &hostIDGetHandler{hostId: "host2"}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -56,6 +57,6 @@ func (s *HostSuite) TestFindByIdLast() {
 
 func (s *HostSuite) TestFindByIdFail() {
 	handler := &hostIDGetHandler{hostId: "host3"}
-	_, ok := handler.Execute(nil, s.sc)
+	_, ok := handler.Execute(context.TODO(), s.sc)
 	s.Error(ok)
 }

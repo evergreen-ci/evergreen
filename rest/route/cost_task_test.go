@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -154,5 +155,5 @@ func executeCostTasksByProjectRequest(project, key string, starttime time.Time,
 	handler.Args = costTasksByProjectArgs{projectID: project, starttime: starttime, duration: duration}
 	handler.limit = limit
 	handler.key = key
-	return handler.Execute(nil, sc)
+	return handler.Execute(context.TODO(), sc)
 }

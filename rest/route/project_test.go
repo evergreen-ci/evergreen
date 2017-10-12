@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"testing"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -130,5 +131,5 @@ func executeProjectRequest(key string, limit int, sc *data.MockConnector) (Respo
 	pe.key = key
 	pe.limit = limit
 
-	return pe.Execute(nil, sc)
+	return pe.Execute(context.TODO(), sc)
 }

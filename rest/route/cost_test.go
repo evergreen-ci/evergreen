@@ -1,6 +1,7 @@
 package route
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -41,7 +42,7 @@ func (s *VersionCostSuite) SetupSuite() {
 func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	// Test that the handler executes properly
 	handler := &costByVersionHandler{versionId: "version1"}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -60,7 +61,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	// Test that the handler executes properly
 	handler := &costByVersionHandler{versionId: "version2"}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -78,7 +79,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 // incorrect query is passed in
 func (s *VersionCostSuite) TestFindCostByVersionIdFail() {
 	handler := &costByVersionHandler{versionId: "fake_version"}
-	res, ok := handler.Execute(nil, s.sc)
+	res, ok := handler.Execute(context.TODO(), s.sc)
 	s.Nil(res.Result)
 	s.Error(ok)
 }
@@ -165,7 +166,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	// Test that the handler executes properly
 	handler := &costByDistroHandler{distroId: "distro1", startTime: s.starttime,
 		duration: time.Millisecond}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -187,7 +188,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	// Test that the handler executes properly
 	handler := &costByDistroHandler{distroId: "distro2", startTime: s.starttime,
 		duration: time.Millisecond}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -208,7 +209,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	handler := &costByDistroHandler{distroId: "distro2",
 		startTime: time.Now().AddDate(0, -1, 0), duration: time.Millisecond}
-	res, err := handler.Execute(nil, s.sc)
+	res, err := handler.Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Equal(1, len(res.Result))
@@ -227,7 +228,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 func (s *DistroCostSuite) TestFindCostByDistroIdFail() {
 	handler := &costByDistroHandler{distroId: "fake_distro", startTime: s.starttime,
 		duration: 1}
-	res, ok := handler.Execute(nil, s.sc)
+	res, ok := handler.Execute(context.TODO(), s.sc)
 	s.Nil(res.Result)
 	s.Error(ok)
 }

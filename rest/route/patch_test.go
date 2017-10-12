@@ -49,7 +49,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 func (s *PatchByIdSuite) TestFindById() {
 	rm := getPatchByIdManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = s.objIds[0].Hex()
-	res, err := rm.Methods[0].Execute(nil, s.sc)
+	res, err := rm.Methods[0].Execute(context.TODO(), s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	s.Len(res.Result, 1)
@@ -65,7 +65,7 @@ func (s *PatchByIdSuite) TestFindByIdFail() {
 		s.NotEqual(new_id, i)
 	}
 	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = new_id.Hex()
-	res, err := rm.Methods[0].Execute(nil, s.sc)
+	res, err := rm.Methods[0].Execute(context.TODO(), s.sc)
 	s.Error(err)
 	s.Len(res.Result, 0)
 }
@@ -174,7 +174,7 @@ func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, s
 	pe.key = ts.Format(model.APITimeFormat)
 	pe.limit = limit
 
-	return pe.Execute(nil, sc)
+	return pe.Execute(context.TODO(), sc)
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -466,5 +466,5 @@ func executePatchesByUserRequest(user string, ts time.Time, limit int, sc *data.
 	pe.key = ts.Format(model.APITimeFormat)
 	pe.limit = limit
 
-	return pe.Execute(nil, sc)
+	return pe.Execute(context.TODO(), sc)
 }
