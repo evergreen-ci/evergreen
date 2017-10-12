@@ -140,12 +140,8 @@ func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.
 
 // RestartFailedTasks mocks a response to restarting failed tasks
 func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
-	var tasksErrored []string
-	if !opts.DryRun {
-		tasksErrored = []string{"task4", "task5"}
-	}
 	return &restModel.RestartTasksResponse{
 		TasksRestarted: []string{"task1", "task2", "task3"},
-		TasksErrored:   tasksErrored,
+		TasksErrored:   nil,
 	}, nil
 }
