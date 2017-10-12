@@ -39,7 +39,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	go func() {
 		<-ctx.Done()
 		grip.Info("shutting down status server")
-		srv.Shutdown(context.Background())
+		srv.Stop(10 * time.Second)
 	}()
 }
 
