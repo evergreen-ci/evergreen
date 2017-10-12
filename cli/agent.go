@@ -17,6 +17,7 @@ type AgentCommand struct {
 	LogPrefix        string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
 	StatusPort       int    `long:"status_part" default:"2285" description:"port to run the status server on"`
 	WorkingDirectory string `long:"working_directory" default:"" description:"working directory"`
+	SetupAsSudo      bool   `long:"setup_as_sudo" description:"run setup script as sudo"`
 }
 
 func (c *AgentCommand) Execute(_ []string) error {
@@ -30,6 +31,7 @@ func (c *AgentCommand) Execute(_ []string) error {
 		StatusPort:       c.StatusPort,
 		LogPrefix:        c.LogPrefix,
 		WorkingDirectory: c.WorkingDirectory,
+		SetupAsSudo:      c.SetupAsSudo,
 	}
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))

@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -34,7 +33,7 @@ import (
 
 const (
 	SCPTimeout         = time.Minute
-	setupScriptName    = "setup.sh"
+	SetupScriptName    = "setup.sh"
 	teardownScriptName = "teardown.sh"
 )
 
@@ -360,14 +359,6 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 		grip.Error(err)
 		return "", err
 	}
-	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to get cloud host for %s", targetHost.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return "", errors.Wrapf(err, "error getting ssh options for host %s", targetHost.Id)
-	}
 
 	// get expansions mapping using settings
 	if targetHost.Distro.Setup == "" {
@@ -379,15 +370,10 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = init.copyScript(ctx, targetHost, setupScriptName, targetHost.Distro.Setup)
+		err = init.copyScript(ctx, targetHost, SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
 			return "", errors.Errorf("error copying script %v to host %v: %v",
-				setupScriptName, targetHost.Id, err)
-		}
-		var logs string
-		logs, err = hostutil.RunRemoteScript(ctx, targetHost, setupScriptName, sshOptions)
-		if err != nil {
-			return logs, errors.Errorf("error running setup script over ssh: %v", err)
+				SetupScriptName, targetHost.Id, err)
 		}
 	}
 
