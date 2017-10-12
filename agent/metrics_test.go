@@ -11,18 +11,18 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type MetricsTestSuite struct {
+type MetricsSuite struct {
 	suite.Suite
 	comm      *client.Mock
 	collector *metricsCollector
 	id        string
 }
 
-func TestMetricsTestSuite(t *testing.T) {
-	suite.Run(t, new(MetricsTestSuite))
+func TestMetricsSuite(t *testing.T) {
+	suite.Run(t, new(MetricsSuite))
 }
 
-func (s *MetricsTestSuite) SetupTest() {
+func (s *MetricsSuite) SetupTest() {
 	s.comm = client.NewMock("")
 	s.id = "test_task_id"
 	s.collector = &metricsCollector{
@@ -31,7 +31,7 @@ func (s *MetricsTestSuite) SetupTest() {
 	}
 }
 
-func (s *MetricsTestSuite) TestRunForIntervalAndSendMessages() {
+func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
 	if runtime.GOOS == "windows" {
 		s.T().Skip("skipping on windows")
 	}
@@ -51,7 +51,7 @@ func (s *MetricsTestSuite) TestRunForIntervalAndSendMessages() {
 	s.Equal(firstLen, s.comm.GetProcessInfoLength(s.id))
 }
 
-func (s *MetricsTestSuite) TestCollectSubProcesses() {
+func (s *MetricsSuite) TestCollectSubProcesses() {
 	if runtime.GOOS == "windows" {
 		s.T().Skip("skipping on windows")
 	}
@@ -70,7 +70,7 @@ func (s *MetricsTestSuite) TestCollectSubProcesses() {
 	s.True(s.comm.GetProcessInfoLength(s.id) >= 2)
 }
 
-func (s *MetricsTestSuite) TestPersistSystemStats() {
+func (s *MetricsSuite) TestPersistSystemStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go s.collector.sysInfoCollector(ctx, 750*time.Millisecond)

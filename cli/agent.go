@@ -17,11 +17,15 @@ type AgentCommand struct {
 	LogPrefix        string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
 	StatusPort       int    `long:"status_part" default:"2285" description:"port to run the status server on"`
 	WorkingDirectory string `long:"working_directory" default:"" description:"working directory"`
+	SetupAsSudo      bool   `long:"setup_as_sudo" description:"run setup script as sudo"`
+	SetupOnly        bool   `long:"setup_only" description:"run the setup script and then exit"`
 }
 
 func (c *AgentCommand) Execute(_ []string) error {
 	if c.ServiceURL == "" || c.HostID == "" || c.HostSecret == "" {
-		return errors.New("cannot start agent without a service url and host ID")
+		if !c.SetupOnly {
+			return errors.New("cannot start agent without a service url and host ID")
+		}
 	}
 
 	opts := agent.Options{
@@ -30,6 +34,8 @@ func (c *AgentCommand) Execute(_ []string) error {
 		StatusPort:       c.StatusPort,
 		LogPrefix:        c.LogPrefix,
 		WorkingDirectory: c.WorkingDirectory,
+		SetupAsSudo:      c.SetupAsSudo,
+		SetupOnly:        c.SetupOnly,
 	}
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))

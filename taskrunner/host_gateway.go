@@ -229,6 +229,9 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
 	}
+	if hostObj.Distro.SetupAsSudo {
+		agentCmdParts = append(agentCmdParts, "--setup_as_sudo")
+	}
 
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")

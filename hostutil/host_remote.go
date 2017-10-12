@@ -15,7 +15,7 @@ import (
 
 const SSHTimeout = 2 * time.Minute
 
-// RunRemoteScript executes a shell script that already exists on the remote host,
+// RunRemoteScript executes a command or shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.
 func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOptions []string) (string, error) {
 	// parse the hostname into the user, host and port
@@ -37,7 +37,7 @@ func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOption
 		cmdArgs = append(cmdArgs, "sudo")
 	}
 
-	cmdArgs = append(cmdArgs, "sh", script)
+	cmdArgs = append(cmdArgs, "sh", "-c", fmt.Sprintf("'%s'", script))
 
 	// run command to ssh into remote machine and execute script
 	sshCmdStd := &util.CappedWriter{
