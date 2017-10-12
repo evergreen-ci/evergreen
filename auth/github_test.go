@@ -18,7 +18,7 @@ func TestGithubAuthManager(t *testing.T) {
 		Convey("user manager should have functins for Login and LoginCallback handlers", func() {
 			authConfig := evergreen.AuthConfig{
 				Crowd:  nil,
-				Native: nil,
+				Naive:  nil,
 				Github: &g,
 			}
 			userManager, err := LoadUserManager(authConfig)
