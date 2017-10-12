@@ -42,3 +42,21 @@ func (self *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 
 	return runnableTasks, nil
 }
+
+func (self *DBTaskFinder) FindRunnableTasksWithGraph() ([]task.Task, error) {
+	// find all of the undispatched tasks
+	undispatchedTasks, err := task.GetDependencyGraph()
+	if err != nil {
+		return nil, err
+	}
+
+	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
+	// filter out any tasks whose dependencies are not met
+	for _, task := range undispatchedTasks {
+		if task.DependenciesMetAsPredecessors() {
+			runnableTasks = append(runnableTasks, task)
+		}
+	}
+
+	return runnableTasks, nil
+}

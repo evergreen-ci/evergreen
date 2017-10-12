@@ -51,13 +51,15 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated     bool         `bson:"activated" json:"activated"`
-	ActivatedBy   string       `bson:"activated_by" json:"activated_by"`
-	BuildId       string       `bson:"build_id" json:"build_id"`
-	DistroId      string       `bson:"distro" json:"distro"`
-	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
-	DependsOn     []Dependency `bson:"depends_on" json:"depends_on"`
-	NumDependents int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
+	Activated    bool         `bson:"activated" json:"activated"`
+	ActivatedBy  string       `bson:"activated_by" json:"activated_by"`
+	BuildId      string       `bson:"build_id" json:"build_id"`
+	DistroId     string       `bson:"distro" json:"distro"`
+	BuildVariant string       `bson:"build_variant" json:"build_variant"`
+	DependsOn    []Dependency `bson:"depends_on" json:"depends_on"`
+	// TODO: agg result in Task? kinda nasty
+	Predecessors  []Task `bson:"predecessors"`
+	NumDependents int    `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -230,6 +232,8 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	deps := make([]Task, 0, len(t.DependsOn))
 
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
+
+	// deps -> fetch Task with id in depends_on
 	for _, dep := range t.DependsOn {
 		if cachedDep, ok := depCaches[dep.TaskId]; !ok {
 			depIdsToQueryFor = append(depIdsToQueryFor, dep.TaskId)
@@ -238,6 +242,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		}
 	}
 
+	// fetch if not available
 	if len(depIdsToQueryFor) > 0 {
 		newDeps, err := Find(ByIds(depIdsToQueryFor).WithFields(StatusKey))
 		if err != nil {
@@ -992,4 +997,18 @@ func (t *Task) MergeNewTestResults() error {
 		*t = tasks[0]
 	}
 	return nil
+}
+
+func (t *Task) DependenciesMetAsPredecessors() bool {
+	if len(t.DependsOn) == 0 && len(t.Predecessors) == 0 {
+		return true
+	}
+
+	for _, depTask := range t.Predecessors {
+		if !t.satisfiesDependency(&depTask) {
+			return false
+		}
+	}
+
+	return true
 }
