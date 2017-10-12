@@ -169,7 +169,7 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 }
 
 func getShouldExecuteError(ctx triggerContext) message.Fields {
-	return message.Fields{
+	m := message.Fields{
 		"alert":   "transition to failure",
 		"outcome": "no alert",
 		"task_id": ctx.task.Id,
@@ -178,14 +178,21 @@ func getShouldExecuteError(ctx triggerContext) message.Fields {
 			"variant": ctx.task.BuildVariant,
 			"project": ctx.task.Project,
 		},
-		"previous": map[string]interface{}{
+	}
+
+	if ctx.previousCompleted == nil {
+		m["previous"] = nil
+	} else {
+		m["previous"] = map[string]interface{}{
 			"id":          ctx.previousCompleted.Id,
 			"variant":     ctx.previousCompleted.BuildVariant,
 			"project":     ctx.previousCompleted.Project,
 			"finish_time": ctx.previousCompleted.FinishTime,
 			"status":      ctx.previousCompleted.Status,
-		},
+		}
 	}
+
+	return m
 }
 
 func (trig TaskFailTransition) CreateAlertRecord(ctx triggerContext) *alertrecord.AlertRecord {
