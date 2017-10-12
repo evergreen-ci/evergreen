@@ -12,12 +12,13 @@ type TaskFinder interface {
 	FindRunnableTasks() ([]task.Task, error)
 }
 
-// DBTaskFinder fetches tasks from the database. Implements TaskFinder.
-type DBTaskFinder struct{}
+// The old DBTaskFinder, with the dependency check implemented in Go, instead
+// of using $graphLookup
+type LegacyDBTaskFinder struct{}
 
 // Old FindRunnableTasks that implements the graph in code, instead of using
 // MongoDB's $graphLookup aggregation operator.
-func (self *DBTaskFinder) findRunnableTasks() ([]task.Task, error) {
+func (self *LegacyDBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 	// find all of the undispatched tasks
 	undispatchedTasks, err := task.Find(task.IsUndispatched)
 	if err != nil {
@@ -41,20 +42,20 @@ func (self *DBTaskFinder) findRunnableTasks() ([]task.Task, error) {
 	return runnableTasks, nil
 }
 
+// DBTaskFinder fetches tasks from the database using $graphLookup. Implements TaskFinder.
+type DBTaskFinder struct{}
+
 // FindRunnableTasks finds all tasks that are ready to be run.
 // This works by fetching all undispatched tasks from the database,
 // and filtering out any whose dependencies are not met.
 func (self *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.UndispatchedTasksWithEmbeddedDependencies()
+	undispatchedTasks, err := task.UndispatchedWithEmbeddedDependencies()
 	if err != nil {
-
-		// TODO: do we want to detect that we've run out of memory in
-		// the aggregation pipeline, and defer to the old method?
 		return nil, err
 	}
 
-	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
+	runnableTasks := []task.Task{}
 	// filter out any tasks whose dependencies are not met
 	for _, graphItem := range undispatchedTasks {
 		if graphItem.DependenciesMet() {

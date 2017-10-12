@@ -699,30 +699,3 @@ func Aggregate(pipeline []bson.M, results interface{}) error {
 func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
-
-func UndispatchedTasksWithEmbeddedDependencies() ([]DependencyGraph, error) {
-	pipeline := []bson.M{
-		bson.M{
-			"$match": bson.M{
-				ActivatedKey: true,
-				StatusKey:    evergreen.TaskUndispatched,
-				//Filter out blacklisted tasks
-				PriorityKey: bson.M{"$gte": 0},
-			},
-		},
-		bson.M{
-			"$graphLookup": bson.M{
-				"from":             Collection,
-				"startWith":        "$depends_on._id",
-				"connectFromField": "depends_on._id",
-				"connectToField":   "_id",
-				"as":               "predecessors",
-			},
-		},
-	}
-
-	tasks := []DependencyGraph{}
-	err := Aggregate(pipeline, &tasks)
-
-	return tasks, err
-}

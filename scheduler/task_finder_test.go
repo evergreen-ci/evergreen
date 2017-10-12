@@ -18,13 +18,21 @@ func init() {
 
 type DBTaskFinderSuite struct {
 	suite.Suite
-	taskFinder *DBTaskFinder
+	taskFinder TaskFinder
 	tasks      []task.Task
 	depTasks   []task.Task
 }
 
 func TestDBTaskFinder(t *testing.T) {
 	s := new(DBTaskFinderSuite)
+	s.taskFinder = &DBTaskFinder{}
+
+	suite.Run(t, s)
+}
+
+func TestLegacyDBTaskFinder(t *testing.T) {
+	s := new(DBTaskFinderSuite)
+	s.taskFinder = &LegacyDBTaskFinder{}
 
 	suite.Run(t, s)
 }
@@ -59,7 +67,7 @@ func (s *DBTaskFinderSuite) insertTasks() {
 }
 
 func (s *DBTaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
-	// XXX: collection is empty without running insertTasks
+	// XXX: collection is deliberately empty
 	runnableTasks, err := s.taskFinder.FindRunnableTasks()
 	s.Nil(err)
 	s.Empty(runnableTasks)
@@ -77,7 +85,6 @@ func (s *DBTaskFinderSuite) TestInactiveTasksNeverReturned() {
 }
 
 func (s *DBTaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
-
 	// edit the dependency tasks, setting one to have finished
 	// successfully and one to have finished unsuccessfully
 	s.depTasks[0].Status = evergreen.TaskFailed
@@ -101,6 +108,8 @@ func (s *DBTaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() 
 
 type TaskFinderComparisonSuite struct {
 	suite.Suite
+	oldRunnableTasks []task.Task
+	newRunnableTasks []task.Task
 }
 
 func TestTaskFinderComparisonSuite(t *testing.T) {
@@ -117,20 +126,46 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	for _, task := range tasks {
 		s.NoError(task.Insert())
 	}
+
+	oldTaskFinder := &LegacyDBTaskFinder{}
+	newTaskFinder := &DBTaskFinder{}
+	var (
+		err_old error = nil
+		err_new error = nil
+	)
+
+	s.oldRunnableTasks, err_old = oldTaskFinder.FindRunnableTasks()
+	s.Nil(err_old)
+	s.newRunnableTasks, err_new = newTaskFinder.FindRunnableTasks()
+	s.Nil(err_new)
 }
 
 func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
-	taskFinder := &DBTaskFinder{}
+	s.NotEmpty(s.oldRunnableTasks)
+	s.NotEmpty(s.newRunnableTasks)
 
-	oldRunnableTasks, err := taskFinder.findRunnableTasks()
-	s.Nil(err)
-	newRunnableTasks, err1 := taskFinder.FindRunnableTasks()
-	s.Nil(err1)
+	s.Equal(s.oldRunnableTasks, s.newRunnableTasks)
+}
 
-	s.NotEmpty(oldRunnableTasks)
-	s.NotEmpty(newRunnableTasks)
+func (s *TaskFinderComparisonSuite) TestExpectedRunnableHosts() {
+	idsOldMethod := []string{}
+	for _, task := range s.oldRunnableTasks {
+		idsOldMethod = append(idsOldMethod, task.Id)
+	}
 
-	s.Equal(oldRunnableTasks, newRunnableTasks)
+	idsNewMethod := []string{}
+	for _, task := range s.newRunnableTasks {
+		idsNewMethod = append(idsNewMethod, task.Id)
+	}
+
+	expectedIds := []string{
+		"parent0-child1", "parent0-child2", "parent1-child0", "parent4",
+	}
+	s.Equal(idsOldMethod, expectedIds)
+	s.Equal(idsNewMethod, expectedIds)
+
+	s.Len(idsOldMethod, 4)
+	s.Len(idsNewMethod, 4)
 }
 
 // A suitably complex set of tasks for comparing the old method to the new method
@@ -206,7 +241,7 @@ var tasks = []task.Task{
 		},
 	},
 
-	// other parent
+	// parent with status other than success or fail
 	task.Task{
 		Id:        "parent2",
 		Status:    evergreen.TaskSystemFailed,

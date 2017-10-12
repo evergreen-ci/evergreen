@@ -101,7 +101,7 @@ type Task struct {
 }
 
 // Represent graphLookup of Tasks and their dependencies
-type DependencyGraph struct {
+type DependencyNode struct {
 	Task         `bson:",inline"`
 	Predecessors []Task `bson:"predecessors"`
 }
@@ -1005,7 +1005,7 @@ func (t *Task) MergeNewTestResults() error {
 
 // Like Task DependenciesMet, but uses the aggregated results instead of
 // querying the database 1-by-1 for additional Tasks
-func (t *DependencyGraph) DependenciesMet() bool {
+func (t *DependencyNode) DependenciesMet() bool {
 	if len(t.DependsOn) == 0 && len(t.Predecessors) == 0 {
 		return true
 	}
@@ -1021,4 +1021,31 @@ func (t *DependencyGraph) DependenciesMet() bool {
 	}
 
 	return true
+}
+
+func UndispatchedWithEmbeddedDependencies() ([]DependencyNode, error) {
+	pipeline := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				ActivatedKey: true,
+				StatusKey:    evergreen.TaskUndispatched,
+				//Filter out blacklisted tasks
+				PriorityKey: bson.M{"$gte": 0},
+			},
+		},
+		bson.M{
+			"$graphLookup": bson.M{
+				"from":             Collection,
+				"startWith":        "$depends_on._id",
+				"connectFromField": "depends_on._id",
+				"connectToField":   "_id",
+				"as":               "predecessors",
+			},
+		},
+	}
+
+	tasks := []DependencyNode{}
+	err := Aggregate(pipeline, &tasks)
+
+	return tasks, err
 }
