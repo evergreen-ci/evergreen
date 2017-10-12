@@ -35,4 +35,8 @@ const (
 	// maxHeartbeats is the number of failed heartbeats after which an agent
 	// reports an error
 	maxHeartbeats = 10
+
+	// setupTimeout is how long the agent will wait before timing out running
+	// the setup script.
+	setupTimeout = 2 * time.Minute
 )

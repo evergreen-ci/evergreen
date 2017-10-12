@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -84,6 +85,10 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 
 	err = startAgentOnRemote(settings, &hostObj, sshOptions)
 	if err != nil {
+		// mark the host's provisioning as failed
+		if err := hostObj.SetUnprovisioned(); err != nil {
+			grip.Errorf("unprovisioning host %s failed: %+v", hostObj.Id, err)
+		}
 		return errors.WithStack(err)
 	}
 	grip.Infof("Agent successfully started for host %v", hostObj.Id)
@@ -202,10 +207,19 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
 	}
+	if hostObj.Distro.SetupAsSudo {
+		agentCmdParts = append(agentCmdParts, "--setup_as_sudo")
+	}
 
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
-	grip.Info(remoteCmd)
+	cmdId := fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int())
+	grip.Info(message.Fields{
+		"id":      cmdId,
+		"message": "running remote script on agent",
+		"host":    hostObj.Id,
+		"command": remoteCmd,
+	})
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
@@ -216,7 +230,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 	// run the command to kick off the agent remotely
 	var startAgentLog bytes.Buffer
 	startAgentCmd := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int()),
+		Id:             cmdId,
 		CmdString:      remoteCmd,
 		Stdout:         &startAgentLog,
 		Stderr:         &startAgentLog,
