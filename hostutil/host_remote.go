@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
@@ -65,4 +67,18 @@ func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOption
 	err = cmd.Run(ctx)
 
 	return sshCmdStd.String(), errors.WithStack(err)
+}
+
+// ExecutableSubPath returns the directory containing the compiled agents.
+func ExecutableSubPath(d *distro.Distro) string {
+	mainName := "evergreen"
+	if isWindows(d) {
+		mainName += ".exe"
+	}
+
+	return filepath.Join(d.Arch, mainName)
+}
+
+func isWindows(d *distro.Distro) bool {
+	return strings.HasPrefix(d.Arch, "windows")
 }
