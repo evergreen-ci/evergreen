@@ -286,21 +286,15 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	if usesHourlyBilling(h) {
 		return timeTilNextHourlyPayment(h)
 	}
-	return 1 * time.Second
+	return time.Second
 }
 
-func usesHourlyBilling(h *host.Host) bool {
-	if strings.Contains(h.Distro.Arch, "linux") {
-		return false
-	}
-	return true
-}
+func usesHourlyBilling(h *host.Host) bool { return !strings.Contains(h.Distro.Arch, "linux") }
 
 // Determines how long until a payment is due for the specified host, for hosts
 // that bill hourly. Returns the next time that it would take for the host to be
 // up for an integer number of hours
 func timeTilNextHourlyPayment(host *host.Host) time.Duration {
-
 	now := time.Now()
 	var startTime time.Time
 	if host.StartTime.After(host.CreationTime) {
