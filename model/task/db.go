@@ -700,11 +700,9 @@ func Count(query db.Q) (int, error) {
 	return db.CountQ(Collection, query)
 }
 
-func GetDependencyGraph() ([]DependencyGraph, error) {
+func UndispatchedTasksWithEmbeddedDependencies() ([]DependencyGraph, error) {
 	pipeline := []bson.M{
 		bson.M{
-			// TODO: This is the same as IsUndispatched, but as a
-			// bson.M, instead of db.Q. Way around?
 			"$match": bson.M{
 				ActivatedKey: true,
 				StatusKey:    evergreen.TaskUndispatched,

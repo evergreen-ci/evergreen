@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -75,7 +74,6 @@ func (s *DBTaskFinderSuite) TestInactiveTasksNeverReturned() {
 	runnableTasks, err := s.taskFinder.FindRunnableTasks()
 	s.Nil(err)
 	s.Len(runnableTasks, 2)
-	pp.Print(runnableTasks)
 }
 
 func (s *DBTaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
@@ -124,23 +122,15 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
 	taskFinder := &DBTaskFinder{}
 
-	oldRunnableTasks, err := taskFinder.FindRunnableTasks()
+	oldRunnableTasks, err := taskFinder.findRunnableTasks()
 	s.Nil(err)
-	newRunnableTasks, err1 := taskFinder.FindRunnableTasksWithGraph()
+	newRunnableTasks, err1 := taskFinder.FindRunnableTasks()
 	s.Nil(err1)
 
 	s.NotEmpty(oldRunnableTasks)
 	s.NotEmpty(newRunnableTasks)
 
-	// clear Predecessors
-	for i := range newRunnableTasks {
-		newRunnableTasks[i].Predecessors = []task.Task{}
-	}
 	s.Equal(oldRunnableTasks, newRunnableTasks)
-	pp.Print(oldRunnableTasks)
-	pp.Print(newRunnableTasks)
-
-	// parent0 must not be runnable
 }
 
 // A suitably complex set of tasks for comparing the old method to the new method
@@ -172,6 +162,28 @@ var tasks = []task.Task{
 			{
 				TaskId: "parent0-child0",
 				Status: evergreen.TaskUndispatched,
+			},
+		},
+	},
+	task.Task{
+		Id:        "parent0-child1",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent0",
+				Status: evergreen.TaskSucceeded,
+			},
+		},
+	},
+	// task with no status in depends_on
+	task.Task{
+		Id:        "parent0-child2",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		DependsOn: []task.Dependency{
+			{
+				TaskId: "parent0",
 			},
 		},
 	},
@@ -240,7 +252,8 @@ var tasks = []task.Task{
 
 	// undispatched, inactive task
 	task.Task{
-		Id:     "parent5",
-		Status: evergreen.TaskUndispatched,
+		Id:        "parent5",
+		Status:    evergreen.TaskUndispatched,
+		Activated: false,
 	},
 }
