@@ -509,6 +509,7 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ZoneKey:             h.Zone,
 				ProjectKey:          h.Project,
 				ProvisionOptionsKey: h.ProvisionOptions,
+				StartTimeKey:        h.StartTime,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -530,6 +531,20 @@ func (h *Host) Remove() error {
 			IdKey: h.Id,
 		},
 	)
+}
+
+// GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
+func (h *Host) GetElapsedCommunicationTime() time.Duration {
+	if h.LastCommunicationTime.After(h.CreationTime) {
+		return time.Since(h.LastCommunicationTime)
+	}
+	if h.StartTime.After(h.CreationTime) {
+		return time.Since(h.StartTime)
+	}
+	if !h.LastCommunicationTime.IsZero() {
+		return time.Since(h.LastCommunicationTime)
+	}
+	return time.Since(h.CreationTime)
 }
 
 func DecommissionHostsWithDistroId(distroId string) error {
