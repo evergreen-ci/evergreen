@@ -43,65 +43,46 @@ func TestAgentIntegrationSuite(t *testing.T) {
 }
 
 func (s *AgentIntegrationSuite) SetupSuite() {
+	s.testDirectory = testutil.GetDirectoryOfFile()
 	s.testConfig = testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "AgentIntegrationSuite")
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(s.testConfig))
 }
 
-func (s *AgentIntegrationSuite) TearDownSuite() {
-	s.NoError(testutil.CleanupAPITestData())
+func (s *AgentIntegrationSuite) SetupTest() {
+	var err error
+
+	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "print_dir_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
+	s.Require().NoError(err)
+
+	s.testServer, err = service.CreateTestServer(s.testConfig, nil)
+	s.Require().NoError(err)
+
+	s.a = createAgent(s.testServer, s.modelData.Host)
+	s.tc = &taskContext{
+		task: client.TaskData{
+			ID:     s.modelData.Task.Id,
+			Secret: s.modelData.Task.Secret,
+		},
+	}
 }
 
 func (s *AgentIntegrationSuite) TearDownTest() {
 	if s.testServer != nil {
 		s.testServer.Close()
 	}
+	s.NoError(modelutil.CleanupAPITestData())
 }
 
 func (s *AgentIntegrationSuite) TestRunTask() {
-	var err error
-	s.testDirectory = testutil.GetDirectoryOfFile()
-	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "print_dir_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
-	testutil.HandleTestingErr(err, s.T(), "Couldn't make test data: %v", err)
-	testServer, err := service.CreateTestServer(s.testConfig, nil)
-	testutil.HandleTestingErr(err, s.T(), "Couldn't create apiserver: %v", err)
-	defer testServer.Close()
-	s.testServer = testServer
-
-	s.a = createAgent(testServer, s.modelData.Host)
-	s.tc = &taskContext{
-		task: client.TaskData{
-			ID:     s.modelData.Task.Id,
-			Secret: s.modelData.Task.Secret,
-		},
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = s.a.resetLogging(ctx, s.tc)
-	s.NoError(err)
-	err = s.a.runTask(ctx, s.tc)
-	s.NoError(err)
+
+	s.NoError(s.a.resetLogging(ctx, s.tc))
+	s.NoError(s.a.runTask(ctx, s.tc))
 }
 
 func (s *AgentIntegrationSuite) TestAbortTask() {
-	var err error
-	s.testDirectory = testutil.GetDirectoryOfFile()
-	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "very_slow_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
-	testutil.HandleTestingErr(err, s.T(), "Couldn't make test data: %v", err)
-	testServer, err := service.CreateTestServer(s.testConfig, nil)
-	testutil.HandleTestingErr(err, s.T(), "Couldn't create apiserver: %v", err)
-	defer testServer.Close()
-	s.testServer = testServer
-
-	s.a = createAgent(testServer, s.modelData.Host)
-	s.tc = &taskContext{
-		task: client.TaskData{
-			ID:     s.modelData.Task.Id,
-			Secret: s.modelData.Task.Secret,
-		},
-	}
-
 	errChan := make(chan error)
 
 	ctx := context.Background()
@@ -109,7 +90,7 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	lgrCtx, lgrCancel := context.WithCancel(ctx)
 	defer lgrCancel()
 	go func() {
-		err = s.a.resetLogging(lgrCtx, s.tc)
+		err := s.a.resetLogging(lgrCtx, s.tc)
 		if err != nil {
 			errChan <- err
 			return
@@ -118,6 +99,5 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 		errChan <- err
 	}()
 	cancel()
-	err = <-errChan
-	s.Error(err)
+	s.Error(<-errChan)
 }
