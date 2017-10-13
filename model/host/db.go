@@ -49,6 +49,7 @@ var (
 	ZoneKey                  = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey               = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey      = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
+	StartTimeKey             = bsonutil.MustHaveTag(Host{}, "StartTime")
 )
 
 // === Queries ===

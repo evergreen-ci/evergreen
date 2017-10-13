@@ -94,7 +94,7 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 		idleTime := freeHost.IdleTime()
 
 		// if the communication time is > 10 mins then there may not be an agent on the host.
-		communicationTime := time.Since(freeHost.LastCommunicationTime)
+		communicationTime := getCommuncationTime(freeHost)
 
 		// get a cloud manager for the host
 		cloudManager, err := providers.GetCloudManager(freeHost.Provider, s)
@@ -126,6 +126,20 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 	}
 
 	return idleHosts, nil
+}
+
+// getCommuncationTime will find the last time this host has communicated with evergreen or vice versa
+func getCommuncationTime(h host.Host) time.Duration {
+	if h.LastCommunicationTime.After(h.CreationTime) {
+		return time.Since(h.LastCommunicationTime)
+	}
+	if h.StartTime.After(h.CreationTime) {
+		return time.Since(h.StartTime)
+	}
+	if !h.LastCommunicationTime.IsZero() {
+		return time.Since(h.LastCommunicationTime)
+	}
+	return time.Since(h.CreationTime)
 }
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
