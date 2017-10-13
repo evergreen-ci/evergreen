@@ -666,7 +666,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		Stderr:         curlOut,
 		RemoteHostName: hostSSHInfo.Hostname,
 		User:           target.User,
-		Options:        append([]string{"-P", hostSSHInfo.Port}, sshOptions...),
+		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
 	}
 
 	// run the command to curl the agent

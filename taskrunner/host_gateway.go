@@ -166,7 +166,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		Stderr:         curlAgentOutput,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
-		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
+		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 	}
 	grip.Infof("Curl command: '%#v'", curlAgentCmd)
 
