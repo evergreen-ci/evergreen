@@ -78,6 +78,9 @@ var (
 	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
 )
 
+// BSON field for graph lookup aggregation
+var PredecessorsKey = bsonutil.MustHaveTag(DependencyNode{}, "Predecessors")
+
 // Queries
 
 // All returns all tasks.

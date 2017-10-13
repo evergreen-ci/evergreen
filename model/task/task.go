@@ -1018,7 +1018,7 @@ func (t *DependencyNode) DependenciesMet() bool {
 
 func UndispatchedWithEmbeddedDependencies() ([]DependencyNode, error) {
 	pipeline := []bson.M{
-		bson.M{
+		{
 			"$match": bson.M{
 				ActivatedKey: true,
 				StatusKey:    evergreen.TaskUndispatched,
@@ -1026,13 +1026,13 @@ func UndispatchedWithEmbeddedDependencies() ([]DependencyNode, error) {
 				PriorityKey: bson.M{"$gte": 0},
 			},
 		},
-		bson.M{
+		{
 			"$graphLookup": bson.M{
 				"from":             Collection,
-				"startWith":        "$depends_on._id",
-				"connectFromField": "depends_on._id",
-				"connectToField":   "_id",
-				"as":               "predecessors",
+				"startWith":        "$" + DependsOnKey + "." + IdKey,
+				"connectFromField": DependsOnKey + "." + IdKey,
+				"connectToField":   IdKey,
+				"as":               PredecessorsKey,
 			},
 		},
 	}
