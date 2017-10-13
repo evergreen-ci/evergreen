@@ -533,6 +533,20 @@ func (h *Host) Remove() error {
 	)
 }
 
+// GetElapsedCommunicationTime returns how long since this host has communicated with evergreen or vice versa
+func (h *Host) GetElapsedCommunicationTime() time.Duration {
+	if h.LastCommunicationTime.After(h.CreationTime) {
+		return time.Since(h.LastCommunicationTime)
+	}
+	if h.StartTime.After(h.CreationTime) {
+		return time.Since(h.StartTime)
+	}
+	if !h.LastCommunicationTime.IsZero() {
+		return time.Since(h.LastCommunicationTime)
+	}
+	return time.Since(h.CreationTime)
+}
+
 func DecommissionHostsWithDistroId(distroId string) error {
 	err := UpdateAll(
 		ByDistroId(distroId),
