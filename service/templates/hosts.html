@@ -22,7 +22,7 @@ Evergreen - Hosts
     <!-- the filter inputs -->
     <form class="form-inline header-form" role="form">
       <div class="form-group">
-        <input class="form-control input-sm" type="text" ng-keyup="clearSelectAll()" ng-model="filter.hosts" placeholder="Filter hosts..." />
+        <input class="form-control input-sm" type="text" ng-keyup="onFilterKeyUp($event)" ng-model="filterText" placeholder="Filter hosts..." />
       </div>
 
       <div class="checkbox">

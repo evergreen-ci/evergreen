@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -460,6 +461,24 @@ func statsByDistroPipeline() []bson.M {
 				"count":             1,
 				"num_tasks_running": bson.M{"$size": "$tasks"},
 				"_id":               0,
+			},
+		},
+	}
+}
+
+// QueryWithFullTaskPipeline returns a pipeline to match hosts and embeds the
+// task document within the host, if it's running a task
+func QueryWithFullTaskPipeline(match bson.M) []bson.M {
+	return []bson.M{
+		{
+			"$match": match,
+		},
+		{
+			"$lookup": bson.M{
+				"from":         task.Collection,
+				"localField":   RunningTaskKey,
+				"foreignField": task.IdKey,
+				"as":           "task_full",
 			},
 		},
 	}

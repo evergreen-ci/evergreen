@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -35,6 +36,8 @@ type Host struct {
 
 	// the task that is currently running on the host
 	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
+	// the full task struct that is running on the host (only populated by certain aggregations)
+	RunningTaskFull []task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
 
 	// the pid of the task that is currently running on the host
 	Pid string `bson:"pid" json:"pid"`
