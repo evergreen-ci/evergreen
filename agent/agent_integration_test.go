@@ -48,6 +48,10 @@ func (s *AgentIntegrationSuite) SetupSuite() {
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(s.testConfig))
 }
 
+func (s *AgentIntegrationSuite) TearDownSuite() {
+	s.NoError(testutil.CleanupAPITestData())
+}
+
 func (s *AgentIntegrationSuite) TearDownTest() {
 	if s.testServer != nil {
 		s.testServer.Close()
