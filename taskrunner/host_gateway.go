@@ -22,10 +22,9 @@ import (
 )
 
 const (
-	MakeShellTimeout  = 1 * time.Minute
-	CurlTimeout       = 1 * time.Minute
-	StartAgentTimeout = 1 * time.Minute
-	agentFile         = "agent"
+	// SSHTimeout defines the timeout for the SSH commands in this package.
+	SSHTimeout = 1 * time.Minute
+	agentFile  = "agent"
 )
 
 // HostGateway is responsible for kicking off tasks on remote machines.
@@ -141,7 +140,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	grip.Infof("Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
-	ctx, cancel := context.WithTimeout(context.TODO(), MakeShellTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
 	err = makeShellCmd.Run(ctx)
 
@@ -158,10 +157,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	// third, copy over the correct agent binary to the remote machine
 	curlAgentOutput := newCappedOutputLog()
 	curlAgentCmd := &subprocess.RemoteCommand{
-		Id: fmt.Sprintf("curl-%d", rand.Int()),
-		CmdString: fmt.Sprintf("cd '%s' && curl -LO '%s'",
+		Id: fmt.Sprintf("curl-%d-%s", rand.Int(), hostObj.Id),
+		CmdString: fmt.Sprintf("cd '%s' && curl -LO '%s/%s'",
 			hostObj.Distro.WorkDir,
-			fmt.Sprintf("%s/%s", settings.Ui.Url, hostutil.ExecutableSubPath(&hostObj.Distro))),
+			settings.Ui.Url,
+			hostutil.ExecutableSubPath(&hostObj.Distro)),
 		Stdout:         curlAgentOutput,
 		Stderr:         curlAgentOutput,
 		RemoteHostName: hostInfo.Hostname,
@@ -170,7 +170,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	}
 
 	// run the command to curl the agent with a timeout
-	ctx, cancel = context.WithTimeout(context.TODO(), CurlTimeout)
+	ctx, cancel = context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
 	err = curlAgentCmd.Run(ctx)
 	grip.Notice(curlAgentCmd.Stop())
@@ -243,7 +243,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), StartAgentTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
 	err = startAgentCmd.Run(ctx)
 

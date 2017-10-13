@@ -657,9 +657,10 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	// place the binary into the directory
 	curlSetupCmd := &subprocess.RemoteCommand{
-		CmdString: fmt.Sprintf("cd '%s' && curl -LO '%s'",
-			fmt.Sprintf("~/%s", targetDir),
-			fmt.Sprintf("%s/%s", init.Settings.Ui.Url, hostutil.ExecutableSubPath(&target.Distro))),
+		CmdString: fmt.Sprintf("cd '~/%s' && curl -LO '%s/%s'",
+			targetDir,
+			init.Settings.Ui.Url,
+			hostutil.ExecutableSubPath(&target.Distro)),
 		Stdout:         curlOut,
 		Stderr:         curlOut,
 		RemoteHostName: hostSSHInfo.Hostname,
