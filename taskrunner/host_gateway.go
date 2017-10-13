@@ -191,7 +191,7 @@ const logAggregationEnabled = false
 func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "evergreen")
-	if isWindows(&hostObj.Distro) {
+	if hostutil.IsWindows(&hostObj.Distro) {
 		pathToExecutable += ".exe"
 	}
 

@@ -72,13 +72,14 @@ func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOption
 // ExecutableSubPath returns the directory containing the compiled agents.
 func ExecutableSubPath(d *distro.Distro) string {
 	mainName := "evergreen"
-	if isWindows(d) {
+	if IsWindows(d) {
 		mainName += ".exe"
 	}
 
 	return filepath.Join(d.Arch, mainName)
 }
 
-func isWindows(d *distro.Distro) bool {
+// IsWindows returns true if a distro is a Windows distro.
+func IsWindows(d *distro.Distro) bool {
 	return strings.HasPrefix(d.Arch, "windows")
 }
