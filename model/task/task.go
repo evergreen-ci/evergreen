@@ -102,8 +102,8 @@ type Task struct {
 
 // Represent graphLookup of Tasks and their dependencies
 type DependencyNode struct {
-	Task         `bson:",inline"`
-	Predecessors []Task `bson:"predecessors"`
+	Task  Task   `bson:",inline"`
+	Edges []Task `bson:"edges"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -1003,12 +1003,12 @@ func (t *Task) MergeNewTestResults() error {
 // Like Task DependenciesMet, but uses the aggregated results instead of
 // querying the database 1-by-1 for the Tasks
 func (t *DependencyNode) DependenciesMet() bool {
-	if len(t.DependsOn) != len(t.Predecessors) {
+	if len(t.Task.DependsOn) != len(t.Edges) {
 		return false
 	}
 
-	for _, depTask := range t.Predecessors {
-		if !t.satisfiesDependency(&depTask) {
+	for _, depTask := range t.Edges{
+		if !t.Task.satisfiesDependency(&depTask) {
 			return false
 		}
 	}
@@ -1032,7 +1032,7 @@ func UndispatchedWithEmbeddedDependencies() ([]DependencyNode, error) {
 				"startWith":        "$" + DependsOnKey + "." + IdKey,
 				"connectFromField": DependsOnKey + "." + IdKey,
 				"connectToField":   IdKey,
-				"as":               PredecessorsKey,
+				"as":               EdgesKey,
 			},
 		},
 	}

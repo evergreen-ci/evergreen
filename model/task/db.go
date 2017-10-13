@@ -79,7 +79,7 @@ var (
 )
 
 // BSON field for graph lookup aggregation
-var PredecessorsKey = bsonutil.MustHaveTag(DependencyNode{}, "Predecessors")
+var EdgesKey = bsonutil.MustHaveTag(DependencyNode{}, "Edges")
 
 // Queries
 
