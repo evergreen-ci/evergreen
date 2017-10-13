@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
@@ -21,10 +22,9 @@ import (
 )
 
 const (
-	MakeShellTimeout  = 2 * time.Minute
-	SCPTimeout        = 3 * time.Minute
-	StartAgentTimeout = 2 * time.Minute
-	agentFile         = "agent"
+	// SSHTimeout defines the timeout for the SSH commands in this package.
+	SSHTimeout = 1 * time.Minute
+	agentFile  = "agent"
 )
 
 // HostGateway is responsible for kicking off tasks on remote machines.
@@ -43,10 +43,9 @@ type AgentHostGateway struct {
 	ExecutablesDir string
 }
 
-// Start the task specified, on the host specified.  First runs any necessary
+// Start an agent on the host specified.  First runs any necessary
 // preparation on the remote machine, then kicks off the agent process on the
-// machine.
-// Returns an error if any step along the way fails.
+// machine. Returns an error if any step along the way fails.
 func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
@@ -67,7 +66,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 
 	// prep the remote host
 	grip.Infof("Prepping remote host %v...", hostObj.Id)
-	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions)
+	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
@@ -107,20 +106,6 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 	return strings.TrimSpace(string(hashBytes)), nil
 }
 
-// executableSubPath returns the directory containing the compiled agents.
-func executableSubPath(d *distro.Distro) string {
-	mainName := "evergreen"
-	if isWindows(d) {
-		mainName += ".exe"
-	}
-
-	return filepath.Join(d.Arch, mainName)
-}
-
-func isWindows(d *distro.Distro) bool {
-	return strings.HasPrefix(d.Arch, "windows")
-}
-
 func newCappedOutputLog() *util.CappedWriter {
 	// store up to 1MB of streamed command output to print if a command fails
 	return &util.CappedWriter{
@@ -134,7 +119,7 @@ func newCappedOutputLog() *util.CappedWriter {
 // 1. Creating the directories on the remote host where, according to the distro's settings,
 //    the agent should be placed.
 // 2. Copying the agent into that directory.
-func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string) (string, error) {
+func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
@@ -151,12 +136,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     false,
 	}
 	grip.Infof("Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
-	ctx, cancel := context.WithTimeout(context.TODO(), MakeShellTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
 	err = makeShellCmd.Run(ctx)
 
@@ -171,43 +155,34 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	}
 
 	// third, copy over the correct agent binary to the remote machine
-	scpAgentOutput := newCappedOutputLog()
-	scpAgentCmd := &subprocess.ScpCommand{
-		Id:             fmt.Sprintf("scp%v", rand.Int()),
-		Source:         filepath.Join(agbh.ExecutablesDir, executableSubPath(&hostObj.Distro)),
-		Dest:           hostObj.Distro.WorkDir,
-		Stdout:         scpAgentOutput,
-		Stderr:         scpAgentOutput,
+	curlAgentOutput := newCappedOutputLog()
+	curlAgentCmd := &subprocess.RemoteCommand{
+		Id: fmt.Sprintf("curl-%d-%s", rand.Int(), hostObj.Id),
+		CmdString: fmt.Sprintf("cd '%s' && curl -LO '%s/%s'",
+			hostObj.Distro.WorkDir,
+			settings.Ui.Url,
+			hostutil.ExecutableSubPath(&hostObj.Distro)),
+		Stdout:         curlAgentOutput,
+		Stderr:         curlAgentOutput,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
 	}
 
-	// get the agent's revision before scp'ing over the executable
-	preSCPAgentRevision, err := agbh.GetAgentRevision()
-	grip.Error(errors.Wrap(err, "Error getting pre scp agent revision"))
-
-	// run the command to scp the agent with a timeout
-	ctx, cancel = context.WithTimeout(context.TODO(), SCPTimeout)
+	// run the command to curl the agent with a timeout
+	ctx, cancel = context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
-	err = scpAgentCmd.Run(ctx)
-	grip.Notice(scpAgentCmd.Stop())
+	err = curlAgentCmd.Run(ctx)
+	grip.Notice(curlAgentCmd.Stop())
 	if err != nil {
 		if err == util.ErrTimedOut {
-			return "", errors.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
+			return "", errors.Errorf("curl-ing agent binary timed out: %v", curlAgentOutput.String())
 		}
 		return "", errors.Errorf(
-			"error copying agent binary to remote machine (%v): %v", err, scpAgentOutput.String())
+			"error downloading agent binary to remote machine (%v): %v", err, curlAgentOutput.String())
 	}
 
-	// get the agent's revision after scp'ing over the executable
-	postSCPAgentRevision, err := agbh.GetAgentRevision()
-	grip.Error(errors.Wrap(err, "Error getting post scp agent revision"))
-	grip.WarningWhenf(preSCPAgentRevision != postSCPAgentRevision,
-		"Agent revision was %v before scp but is now %v. Using previous revision %v for host %v",
-		preSCPAgentRevision, postSCPAgentRevision, preSCPAgentRevision, hostObj.Id)
-
-	return preSCPAgentRevision, nil
+	return agbh.GetAgentRevision()
 }
 
 const logAggregationEnabled = false
@@ -268,7 +243,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), StartAgentTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
 	err = startAgentCmd.Run(ctx)
 

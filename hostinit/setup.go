@@ -350,10 +350,6 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 		}
 	}
 
-	/* TESTING ONLY
-	setupDebugSSHTunnel(path_to_ssh_key, targetHost.User, targetHost.Host)
-	*/
-
 	// run the function scheduled for when the host is up
 	err = cloudMgr.OnUp(targetHost)
 	if err != nil {
@@ -603,12 +599,6 @@ type LoadClientResult struct {
 // If successful, returns an instance of LoadClientResult which contains the paths where the
 // binary and config file were written to.
 func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadClientResult, error) {
-	// Make sure we have the binary we want to upload - if it hasn't been built for the given
-	// architecture, fail early
-	cliBinaryPath, err := LocateCLIBinary(init.Settings, target.Distro.Arch)
-	if err != nil {
-		return nil, errors.Wrapf(err, "couldn't locate CLI binary for upload")
-	}
 	if target.ProvisionOptions == nil {
 		return nil, errors.New("ProvisionOptions is nil")
 	}
@@ -655,7 +645,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
 	}
 
-	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	curlOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 
 	// run the make shell command with a timeout
 	var cancel context.CancelFunc
@@ -667,21 +657,23 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}
 
 	// place the binary into the directory
-	scpSetupCmd := &subprocess.ScpCommand{
-		Source:         cliBinaryPath,
-		Dest:           fmt.Sprintf("~/%s/evergreen", targetDir),
-		Stdout:         scpOut,
-		Stderr:         scpOut,
+	curlSetupCmd := &subprocess.RemoteCommand{
+		CmdString: fmt.Sprintf("cd '~/%s' && curl -LO '%s/%s'",
+			targetDir,
+			init.Settings.Ui.Url,
+			hostutil.ExecutableSubPath(&target.Distro)),
+		Stdout:         curlOut,
+		Stderr:         curlOut,
 		RemoteHostName: hostSSHInfo.Hostname,
 		User:           target.User,
 		Options:        append([]string{"-P", hostSSHInfo.Port}, sshOptions...),
 	}
 
-	// run the command to scp the setup script with a timeout
+	// run the command to curl the agent
 	ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
-	if err = scpSetupCmd.Run(ctx); err != nil {
-		return nil, errors.Wrapf(err, "error running SCP command for cli, %v: '%v'", scpOut.Buffer.String())
+	if err = curlSetupCmd.Run(ctx); err != nil {
+		return nil, errors.Wrapf(err, "error running curl command for cli, %v: '%v'", curlOut.Buffer.String())
 	}
 
 	// 4. Write a settings file for the user that owns the host, and scp it to the directory
@@ -702,6 +694,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}
 	defer os.Remove(tempFileName)
 
+	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 	scpYmlCommand := &subprocess.ScpCommand{
 		Source:         tempFileName,
 		Dest:           fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
@@ -739,10 +732,6 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 		return errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
-
-	/* TESTING ONLY
-	setupDebugSSHTunnel(path_to_ssh_keys, target.User, hostSSHInfo.Hostname)
-	*/
 
 	// When testing, use this writer to force a copy of the output to be written to standard out so
 	// that remote command failures also show up in server log output.
