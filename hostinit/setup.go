@@ -523,9 +523,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 	}
 
 	// If this is a spawn host
-	if h.ProvisionOptions != nil &&
-		h.ProvisionOptions.LoadCLI {
-
+	if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		grip.Infof("Uploading client binary to host %s", h.Id)
 		lcr, err := init.LoadClient(ctx, h)
 		if err != nil {
