@@ -102,7 +102,7 @@ type Task struct {
 
 // Represent graphLookup of Tasks and their dependencies
 type DependencyNode struct {
-	Task  Task   `bson:",inline"`
+	Task  Task   `bson:"task"`
 	Edges []Task `bson:"edges"`
 }
 
@@ -1007,7 +1007,7 @@ func (t *DependencyNode) DependenciesMet() bool {
 		return false
 	}
 
-	for _, depTask := range t.Edges{
+	for _, depTask := range t.Edges {
 		if !t.Task.satisfiesDependency(&depTask) {
 			return false
 		}
@@ -1033,6 +1033,12 @@ func UndispatchedWithEmbeddedDependencies() ([]DependencyNode, error) {
 				"connectFromField": DependsOnKey + "." + IdKey,
 				"connectToField":   IdKey,
 				"as":               EdgesKey,
+			},
+		},
+		{
+			"$project": bson.M{
+				EdgesKey: 1,
+				TaskKey:  "$$ROOT",
 			},
 		},
 	}
