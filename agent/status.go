@@ -34,7 +34,11 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	}
 	grip.Infoln("starting status server on:", addr)
 
-	go srv.ListenAndServe()
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			grip.Error(err)
+		}
+	}()
 
 	go func() {
 		<-ctx.Done()
