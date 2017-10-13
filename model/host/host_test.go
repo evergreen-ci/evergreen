@@ -824,10 +824,10 @@ func TestHostElapsedCommTime(t *testing.T) {
 		CreationTime: now.Add(-7 * time.Minute),
 	}
 
-	assert.InDelta(float64(10*time.Minute), float64(hostThatRanTask.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
-	assert.InDelta(float64(1*time.Minute), float64(hostThatJustStarted.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
-	assert.InDelta(float64(15*time.Minute), float64(hostWithNoCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
-	assert.InDelta(float64(7*time.Minute), float64(hostWithOnlyCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(10*time.Minute), int64(hostThatRanTask.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(1*time.Minute), int64(hostThatJustStarted.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(15*time.Minute), int64(hostWithNoCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(7*time.Minute), int64(hostWithOnlyCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
 }
 
 func TestHostUpsert(t *testing.T) {
