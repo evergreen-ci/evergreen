@@ -168,6 +168,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		User:           hostObj.User,
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
 	}
+	grip.Infof("Curl command: '%#v'", curlAgentCmd)
 
 	// run the command to curl the agent with a timeout
 	ctx, cancel = context.WithTimeout(context.TODO(), SSHTimeout)
