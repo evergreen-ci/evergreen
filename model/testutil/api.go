@@ -25,9 +25,8 @@ type TestModelData struct {
 	TaskConfig *model.TaskConfig
 }
 
-func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, variant string, projectFile string, patchMode PatchTestMode) (*TestModelData, error) {
+func CleanupAPITestData() error {
 	// Ignore errs here because the ns might just not exist.
-	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
 		task.Collection, build.Collection, host.Collection,
 		distro.Collection, version.Collection, patch.Collection,
@@ -35,7 +34,15 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		manifest.Collection, model.ProjectRefCollection}
 
 	if err := db.ClearCollections(testCollections...); err != nil {
-		return nil, errors.Wrap(err, clearDataMsg)
+		return errors.Wrap(err, "Failed to clear test data collection")
+	}
+
+	return nil
+}
+
+func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, variant string, projectFile string, patchMode PatchTestMode) (*TestModelData, error) {
+	if err := CleanupAPITestData(); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	// Read in the project configuration
