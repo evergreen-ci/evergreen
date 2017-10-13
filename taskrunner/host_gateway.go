@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -239,7 +240,12 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
-	grip.Info(remoteCmd)
+	m := message.Fields{
+		"message": "running remote script on agent",
+		"host":    hostObj.Id,
+		"command": remoteCmd,
+	}
+	grip.Info(m)
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
