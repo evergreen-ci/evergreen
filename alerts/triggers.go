@@ -75,14 +75,8 @@ func newAlertRecord(ctx triggerContext, alertType string) *alertrecord.AlertReco
 		record.RevisionOrderNumber = ctx.task.RevisionOrderNumber
 		record.TaskName = ctx.task.DisplayName
 		record.Variant = ctx.task.BuildVariant
-
-		if record.TaskId == "" {
-			record.TaskId = ctx.task.Id
-		}
-
-		if record.HostId == "" {
-			record.HostId = ctx.task.HostId
-		}
+		record.TaskId = ctx.task.Id
+		record.HostId = ctx.task.HostId
 	}
 	return record
 }
