@@ -801,6 +801,35 @@ func TestFindByLCT(t *testing.T) {
 	})
 }
 
+func TestHostElapsedCommTime(t *testing.T) {
+	assert := assert.New(t)
+	now := time.Now()
+	hostThatRanTask := Host{
+		Id:                    "hostThatRanTask",
+		CreationTime:          now.Add(-30 * time.Minute),
+		StartTime:             now.Add(-20 * time.Minute),
+		LastCommunicationTime: now.Add(-10 * time.Minute),
+	}
+	hostThatJustStarted := Host{
+		Id:           "hostThatJustStarted",
+		CreationTime: now.Add(-5 * time.Minute),
+		StartTime:    now.Add(-1 * time.Minute),
+	}
+	hostWithNoCreateTime := Host{
+		Id: "hostWithNoCreateTime",
+		LastCommunicationTime: now.Add(-15 * time.Minute),
+	}
+	hostWithOnlyCreateTime := Host{
+		Id:           "hostWithOnlyCreateTime",
+		CreationTime: now.Add(-7 * time.Minute),
+	}
+
+	assert.InDelta(int64(10*time.Minute), int64(hostThatRanTask.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(1*time.Minute), int64(hostThatJustStarted.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(15*time.Minute), int64(hostWithNoCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+	assert.InDelta(int64(7*time.Minute), int64(hostWithOnlyCreateTime.GetElapsedCommunicationTime()), float64(1*time.Millisecond))
+}
+
 func TestHostUpsert(t *testing.T) {
 	assert := assert.New(t)
 	const hostID = "upsertTest"
