@@ -87,3 +87,12 @@ func BinaryName(d *distro.Distro) string {
 func IsWindows(d *distro.Distro) bool {
 	return strings.HasPrefix(d.Arch, "windows")
 }
+
+// CurlCommand returns a command for curling an agent binary to a host
+func CurlCommand(dir string, url string, host *host.Host) string {
+	return fmt.Sprintf("cd '~/%s' && curl -LO '%s/clients/%s' && chmod +x %s",
+		dir,
+		url,
+		ExecutableSubPath(&host.Distro),
+		BinaryName(&host.Distro))
+}
