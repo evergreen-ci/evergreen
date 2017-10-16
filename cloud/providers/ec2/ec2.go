@@ -32,6 +32,7 @@ const (
 	EC2StatusShuttingdown = "shutting-down"
 	EC2StatusTerminated   = "terminated"
 	EC2StatusStopped      = "stopped"
+	EC2ErrorNotFound      = "InvalidInstanceID.NotFound"
 )
 
 type EC2ProviderSettings struct {
