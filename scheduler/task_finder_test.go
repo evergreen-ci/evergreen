@@ -1,13 +1,17 @@
 package scheduler
 
 import (
+	"math/rand"
 	"sort"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -15,6 +19,7 @@ var taskFinderTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
+	rand.Seed(time.Now().UnixNano())
 }
 
 type TaskFinderSuite struct {
@@ -112,20 +117,7 @@ type TaskFinderComparisonSuite struct {
 	newRunnableTasks []task.Task
 }
 
-func TestTaskFinderComparisonSuite(t *testing.T) {
-	s := new(TaskFinderComparisonSuite)
-
-	suite.Run(t, s)
-}
-
 func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
-	s.NotEmpty(s.oldRunnableTasks)
-	s.NotEmpty(s.newRunnableTasks)
-
-	s.Equal(s.oldRunnableTasks, s.newRunnableTasks)
-}
-
-func (s *TaskFinderComparisonSuite) TestExpectedRunnableHosts() {
 	idsOldMethod := []string{}
 	for _, task := range s.oldRunnableTasks {
 		idsOldMethod = append(idsOldMethod, task.Id)
@@ -136,23 +128,117 @@ func (s *TaskFinderComparisonSuite) TestExpectedRunnableHosts() {
 		idsNewMethod = append(idsNewMethod, task.Id)
 	}
 
-	expectedIds := []string{
-		"parent0-child1", "parent0-child2", "parent1-child0", "parent4",
-	}
-	sort.Strings(expectedIds)
 	sort.Strings(idsOldMethod)
 	sort.Strings(idsNewMethod)
 
-	s.Equal(idsOldMethod, expectedIds)
-	s.Equal(idsNewMethod, expectedIds)
+	s.Equal(idsOldMethod, idsNewMethod, pp.Sprintf("Failed to find identical runnable tasks; input tasks were: %+v\n", s.tasks))
 }
 
-func (s *TaskFinderComparisonSuite) SetupTest() {
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	s.NotNil(session)
-	s.NoError(db.Clear(task.Collection))
+func makeRandomTasks() []task.Task {
+	tasks := []task.Task{}
+	statuses := []string{
+		evergreen.TaskStarted,
+		evergreen.TaskUnstarted,
+		evergreen.TaskUndispatched,
+		evergreen.TaskDispatched,
+		evergreen.TaskFailed,
+		evergreen.TaskSucceeded,
+		evergreen.TaskInactive,
+		evergreen.TaskSystemFailed,
+		evergreen.TaskTimedOut,
+		evergreen.TaskSystemUnresponse,
+		evergreen.TaskSystemTimedOut,
+		evergreen.TaskTestTimedOut,
+		evergreen.TaskConflict,
+	}
 
-	// A suitably complex set of tasks for comparing the old method to the new method
+	numTasks := rand.Intn(10) + 1
+
+	for i := 0; i < numTasks; i++ {
+		// pick a random status
+		statusIndex := rand.Intn(len(statuses))
+		id := "task" + strconv.Itoa(i)
+		tasks = append(tasks, task.Task{
+			Id:        id,
+			Status:    statuses[statusIndex],
+			Activated: true,
+		})
+	}
+
+	subTasks := [][]task.Task{makeRandomSubTasks(statuses, &tasks)}
+
+	depth := rand.Intn(3) + 1
+
+	for i := 0; i < depth; i++ {
+		subTasks = append(subTasks, makeRandomSubTasks(statuses, &subTasks[i]))
+	}
+
+	for i, _ := range subTasks {
+		tasks = append(tasks, subTasks[i]...)
+	}
+
+	return tasks
+}
+
+func pickTaskStatus(dependsOn []task.Dependency) string {
+	for _, dep := range dependsOn {
+		if dep.Status == evergreen.TaskUndispatched {
+			return evergreen.TaskUndispatched
+		}
+	}
+	return dependsOn[rand.Intn(len(dependsOn))].Status
+}
+
+// Add random set of dependencies to each task in parentTasks
+func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task {
+	depTasks := []task.Task{}
+	for i, parentTask := range *parentTasks {
+		dependsOn := []task.Dependency{
+			task.Dependency{
+				TaskId: parentTask.Id,
+				Status: parentTask.Status,
+			},
+		}
+
+		// Pick another parent at random
+		anotherParent := rand.Intn(len(*parentTasks))
+		if anotherParent != i {
+			dependsOn = append(dependsOn,
+				task.Dependency{
+					TaskId: (*parentTasks)[anotherParent].Id,
+					Status: (*parentTasks)[anotherParent].Status,
+				},
+			)
+		}
+
+		numDeps := rand.Intn(4)
+		for i := 0; i < numDeps; i++ {
+			childId := parentTask.Id + "-child" + strconv.Itoa(i)
+			// 0 = worst parent status, from above; 1 = undispatched
+
+			depTasks = append(depTasks, task.Task{
+				Id:        childId,
+				Activated: true,
+				Status:    pickTaskStatus(dependsOn),
+				DependsOn: dependsOn,
+			})
+
+		}
+	}
+
+	return depTasks
+}
+
+func TestCompareTaskRunnersWithFuzzyTasks(t *testing.T) {
+	s := new(TaskFinderComparisonSuite)
+	s.tasks = makeRandomTasks()
+
+	suite.Run(t, s)
+}
+
+func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
+	s := new(TaskFinderComparisonSuite)
+
 	s.tasks = []task.Task{
 		// Successful parent
 		task.Task{
@@ -173,17 +259,7 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 				},
 			},
 		},
-		task.Task{
-			Id:        "parent0-child0-child0",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			DependsOn: []task.Dependency{
-				{
-					TaskId: "parent0-child0",
-					Status: evergreen.TaskUndispatched,
-				},
-			},
-		},
+
 		task.Task{
 			Id:        "parent0-child1",
 			Status:    evergreen.TaskUndispatched,
@@ -195,17 +271,6 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 				},
 			},
 		},
-		// task with no status in depends_on
-		task.Task{
-			Id:        "parent0-child2",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			DependsOn: []task.Dependency{
-				{
-					TaskId: "parent0",
-				},
-			},
-		},
 
 		// Failed parent
 		task.Task{
@@ -214,7 +279,7 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 			Activated: true,
 		},
 		task.Task{
-			Id:        "parent1-child0",
+			Id:        "parent1-child1-child1",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
 			DependsOn: []task.Dependency{
@@ -225,58 +290,32 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 			},
 		},
 
-		// parent with status other than success or fail
 		task.Task{
-			Id:        "parent2",
-			Status:    evergreen.TaskSystemFailed,
-			Activated: true,
-		},
-		task.Task{
-			Id:        "parent2-child0",
+			Id:        "parent0+parent1-child0",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
 			DependsOn: []task.Dependency{
 				{
-					TaskId: "parent2",
-					Status: evergreen.TaskUndispatched,
+					TaskId: "parent0",
+					Status: evergreen.TaskSucceeded,
 				},
-			},
-		},
-
-		// parent with negative priority
-		task.Task{
-			Id:        "parent3",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			Priority:  -1,
-		},
-		task.Task{
-			Id:        "parent3-child1",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-			DependsOn: []task.Dependency{
 				{
-					TaskId: "parent3",
-					Status: evergreen.TaskUndispatched,
+					TaskId: "parent1",
+					Status: evergreen.TaskFailed,
 				},
 			},
-		},
-
-		// undispatched task with no dependencies
-		task.Task{
-			Id:        "parent4",
-			Status:    evergreen.TaskUndispatched,
-			Activated: true,
-		},
-
-		// undispatched, inactive task
-		task.Task{
-			Id:        "parent5",
-			Status:    evergreen.TaskUndispatched,
-			Activated: false,
 		},
 	}
 
+	suite.Run(t, s)
+}
+
+func (s *TaskFinderComparisonSuite) SetupTest() {
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	s.NotNil(session)
+	s.NoError(db.Clear(task.Collection))
+
+	s.NotEmpty(s.tasks)
 	for _, task := range s.tasks {
 		s.NoError(task.Insert())
 	}

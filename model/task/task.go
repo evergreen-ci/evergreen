@@ -100,17 +100,17 @@ type Task struct {
 	TestResults []TestResult `bson:"test_results" json:"test_results"`
 }
 
-// Represent graphLookup of Tasks and their dependencies
-type DependencyNode struct {
-	Task  Task   `bson:"task"`
-	Edges []Task `bson:"edges"`
-}
-
 // Dependency represents a task that must be completed before the owning
 // task can be scheduled.
 type Dependency struct {
 	TaskId string `bson:"_id" json:"id"`
 	Status string `bson:"status" json:"status"`
+}
+
+// Represent graphLookup of Tasks and their dependencies
+type DependencyNode struct {
+	Task  Task   `bson:"task"`
+	Edges []Task `bson:"edges"`
 }
 
 // VersionCost is service level model for representing cost data related to a version.
