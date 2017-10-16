@@ -678,7 +678,7 @@ buildvariants:
       - ubuntu1604-arm64-small
     expansions:
       build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=arm64"
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.5.13.tgz
     tasks:
       - name: "dist-test"
         distros:
