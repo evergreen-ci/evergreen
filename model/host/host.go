@@ -37,7 +37,7 @@ type Host struct {
 	// the task that is currently running on the host
 	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 	// the full task struct that is running on the host (only populated by certain aggregations)
-	RunningTaskFull []task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
+	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
 
 	// the pid of the task that is currently running on the host
 	Pid string `bson:"pid" json:"pid"`

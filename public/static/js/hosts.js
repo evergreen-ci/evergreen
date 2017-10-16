@@ -149,7 +149,7 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     }
   };
 
-  $scope.onFilterKeyUp = function(event) {
+  $scope.onFilterKeyDown = function(event) {
     if (event.key === "Enter") {
       $scope.filter.hosts = $scope.filterText;
     }

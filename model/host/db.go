@@ -481,5 +481,11 @@ func QueryWithFullTaskPipeline(match bson.M) []bson.M {
 				"as":           "task_full",
 			},
 		},
+		{
+			"$unwind": bson.M{
+				"path": "$task_full",
+				"preserveNullAndEmptyArrays": true,
+			},
+		},
 	}
 }

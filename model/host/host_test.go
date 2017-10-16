@@ -980,7 +980,7 @@ func TestHostFindingWithTask(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(3, len(hosts))
-	assert.Equal(task1.Id, hosts[0].RunningTaskFull[0].Id)
-	assert.Equal(task2.Id, hosts[1].RunningTaskFull[0].Id)
-	assert.Equal(0, len(hosts[2].RunningTaskFull))
+	assert.Equal(task1.Id, hosts[0].RunningTaskFull.Id)
+	assert.Equal(task2.Id, hosts[1].RunningTaskFull.Id)
+	assert.Nil(hosts[2].RunningTaskFull)
 }

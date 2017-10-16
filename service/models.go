@@ -356,8 +356,8 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 
 		uiHosts[idx] = host
 		// get the task running on this host
-		if dbHost.RunningTaskFull != nil && len(dbHost.RunningTaskFull) > 0 {
-			uiHosts[idx].RunningTask = &dbHost.RunningTaskFull[0]
+		if dbHost.RunningTaskFull != nil {
+			uiHosts[idx].RunningTask = dbHost.RunningTaskFull
 		}
 		uiHosts[idx].IdleTime = host.Host.IdleTime().Seconds()
 	}
