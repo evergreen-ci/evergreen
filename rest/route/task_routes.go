@@ -407,10 +407,11 @@ func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Req
 		}
 	}
 	trh.taskId = projCtx.Task.Id
-	if projCtx.Project == nil {
-		return fmt.Errorf("Unable to fetch associated project")
+	project, err := projCtx.GetProject()
+	if err != nil {
+		return errors.Wrap(err, "Unable to fetch associated project")
 	}
-	trh.project = projCtx.Project
+	trh.project = project
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
 	return nil

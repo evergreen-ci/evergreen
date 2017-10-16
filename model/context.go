@@ -17,7 +17,6 @@ type Context struct {
 	Build      *build.Build
 	Version    *version.Version
 	Patch      *patch.Patch
-	Project    *Project
 	ProjectRef *ProjectRef
 }
 
@@ -50,15 +49,16 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 		if err != nil {
 			return *ctx, err
 		}
-
-		if ctx.ProjectRef != nil {
-			ctx.Project, err = FindProject("", ctx.ProjectRef)
-			if err != nil {
-				return *ctx, err
-			}
-		}
 	}
 	return *ctx, nil
+}
+
+// GetProject returns the project associated with the Context.
+func (ctx *Context) GetProject() (*Project, error) {
+	if ctx.ProjectRef != nil {
+		return FindProject("", ctx.ProjectRef)
+	}
+	return nil, errors.New("unable to find project for context")
 }
 
 // populateTaskBuildVersion takes a task, build, and version ID and populates a Context

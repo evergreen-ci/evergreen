@@ -18,14 +18,15 @@ var (
 
 func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	if projCtx.Project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		uis.ProjectNotFound(projCtx, w, r)
 		return
 	}
 
 	// If no version was specified in the URL, grab the latest version on the project
 	if projCtx.Version == nil {
-		v, err := version.Find(version.ByMostRecentForRequester(projCtx.Project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
+		v, err := version.Find(version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding version"))
 			return
@@ -40,7 +41,6 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	var failures grid.Failures
 	var revisionFailures grid.RevisionFailures
 	var depth int
-	var err error
 
 	d := mux.Vars(r)["depth"]
 	if d == "" {

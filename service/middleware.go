@@ -80,6 +80,7 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 
 // ToPluginContext creates a UIContext from the projectContext data.
 func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *user.DBUser) plugin.UIContext {
+	project, _ := pc.GetProject()
 	return plugin.UIContext{
 		Settings:   settings,
 		User:       dbUser,
@@ -87,7 +88,7 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *us
 		Build:      pc.Build,
 		Version:    pc.Version,
 		Patch:      pc.Patch,
-		Project:    pc.Project,
+		Project:    project,
 		ProjectRef: pc.ProjectRef,
 	}
 }
@@ -325,12 +326,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 	// set the cookie for the next request if a project was found
 	if ctx.ProjectRef != nil {
-		ctx.Project, err = model.FindProject("", ctx.ProjectRef)
-		if err != nil {
-			return pc, err
-		}
-
-		// A project was found, update the project cookie for subsequent request.
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
 			Value:   ctx.ProjectRef.Identifier,

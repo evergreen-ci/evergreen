@@ -445,8 +445,8 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 // lastGreen returns the most recent version for which the supplied variants completely pass.
 func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	p := projCtx.Project
-	if p == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		http.Error(w, "project not found", http.StatusNotFound)
 		return
 	}
@@ -458,7 +458,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	// Make sure all query params are valid variants and put them in an array
 	var bvs []string
 	for key := range queryParams {
-		if p.FindBuildVariant(key) != nil {
+		if project.FindBuildVariant(key) != nil {
 			bvs = append(bvs, key)
 		} else {
 			msg := fmt.Sprintf("build variant '%v' does not exist", key)
@@ -468,7 +468,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get latest version for which all the given build variants passed.
-	version, err := model.FindLastPassingVersionForBuildVariants(p, bvs)
+	version, err := model.FindLastPassingVersionForBuildVariants(project, bvs)
 	if err != nil {
 		ra.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

@@ -51,16 +51,15 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
 	}
-	projCtx.Project = project
 
 	// retrieve tasks and variant mappings' names
 	variantMappings := make(map[string]model.BuildVariant)
-	for _, variant := range projCtx.Project.BuildVariants {
+	for _, variant := range project.BuildVariants {
 		variantMappings[variant.Name] = variant
 	}
 
 	tasksList := []interface{}{}
-	for _, task := range projCtx.Project.Tasks {
+	for _, task := range project.Tasks {
 		// add a task name to the list if it's patchable
 		if !(task.Patchable != nil && !*task.Patchable) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
@@ -101,7 +100,6 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	if err = yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
-	projCtx.Project = project
 
 	patchUpdateReq := patchVariantsTasksRequest{}
 
@@ -123,9 +121,9 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	pairs = model.IncludePatchDependencies(projCtx.Project, pairs)
+	pairs = model.IncludePatchDependencies(project, pairs)
 
-	if err = model.ValidateTVPairs(projCtx.Project, pairs); err != nil {
+	if err = model.ValidateTVPairs(project, pairs); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -154,14 +152,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, pairs)
+		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, pairs)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new tasks for version `%v`", projCtx.Version.Id))
 			return
 		}
 
-		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, pairs)
+		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, project, pairs)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new builds for version `%v`", err, projCtx.Version.Id))

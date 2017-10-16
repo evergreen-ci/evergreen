@@ -37,8 +37,8 @@ type RestTestHistoryResult struct {
 func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	taskName := mux.Vars(r)["task_name"]
 	projCtx := MustHaveRESTContext(r)
-	project := projCtx.Project
-	if project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: "error loading project"})
 		return
 	}
