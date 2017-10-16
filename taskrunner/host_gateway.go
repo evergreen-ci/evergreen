@@ -158,10 +158,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	curlAgentOutput := newCappedOutputLog()
 	curlAgentCmd := &subprocess.RemoteCommand{
 		Id: fmt.Sprintf("curl-%d-%s", rand.Int(), hostObj.Id),
-		CmdString: fmt.Sprintf("cd '%s' && curl -LO '%s/clients/%s'",
+		CmdString: fmt.Sprintf("cd '%s' && curl -LO '%s/clients/%s' && chmod ug+x %s",
 			hostObj.Distro.WorkDir,
 			settings.Ui.Url,
-			hostutil.ExecutableSubPath(&hostObj.Distro)),
+			hostutil.ExecutableSubPath(&hostObj.Distro),
+			hostutil.BinaryName(&hostObj.Distro)),
 		Stdout:         curlAgentOutput,
 		Stderr:         curlAgentOutput,
 		RemoteHostName: hostInfo.Hostname,
