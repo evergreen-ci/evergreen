@@ -3,11 +3,13 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -109,6 +111,14 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 					return terminateHost(ctx, &hostToTerminate, settings)
 				}, 12*time.Minute)
 				if err != nil {
+					if strings.Contains(err.Error(), ec2.EC2ErrorNotFound) {
+						err = h.Terminate()
+						if err != nil {
+							return errors.Wrap(err, "unable to set host as terminated")
+						}
+						grip.Debugf("host %s not found in EC2, changed to terminated", h.Id)
+						return nil
+					}
 					if err == util.ErrTimedOut {
 						return errors.Errorf("timeout terminating host %s", hostToTerminate.Id)
 					}
