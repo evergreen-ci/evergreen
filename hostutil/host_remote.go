@@ -70,16 +70,29 @@ func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOption
 }
 
 // ExecutableSubPath returns the directory containing the compiled agents.
-func ExecutableSubPath(d *distro.Distro) string {
-	mainName := "evergreen"
-	if IsWindows(d) {
-		mainName += ".exe"
-	}
+func executableSubPath(d *distro.Distro) string {
+	return filepath.Join(d.Arch, binaryName(d))
+}
 
-	return filepath.Join(d.Arch, mainName)
+// BinaryName returns the name of the evergreen binary.
+func binaryName(d *distro.Distro) string {
+	name := "evergreen"
+	if IsWindows(d) {
+		return name + ".exe"
+	}
+	return name
 }
 
 // IsWindows returns true if a distro is a Windows distro.
 func IsWindows(d *distro.Distro) bool {
 	return strings.HasPrefix(d.Arch, "windows")
+}
+
+// CurlCommand returns a command for curling an agent binary to a host
+func CurlCommand(dir string, url string, host *host.Host) string {
+	return fmt.Sprintf("cd '~/%s' && curl -LO '%s/clients/%s' && chmod +x %s",
+		dir,
+		url,
+		executableSubPath(&host.Distro),
+		binaryName(&host.Distro))
 }
