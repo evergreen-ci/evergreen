@@ -110,10 +110,9 @@ func (trig FirstFailureInTaskType) ShouldExecute(ctx triggerContext) (bool, erro
 // the previous alert was sent.
 type TaskFailTransition struct{}
 
-func (trig TaskFailTransition) Id() string { return alertrecord.TaskFailTransitionId }
-func (trig TaskFailTransition) Display() string {
-	return "a previously passing task fails"
-}
+func (trig TaskFailTransition) Id() string      { return alertrecord.TaskFailTransitionId }
+func (trig TaskFailTransition) Display() string { return "a previously passing task fails" }
+
 func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 	if ctx.task.Status != evergreen.TaskFailed {
 		return false, nil
