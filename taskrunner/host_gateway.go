@@ -240,12 +240,13 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
-	m := message.Fields{
+	cmdId := fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int())
+	grip.Info(message.Fields{
+		"id":      cmdId,
 		"message": "running remote script on agent",
 		"host":    hostObj.Id,
 		"command": remoteCmd,
-	}
-	grip.Info(m)
+	})
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
@@ -256,7 +257,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 	// run the command to kick off the agent remotely
 	var startAgentLog bytes.Buffer
 	startAgentCmd := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int()),
+		Id:             cmdId,
 		CmdString:      remoteCmd,
 		Stdout:         &startAgentLog,
 		Stderr:         &startAgentLog,

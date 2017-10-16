@@ -15,8 +15,10 @@ import (
 
 const SSHTimeout = 2 * time.Minute
 
-// RunRemoteScript executes a command or shell script that already exists on the remote host,
-// returning logs and any errors that occur. Logs may still be returned for some errors.
+// RunRemoteScript executes a command, returning logs and any errors that occur.
+//
+// WARNING: RunRemoteScript is not safe to use for non-trivial scripts, as it
+// naively handles shell quoting.
 func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOptions []string) (string, error) {
 	// parse the hostname into the user, host and port
 	hostInfo, err := util.ParseSSHInfo(h.Host)
