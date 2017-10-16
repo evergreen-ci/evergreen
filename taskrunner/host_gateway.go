@@ -158,7 +158,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	curlAgentOutput := newCappedOutputLog()
 	curlAgentCmd := &subprocess.RemoteCommand{
 		Id:             fmt.Sprintf("curl-%d-%s", rand.Int(), hostObj.Id),
-		CmdString:      hostutil.CurlCommand(hostObj.Distro.WorkDir, settings.Ui.Url, &hostObj),
+		CmdString:      hostutil.CurlCommand(settings.Ui.Url, &hostObj),
 		Stdout:         curlAgentOutput,
 		Stderr:         curlAgentOutput,
 		RemoteHostName: hostInfo.Hostname,
@@ -188,7 +188,7 @@ const logAggregationEnabled = false
 // Start the agent process on the specified remote host.
 func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
-	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "evergreen")
+	pathToExecutable := filepath.Join(hostutil.AgentBinaryDirectory, "evergreen")
 	if hostutil.IsWindows(&hostObj.Distro) {
 		pathToExecutable += ".exe"
 	}
