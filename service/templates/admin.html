@@ -144,6 +144,8 @@ Admin Settings
           </table>
         </md-card-content>
         <md-card-footer class="squeezeTop">
+            <md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
+            <md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
           <md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
         </md-card-footer>
       </md-card>

@@ -540,7 +540,8 @@ md-select:not([disabled]):focus .md-select-value {
 md-input-container label {
   font-size: medium;
 }
-md-radio-button .md-on {
+md-radio-button .md-on,
+md-checkbox.md-checked .md-icon {
   background-color: rgba(0, 0, 0, 0.7) !important;
 }
 md-radio-button .md-off {
@@ -553,6 +554,9 @@ md-radio-button {
 }
 md-radio-group.md-focused:not(:empty) .md-checked .md-container:before {
   background-color: rgba(21, 196, 8, 0.45) !important;
+}
+md-checkbox.md-checked .md-ink-ripple {
+  color: rgba(0, 0, 0, 0.7) !important;
 }
 .remove-version {
   margin: 10px;

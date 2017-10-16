@@ -333,12 +333,14 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       baseSvc.postResource(resource, [], config, callbacks);
     }
 
-    service.restartTasks = function(from, to, isDryRun, callbacks) {
+    service.restartTasks = function(from, to, isDryRun, restartRed, restartPurple, callbacks) {
       var config = {}
       config.data = {
         start_time: from,
         end_time: to,
-        dry_run: isDryRun
+        dry_run: isDryRun,
+        only_red: restartRed,
+        only_purple: restartPurple
       };
       baseSvc.postResource(resource + "/restart", [], config, callbacks);
     }
