@@ -375,6 +375,10 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 		}
 	}
 
+	if err = init.createWorkingDirectory(ctx, targetHost); err != nil {
+		return "", errors.Wrapf(err, "error creating working directory on host %s", targetHost.Id)
+	}
+
 	if targetHost.Distro.Setup != "" {
 		err = init.copyScript(ctx, targetHost, setupScriptName, targetHost.Distro.Setup)
 		if err != nil {
@@ -399,10 +403,8 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	return "", nil
 }
 
-// copyScript writes a given script as file "name" to the target host. This works
-// by creating a local copy of the script on the runner's machine, scping it over
-// then removing the local copy.
-func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, script string) error {
+// createWorkingDirectory creates the distro's working directory
+func (init *HostInit) createWorkingDirectory(ctx context.Context, target *host.Host) error {
 	// parse the hostname into the user, host and port
 	hostInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
@@ -411,24 +413,6 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	user := target.Distro.User
 	if hostInfo.User != "" {
 		user = hostInfo.User
-	}
-
-	// create a temp file for the script
-	file, err := ioutil.TempFile("", name)
-	if err != nil {
-		return errors.Wrap(err, "error creating temporary script file")
-	}
-	defer func() {
-		grip.Error(file.Close())
-		grip.Error(os.Remove(file.Name()))
-	}()
-
-	expanded, err := init.expandScript(script)
-	if err != nil {
-		return errors.Wrapf(err, "error expanding script for host %s", target.Id)
-	}
-	if _, err := io.WriteString(file, expanded); err != nil {
-		return errors.Wrap(err, "error writing local script")
 	}
 
 	cloudHost, err := providers.GetCloudHost(target, init.Settings)
@@ -475,17 +459,62 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 			cappedMakeDirectoryLog.String())
 	}
 
+	return nil
+}
+
+// copyScript writes a given script as file "name" to the target host. This works
+// by creating a local copy of the script on the runner's machine, scping it over
+// then removing the local copy.
+func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, script string) error {
+	// parse the hostname into the user, host and port
+	hostInfo, err := util.ParseSSHInfo(target.Host)
+	if err != nil {
+		return err
+	}
+	user := target.Distro.User
+	if hostInfo.User != "" {
+		user = hostInfo.User
+	}
+
+	// create a temp file for the script
+	file, err := ioutil.TempFile("", name)
+	if err != nil {
+		return errors.Wrap(err, "error creating temporary script file")
+	}
+	defer func() {
+		grip.Error(file.Close())
+		grip.Error(os.Remove(file.Name()))
+	}()
+
+	expanded, err := init.expandScript(script)
+	if err != nil {
+		return errors.Wrapf(err, "error expanding script for host %s", target.Id)
+	}
+	if _, err := io.WriteString(file, expanded); err != nil {
+		return errors.Wrap(err, "error writing local script")
+	}
+
+	cloudHost, err := providers.GetCloudHost(target, init.Settings)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
+	}
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
+	}
+
 	var scpCmdStderr bytes.Buffer
 	scpCmd := &subprocess.ScpCommand{
 		Source:         file.Name(),
-		Dest:           filepath.Join(target.Distro.WorkDir, name),
+		Dest:           filepath.Join(hostutil.AgentBinaryDirectory, name),
 		Stdout:         &scpCmdStderr,
 		Stderr:         &scpCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
 	}
-	// run the command to scp the agent with a timeout
+	// run the command to scp the script with a timeout
+	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, SCPTimeout)
 	defer cancel()
 	if err = scpCmd.Run(ctx); err != nil {
@@ -658,7 +687,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	// place the binary into the directory
 	curlSetupCmd := &subprocess.RemoteCommand{
-		CmdString:      hostutil.CurlCommand(targetDir, init.Settings.Ui.Url, target),
+		CmdString:      hostutil.CurlCommand(init.Settings.Ui.Url, target),
 		Stdout:         curlOut,
 		Stderr:         curlOut,
 		RemoteHostName: hostSSHInfo.Hostname,
@@ -709,7 +738,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}
 
 	return &LoadClientResult{
-		BinaryPath: fmt.Sprintf("~/%s/evergreen", targetDir),
+		BinaryPath: filepath.Join(hostutil.AgentBinaryDirectory, "evergreen"),
 		ConfigPath: fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
 	}, nil
 }
