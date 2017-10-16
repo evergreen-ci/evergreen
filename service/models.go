@@ -329,18 +329,23 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 	// get all of the hosts
 	var dbHosts []host.Host
 	var err error
+	var query bson.M
 	if includeSpawnedHosts {
-		dbHosts, err = host.Find(host.IsRunning)
+		query = bson.M{host.StatusKey: bson.M{"$ne": evergreen.HostTerminated}}
 	} else {
-		dbHosts, err = host.Find(host.ByUserWithRunningStatus(evergreen.User))
+		query = bson.M{
+			host.StartedByKey: evergreen.User,
+			host.StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
+		}
 	}
-
+	err = db.Aggregate(host.Collection, host.QueryWithFullTaskPipeline(query), &dbHosts)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	// convert the hosts to the ui models
 	uiHosts := make([]uiHost, len(dbHosts))
+
 	for idx, dbHost := range dbHosts {
 		// we only need the distro id for the hosts page
 		dbHost.Distro = distro.Distro{Id: dbHost.Distro.Id}
@@ -351,14 +356,8 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 
 		uiHosts[idx] = host
 		// get the task running on this host
-		if dbHost.RunningTask != "" {
-			t, err := task.FindOne(task.ById(dbHost.RunningTask))
-			if err != nil {
-				return nil, errors.WithStack(err)
-			}
-			grip.ErrorWhenf(t == nil, "Hosts page could not find task %s for host %s",
-				dbHost.RunningTask, dbHost.Id)
-			uiHosts[idx].RunningTask = t
+		if dbHost.RunningTaskFull != nil {
+			uiHosts[idx].RunningTask = dbHost.RunningTaskFull
 		}
 		uiHosts[idx].IdleTime = host.Host.IdleTime().Seconds()
 	}

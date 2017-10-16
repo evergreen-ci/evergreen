@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -960,4 +961,55 @@ func TestHostStats(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestHostFindingWithTask(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(Collection, task.Collection), t, "error clearing collections")
+	assert := assert.New(t)
+	task1 := task.Task{
+		Id: "task1",
+	}
+	task2 := task.Task{
+		Id: "task2",
+	}
+	task3 := task.Task{
+		Id: "task3",
+	}
+	host1 := Host{
+		Id:          "host1",
+		RunningTask: task1.Id,
+		Status:      evergreen.HostRunning,
+	}
+	host2 := Host{
+		Id:          "host2",
+		RunningTask: task2.Id,
+		Status:      evergreen.HostRunning,
+	}
+	host3 := Host{
+		Id:          "host3",
+		RunningTask: "",
+		Status:      evergreen.HostRunning,
+	}
+	host4 := Host{
+		Id:     "host4",
+		Status: evergreen.HostTerminated,
+	}
+	assert.NoError(task1.Insert())
+	assert.NoError(task2.Insert())
+	assert.NoError(task3.Insert())
+	assert.NoError(host1.Insert())
+	assert.NoError(host2.Insert())
+	assert.NoError(host3.Insert())
+	assert.NoError(host4.Insert())
+
+	var hosts []Host
+	err := db.Aggregate(Collection, QueryWithFullTaskPipeline(
+		bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}}),
+		&hosts)
+	assert.NoError(err)
+
+	assert.Equal(3, len(hosts))
+	assert.Equal(task1.Id, hosts[0].RunningTaskFull.Id)
+	assert.Equal(task2.Id, hosts[1].RunningTaskFull.Id)
+	assert.Nil(hosts[2].RunningTaskFull)
 }
