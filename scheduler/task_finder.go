@@ -3,21 +3,17 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
-// TaskFinder finds all tasks that are ready to be run.
-type TaskFinder interface {
-	// Returns a slice of tasks that are ready to be run, and an error if
-	// appropriate.
-	FindRunnableTasks() ([]task.Task, error)
+type TaskFinder func() ([]task.Task, error)
+
+func FindRunnableTasks() ([]task.Task, error) {
+	return task.FindRunnable()
 }
 
-// The old DBTaskFinder, with the dependency check implemented in Go, instead
-// of using $graphLookup
-type LegacyDBTaskFinder struct{}
-
-func (f *LegacyDBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
+// The old Task finderDBTaskFinder, with the dependency check implemented in Go,
+// instead of using $graphLookup
+func LegacyFindRunnableTasks() ([]task.Task, error) {
 	// find all of the undispatched tasks
 	undispatchedTasks, err := task.Find(task.IsUndispatched)
 	if err != nil {
@@ -36,22 +32,6 @@ func (f *LegacyDBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 		if depsMet {
 			runnableTasks = append(runnableTasks, task)
 		}
-	}
-
-	return runnableTasks, nil
-}
-
-// DBTaskFinder fetches tasks from the database using $graphLookup. Implements TaskFinder.
-type DBTaskFinder struct{}
-
-// FindRunnableTasks finds all tasks that are ready to be run.
-// This works by fetching all undispatched tasks from the database,
-// and filtering out any whose dependencies are not met.
-func (f *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
-	// TODO this func is now redundant
-	runnableTasks, err := task.FindRunnable()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
 	}
 
 	return runnableTasks, nil

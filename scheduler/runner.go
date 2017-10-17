@@ -45,11 +45,14 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 
 	schedulerInstance := &Scheduler{
 		config,
-		pickTaskFinder(config),
 		&CmpBasedTaskPrioritizer{},
 		&DBTaskDurationEstimator{},
 		&DBTaskQueuePersister{},
 		&DurationBasedHostAllocator{},
+		FindRunnableTasks,
+	}
+	if config.Scheduler.UseLegacyTaskFinder {
+		schedulerInstance.FindRunnableTasks = LegacyFindRunnableTasks
 	}
 
 	if err := schedulerInstance.Schedule(ctx); err != nil {
@@ -76,11 +79,4 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	})
 
 	return nil
-}
-
-func pickTaskFinder(config *evergreen.Settings) TaskFinder {
-	if config.Scheduler.UseLegacyTaskFinder {
-		return &LegacyDBTaskFinder{}
-	}
-	return &DBTaskFinder{}
 }

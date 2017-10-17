@@ -24,21 +24,21 @@ func init() {
 
 type TaskFinderSuite struct {
 	suite.Suite
-	taskFinder TaskFinder
-	tasks      []task.Task
-	depTasks   []task.Task
+	FindRunnableTasks TaskFinder
+	tasks             []task.Task
+	depTasks          []task.Task
 }
 
 func TestDBTaskFinder(t *testing.T) {
 	s := new(TaskFinderSuite)
-	s.taskFinder = &DBTaskFinder{}
+	s.FindRunnableTasks = task.FindRunnable
 
 	suite.Run(t, s)
 }
 
 func TestLegacyDBTaskFinder(t *testing.T) {
 	s := new(TaskFinderSuite)
-	s.taskFinder = &LegacyDBTaskFinder{}
+	s.FindRunnableTasks = LegacyFindRunnableTasks
 
 	suite.Run(t, s)
 }
@@ -72,7 +72,7 @@ func (s *TaskFinderSuite) insertTasks() {
 
 func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 	// XXX: collection is deliberately empty
-	runnableTasks, err := s.taskFinder.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks()
 	s.NoError(err)
 	s.Empty(runnableTasks)
 }
@@ -83,7 +83,7 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	s.insertTasks()
 
 	// finding the runnable tasks should return two tasks
-	runnableTasks, err := s.taskFinder.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks()
 	s.NoError(err)
 	s.Len(runnableTasks, 2)
 }
@@ -105,7 +105,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 
 	// finding the runnable tasks should return two tasks (the one with
 	// no dependencies and the one with successfully met dependencies
-	runnableTasks, err := s.taskFinder.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks()
 	s.NoError(err)
 	s.Len(runnableTasks, 2)
 }
@@ -332,13 +332,11 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 		s.NoError(task.Insert())
 	}
 
-	oldTaskFinder := &LegacyDBTaskFinder{}
-	newTaskFinder := &DBTaskFinder{}
 	var err error
 
-	s.oldRunnableTasks, err = oldTaskFinder.FindRunnableTasks()
+	s.oldRunnableTasks, err = LegacyFindRunnableTasks()
 	s.NoError(err)
-	s.newRunnableTasks, err = newTaskFinder.FindRunnableTasks()
+	s.newRunnableTasks, err = FindRunnableTasks()
 	s.NoError(err)
 
 }
