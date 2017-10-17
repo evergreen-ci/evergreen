@@ -182,7 +182,9 @@ func makeRandomTasks() []task.Task {
 	return tasks
 }
 
-func pickTaskStatus(dependsOn []task.Dependency) string {
+func pickSubtaskStatus(statuses []string, dependsOn []task.Dependency) string {
+	// If any task that a task depends on is undispatched, this task must be
+	// undispatched
 	for _, dep := range dependsOn {
 		if dep.Status == evergreen.TaskUndispatched {
 			return evergreen.TaskUndispatched
@@ -216,12 +218,11 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 		numDeps := rand.Intn(4)
 		for i := 0; i < numDeps; i++ {
 			childId := parentTask.Id + "-child" + strconv.Itoa(i)
-			// 0 = worst parent status, from above; 1 = undispatched
 
 			depTasks = append(depTasks, task.Task{
 				Id:        childId,
 				Activated: true,
-				Status:    pickTaskStatus(dependsOn),
+				Status:    pickSubtaskStatus(statuses, dependsOn),
 				DependsOn: dependsOn,
 			})
 
@@ -307,6 +308,12 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 						Status: evergreen.TaskFailed,
 					},
 				},
+			},
+
+			task.Task{
+				Id:        "parent2",
+				Status:    evergreen.TaskUndispatched,
+				Activated: true,
 			},
 		}
 	}
