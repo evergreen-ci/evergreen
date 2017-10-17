@@ -88,8 +88,7 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 			errChan <- err
 			return
 		}
-		err = s.a.runTask(tskCtx, s.tc)
-		errChan <- err
+		errChan <- s.a.runTask(tskCtx, s.tc)
 	}()
 	cancel()
 	s.Error(<-errChan)
