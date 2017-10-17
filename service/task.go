@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -688,9 +689,16 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
 	displayLogs := make(chan apimodels.LogMessage)
 	go func() {
+		defer close(displayLogs)
 		for _, line := range testLog.Lines {
+			if ctx.Err() != nil {
+				return
+			}
 			displayLogs <- apimodels.LogMessage{
 				Type:     apimodels.TaskLogPrefix,
 				Severity: apimodels.LogInfoPrefix,
@@ -698,7 +706,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 				Message:  line,
 			}
 		}
-		close(displayLogs)
 	}()
 
 	template := "task_log.html"
