@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,16 +13,31 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 const (
-	// AgentBinaryDirectory is the directory the runner copies the agent, setup, and teardown scripts to.
-	AgentBinaryDirectory = "/usr/local/bin"
-
 	// SSHTimeout is the timeout for SSH commands.
 	SSHTimeout = 2 * time.Minute
 )
+
+var (
+	// AgentBinaryDirectory is the directory the runner copies the agent,
+	// setup, and teardown scripts to. If we cannot determine the user's
+	// home directory, use "/usr/local/bin".
+	AgentBinaryDirectory = "/usr/local/bin"
+)
+
+func init() {
+	usr, err := user.Current()
+	if err != nil {
+		grip.Error(err)
+		return
+	}
+
+	AgentBinaryDirectory = usr.HomeDir
+}
 
 // RunRemoteScript executes a shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.
