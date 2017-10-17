@@ -16,9 +16,6 @@ import (
 )
 
 const (
-	// AgentBinaryDirectory is the directory the runner copies the agent, setup, and teardown scripts to.
-	AgentBinaryDirectory = "/usr/local/bin"
-
 	// SSHTimeout is the timeout for SSH commands.
 	SSHTimeout = 2 * time.Minute
 )
@@ -37,7 +34,7 @@ func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOption
 	}
 
 	cmdArgs := []string{
-		fmt.Sprintf("cd %s;", AgentBinaryDirectory),
+		"cd ~;",
 	}
 
 	// run the remote script as sudo, if appropriate
@@ -96,8 +93,7 @@ func IsWindows(d *distro.Distro) bool {
 
 // CurlCommand returns a command for curling an agent binary to a host
 func CurlCommand(url string, host *host.Host) string {
-	return fmt.Sprintf("cd '%s' && curl -LO '%s/clients/%s' && chmod +x %s",
-		AgentBinaryDirectory,
+	return fmt.Sprintf("cd ~ && curl -LO '%s/clients/%s' && chmod +x %s",
 		url,
 		executableSubPath(&host.Distro),
 		binaryName(&host.Distro))
