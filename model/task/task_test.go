@@ -8,8 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -528,7 +526,6 @@ func TestMarkAsDispatched(t *testing.T) {
 		buildId  string
 		distroId string
 		task     *Task
-		myHost   *host.Host
 		b        *build.Build
 	)
 
@@ -544,11 +541,6 @@ func TestMarkAsDispatched(t *testing.T) {
 			BuildId: buildId,
 		}
 
-		myHost = &host.Host{
-			Id:     hostId,
-			Distro: distro.Distro{Id: distroId},
-		}
-
 		b = &build.Build{
 			Id: buildId,
 			Tasks: []build.TaskCache{
@@ -557,11 +549,10 @@ func TestMarkAsDispatched(t *testing.T) {
 		}
 
 		testutil.HandleTestingErr(
-			db.ClearCollections(Collection, build.Collection, host.Collection),
+			db.ClearCollections(Collection, build.Collection),
 			t, "Error clearing test collections")
 
 		So(task.Insert(), ShouldBeNil)
-		So(myHost.Insert(), ShouldBeNil)
 		So(b.Insert(), ShouldBeNil)
 
 		Convey("when marking the task as dispatched, the fields for"+
@@ -569,19 +560,19 @@ func TestMarkAsDispatched(t *testing.T) {
 			" should be set to reflect this", func() {
 
 			// mark the task as dispatched
-			So(task.MarkAsDispatched(myHost.Id, myHost.Distro.Id, time.Now()), ShouldBeNil)
+			So(task.MarkAsDispatched(hostId, distroId, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in ©memory and
 			// in the db
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
-			So(task.HostId, ShouldEqual, myHost.Id)
+			So(task.HostId, ShouldEqual, hostId)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 			task, err := FindOne(ById(taskId))
 			So(err, ShouldBeNil)
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
-			So(task.HostId, ShouldEqual, myHost.Id)
+			So(task.HostId, ShouldEqual, hostId)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 
 		})
