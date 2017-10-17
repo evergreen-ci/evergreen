@@ -37,7 +37,9 @@ Disable task dispatch in scenarios where there are widespread problems with the
 agents such that tasks would either not execute correctly or report incorrect
 results. If the problem is something that can be quickly and safely fixed,
 consider instead deploying the fix and forcing agents to roll over to the new
-revision.
+revision. One thing to keep in mind is that disabling task dispatch for over 15 
+minutes will cause the monitor to start terminating hosts for being idle, 
+because idle is defined as "not processing tassk for 15 minutes."
 
 Enable task dispatch when the problem is fixed or will be fixed by getting a new
 agent revision.
