@@ -709,14 +709,17 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	template := "task_log.html"
+	data := struct {
+		Data chan apimodels.LogMessage
+		User *user.DBUser
+	}{displayLogs, GetUser(r)}
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
-		w.Header().Set("Content-Type", "text/plain")
+		if err = uis.StreamText(w, http.StatusOK, data, "base", template); err != nil {
+			grip.Error(errors.Wrapf(err, "error streaming log data for log %s", logId))
+		}
+	} else {
+		uis.WriteHTML(w, http.StatusOK, data, "base", template)
 	}
-
-	uis.WriteHTML(w, http.StatusOK, struct {
-		Data chan apimodels.LogMessage
-		User *user.DBUser
-	}{displayLogs, GetUser(r)}, "base", template)
 }
