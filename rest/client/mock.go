@@ -423,3 +423,16 @@ func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	}
 	return mockDistros, nil
 }
+
+func (c *Mock) GetKeysList(ctx context.Context) ([]model.APIPubKey, error) {
+	return []model.APIPubKey{
+		{
+			Name: "key0",
+			Key:  "ssh-fake 12345",
+		},
+		{
+			Name: "key1",
+			Key:  "ssh-fake 67890",
+		},
+	}, nil
+}
