@@ -76,6 +76,12 @@ func (s *AgentIntegrationSuite) SetupTest() {
 	s.a.removeTaskDirectory(s.tc)
 }
 
+func (s *AgentIntegrationSuite) TearDownTest() {
+	if s.testServer != nil {
+		s.testServer.Close()
+	}
+}
+
 func (s *AgentIntegrationSuite) TestAbortTask() {
 	errChan := make(chan error)
 
