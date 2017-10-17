@@ -49,7 +49,6 @@ func (s *AgentIntegrationSuite) SetupSuite() {
 }
 
 func (s *AgentIntegrationSuite) TearDownSuite() {
-	s.NoError(modelutil.CleanupAPITestData())
 	s.NoError(grip.SetSender(send.MakeNative()))
 }
 
@@ -60,6 +59,7 @@ func (s *AgentIntegrationSuite) SetupTest() {
 	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "AgentIntegrationSuite")
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(s.testConfig))
 
+	s.Require().NoError(modelutil.CleanupAPITestData())
 	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "print_dir_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
 	s.Require().NoError(err)
 
