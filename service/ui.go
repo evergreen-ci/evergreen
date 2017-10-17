@@ -334,6 +334,11 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		grip.Error("no user attached to request")
 	}
 	projectCtx, err := GetProjectContext(r)
+	if err != nil {
+		grip.Errorf(errors.Wrap(err, "error getting project context").Error())
+		uis.ProjectNotFound(projectCtx, w, r)
+		return ViewData{}
+	}
 	if needsProject {
 		project, err := projectCtx.GetProject()
 		if err != nil || project == nil {

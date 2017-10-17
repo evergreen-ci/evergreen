@@ -408,7 +408,7 @@ func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Req
 	}
 	trh.taskId = projCtx.Task.Id
 	project, err := projCtx.GetProject()
-	if err != nil {
+	if err != nil || project == nil {
 		return errors.Wrap(err, "Unable to fetch associated project")
 	}
 	trh.project = project
