@@ -506,7 +506,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	var scpCmdStderr bytes.Buffer
 	scpCmd := &subprocess.ScpCommand{
 		Source:         file.Name(),
-		Dest:           filepath.Join(hostutil.AgentBinaryDirectory, name),
+		Dest:           filepath.Join("~", name),
 		Stdout:         &scpCmdStderr,
 		Stderr:         &scpCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
@@ -738,7 +738,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}
 
 	return &LoadClientResult{
-		BinaryPath: filepath.Join(hostutil.AgentBinaryDirectory, "evergreen"),
+		BinaryPath: filepath.Join("~", "evergreen"),
 		ConfigPath: fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
 	}, nil
 }
