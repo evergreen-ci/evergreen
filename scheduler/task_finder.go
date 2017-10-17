@@ -49,10 +49,10 @@ type DBTaskFinder struct{}
 // and filtering out any whose dependencies are not met.
 func (f *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 	// TODO this func is now redundant
-	undispatchedTasks, err := task.FindRunnable()
+	runnableTasks, err := task.FindRunnable()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch undispatched tasks")
+		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
 	}
 
-	return undispatchedTasks, nil
+	return runnableTasks, nil
 }

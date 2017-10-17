@@ -1087,6 +1087,9 @@ func FindRunnable() ([]Task, error) {
 
 	runnableTasks := []Task{}
 	err := Aggregate(pipeline, &runnableTasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
+	}
 
 	return runnableTasks, err
 }
