@@ -1148,3 +1148,34 @@ Fetch Version Cost By VersionID
 
  Fetches version cost associated with the specific version
 
+Keys
+----
+
+Objects
+~~~~~~~
+
+.. list-table:: **Key**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - name
+     - string
+     - The unique name of the public key
+   * - key
+     - string
+     - The public key, (e.g: 'ssh-rsa ...')
+
+Endpoints
+~~~~~~~~~
+
+Fetch User's SSH Public Keys
+````````````````````````````
+
+::
+
+ GET /keys
+
+ Fetch all SSH public keys associated with the authenticated user
