@@ -17,6 +17,9 @@ import (
 const (
 	newresultsAllExecutionsField     = "newresults_all_executions"
 	newresultsCurrentExecutionsField = "newresults_current_execution"
+
+	edgesKey = "edges"
+	taskKey  = "task"
 )
 
 var (
@@ -105,12 +108,6 @@ type Task struct {
 type Dependency struct {
 	TaskId string `bson:"_id" json:"id"`
 	Status string `bson:"status" json:"status"`
-}
-
-// Represent graphLookup of Tasks and their dependencies
-type DependencyNode struct {
-	Task  Task   `bson:"task"`
-	Edges []Task `bson:"edges"`
 }
 
 // VersionCost is service level model for representing cost data related to a version.
@@ -1000,51 +997,96 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-// Like Task DependenciesMet, but uses the aggregated results instead of
-// querying the database 1-by-1 for the Tasks
-func (t *DependencyNode) DependenciesMet() bool {
-	if len(t.Task.DependsOn) != len(t.Edges) {
-		return false
+func FindRunnable() ([]Task, error) {
+	expectedStatuses := [3]string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
+
+	matchActivatedUndispatchedTasks := bson.M{
+		"$match": bson.M{
+			ActivatedKey: true,
+			StatusKey:    evergreen.TaskUndispatched,
+			//Filter out blacklisted tasks
+			PriorityKey: bson.M{"$gte": 0},
+		},
 	}
 
-	for _, depTask := range t.Edges {
-		if !t.Task.satisfiesDependency(&depTask) {
-			return false
-		}
+	graphLookupTaskDeps := bson.M{
+		"$graphLookup": bson.M{
+			"from":             Collection,
+			"startWith":        "$" + DependsOnKey + "." + IdKey,
+			"connectFromField": DependsOnKey + "." + IdKey,
+			"connectToField":   IdKey,
+			"as":               edgesKey,
+			"restrictSearchWithMatch": bson.M{
+				"status": bson.M{
+					"$in": expectedStatuses,
+				},
+			},
+		},
+	}
+	reshapeTasksAndEdges := bson.M{
+		"$project": bson.M{
+			edgesKey + "._id":    1,
+			edgesKey + ".status": 1,
+			taskKey:              "$$ROOT",
+		},
 	}
 
-	return true
-}
+	matchTasksWithValidDependsOn := bson.M{
+		"$match": bson.M{
+			"$or": []bson.M{
+				{
+					taskKey + "." + DependsOnKey: []bson.M{},
+					edgesKey:                     []bson.M{},
+				},
+				{
+					taskKey + "." + DependsOnKey + "." + StatusKey: bson.M{
+						"$in": expectedStatuses,
+					},
+				},
+			},
+		},
+	}
+	redactTasksWithUnsatisfiedDeps := bson.M{
+		"$redact": bson.M{
+			"$cond": bson.M{
+				"if": bson.M{
+					"$setIsSubset": []bson.M{
+						{
+							// TODO: correct type for this?
+							"$ifNull": []interface{}{
+								"$" + taskKey + "." + DependsOnKey,
+								bson.M{
+									"$literal": []bson.M{},
+								},
+							},
+						},
+						{
+							// TODO: correct type for this?
+							"$ifNull": []interface{}{
+								"$" + edgesKey,
+								bson.M{
+									"$literal": []bson.M{},
+								},
+							},
+						},
+					},
+				},
+				"then": "$$DESCEND",
+				"else": "$$PRUNE",
+			},
+		},
+	}
 
-func UndispatchedWithEmbeddedDependencies() ([]DependencyNode, error) {
 	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				ActivatedKey: true,
-				StatusKey:    evergreen.TaskUndispatched,
-				//Filter out blacklisted tasks
-				PriorityKey: bson.M{"$gte": 0},
-			},
-		},
-		{
-			"$graphLookup": bson.M{
-				"from":             Collection,
-				"startWith":        "$" + DependsOnKey + "." + IdKey,
-				"connectFromField": DependsOnKey + "." + IdKey,
-				"connectToField":   IdKey,
-				"as":               EdgesKey,
-			},
-		},
-		{
-			"$project": bson.M{
-				EdgesKey: 1,
-				TaskKey:  "$$ROOT",
-			},
-		},
+		matchActivatedUndispatchedTasks,
+		graphLookupTaskDeps,
+		reshapeTasksAndEdges,
+		matchTasksWithValidDependsOn,
+		redactTasksWithUnsatisfiedDeps,
 	}
 
-	tasks := []DependencyNode{}
-	err := Aggregate(pipeline, &tasks)
+	runnableTasks := []Task{}
+	err := Aggregate(pipeline, &runnableTasks)
 
-	return tasks, err
+	return runnableTasks, err
 }

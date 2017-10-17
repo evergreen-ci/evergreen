@@ -78,12 +78,6 @@ var (
 	TaskEndDetailDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetail{}, "Description")
 )
 
-// BSON field for graph lookup aggregation
-var (
-	EdgesKey = bsonutil.MustHaveTag(DependencyNode{}, "Edges")
-	TaskKey  = bsonutil.MustHaveTag(DependencyNode{}, "Task")
-)
-
 // Queries
 
 // All returns all tasks.

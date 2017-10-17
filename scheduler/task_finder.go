@@ -48,19 +48,11 @@ type DBTaskFinder struct{}
 // This works by fetching all undispatched tasks from the database,
 // and filtering out any whose dependencies are not met.
 func (f *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
-	// find all of the undispatched tasks
-	undispatchedTasks, err := task.UndispatchedWithEmbeddedDependencies()
+	// TODO this func is now redundant
+	undispatchedTasks, err := task.FindRunnable()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch undispatched tasks")
 	}
 
-	runnableTasks := []task.Task{}
-	// filter out any tasks whose dependencies are not met
-	for _, graphItem := range undispatchedTasks {
-		if graphItem.DependenciesMet() {
-			runnableTasks = append(runnableTasks, graphItem.Task)
-		}
-	}
-
-	return runnableTasks, nil
+	return undispatchedTasks, nil
 }
