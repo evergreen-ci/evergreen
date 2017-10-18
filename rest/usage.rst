@@ -1179,4 +1179,4 @@ Fetch Current User's SSH Public Keys
  GET /keys
 
  Fetch the SSH public keys of the current user (as determined by the
- `Api-User` and `Api-Key` headers) as an array of Key objects.
+ Api-User and Api-Key headers) as an array of Key objects.
