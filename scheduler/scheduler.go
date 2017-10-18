@@ -146,16 +146,13 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	taskQueueItems := make(map[string][]model.TaskQueueItem)
 
 	resDoneChan := make(chan struct{})
-	var errResult error
+	catcher := grip.NewSimpleCatcher()
 	go func() {
 		defer close(resDoneChan)
 		for res := range distroSchedulerResultChan {
 			if res.err != nil {
-				errResult = errors.Wrapf(err, "error scheduling tasks on distro %v", res.distroId)
-				return
-			}
-			if ctx.Err() != nil {
-				return
+				catcher.Add(errors.Wrapf(err, "error scheduling tasks on distro %v", res.distroId))
+				continue
 			}
 			schedulerEvents[res.distroId] = res.schedulerEvent
 			taskQueueItems[res.distroId] = res.taskQueueItem
@@ -164,7 +161,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	if ctx.Err() != nil {
 		return errors.New("scheduling operations canceled")
-
 	}
 	// wait for the distro scheduler goroutines to complete to complete
 	wg.Wait()
@@ -175,8 +171,8 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	// wait for the results to be collected
 	<-resDoneChan
 
-	if errResult != nil {
-		return errResult
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	// split distros by name
