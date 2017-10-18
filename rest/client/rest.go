@@ -238,7 +238,7 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 	return distros, nil
 }
 
-func (c *communicatorImpl) GetKeysList(ctx context.Context) ([]model.APIPubKey, error) {
+func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,

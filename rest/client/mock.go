@@ -424,7 +424,7 @@ func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	return mockDistros, nil
 }
 
-func (c *Mock) GetKeysList(ctx context.Context) ([]model.APIPubKey, error) {
+func (c *Mock) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	return []model.APIPubKey{
 		{
 			Name: "key0",
