@@ -18,6 +18,7 @@ type Context struct {
 	Version    *version.Version
 	Patch      *patch.Patch
 	ProjectRef *ProjectRef
+	Project    *Project
 }
 
 // LoadContext builds a Context from the set of given resource ID's
@@ -55,8 +56,16 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 
 // GetProject returns the project associated with the Context.
 func (ctx *Context) GetProject() (*Project, error) {
+	var err error
 	if ctx.ProjectRef != nil {
-		return FindProject("", ctx.ProjectRef)
+		if ctx.Project != nil {
+			return ctx.Project, nil
+		}
+		ctx.Project, err = FindProject("", ctx.ProjectRef)
+		if err != nil {
+			return nil, errors.Wrap(err, "error finding project")
+		}
+		return ctx.Project, nil
 	}
 	return nil, errors.New("unable to find project for context")
 }
