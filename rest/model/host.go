@@ -47,19 +47,24 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host, *host.Host:
 		return apiHost.buildFromHostStruct(h)
-	case task.Task, *task.Task:
-		rt := taskInfo{
-			Id:           APIString(v.Id),
-			Name:         APIString(v.DisplayName),
-			DispatchTime: NewTime(v.DispatchTime),
-			VersionId:    APIString(v.Version),
-			BuildId:      APIString(v.BuildId),
-		}
-		apiHost.RunningTask = rt
+	case *task.Task:
+		apiHost.RunningTask = getTaskInfo(v)
+	case task.Task:
+		apiHost.RunningTask = getTaskInfo(&v)
 	default:
 		return fmt.Errorf("incorrect type when fetching converting host type")
 	}
 	return nil
+}
+
+func getTaskInfo(t *task.Task) taskInfo {
+	return taskInfo{
+		Id:           APIString(t.Id),
+		Name:         APIString(t.DisplayName),
+		DispatchTime: NewTime(t.DispatchTime),
+		VersionId:    APIString(t.Version),
+		BuildId:      APIString(t.BuildId),
+	}
 }
 
 func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
