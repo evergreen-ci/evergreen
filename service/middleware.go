@@ -80,8 +80,6 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 
 // ToPluginContext creates a UIContext from the projectContext data.
 func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *user.DBUser) plugin.UIContext {
-	project, err := pc.GetProject()
-	grip.Error(errors.Wrap(err, "unable to fetch project"))
 	return plugin.UIContext{
 		Settings:   settings,
 		User:       dbUser,
@@ -89,7 +87,6 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *us
 		Build:      pc.Build,
 		Version:    pc.Version,
 		Patch:      pc.Patch,
-		Project:    project,
 		ProjectRef: pc.ProjectRef,
 	}
 }

@@ -67,7 +67,6 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		projCtx := MustHaveProjectContext(r)
 		u := GetUser(r)
-		project, _ := projCtx.GetProject()
 		pluginCtx := plugin.UIContext{
 			Settings:   uis.Settings,
 			User:       u,
@@ -75,7 +74,6 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 			Build:      projCtx.Build,
 			Version:    projCtx.Version,
 			Patch:      projCtx.Patch,
-			Project:    project,
 			ProjectRef: projCtx.ProjectRef,
 			Request:    r,
 		}
