@@ -2,10 +2,6 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type AgentSuite struct {
+type AgentTestSuite struct {
 	suite.Suite
 	a                Agent
 	mockCommunicator *client.Mock
@@ -27,11 +23,11 @@ type AgentSuite struct {
 	canceler         context.CancelFunc
 }
 
-func TestAgentSuite(t *testing.T) {
-	suite.Run(t, new(AgentSuite))
+func TestAgentTestSuite(t *testing.T) {
+	suite.Run(t, new(AgentTestSuite))
 }
 
-func (s *AgentSuite) SetupTest() {
+func (s *AgentTestSuite) SetupTest() {
 	s.a = Agent{
 		opts: Options{
 			HostID:     "host",
@@ -61,9 +57,9 @@ func (s *AgentSuite) SetupTest() {
 	s.tc.setCurrentCommand(factory())
 }
 
-func (s *AgentSuite) TearDownTest() { s.canceler() }
+func (s *AgentTestSuite) TearDownTest() { s.canceler() }
 
-func (s *AgentSuite) TestNextTaskResponseShouldExit() {
+func (s *AgentTestSuite) TestNextTaskResponseShouldExit() {
 	s.mockCommunicator.NextTaskResponse = &apimodels.NextTaskResponse{
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
@@ -75,7 +71,7 @@ func (s *AgentSuite) TestNextTaskResponseShouldExit() {
 	s.Error(err)
 }
 
-func (s *AgentSuite) TestTaskWithoutSecret() {
+func (s *AgentTestSuite) TestTaskWithoutSecret() {
 	s.mockCommunicator.NextTaskResponse = &apimodels.NextTaskResponse{
 		TaskId:     "mocktaskid",
 		TaskSecret: "",
@@ -87,7 +83,7 @@ func (s *AgentSuite) TestTaskWithoutSecret() {
 	s.Error(err)
 }
 
-func (s *AgentSuite) TestErrorGettingNextTask() {
+func (s *AgentTestSuite) TestErrorGettingNextTask() {
 	s.mockCommunicator.NextTaskShouldFail = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -96,7 +92,7 @@ func (s *AgentSuite) TestErrorGettingNextTask() {
 	s.Error(err)
 }
 
-func (s *AgentSuite) TestCanceledContext() {
+func (s *AgentTestSuite) TestCanceledContext() {
 	s.a.opts.AgentSleepInterval = time.Millisecond
 	s.mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
@@ -105,7 +101,7 @@ func (s *AgentSuite) TestCanceledContext() {
 	s.NoError(err)
 }
 
-func (s *AgentSuite) TestAgentEndTaskShouldExit() {
+func (s *AgentTestSuite) TestAgentEndTaskShouldExit() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{ShouldExit: true}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -114,7 +110,7 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.Error(err)
 }
 
-func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
+func (s *AgentTestSuite) TestFinishTaskReturnsEndTaskResponse() {
 	endTaskResponse := &apimodels.EndTaskResponse{Message: "end task response"}
 	s.mockCommunicator.EndTaskResponse = endTaskResponse
 	ctx, cancel := context.WithCancel(context.Background())
@@ -125,7 +121,7 @@ func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	s.NoError(err)
 }
 
-func (s *AgentSuite) TestFinishTaskEndTaskError() {
+func (s *AgentTestSuite) TestFinishTaskEndTaskError() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -135,7 +131,7 @@ func (s *AgentSuite) TestFinishTaskEndTaskError() {
 	s.Error(err)
 }
 
-func (s *AgentSuite) TestCancelStartTask() {
+func (s *AgentTestSuite) TestCancelStartTask() {
 	resetIdleTimeout := make(chan time.Duration)
 	complete := make(chan string)
 	go func() {
@@ -150,7 +146,7 @@ func (s *AgentSuite) TestCancelStartTask() {
 	s.Zero(len(msgs))
 }
 
-func (s *AgentSuite) TestCancelRunCommands() {
+func (s *AgentTestSuite) TestCancelRunCommands() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	cmd := model.PluginCommandConf{
@@ -165,7 +161,7 @@ func (s *AgentSuite) TestCancelRunCommands() {
 	s.Equal("runCommands canceled", err.Error())
 }
 
-func (s *AgentSuite) TestRunPreTaskCommands() {
+func (s *AgentTestSuite) TestRunPreTaskCommands() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -196,7 +192,7 @@ func (s *AgentSuite) TestRunPreTaskCommands() {
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands")
 }
 
-func (s *AgentSuite) TestRunPostTaskCommands() {
+func (s *AgentTestSuite) TestRunPostTaskCommands() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -227,7 +223,7 @@ func (s *AgentSuite) TestRunPostTaskCommands() {
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 }
 
-func (s *AgentSuite) TestEndTaskResponse() {
+func (s *AgentTestSuite) TestEndTaskResponse() {
 	factory, ok := command.GetCommandFactory("setup.initial")
 	s.True(ok)
 	s.tc.setCurrentCommand(factory())
@@ -253,7 +249,7 @@ func (s *AgentSuite) TestEndTaskResponse() {
 	s.Equal(evergreen.TaskFailed, detail.Status)
 }
 
-func (s *AgentSuite) TestAbort() {
+func (s *AgentTestSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -263,13 +259,13 @@ func (s *AgentSuite) TestAbort() {
 	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
 }
 
-func (s *AgentSuite) TestAgentConstructorSetsHostData() {
+func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {
 	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
 	s.Equal("host_id", agent.comm.GetHostID())
 	s.Equal("host_secret", agent.comm.GetHostSecret())
 }
 
-func (s *AgentSuite) TestWaitCompleteSuccess() {
+func (s *AgentTestSuite) TestWaitCompleteSuccess() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
 	go func() {
@@ -284,7 +280,7 @@ func (s *AgentSuite) TestWaitCompleteSuccess() {
 	s.False(s.tc.hadTimedOut())
 }
 
-func (s *AgentSuite) TestWaitCompleteFailure() {
+func (s *AgentTestSuite) TestWaitCompleteFailure() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
 	go func() {
@@ -299,7 +295,7 @@ func (s *AgentSuite) TestWaitCompleteFailure() {
 	s.False(s.tc.hadTimedOut())
 }
 
-func (s *AgentSuite) TestWaitExecTimeout() {
+func (s *AgentTestSuite) TestWaitExecTimeout() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -311,7 +307,7 @@ func (s *AgentSuite) TestWaitExecTimeout() {
 	s.False(s.tc.hadTimedOut())
 }
 
-func (s *AgentSuite) TestWaitHeartbeatTimeout() {
+func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
 	go func() {
@@ -327,7 +323,7 @@ func (s *AgentSuite) TestWaitHeartbeatTimeout() {
 	s.False(s.tc.hadTimedOut())
 }
 
-func (s *AgentSuite) TestWaitIdleTimeout() {
+func (s *AgentTestSuite) TestWaitIdleTimeout() {
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     "task_id",
@@ -368,63 +364,4 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestSetupScript() {
-	dir, err := ioutil.TempDir("", "")
-	s.Require().NoError(err)
-	defer os.RemoveAll(dir)
-	s.a.opts.WorkingDirectory = dir
-
-	// With no setup script, noop
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	out, err := s.a.runSetupScript(ctx)
-	s.NoError(err)
-	s.Empty(out)
-
-	// With a setup script, run the script
-	script := filepath.Join(dir, evergreen.SetupScriptName)
-	content := []byte("echo \"hello, world\"")
-	err = ioutil.WriteFile(script, content, 0755)
-	s.Require().NoError(err)
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	out, err = s.a.runSetupScript(ctx)
-	s.Equal("hello, world", strings.TrimSpace(out))
-	s.NoError(err)
-
-	// Ensure the script is deleted after running
-	_, err = os.Stat(script)
-	s.True(os.IsNotExist(err))
-
-	// Script should time out with context and return an error
-	err = ioutil.WriteFile(script, content, 0755)
-	s.Require().NoError(err)
-	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
-	defer cancel()
-	time.Sleep(time.Millisecond)
-	out, err = s.a.runSetupScript(ctx)
-	s.Equal("", strings.TrimSpace(out))
-	s.Error(err)
-	s.Contains(err.Error(), "context deadline exceeded")
-
-	// A non-zero exit status should return an error
-	content = []byte("exit 1")
-	err = ioutil.WriteFile(script, content, 0755)
-	s.Require().NoError(err)
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	out, err = s.a.runSetupScript(ctx)
-	s.Equal("", strings.TrimSpace(out))
-	s.Error(err)
-
-}
-
-func (s *AgentSuite) TestSetupScriptSudoShHelper() {
-	cmd := s.a.getShCommandWithSudo(context.Background(), "foo")
-	s.Equal([]string{"sh", "foo"}, cmd.Args)
-	s.a.opts.SetupAsSudo = true
-	cmd = s.a.getShCommandWithSudo(context.Background(), "foo")
-	s.Equal([]string{"sudo", "sh", "foo"}, cmd.Args)
 }

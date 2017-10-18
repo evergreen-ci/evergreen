@@ -14,17 +14,17 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type StatusSuite struct {
+type StatusTestSuite struct {
 	suite.Suite
 	testOpts Options
 	resp     statusResponse
 }
 
-func TestStatusSuite(t *testing.T) {
-	suite.Run(t, new(StatusSuite))
+func TestStatusTestSuite(t *testing.T) {
+	suite.Run(t, new(StatusTestSuite))
 }
 
-func (s *StatusSuite) SetupTest() {
+func (s *StatusTestSuite) SetupTest() {
 	s.testOpts = Options{
 		HostID:     "none",
 		StatusPort: 2286,
@@ -32,26 +32,26 @@ func (s *StatusSuite) SetupTest() {
 	s.resp = buildResponse(s.testOpts)
 }
 
-func (s *StatusSuite) TestBasicAssumptions() {
+func (s *StatusTestSuite) TestBasicAssumptions() {
 	s.Equal(s.resp.BuildId, evergreen.BuildRevision)
 	s.Equal(s.resp.AgentPid, os.Getpid())
 	s.Equal(s.resp.HostId, s.testOpts.HostID)
 }
 
-func (s *StatusSuite) TestPopulateSystemInfo() {
+func (s *StatusTestSuite) TestPopulateSystemInfo() {
 	grip.Alert(strings.Join(s.resp.SystemInfo.Errors, ";\n"))
 	grip.Info(s.resp.SystemInfo)
 	s.NotNil(s.resp.SystemInfo)
 }
 
-func (s *StatusSuite) TestProcessTreeInfo() {
+func (s *StatusTestSuite) TestProcessTreeInfo() {
 	s.True(len(s.resp.ProcessTree) >= 1)
 	for _, ps := range s.resp.ProcessTree {
 		s.NotNil(ps)
 	}
 }
 
-func (s *StatusSuite) TestAgentStartsStatusServer() {
+func (s *StatusTestSuite) TestAgentStartsStatusServer() {
 	agt := New(s.testOpts, client.NewMock("url"))
 
 	mockCommunicator := agt.comm.(*client.Mock)
