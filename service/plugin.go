@@ -74,7 +74,6 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 			Build:      projCtx.Build,
 			Version:    projCtx.Version,
 			Patch:      projCtx.Patch,
-			Project:    projCtx.Project,
 			ProjectRef: projCtx.ProjectRef,
 			Request:    r,
 		}

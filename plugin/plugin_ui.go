@@ -94,7 +94,6 @@ type UIContext struct {
 	Build      *build.Build
 	Version    *version.Version
 	Patch      *patch.Patch
-	Project    *model.Project
 	ProjectRef *model.ProjectRef
 	Request    *http.Request
 }

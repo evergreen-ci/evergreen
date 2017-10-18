@@ -573,7 +573,8 @@ func countOnPreviousPage(skip int, numVersionElements int,
 // Http handler for the waterfall page
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	if projCtx.Project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		uis.ProjectNotFound(projCtx, w, r)
 		return
 	}
@@ -587,7 +588,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 
 	// first, get all of the versions and variants we will need
 	vvData, err := getVersionsAndVariants(skip,
-		VersionItemsToCreate, projCtx.Project)
+		VersionItemsToCreate, project)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -606,14 +607,14 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	finalData.Rows = rows
 
 	// compute the total number of versions that exist
-	finalData.TotalVersions, err = version.Count(version.ByProjectId(projCtx.Project.Identifier))
+	finalData.TotalVersions, err = version.Count(version.ByProjectId(project.Identifier))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	// compute the number of versions on the previous page
-	finalData.PreviousPageCount, err = countOnPreviousPage(skip, VersionItemsToCreate, projCtx.Project)
+	finalData.PreviousPageCount, err = countOnPreviousPage(skip, VersionItemsToCreate, project)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

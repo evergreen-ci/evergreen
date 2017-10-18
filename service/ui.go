@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -58,6 +59,7 @@ type UIServer struct {
 type ViewData struct {
 	User        *user.DBUser
 	ProjectData projectContext
+	Project     model.Project
 	Flashes     []interface{}
 	Banner      string
 	BannerTheme string
@@ -332,8 +334,19 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		grip.Error("no user attached to request")
 	}
 	projectCtx, err := GetProjectContext(r)
-	if needsProject && err != nil {
-		grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
+	if err != nil {
+		grip.Errorf(errors.Wrap(err, "error getting project context").Error())
+		uis.ProjectNotFound(projectCtx, w, r)
+		return ViewData{}
+	}
+	if needsProject {
+		project, err := projectCtx.GetProject()
+		if err != nil || project == nil {
+			grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
+			uis.ProjectNotFound(projectCtx, w, r)
+			return ViewData{}
+		}
+		viewData.Project = *project
 	}
 	settings, err := admin.GetSettings()
 	if err != nil {

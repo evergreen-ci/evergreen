@@ -19,7 +19,8 @@ import (
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	if projCtx.Project == nil || projCtx.Version == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -146,11 +147,12 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	projCtx := MustHaveProjectContext(r)
-	user := MustHaveUser(r)
-	if projCtx.Project == nil || projCtx.Version == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	user := MustHaveUser(r)
 
 	jsonMap := struct {
 		Action   string   `json:"action"`

@@ -14,9 +14,14 @@ import (
 
 func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
+		http.Error(w, fmt.Sprintf("Error getting timeline data: %v", err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	skip, perPage := getSkipAndLimit(r, DefaultSkip, DefaultLimit)
-	data, err := getTimelineData(projCtx.Project.Identifier, evergreen.RepotrackerVersionRequester, skip, perPage)
+	data, err := getTimelineData(project.Identifier, evergreen.RepotrackerVersionRequester, skip, perPage)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error getting timeline data: %v", err.Error()), http.StatusInternalServerError)
 		return
@@ -26,11 +31,6 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	if projCtx.Project == nil {
-		uis.ProjectNotFound(projCtx, w, r)
-		return
-	}
 	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
 }
 
@@ -49,13 +49,6 @@ func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request)
 }
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	if projCtx.Project == nil {
-		uis.ProjectNotFound(projCtx, w, r)
-		return
-	}
-
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Author string
 		ViewData
@@ -64,6 +57,12 @@ func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, 
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
+			"Error fetching project for %v", project.Identifier))
+		return
+	}
 
 	pageNum, err := strconv.Atoi(r.FormValue("page"))
 	if err != nil {
@@ -79,14 +78,14 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Skip(skip).Limit(DefaultLimit))
 	} else {
-		patches, err = patch.Find(patch.ByProject(projCtx.Project.Identifier).
+		patches, err = patch.Find(patch.ByProject(project.Identifier).
 			Sort([]string{"-" + patch.CreateTimeKey}).
 			Project(patch.ExcludePatchDiff).
 			Skip(skip).Limit(DefaultLimit))
 	}
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
-			"Error fetching patches for %v", projCtx.Project.Identifier))
+			"Error fetching patches for %v", project.Identifier))
 		return
 	}
 

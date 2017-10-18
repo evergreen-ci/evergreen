@@ -87,7 +87,6 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *us
 		Build:      pc.Build,
 		Version:    pc.Version,
 		Patch:      pc.Patch,
-		Project:    pc.Project,
 		ProjectRef: pc.ProjectRef,
 	}
 }
@@ -325,12 +324,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 	// set the cookie for the next request if a project was found
 	if ctx.ProjectRef != nil {
-		ctx.Project, err = model.FindProject("", ctx.ProjectRef)
-		if err != nil {
-			return pc, err
-		}
-
-		// A project was found, update the project cookie for subsequent request.
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
 			Value:   ctx.ProjectRef.Identifier,

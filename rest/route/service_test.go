@@ -902,7 +902,6 @@ func TestTaskResetPrepare(t *testing.T) {
 				Priority:  0,
 				Activated: false,
 			},
-			Project: &serviceModel.Project{},
 		}
 		u := user.DBUser{
 			Id: "testUser",
@@ -910,15 +909,14 @@ func TestTaskResetPrepare(t *testing.T) {
 		ctx := context.Background()
 
 		Convey("should error on empty project", func() {
-			projCtx.Project = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := fmt.Errorf("Unable to fetch associated project")
-			So(err, ShouldResemble, expectedErr)
+			expectedErr := "Unable to fetch associated project"
+			So(err.Error(), ShouldContainSubstring, expectedErr)
 		})
 		Convey("then should error on empty task", func() {
 			projCtx.Task = nil

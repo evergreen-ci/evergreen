@@ -70,8 +70,8 @@ type taskBlurb struct {
 // Serves the task history page itself.
 func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
-	if projCtx.Project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -80,7 +80,6 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	var chunk model.TaskHistoryChunk
 	var v *version.Version
 	var before bool
-	var err error
 
 	if strBefore := r.FormValue("before"); strBefore != "" {
 		if before, err = strconv.ParseBool(strBefore); err != nil {
@@ -88,17 +87,17 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	buildVariants := projCtx.Project.GetVariantsWithTask(taskName)
+	buildVariants := project.GetVariantsWithTask(taskName)
 
 	if revision := r.FormValue("revision"); revision != "" {
-		v, err = version.FindOne(version.ByProjectIdAndRevision(projCtx.Project.Identifier, revision))
+		v, err = version.FindOne(version.ByProjectIdAndRevision(project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 
-	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants, projCtx.Project.Identifier)
+	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants, project.Identifier)
 
 	if r.FormValue("format") == "" {
 		if v != nil {
@@ -172,7 +171,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	iter := model.NewBuildVariantHistoryIterator(variant, bv.Name, projCtx.Project.Identifier)
+	iter := model.NewBuildVariantHistoryIterator(variant, bv.Name, project.Identifier)
 	tasks, versions, err := iter.GetItems(beforeCommit, 50)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -192,7 +191,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		TaskNames []string
 		Versions  []version.Version
 		Project   string
-	}{variant, tasks, suites, versions, projCtx.Project.Identifier}
+	}{variant, tasks, suites, versions, project.Identifier}
 	if isJson {
 		uis.WriteJSON(w, http.StatusOK, data)
 		return
@@ -207,7 +206,8 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
-	if projCtx.Project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -235,7 +235,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprintf("Error in filter: %v", err.Error()), http.StatusBadRequest)
 		return
 	}
-	buildVariants := projCtx.Project.GetVariantsWithTask(taskName)
+	buildVariants := project.GetVariantsWithTask(taskName)
 
 	onlyMatchingTasks := (r.FormValue("only_matching_tasks") == "true")
 
@@ -251,7 +251,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 			"$gte": lowOrder,
 			"$lte": highOrder,
 		},
-		"branch": projCtx.Project.Identifier,
+		"branch": project.Identifier,
 	}
 
 	// If there are build variants, use them instead
@@ -323,15 +323,16 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 
 	projCtx := MustHaveProjectContext(r)
 
-	if projCtx.Project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	buildVariants := projCtx.Project.GetVariantsWithTask(taskName)
+	buildVariants := project.GetVariantsWithTask(taskName)
 
 	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants,
-		projCtx.Project.Identifier)
+		project.Identifier)
 
 	results, err := taskHistoryIterator.GetDistinctTestNames(NumTestsToSearchForTestNames)
 

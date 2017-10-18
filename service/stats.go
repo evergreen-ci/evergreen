@@ -63,23 +63,24 @@ type UIStats struct {
 
 func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	project, err := projCtx.GetProject()
 
-	if projCtx.Project == nil {
+	if err != nil || project == nil {
 		uis.ProjectNotFound(projCtx, w, r)
 		return
 	}
 
-	currentProject := UIProject{projCtx.Project.Identifier, []UIBuildVariant{}, []string{}}
+	currentProject := UIProject{project.Identifier, []UIBuildVariant{}, []string{}}
 
 	// populate buildVariants by iterating over the build variants tasks
-	for _, bv := range projCtx.Project.BuildVariants {
+	for _, bv := range project.BuildVariants {
 		newBv := UIBuildVariant{bv.Name, []string{}}
 		for _, task := range bv.Tasks {
 			newBv.TaskNames = append(newBv.TaskNames, task.Name)
 		}
 		currentProject.BuildVariants = append(currentProject.BuildVariants, newBv)
 	}
-	for _, task := range projCtx.Project.Tasks {
+	for _, task := range project.Tasks {
 		currentProject.TaskNames = append(currentProject.TaskNames, task.Name)
 	}
 
@@ -107,12 +108,13 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	taskName := mux.Vars(r)["task_name"]
 	request := mux.Vars(r)["request"]
 
-	if projCtx.Project == nil {
+	project, err := projCtx.GetProject()
+	if err != nil || project == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
-	bv := projCtx.Project.FindBuildVariant(buildVariant)
+	bv := project.FindBuildVariant(buildVariant)
 	if bv == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("build variant %v not found", buildVariant))
 		return
@@ -129,7 +131,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	// if its all tasks find the build
 	if taskName == "" || taskName == "All Tasks" {
 		// TODO: switch this to be a query on the builds TaskCache
-		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request, statuses).
+		builds, err := build.Find(build.ByProjectAndVariant(project.Identifier, buildVariant, request, statuses).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.RevisionOrderNumberKey}).
@@ -193,7 +195,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			}
 
 			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, statuses,
-				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...))
+				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
@@ -201,7 +203,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			tasks, err = task.Find(task.ByStatuses(statuses,
-				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
+				buildVariant, taskName, project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
