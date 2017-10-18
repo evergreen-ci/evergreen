@@ -22,7 +22,7 @@ func (apiPubKey *APIPubKey) BuildFromService(h interface{}) error {
 	return nil
 }
 
-// ToService returns a service layer distro using the data from APIPubKey.
+// ToService returns a service layer public key using the data from APIPubKey.
 func (apiPubKey *APIPubKey) ToService() (interface{}, error) {
 	return nil, errors.Errorf("ToService() is not impelemented for APIPubKey")
 }

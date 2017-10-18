@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/pkg/errors"
 )
 
 type keysGetHandler struct{}
@@ -36,18 +37,18 @@ func (h *keysGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 func (h *keysGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	user := MustHaveUser(ctx)
 
-	keysModel := make([]model.Model, len(user.PubKeys))
-	for i, key := range user.PubKeys {
+	userKeys := make([]model.Model, len(user.PubKeys))
+	for _, key := range user.PubKeys {
 		apiKey := &model.APIPubKey{}
 		err := apiKey.BuildFromService(key)
 		if err != nil {
-			return ResponseData{}, err
+			return ResponseData{}, errors.Wrap(err, "error marshalling public key to api")
 		}
 
-		keysModel[i] = apiKey
+		userKeys = append(userKeys, apiKey)
 	}
 
 	return ResponseData{
-		Result: keysModel,
+		Result: userKeys,
 	}, nil
 }
