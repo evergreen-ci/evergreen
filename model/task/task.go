@@ -17,6 +17,9 @@ import (
 const (
 	newresultsAllExecutionsField     = "newresults_all_executions"
 	newresultsCurrentExecutionsField = "newresults_current_execution"
+
+	edgesKey = "edges"
+	taskKey  = "task"
 )
 
 var (
@@ -992,4 +995,100 @@ func (t *Task) MergeNewTestResults() error {
 		*t = tasks[0]
 	}
 	return nil
+}
+
+func FindRunnable() ([]Task, error) {
+	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
+
+	matchActivatedUndispatchedTasks := bson.M{
+		"$match": bson.M{
+			ActivatedKey: true,
+			StatusKey:    evergreen.TaskUndispatched,
+			//Filter out blacklisted tasks
+			PriorityKey: bson.M{"$gte": 0},
+		},
+	}
+
+	graphLookupTaskDeps := bson.M{
+		"$graphLookup": bson.M{
+			"from":             Collection,
+			"startWith":        "$" + DependsOnKey + "." + IdKey,
+			"connectFromField": DependsOnKey + "." + IdKey,
+			"connectToField":   IdKey,
+			"as":               edgesKey,
+			"restrictSearchWithMatch": bson.M{
+				StatusKey: bson.M{
+					"$in": expectedStatuses,
+				},
+			},
+		},
+	}
+
+	reshapeTasksAndEdges := bson.M{
+		"$project": bson.M{
+			edgesKey + "." + IdKey:     1,
+			edgesKey + "." + StatusKey: 1,
+			taskKey:                    "$$ROOT",
+		},
+	}
+
+	matchTasksWithValidDependsOn := bson.M{
+		"$match": bson.M{
+			"$or": []bson.M{
+				{
+					taskKey + "." + DependsOnKey: []bson.M{},
+					edgesKey:                     []bson.M{},
+				},
+				{
+					taskKey + "." + DependsOnKey + "." + StatusKey: bson.M{
+						"$in": expectedStatuses,
+					},
+				},
+			},
+		},
+	}
+
+	redactTasksWithUnsatisfiedDeps := bson.M{
+		"$redact": bson.M{
+			"$cond": bson.M{
+				"if": bson.M{
+					"$setIsSubset": []bson.M{
+						{
+							"$ifNull": []interface{}{
+								"$" + taskKey + "." + DependsOnKey,
+								bson.M{
+									"$literal": []bson.M{},
+								},
+							},
+						},
+						{
+							"$ifNull": []interface{}{
+								"$" + edgesKey,
+								bson.M{
+									"$literal": []bson.M{},
+								},
+							},
+						},
+					},
+				},
+				"then": "$$DESCEND",
+				"else": "$$PRUNE",
+			},
+		},
+	}
+
+	pipeline := []bson.M{
+		matchActivatedUndispatchedTasks,
+		graphLookupTaskDeps,
+		reshapeTasksAndEdges,
+		matchTasksWithValidDependsOn,
+		redactTasksWithUnsatisfiedDeps,
+	}
+
+	runnableTasks := []Task{}
+	if err := Aggregate(pipeline, &runnableTasks); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
+	}
+
+	return runnableTasks, nil
 }

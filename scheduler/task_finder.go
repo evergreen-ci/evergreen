@@ -5,21 +5,15 @@ import (
 	"github.com/mongodb/grip"
 )
 
-// TaskFinder finds all tasks that are ready to be run.
-type TaskFinder interface {
-	// Returns a slice of tasks that are ready to be run, and an error if
-	// appropriate.
-	FindRunnableTasks() ([]task.Task, error)
+type TaskFinder func() ([]task.Task, error)
+
+func FindRunnableTasks() ([]task.Task, error) {
+	return task.FindRunnable()
 }
 
-// DBTaskFinder fetches tasks from the database. Implements TaskFinder.
-type DBTaskFinder struct{}
-
-// FindRunnableTasks finds all tasks that are ready to be run.
-// This works by fetching all undispatched tasks from the database,
-// and filtering out any whose dependencies are not met.
-func (self *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
-
+// The old Task finderDBTaskFinder, with the dependency check implemented in Go,
+// instead of using $graphLookup
+func LegacyFindRunnableTasks() ([]task.Task, error) {
 	// find all of the undispatched tasks
 	undispatchedTasks, err := task.Find(task.IsUndispatched)
 	if err != nil {

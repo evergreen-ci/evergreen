@@ -25,11 +25,11 @@ import (
 // basis.
 type Scheduler struct {
 	*evergreen.Settings
-	TaskFinder
 	TaskPrioritizer
 	TaskDurationEstimator
 	TaskQueuePersister
 	HostAllocator
+	FindRunnableTasks TaskFinder
 }
 
 // versionBuildVariant is used to keep track of the version/buildvariant fields

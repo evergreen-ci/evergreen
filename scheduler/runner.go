@@ -45,11 +45,14 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 
 	schedulerInstance := &Scheduler{
 		config,
-		&DBTaskFinder{},
 		&CmpBasedTaskPrioritizer{},
 		&DBTaskDurationEstimator{},
 		&DBTaskQueuePersister{},
 		&DurationBasedHostAllocator{},
+		FindRunnableTasks,
+	}
+	if config.Scheduler.UseLegacyTaskFinder {
+		schedulerInstance.FindRunnableTasks = LegacyFindRunnableTasks
 	}
 
 	if err := schedulerInstance.Schedule(ctx); err != nil {
