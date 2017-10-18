@@ -125,7 +125,7 @@ func (high *hostIDGetHandler) Execute(ctx context.Context, sc data.Connector) (R
 		}
 
 		if err = hostModel.BuildFromService(runningTask); err != nil {
-			return ResponseData{}, err
+			return ResponseData{}, errors.Wrap(err, "problem adding task data to host response")
 		}
 	}
 
