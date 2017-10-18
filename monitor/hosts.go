@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -190,7 +191,12 @@ func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHo
 	logs, err := hostutil.RunRemoteScript(ctx, h, "teardown.sh", sshOptions)
 	event.LogHostTeardown(h.Id, logs, err == nil, time.Since(startTime))
 	if err != nil {
-		return errors.Wrapf(err, "error running teardown.sh over ssh: %v", logs)
+		// teardown script may be in distro working directory
+		logs, err := hostutil.RunRemoteScript(ctx, h, filepath.Join(h.Distro.WorkDir, "teardown.sh"), sshOptions)
+		event.LogHostTeardown(h.Id, logs, err == nil, time.Since(startTime))
+		if err != nil {
+			return errors.Wrapf(err, "error running teardown.sh over ssh: %v", logs)
+		}
 	}
 	return nil
 }
