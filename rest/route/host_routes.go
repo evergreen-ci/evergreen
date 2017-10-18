@@ -119,9 +119,10 @@ func (high *hostIDGetHandler) Execute(ctx context.Context, sc data.Connector) (R
 
 	if foundHost.RunningTask != "" {
 		runningTask, err := sc.FindTaskById(foundHost.RunningTask)
-		if apiErr, ok := err.(*rest.APIError); !ok ||
-			(ok && apiErr.StatusCode != http.StatusNotFound) {
-			return ResponseData{}, errors.Wrap(err, "Database error")
+		if err != nil {
+			if apiErr, ok := err.(*rest.APIError); !ok || (ok && apiErr.StatusCode != http.StatusNotFound) {
+				return ResponseData{}, errors.Wrap(err, "Database error")
+			}
 		}
 
 		if err = hostModel.BuildFromService(runningTask); err != nil {
