@@ -38,14 +38,14 @@ func (h *keysGetHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 	user := MustHaveUser(ctx)
 
 	userKeys := make([]model.Model, len(user.PubKeys))
-	for _, key := range user.PubKeys {
+	for i, key := range user.PubKeys {
 		apiKey := &model.APIPubKey{}
 		err := apiKey.BuildFromService(key)
 		if err != nil {
 			return ResponseData{}, errors.Wrap(err, "error marshalling public key to api")
 		}
 
-		userKeys = append(userKeys, apiKey)
+		userKeys[i] = apiKey
 	}
 
 	return ResponseData{
