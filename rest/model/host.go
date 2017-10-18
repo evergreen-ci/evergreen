@@ -47,7 +47,7 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host, *host.Host:
 		return apiHost.buildFromHostStruct(h)
-	case task.Task:
+	case task.Task, *task.Task:
 		rt := taskInfo{
 			Id:           APIString(v.Id),
 			Name:         APIString(v.DisplayName),
