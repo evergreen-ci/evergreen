@@ -158,6 +158,10 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 			taskQueueItems[res.distroId] = res.taskQueueItem
 		}
 	}()
+
+	if ctx.Err() != nil {
+		return errors.New("scheduling operations canceled")
+	}
 	// wait for the distro scheduler goroutines to complete to complete
 	wg.Wait()
 
@@ -169,10 +173,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	if catcher.HasErrors() {
 		return catcher.Resolve()
-	}
-
-	if ctx.Err() != nil {
-		return errors.New("scheduling operations canceled")
 	}
 
 	// split distros by name
