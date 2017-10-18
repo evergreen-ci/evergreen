@@ -329,6 +329,8 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	s.tasks = s.tasksGenerator()
 	s.NotEmpty(s.tasks)
 	for _, task := range s.tasks {
+		task.BuildVariant = "aBuildVariant"
+		task.Tags = []string{"tag1", "tag2"}
 		s.NoError(task.Insert())
 	}
 
@@ -338,5 +340,15 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	s.NoError(err)
 	s.newRunnableTasks, err = FindRunnableTasks()
 	s.NoError(err)
+}
 
+func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
+	for _, task := range s.oldRunnableTasks {
+		s.Equal(task.BuildVariant, "aBuildVariant")
+		s.Equal(task.Tags, []string{"tag1", "tag2"})
+	}
+	for _, task := range s.newRunnableTasks {
+		s.Equal(task.BuildVariant, "aBuildVariant")
+		s.Equal(task.Tags, []string{"tag1", "tag2"})
+	}
 }

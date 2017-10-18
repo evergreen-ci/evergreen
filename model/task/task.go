@@ -1077,12 +1077,19 @@ func FindRunnable() ([]Task, error) {
 		},
 	}
 
+	replaceRoot := bson.M{
+		"$replaceRoot": bson.M{
+			"newRoot": "$" + taskKey,
+		},
+	}
+
 	pipeline := []bson.M{
 		matchActivatedUndispatchedTasks,
 		graphLookupTaskDeps,
 		reshapeTasksAndEdges,
 		matchTasksWithValidDependsOn,
 		redactTasksWithUnsatisfiedDeps,
+		replaceRoot,
 	}
 
 	runnableTasks := []Task{}
