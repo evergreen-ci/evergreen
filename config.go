@@ -130,8 +130,8 @@ type SMTPConfig struct {
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	MergeToggle         int
-	UseLegacyTaskFinder bool
+	MergeToggle         int  `yaml:"mergetoggle"`
+	UseLegacyTaskFinder bool `yaml:"uselegacytaskfinder"`
 }
 
 // TaskRunnerConfig holds logging settings for the scheduler process.
