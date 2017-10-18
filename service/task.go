@@ -658,8 +658,11 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	logId := mux.Vars(r)["log_id"]
-	var testLog *model.TestLog
-	var err error
+	var (
+		testLog  *model.TestLog
+		err      error
+		taskExec int
+	)
 
 	if logId != "" { // direct link to a log document by its ID
 		testLog, err = model.FindOneTestLogById(logId)
@@ -671,7 +674,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		taskID := mux.Vars(r)["task_id"]
 		testName := mux.Vars(r)["test_name"]
 		taskExecutionsAsString := mux.Vars(r)["task_execution"]
-		taskExec, err := strconv.Atoi(taskExecutionsAsString)
+		taskExec, err = strconv.Atoi(taskExecutionsAsString)
 		if err != nil {
 			http.Error(w, "task execution num must be an int", http.StatusBadRequest)
 			return
