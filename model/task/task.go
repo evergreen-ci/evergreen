@@ -998,7 +998,7 @@ func (t *Task) MergeNewTestResults() error {
 }
 
 func FindRunnable() ([]Task, error) {
-	expectedStatuses := [3]string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
+	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
 	matchActivatedUndispatchedTasks := bson.M{
 		"$match": bson.M{
@@ -1017,17 +1017,18 @@ func FindRunnable() ([]Task, error) {
 			"connectToField":   IdKey,
 			"as":               edgesKey,
 			"restrictSearchWithMatch": bson.M{
-				"status": bson.M{
+				StatusKey: bson.M{
 					"$in": expectedStatuses,
 				},
 			},
 		},
 	}
+
 	reshapeTasksAndEdges := bson.M{
 		"$project": bson.M{
-			edgesKey + "._id":    1,
-			edgesKey + ".status": 1,
-			taskKey:              "$$ROOT",
+			edgesKey + "." + IdKey:     1,
+			edgesKey + "." + StatusKey: 1,
+			taskKey:                    "$$ROOT",
 		},
 	}
 
@@ -1046,13 +1047,13 @@ func FindRunnable() ([]Task, error) {
 			},
 		},
 	}
+
 	redactTasksWithUnsatisfiedDeps := bson.M{
 		"$redact": bson.M{
 			"$cond": bson.M{
 				"if": bson.M{
 					"$setIsSubset": []bson.M{
 						{
-							// TODO: correct type for this?
 							"$ifNull": []interface{}{
 								"$" + taskKey + "." + DependsOnKey,
 								bson.M{
@@ -1061,7 +1062,6 @@ func FindRunnable() ([]Task, error) {
 							},
 						},
 						{
-							// TODO: correct type for this?
 							"$ifNull": []interface{}{
 								"$" + edgesKey,
 								bson.M{
@@ -1086,10 +1086,9 @@ func FindRunnable() ([]Task, error) {
 	}
 
 	runnableTasks := []Task{}
-	err := Aggregate(pipeline, &runnableTasks)
-	if err != nil {
+	if err := Aggregate(pipeline, &runnableTasks); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch runnable tasks")
 	}
 
-	return runnableTasks, err
+	return runnableTasks, nil
 }
