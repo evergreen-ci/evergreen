@@ -103,8 +103,8 @@ func CurlCommand(url string, host *host.Host) string {
 
 // SetupCommand returns a command for running the setup script on a host
 func SetupCommand(host *host.Host) string {
-	cmd := fmt.Sprintf("cd ~ && %s setup --setup_only",
-		binaryName(&host.Distro))
+	cmd := fmt.Sprintf("%s setup",
+		filepath.Join("~", binaryName(&host.Distro)))
 	if host.Distro.SetupAsSudo {
 		cmd += " --setup_as_sudo"
 	}

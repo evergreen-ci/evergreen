@@ -122,9 +122,9 @@ func newCappedOutputLog() *util.CappedWriter {
 }
 
 // Prepare the remote machine to run a task.
-// 1. Creating the directories on the remote host
-// 2. Copying the agent into that directory.
-// 3. Running the agent in setup_only mode to run the setup script.
+// 1. Create the directories on the remote host.
+// 2. Copy the binary to the remote host.
+// 3. Run the setup script with the binary.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// create the necessary sandbox of directories on the remote host
 	if err := runSSHCommand("mkdir", fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir), sshOptions, hostObj); err != nil {
