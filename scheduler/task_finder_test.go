@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"sort"
@@ -351,4 +352,50 @@ func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
 		s.Equal(task.BuildVariant, "aBuildVariant")
 		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
+}
+
+func hugeString(suffix string) string {
+	var buffer bytes.Buffer
+	// 4 megabytes
+	for i := 0; i < 4*1000*1000; i++ {
+		buffer.WriteString("a")
+	}
+	buffer.WriteString(suffix)
+	return buffer.String()
+}
+
+func TestCompareTaskRunnersWithHugeTasks(t *testing.T) {
+	s := new(TaskFinderComparisonSuite)
+
+	s.tasksGenerator = func() []task.Task {
+		tasks := []task.Task{
+			{
+				Id:        "hugedeps",
+				Status:    evergreen.TaskUndispatched,
+				OldTaskId: hugeString("huge"),
+				Activated: true,
+			},
+		}
+
+		// tasks[0] will depend on 5 other tasks, each with a
+		// 4 megabyte string inside of it. After graphLookup, the
+		// intermediate document will have 24 megabytes of data in it.
+		for i := 0; i < 5; i++ {
+			taskName := fmt.Sprintf("task%d", i)
+			tasks[0].DependsOn = append(tasks[0].DependsOn, task.Dependency{
+				TaskId: taskName,
+				Status: evergreen.TaskSucceeded,
+			})
+
+			tasks = append(tasks, task.Task{
+				Id:        taskName,
+				OldTaskId: hugeString(fmt.Sprintf("%d", i)),
+				Status:    evergreen.TaskSucceeded,
+				Activated: true,
+			})
+		}
+
+		return tasks
+	}
+	suite.Run(t, s)
 }
