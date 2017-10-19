@@ -13,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// setupTimeout is how long the agent will wait before timing out running
-// the setup script.
 const (
 	setupTimeout            = 2 * time.Minute
 	defaultWorkingDirectory = "~"
