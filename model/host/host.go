@@ -59,7 +59,7 @@ type Host struct {
 	// True if this host was created manually by a user (i.e. with spawnhost)
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
-	NeedsNewAgent bool   `bson:"needs_agent,omitempty" json:"needs_agent,omitempty"`
+	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// stores information on expiration notifications for spawn hosts
