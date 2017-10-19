@@ -41,7 +41,7 @@ func (tr *TaskRunner) Run() error {
 	// Find all hosts that are running and have a LCT (last communication time)
 	// of 0 or ones that haven't been communicated in MaxLCT time.
 	// These are the hosts that need to have agents dispatched
-	freeHosts, err := host.Find(host.ByRunningWithTimedOutLCT(time.Now()))
+	freeHosts, err := host.Find(host.NeedsNewAgent(time.Now()))
 	if err != nil {
 		return err
 	}

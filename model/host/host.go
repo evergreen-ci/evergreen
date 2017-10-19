@@ -59,6 +59,7 @@ type Host struct {
 	// True if this host was created manually by a user (i.e. with spawnhost)
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
+	NeedsNewAgent bool   `bson:"needs_agent" json:"needs_agent"`
 	// for ec2 dynamic hosts, the instance type requested
 	InstanceType string `bson:"instance_type" json:"instance_type,omitempty"`
 	// stores information on expiration notifications for spawn hosts
@@ -381,6 +382,17 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 		return err
 	}
 	h.AgentRevision = agentRevision
+	return nil
+}
+
+// SetNeedsNewAgent sets the "needs new agent" flag on the host
+func (h *Host) SetNeedsNewAgent() error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{NeedsNewAgentKey: true}})
+	if err != nil {
+		return err
+	}
+	h.NeedsNewAgent = true
 	return nil
 }
 
