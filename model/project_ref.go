@@ -116,6 +116,20 @@ func FindOneProjectRef(identifier string) (*ProjectRef, error) {
 	return projectRef, err
 }
 
+func FindFirstProjectRef() (*ProjectRef, error) {
+	projectRef := &ProjectRef{}
+	err := db.FindOne(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefPrivateKey: false,
+		},
+		db.NoProjection,
+		[]string{"-" + ProjectRefDisplayNameKey},
+		projectRef,
+	)
+	return projectRef, err
+}
+
 // FindAllTrackedProjectRefs returns all project refs in the db
 // that are currently being tracked (i.e. their project files
 // still exist)
