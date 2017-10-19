@@ -1016,6 +1016,8 @@ func FindRunnable() ([]Task, error) {
 			"connectFromField": DependsOnKey + "." + IdKey,
 			"connectToField":   IdKey,
 			"as":               edgesKey,
+			// restrict graphLookup to only direct dependencies
+			"maxDepth": 0,
 			"restrictSearchWithMatch": bson.M{
 				StatusKey: bson.M{
 					"$in": expectedStatuses,
@@ -1032,46 +1034,19 @@ func FindRunnable() ([]Task, error) {
 		},
 	}
 
-	matchTasksWithValidDependsOn := bson.M{
-		"$match": bson.M{
-			"$or": []bson.M{
-				{
-					taskKey + "." + DependsOnKey: []bson.M{},
-					edgesKey:                     []bson.M{},
-				},
-				{
-					taskKey + "." + DependsOnKey + "." + StatusKey: bson.M{
-						"$in": expectedStatuses,
-					},
-				},
-			},
+	removeEdgesFromTask := bson.M{
+		"$project": bson.M{
+			taskKey + "." + edgesKey: 0,
 		},
 	}
 
-	redactTasksWithUnsatisfiedDeps := bson.M{
+	redactUnrunnableTasks := bson.M{
 		"$redact": bson.M{
 			"$cond": bson.M{
 				"if": bson.M{
-					"$setIsSubset": []bson.M{
-						{
-							"$ifNull": []interface{}{
-								"$" + taskKey + "." + DependsOnKey,
-								bson.M{
-									"$literal": []bson.M{},
-								},
-							},
-						},
-						{
-							"$ifNull": []interface{}{
-								"$" + edgesKey,
-								bson.M{
-									"$literal": []bson.M{},
-								},
-							},
-						},
-					},
+					"$setEquals": []string{"$" + taskKey + "." + DependsOnKey, "$" + edgesKey},
 				},
-				"then": "$$DESCEND",
+				"then": "$$KEEP",
 				"else": "$$PRUNE",
 			},
 		},
@@ -1087,8 +1062,8 @@ func FindRunnable() ([]Task, error) {
 		matchActivatedUndispatchedTasks,
 		graphLookupTaskDeps,
 		reshapeTasksAndEdges,
-		matchTasksWithValidDependsOn,
-		redactTasksWithUnsatisfiedDeps,
+		removeEdgesFromTask,
+		redactUnrunnableTasks,
 		replaceRoot,
 	}
 
