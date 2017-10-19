@@ -1,6 +1,7 @@
 package static
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -93,7 +94,7 @@ func (staticMgr *StaticManager) IsSSHReachable(host *host.Host, keyPath string) 
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(host, sshOpts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 }
 
 func (staticMgr *StaticManager) IsUp(host *host.Host) (bool, error) {

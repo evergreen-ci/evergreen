@@ -3,6 +3,7 @@
 package vsphere
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -190,7 +191,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 		return false, errors.Wrapf(err, "failed to get SSH options for host %s", host.Id)
 	}
 
-	return hostutil.CheckSSHResponse(host, opts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the IPv4 address of the host.
