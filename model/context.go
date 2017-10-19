@@ -58,17 +58,28 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 // GetProject returns the project associated with the Context.
 func (ctx *Context) GetProject() (*Project, error) {
 	var err error
-	if ctx.ProjectRef != nil {
-		if ctx.project != nil {
-			return ctx.project, nil
-		}
-		ctx.project, err = FindProject("", ctx.ProjectRef)
+	var refs []ProjectRef
+
+	// if no project, use the first project as the default project
+	if ctx.ProjectRef == nil {
+		refs, err = FindAllProjectRefs()
 		if err != nil {
-			return nil, errors.Wrap(err, "error finding project")
+			return nil, errors.Wrap(err, "error finding project ref")
 		}
+		if len(refs) > 0 {
+			ctx.ProjectRef = &refs[0]
+		}
+	}
+
+	if ctx.project != nil {
 		return ctx.project, nil
 	}
-	return nil, errors.New("unable to find project for context")
+	ctx.project, err = FindProject("", ctx.ProjectRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding project")
+	}
+
+	return ctx.project, nil
 }
 
 // populateTaskBuildVersion takes a task, build, and version ID and populates a Context
