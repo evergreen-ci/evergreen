@@ -3,9 +3,6 @@ package agent
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -37,8 +34,6 @@ type Options struct {
 	WorkingDirectory   string
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
-	SetupAsSudo        bool
-	SetupOnly          bool
 }
 
 type taskContext struct {
@@ -70,12 +65,6 @@ func New(opts Options, comm client.Communicator) *Agent {
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(ctx, a.opts.StatusPort)
-	if out, err := a.runSetupScript(ctx); err != nil {
-		return errors.Wrap(err, out)
-	}
-	if a.opts.SetupOnly {
-		return nil
-	}
 	tryCleanupDirectory(a.opts.WorkingDirectory)
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
@@ -311,32 +300,4 @@ func (a *Agent) killProcs(tc *taskContext) {
 		}
 	}
 	grip.Infof("processes cleaned up for task %s", tc.task.ID)
-}
-
-func (a *Agent) runSetupScript(ctx context.Context) (string, error) {
-	script := filepath.Join(a.opts.WorkingDirectory, evergreen.SetupScriptName)
-	if _, err := os.Stat(script); os.IsNotExist(err) {
-		return "", nil
-	}
-
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, setupTimeout)
-	defer cancel()
-	cmd := a.getShCommandWithSudo(ctx, script)
-	catcher := grip.NewSimpleCatcher()
-	out, err := cmd.CombinedOutput()
-	catcher.Add(err)
-
-	if err := os.Remove(script); err != nil {
-		catcher.Add(err)
-	}
-
-	return string(out), catcher.Resolve()
-}
-
-func (a *Agent) getShCommandWithSudo(ctx context.Context, script string) *exec.Cmd {
-	if a.opts.SetupAsSudo {
-		return exec.CommandContext(ctx, "sudo", "sh", script)
-	}
-	return exec.CommandContext(ctx, "sh", script)
 }

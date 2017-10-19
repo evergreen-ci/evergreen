@@ -2,10 +2,6 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -368,63 +364,4 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
-}
-
-func (s *AgentSuite) TestSetupScript() {
-	dir, err := ioutil.TempDir("", "")
-	s.Require().NoError(err)
-	defer os.RemoveAll(dir)
-	s.a.opts.WorkingDirectory = dir
-
-	// With no setup script, noop
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	out, err := s.a.runSetupScript(ctx)
-	s.NoError(err)
-	s.Empty(out)
-
-	// With a setup script, run the script
-	script := filepath.Join(dir, evergreen.SetupScriptName)
-	content := []byte("echo \"hello, world\"")
-	err = ioutil.WriteFile(script, content, 0644)
-	s.Require().NoError(err)
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	out, err = s.a.runSetupScript(ctx)
-	s.Equal("hello, world", strings.TrimSpace(out))
-	s.NoError(err)
-
-	// Ensure the script is deleted after running
-	_, err = os.Stat(script)
-	s.True(os.IsNotExist(err))
-
-	// Script should time out with context and return an error
-	err = ioutil.WriteFile(script, content, 0644)
-	s.Require().NoError(err)
-	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
-	defer cancel()
-	time.Sleep(time.Millisecond)
-	out, err = s.a.runSetupScript(ctx)
-	s.Equal("", strings.TrimSpace(out))
-	s.Error(err)
-	s.Contains(err.Error(), "context deadline exceeded")
-
-	// A non-zero exit status should return an error
-	content = []byte("exit 1")
-	err = ioutil.WriteFile(script, content, 0644)
-	s.Require().NoError(err)
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	out, err = s.a.runSetupScript(ctx)
-	s.Equal("", strings.TrimSpace(out))
-	s.Error(err)
-
-}
-
-func (s *AgentSuite) TestSetupScriptSudoShHelper() {
-	cmd := s.a.getShCommandWithSudo(context.Background(), "foo")
-	s.Equal([]string{"sh", "foo"}, cmd.Args)
-	s.a.opts.SetupAsSudo = true
-	cmd = s.a.getShCommandWithSudo(context.Background(), "foo")
-	s.Equal([]string{"sudo", "sh", "foo"}, cmd.Args)
 }
