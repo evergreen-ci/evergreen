@@ -26,7 +26,8 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 
 	// If no version was specified in the URL, grab the latest version on the project
 	if projCtx.Version == nil {
-		v, err := version.Find(version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
+		var v []version.Version
+		v, err = version.Find(version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding version"))
 			return
