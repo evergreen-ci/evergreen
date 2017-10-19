@@ -19,7 +19,6 @@ import (
 var taskFinderTestConf = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
 	rand.Seed(time.Now().UnixNano())
 }
 

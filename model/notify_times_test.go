@@ -12,8 +12,7 @@ import (
 var notifyTimesTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(notifyTimesTestConfig))
+	db.SetGlobalSessionProvider(notifyTimesTestConfig.SessionFactory())
 }
 
 func TestSetLastNotificationsEventTime(t *testing.T) {

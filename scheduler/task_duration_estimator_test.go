@@ -14,10 +14,6 @@ import (
 
 var taskDurationEstimatorTestConf = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskDurationEstimatorTestConf))
-}
-
 func TestDBTaskDurationEstimator(t *testing.T) {
 	var taskDurationEstimator *DBTaskDurationEstimator
 	var displayNames []string

@@ -19,10 +19,6 @@ import (
 
 var projectTestConfig = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectTestConfig))
-}
-
 func TestProjectRoutes(t *testing.T) {
 	uis := UIServer{
 		RootURL:     projectTestConfig.Ui.Url,

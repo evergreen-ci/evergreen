@@ -14,7 +14,7 @@ import (
 var buildTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(buildTestConfig))
+	db.SetGlobalSessionProvider(buildTestConfig.SessionFactory())
 }
 
 func buildIdInSlice(builds []Build, id string) bool {

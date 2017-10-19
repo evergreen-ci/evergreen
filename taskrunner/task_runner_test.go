@@ -14,7 +14,7 @@ var taskRunnerTestConf = testutil.TestConfig()
 var agtRevision = "abc"
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskRunnerTestConf))
+	db.SetGlobalSessionProvider(taskRunnerTestConf.SessionFactory())
 }
 
 type MockHostGateway struct{}

@@ -49,7 +49,7 @@ index 0000000..ce01362
 var emptyPatch = ``
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 type cliTestHarness struct {

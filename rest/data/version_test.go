@@ -20,7 +20,7 @@ import (
 func TestFindCostByVersionId(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindCostByVersionId")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
 		" '%v' collection", task.Collection)
 
@@ -80,7 +80,7 @@ func TestVersionConnectorSuite(t *testing.T) {
 	s := new(VersionConnectorSuite)
 	s.ctx = &DBConnector{}
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestVersionConnectorSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Tear down
 	assert.Nil(db.Clear(task.Collection))

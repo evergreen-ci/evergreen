@@ -16,7 +16,7 @@ func TestTerminateHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTerminateHosts")
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing host collection")
 	ctx := context.Background()
 	reason := "test"

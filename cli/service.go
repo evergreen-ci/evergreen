@@ -45,7 +45,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		return errors.Wrap(err, "problem validating settings")
 	}
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
+	db.SetGlobalSessionProvider(settings.SessionFactory())
 
 	apiHandler, err := getHandlerAPI(settings)
 	if err != nil {

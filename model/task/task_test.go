@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
+	db.SetGlobalSessionProvider(conf.SessionFactory())
 }
 
 var depTaskIds = []Dependency{

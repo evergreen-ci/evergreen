@@ -16,7 +16,7 @@ import (
 // ManifestFetchCmd integration tests
 
 func TestManifestLoad(t *testing.T) {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	testutil.HandleTestingErr(
 		db.ClearCollections(manifest.Collection), t,
 		"error clearing test collections")
@@ -26,7 +26,7 @@ func TestManifestLoad(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestManifestFetch")
 
 	// Skiping: this test runs the manifest command and then

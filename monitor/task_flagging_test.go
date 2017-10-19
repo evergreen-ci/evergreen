@@ -15,7 +15,7 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging tasks whose heartbeat has timed out", t, func() {
 

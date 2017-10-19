@@ -31,7 +31,7 @@ func TestDockerSuite(t *testing.T) {
 }
 
 func (s *DockerSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *DockerSuite) SetupTest() {

@@ -42,5 +42,4 @@ func TestRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 
 	grip.Notice(q.Stats())
 	assert.Equal(atStart+40, mockJobCounters.Count())
-	fmt.Println(atStart+40, mockJobCounters.Count())
 }

@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueueTestConf))
+	db.SetGlobalSessionProvider(taskQueueTestConf.SessionFactory())
 }
 
 func TestDequeueTask(t *testing.T) {

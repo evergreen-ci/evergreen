@@ -11,7 +11,7 @@ import (
 var testConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func TestGetGithubCommits(t *testing.T) {

@@ -6,13 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"gopkg.in/mgo.v2"
 )
 
 var (
 	globalSessionProvider SessionProvider = nil
-	defaultDialTimeout                    = 5 * time.Second
 	defaultSocketTimeout                  = 90 * time.Second
 )
 
@@ -32,18 +30,6 @@ type SessionFactory struct {
 // SessionProvider returns mgo Sessions for database interaction.
 type SessionProvider interface {
 	GetSession() (*mgo.Session, *mgo.Database, error)
-}
-
-// SessionFactoryFromConfig creates a usable SessionFactory from
-// the Evergreen settings.
-func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
-	safety := mgo.Safe{}
-	safety.W = settings.Database.WriteConcernSettings.W
-	safety.WMode = settings.Database.WriteConcernSettings.WMode
-	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
-	safety.FSync = settings.Database.WriteConcernSettings.FSync
-	safety.J = settings.Database.WriteConcernSettings.J
-	return NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultDialTimeout)
 }
 
 // NewSessionFactory returns a new session factory pointed at the given URL/DB combo,

@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 )
@@ -136,10 +137,12 @@ const (
 )
 
 const (
-	defaultLogBufferingDuration = 20
-	defaultAmboyPoolSize        = 2
-	defaultAmboyQueueName       = "evg.service"
-	defaultAmboyDBName          = "amboy"
+	defaultLogBufferingDuration  = 20
+	defaultMgoDialTimeout        = 5 * time.Second
+	defaultAmboyPoolSize         = 2
+	defaultAmboyLocalStorageSize = 1024
+	defaultAmboyQueueName        = "evg.service"
+	defaultAmboyDBName           = "amboy"
 )
 
 var (

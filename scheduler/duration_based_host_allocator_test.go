@@ -17,10 +17,6 @@ import (
 
 var hostAllocatorTestConf = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostAllocatorTestConf))
-}
-
 func TestDurationBasedNewHostsNeeded(t *testing.T) {
 	/*
 		Note that this is a functional test and its validity relies on the

@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueueTestConf))
+	db.SetGlobalSessionProvider(taskQueueTestConf.SessionFactory())
 }
 
 func TestFindLastPassingVersionForBuildVariants(t *testing.T) {

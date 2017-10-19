@@ -18,7 +18,7 @@ func TestCleanupTask(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When cleaning up a task", t, func() {
 

@@ -76,7 +76,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
 	go hostStatsCollector(ctx)
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
+	db.SetGlobalSessionProvider(settings.SessionFactory())
 
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {

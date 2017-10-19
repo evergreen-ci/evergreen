@@ -42,9 +42,7 @@ func NewLocalPriorityQueue(workers int) *LocalPriorityQueue {
 // this operation updates it in the queue, potentially reordering the
 // queue accordingly.
 func (q *LocalPriorityQueue) Put(j amboy.Job) error {
-	q.storage.Push(j)
-
-	return nil
+	return q.storage.Insert(j)
 }
 
 // Get takes the name of a job and returns the job from the queue that
@@ -76,19 +74,42 @@ func (q *LocalPriorityQueue) Started() bool {
 
 // Results is a generator of all jobs that report as "Completed" in
 // the queue.
-func (q *LocalPriorityQueue) Results() <-chan amboy.Job {
+func (q *LocalPriorityQueue) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
 	go func() {
+		defer close(output)
 		for job := range q.storage.Contents() {
+			if ctx.Err() != nil {
+				return
+			}
 			if job.Status().Completed {
 				output <- job
 			}
 		}
-		close(output)
 	}()
 
 	return output
+}
+
+// JobStats returns a job status for every job stored in the
+// queue. Does not include currently in progress tasks.
+func (q *LocalPriorityQueue) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+	out := make(chan amboy.JobStatusInfo)
+
+	go func() {
+		defer close(out)
+		for job := range q.storage.Contents() {
+			if ctx.Err() != nil {
+				return
+			}
+			stat := job.Status()
+			stat.ID = job.ID()
+			out <- stat
+		}
+	}()
+
+	return out
 }
 
 // Runner returns the embedded runner instance, which provides and

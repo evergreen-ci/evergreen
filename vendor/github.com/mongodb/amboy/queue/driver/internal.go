@@ -70,6 +70,23 @@ func (d *Internal) Get(name string) (amboy.Job, error) {
 	return nil, errors.Errorf("no job named %s exists", name)
 }
 
+// Put saves a new job to the queue, returning if it already exists.
+func (d *Internal) Put(j amboy.Job) error {
+	d.jobs.Lock()
+	defer d.jobs.Unlock()
+	name := j.ID()
+
+	_, a := d.jobs.m[name]
+	_, b := d.jobs.dispatched[name]
+	if a || b {
+		return errors.Errorf("cannot add a duplicate job %s", name)
+	}
+
+	d.jobs.m[name] = j
+	d.jobs.pending = append(d.jobs.pending, name)
+	return nil
+}
+
 // Save takes a job and persists it in the storage for this driver. If
 // there is no job with a matching ID, then this operation returns an
 // error.
@@ -80,14 +97,32 @@ func (d *Internal) Save(j amboy.Job) error {
 
 	if j.Status().Completed {
 		delete(d.jobs.dispatched, name)
-	} else if _, ok := d.jobs.m[name]; !ok {
-		d.jobs.pending = append(d.jobs.pending, name)
 	}
 
 	d.jobs.m[name] = j
 
 	grip.Debugf("saving job %s", name)
 	return nil
+}
+
+// JobStats returns job status documents for all jobs in the storage layer.
+func (d *Internal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+	d.jobs.RLock()
+	defer d.jobs.RUnlock()
+	out := make(chan amboy.JobStatusInfo, len(d.jobs.m))
+	defer close(out)
+
+	for _, job := range d.jobs.m {
+		if ctx.Err() != nil {
+			return out
+		}
+
+		status := job.Status()
+		status.ID = job.ID()
+		out <- status
+	}
+
+	return out
 }
 
 // SaveStatus persists only the status document in the job in the
@@ -114,14 +149,11 @@ func (d *Internal) Jobs() <-chan amboy.Job {
 	defer d.jobs.RUnlock()
 	output := make(chan amboy.Job, len(d.jobs.m))
 
-	go func() {
-		d.jobs.RLock()
-		defer d.jobs.RUnlock()
-		for _, job := range d.jobs.m {
-			output <- job
-		}
-		close(output)
-	}()
+	for _, job := range d.jobs.m {
+		output <- job
+	}
+
+	close(output)
 
 	return output
 }

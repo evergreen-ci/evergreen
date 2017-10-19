@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	schedulerTestConf = testutil.TestConfig()
+	testConf = testutil.TestConfig()
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
+	db.SetGlobalSessionProvider(testConf.SessionFactory())
 }
 
 // Used as a template for task objects inserted/queried on within this file

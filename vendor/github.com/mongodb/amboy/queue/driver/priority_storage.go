@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/amboy"
+	"github.com/pkg/errors"
 )
 
 // PriorityStorage is a local storage system for Jobs in priority
@@ -24,9 +25,9 @@ func NewPriorityStorage() *PriorityStorage {
 	}
 }
 
-// Push inserts a job into the priority queue. If the Job exists (by
+// Save inserts a job into the priority queue. If the Job exists (by
 // ID), then this operation updates the existing job.
-func (s *PriorityStorage) Push(j amboy.Job) {
+func (s *PriorityStorage) Save(j amboy.Job) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -45,6 +46,28 @@ func (s *PriorityStorage) Push(j amboy.Job) {
 
 	s.table[name] = item
 	heap.Push(&s.pq, item)
+}
+
+// Insert adds a job to the storage back-end, succeeding only if the
+// job is uniquely named.
+func (s *PriorityStorage) Insert(j amboy.Job) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	name := j.ID()
+	_, ok := s.table[name]
+	if ok {
+		return errors.Errorf("cannot add duplicate job ID %s", name)
+	}
+
+	item := &queueItem{
+		job:      j,
+		priority: j.Priority(),
+	}
+
+	s.table[name] = item
+	heap.Push(&s.pq, item)
+	return nil
 }
 
 // Pop returns the next highest priority job from the queue. If there

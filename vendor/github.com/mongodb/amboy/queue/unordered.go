@@ -158,21 +158,50 @@ func (q *LocalUnordered) Next(ctx context.Context) amboy.Job {
 // closed when all results have been exhausted, even if there are more
 // results pending. Other implementations may have different semantics
 // for this method.
-func (q *LocalUnordered) Results() <-chan amboy.Job {
+func (q *LocalUnordered) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job, q.numCompleted)
 
 	go func() {
 		q.tasks.RLock()
 		defer q.tasks.RUnlock()
+		defer close(output)
 		for _, job := range q.tasks.m {
+			if ctx.Err() != nil {
+				return
+			}
+
 			if job.Status().Completed {
 				output <- job
 			}
 		}
-		close(output)
 	}()
 
 	return output
+}
+
+// JobStats returns JobStatusInfo objects for all jobs tracked by the
+// queue, in no particular order.
+func (q *LocalUnordered) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+	out := make(chan amboy.JobStatusInfo)
+
+	go func() {
+		q.tasks.RLock()
+		defer q.tasks.RUnlock()
+		defer close(out)
+
+		for _, job := range q.tasks.m {
+			if ctx.Err() != nil {
+				return
+			}
+
+			stat := job.Status()
+			stat.ID = job.ID()
+			out <- stat
+		}
+
+	}()
+
+	return out
 }
 
 // Get takes a name and returns a completed job.

@@ -18,6 +18,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 )
 
 // NewSimpleRateLimitedWorkers returns a worker pool that sleeps for
@@ -76,28 +77,47 @@ func (p *simpleRateLimited) Start(ctx context.Context) error {
 
 	// start some threads
 	for w := 1; w <= p.size; w++ {
-		go func() {
-			timer := time.NewTimer(0)
-			defer timer.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-timer.C:
-					select {
-					case <-ctx.Done():
-						return
-					case job := <-jobs:
-						job.Run()
-						p.queue.Complete(ctx, job)
-						timer.Reset(p.interval)
-					}
-				}
-			}
-		}()
+		go p.worker(ctx, jobs)
 		grip.Debugf("started rate limited worker %d of %d ", w, p.size)
 	}
 	return nil
+}
+
+func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
+	var (
+		err error
+		job amboy.Job
+	)
+
+	defer func() {
+		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
+		if err != nil {
+			if job != nil {
+				job.AddError(err)
+				p.queue.Complete(ctx, job)
+			}
+			// start a replacement worker.
+			go p.worker(ctx, jobs)
+		}
+	}()
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			select {
+			case <-ctx.Done():
+				return
+			case job := <-jobs:
+				job.Run()
+				p.queue.Complete(ctx, job)
+				timer.Reset(p.interval)
+			}
+		}
+	}
 }
 
 func (p *simpleRateLimited) SetQueue(q amboy.Queue) error {

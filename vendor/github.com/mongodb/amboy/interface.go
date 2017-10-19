@@ -49,6 +49,9 @@ type Job interface {
 	Priority() int
 	SetPriority(int)
 
+	// AddError allows another actor to annotate the job with an
+	// error.
+	AddError(error)
 	// Error returns an error object if the task was an
 	// error. Typically if the job has not run, this is nil.
 	Error() error
@@ -68,6 +71,7 @@ type JobType struct {
 // job and is reported by the Status and set by the SetStatus methods
 // in the Job interface.e
 type JobStatusInfo struct {
+	ID                string    `bson:"id,omitempty" json:"id,omitempty" yaml:"id,omitempty"`
 	Owner             string    `bson:"owner" json:"owner" yaml:"owner"`
 	Completed         bool      `bson:"completed" json:"completed" yaml:"completed"`
 	InProgress        bool      `bson:"in_prog" json:"in_progress" yaml:"in_progress"`
@@ -104,7 +108,11 @@ type Queue interface {
 	Complete(context.Context, Job)
 
 	// Returns a channel that produces completed Job objects.
-	Results() <-chan Job
+	Results(context.Context) <-chan Job
+
+	// Returns a channel that produces the status objects for all
+	// jobs in the queue, completed and otherwise.
+	JobStats(context.Context) <-chan JobStatusInfo
 
 	// Returns an object that contains statistics about the
 	// current state of the Queue.

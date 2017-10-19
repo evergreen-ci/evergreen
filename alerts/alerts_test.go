@@ -14,7 +14,7 @@ import (
 var testConf = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConf))
+	db.SetGlobalSessionProvider(testConf.SessionFactory())
 }
 
 func TestAlertQueue(t *testing.T) {

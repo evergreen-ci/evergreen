@@ -18,7 +18,7 @@ type AdminSuite struct {
 
 func TestAdminSuite(t *testing.T) {
 	s := new(AdminSuite)
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	db.Clear(Collection)
 
 	suite.Run(t, s)

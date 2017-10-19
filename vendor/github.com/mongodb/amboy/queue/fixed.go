@@ -22,7 +22,7 @@ type LocalLimitedSize struct {
 	runner   amboy.Runner
 	capacity int
 	counters struct {
-		queued    map[string]struct{}
+		queued    map[string]amboy.Job
 		total     int
 		started   int
 		completed int
@@ -38,8 +38,7 @@ func NewLocalLimitedSize(workers, capacity int) *LocalLimitedSize {
 		capacity: capacity,
 	}
 	q.runner = pool.NewLocalWorkers(workers, q)
-	q.counters.queued = make(map[string]struct{})
-
+	q.counters.queued = make(map[string]amboy.Job)
 	return q
 }
 
@@ -68,7 +67,7 @@ func (q *LocalLimitedSize) Put(j amboy.Job) error {
 	select {
 	case q.channel <- j:
 		q.counters.total++
-		q.counters.queued[j.ID()] = struct{}{}
+		q.counters.queued[j.ID()] = j
 
 		return nil
 	default:
@@ -104,8 +103,39 @@ func (q *LocalLimitedSize) Started() bool {
 }
 
 // Results is a generator of all completed tasks in the queue.
-func (q *LocalLimitedSize) Results() <-chan amboy.Job {
-	return q.results.Contents()
+func (q *LocalLimitedSize) Results(ctx context.Context) <-chan amboy.Job {
+	return q.results.Contents(ctx)
+}
+
+// JobStats returns an iterator for job status documents for all jobs
+// in the queue. For this queue implementation *queued* jobs are returned
+// first.
+func (q *LocalLimitedSize) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+	out := make(chan amboy.JobStatusInfo)
+
+	go func() {
+		defer close(out)
+		func() {
+			q.counters.RLock()
+			defer q.counters.RUnlock()
+			for _, j := range q.counters.queued {
+				if ctx.Err() != nil {
+					return
+				}
+				out <- j.Status()
+			}
+		}()
+		if ctx.Err() != nil {
+			return
+		}
+
+		for j := range q.results.Contents(ctx) {
+			s := j.Status()
+			s.ID = j.ID()
+			out <- s
+		}
+	}()
+	return out
 }
 
 // Runner returns the Queue's embedded amboy.Runner instance.

@@ -31,7 +31,7 @@ func TestGCESuite(t *testing.T) {
 }
 
 func (s *GCESuite) SetupSuite() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *GCESuite) SetupTest() {

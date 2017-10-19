@@ -22,7 +22,7 @@ type AdminEventSuite struct {
 
 func TestAdminEventSuite(t *testing.T) {
 	s := new(AdminEventSuite)
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	s.u = &user.DBUser{Id: "user"}
 	suite.Run(t, s)
 }

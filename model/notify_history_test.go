@@ -12,8 +12,7 @@ import (
 var notifyHistoryTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(notifyHistoryTestConfig))
+	db.SetGlobalSessionProvider(notifyHistoryTestConfig.SessionFactory())
 }
 
 func TestGenericNotificationFinding(t *testing.T) {

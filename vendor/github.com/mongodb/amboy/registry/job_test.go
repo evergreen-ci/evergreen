@@ -25,7 +25,7 @@ func TestAmboyJobRegistryResources(t *testing.T) {
 }
 
 func (s *AmboyJobRegustrySuite) SetupSuite() {
-	grip.SetThreshold(level.Emergency)
+	s.NoError(grip.SetThreshold(level.Emergency))
 }
 
 func (s *AmboyJobRegustrySuite) SetupTest() {

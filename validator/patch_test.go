@@ -36,8 +36,6 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(patchTestConfig))
-
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
 	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)

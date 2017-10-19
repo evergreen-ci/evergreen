@@ -14,7 +14,7 @@ import (
 var conf = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
+	db.SetGlobalSessionProvider(conf.SessionFactory())
 }
 
 func TestCheckDistro(t *testing.T) {

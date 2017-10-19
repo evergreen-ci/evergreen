@@ -44,6 +44,13 @@ func (s *LocalWorkersSuite) SetupTest() {
 	s.queue = NewQueueTester(s.pool)
 }
 
+func (s *LocalWorkersSuite) TestPanicJobsDoNotPanicHarness() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.NotPanics(func() { worker(ctx, jobsChanWithPanicingJobs(ctx, s.size), s.queue) })
+}
+
 func (s *LocalWorkersSuite) TestConstructedInstanceImplementsInterface() {
 	s.Implements((*amboy.Runner)(nil), s.pool)
 }
@@ -90,7 +97,7 @@ func (s *LocalWorkersSuite) TestPoolStartsAndProcessesJobs() {
 	amboy.Wait(s.queue)
 
 	counter := 0
-	for j := range s.queue.Results() {
+	for j := range s.queue.Results(ctx) {
 		s.True(j.Status().Completed)
 		counter++
 	}
@@ -142,4 +149,15 @@ func TestLocalWorkerPoolConstructorDoesNotAllowSizeValuesLessThanOne(t *testing.
 
 		assert.Equal(1, pool.size)
 	}
+}
+
+func TestPanicJobPanics(t *testing.T) {
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for j := range jobsChanWithPanicingJobs(ctx, 8) {
+		assert.Panics(func() { j.Run() })
+	}
+
 }

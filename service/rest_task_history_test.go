@@ -23,7 +23,7 @@ import (
 var testConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func TestGetTestHistory(t *testing.T) {

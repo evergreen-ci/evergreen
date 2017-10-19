@@ -93,7 +93,7 @@ func TestPatchPlugin(t *testing.T) {
 	defer cancel()
 	cwd := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		testutil.HandleTestingErr(db.Clear(version.Collection), t,
 			"unable to clear versions collection")

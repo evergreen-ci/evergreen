@@ -17,7 +17,7 @@ func TestMonitorReachability(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When checking the reachability of hosts", t, func() {
 

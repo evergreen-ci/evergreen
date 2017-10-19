@@ -19,10 +19,6 @@ import (
 
 var schedulerTestConf = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
-}
-
 const versionProjectString = `
 buildvariants:
 - name: ubuntu

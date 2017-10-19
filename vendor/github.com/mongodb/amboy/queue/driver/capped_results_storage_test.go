@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -127,9 +128,11 @@ func (s *CappedResultsSuite) TestJobsInStorageContentsAreExpected() {
 	}
 
 	s.Equal(len(mirror), s.cr.Size())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	seen := 0
-	for j := range s.cr.Contents() {
+	for j := range s.cr.Contents(ctx) {
 		seen++
 		mj, ok := mirror[j.ID()]
 		s.True(ok)

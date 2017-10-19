@@ -19,7 +19,7 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging decommissioned hosts", t, func() {
 
@@ -82,7 +82,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging idle hosts to be terminated", t, func() {
 
@@ -192,7 +192,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging excess hosts to be terminated", t, func() {
 
@@ -439,7 +439,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
@@ -519,7 +519,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
@@ -562,7 +562,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 
 	testConfig := testutil.TestConfig()
 
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	Convey("When flagging expired hosts to be terminated", t, func() {
 

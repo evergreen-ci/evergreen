@@ -13,6 +13,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 )
 
 // NewLocalWorkers is a constructor for pool of worker processes that
@@ -88,11 +89,33 @@ func startWorkerServer(ctx context.Context, q amboy.Queue) <-chan amboy.Job {
 }
 
 func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue) {
+	var (
+		err error
+		job amboy.Job
+	)
+
+	defer func() {
+		// if we hit a panic we want to add an error to the job;
+		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
+		if err != nil {
+			if job != nil {
+				job.AddError(err)
+				q.Complete(ctx, job)
+			}
+			// start a replacement worker.
+			go worker(ctx, jobs, q)
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case job := <-jobs:
+		case job = <-jobs:
+			if job == nil {
+				continue
+			}
+
 			job.Run()
 			q.Complete(ctx, job)
 		}

@@ -134,7 +134,10 @@ func (s *ShuffledQueueSuite) TestResultsOperationReturnsEmptyChannelIfQueueIsNot
 	s.False(s.queue.Started())
 	count := 0
 
-	for range s.queue.Results() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for range s.queue.Results(ctx) {
 		count++
 	}
 

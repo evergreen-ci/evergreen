@@ -4,9 +4,11 @@ import (
 	"io/ioutil"
 	"time"
 
+	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -237,6 +239,7 @@ type AmboyConfig struct {
 	DB             string `yaml:"database"`
 	PoolSizeLocal  int    `yaml:"pool_size_local"`
 	PoolSizeRemote int    `yaml:"pool_size_remote"`
+	LocalStorage   int    `yaml:"local_storage_size"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
@@ -362,6 +365,18 @@ func (s *Settings) GetSender() (send.Sender, error) {
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
+// SessionFactory creates a usable SessionFactory from
+// the Evergreen settings.
+func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
+	safety := mgo.Safe{}
+	safety.W = settings.Database.WriteConcernSettings.W
+	safety.WMode = settings.Database.WriteConcernSettings.WMode
+	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
+	safety.FSync = settings.Database.WriteConcernSettings.FSync
+	safety.J = settings.Database.WriteConcernSettings.J
+	return legacyDB.NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultMgoDialTimeout)
+}
+
 // ConfigValidator is a type of function that checks the settings
 // struct for any errors or missing required fields.
 type configValidator func(settings *Settings) error
@@ -390,6 +405,10 @@ var configValidationRules = []configValidator{
 
 		if settings.Amboy.PoolSizeRemote == 0 {
 			settings.Amboy.PoolSizeRemote = defaultAmboyPoolSize
+		}
+
+		if settings.Amboy.LocalStorage == 0 {
+			settings.Amboy.LocalStorage = defaultAmboyLocalStorageSize
 		}
 
 		return nil

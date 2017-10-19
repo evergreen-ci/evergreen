@@ -3,8 +3,7 @@ package evergreen
 import (
 	"sync"
 
-	legacyDB "github.com/evergreen-ci/db"
-	"github.com/evergreen-ci/sink/evergreen"
+	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/queue/driver"
@@ -62,7 +61,7 @@ type Environment interface {
 }
 
 type envState struct {
-	remoteQueue amboyQueue
+	remoteQueue amboy.Queue
 	localQueue  amboy.Queue
 	settings    *Settings
 	session     *mgo.Session
@@ -84,11 +83,11 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	// at some point this should just be read from the database at
 	// a later stage, and populated with default values if it
 	// isn't in the db.
-	e.settings, err = evergreen.NewSettings(c.ConfigPath)
+	e.settings, err = NewSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
 	}
-	if err = settings.Validate(); err != nil {
+	if err = e.settings.Validate(); err != nil {
 		return errors.Wrap(err, "problem validating settings")
 	}
 
@@ -96,7 +95,7 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	// legacy session factory mechanism. in the future the
 	// environment can and should be the only provider of database
 	// sessions.
-	sf := legacyDB.SessionFactoryFromConfig(e.settings)
+	sf := e.settings.SessionFactory()
 	legacyDB.SetGlobalSessionProvider(sf)
 
 	e.session, _, err = sf.GetSession()
@@ -110,26 +109,25 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 
 	opts := driver.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
-	opts.DB = e.settings.Amboy.DB = e.settings.Amboy.DB
+	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
 	qmdb, err = driver.OpenNewMongoDB(ctx, e.settings.Amboy.Name, opts, e.session)
 	if err != nil {
 		return errors.Wrap(err, "problem setting queue backend")
 	}
-
+	rq := queue.NewRemoteUnordered(e.settings.Amboy.PoolSizeRemote)
 	if err = rq.SetDriver(qmdb); err != nil {
 		return errors.WithStack(err)
 	}
-	rq := queue.NewRemoteUnordered(2)
-	s.remoteQueue = rq
-	if err = s.remoteQueue.Start(ctx); err != nil {
+	e.remoteQueue = rq
+	if err = e.remoteQueue.Start(ctx); err != nil {
 		return errors.Wrap(err, "problem starting remote queue")
 	}
 
 	// configure the local-only (memory-backed) queue.
-	s.localQueue = queue.NewLocalLimitedSize(2, 1024) // workers, capacity
-	if err = s.localQueue.Start(ctx); err != nil {
+	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
+	if err = e.localQueue.Start(ctx); err != nil {
 		return errors.Wrap(err, "problem starting local queue")
 	}
 

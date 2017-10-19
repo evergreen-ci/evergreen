@@ -24,7 +24,7 @@ func TestTaskTestResultSuite(t *testing.T) {
 }
 
 func (s *TaskTestResultSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 
 	s.tasks = []Task{}
 	for i := 0; i < 5; i++ {

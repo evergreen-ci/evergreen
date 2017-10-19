@@ -13,7 +13,7 @@ import (
 func ResolveErrors(ctx context.Context, q Queue) error {
 	catcher := grip.NewCatcher()
 
-	for result := range q.Results() {
+	for result := range q.Results(ctx) {
 		if err := ctx.Err(); err != nil {
 			catcher.Add(err)
 			break
@@ -40,4 +40,40 @@ func PopulateQueue(ctx context.Context, q Queue, jobs <-chan Job) error {
 	}
 
 	return catcher.Resolve()
+}
+
+// QueueReport holds the ids of all tasks in a queue by state.
+type QueueReport struct {
+	Completed  []string `json:"completed"`
+	InProgress []string `json:"in_progress"`
+	Pending    []string `json:"pending"`
+}
+
+// Report returns a QueueReport status for the state of a queue.
+func Report(ctx context.Context, q Queue, limit int) QueueReport {
+	var out QueueReport
+
+	if limit == 0 {
+		return out
+	}
+
+	var count int
+	for stat := range q.JobStats(ctx) {
+		switch {
+		case stat.Completed:
+			out.Completed = append(out.Completed, stat.ID)
+		case stat.InProgress:
+			out.InProgress = append(out.InProgress, stat.ID)
+		default:
+			out.Pending = append(out.Pending, stat.ID)
+		}
+
+		count++
+		if limit > 0 && count >= limit {
+			break
+		}
+
+	}
+
+	return out
 }

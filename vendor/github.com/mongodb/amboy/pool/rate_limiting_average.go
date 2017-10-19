@@ -10,6 +10,7 @@ import (
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -104,27 +105,45 @@ func (p *ewmaRateLimiting) Start(ctx context.Context) error {
 	jobs := startWorkerServer(ctx, p.queue)
 
 	for w := 1; w <= p.size; w++ {
-		go func() {
-			timer := time.NewTimer(0)
-			defer timer.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-timer.C:
-					select {
-					case <-ctx.Done():
-						return
-					case job := <-jobs:
-						interval := p.runJob(ctx, job)
-
-						timer.Reset(interval)
-					}
-				}
-			}
-		}()
+		go p.worker(ctx, jobs)
 	}
 	return nil
+}
+
+func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan amboy.Job) {
+	var (
+		err error
+		job amboy.Job
+	)
+
+	defer func() {
+		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
+		if err != nil {
+			if job != nil {
+				job.AddError(err)
+			}
+			// start a replacement worker.
+			go p.worker(ctx, jobs)
+		}
+	}()
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			select {
+			case <-ctx.Done():
+				return
+			case job := <-jobs:
+				interval := p.runJob(ctx, job)
+
+				timer.Reset(interval)
+			}
+		}
+	}
 }
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
