@@ -15,7 +15,7 @@ import (
 )
 
 func TestSetupScript(t *testing.T) {
-	c := SetupCommand{}
+	c := HostSetupCommand{}
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -70,7 +70,7 @@ func TestSetupScript(t *testing.T) {
 }
 
 func TestSetupScriptSudoShHelper(t *testing.T) {
-	c := SetupCommand{}
+	c := HostSetupCommand{}
 	assert := assert.New(t)
 
 	cmd := c.getShCommandWithSudo(context.Background(), "foo")

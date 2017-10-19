@@ -29,13 +29,13 @@ func main() {
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: opts})
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: opts})
 	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
-	parser.AddCommand("setup", "run a setup script", "", &cli.SetupCommand{})
 
 	host, _ := parser.AddCommand("host", "host-related commands", "", &struct{}{})
 	host.AddCommand("create", "spawn a host", "", &cli.HostCreateCommand{GlobalOpts: opts})
 	host.AddCommand("list", "list hosts", "", &cli.HostListCommand{GlobalOpts: opts})
 	host.AddCommand("terminate", "terminate a host", "", &cli.HostTerminateCommand{GlobalOpts: opts})
 	host.AddCommand("status", "return the status of a host", "", &cli.HostStatusCommand{GlobalOpts: opts})
+	host.AddCommand("setup", "run a setup script on a host", "", &cli.HostSetupCommand{})
 
 	service, _ := parser.AddCommand("service", "run evergreen services", "", &struct{}{})
 	service.AddCommand("runner", "start background task processing", "", &cli.ServiceRunnerCommand{})

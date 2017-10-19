@@ -566,7 +566,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		}
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
-		args := []string{lcr.BinaryPath, "setup"}
+		args := []string{lcr.BinaryPath, "host", "setup"}
 		if h.Distro.SetupAsSudo {
 			args = append(args, "--setup_as_sudo")
 		}
