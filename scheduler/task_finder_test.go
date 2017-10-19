@@ -62,6 +62,10 @@ func (s *TaskFinderSuite) SetupTest() {
 	s.NoError(db.Clear(task.Collection))
 }
 
+func (s *TaskFinderSuite) TearDownTest() {
+	s.NoError(db.Clear(task.Collection))
+}
+
 func (s *TaskFinderSuite) insertTasks() {
 	for _, task := range s.tasks {
 		s.NoError(task.Insert())
@@ -341,6 +345,10 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	s.NoError(err)
 	s.newRunnableTasks, err = FindRunnableTasks()
 	s.NoError(err)
+}
+
+func (s *TaskFinderComparisonSuite) TearDownTest() {
+	s.NoError(db.Clear(task.Collection))
 }
 
 func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
