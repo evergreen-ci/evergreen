@@ -185,9 +185,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	shouldExit, message := checkHostHealth(currentHost, agentRevision)
 	if shouldExit {
-		// set the host's last communication time to be zero
-		if err := currentHost.ResetLastCommunicated(); err != nil {
-			grip.Errorf("error resetting last communication time for host %s: %+v", currentHost.Id, err)
+		// set the needs new agent flag on the host
+		if err := currentHost.SetNeedsNewAgent(); err != nil {
+			grip.Errorf("error indicating host %s needs new agent: %+v", currentHost.Id, err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -305,9 +305,9 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	shouldExit, message := checkHostHealth(h, agentRevision)
 	if shouldExit {
-		// set the host's last communication time to be zero
-		if err = h.ResetLastCommunicated(); err != nil {
-			grip.Errorf("error resetting last communication time for host %s: %+v", h.Id, err)
+		// set the needs new agent flag on the host
+		if err = h.SetNeedsNewAgent(); err != nil {
+			grip.Errorf("error indicating host %s needs new agent: %+v", h.Id, err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
 		}

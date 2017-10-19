@@ -39,6 +39,7 @@ var (
 	LTCKey                   = bsonutil.MustHaveTag(Host{}, "LastTaskCompleted")
 	StatusKey                = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey         = bsonutil.MustHaveTag(Host{}, "AgentRevision")
+	NeedsNewAgentKey         = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
 	StartedByKey             = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey          = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	NotificationsKey         = bsonutil.MustHaveTag(Host{}, "Notifications")
@@ -321,9 +322,9 @@ func ByExpiredSince(time time.Time) db.Q {
 // failed to provision.
 var IsProvisioningFailure = db.Query(bson.D{{StatusKey, evergreen.HostProvisionFailed}})
 
-// ByRunningWithTimedOutLCT returns hosts that are running and either have no Last Commmunication Time
+// NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
 // or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
-func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
+func NeedsNewAgent(currentTime time.Time) db.Q {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return db.Query(bson.M{
 		StatusKey:    evergreen.HostRunning,
@@ -332,6 +333,7 @@ func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
 			{LastCommunicationTimeKey: bson.M{"$exists": false}},
+			{NeedsNewAgentKey: true},
 		},
 	})
 }

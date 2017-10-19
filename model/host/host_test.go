@@ -709,7 +709,7 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 	})
 }
 
-func TestFindByLCT(t *testing.T) {
+func TestFindNeedsNewAgent(t *testing.T) {
 	Convey("with the a given time for checking and an empty hosts collection", t, func() {
 		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
@@ -721,7 +721,7 @@ func TestFindByLCT(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(ByRunningWithTimedOutLCT(time.Now()))
+			hosts, err := Find(NeedsNewAgent(time.Now()))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
@@ -734,7 +734,7 @@ func TestFindByLCT(t *testing.T) {
 				foundHost, err := FindOne(ById(h.Id))
 				So(err, ShouldBeNil)
 				So(foundHost, ShouldNotBeNil)
-				hosts, err := Find(ByRunningWithTimedOutLCT(time.Now()))
+				hosts, err := Find(NeedsNewAgent(time.Now()))
 				So(err, ShouldBeNil)
 				So(len(hosts), ShouldEqual, 1)
 				So(hosts[0].Id, ShouldEqual, h.Id)
@@ -749,7 +749,7 @@ func TestFindByLCT(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			hosts, err := Find(NeedsNewAgent(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, anotherHost.Id)
@@ -763,13 +763,13 @@ func TestFindByLCT(t *testing.T) {
 				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
-			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			hosts, err := Find(NeedsNewAgent(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 			Convey("after resetting the LCT", func() {
 				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
 				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
-				h, err := Find(ByRunningWithTimedOutLCT(now))
+				h, err := Find(NeedsNewAgent(now))
 				So(err, ShouldBeNil)
 				So(len(h), ShouldEqual, 1)
 				So(h[0].Id, ShouldEqual, "testhost")
@@ -782,7 +782,7 @@ func TestFindByLCT(t *testing.T) {
 				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			hosts, err := Find(NeedsNewAgent(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
 		})
@@ -793,12 +793,23 @@ func TestFindByLCT(t *testing.T) {
 				StartedBy: "anotherUser",
 			}
 			So(h.Insert(), ShouldBeNil)
-			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			hosts, err := Find(NeedsNewAgent(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
-
 		})
-
+		Convey("with a host marked as needing a new agent", func() {
+			h := Host{
+				Id:            "h",
+				Status:        evergreen.HostRunning,
+				StartedBy:     evergreen.User,
+				NeedsNewAgent: true,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(NeedsNewAgent(now))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, "h")
+		})
 	})
 }
 
