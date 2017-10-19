@@ -108,3 +108,5 @@ func GetGlobalSessionFactory() SessionProvider {
 	}
 	return globalSessionProvider
 }
+
+func HasGlobalSessionProvider() bool { return globalSessionProvider != nil }

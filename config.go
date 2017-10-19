@@ -232,6 +232,13 @@ type LogBuffering struct {
 	BufferCount     int `yaml:"count"`
 }
 
+type AmboyConfig struct {
+	Name string `yaml:"name"`
+	DB string `yaml:"database"`
+	PoolSizeLocal int `yaml:"pool_size_local"`
+	PoolSizeRemote int `yaml:"pool_size_remote"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	Database            DBSettings                `yaml:"database"`
@@ -257,6 +264,7 @@ type Settings struct {
 	Runner              RunnerConfig              `yaml:"runner"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler"`
 	TaskRunner          TaskRunnerConfig          `yaml:"taskrunner"`
+	Amboy               AmboyConfig               `yaml:"amboy"`
 	Expansions          map[string]string         `yaml:"expansions"`
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
@@ -368,6 +376,13 @@ var configValidationRules = []configValidator{
 		}
 		return nil
 	},
+
+	func(settings *Settings) error {
+		if settings.Amboy.Name == "" {
+			settings.Amboy.Name = "service"
+		}
+
+	}
 
 	func(settings *Settings) error {
 		if settings.LogBuffering.DurationSeconds == 0 {

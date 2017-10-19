@@ -135,6 +135,12 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 )
 
+const (
+	defaultLogBufferingDuration = 20
+	defaultAmboyQueueName       = "service"
+	defaultAmboyPoolSize        = 2
+)
+
 var (
 	// UphostStatus is a list of all host statuses that are considered "up."
 	// This is used for query building.
