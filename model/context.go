@@ -58,16 +58,12 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 // GetProject returns the project associated with the Context.
 func (ctx *Context) GetProject() (*Project, error) {
 	var err error
-	var refs []ProjectRef
 
 	// if no project, use the first project as the default project
 	if ctx.ProjectRef == nil {
-		refs, err = FindAllProjectRefs()
+		ctx.ProjectRef, err = FindFirstProjectRef()
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding project ref")
-		}
-		if len(refs) > 0 {
-			ctx.ProjectRef = &refs[0]
 		}
 	}
 
