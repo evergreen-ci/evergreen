@@ -1,6 +1,7 @@
 package hostutil
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"time"
@@ -9,17 +10,22 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
-const HostCheckTimeout = 10 * time.Second
+const hostCheckTimeout = 10 * time.Second
 
 //CheckSSHResponse runs a test command over SSH to check whether or not the host
 //appears to be up and accepting ssh connections. Returns true/false if the check
 //passes or fails, or an error if the command cannot be attempted.
-func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) {
+func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []string) (bool, error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, hostCheckTimeout)
+	defer cancel()
+
 	hostInfo, err := util.ParseSSHInfo(hostObject.Host)
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "problem parsing ssh info for ")
 	}
 
 	if hostInfo.User == "" {
@@ -41,20 +47,25 @@ func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) 
 	done := make(chan error)
 	err = remoteCommand.Start()
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, "problem starting command")
 	}
 
 	go func() {
-		done <- remoteCommand.Wait()
+		select {
+		case done <- remoteCommand.Wait():
+			return
+		case <-ctx.Done():
+			return
+		}
 	}()
 
 	select {
-	case <-time.After(HostCheckTimeout):
+	case <-ctx.Done():
 		grip.Warning(remoteCommand.Stop())
-		return false, nil
+		return false, errors.New("host check operation canceled")
 	case err = <-done:
 		if err != nil {
-			return false, nil
+			return false, errors.Wrap(err, "error during host check operation")
 		}
 		return true, nil
 	}

@@ -1,6 +1,7 @@
 package ec2
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -94,7 +95,7 @@ func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, keyPath string) 
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(host, sshOpts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 }
 
 func (cloudManager *EC2Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {

@@ -3,6 +3,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -242,7 +243,7 @@ func (m *Manager) IsSSHReachable(h *host.Host, keyPath string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(h, sshOpts)
+	return hostutil.CheckSSHResponse(context.TODO(), h, sshOpts)
 }
 
 //IsUp checks the container's state by querying the Docker API and

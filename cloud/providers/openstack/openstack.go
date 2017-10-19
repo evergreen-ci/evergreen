@@ -1,6 +1,7 @@
 package openstack
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -196,7 +197,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 		return false, err
 	}
 
-	return hostutil.CheckSSHResponse(host, opts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the private IP address of the host.

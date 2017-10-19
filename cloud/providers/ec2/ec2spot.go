@@ -1,6 +1,7 @@
 package ec2
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -141,7 +142,7 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 	if err != nil {
 		return false, err
 	}
-	reachable, err := hostutil.CheckSSHResponse(host, sshOpts)
+	reachable, err := hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 	grip.Debugf("Checking host '%v' ssh reachability: %t", host.Id, reachable)
 
 	return reachable, err

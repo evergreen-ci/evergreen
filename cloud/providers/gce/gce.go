@@ -3,6 +3,8 @@
 package gce
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
@@ -213,7 +215,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 		return false, err
 	}
 
-	return hostutil.CheckSSHResponse(host, opts)
+	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the external IPv4 address of the host.

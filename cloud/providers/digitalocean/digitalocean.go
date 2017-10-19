@@ -1,6 +1,7 @@
 package digitalocean
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/rand"
@@ -232,7 +233,7 @@ func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath stri
 		return false, errors.WithStack(err)
 	}
 
-	ok, err := hostutil.CheckSSHResponse(host, sshOpts)
+	ok, err := hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 	return ok, errors.WithStack(err)
 }
 
