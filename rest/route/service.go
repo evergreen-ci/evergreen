@@ -59,6 +59,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
 		"/status/hosts/distros":                                getHostStatsByDistroManager,
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
+		"/keys":                                                getKeysRouteManager,
 	}
 
 	for path, getManager := range routes {

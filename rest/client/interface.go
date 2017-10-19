@@ -123,4 +123,7 @@ type Communicator interface {
 
 	// Fetch list of distributions evergreen can spawn
 	GetDistrosList(context.Context) ([]restmodel.APIDistro, error)
+
+	// Fetch the current authenticated user's public keys
+	GetCurrentUsersKeys(context.Context) ([]restmodel.APIPubKey, error)
 }

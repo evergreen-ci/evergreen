@@ -103,13 +103,10 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 			}
 			util.WriteJSON(&w, result.Result, http.StatusOK)
 		default:
-			if len(result.Result) < 1 {
-				http.Error(w, "{}", http.StatusInternalServerError)
-				return
-			} else if len(result.Result) > 1 {
-				util.WriteJSON(&w, result.Result, http.StatusOK)
-			} else {
+			if len(result.Result) == 1 {
 				util.WriteJSON(&w, result.Result[0], http.StatusOK)
+			} else {
+				util.WriteJSON(&w, result.Result, http.StatusOK)
 			}
 		}
 	}

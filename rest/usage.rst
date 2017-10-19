@@ -1148,3 +1148,37 @@ Fetch Version Cost By VersionID
 
  Fetches version cost associated with the specific version
 
+Keys
+----
+
+Objects
+~~~~~~~
+
+.. list-table:: **Key**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - name
+     - string
+     - The unique name of the public key
+   * - key
+     - string
+     - The public key, (e.g: 'ssh-rsa ...')
+
+Endpoints
+~~~~~~~~~
+
+Fetch Current User's SSH Public Keys
+````````````````````````````````````
+
+::
+
+ GET /keys
+
+ Fetch the SSH public keys of the current user (as determined by the
+ Api-User and Api-Key headers) as an array of Key objects.
+
+ If the user has no public keys, expect: []

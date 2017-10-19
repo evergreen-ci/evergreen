@@ -237,3 +237,26 @@ func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistr
 
 	return distros, nil
 }
+
+func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    "keys",
+	}
+
+	resp, client_err := c.request(ctx, info, "")
+	defer resp.Body.Close()
+	if client_err != nil {
+		return nil, errors.Wrap(client_err, "problem fetching keys list")
+	}
+
+	keys := []model.APIPubKey{}
+
+	err := util.ReadJSONInto(resp.Body, &keys)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing keys list")
+	}
+
+	return keys, nil
+}
