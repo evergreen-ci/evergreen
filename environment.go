@@ -45,11 +45,20 @@ type Environment interface {
 	// local and remote queues have started.
 	Configure(context.Context, string) error
 
-	// Returns the settings object.
+	// Returns the settings object. The settings object is not
+	// necessarily safe for concurrent access.
 	Settings() *Settings
+	Session() db.Session
+
+	// The Environment provides access to two queue's, a
+	// local-process level queue that is not persisted between
+	// runs, and a remote shared queue that all processes can use
+	// to distribute work amongst the application tier.
+	//
+	// The LocalQueue is not durable, and results aren't available
+	// between process restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
-	Session() db.Session
 }
 
 type envState struct {
@@ -101,8 +110,10 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 
 	opts := driver.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
+	opts.DB = e.settings.Amboy.DB = e.settings.Amboy.DB
+	opts.Priority = true
 
-	qmdb, err = driver.OpenNewMongoDB(ctx, "service", opts, e.session)
+	qmdb, err = driver.OpenNewMongoDB(ctx, e.settings.Amboy.Name, opts, e.session)
 	if err != nil {
 		return errors.Wrap(err, "problem setting queue backend")
 	}

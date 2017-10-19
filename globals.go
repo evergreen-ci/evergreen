@@ -137,12 +137,13 @@ const (
 
 const (
 	defaultLogBufferingDuration = 20
-	defaultAmboyQueueName       = "service"
 	defaultAmboyPoolSize        = 2
+	defaultAmboyQueueName       = "evg.service"
+	defaultAmboyDBName          = "amboy"
 )
 
 var (
-	// UphostStatus is a list of all host statuses that are considered "up."
+	// UphostStatus is a list of all hostb statuses that are considered "up."
 	// This is used for query building.
 	UphostStatus = []string{
 		HostRunning,

@@ -233,10 +233,10 @@ type LogBuffering struct {
 }
 
 type AmboyConfig struct {
-	Name string `yaml:"name"`
-	DB string `yaml:"database"`
-	PoolSizeLocal int `yaml:"pool_size_local"`
-	PoolSizeRemote int `yaml:"pool_size_remote"`
+	Name           string `yaml:"name"`
+	DB             string `yaml:"database"`
+	PoolSizeLocal  int    `yaml:"pool_size_local"`
+	PoolSizeRemote int    `yaml:"pool_size_remote"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
@@ -366,8 +366,6 @@ func (s *Settings) GetSender() (send.Sender, error) {
 // struct for any errors or missing required fields.
 type configValidator func(settings *Settings) error
 
-const defaultLogBufferingDuration = 20
-
 // ConfigValidationRules is the set of all ConfigValidator functions.
 var configValidationRules = []configValidator{
 	func(settings *Settings) error {
@@ -379,10 +377,23 @@ var configValidationRules = []configValidator{
 
 	func(settings *Settings) error {
 		if settings.Amboy.Name == "" {
-			settings.Amboy.Name = "service"
+			settings.Amboy.Name = defaultAmboyQueueName
 		}
 
-	}
+		if settings.Amboy.DB == "" {
+			settings.Amboy.DB = defaultAmboyDBName
+		}
+
+		if settings.Amboy.PoolSizeLocal == 0 {
+			settings.Amboy.PoolSizeLocal = defaultAmboyPoolSize
+		}
+
+		if settings.Amboy.PoolSizeRemote == 0 {
+			settings.Amboy.PoolSizeRemote = defaultAmboyPoolSize
+		}
+
+		return nil
+	},
 
 	func(settings *Settings) error {
 		if settings.LogBuffering.DurationSeconds == 0 {
