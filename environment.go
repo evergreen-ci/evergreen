@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"context"
 	"sync"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
@@ -9,7 +10,6 @@ import (
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/db"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	mgo "gopkg.in/mgo.v2"
 )
 

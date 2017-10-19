@@ -8,12 +8,12 @@ import (
 	"github.com/mongodb/anser/db"
 )
 
-var _ evergreen.Environment = &Evergreen{}
+var _ evergreen.Environment = &Environment{}
 
 type Environment struct {
 	Remote            amboy.Queue
 	Local             amboy.Queue
-	DBSession         db.Seesion
+	DBSession         db.Session
 	EvergreenSettings *evergreen.Settings
 }
 
