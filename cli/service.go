@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
+	"github.com/gorilla/csrf"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -84,6 +85,10 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	uiWait := make(chan struct{})
 	go func() {
+		if settings.Ui.CsrfKey != "" {
+			errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
+			uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
+		}
 		catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler))
 		close(uiWait)
 	}()

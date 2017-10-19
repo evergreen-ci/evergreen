@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/grip"
@@ -63,6 +64,7 @@ type ViewData struct {
 	Flashes     []interface{}
 	Banner      string
 	BannerTheme string
+	Csrf        htmlTemplate.HTML
 }
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
@@ -357,5 +359,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.User = userCtx
 	viewData.ProjectData = projectCtx
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
+	viewData.Csrf = csrf.TemplateField(r)
 	return viewData
 }

@@ -22,6 +22,12 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
 
         config.method = method;
         config.url = [baseUrl, resource].concat(idents).join('/');
+        var csrfElem = document.getElementsByName("gorilla.csrf.Token");
+        if (csrfElem && csrfElem.length > 0) {
+          config.headers = {
+             'X-CSRF-Token': csrfElem[0].value
+          };
+        };
 
         $http(config).then(callbacks.success || function() {}, callbacks.error || function() {});
     };
