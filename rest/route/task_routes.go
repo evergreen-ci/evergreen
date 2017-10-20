@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -401,7 +400,6 @@ type taskRestartHandler struct {
 // sets them on the taskRestartHandler to be used by Execute.
 func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
-	grip.Info(projCtx)
 	if projCtx.Task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
