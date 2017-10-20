@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	setupTimeout            = 2 * time.Minute
-	defaultWorkingDirectory = "~"
+	setupTimeout = 2 * time.Minute
 )
 
 // HostCreateCommand is the subcommand to spawn a host

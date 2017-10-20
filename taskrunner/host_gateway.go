@@ -88,7 +88,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 
 	if err != nil {
 		// mark the host's provisioning as failed
-		if err := hostObj.SetUnprovisioned(); err != nil {
+		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Errorf("unprovisioning host %s failed: %+v", hostObj.Id, err)
 		}
 		return errors.WithStack(err)

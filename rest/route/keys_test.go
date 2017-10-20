@@ -55,7 +55,7 @@ func (s *UserConnectorSuite) SetupTest() {
 
 func (s *UserConnectorSuite) TestGetSshKeysWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
-		s.rm.Methods[0].Execute(context.TODO(), s.sc)
+		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
 }
 
