@@ -15,7 +15,6 @@
 package recovery
 
 import (
-	"errors"
 	"os"
 	"strings"
 
@@ -99,12 +98,13 @@ func HandlePanicWithError(p interface{}, err error, opDetails ...string) error {
 	catcher.Add(err)
 
 	if p != nil {
-		ps := panicString(p)
-		catcher.Add(errors.New(ps))
+		perr := panicError(p)
+		catcher.Add(perr)
+
 		m := message.Fields{
 			message.FieldsMsgName: "hit panic; adding error",
 			"stack":               message.NewStack(2, "").Raw(),
-			"panic":               ps,
+			"panic":               perr.Error(),
 		}
 
 		if err != nil {
