@@ -99,6 +99,9 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	if err = hostObj.UpdateLastCommunicated(); err != nil {
 		return errors.Wrapf(err, "error setting LCT on host %s", hostObj.Id)
 	}
+	if err = hostObj.SetNeedsNewAgent(false); err != nil {
+		return errors.Wrapf(err, "error setting needs agent flag on host %s", hostObj.Id)
+	}
 	return nil
 }
 
