@@ -83,9 +83,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 		}
 	}
 
-	// Start agent to listen for tasks
 	err = startAgentOnRemote(settings, &hostObj, sshOptions)
-
 	if err != nil {
 		// mark the host's provisioning as failed
 		if err = hostObj.SetUnprovisioned(); err != nil {
@@ -124,43 +122,54 @@ func newCappedOutputLog() *util.CappedWriter {
 }
 
 // Prepare the remote machine to run a task.
-// 1. Create the directories on the remote host.
-// 2. Copy the binary to the remote host.
-// 3. Run the setup script with the binary.
+// This consists of:
+// 1. Creating the directories on the remote host where, according to the distro's settings,
+//    the agent should be placed.
+// 2. Copying the agent into that directory.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
-	// create the necessary sandbox of directories on the remote host
-	if err := runSSHCommand("mkdir", fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "failed to create directories on remote host")
-	}
-
-	// copy over the correct agent binary to the remote host
-	if err := runSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "error downloading agent binary on remote host")
-	}
-
-	// run the setup script with the agent
-	if err := runSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "error running setup script on remote host")
-	}
-
-	return agbh.GetAgentRevision()
-}
-
-func runSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
 	// compute any info necessary to ssh into the host
-	hostInfo, err := util.ParseSSHInfo(host.Host)
+	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %v", host.Host)
+		return "", errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
 
-	output := newCappedOutputLog()
-	shellCmd := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("%s-%s-%d", id, host.Id, rand.Int()),
-		CmdString:      cmd,
-		Stdout:         output,
-		Stderr:         output,
+	// first, create the necessary sandbox of directories on the remote machine
+	mkdirOutput := newCappedOutputLog()
+	makeShellCmd := &subprocess.RemoteCommand{
+		Id:             fmt.Sprintf("agent_mkdir-%v", rand.Int()),
+		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir),
+		Stdout:         mkdirOutput,
+		Stderr:         mkdirOutput,
 		RemoteHostName: hostInfo.Hostname,
-		User:           host.User,
+		User:           hostObj.User,
+		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
+	}
+	grip.Infof("Directories command: '%#v'", makeShellCmd)
+
+	// run the make shell command with a timeout
+	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
+	defer cancel()
+	err = makeShellCmd.Run(ctx)
+
+	grip.Notice(makeShellCmd.Stop())
+	if err != nil {
+		if err == util.ErrTimedOut {
+			return "", errors.Errorf("creating remote directories timed out: %s",
+				mkdirOutput.String())
+		}
+		return "", errors.Wrapf(err, "error creating directories on remote machine: %s",
+			mkdirOutput.String())
+	}
+
+	// third, copy over the correct agent binary to the remote machine
+	curlAgentOutput := newCappedOutputLog()
+	curlAgentCmd := &subprocess.RemoteCommand{
+		Id:             fmt.Sprintf("curl-%d-%s", rand.Int(), hostObj.Id),
+		CmdString:      hostutil.CurlCommand(settings.Ui.Url, &hostObj),
+		Stdout:         curlAgentOutput,
+		Stderr:         curlAgentOutput,
+		RemoteHostName: hostInfo.Hostname,
+		User:           hostObj.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 	}
 	grip.Info(message.Fields{
@@ -169,15 +178,20 @@ func runSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
 		"message": "running command over ssh",
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), SSHTimeout)
+	// run the command to curl the agent with a timeout
+	ctx, cancel = context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
-	err = shellCmd.Run(ctx)
-
-	grip.Notice(shellCmd.Stop())
+	err = curlAgentCmd.Run(ctx)
+	grip.Notice(curlAgentCmd.Stop())
 	if err != nil {
-		return errors.Errorf("error running shell cmd: %s (%v)", output.String(), err)
+		if err == util.ErrTimedOut {
+			return "", errors.Errorf("curl-ing agent binary timed out: %v", curlAgentOutput.String())
+		}
+		return "", errors.Errorf(
+			"error downloading agent binary to remote machine (%v): %v", err, curlAgentOutput.String())
 	}
-	return nil
+
+	return agbh.GetAgentRevision()
 }
 
 const logAggregationEnabled = false
@@ -199,15 +213,10 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
 	}
+
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
-	cmdId := fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int())
-	grip.Info(message.Fields{
-		"id":      cmdId,
-		"message": "starting agent on host",
-		"host":    hostObj.Id,
-		"command": remoteCmd,
-	})
+	grip.Info(remoteCmd)
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
@@ -218,7 +227,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 	// run the command to kick off the agent remotely
 	var startAgentLog bytes.Buffer
 	startAgentCmd := &subprocess.RemoteCommand{
-		Id:             cmdId,
+		Id:             fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int()),
 		CmdString:      remoteCmd,
 		Stdout:         &startAgentLog,
 		Stderr:         &startAgentLog,

@@ -35,7 +35,6 @@ func main() {
 	host.AddCommand("list", "list hosts", "", &cli.HostListCommand{GlobalOpts: opts})
 	host.AddCommand("terminate", "terminate a host", "", &cli.HostTerminateCommand{GlobalOpts: opts})
 	host.AddCommand("status", "return the status of a host", "", &cli.HostStatusCommand{GlobalOpts: opts})
-	host.AddCommand("setup", "run a setup script on a host", "", &cli.HostSetupCommand{})
 
 	service, _ := parser.AddCommand("service", "run evergreen services", "", &struct{}{})
 	service.AddCommand("runner", "start background task processing", "", &cli.ServiceRunnerCommand{})
