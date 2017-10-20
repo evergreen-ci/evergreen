@@ -20,7 +20,7 @@ const hostCheckTimeout = 10 * time.Second
 //passes or fails, or an error if the command cannot be attempted.
 func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []string) (bool, error) {
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, hostCheckTimeout)
+	ctx, cancel := context.WithTimeout(ctx, hostCheckTimeout)
 	defer cancel()
 
 	hostInfo, err := util.ParseSSHInfo(hostObject.Host)
@@ -62,7 +62,7 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	select {
 	case <-ctx.Done():
 		grip.Warning(remoteCommand.Stop())
-		return false, errors.New("host check operation canceled")
+		return false, nil
 	case err = <-done:
 		if err != nil {
 			return false, errors.Wrap(err, "error during host check operation")
