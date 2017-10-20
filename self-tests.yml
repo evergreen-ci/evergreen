@@ -180,6 +180,12 @@ functions:
         echo "building creds file!"
 
         cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
+        database:
+          url: "mongodb://localhost:27017"
+          db: "mci"
+          write_concern:
+            wmode: majority
+
         client_binaries_dir: "clients"
         credentials: {
           github: "${github_token}",

@@ -17,14 +17,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	testConf = testutil.TestConfig()
-)
-
-func init() {
-	db.SetGlobalSessionProvider(testConf.SessionFactory())
-}
-
 // Used as a template for task objects inserted/queried on within this file
 var testTask = &task.Task{
 	Id:                  "testTask",
