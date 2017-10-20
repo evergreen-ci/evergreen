@@ -30,13 +30,13 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.SchedulerDisabled {
-		grip.Info(message.Fields{
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  RunnerName,
 			"message": "scheduler is disabled, exiting",
 		})
 		return nil
 	}
-	grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
 		"time":    startTime,
