@@ -161,7 +161,11 @@ func runSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
 		User:           host.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 	}
-	grip.Infof("running command over ssh: %+v")
+	grip.Info(message.Fields{
+		"command": shellCmd,
+		"host_id": host.Id,
+		"message": "running command over ssh",
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), SSHTimeout)
 	defer cancel()
