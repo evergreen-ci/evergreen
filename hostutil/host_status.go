@@ -20,7 +20,7 @@ const hostCheckTimeout = 10 * time.Second
 //passes or fails, or an error if the command cannot be attempted.
 func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []string) (bool, error) {
 	var cancel context.CancelFunc
-	ctx, cancel := context.WithTimeout(ctx, hostCheckTimeout)
+	ctx, cancel = context.WithTimeout(ctx, hostCheckTimeout)
 	defer cancel()
 
 	hostInfo, err := util.ParseSSHInfo(hostObject.Host)
