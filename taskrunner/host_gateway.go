@@ -95,9 +95,11 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	}
 	grip.Infof("Agent successfully started for host %v", hostObj.Id)
 
-	err = hostObj.SetAgentRevision(agentRevision)
-	if err != nil {
-		return errors.WithStack(err)
+	if err = hostObj.SetAgentRevision(agentRevision); err != nil {
+		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
+	}
+	if err = hostObj.UpdateLastCommunicated(); err != nil {
+		return errors.Wrapf(err, "error setting LCT on host %s", hostObj.Id)
 	}
 	return nil
 }
