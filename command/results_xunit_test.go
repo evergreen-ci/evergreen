@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -153,8 +152,7 @@ func TestParseAndUpload(t *testing.T) {
 
 	err = xr.parseAndUploadResults(ctx, conf, logger, comm)
 	assert.NoError(err)
-	// need to wait for the mock logger to flush its message buffer before trying to read messages
-	time.Sleep(1 * time.Second)
+	assert.NoError(logger.Close())
 	messages := comm.GetMockMessages()[conf.Task.Id]
 
 	// spot check messages logged from sending logs to the mock communicator
