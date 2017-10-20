@@ -34,10 +34,12 @@ import (
 // for most error implementations.)
 type Catcher interface {
 	Add(error)
+	Extend([]error)
 	Len() int
 	HasErrors() bool
 	String() string
 	Resolve() error
+	Errors() []error
 }
 
 // multiCatcher provides an interface to collect and coalesse error
@@ -102,6 +104,36 @@ func (c *baseCatcher) HasErrors() bool {
 	defer c.mutex.RUnlock()
 
 	return len(c.errs) > 0
+}
+
+// Extend adds all non-nil errors, passed as arguments to the catcher.
+func (c *baseCatcher) Extend(errs []error) {
+	if len(errs) == 0 {
+		return
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+
+		c.errs = append(c.errs, err)
+	}
+}
+
+func (c *baseCatcher) Errors() []error {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	out := make([]error, len(c.errs))
+	for idx, e := range c.errs {
+		out[idx] = e
+	}
+
+	return out
 }
 
 // Resolve returns a final error object for the Catcher. If there are

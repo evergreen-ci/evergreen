@@ -133,3 +133,32 @@ func (s *CatcherSuite) TestConcurrentAddingOfErrors() {
 	wg.Wait()
 	s.Equal(s.catcher.Len(), 256)
 }
+
+func (s *CatcherSuite) TestErrorsAndExtendMethods() {
+	for i := 1; i <= 10; i++ {
+		s.catcher.Add(errors.New(strconv.Itoa(i)))
+		s.True(s.catcher.HasErrors())
+	}
+
+	errs := s.catcher.Errors()
+
+	s.Equal(s.catcher.Len(), 10)
+	s.Equal(s.catcher.Len(), len(errs))
+
+	s.catcher.Extend(errs)
+	s.Equal(s.catcher.Len(), 20)
+}
+
+func (s *CatcherSuite) TestExtendWithEmptySet() {
+	s.Equal(s.catcher.Len(), 0)
+	s.catcher.Extend(s.catcher.Errors())
+	s.Equal(s.catcher.Len(), 0)
+}
+
+func (s *CatcherSuite) TestExtendWithNilErrors() {
+	errs := []error{nil, errors.New("what"), nil}
+	s.Len(errs, 3)
+	s.catcher.Extend(errs)
+	s.Equal(s.catcher.Len(), 1)
+
+}

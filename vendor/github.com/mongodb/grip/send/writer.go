@@ -77,12 +77,15 @@ func (s *WriterSender) doSend() error {
 			return nil
 		}
 
+		lncp := make([]byte, len(line))
+		copy(lncp, line)
+
 		if err == nil {
-			s.Send(message.NewBytesMessage(s.priority, bytes.TrimRightFunc(line, unicode.IsSpace)))
+			s.Send(message.NewBytesMessage(s.priority, bytes.TrimRightFunc(lncp, unicode.IsSpace)))
 			continue
 		}
 
-		s.Send(message.NewBytesMessage(s.priority, bytes.TrimRightFunc(line, unicode.IsSpace)))
+		s.Send(message.NewBytesMessage(s.priority, bytes.TrimRightFunc(lncp, unicode.IsSpace)))
 		return err
 	}
 }

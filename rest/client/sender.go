@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultBufferTime = 15 * time.Second
-	bufferCount       = 100
+	bufferCount       = 1000
 )
 
 type logSender struct {
