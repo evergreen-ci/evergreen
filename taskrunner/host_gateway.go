@@ -173,8 +173,8 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 	}
 	grip.Info(message.Fields{
-		"command": shellCmd,
-		"host_id": host.Id,
+		"command": curlAgentCmd,
+		"host_id": hostObj.Id,
 		"message": "running command over ssh",
 	})
 
