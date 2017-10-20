@@ -10,7 +10,6 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
@@ -36,16 +35,16 @@ type ServiceWebCommand struct {
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
 	defer recovery.LogStackTraceAndExit("evergreen service")
-	settings, err := evergreen.NewSettings(c.ConfigPath)
-	if err != nil {
-		return errors.Wrap(err, "problem getting settings")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	if err := env.Configure(ctx, c.ConfigPath); err != nil {
+		return errors.Wrap(err, "problem configuring application environment")
 	}
 
-	if err = settings.Validate(); err != nil {
-		return errors.Wrap(err, "problem validating settings")
-	}
-
-	db.SetGlobalSessionProvider(settings.SessionFactory())
+	settings := env.Settings()
 
 	apiHandler, err := getHandlerAPI(settings)
 	if err != nil {
@@ -58,7 +57,6 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	}
 
 	pprofHandler := service.GetHandlerPprof(settings)
-
 	sender, err := settings.GetSender()
 	if err != nil {
 		return errors.WithStack(err)
@@ -75,25 +73,24 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	go util.SystemInfoCollector(ctx)
 
+	catcher := grip.NewBasicCatcher()
 	apiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, apiHandler)
+		catcher.Add(service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, apiHandler))
 		close(apiWait)
 	}()
 
 	uiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler)
+		catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler))
 		close(uiWait)
 	}()
 	pprofWait := make(chan struct{})
 	if settings.PprofPort != "" {
 		go func() {
-			err = service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler)
+			catcher.Add(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
 			close(pprofWait)
 		}()
 	} else {
@@ -104,7 +101,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	<-uiWait
 	<-pprofWait
 
-	return err
+	return catcher.Resolve()
 }
 
 func getHandlerAPI(settings *evergreen.Settings) (http.Handler, error) {

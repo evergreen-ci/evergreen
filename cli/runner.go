@@ -15,7 +15,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -44,18 +43,15 @@ type ServiceRunnerCommand struct {
 }
 
 func (c *ServiceRunnerCommand) Execute(_ []string) error {
-	var (
-		err      error
-		settings *evergreen.Settings
-	)
-	settings, err = evergreen.NewSettings(c.ConfigPath)
-	if err != nil {
-		return errors.Wrap(err, "problem getting settings")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env := evergreen.GetEnvironment()
+	if err := env.Configure(ctx, c.ConfigPath); err != nil {
+		return errors.Wrap(err, "problem configuring application environment")
 	}
 
-	if err = settings.Validate(); err != nil {
-		return errors.Wrap(err, "problem validating settings")
-	}
+	settings := env.Settings()
 
 	sender, err := settings.GetSender()
 	grip.CatchEmergencyFatal(err)
@@ -64,6 +60,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	grip.SetName("evg-runner")
 	grip.Warning(grip.SetDefaultLevel(level.Info))
 	grip.Warning(grip.SetThreshold(level.Debug))
+
 	defer recovery.LogStackTraceAndExit("evergreen runner")
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
@@ -71,12 +68,10 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	if home := evergreen.FindEvergreenHome(); home == "" {
 		grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
 	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
 	go hostStatsCollector(ctx)
-	db.SetGlobalSessionProvider(settings.SessionFactory())
 
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {

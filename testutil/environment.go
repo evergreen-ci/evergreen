@@ -8,6 +8,8 @@ import (
 	"github.com/mongodb/anser/db"
 )
 
+// this is just a hack to ensure that compile breaks clearly if the
+// mock implementation diverges from the interface
 var _ evergreen.Environment = &Environment{}
 
 type Environment struct {

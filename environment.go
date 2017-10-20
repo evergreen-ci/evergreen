@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -73,22 +74,49 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	defer e.mu.Unlock()
 
 	// make sure we don't reconfigure (and leak resources)
-	if e.settings != nil || legacyDB.HasGlobalSessionProvider() {
+	if e.settings != nil {
 		return errors.New("cannot reconfigre a configured environment")
 	}
 
-	var err error
+	if err := e.initSettings(confPath); err != nil {
+		return errors.WithStack(err)
+	}
 
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Add(e.initDB())
+	catcher.Add(e.createQueues(ctx))
+	catcher.Extend(e.initQueues(ctx))
+
+	return catcher.Resolve()
+}
+
+func (e *envState) initSettings(path string) error {
 	// read configuration from the file and validate.
 	// at some point this should just be read from the database at
 	// a later stage, and populated with default values if it
 	// isn't in the db.
-	e.settings, err = NewSettings(confPath)
-	if err != nil {
-		return errors.Wrap(err, "problem getting settings")
+
+	var err error
+
+	if e.settings == nil {
+		// this helps us test the validate method
+		e.settings, err = NewSettings(path)
+		if err != nil {
+			return errors.Wrap(err, "problem getting settings")
+		}
 	}
+
 	if err = e.settings.Validate(); err != nil {
 		return errors.Wrap(err, "problem validating settings")
+	}
+
+	return nil
+}
+
+func (e *envState) initDB() error {
+	if legacyDB.HasGlobalSessionProvider() {
+		grip.Warning("database session configured; reconfiguring")
 	}
 
 	// set up the database connection configuration using the
@@ -98,19 +126,26 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	sf := e.settings.SessionFactory()
 	legacyDB.SetGlobalSessionProvider(sf)
 
+	var err error
+
 	e.session, _, err = sf.GetSession()
-	if err != nil {
-		return errors.Wrap(err, "problem getting database session")
-	}
+
+	return errors.Wrap(err, "problem getting database session")
+}
+
+func (e *envState) createQueues(ctx context.Context) error {
+	// configure the local-only (memory-backed) queue.
+	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 
 	// configure the remote mongodb-backed amboy
 	// queue.
-	var qmdb *driver.MongoDB
-
 	opts := driver.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
+
+	var qmdb *driver.MongoDB
+	var err error
 
 	qmdb, err = driver.OpenNewMongoDB(ctx, e.settings.Amboy.Name, opts, e.session)
 	if err != nil {
@@ -121,17 +156,17 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 		return errors.WithStack(err)
 	}
 	e.remoteQueue = rq
-	if err = e.remoteQueue.Start(ctx); err != nil {
-		return errors.Wrap(err, "problem starting remote queue")
-	}
-
-	// configure the local-only (memory-backed) queue.
-	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
-	if err = e.localQueue.Start(ctx); err != nil {
-		return errors.Wrap(err, "problem starting local queue")
-	}
 
 	return nil
+}
+
+func (e *envState) initQueues(ctx context.Context) []error {
+	catcher := grip.NewBasicCatcher()
+
+	catcher.Add(e.localQueue.Start(ctx))
+	catcher.Add(e.remoteQueue.Start(ctx))
+
+	return catcher.Errors()
 }
 
 func (e *envState) Settings() *Settings {
