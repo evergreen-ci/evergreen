@@ -915,7 +915,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
-			expectedErr := "Unable to fetch associated project"
+			expectedErr := "Project not found"
 			So(err.Error(), ShouldContainSubstring, expectedErr)
 		})
 		Convey("then should error on empty task", func() {
