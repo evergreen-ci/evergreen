@@ -60,7 +60,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	grip.Info(message.Fields{
-		"message":  "found runable tasks",
+		"message":  "found runnable tasks",
 		"count":    len(runnableTasks),
 		"duration": time.Since(startAt),
 		"span":     time.Since(startAt).String(),
