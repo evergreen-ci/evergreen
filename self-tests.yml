@@ -452,6 +452,9 @@ tasks:
     tags: ["nodb", "race", "agent"]
     name: race-rest-client
   - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-hostinit
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
     name: race-cli
   - <<: *run-go-test-suite-with-mongodb
