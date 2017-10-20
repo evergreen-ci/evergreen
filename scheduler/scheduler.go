@@ -53,12 +53,18 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	// find all tasks ready to be run
 	grip.Info("Finding runnable tasks...")
 
+	startAt := time.Now()
 	runnableTasks, err := s.FindRunnableTasks()
 	if err != nil {
 		return errors.Wrap(err, "Error finding runnable tasks")
 	}
 
-	grip.Infof("There are %d tasks ready to be run", len(runnableTasks))
+	grip.Info(message.Fields{
+		"message":  "found runnable tasks",
+		"count":    len(runnableTasks),
+		"duration": time.Since(startAt),
+		"span":     time.Since(startAt).String(),
+	})
 
 	// split the tasks by distro
 	tasksByDistro, taskRunDistros, err := s.splitTasksByDistro(runnableTasks)
