@@ -62,7 +62,7 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	select {
 	case <-ctx.Done():
 		grip.Warning(remoteCommand.Stop())
-		return false, errors.New("host check operation canceled")
+		return false, nil
 	case err = <-done:
 		if err != nil {
 			return false, errors.Wrap(err, "error during host check operation")
