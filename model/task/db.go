@@ -611,6 +611,21 @@ func FindOne(query db.Q) (*Task, error) {
 	return task, err
 }
 
+func FindOneId(id string) (*Task, error) {
+	task := &Task{}
+	query := db.Query(bson.M{IdKey: id})
+	err := db.FindOneQ(Collection, query, task)
+
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "")
+	}
+
+	return task, nil
+}
+
 // FindOneOld returns one task from the old tasks collection that satisfies the query.
 func FindOneOld(query db.Q) (*Task, error) {
 	task := &Task{}
@@ -648,10 +663,10 @@ func Find(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 	// for i, task := range tasks {
-	// 	if err = task.MergeNewTestResults(); err != nil {
-	// 		return nil, errors.Wrap(err, "error merging new test results")
-	// 	}
-	// 	tasks[i] = task
+	//	if err = task.MergeNewTestResults(); err != nil {
+	//		return nil, errors.Wrap(err, "error merging new test results")
+	//	}
+	//	tasks[i] = task
 	// }
 	return tasks, err
 }

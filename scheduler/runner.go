@@ -49,10 +49,18 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		&DBTaskDurationEstimator{},
 		&DBTaskQueuePersister{},
 		&DurationBasedHostAllocator{},
-		FindRunnableTasks,
+		LegacyFindRunnableTasks,
 	}
-	if config.Scheduler.UseLegacyTaskFinder {
+
+	switch config.Scheduler.TaskFinder {
+	case "parallel":
+		schedulerInstance.FindRunnableTasks = ParallelTaskFinder
+	case "legacy":
 		schedulerInstance.FindRunnableTasks = LegacyFindRunnableTasks
+	case "pipeline":
+		schedulerInstance.FindRunnableTasks = FindRunnableTasks
+	case "alternate":
+		schedulerInstance.FindRunnableTasks = AlternateTaskFinder
 	}
 
 	if err := schedulerInstance.Schedule(ctx); err != nil {
