@@ -142,9 +142,13 @@ type TaskFinderComparisonSuite struct {
 }
 
 func (s *TaskFinderComparisonSuite) SetupTest() {
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
+	s.NoError(err)
 	s.NotNil(session)
+	defer session.Close()
 	s.NoError(db.Clear(task.Collection))
+
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("activated", "status"))
 
 	s.tasks = s.tasksGenerator()
 	s.NotEmpty(s.tasks)
@@ -153,8 +157,6 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 		task.Tags = []string{"tag1", "tag2"}
 		s.NoError(task.Insert())
 	}
-
-	var err error
 
 	s2start := time.Now()
 	s.newRunnableTasks, err = FindRunnableTasks()
@@ -177,11 +179,11 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	s.NoError(err)
 
 	grip.Notice(message.Fields{
-		"length":      len(s.tasks),
-		"legacy":      s1dur.String(),
-		"pipeline":    s2dur.String(),
 		"alternative": s3dur.String(),
+		"legacy":      s1dur.String(),
+		"length":      len(s.tasks),
 		"parallel":    s4dur.String(),
+		"pipeline":    s2dur.String(),
 	})
 }
 
