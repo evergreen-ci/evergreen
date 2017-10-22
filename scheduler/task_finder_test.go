@@ -148,7 +148,8 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 	defer session.Close()
 	s.NoError(db.Clear(task.Collection))
 
-	s.NoError(mdb.C(task.Collection).EnsureIndexKey("activated", "status"))
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("activated", "status", "priority"))
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("depends_on._id"))
 
 	s.tasks = s.tasksGenerator()
 	s.NotEmpty(s.tasks)
@@ -158,25 +159,33 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 		s.NoError(task.Insert())
 	}
 
+	grip.Info("start new")
 	s2start := time.Now()
 	s.newRunnableTasks, err = FindRunnableTasks()
 	s2dur := time.Since(s2start)
 	s.NoError(err)
+	grip.Info("end db")
 
+	grip.Info("start legacy")
 	s1start := time.Now()
 	s.oldRunnableTasks, err = LegacyFindRunnableTasks()
 	s1dur := time.Since(s1start)
 	s.NoError(err)
+	grip.Info("end legacy")
 
+	grip.Info("start alternate")
 	s3start := time.Now()
 	s.altRunnableTasks, err = AlternateTaskFinder()
 	s3dur := time.Since(s3start)
 	s.NoError(err)
+	grip.Info("end alt")
 
+	grip.Info("start parallel")
 	s4start := time.Now()
 	s.pllRunnableTasks, err = ParallelTaskFinder()
 	s4dur := time.Since(s4start)
 	s.NoError(err)
+	grip.Info("end parallel")
 
 	grip.Notice(message.Fields{
 		"alternative": s3dur.String(),
