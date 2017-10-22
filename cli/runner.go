@@ -73,7 +73,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
 	go hostStatsCollector(ctx)
-	go amboyStatsCollector(ctx)
+	go amboyStatsCollector(ctx, env)
 
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {
@@ -96,7 +96,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	return errors.WithStack(err)
 }
 
-func amboyStatsCollector(ctx context.Context, env evergren.Environment) {
+func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
 	defer recovery.LogStackTraceAndContinue("task stats collector")
 
 	const interval = time.Minute
