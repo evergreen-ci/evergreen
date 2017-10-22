@@ -12,7 +12,7 @@ import (
 
 func TestRecentTasks(t *testing.T) {
 	assert := assert.New(t)
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	err := db.Clear(Collection)
 	assert.NoError(err)
 

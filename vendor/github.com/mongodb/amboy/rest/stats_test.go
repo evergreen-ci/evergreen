@@ -32,7 +32,7 @@ func TestStatusOuputGenerator(t *testing.T) {
 }
 
 func TestStatusMethod(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	ctx := context.Background()
 	service := NewService()
 

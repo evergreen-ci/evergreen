@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func hostIdInSlice(hosts []Host, id string) bool {
@@ -420,7 +420,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 func TestFindRunningSpawnedHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 		" clearing '%v' collection", Collection)

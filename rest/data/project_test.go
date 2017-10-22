@@ -26,7 +26,7 @@ func TestProjectConnectorGetSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestProjectConnectorGetSuite")
-		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		projects := []*model.ProjectRef{
 			{Identifier: "projectA", Private: false},

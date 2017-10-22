@@ -11,10 +11,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
-}
-
 func TestSetupFuncs(t *testing.T) {
 
 	var taskComparator *CmpBasedTaskComparator

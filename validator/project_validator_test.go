@@ -17,10 +17,6 @@ import (
 
 var projectValidatorConf = tu.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectValidatorConf))
-}
-
 func TestVerifyTaskDependencies(t *testing.T) {
 	Convey("When validating a project's dependencies", t, func() {
 		Convey("if any task has a duplicate dependency, an error should be returned", func() {

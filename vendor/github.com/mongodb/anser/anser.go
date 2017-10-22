@@ -101,7 +101,7 @@ func (a *Application) Run(ctx context.Context) error {
 		return errors.New("migration operation canceled")
 	}
 
-	numMigrations, err := addMigrationJobs(queue, a.DryRun)
+	numMigrations, err := addMigrationJobs(ctx, queue, a.DryRun)
 	if err != nil {
 		return errors.New("problem adding generated migration jobs")
 	}

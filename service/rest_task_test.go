@@ -23,10 +23,6 @@ import (
 
 var taskTestConfig = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskTestConfig))
-}
-
 func insertTaskForTesting(taskId, versionId, projectName string, testResult task.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,

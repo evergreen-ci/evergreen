@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"time"
 
 	"github.com/mongodb/grip"
 )
@@ -135,8 +136,17 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 )
 
+const (
+	defaultLogBufferingDuration  = 20
+	defaultMgoDialTimeout        = 5 * time.Second
+	defaultAmboyPoolSize         = 2
+	defaultAmboyLocalStorageSize = 1024
+	defaultAmboyQueueName        = "evg.service"
+	defaultAmboyDBName           = "amboy"
+)
+
 var (
-	// UphostStatus is a list of all host statuses that are considered "up."
+	// UphostStatus is a list of all hostb statuses that are considered "up."
 	// This is used for query building.
 	UphostStatus = []string{
 		HostRunning,

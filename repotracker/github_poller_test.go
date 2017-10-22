@@ -46,7 +46,7 @@ func resetProjectRefs() {
 }
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	resetProjectRefs()
 }
 

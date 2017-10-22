@@ -18,7 +18,7 @@ import (
 var projectTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectTestConfig))
+	db.SetGlobalSessionProvider(projectTestConfig.SessionFactory())
 }
 
 func TestBucketResource(t *testing.T) {

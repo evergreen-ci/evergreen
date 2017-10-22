@@ -22,10 +22,6 @@ import (
 
 var buildTestConfig = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(buildTestConfig))
-}
-
 func TestGetBuildInfo(t *testing.T) {
 
 	userManager, err := auth.LoadUserManager(buildTestConfig.AuthConfig)

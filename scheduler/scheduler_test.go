@@ -20,7 +20,7 @@ import (
 var schedulerTestConf = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
+	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
 }
 
 const versionProjectString = `

@@ -27,7 +27,7 @@ func TestOpenStackSuite(t *testing.T) {
 }
 
 func (s *OpenStackSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *OpenStackSuite) SetupTest() {

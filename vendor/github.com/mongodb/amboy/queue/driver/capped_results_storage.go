@@ -9,6 +9,7 @@ package driver
 
 import (
 	"container/heap"
+	"context"
 	"sync"
 	"time"
 
@@ -77,17 +78,20 @@ func (s *CappedResultStorage) Get(name string) (amboy.Job, bool) {
 
 // Contents is a generator that produces all jobs in the results
 // storage. The order is random.
-func (s *CappedResultStorage) Contents() <-chan amboy.Job {
+func (s *CappedResultStorage) Contents(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
 	go func() {
+		defer close(output)
 		s.mutex.RLock()
 		defer s.mutex.RUnlock()
 
 		for _, job := range s.table {
+			if ctx.Err() != nil {
+				return
+			}
 			output <- job
 		}
-		close(output)
 	}()
 
 	return output

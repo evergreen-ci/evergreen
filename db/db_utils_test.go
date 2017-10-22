@@ -21,7 +21,7 @@ func TestDBUtils(t *testing.T) {
 		FieldThree string `bson:"field_three"`
 	}
 
-	SetGlobalSessionProvider(SessionFactoryFromConfig(dbUtilsTestConf))
+	SetGlobalSessionProvider(dbUtilsTestConf.SessionFactory())
 
 	collection := "test_collection"
 

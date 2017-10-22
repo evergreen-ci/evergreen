@@ -131,11 +131,11 @@ func (s *UnorderedGroupSuite) TestPoolStartsAndProcessesJobs() {
 
 	queueTwo := NewQueueTesterInstance()
 	jobsTwo := []amboy.Job{
-		job.NewShellJob("echo one", ""),
-		job.NewShellJob("echo two", ""),
-		job.NewShellJob("echo three", ""),
-		job.NewShellJob("echo four", ""),
-		job.NewShellJob("echo five", ""),
+		job.NewShellJob("echo one+", ""),
+		job.NewShellJob("echo two+", ""),
+		job.NewShellJob("echo three+", ""),
+		job.NewShellJob("echo four+", ""),
+		job.NewShellJob("echo five+", ""),
 	}
 
 	for _, job := range jobsTwo {
@@ -167,7 +167,6 @@ func (s *UnorderedGroupSuite) TestPoolStartsAndProcessesJobs() {
 		s.True(job.Status().Completed, fmt.Sprintf("%T\n\t%+v", job, job))
 		s.NoError(job.Error())
 	}
-	s.T().SkipNow()
 
 	for _, job := range jobsTwo {
 		s.True(job.Status().Completed, fmt.Sprintf("%T\n\t%+v", job, job))

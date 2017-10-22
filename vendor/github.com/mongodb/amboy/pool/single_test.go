@@ -23,7 +23,7 @@ func TestSingleWorkerSuite(t *testing.T) {
 }
 
 func (s *SingleRunnerSuite) SetupSuite() {
-	grip.SetThreshold(level.Info)
+	s.NoError(grip.SetThreshold(level.Info))
 }
 
 func (s *SingleRunnerSuite) SetupTest() {

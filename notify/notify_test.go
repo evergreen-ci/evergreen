@@ -76,7 +76,7 @@ var (
 var TestConfig = testutil.TestConfig()
 
 func TestNotify(t *testing.T) {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(TestConfig))
+	db.SetGlobalSessionProvider(TestConfig.SessionFactory())
 	emailSubjects = make([]string, 0)
 	emailBodies = make([]string, 0)
 

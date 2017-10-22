@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func TestGetNewRevisionOrderNumber(t *testing.T) {

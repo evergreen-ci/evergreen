@@ -22,7 +22,7 @@ func TestSchedulerSuite(t *testing.T) {
 	s := new(SchedulerConnectorSuite)
 	s.scheduler = &Scheduler{}
 	testutil.ConfigureIntegrationTest(t, schedulerTestConf, "TestSchedulerSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
+	db.SetGlobalSessionProvider(schedulerTestConf.SessionFactory())
 
 	suite.Run(t, s)
 }

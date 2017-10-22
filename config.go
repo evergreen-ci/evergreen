@@ -4,9 +4,11 @@ import (
 	"io/ioutil"
 	"time"
 
+	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -232,6 +234,14 @@ type LogBuffering struct {
 	BufferCount     int `yaml:"count"`
 }
 
+type AmboyConfig struct {
+	Name           string `yaml:"name"`
+	DB             string `yaml:"database"`
+	PoolSizeLocal  int    `yaml:"pool_size_local"`
+	PoolSizeRemote int    `yaml:"pool_size_remote"`
+	LocalStorage   int    `yaml:"local_storage_size"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	Database            DBSettings                `yaml:"database"`
@@ -257,6 +267,7 @@ type Settings struct {
 	Runner              RunnerConfig              `yaml:"runner"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler"`
 	TaskRunner          TaskRunnerConfig          `yaml:"taskrunner"`
+	Amboy               AmboyConfig               `yaml:"amboy"`
 	Expansions          map[string]string         `yaml:"expansions"`
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
@@ -354,11 +365,21 @@ func (s *Settings) GetSender() (send.Sender, error) {
 	return send.NewConfiguredMultiSender(senders...), nil
 }
 
+// SessionFactory creates a usable SessionFactory from
+// the Evergreen settings.
+func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
+	safety := mgo.Safe{}
+	safety.W = settings.Database.WriteConcernSettings.W
+	safety.WMode = settings.Database.WriteConcernSettings.WMode
+	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
+	safety.FSync = settings.Database.WriteConcernSettings.FSync
+	safety.J = settings.Database.WriteConcernSettings.J
+	return legacyDB.NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultMgoDialTimeout)
+}
+
 // ConfigValidator is a type of function that checks the settings
 // struct for any errors or missing required fields.
 type configValidator func(settings *Settings) error
-
-const defaultLogBufferingDuration = 20
 
 // ConfigValidationRules is the set of all ConfigValidator functions.
 var configValidationRules = []configValidator{
@@ -366,6 +387,30 @@ var configValidationRules = []configValidator{
 		if settings.Database.Url == "" || settings.Database.DB == "" {
 			return errors.New("DBUrl and DB must not be empty")
 		}
+		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.Amboy.Name == "" {
+			settings.Amboy.Name = defaultAmboyQueueName
+		}
+
+		if settings.Amboy.DB == "" {
+			settings.Amboy.DB = defaultAmboyDBName
+		}
+
+		if settings.Amboy.PoolSizeLocal == 0 {
+			settings.Amboy.PoolSizeLocal = defaultAmboyPoolSize
+		}
+
+		if settings.Amboy.PoolSizeRemote == 0 {
+			settings.Amboy.PoolSizeRemote = defaultAmboyPoolSize
+		}
+
+		if settings.Amboy.LocalStorage == 0 {
+			settings.Amboy.LocalStorage = defaultAmboyLocalStorageSize
+		}
+
 		return nil
 	},
 

@@ -24,7 +24,7 @@ func TestTaskConnectorSuite(t *testing.T) {
 	s := new(TaskConnectorSuite)
 	s.ctx = &DBConnector{}
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Tear down
 	assert.NoError(db.Clear(task.Collection))

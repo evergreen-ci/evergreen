@@ -18,6 +18,7 @@ type JobTest struct {
 	Name       string
 	Content    string
 	shouldFail bool
+	hadError   bool
 	status     amboy.JobStatusInfo
 	T          amboy.JobType
 	dep        dependency.Manager
@@ -63,6 +64,12 @@ func (j *JobTest) Error() error {
 	}
 
 	return nil
+}
+
+func (j *JobTest) AddError(err error) {
+	if err != nil {
+		j.hadError = true
+	}
 }
 
 func (j *JobTest) Type() amboy.JobType {

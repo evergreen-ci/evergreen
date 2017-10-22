@@ -13,10 +13,6 @@ import (
 
 var taskQueuePersisterTestConf = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueuePersisterTestConf))
-}
-
 func TestDBTaskQueuePersister(t *testing.T) {
 
 	var taskQueuePersister *DBTaskQueuePersister

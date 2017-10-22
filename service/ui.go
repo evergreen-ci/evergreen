@@ -67,7 +67,7 @@ type ViewData struct {
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 	uis := &UIServer{}
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
+	db.SetGlobalSessionProvider(settings.SessionFactory())
 
 	if err := settings.Validate(); err != nil {
 		return nil, errors.WithStack(err)

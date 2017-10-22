@@ -29,7 +29,7 @@ func TestVSphereSuite(t *testing.T) {
 }
 
 func (s *VSphereSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *VSphereSuite) SetupTest() {

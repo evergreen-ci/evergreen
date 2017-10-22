@@ -19,7 +19,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 	comm := client.NewMock("http://localhost.com")
 
 	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
 

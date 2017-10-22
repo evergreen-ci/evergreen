@@ -18,8 +18,7 @@ import (
 var taskHistoryTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(taskHistoryTestConfig))
+	db.SetGlobalSessionProvider(taskHistoryTestConfig.SessionFactory())
 }
 
 func TestTaskHistory(t *testing.T) {

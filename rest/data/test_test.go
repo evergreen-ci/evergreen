@@ -16,7 +16,7 @@ import (
 
 func TestFindTestsByTaskId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	assert.NoError(t, db.Clear(task.Collection))
 
 	serviceContext := &DBConnector{}

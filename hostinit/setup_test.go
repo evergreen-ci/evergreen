@@ -21,7 +21,7 @@ import (
 
 func init() {
 	reporting.QuietMode()
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func TestSetupReadyHosts(t *testing.T) {

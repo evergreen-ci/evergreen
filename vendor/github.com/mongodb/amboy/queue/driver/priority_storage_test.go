@@ -36,7 +36,7 @@ func (s *PriorityStorageSuite) TestInitialInstanceHasNoItems() {
 
 func (s *PriorityStorageSuite) TestAddingJobsToStorageImpactsSize() {
 	for i := 0; i < 10; i++ {
-		s.ps.Push(job.NewShellJob("true", ""))
+		s.NoError(s.ps.Insert(job.NewShellJob("true", "")))
 	}
 	s.Len(s.ps.table, 10)
 	s.Equal(10, s.ps.Size())
@@ -46,11 +46,11 @@ func (s *PriorityStorageSuite) TestAddingJobsToStorageImpactsSize() {
 func (s *PriorityStorageSuite) TestJobsAreUniqueInQueueSafeToAddMultipleTimes() {
 	j := job.NewShellJob("echo unique", "")
 
-	s.ps.Push(j)
+	s.NoError(s.ps.Insert(j))
 	s.Equal(1, s.ps.Size())
 	s.Equal(1, s.ps.Pending())
-	s.ps.Push(j)
 
+	s.ps.Save(j)
 	s.Equal(1, s.ps.Size())
 	s.Equal(1, s.ps.Pending())
 
@@ -59,18 +59,23 @@ func (s *PriorityStorageSuite) TestJobsAreUniqueInQueueSafeToAddMultipleTimes() 
 	s.Equal(0, s.ps.Pending())
 	s.Equal(popedJob, j)
 
-	s.ps.Push(popedJob)
+	s.Error(s.ps.Insert(popedJob))
+	s.Equal(1, s.ps.Size())
+	s.Equal(0, s.ps.Pending())
+
+	// legacy behavior holds that this is true for complete jobs.
+	s.ps.Save(popedJob)
 	s.Equal(1, s.ps.Size())
 	s.Equal(0, s.ps.Pending())
 }
 
-func (s *PriorityStorageSuite) TestPushExistingJobUpdatesPriorityInQueue() {
+func (s *PriorityStorageSuite) TestSaveExistingJobUpdatesPriorityInQueue() {
 	first := job.NewShellJob("true", "")
-	s.ps.Push(first)
+	s.NoError(s.ps.Insert(first))
 	for i := 0; i < 20; i++ {
 		j := job.NewShellJob("echo heard", "")
 		j.SetPriority(i + 1)
-		s.ps.Push(j)
+		s.ps.Save(j)
 	}
 	s.Equal(21, s.ps.Size())
 	s.Equal(21, s.ps.Pending())
@@ -80,7 +85,7 @@ func (s *PriorityStorageSuite) TestPushExistingJobUpdatesPriorityInQueue() {
 	s.NotEqual(firstOut.ID(), first.ID())
 
 	first.SetPriority(50)
-	s.ps.Push(first)
+	s.ps.Save(first)
 	s.Equal(20, s.ps.Pending())
 	s.Equal(21, s.ps.Size())
 
@@ -99,7 +104,7 @@ func (s *PriorityStorageSuite) TestPopWithEmptyInstanceReturnsNil() {
 func (s *PriorityStorageSuite) TestGetReturnsNamedJob() {
 	j := job.NewShellJob("true", "")
 
-	s.ps.Push(j)
+	s.NoError(s.ps.Insert(j))
 	s.Equal(1, s.ps.Size())
 	s.Equal(1, s.ps.Pending())
 
@@ -113,7 +118,7 @@ func (s *PriorityStorageSuite) TestGetReturnsNamedJob() {
 func (s *PriorityStorageSuite) TestGetReturnsNilWhenJobDoesNotExist() {
 	j := job.NewShellJob("true", "")
 
-	s.ps.Push(j)
+	s.NoError(s.ps.Insert(j))
 	s.Equal(1, s.ps.Size())
 	s.Equal(1, s.ps.Pending())
 
@@ -128,7 +133,7 @@ func (s *PriorityStorageSuite) TestJobServerPushesJobsInPriorityOrder() {
 	for i := 0; i < 25; i++ {
 		j := job.NewShellJob("echo ordered", "")
 		j.SetPriority(i + 1)
-		s.ps.Push(j)
+		s.ps.Save(j)
 	}
 
 	s.Equal(25, s.ps.Size())
@@ -165,7 +170,7 @@ func (s *PriorityStorageSuite) TestCanceledJobServerReturnsEarly() {
 func (s *PriorityStorageSuite) TestContentsGeneratorOutputIncludesAllJobs() {
 	for i := 0; i < 50; i++ {
 		j := job.NewShellJob("echo ordered", "")
-		s.ps.Push(j)
+		s.ps.Save(j)
 
 		if i%3 == 0 {
 			s.NotNil(s.ps.Pop())

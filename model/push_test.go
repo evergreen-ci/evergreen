@@ -13,7 +13,7 @@ import (
 var pushTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(pushTestConfig))
+	db.SetGlobalSessionProvider(pushTestConfig.SessionFactory())
 }
 
 func TestFindPushLogAfter(t *testing.T) {

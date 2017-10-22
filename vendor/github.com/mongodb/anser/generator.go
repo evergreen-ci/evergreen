@@ -12,6 +12,8 @@ in the 16mb document limit if using a MongoDB backed queue.)
 package anser
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/anser/model"
@@ -48,10 +50,10 @@ func generatorDependency(o model.GeneratorOptions) dependency.Manager {
 
 // addMigrationJobs takes an amboy.Queue, processes the results, and
 // adds any jobs produced by the generator to the queue.
-func addMigrationJobs(q amboy.Queue, dryRun bool) (int, error) {
+func addMigrationJobs(ctx context.Context, q amboy.Queue, dryRun bool) (int, error) {
 	catcher := grip.NewCatcher()
 	count := 0
-	for job := range q.Results() {
+	for job := range q.Results(ctx) {
 		generator, ok := job.(Generator)
 		if !ok {
 			continue

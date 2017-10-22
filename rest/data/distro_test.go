@@ -17,7 +17,7 @@ import (
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindAllDistros")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
 	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping database")
 
@@ -54,7 +54,7 @@ func TestDistroCostConnectorSuite(t *testing.T) {
 	s := new(DistroCostConnectorSuite)
 	s.ctx = &DBConnector{}
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistroCostConnectorSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Tear down
 	assert.NoError(db.Clear(task.Collection))

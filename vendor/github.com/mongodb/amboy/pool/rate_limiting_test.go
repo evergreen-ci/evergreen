@@ -41,12 +41,13 @@ func TestSimpleRateLimitingConstructor(t *testing.T) {
 }
 
 func TestAverageRateLimitingConstructor(t *testing.T) {
+	assert := assert.New(t) // nolint
+
 	var (
 		runner amboy.Runner
 		err    error
 	)
 
-	assert := assert.New(t)
 	queue := &QueueTester{
 		toProcess: make(chan amboy.Job),
 		storage:   make(map[string]amboy.Job),
@@ -71,7 +72,7 @@ func TestAverageRateLimitingConstructor(t *testing.T) {
 }
 
 func TestAvergeTimeCalculator(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	p := ewmaRateLimiting{
 		ewma:   ewma.NewMovingAverage(),
@@ -126,4 +127,30 @@ func TestAvergeTimeCalculator(t *testing.T) {
 	// duration is larger than period, returns zero
 	assert.Equal(p.getNextTime(time.Hour), time.Duration(0))
 
+}
+
+func TestSimpleRateLimitingWorkerHandlesPanicingJobs(t *testing.T) {
+	assert := assert.New(t) // nolint
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	p := &simpleRateLimited{}
+	p.queue = &QueueTester{
+		toProcess: make(chan amboy.Job),
+		storage:   make(map[string]amboy.Job),
+	}
+	assert.NotPanics(func() { p.worker(ctx, jobsChanWithPanicingJobs(ctx, 10)) })
+}
+
+func TestEWMARateLimitingWorkerHandlesPanicingJobs(t *testing.T) {
+	assert := assert.New(t) // nolint
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	p := &ewmaRateLimiting{}
+	p.queue = &QueueTester{
+		toProcess: make(chan amboy.Job),
+		storage:   make(map[string]amboy.Job),
+	}
+	assert.NotPanics(func() { p.worker(ctx, jobsChanWithPanicingJobs(ctx, 10)) })
 }

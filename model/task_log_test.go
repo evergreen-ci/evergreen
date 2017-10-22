@@ -14,7 +14,7 @@ import (
 var taskLogTestConfig = testutil.TestConfig()
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskLogTestConfig))
+	db.SetGlobalSessionProvider(taskLogTestConfig.SessionFactory())
 }
 
 func cleanUpLogDB() error {

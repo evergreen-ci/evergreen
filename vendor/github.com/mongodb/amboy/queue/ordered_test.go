@@ -83,11 +83,33 @@ func TestRemoteMongoDBOrderedQueueSuiteFourWorkers(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestRemoteLocalOrderedQueueSuite(t *testing.T) {
-	if runtime.Compiler == "gccgo" {
-		t.Skip("local driver not supported on gccgo.")
+func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
+	s := &OrderedQueueSuite{}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	s.size = 4
+
+	s.reset = func() {
+		d := driver.NewPriority()
+		remote := NewSimpleRemoteOrdered(s.size)
+		s.Require().NotNil(remote.remoteBase)
+		s.Require().NoError(d.Open(ctx))
+		s.Require().NoError(remote.SetDriver(d))
+		s.queue = remote
 	}
 
+	s.setup = func() {
+		s.reset()
+	}
+
+	s.tearDown = func() {
+		cancel()
+	}
+
+	suite.Run(t, s)
+}
+
+func TestRemotePriorityOrderedQueueSuite(t *testing.T) {
 	s := &OrderedQueueSuite{}
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -137,7 +159,7 @@ func (s *OrderedQueueSuite) TestPutReturnsErrorForDuplicateNameTasks() {
 	s.Equal(0, s.queue.Stats().Total)
 	s.NoError(s.queue.Put(j))
 	s.Equal(1, s.queue.Stats().Total)
-	s.NoError(s.queue.Put(j))
+	s.Error(s.queue.Put(j))
 	s.Equal(1, s.queue.Stats().Total)
 
 }
@@ -206,7 +228,7 @@ func (s *OrderedQueueSuite) TestResultsChannelProducesPointersToConsistentJobObj
 	amboy.WaitCtxInterval(ctx, s.queue, 250*time.Millisecond)
 	grip.Critical(s.queue.Stats())
 
-	result, ok := <-s.queue.Results()
+	result, ok := <-s.queue.Results(ctx)
 	if s.True(ok, "%+v", s.queue.Stats()) {
 		s.Equal(job.ID(), result.ID())
 		s.True(result.Status().Completed)

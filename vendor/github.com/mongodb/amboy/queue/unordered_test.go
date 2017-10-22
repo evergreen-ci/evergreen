@@ -96,7 +96,7 @@ func (s *LocalQueueSuite) TestResultsChannelProducesPointersToConsistentJobObjec
 
 	amboy.Wait(s.queue)
 
-	result, ok := <-s.queue.Results()
+	result, ok := <-s.queue.Results(ctx)
 	s.True(ok)
 	s.Equal(job.ID(), result.ID())
 	s.True(result.Status().Completed)
@@ -119,7 +119,7 @@ func (s *LocalQueueSuite) TestJobsChannelProducesJobObjects() {
 
 	amboy.Wait(s.queue)
 
-	for j := range s.queue.Results() {
+	for j := range s.queue.Results(ctx) {
 		shellJob, ok := j.(*job.ShellJob)
 		s.True(ok)
 		s.True(names[shellJob.Output])

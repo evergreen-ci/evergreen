@@ -22,7 +22,7 @@ func TestMetricsConnectorSuite(t *testing.T) {
 
 func (s *MetricsConnectorSuite) SetupSuite() {
 	testutil.ConfigureIntegrationTest(s.T(), testConfig, "TestFindTaskById")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func (s *MetricsConnectorSuite) SetupTest() {

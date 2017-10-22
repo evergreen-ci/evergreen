@@ -26,10 +26,6 @@ import (
 
 var versionTestConfig = testutil.TestConfig()
 
-func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(versionTestConfig))
-}
-
 func TestGetRecentVersions(t *testing.T) {
 
 	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)

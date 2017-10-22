@@ -12,7 +12,7 @@ import (
 
 func TestFindUserById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindUserById")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	serviceContext := &DBConnector{}
 	numUsers := 10

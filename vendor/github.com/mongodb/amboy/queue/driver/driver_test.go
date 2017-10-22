@@ -93,6 +93,21 @@ func (s *DriverSuite) TestInitialValues() {
 	s.Equal(0, stats.Total)
 }
 
+func (s *DriverSuite) TestPutJobDoesNotAllowDuplicateIds() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.NoError(s.driver.Open(ctx))
+
+	j := job.NewShellJob("echo foo", "")
+
+	err := s.driver.Put(j)
+	s.NoError(err)
+
+	for i := 0; i < 10; i++ {
+		s.Error(s.driver.Put(j))
+	}
+}
+
 func (s *DriverSuite) TestSaveJobPersistsJobInDriver() {
 	j := job.NewShellJob("echo foo", "")
 
@@ -247,4 +262,28 @@ func (s *DriverSuite) TestJobsMethodReturnsAllJobs() {
 	}
 
 	s.Equal(counter, len(mocks))
+}
+
+func (s *DriverSuite) TestStatsMethodReturnsAllJobs() {
+	names := make(map[string]struct{})
+
+	for i := 0; i < 30; i++ {
+		cmd := fmt.Sprintf("echo 'foo: %d'", i)
+		j := job.NewShellJob(cmd, "")
+
+		s.NoError(s.driver.Save(j))
+		names[j.ID()] = struct{}{}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	counter := 0
+	for stat := range s.driver.JobStats(ctx) {
+		_, ok := names[stat.ID]
+		s.True(ok)
+		counter++
+	}
+	s.Equal(len(names), counter)
+	s.Equal(counter, 30)
+
 }

@@ -31,7 +31,7 @@ func TestPatchConnectorFetchByProjectSuite(t *testing.T) {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByProjectSuite")
-		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		patches := []*patch.Patch{
 			{Project: "project1", CreateTime: s.time},
@@ -185,7 +185,7 @@ func TestPatchConnectorFetchByIdSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByIdSuite")
-		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
@@ -273,7 +273,7 @@ func TestPatchConnectorAbortByIdSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
@@ -376,7 +376,7 @@ func TestPatchConnectorChangeStatusSuite(t *testing.T) {
 		s.ctx = &DBConnector{}
 
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
-		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+		db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
@@ -475,7 +475,7 @@ func TestPatchConnectorFetchByUserSuite(t *testing.T) {
 	s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorFetchByUserSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(patch.Collection))
 

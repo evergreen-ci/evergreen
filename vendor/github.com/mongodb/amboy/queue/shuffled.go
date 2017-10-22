@@ -138,7 +138,7 @@ func (q *LocalShuffled) Get(name string) (amboy.Job, bool) {
 }
 
 // Results returns all completed jobs processed by the queue.
-func (q *LocalShuffled) Results() <-chan amboy.Job {
+func (q *LocalShuffled) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
 	if !q.Started() {
@@ -150,14 +150,59 @@ func (q *LocalShuffled) Results() <-chan amboy.Job {
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job) {
 
-		go func() {
-			for _, job := range completed {
-				output <- job
+		defer close(output)
+
+		for _, job := range completed {
+			if ctx.Err() != nil {
+				return
 			}
-			close(output)
-		}()
+
+			output <- job
+		}
 	}
+
 	return output
+}
+
+// JobStats returns JobStatusInfo objects for all jobs tracked by the
+// queue. The operation returns jobs first that have been dispatched
+// (e.g. currently working,) then pending (queued for dispatch,) and
+// finally completed.
+func (q *LocalShuffled) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+	out := make(chan amboy.JobStatusInfo)
+
+	q.operations <- func(pending map[string]amboy.Job,
+		completed map[string]amboy.Job,
+		dispatched map[string]amboy.Job) {
+
+		defer close(out)
+		for _, j := range dispatched {
+			if ctx.Err() != nil {
+				return
+			}
+			stat := j.Status()
+			stat.ID = j.ID()
+			out <- stat
+		}
+		for _, j := range pending {
+			if ctx.Err() != nil {
+				return
+			}
+			stat := j.Status()
+			stat.ID = j.ID()
+			out <- stat
+		}
+		for _, j := range completed {
+			if ctx.Err() != nil {
+				return
+			}
+			stat := j.Status()
+			stat.ID = j.ID()
+			out <- stat
+		}
+	}
+
+	return out
 }
 
 // Stats returns a standard report on the number of pending, running,

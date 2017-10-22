@@ -35,7 +35,7 @@ func TestTaskConnectorFetchByIdSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByIdSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(task.Collection))
 
@@ -86,7 +86,7 @@ func TestTaskConnectorFetchByBuildSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByBuildSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(task.Collection))
 
@@ -239,7 +239,7 @@ func TestTaskConnectorFetchByProjectAndCommitSuite(t *testing.T) {
 	s.ctx = &DBConnector{}
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByProjectAndCommitSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	assert.NoError(t, db.Clear(task.Collection))
 
