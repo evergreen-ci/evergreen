@@ -97,7 +97,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 }
 
 func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
-	defer recovery.LogStackTraceAndContinue("task stats collector")
+	defer recovery.LogStackTraceAndContinue("amboy stats collector")
 
 	const interval = time.Minute
 	timer := time.NewTimer(0)
@@ -128,7 +128,7 @@ func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
 }
 
 func taskStatsCollector(ctx context.Context) {
-	defer recovery.LogStackTraceAndContinue("amboy stats collector")
+	defer recovery.LogStackTraceAndContinue("task stats collector")
 	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
