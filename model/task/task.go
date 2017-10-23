@@ -574,9 +574,10 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	catcher := grip.NewSimpleCatcher()
 	for _, id := range taskIds {
-		catcher.Add(testresult.RemoveByTaskIDAndExecution(id, 0))
+		if err := testresult.RemoveByTaskIDAndExecution(id, 0); err != nil {
+			return err
+		}
 	}
 	reset := bson.M{
 		"$set": bson.M{
@@ -600,8 +601,10 @@ func ResetTasks(taskIds []string) error {
 		},
 		reset,
 	)
-	catcher.Add(err)
-	return catcher.Resolve()
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 

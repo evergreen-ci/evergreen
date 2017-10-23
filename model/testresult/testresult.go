@@ -1,11 +1,10 @@
 package testresult
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -67,7 +66,7 @@ func (t *TestResult) InsertByTaskIDAndExecution(taskID string, execution int) er
 	}
 	t.TaskID = taskID
 	t.Execution = execution
-	return t.Insert()
+	return errors.Wrap(t.Insert(), "error inserting test result")
 }
 
 // InsertManyByTaskIDAndExecution adds task metadata to many TestResults and writes them to the database.
