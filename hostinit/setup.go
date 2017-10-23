@@ -33,9 +33,7 @@ import (
 )
 
 const (
-	SCPTimeout         = time.Minute
-	setupScriptName    = "setup.sh"
-	teardownScriptName = "teardown.sh"
+	SCPTimeout = time.Minute
 )
 
 // Error indicating another hostinit got to the setup first.
@@ -357,14 +355,6 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 		grip.Error(err)
 		return "", err
 	}
-	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to get cloud host for %s", targetHost.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return "", errors.Wrapf(err, "error getting ssh options for host %s", targetHost.Id)
-	}
 
 	// get expansions mapping using settings
 	if targetHost.Distro.Setup == "" {
@@ -380,23 +370,18 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	if targetHost.Distro.Setup != "" {
-		err = init.copyScript(ctx, targetHost, setupScriptName, targetHost.Distro.Setup)
+		err = init.copyScript(ctx, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
 			return "", errors.Errorf("error copying script %v to host %v: %v",
-				setupScriptName, targetHost.Id, err)
-		}
-		var logs string
-		logs, err = hostutil.RunRemoteScript(ctx, targetHost, setupScriptName, sshOptions)
-		if err != nil {
-			return logs, errors.Errorf("error running setup script over ssh: %v", err)
+				evergreen.SetupScriptName, targetHost.Id, err)
 		}
 	}
 
 	if targetHost.Distro.Teardown != "" {
-		err = init.copyScript(ctx, targetHost, teardownScriptName, targetHost.Distro.Teardown)
+		err = init.copyScript(ctx, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
 			return "", errors.Wrapf(err, "error copying script %v to host %v",
-				teardownScriptName, targetHost.Id)
+				evergreen.TeardownScriptName, targetHost.Id)
 		}
 	}
 
@@ -563,21 +548,47 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
 
-	grip.Infof("Setup complete for host %s", h.Id)
-
-	if h.ProvisionOptions != nil &&
-		h.ProvisionOptions.LoadCLI &&
-		h.ProvisionOptions.OwnerId != "" {
+	// If this is a spawn host
+	if h.ProvisionOptions != nil && h.ProvisionOptions.LoadCLI {
 		grip.Infof("Uploading client binary to host %s", h.Id)
 		lcr, err := init.LoadClient(ctx, h)
 		if err != nil {
+			err = errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 			grip.Errorf("Failed to load client binary onto host %s: %+v", h.Id, err)
-		} else if err == nil && len(h.ProvisionOptions.TaskId) > 0 {
+			return err
+		}
+
+		if h.ProvisionOptions.OwnerId != "" &&
+			len(h.ProvisionOptions.TaskId) > 0 {
 			grip.Infof("Fetching data for task %s onto host %s", h.ProvisionOptions.TaskId, h.Id)
 			err = init.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
 			grip.ErrorWhenf(err != nil, "Failed to fetch data onto host %s: %v", h.Id, err)
 		}
+
+		grip.Infof("Running setup script for spawn host %s", h.Id)
+		args := []string{lcr.BinaryPath, "host", "setup"}
+		if h.Distro.SetupAsSudo {
+			args = append(args, "--setup_as_sudo")
+		}
+		cloudHost, err := providers.GetCloudHost(h, init.Settings)
+		if err != nil {
+			return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
+		}
+		sshOptions, err := cloudHost.GetSSHOptions()
+		if err != nil {
+			return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
+		}
+		out, err := hostutil.RunRemoteScript(ctx, h, strings.Join(args, " "), sshOptions)
+		if err != nil {
+			return errors.Wrapf(err, "error running setup script with agent for host %s (%s)", h.Id, out)
+		}
+		out, err = hostutil.RunRemoteScript(ctx, h, fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.WorkDir), sshOptions)
+		if err != nil {
+			return errors.Wrapf(err, "error creating working directory after running setup script for host %s (%s)", h.Id, out)
+		}
 	}
+
+	grip.Infof("Setup complete for host %s", h.Id)
 
 	// the setup was successful. update the host accordingly in the database
 	if err := h.MarkAsProvisioned(); err != nil {
