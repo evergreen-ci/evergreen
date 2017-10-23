@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -72,6 +73,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	go util.SystemInfoCollector(ctx)
 	go taskStatsCollector(ctx)
 	go hostStatsCollector(ctx)
+	go amboyStatsCollector(ctx, env)
 
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {
@@ -92,6 +94,42 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	startRunners(ctx, settings)
 
 	return errors.WithStack(err)
+}
+
+func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
+	defer recovery.LogStackTraceAndContinue("amboy stats collector")
+
+	const interval = time.Minute
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	const numReportJobs = 512
+	var localQueue amboy.Queue
+	var remoteQueue amboy.Queue
+
+	for {
+		select {
+		case <-ctx.Done():
+			grip.Info("task stats logging operation canceled")
+			return
+		case <-timer.C:
+			if localQueue = env.LocalQueue(); localQueue.Started() {
+				grip.Info(message.Fields{
+					"message": "amboy local queue stats",
+					"stats":   localQueue.Stats(),
+					"report":  amboy.Report(ctx, localQueue, numReportJobs),
+				})
+			}
+
+			if remoteQueue = env.RemoteQueue(); remoteQueue.Started() {
+				grip.Info(message.Fields{
+					"message": "amboy remote queue stats",
+					"stats":   remoteQueue.Stats(),
+					"report":  amboy.Report(ctx, remoteQueue, numReportJobs),
+				})
+			}
+		}
+	}
 }
 
 func taskStatsCollector(ctx context.Context) {
