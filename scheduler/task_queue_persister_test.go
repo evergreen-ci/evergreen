@@ -7,11 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-var taskQueuePersisterTestConf = testutil.TestConfig()
 
 func TestDBTaskQueuePersister(t *testing.T) {
 

@@ -28,7 +28,7 @@ func init() {
 // execution and pass the Environment interface through your
 // application like a context, although there are cases in legacy code
 // (e.g. models) and in the implementation of amboy jobs where it is
-// neccessary to access the global environment. There is a mock
+// necessary to access the global environment. There is a mock
 // implementation for use in testing.
 func GetEnvironment() Environment { return globalEnvState }
 

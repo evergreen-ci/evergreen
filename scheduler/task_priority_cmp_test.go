@@ -6,11 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-var taskImportanceCmpTestConf = testutil.TestConfig()
 
 func TestTaskImportanceComparators(t *testing.T) {
 

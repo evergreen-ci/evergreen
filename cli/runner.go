@@ -99,7 +99,6 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
 	defer recovery.LogStackTraceAndContinue("amboy stats collector")
 
-	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 

@@ -12,8 +12,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var taskDurationEstimatorTestConf = testutil.TestConfig()
-
 func TestDBTaskDurationEstimator(t *testing.T) {
 	var taskDurationEstimator *DBTaskDurationEstimator
 	var displayNames []string
