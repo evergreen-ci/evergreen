@@ -13,6 +13,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,6 +23,7 @@ var taskFinderTestConf = testutil.TestConfig()
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+	reporting.QuietMode()
 }
 
 type TaskFinderSuite struct {
@@ -39,6 +43,19 @@ func TestDBTaskFinder(t *testing.T) {
 func TestLegacyDBTaskFinder(t *testing.T) {
 	s := new(TaskFinderSuite)
 	s.FindRunnableTasks = LegacyFindRunnableTasks
+	suite.Run(t, s)
+}
+
+func TestAlternativeTaskFinder(t *testing.T) {
+	s := new(TaskFinderSuite)
+	s.FindRunnableTasks = AlternateTaskFinder
+
+	suite.Run(t, s)
+}
+
+func TestParallelTaskFinder(t *testing.T) {
+	s := new(TaskFinderSuite)
+	s.FindRunnableTasks = ParallelTaskFinder
 
 	suite.Run(t, s)
 }
@@ -120,6 +137,67 @@ type TaskFinderComparisonSuite struct {
 	tasks            []task.Task
 	oldRunnableTasks []task.Task
 	newRunnableTasks []task.Task
+	altRunnableTasks []task.Task
+	pllRunnableTasks []task.Task
+}
+
+func (s *TaskFinderComparisonSuite) SetupTest() {
+	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
+	s.NoError(err)
+	s.NotNil(session)
+	defer session.Close()
+	s.NoError(db.Clear(task.Collection))
+
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("activated", "status", "priority"))
+	s.NoError(mdb.C(task.Collection).EnsureIndexKey("depends_on._id"))
+
+	s.tasks = s.tasksGenerator()
+	s.NotEmpty(s.tasks)
+	for _, task := range s.tasks {
+		task.BuildVariant = "aBuildVariant"
+		task.Tags = []string{"tag1", "tag2"}
+		s.NoError(task.Insert())
+	}
+
+	grip.Info("start new")
+	s2start := time.Now()
+	s.newRunnableTasks, err = FindRunnableTasks()
+	s2dur := time.Since(s2start)
+	s.NoError(err)
+	grip.Info("end db")
+
+	grip.Info("start legacy")
+	s1start := time.Now()
+	s.oldRunnableTasks, err = LegacyFindRunnableTasks()
+	s1dur := time.Since(s1start)
+	s.NoError(err)
+	grip.Info("end legacy")
+
+	grip.Info("start alternate")
+	s3start := time.Now()
+	s.altRunnableTasks, err = AlternateTaskFinder()
+	s3dur := time.Since(s3start)
+	s.NoError(err)
+	grip.Info("end alt")
+
+	grip.Info("start parallel")
+	s4start := time.Now()
+	s.pllRunnableTasks, err = ParallelTaskFinder()
+	s4dur := time.Since(s4start)
+	s.NoError(err)
+	grip.Info("end parallel")
+
+	grip.Notice(message.Fields{
+		"alternative": s3dur.String(),
+		"legacy":      s1dur.String(),
+		"length":      len(s.tasks),
+		"parallel":    s4dur.String(),
+		"pipeline":    s2dur.String(),
+	})
+}
+
+func (s *TaskFinderComparisonSuite) TearDownTest() {
+	s.NoError(db.Clear(task.Collection))
 }
 
 func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
@@ -133,107 +211,44 @@ func (s *TaskFinderComparisonSuite) TestFindRunnableHostsIsIdentical() {
 		idsNewMethod = append(idsNewMethod, task.Id)
 	}
 
+	idsAltMethod := []string{}
+	for _, task := range s.altRunnableTasks {
+		idsAltMethod = append(idsAltMethod, task.Id)
+	}
+
+	idsPllMethod := []string{}
+	for _, task := range s.pllRunnableTasks {
+		idsPllMethod = append(idsPllMethod, task.Id)
+	}
+
 	sort.Strings(idsOldMethod)
 	sort.Strings(idsNewMethod)
+	sort.Strings(idsAltMethod)
+	sort.Strings(idsPllMethod)
 
-	s.Equal(idsOldMethod, idsNewMethod,
-		fmt.Sprintf("Failed to find identical runnable tasks; input tasks were: %+v\n", s.tasks))
+	s.Equal(idsOldMethod, idsNewMethod, "old (legacy) and new (database) methods did not match")
+	s.Equal(idsOldMethod, idsAltMethod, "old (legacy) and new (altimpl) methods did not match")
+	s.Equal(idsNewMethod, idsAltMethod, "new (database) and new (altimpl) methods did not match")
+	s.Equal(idsNewMethod, idsPllMethod, "new (database) and new (parallel) methods did not match")
 }
 
-func makeRandomTasks() []task.Task {
-	tasks := []task.Task{}
-	statuses := []string{
-		evergreen.TaskStarted,
-		evergreen.TaskUnstarted,
-		evergreen.TaskUndispatched,
-		evergreen.TaskDispatched,
-		evergreen.TaskFailed,
-		evergreen.TaskSucceeded,
-		evergreen.TaskInactive,
-		evergreen.TaskSystemFailed,
-		evergreen.TaskTimedOut,
-		evergreen.TaskSystemUnresponse,
-		evergreen.TaskSystemTimedOut,
-		evergreen.TaskTestTimedOut,
-		evergreen.TaskConflict,
+func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
+	for _, task := range s.oldRunnableTasks {
+		s.Equal(task.BuildVariant, "aBuildVariant")
+		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
-
-	numTasks := rand.Intn(10) + 1
-
-	for i := 0; i < numTasks; i++ {
-		// pick a random status
-		statusIndex := rand.Intn(len(statuses))
-		id := "task" + strconv.Itoa(i)
-		tasks = append(tasks, task.Task{
-			Id:        id,
-			Status:    statuses[statusIndex],
-			Activated: true,
-		})
+	for _, task := range s.newRunnableTasks {
+		s.Equal(task.BuildVariant, "aBuildVariant")
+		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
-
-	subTasks := [][]task.Task{makeRandomSubTasks(statuses, &tasks)}
-
-	depth := rand.Intn(3) + 1
-
-	for i := 0; i < depth; i++ {
-		subTasks = append(subTasks, makeRandomSubTasks(statuses, &subTasks[i]))
+	for _, task := range s.altRunnableTasks {
+		s.Equal(task.BuildVariant, "aBuildVariant")
+		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
-
-	for i, _ := range subTasks {
-		tasks = append(tasks, subTasks[i]...)
+	for _, task := range s.pllRunnableTasks {
+		s.Equal(task.BuildVariant, "aBuildVariant")
+		s.Equal(task.Tags, []string{"tag1", "tag2"})
 	}
-
-	return tasks
-}
-
-func pickSubtaskStatus(statuses []string, dependsOn []task.Dependency) string {
-	// If any task that a task depends on is undispatched, this task must be
-	// undispatched
-	for _, dep := range dependsOn {
-		if dep.Status == evergreen.TaskUndispatched {
-			return evergreen.TaskUndispatched
-		}
-	}
-	return dependsOn[rand.Intn(len(dependsOn))].Status
-}
-
-// Add random set of dependencies to each task in parentTasks
-func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task {
-	depTasks := []task.Task{}
-	for i, parentTask := range *parentTasks {
-		dependsOn := []task.Dependency{
-			task.Dependency{
-				TaskId: parentTask.Id,
-				Status: parentTask.Status,
-			},
-		}
-
-		// Pick another parent at random
-		anotherParent := rand.Intn(len(*parentTasks))
-		if anotherParent != i {
-			dependsOn = append(dependsOn,
-				task.Dependency{
-					TaskId: (*parentTasks)[anotherParent].Id,
-					Status: (*parentTasks)[anotherParent].Status,
-				},
-			)
-		}
-
-		numDeps := rand.Intn(4)
-		for i := 0; i < numDeps; i++ {
-			childId := parentTask.Id + "-child" + strconv.Itoa(i)
-
-			depTasks = append(depTasks, task.Task{
-				Id:        childId,
-				Activated: true,
-				Status:    pickSubtaskStatus(statuses, dependsOn),
-				DependsOn: dependsOn,
-			})
-
-		}
-	}
-
-	return depTasks
 }
 
 func TestCompareTaskRunnersWithFuzzyTasks(t *testing.T) {
@@ -325,40 +340,99 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *TaskFinderComparisonSuite) SetupTest() {
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	s.NotNil(session)
-	s.NoError(db.Clear(task.Collection))
-
-	s.tasks = s.tasksGenerator()
-	s.NotEmpty(s.tasks)
-	for _, task := range s.tasks {
-		task.BuildVariant = "aBuildVariant"
-		task.Tags = []string{"tag1", "tag2"}
-		s.NoError(task.Insert())
+func makeRandomTasks() []task.Task {
+	tasks := []task.Task{}
+	statuses := []string{
+		evergreen.TaskStarted,
+		evergreen.TaskUnstarted,
+		evergreen.TaskUndispatched,
+		evergreen.TaskDispatched,
+		evergreen.TaskFailed,
+		evergreen.TaskSucceeded,
+		evergreen.TaskInactive,
+		evergreen.TaskSystemFailed,
+		evergreen.TaskTimedOut,
+		evergreen.TaskSystemUnresponse,
+		evergreen.TaskSystemTimedOut,
+		evergreen.TaskTestTimedOut,
+		evergreen.TaskConflict,
 	}
 
-	var err error
+	numTasks := rand.Intn(20) + 20
+	for i := 0; i < numTasks; i++ {
+		// pick a random status
+		statusIndex := rand.Intn(len(statuses))
+		id := "task" + strconv.Itoa(i)
+		tasks = append(tasks, task.Task{
+			Id:        id,
+			Status:    statuses[statusIndex],
+			Activated: true,
+		})
+	}
 
-	s.oldRunnableTasks, err = LegacyFindRunnableTasks()
-	s.NoError(err)
-	s.newRunnableTasks, err = FindRunnableTasks()
-	s.NoError(err)
+	subTasks := [][]task.Task{makeRandomSubTasks(statuses, &tasks)}
+
+	depth := rand.Intn(6) + 1
+
+	for i := 0; i < depth; i++ {
+		subTasks = append(subTasks, makeRandomSubTasks(statuses, &subTasks[i]))
+	}
+
+	for i, _ := range subTasks {
+		tasks = append(tasks, subTasks[i]...)
+	}
+
+	return tasks
 }
 
-func (s *TaskFinderComparisonSuite) TearDownTest() {
-	s.NoError(db.Clear(task.Collection))
+func pickSubtaskStatus(statuses []string, dependsOn []task.Dependency) string {
+	// If any task that a task depends on is undispatched, this task must be
+	// undispatched
+	for _, dep := range dependsOn {
+		if dep.Status == evergreen.TaskUndispatched {
+			return evergreen.TaskUndispatched
+		}
+	}
+	return dependsOn[rand.Intn(len(dependsOn))].Status
 }
 
-func (s *TaskFinderComparisonSuite) TestCheckThatTaskIsPopulated() {
-	for _, task := range s.oldRunnableTasks {
-		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
+// Add random set of dependencies to each task in parentTasks
+func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task {
+	depTasks := []task.Task{}
+	for i, parentTask := range *parentTasks {
+		dependsOn := []task.Dependency{
+			task.Dependency{
+				TaskId: parentTask.Id,
+				Status: parentTask.Status,
+			},
+		}
+
+		// Pick another parent at random
+		anotherParent := rand.Intn(len(*parentTasks))
+		if anotherParent != i {
+			dependsOn = append(dependsOn,
+				task.Dependency{
+					TaskId: (*parentTasks)[anotherParent].Id,
+					Status: (*parentTasks)[anotherParent].Status,
+				},
+			)
+		}
+
+		numDeps := rand.Intn(8)
+		for i := 0; i < numDeps; i++ {
+			childId := parentTask.Id + "-child" + strconv.Itoa(i)
+
+			depTasks = append(depTasks, task.Task{
+				Id:        childId,
+				Activated: true,
+				Status:    pickSubtaskStatus(statuses, dependsOn),
+				DependsOn: dependsOn,
+			})
+
+		}
 	}
-	for _, task := range s.newRunnableTasks {
-		s.Equal(task.BuildVariant, "aBuildVariant")
-		s.Equal(task.Tags, []string{"tag1", "tag2"})
-	}
+
+	return depTasks
 }
 
 func hugeString(suffix string) string {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -133,8 +134,8 @@ type SMTPConfig struct {
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	MergeToggle         int  `yaml:"mergetoggle"`
-	UseLegacyTaskFinder bool `yaml:"use_legacy_task_finder"`
+	MergeToggle int    `yaml:"mergetoggle"`
+	TaskFinder  string `yaml:"task_finder"`
 }
 
 // TaskRunnerConfig holds logging settings for the scheduler process.
@@ -429,6 +430,23 @@ var configValidationRules = []configValidator{
 	func(settings *Settings) error {
 		if settings.ClientBinariesDir == "" {
 			settings.ClientBinariesDir = ClientDirectory
+		}
+		return nil
+	},
+
+	func(settings *Settings) error {
+		finders := []string{"legacy", "alternate", "parallel", "pipeline"}
+
+		if settings.Scheduler.TaskFinder == "" {
+			// default to alternate
+			settings.Scheduler.TaskFinder = finders[0]
+			return nil
+		}
+
+		if !util.SliceContains(finders, settings.Scheduler.TaskFinder) {
+			return errors.Errorf("supported finders are %s; %s is not supported",
+				finders, settings.Scheduler.TaskFinder)
+
 		}
 		return nil
 	},
