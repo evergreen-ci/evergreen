@@ -6,6 +6,7 @@ import (
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -311,7 +312,11 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		senders  []send.Sender
 	)
 
-	fallback = send.MakeErrorLogger()
+	fallback, err = send.NewErrorLogger("evergreen.err",
+		send.LevelInfo{Default: level.Info, Threshold: level.Debug})
+	if err != nil {
+		return nil, errors.Wrap(err, "problem configuring err fallback logger")
+	}
 
 	if s.LogPath == LocalLoggingOverride {
 		// log directly to systemd if possible, and log to
