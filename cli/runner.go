@@ -102,25 +102,30 @@ func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
 	const interval = time.Minute
 	timer := time.NewTimer(0)
 	defer timer.Stop()
+
+	const numReportJobs = 512
+	var localQueue amboy.Queue
+	var remoteQueue amboy.Queue
+
 	for {
 		select {
 		case <-ctx.Done():
 			grip.Info("task stats logging operation canceled")
 			return
 		case <-timer.C:
-			if localq := env.LocalQueue(); localq.Started() {
+			if localQueue = env.LocalQueue(); localQueue.Started() {
 				grip.Info(message.Fields{
 					"message": "amboy local queue stats",
-					"stats":   localq.Stats(),
-					"report":  amboy.Report(ctx, localq, 512),
+					"stats":   localQueue.Stats(),
+					"report":  amboy.Report(ctx, localQueue, numReportJobs),
 				})
 			}
 
-			if remoteq := env.RemoteQueue(); remoteq.Started() {
+			if remoteQueue = env.RemoteQueue(); remoteQueue.Started() {
 				grip.Info(message.Fields{
 					"message": "amboy remote queue stats",
-					"stats":   remoteq.Stats(),
-					"report":  amboy.Report(ctx, remoteq, 512),
+					"stats":   remoteQueue.Stats(),
+					"report":  amboy.Report(ctx, remoteQueue, numReportJobs),
 				})
 			}
 		}
