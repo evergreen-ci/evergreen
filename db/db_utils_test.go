@@ -4,14 +4,17 @@ import (
 	"io/ioutil"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var dbUtilsTestConf = testutil.TestConfig()
+func init() {
+	sf := NewSessionFactory("mongodb://localhost:27017", "mci_test", false, mgo.Safe{}, 10*time.Second)
+	SetGlobalSessionProvider(sf)
+}
 
 func TestDBUtils(t *testing.T) {
 
@@ -20,8 +23,6 @@ func TestDBUtils(t *testing.T) {
 		FieldTwo   int    `bson:"field_two"`
 		FieldThree string `bson:"field_three"`
 	}
-
-	SetGlobalSessionProvider(dbUtilsTestConf.SessionFactory())
 
 	collection := "test_collection"
 
