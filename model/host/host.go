@@ -388,7 +388,7 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 // SetNeedsNewAgent sets the "needs new agent" flag on the host
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{NeedsNewAgentKey: true}})
+		bson.M{"$set": bson.M{NeedsNewAgentKey: needsAgent}})
 	if err != nil {
 		return err
 	}
