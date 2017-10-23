@@ -695,20 +695,24 @@ func (t *Task) SetResults(results []TestResult) error {
 	catcher := grip.NewSimpleCatcher()
 	var testResult testresult.TestResult
 	for _, result := range results {
-		testResult = testresult.TestResult{
-			Status:    result.Status,
-			TestFile:  result.TestFile,
-			URL:       result.URL,
-			URLRaw:    result.URLRaw,
-			LogID:     result.LogId,
-			LineNum:   result.LineNum,
-			ExitCode:  result.ExitCode,
-			StartTime: result.StartTime,
-			EndTime:   result.EndTime,
-		}
+		testResult = result.convertToNewStyleTestResult()
 		catcher.Add(testResult.InsertByTaskIDAndExecution(t.Id, t.Execution))
 	}
 	return errors.Wrap(catcher.Resolve(), "error inserting into testresults collection")
+}
+
+func (t TestResult) convertToNewStyleTestResult() testresult.TestResult {
+	return testresult.TestResult{
+		Status:    t.Status,
+		TestFile:  t.TestFile,
+		URL:       t.URL,
+		URLRaw:    t.URLRaw,
+		LogID:     t.LogId,
+		LineNum:   t.LineNum,
+		ExitCode:  t.ExitCode,
+		StartTime: t.StartTime,
+		EndTime:   t.EndTime,
+	}
 }
 
 // MarkUnscheduled marks the task as undispatched and updates it in the database
