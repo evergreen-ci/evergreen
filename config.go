@@ -442,7 +442,7 @@ var configValidationRules = []configValidator{
 			return nil
 		}
 
-		if sliceContains(finders, settings.Scheduler.TaskFinder) {
+		if !sliceContains(finders, settings.Scheduler.TaskFinder) {
 			return errors.Errorf("supported finders are %s; %s is not supported",
 				finders, settings.Scheduler.TaskFinder)
 
