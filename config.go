@@ -5,7 +5,6 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -443,7 +442,7 @@ var configValidationRules = []configValidator{
 			return nil
 		}
 
-		if !util.SliceContains(finders, settings.Scheduler.TaskFinder) {
+		if sliceContains(finders, settings.Scheduler.TaskFinder) {
 			return errors.Errorf("supported finders are %s; %s is not supported",
 				finders, settings.Scheduler.TaskFinder)
 
@@ -535,4 +534,17 @@ var configValidationRules = []configValidator{
 		}
 		return nil
 	},
+}
+
+func sliceContains(slice []string, elem string) bool {
+	if slice == nil {
+		return false
+	}
+	for _, i := range slice {
+		if i == elem {
+			return true
+		}
+	}
+
+	return false
 }
