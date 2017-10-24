@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -85,10 +86,8 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
-		if errs = terminateHosts(ctx, hostsToTerminate, settings, flagger.Reason); errs != nil {
-			for _, err := range errs {
-				errs = append(errs, errors.Wrap(err, "error terminating host"))
-			}
+		if err = terminateHosts(ctx, hostsToTerminate, settings, flagger.Reason); err != nil {
+			errs = append(errs, errors.Wrap(err, "error terminating host"))
 			continue
 		}
 	}
@@ -98,44 +97,56 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
-func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.Settings, reason string) []error {
-	errChan := make(chan error)
+func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.Settings, reason string) error {
+	catcher := grip.NewBasicCatcher()
+	work := make(chan *host.Host, len(hosts))
+	wg := &sync.WaitGroup{}
+
 	for _, h := range hosts {
-		grip.Infof("Terminating host %v", h.Id)
-		// terminate the host in a goroutine, passing the host in as a parameter
-		// so that the variable isn't reused for subsequent iterations
-		go func(hostToTerminate host.Host) {
-			errChan <- func() error {
+		work <- &h
+	}
+	close(work)
+
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for hostToTerminate := range work {
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
+
 				err := util.RunFunctionWithTimeout(func() error {
-					return terminateHost(ctx, &hostToTerminate, settings)
+					return terminateHost(ctx, hostToTerminate, settings)
 				}, 12*time.Minute)
+
 				if err != nil {
 					if strings.Contains(err.Error(), ec2.EC2ErrorNotFound) {
-						err = h.Terminate()
+						err = hostToTerminate.Terminate()
 						if err != nil {
-							return errors.Wrap(err, "unable to set host as terminated")
+							catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
+							continue
 						}
-						grip.Debugf("host %s not found in EC2, changed to terminated", h.Id)
-						return nil
+						grip.Debugf("host %s not found in EC2, changed to terminated", hostToTerminate.Id)
+						continue
 					}
 					if err == util.ErrTimedOut {
-						return errors.Errorf("timeout terminating host %s", hostToTerminate.Id)
+						catcher.Add(errors.Errorf("timeout terminating host %s", hostToTerminate.Id))
+						continue
 					}
-					return errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id)
+					err = errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id)
+					catcher.Add(err)
+					grip.Warning(err)
+					continue
 				}
+
 				grip.Infoln("Successfully terminated host", hostToTerminate.Id)
-				return nil
-			}()
-		}(h)
+			}
+		}()
 	}
-	var errors []error
-	for range hosts {
-		if err := <-errChan; err != nil {
-			errors = append(errors, err)
-		}
-	}
-	return errors
+
+	wg.Wait()
+
+	return catcher.Resolve()
 }
 
 // helper to terminate a single host

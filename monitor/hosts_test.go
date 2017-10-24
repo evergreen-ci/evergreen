@@ -29,8 +29,7 @@ func TestTerminateHosts(t *testing.T) {
 	}
 	assert.NoError(h.Insert())
 
-	errs := terminateHosts(ctx, []host.Host{h}, testConfig, reason)
-	assert.Nil(errs)
+	assert.NoError(terminateHosts(ctx, []host.Host{h}, testConfig, reason))
 	dbHost, err := host.FindOne(host.ById(h.Id))
 	assert.NoError(err)
 	assert.NotNil(dbHost)
