@@ -42,7 +42,7 @@ func (c *MigrationCommand) Execute(_ []string) error {
 	}
 	defer env.Close()
 
-	app, err := migrations.Application(env)
+	app, err := migrations.Application(env, settings.Database.DB)
 	if err != nil {
 		return errors.Wrap(err, "problem configuring migration application")
 	}
