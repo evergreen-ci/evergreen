@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -337,6 +338,10 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	t.HostId = hostId
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
+	err := testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution)
+	if err != nil {
+		return errors.Wrap(err, "error removing tests from testresults collection")
+	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -367,6 +372,10 @@ func (t *Task) MarkAsUndispatched() error {
 	// then, update the task document
 	t.Status = evergreen.TaskUndispatched
 
+	err := testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution)
+	if err != nil {
+		return errors.Wrap(err, "error removing tests from testresults collection")
+	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -534,7 +543,10 @@ func (t *Task) Reset() error {
 	t.StartTime = util.ZeroTime
 	t.ScheduledTime = util.ZeroTime
 	t.FinishTime = util.ZeroTime
-	t.TestResults = []TestResult{}
+	err := testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution)
+	if err != nil {
+		return errors.Wrap(err, "error removing tests from testresults collection")
+	}
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -562,6 +574,11 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
+	for _, id := range taskIds {
+		if err := testresult.RemoveByTaskIDAndExecution(id, 0); err != nil {
+			return err
+		}
+	}
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -584,7 +601,10 @@ func ResetTasks(taskIds []string) error {
 		},
 		reset,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
@@ -675,17 +695,27 @@ func (t *Task) MarkStart(startTime time.Time) error {
 
 // SetResults sets the results of the task in TestResults
 func (t *Task) SetResults(results []TestResult) error {
-	t.TestResults = results
-	return UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				TestResultsKey: results,
-			},
-		},
-	)
+	catcher := grip.NewSimpleCatcher()
+	var testResult testresult.TestResult
+	for _, result := range results {
+		testResult = result.convertToNewStyleTestResult()
+		catcher.Add(testResult.InsertByTaskIDAndExecution(t.Id, t.Execution))
+	}
+	return errors.Wrap(catcher.Resolve(), "error inserting into testresults collection")
+}
+
+func (t TestResult) convertToNewStyleTestResult() testresult.TestResult {
+	return testresult.TestResult{
+		Status:    t.Status,
+		TestFile:  t.TestFile,
+		URL:       t.URL,
+		URLRaw:    t.URLRaw,
+		LogID:     t.LogId,
+		LineNum:   t.LineNum,
+		ExitCode:  t.ExitCode,
+		StartTime: t.StartTime,
+		EndTime:   t.EndTime,
+	}
 }
 
 // MarkUnscheduled marks the task as undispatched and updates it in the database
@@ -706,8 +736,10 @@ func (t *Task) MarkUnscheduled() error {
 
 // ClearResults sets the TestResults to an empty list
 func (t *Task) ClearResults() error {
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution))
 	t.TestResults = []TestResult{}
-	return UpdateOne(
+	catcher.Add(UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -716,7 +748,8 @@ func (t *Task) ClearResults() error {
 				TestResultsKey: []TestResult{},
 			},
 		},
-	)
+	))
+	return catcher.Resolve()
 }
 
 // SetCost updates the task's Cost field
