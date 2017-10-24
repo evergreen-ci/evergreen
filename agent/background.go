@@ -21,22 +21,18 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 
-	shouldReturn, failed, signalBeat := a.doHeartbeat(ctx, tc, 0)
+	failed, signalBeat := a.doHeartbeat(ctx, tc, 0)
 	if signalBeat != "" {
 		heartbeat <- signalBeat
-	}
-	if shouldReturn {
 		return
 	}
 
 	for {
 		select {
 		case <-ticker.C:
-			shouldReturn, failed, signalBeat = a.doHeartbeat(ctx, tc, failed)
+			failed, signalBeat = a.doHeartbeat(ctx, tc, failed)
 			if signalBeat != "" {
 				heartbeat <- signalBeat
-			}
-			if shouldReturn {
 				return
 			}
 		case <-ctx.Done():
@@ -46,15 +42,15 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	}
 }
 
-func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext, failed int) (bool, int, string) {
+func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext, failed int) (int, string) {
 	abort, err := a.comm.Heartbeat(ctx, tc.task)
 	if abort {
 		grip.Info("Task aborted")
-		return true, failed, evergreen.TaskFailed
+		return failed, evergreen.TaskFailed
 	}
 	if err != nil {
 		if err.Error() == client.HTTPConflictError {
-			return true, failed, evergreen.TaskConflict
+			return failed, evergreen.TaskConflict
 		}
 		failed++
 		grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
@@ -64,11 +60,11 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext, failed int) (b
 
 	if failed > maxHeartbeats {
 		grip.Error(errors.New("Exceeded max heartbeats"))
-		return true, failed, evergreen.TaskFailed
+		return failed, evergreen.TaskFailed
 
 	}
 
-	return false, failed, ""
+	return failed, ""
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {
