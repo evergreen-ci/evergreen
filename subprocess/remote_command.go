@@ -48,7 +48,10 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- rc.Cmd.Wait()
+		select {
+		case errChan <- rc.Cmd.Wait():
+		case <-ctx.Done():
+		}
 	}()
 
 	select {

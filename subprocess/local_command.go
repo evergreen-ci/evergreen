@@ -36,7 +36,10 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- lc.cmd.Wait()
+		select {
+		case errChan <- lc.cmd.Wait():
+		case <-ctx.Done():
+		}
 	}()
 
 	select {
