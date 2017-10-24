@@ -100,6 +100,8 @@ type UIConfig struct {
 	// does not yet natively support SSL UI connections, but this option
 	// is available, for example, for deployments behind HTTPS load balancers.
 	SecureCookies bool
+	// CsrfKey is a 32-byte key used to generate tokens that validate UI requests
+	CsrfKey string
 }
 
 // MonitorConfig holds logging settings for the monitor process.
@@ -531,6 +533,13 @@ var configValidationRules = []configValidator{
 			if settings.AuthConfig.Github.Users == nil && settings.AuthConfig.Github.Organization == "" {
 				return errors.New("Must specify either a set of users or an organization for Github Authentication")
 			}
+		}
+		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.Ui.CsrfKey != "" && len(settings.Ui.CsrfKey) != 32 {
+			return errors.New("CSRF key must be 32 characters long")
 		}
 		return nil
 	},

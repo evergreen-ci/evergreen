@@ -39,6 +39,8 @@ imports:
     version: 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b
   - name: github.com/gorilla/sessions
     version: 28f896870851935df0885fca3410114940d49e1b
+  - name: github.com/gorilla/csrf
+    version: 8aae08ff9fb9a8fe293deea3d057f37d89744670
   - name: github.com/mitchellh/mapstructure
     version: 6fb2c832bcac61d01212ab1d172f7a14a8585b07
 

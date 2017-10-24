@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -397,6 +398,22 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		}
 		next(rw, r)
 	}
+}
+
+// ForbiddenHandler logs a rejected request befure returning a 403 to the client
+func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
+	reason := csrf.FailureReason(r)
+	grip.Alert(message.Fields{
+		"action": "forbidden",
+		"method": r.Method,
+		"remote": r.RemoteAddr,
+		"path":   r.URL.Path,
+		"reason": reason.Error(),
+	})
+
+	http.Error(w, fmt.Sprintf("%s - %s",
+		http.StatusText(http.StatusForbidden), reason),
+		http.StatusForbidden)
 }
 
 // Logger is a middleware handler that logs the request as it goes in and the response as it goes out.
