@@ -186,10 +186,27 @@ functions:
           write_concern:
             wmode: majority
 
+        configdir: "config_test"
         client_binaries_dir: "clients"
         credentials: {
           github: "${github_token}",
         }
+
+        api_url: http://localhost:8080
+        ui:
+          secret: "secret for UI"
+          defaultproject: "mci"
+          url: "http://localhost:9090"
+
+        notify:
+          logfile: "evg_notify.log"
+          smtp:
+            from: "mci-notifications+test@mongodb.com"
+            server: "localhost"
+            port: 25
+            admin_email:
+              - "mci@10gen.com"
+
 
         jira:
           host: ${jiraserver}
