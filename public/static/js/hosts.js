@@ -129,6 +129,10 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     $scope.hosts.push(host);
   });
 
+  $scope.selectedHosts = function() {
+    return $filter('filter')($scope.hosts, {checked: true});
+  };
+
   $scope.toggleHostCheck = function(host) {
     host.checked = !host.checked;
   };
