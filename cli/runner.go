@@ -288,13 +288,26 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 		case <-timer.C:
 			if err := r.Run(ctx, s); err != nil {
 				subject := fmt.Sprintf("%s failure", r.Name())
-				grip.Error(err)
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
 					grip.Errorf("sending email: %+v", err)
 				}
+
+				grip.Info(message.Fields{
+					"message:": "run complete, encountered error",
+					"runner":   r.Name(),
+					"interval": dur,
+					"sleep":    dur.String(),
+					"error":    err.Error(),
+				})
+			} else {
+				grip.Info(message.Fields{
+					"message:": "run completed, succesfully",
+					"runner":   r.Name(),
+					"interval": dur,
+					"sleep":    dur.String(),
+				})
 			}
 
-			grip.Debugln("restarting runner loop for:", r.Name())
 			timer.Reset(dur)
 		}
 	}
