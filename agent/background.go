@@ -17,32 +17,26 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
 	}
+
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
-	failed := 0
+
+	shouldReturn, failed, signalBeat := a.doHeartbeat(ctx, tc, 0)
+	if signalBeat != "" {
+		heartbeat <- signalBeat
+	}
+	if shouldReturn {
+		return
+	}
+
 	for {
 		select {
 		case <-ticker.C:
-			abort, err := a.comm.Heartbeat(ctx, tc.task)
-			if abort {
-				grip.Info("Task aborted")
-				heartbeat <- evergreen.TaskUndispatched
-				return
+			shouldReturn, failed, signalBeat = a.doHeartbeat(ctx, tc, failed)
+			if signalBeat != "" {
+				heartbeat <- signalBeat
 			}
-			if err != nil {
-				if err.Error() == client.HTTPConflictError {
-					heartbeat <- evergreen.TaskConflict
-					return
-				}
-				failed++
-				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
-			} else {
-				grip.Debug("Sent heartbeat")
-				failed = 0
-			}
-			if failed > maxHeartbeats {
-				grip.Error(errors.New("Exceeded max heartbeats"))
-				heartbeat <- evergreen.TaskFailed
+			if shouldReturn {
 				return
 			}
 		case <-ctx.Done():
@@ -50,6 +44,31 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 			return
 		}
 	}
+}
+
+func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext, failed int) (bool, int, string) {
+	abort, err := a.comm.Heartbeat(ctx, tc.task)
+	if abort {
+		grip.Info("Task aborted")
+		return true, failed, evergreen.TaskFailed
+	}
+	if err != nil {
+		if err.Error() == client.HTTPConflictError {
+			return true, failed, evergreen.TaskConflict
+		}
+		failed++
+		grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
+	} else {
+		grip.Debug("Sent heartbeat")
+	}
+
+	if failed > maxHeartbeats {
+		grip.Error(errors.New("Exceeded max heartbeats"))
+		return true, failed, evergreen.TaskFailed
+
+	}
+
+	return false, failed, ""
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, cancel context.CancelFunc) {

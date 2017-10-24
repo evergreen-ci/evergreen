@@ -78,7 +78,7 @@ func (s *BackgroundSuite) TestTaskAbort() {
 	heartbeat := make(chan string)
 	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
 	beat := <-heartbeat
-	s.Equal(evergreen.TaskUndispatched, beat)
+	s.Equal(evergreen.TaskFailed, beat)
 }
 
 func (s *BackgroundSuite) TestMaxHeartbeats() {
