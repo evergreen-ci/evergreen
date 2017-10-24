@@ -14,13 +14,13 @@ import (
 )
 
 type LocalCommand struct {
-	CmdString        string
-	WorkingDirectory string
-	Shell            string
-	Environment      []string
-	ScriptMode       bool
-	Stdout           io.Writer
-	Stderr           io.Writer
+	CmdString        string    `json:"command"`
+	WorkingDirectory string    `json:"directory"`
+	Shell            string    `json:"shell"`
+	Environment      []string  `json:"environment"`
+	ScriptMode       bool      `json:"script"`
+	Stdout           io.Writer `json:"-"`
+	Stderr           io.Writer `json:"-"`
 	cmd              *exec.Cmd
 	mutex            sync.RWMutex
 }
