@@ -988,9 +988,19 @@ func mergeNewTestResultsPipeline(id string, archived bool) []bson.M {
 	}}
 	concatStage := bson.M{"$addFields": bson.M{
 		TestResultsKey: bson.M{
-			"$setUnion": []string{
-				"$" + TestResultsKey,
-				"$" + newresultsCurrentExecutionsField,
+			"$setUnion": []bson.M{
+				bson.M{
+					"$ifNull": []interface{}{
+						"$" + TestResultsKey,
+						[]string{},
+					},
+				},
+				bson.M{
+					"$ifNull": []interface{}{
+						"$" + newresultsCurrentExecutionsField,
+						[]string{},
+					},
+				},
 			},
 		},
 	}}

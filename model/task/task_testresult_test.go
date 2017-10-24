@@ -169,14 +169,13 @@ func (s *TaskTestResultSuite) TestOldNoNewTestResults() {
 
 func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 	t := &Task{
-		Id:          fmt.Sprintf("taskid-%d", 10),
-		Secret:      fmt.Sprintf("secret-%d", 10),
-		CreateTime:  time.Unix(int64(10), 0),
-		Version:     fmt.Sprintf("version-%d", 10),
-		Project:     fmt.Sprintf("project-%d", 10),
-		Revision:    fmt.Sprintf("revision-%d", 10),
-		Execution:   3,
-		TestResults: []TestResult{},
+		Id:         fmt.Sprintf("taskid-%d", 10),
+		Secret:     fmt.Sprintf("secret-%d", 10),
+		CreateTime: time.Unix(int64(10), 0),
+		Version:    fmt.Sprintf("version-%d", 10),
+		Project:    fmt.Sprintf("project-%d", 10),
+		Revision:   fmt.Sprintf("revision-%d", 10),
+		Execution:  3,
 	}
 	err := t.Insert()
 	s.Require().NoError(err)
