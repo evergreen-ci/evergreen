@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"time"
 
@@ -167,14 +166,6 @@ type HostSetupCommand struct {
 
 // Execute runs a script called "setup.sh" in the host's working directory.
 func (c *HostSetupCommand) Execute(_ []string) error {
-	if c.WorkingDirectory == "" {
-		usr, err := user.Current()
-		if err != nil {
-			return err
-		}
-		c.WorkingDirectory = usr.HomeDir
-	}
-
 	out, err := c.runSetupScript(context.TODO())
 	if err != nil {
 		return errors.Wrap(err, out)
