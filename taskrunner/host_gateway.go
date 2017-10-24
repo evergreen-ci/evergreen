@@ -44,6 +44,35 @@ type AgentHostGateway struct {
 	ExecutablesDir string
 }
 
+func getHostMessage(h host.Host) message.Fields {
+	m := message.Fields{
+		"message":  "starting agent on host",
+		"runner":   "taskrunner",
+		"host":     h.Host,
+		"distro":   h.Distro.Id,
+		"provider": h.Distro.Provider,
+	}
+
+	if h.InstanceType != "" {
+		m["instance"] = h.InstanceType
+	}
+
+	sinceLCT := time.Now().Sub(h.LastCommunicationTime)
+	if h.NeedsNewAgent {
+		m["reason"] = "flagged for new agent"
+	} else if h.LastCommunicationTime.IsZero() {
+		m["reason"] = "new host"
+	} else if sinceLCT > host.MaxLCTInterval {
+		m["reason"] = "host has exceeded last communication threshold"
+		m["threshold"] = host.MaxLCTInterval
+		m["threshold_span"] = host.MaxLCTInterval.String()
+		m["last_communication_at"] = sinceLCT
+		m["last_communication_at_time"] = sinceLCT.String()
+	}
+
+	return m
+}
+
 // Start an agent on the host specified.  First runs any necessary
 // preparation on the remote machine, then kicks off the agent process on the
 // machine. Returns an error if any step along the way fails.
@@ -66,15 +95,12 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	hostObj.Distro = *d
 
 	// prep the remote host
-	grip.Infof("Prepping remote host %v...", hostObj.Id)
+	grip.Info(message.Fields{"message": "prepping host for agent", "host": hostObj.Id})
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
-	grip.Infof("Prepping host %v finished successfully", hostObj.Id)
-
-	// start the agent on the remote machine
-	grip.Infof("Starting agent on host %v", hostObj.Id)
+	grip.Info(message.Fields{"message": "prepping host finished successfully", "host": hostObj.Id})
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
@@ -84,16 +110,15 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	}
 
 	// Start agent to listen for tasks
-	err = startAgentOnRemote(settings, &hostObj, sshOptions)
-
-	if err != nil {
+	grip.Info(getHostMessage(hostObj))
+	if err = startAgentOnRemote(settings, &hostObj, sshOptions); err != nil {
 		// mark the host's provisioning as failed
 		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Errorf("unprovisioning host %s failed: %+v", hostObj.Id, err)
 		}
 		return errors.WithStack(err)
 	}
-	grip.Infof("Agent successfully started for host %v", hostObj.Id)
+	grip.Info(message.Fields{"message": "agent successfully started for host", "host": hostObj.Id})
 
 	if err = hostObj.SetAgentRevision(agentRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
