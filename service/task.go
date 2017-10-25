@@ -128,23 +128,20 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	executionStr := mux.Vars(r)["execution"]
 	archived := false
-	var taskFromDb *task.Task
-	var err error
-	// we can look in either old_tasks or tasks
-	// where tasks are looked up in the old_tasks collection with key made up of
-	// the original key and the execution number joined by an "_"
-	// and the tasks are looked up in the tasks collection by key and execution
-	// number, so that we avoid finding the wrong execution in the tasks
-	// collection
 	if executionStr != "" {
-		var execution int
-		execution, err = strconv.Atoi(executionStr)
+		// otherwise we can look in either tasks or old_tasks
+		// where tasks are looked up in the old_tasks collection with key made up of
+		// the original key and the execution number joined by an "_"
+		// and the tasks are looked up in the tasks collection by key and execution
+		// number, so that we avoid finding the wrong execution in the tasks
+		// collection
+		execution, err := strconv.Atoi(executionStr)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
 			return
 		}
 		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
-		taskFromDb, err = task.FindOneOld(task.ById(oldTaskId))
+		taskFromDb, err := task.FindOneOld(task.ById(oldTaskId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -157,15 +154,10 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			archived = false
-		}
-	} else {
-		taskFromDb, err = task.FindOne(task.ById(projCtx.Task.Id))
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+		} else {
+			projCtx.Task = taskFromDb
 		}
 	}
-	projCtx.Task = taskFromDb
 
 	// Build a struct containing the subset of task data needed for display in the UI
 	tId := projCtx.Task.Id
