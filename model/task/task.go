@@ -601,11 +601,8 @@ func ResetTasks(taskIds []string) error {
 		},
 		reset,
 	)
-	if err != nil {
-		return err
-	}
-	return nil
 
+	return err
 }
 
 // UpdateHeartbeat updates the heartbeat to be the current time

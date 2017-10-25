@@ -71,7 +71,7 @@ func TestSetupScript(t *testing.T) {
 
 func TestSetupScriptSudoShHelper(t *testing.T) {
 	c := HostSetupCommand{}
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	cmd := c.getShCommandWithSudo(context.Background(), "foo")
 	assert.Equal([]string{"sh", "foo"}, cmd.Args)

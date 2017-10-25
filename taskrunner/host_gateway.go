@@ -57,7 +57,7 @@ func getHostMessage(h host.Host) message.Fields {
 		m["instance"] = h.InstanceType
 	}
 
-	sinceLCT := time.Now().Sub(h.LastCommunicationTime)
+	sinceLCT := time.Since(h.LastCommunicationTime)
 	if h.NeedsNewAgent {
 		m["reason"] = "flagged for new agent"
 	} else if h.LastCommunicationTime.IsZero() {
