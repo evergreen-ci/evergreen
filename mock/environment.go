@@ -28,7 +28,7 @@ func (e *Environment) Configure(ctx context.Context, path string) error {
 	e.EvergreenSettings = testutil.TestConfig()
 	e.DBSession = anserMock.NewSession()
 	e.Driver = driver.NewPriority()
-	rq := queue.RemoteUnordered(2)
+	rq := queue.NewRemoteUnordered(2)
 	rq.SetDriver(e.Driver)
 	e.Remote = rq
 	e.Local = queue.NewLocalUnordered(2)

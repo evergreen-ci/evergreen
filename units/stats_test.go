@@ -42,10 +42,10 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	s.False(j.Status().Completed)
 	j.env = s.env
 	j.logger = logging.MakeGrip(s.sender)
-	s.False(s.sender.HasMessages())
+	s.False(s.sender.HasMessage())
 
 	j.Run()
-	s.False(s.sender.HasMessages())
+	s.False(s.sender.HasMessage())
 	s.True(j.Status().Completed)
 
 }
