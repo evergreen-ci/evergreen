@@ -97,3 +97,5 @@ db.json.ensureIndex({ "project_id" : 1, "tag" : 1 })
 db.json.ensureIndex({ "name" : 1, "task_id" : 1 })
 db.json.ensureIndex({ "version_id" : 1 })
 
+//======testresults======//
+db.testresults.ensureIndex({ "task_id" : 1, "task_execution" : 1 })
