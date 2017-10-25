@@ -302,7 +302,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 
 			} else {
 				grip.Info(message.Fields{
-					"message":  "run completed, succesfully",
+					"message":  "run completed, successfully",
 					"runner":   r.Name(),
 					"interval": dur,
 					"sleep":    dur.String(),
