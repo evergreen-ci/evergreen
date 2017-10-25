@@ -47,5 +47,5 @@ func (j *taskStatsCollector) Run() {
 		return
 	}
 
-	j.logging.Info(task.GetResultCounts(tasks))
+	j.logger.Info(task.GetResultCounts(tasks))
 }

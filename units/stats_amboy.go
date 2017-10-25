@@ -1,9 +1,10 @@
 package units
 
 import (
+	"context"
 	"errors"
 
-	"github.com/evergreen-ci/sink/evergreen"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -12,7 +13,10 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const amboyStatsCollectorJobName = "amboy-stats-collector"
+const (
+	amboyStatsCollectorJobName = "amboy-stats-collector"
+	numAmboyJobsToReport       = 512
+)
 
 func init() {
 	registry.AddJobType(amboyStatsCollectorJobName,
@@ -49,25 +53,27 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 
 func (j *amboyStatsCollector) Run() {
 	defer j.MarkComplete()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	if j.env == nil {
 		j.AddError(errors.New("environment is not configured"))
 		return
 	}
 
-	if localQueue = env.LocalQueue(); localQueue.Started() {
-		j.logging.Info(message.Fields{
+	if localQueue := j.env.LocalQueue(); localQueue.Started() {
+		j.logger.Info(message.Fields{
 			"message": "amboy local queue stats",
 			"stats":   localQueue.Stats(),
-			"report":  amboy.Report(ctx, localQueue, numReportJobs),
+			"report":  amboy.Report(ctx, localQueue, numAmboyJobsToReport),
 		})
 	}
 
-	if remoteQueue = env.RemoteQueue(); remoteQueue.Started() {
-		j.logging.Info(message.Fields{
+	if remoteQueue := j.env.RemoteQueue(); remoteQueue.Started() {
+		j.logger.Info(message.Fields{
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(),
-			"report":  amboy.Report(ctx, remoteQueue, numReportJobs),
+			"report":  amboy.Report(ctx, remoteQueue, numAmboyJobsToReport),
 		})
 	}
 }
