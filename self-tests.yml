@@ -344,8 +344,11 @@ tasks:
     tags: ["nodb", "test", "agent"]
     name: test-subprocess
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["test", "agent"]
+    tags: ["test", "db", "agent"]
     name: test-command
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["test", "db"]
+    name: test-units
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
@@ -463,8 +466,11 @@ tasks:
     tags: ["nodb", "race", "agent"]
     name: race-subprocess
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["race", "agent"]
+    tags: ["race", "db", "agent"]
     name: race-command
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["race", "db"]
+    name: race-units
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-rest-route
@@ -631,7 +637,6 @@ buildvariants:
       - name: ".report"
         distros:
           - archlinux-build
-
   - name: osx
     display_name: OSX
     batchtime: 2880
@@ -647,12 +652,6 @@ buildvariants:
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2010-compile
-      - windows-64-vs2010-test
-      - windows-64-vs2013-compile
-      - windows-64-vs2013-test
-      - windows-64-vs2015-compile
-      - windows-64-vs2015-large
       - windows-64-vs2015-small
       - windows-64-vs2015-test
     expansions:
