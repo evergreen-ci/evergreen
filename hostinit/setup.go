@@ -343,9 +343,8 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	if err = targetHost.SetInitializing(); err != nil {
 		if err == mgo.ErrNotFound {
 			return "", ErrHostAlreadyInitializing
-		} else {
-			return "", errors.Wrapf(err, "database error")
 		}
+		return "", errors.Wrapf(err, "database error")
 	}
 
 	// run the function scheduled for when the host is up
@@ -365,10 +364,6 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 		}
 	}
 
-	if err = init.createWorkingDirectory(ctx, targetHost); err != nil {
-		return "", errors.Wrapf(err, "error creating working directory on host %s", targetHost.Id)
-	}
-
 	if targetHost.Distro.Setup != "" {
 		err = init.copyScript(ctx, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
@@ -386,65 +381,6 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	return "", nil
-}
-
-// createWorkingDirectory creates the distro's working directory
-func (init *HostInit) createWorkingDirectory(ctx context.Context, target *host.Host) error {
-	// parse the hostname into the user, host and port
-	hostInfo, err := util.ParseSSHInfo(target.Host)
-	if err != nil {
-		return err
-	}
-	user := target.Distro.User
-	if hostInfo.User != "" {
-		user = hostInfo.User
-	}
-
-	cloudHost, err := providers.GetCloudHost(target, init.Settings)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
-	}
-
-	cappedMakeDirectoryLog := util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-
-	makeDirectoryCmd := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("create-workdir-%d", rand.Int()),
-		CmdString:      fmt.Sprintf("mkdir -m 777 -p %s", target.Distro.WorkDir),
-		Stdout:         &cappedMakeDirectoryLog,
-		Stderr:         &cappedMakeDirectoryLog,
-		RemoteHostName: hostInfo.Hostname,
-		User:           user,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-	}
-	if target.Distro.SetupAsSudo {
-		makeDirectoryCmd.CmdString = fmt.Sprintf("sudo %s", makeDirectoryCmd.CmdString)
-	}
-
-	grip.Infof("Directories command: '%#v'", makeDirectoryCmd)
-
-	// run the make shell command with a timeout
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, SCPTimeout)
-	defer cancel()
-
-	if err = makeDirectoryCmd.Run(ctx); err != nil {
-		if err == util.ErrTimedOut {
-			grip.Notice(makeDirectoryCmd.Stop())
-			return errors.Errorf("creating remote directories timed out: %s",
-				cappedMakeDirectoryLog.String())
-		}
-		return errors.Wrapf(err, "error creating directories on remote machine: %s",
-			cappedMakeDirectoryLog.String())
-	}
-
-	return nil
 }
 
 // copyScript writes a given script as file "name" to the target host. This works
@@ -566,7 +502,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		}
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
-		args := []string{lcr.BinaryPath, "host", "setup"}
+		args := []string{lcr.BinaryPath, "host", "setup", fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir)}
 		if h.Distro.SetupAsSudo {
 			args = append(args, "--setup_as_sudo")
 		}
@@ -581,10 +517,6 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		out, err := hostutil.RunRemoteScript(ctx, h, strings.Join(args, " "), sshOptions)
 		if err != nil {
 			return errors.Wrapf(err, "error running setup script with agent for host %s (%s)", h.Id, out)
-		}
-		out, err = hostutil.RunRemoteScript(ctx, h, fmt.Sprintf("mkdir -m 777 -p %s", h.Distro.WorkDir), sshOptions)
-		if err != nil {
-			return errors.Wrapf(err, "error creating working directory after running setup script for host %s (%s)", h.Id, out)
 		}
 	}
 

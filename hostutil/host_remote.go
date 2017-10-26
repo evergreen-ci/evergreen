@@ -108,5 +108,8 @@ func SetupCommand(host *host.Host) string {
 	if host.Distro.SetupAsSudo {
 		cmd += " --setup_as_sudo"
 	}
+
+	cmd += fmt.Sprintf("--working_directory=%s", host.Distro.WorkDir)
+
 	return cmd
 }

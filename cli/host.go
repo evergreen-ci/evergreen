@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"time"
 
@@ -161,12 +162,24 @@ func (cmd *HostTerminateCommand) Execute(_ []string) error {
 // HostSetupCommand runs setup.sh to set up a host.
 type HostSetupCommand struct {
 	WorkingDirectory string `long:"working_directory" default:"" description:"working directory"`
+	ScriptDirectory  string `long:"script_directory" default:"" description:"directory of setup script"`
 	SetupAsSudo      bool   `long:"setup_as_sudo" description:"run setup script as sudo"`
 }
 
 // Execute runs a script called "setup.sh" in the host's working directory.
 func (c *HostSetupCommand) Execute(_ []string) error {
-	out, err := c.runSetupScript(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if c.ScriptDirectory == "" {
+		usr, err := user.Current()
+		if err != nil {
+			return errors.Wrap(err, "could not resolve home directory")
+		}
+		c.ScriptDirectory = usr.HomeDir
+	}
+
+	out, err := c.runSetupScript(ctx)
 	if err != nil {
 		return errors.Wrap(err, out)
 	}
@@ -174,15 +187,16 @@ func (c *HostSetupCommand) Execute(_ []string) error {
 }
 
 func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
-	script := filepath.Join(c.WorkingDirectory, evergreen.SetupScriptName)
-	if _, err := os.Stat(script); os.IsNotExist(err) {
-		return "", nil
-	}
-
+	catcher := grip.NewSimpleCatcher()
 	ctx, cancel := context.WithTimeout(ctx, setupTimeout)
 	defer cancel()
 
-	catcher := grip.NewSimpleCatcher()
+	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
+
+	script := filepath.Join(c.ScriptDirectory, evergreen.SetupScriptName)
+	if _, err := os.Stat(script); os.IsNotExist(err) {
+		return "", nil
+	}
 
 	chmod := c.getChmodCommandWithSudo(ctx, script)
 	out, err := chmod.CombinedOutput()
@@ -194,9 +208,8 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 	out, err = cmd.CombinedOutput()
 	catcher.Add(err)
 
-	if err := os.Remove(script); err != nil {
-		catcher.Add(err)
-	}
+	catcher.Add(os.Remove(script))
+	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
 
 	return string(out), catcher.Resolve()
 }

@@ -156,11 +156,6 @@ func newCappedOutputLog() *util.CappedWriter {
 // 2. Copy the binary to the remote host.
 // 3. Run the setup script with the binary.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
-	// create the necessary sandbox of directories on the remote host
-	if err := runSSHCommand("mkdir-pre", fmt.Sprintf("mkdir -m 777 -p %s", hostObj.Distro.WorkDir), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "failed to create directories on remote host before running setup script")
-	}
-
 	// copy over the correct agent binary to the remote host
 	if err := runSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
 		return "", errors.Wrap(err, "error downloading agent binary on remote host")
@@ -169,11 +164,6 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	// run the setup script with the agent
 	if err := runSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
 		return "", errors.Wrap(err, "error running setup script on remote host")
-	}
-
-	// re-create the directories, since the setup script may have deleted them
-	if err := runSSHCommand("mkdir-post", fmt.Sprintf("mkdir -m 777 -p %s", hostObj.Distro.WorkDir), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "failed to create directories on remote host after running setup script")
 	}
 
 	return agbh.GetAgentRevision()
