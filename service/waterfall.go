@@ -364,7 +364,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 		}
 
 		for i := range failedAndStartedTasks {
-			if err := last[i].MergeNewTestResults(); err != nil {
+			if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
 				return versionVariantData{}, errors.Wrap(err, "error merging test results")
 			}
 		}
