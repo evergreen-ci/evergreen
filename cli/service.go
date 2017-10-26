@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -69,9 +68,6 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	}
 
 	grip.SetName("evergreen.service")
-	grip.Warning(grip.SetDefaultLevel(level.Info))
-	grip.Warning(grip.SetThreshold(level.Debug))
-
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	go util.SystemInfoCollector(ctx)

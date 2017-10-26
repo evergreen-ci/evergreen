@@ -27,7 +27,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
@@ -59,8 +58,6 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	defer sender.Close()
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	grip.SetName("evg-runner")
-	grip.Warning(grip.SetDefaultLevel(level.Info))
-	grip.Warning(grip.SetThreshold(level.Debug))
 
 	defer recovery.LogStackTraceAndExit("evergreen runner")
 

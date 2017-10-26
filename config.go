@@ -238,6 +238,13 @@ type LoggerConfig struct {
 	ThresholdLevel string       `yaml:"threshold_level"`
 }
 
+func (c LoggerConfig) Info() send.LevelInfo {
+	return send.LevelInfo{
+		Default:   level.FromString(c.DefaultLevel),
+		Threshold: level.FromString(c.ThresholdLevel),
+	}
+}
+
 type LogBuffering struct {
 	DurationSeconds int `yaml:"duration_seconds"`
 	Count           int `yaml:"count"`
@@ -251,7 +258,7 @@ type AmboyConfig struct {
 	LocalStorage   int    `yaml:"local_storage_size"`
 }
 
-type Slack struct {
+type SlackConfig struct {
 	Options send.SlackOptions `yaml:"options"`
 	Token   string            `yaml:"token"`
 	Level   string            `yaml:"threshold_level"`
@@ -327,6 +334,8 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		senders  []send.Sender
 	)
 
+	levelInfo := s.LoggerConfig.Info()
+
 	fallback, err = send.NewErrorLogger("evergreen.err",
 		send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 	if err != nil {
@@ -337,8 +346,10 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-		if err != nil {
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "problem setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 			return nil, errors.Wrap(err, "problem setting error handler")
 		}
 	} else {
@@ -346,8 +357,10 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
-		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-		if err != nil {
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "problem setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 			return nil, errors.Wrap(err, "problem setting error handler")
 		}
 	}
@@ -357,8 +370,10 @@ func (s *Settings) GetSender() (send.Sender, error) {
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
-			err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-			if err != nil {
+			if err = sender.SetLevel(levelInfo); err != nil {
+				return nil, errors.Wrap(err, "problem setting level")
+			}
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 			senders = append(senders,
@@ -371,8 +386,10 @@ func (s *Settings) GetSender() (send.Sender, error) {
 	if s.Splunk.Populated() {
 		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
 		if err == nil {
-			err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-			if err != nil {
+			if err = sender.SetLevel(levelInfo); err != nil {
+				return nil, errors.Wrap(err, "problem setting level")
+			}
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 			senders = append(senders,
@@ -382,9 +399,9 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		}
 	}
 
-	if s.Slack.Options.Token != "" {
-		sender, err = send.NewSlackLogger(&s.Slack.Options, s.Slack.Toekn,
-			send.LevelInfo{Default: level.Alert, Threshold: s.Slack.Level})
+	if s.Slack.Token != "" {
+		sender, err = send.NewSlackLogger(&s.Slack.Options, s.Slack.Token,
+			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {
 			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
@@ -459,6 +476,11 @@ var configValidationRules = []configValidator{
 			settings.LoggerConfig.ThresholdLevel = "debug"
 		}
 
+		info := settings.LoggerConfig.Info()
+		if !info.Valid() {
+			return errors.Errorf("logging level configuration is not valid [%+v]", info)
+		}
+
 		return nil
 	},
 
@@ -476,8 +498,12 @@ var configValidationRules = []configValidator{
 				return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
 			}
 
-			return nil
+			if !level.IsValidPriority(level.FromString(settings.Slack.Level)) {
+				return errors.Errorf("%s is not a valid priority", settings.Slack.Level)
+			}
 		}
+
+		return nil
 	},
 
 	func(settings *Settings) error {
