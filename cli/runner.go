@@ -12,12 +12,11 @@ import (
 	// import the plugins here so that they're loaded for use in
 	// the repotracker which needs them to do command validation.
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/sink/units"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/hostinit"
-	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/repotracker"
@@ -70,15 +69,12 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 		grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
 	}
 
-	go util.SystemInfoCollector(ctx)
-	go taskStatsCollector(ctx)
-	go hostStatsCollector(ctx)
-	go amboyStatsCollector(ctx, env)
-
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {
 		return runProcessByName(ctx, c.Single, settings)
 	}
+
+	startCollectorJobs(ctx, env)
 
 	pprofHandler := service.GetHandlerPprof(settings)
 	if settings.PprofPort != "" {
@@ -96,93 +92,26 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	return errors.WithStack(err)
 }
 
-func amboyStatsCollector(ctx context.Context, env evergreen.Environment) {
-	defer recovery.LogStackTraceAndContinue("amboy stats collector")
+func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		ts := time.Now().Unix()
+		a := units.NewAmboyStatsCollector(env)
+		a.SetID(fmt.Sprintf("amboy-stats-%d", ts))
+		catcher.Add(queue.Put(a))
 
-	timer := time.NewTimer(0)
-	defer timer.Stop()
+		h := units.NewHostStatsCollector()
+		h.SetID(fmt.Sprintf("host-stats-%d", ts))
+		catcher.Add(queue.Put(h))
 
-	const numReportJobs = 512
-	var localQueue amboy.Queue
-	var remoteQueue amboy.Queue
+		t := units.NewTaskCollector()
+		h.SetID(fmt.Sprintf("task-stats-%d", ts))
+		catcher.Add(queue.Put(t))
+	})
 
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Info("task stats logging operation canceled")
-			return
-		case <-timer.C:
-			if localQueue = env.LocalQueue(); localQueue.Started() {
-				grip.Info(message.Fields{
-					"message": "amboy local queue stats",
-					"stats":   localQueue.Stats(),
-					"report":  amboy.Report(ctx, localQueue, numReportJobs),
-				})
-			}
-
-			if remoteQueue = env.RemoteQueue(); remoteQueue.Started() {
-				grip.Info(message.Fields{
-					"message": "amboy remote queue stats",
-					"stats":   remoteQueue.Stats(),
-					"report":  amboy.Report(ctx, remoteQueue, numReportJobs),
-				})
-			}
-		}
-	}
-}
-
-func taskStatsCollector(ctx context.Context) {
-	defer recovery.LogStackTraceAndContinue("task stats collector")
-	const interval = time.Minute
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Info("task stats logging operation canceled")
-			return
-		case <-timer.C:
-			tasks, err := task.GetRecentTasks(interval)
-			if err != nil {
-				grip.Warningf("problem getting recent tasks for task status update: %s", err.Error())
-				timer.Reset(interval)
-				continue
-			}
-
-			grip.Info(task.GetResultCounts(tasks))
-			timer.Reset(interval)
-		}
-	}
-}
-
-func hostStatsCollector(ctx context.Context) {
-	defer recovery.LogStackTraceAndContinue("host stats collector")
-	const interval = time.Minute
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			grip.Info("host status logging operation canceled")
-			return
-		case <-timer.C:
-			hosts, err := host.GetStatsByDistro()
-			if err != nil {
-				grip.Warningf("problem getting host stats: %s", err.Error())
-				timer.Reset(interval)
-				continue
-			}
-
-			grip.Info(message.Fields{
-				"report": "host stats by distro",
-				"data":   hosts,
-			})
-
-			timer.Reset(interval)
-		}
-	}
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
+		return queue.Put(units.NewSysInfoStatsCollector())
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////
