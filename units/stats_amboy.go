@@ -15,7 +15,7 @@ import (
 
 const (
 	amboyStatsCollectorJobName = "amboy-stats-collector"
-	numAmboyJobsToReport       = 512
+	numAmboyJobsToReport       = 128
 )
 
 func init() {

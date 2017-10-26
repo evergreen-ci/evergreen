@@ -185,7 +185,7 @@ func (e *envState) LocalQueue() amboy.Queue {
 func (e *envState) RemoteQueue() amboy.Queue {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.localQueue
+	return e.remoteQueue
 }
 
 func (e *envState) Session() db.Session {
