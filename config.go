@@ -232,9 +232,15 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 }
 
+type LoggerConfig struct {
+	Buffer         LogBuffering `yaml:"buffer"`
+	DefaultLevel   string       `yaml:"default_level"`
+	ThresholdLevel string       `yaml:"threshold_level"`
+}
+
 type LogBuffering struct {
 	DurationSeconds int `yaml:"duration_seconds"`
-	BufferCount     int `yaml:"count"`
+	Count           int `yaml:"count"`
 }
 
 type AmboyConfig struct {
@@ -243,6 +249,12 @@ type AmboyConfig struct {
 	PoolSizeLocal  int    `yaml:"pool_size_local"`
 	PoolSizeRemote int    `yaml:"pool_size_remote"`
 	LocalStorage   int    `yaml:"local_storage_size"`
+}
+
+type Slack struct {
+	Options send.SlackOptions `yaml:"options"`
+	Token   string            `yaml:"token"`
+	Level   string            `yaml:"threshold_level"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
@@ -256,6 +268,7 @@ type Settings struct {
 	SuperUsers          []string                  `yaml:"superusers"`
 	Jira                JiraConfig                `yaml:"jira"`
 	Splunk              send.SplunkConnectionInfo `yaml:"splunk"`
+	Slack               SlackConfig               `yaml:"slack"`
 	Providers           CloudProviders            `yaml:"providers"`
 	Keys                map[string]string         `yaml:"keys"`
 	Credentials         map[string]string         `yaml:"credentials"`
@@ -274,7 +287,7 @@ type Settings struct {
 	Expansions          map[string]string         `yaml:"expansions"`
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
-	LogBuffering        LogBuffering              `yaml:"log_buffering"`
+	LoggerConfig        LoggerConfig              `yaml:"logger_config"`
 	LogPath             string                    `yaml:"log_path"`
 	PprofPort           string                    `yaml:"pprof_port"`
 }
@@ -350,8 +363,8 @@ func (s *Settings) GetSender() (send.Sender, error) {
 			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
-					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
-					s.LogBuffering.BufferCount))
+					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
+					s.LoggerConfig.Buffer.Count))
 		}
 	}
 
@@ -364,9 +377,21 @@ func (s *Settings) GetSender() (send.Sender, error) {
 			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
-					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
-					s.LogBuffering.BufferCount))
+					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
+					s.LoggerConfig.Buffer.Count))
 		}
+	}
+
+	if s.Slack.Options.Token != "" {
+		sender, err = send.NewSlackLogger(&s.Slack.Options, s.Slack.Toekn,
+			send.LevelInfo{Default: level.Alert, Threshold: s.Slack.Level})
+		if err == nil {
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+				return nil, errors.Wrap(err, "problem setting error handler")
+			}
+			senders = append(senders, send.NewBufferedSender(sender, 10*time.Second, 3))
+		}
+		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
@@ -422,10 +447,37 @@ var configValidationRules = []configValidator{
 	},
 
 	func(settings *Settings) error {
-		if settings.LogBuffering.DurationSeconds == 0 {
-			settings.LogBuffering.DurationSeconds = defaultLogBufferingDuration
+		if settings.LoggerConfig.Buffer.DurationSeconds == 0 {
+			settings.LoggerConfig.Buffer.DurationSeconds = defaultLogBufferingDuration
 		}
+
+		if settings.LoggerConfig.DefaultLevel == "" {
+			settings.LoggerConfig.DefaultLevel = "info"
+		}
+
+		if settings.LoggerConfig.ThresholdLevel == "" {
+			settings.LoggerConfig.ThresholdLevel = "debug"
+		}
+
 		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.Slack.Token != "" {
+			if settings.Slack.Options.Channel == "" {
+				settings.Slack.Options.Channel = "#mci-alerts"
+			}
+
+			if settings.Slack.Options.Name == "" {
+				settings.Slack.Options.Name = "evergreen"
+			}
+
+			if err := settings.Slack.Options.Validate(); err != nil {
+				return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
+			}
+
+			return nil
+		}
 	},
 
 	func(settings *Settings) error {
