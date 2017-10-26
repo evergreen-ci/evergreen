@@ -11,7 +11,10 @@ import (
 
 const sysInfoStatsCollectorJobName = "sysinfo-stats-collector"
 
-func init() { registry.AddJobType(sysInfoStatsCollectorJobName, NewSysInfoStatsCollector) }
+func init() {
+	registry.AddJobType(sysInfoStatsCollectorJobName,
+		func() amboy.Job { return makeSysInfoStatsCollector() })
+}
 
 type sysInfoStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
@@ -20,7 +23,13 @@ type sysInfoStatsCollector struct {
 
 // NewSysInfoStatsCollector reports basic system information and a
 // report of the go runtime information, as provided by grip.
-func NewSysInfoStatsCollector() amboy.Job {
+func NewSysInfoStatsCollector(id string) amboy.Job {
+	j := makeSysInfoStatsCollector()
+	j.SetID(id)
+	return j
+}
+
+func makeSysInfoStatsCollector() *sysInfoStatsCollector {
 	return &sysInfoStatsCollector{
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{

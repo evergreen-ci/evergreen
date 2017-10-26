@@ -9,11 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	// import the plugins here so that they're loaded for use in
-	// the repotracker which needs them to do command validation.
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
-	"github.com/evergreen-ci/sink/units"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/hostinit"
@@ -23,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/taskrunner"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -96,21 +92,16 @@ func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := time.Now().Unix()
-		a := units.NewAmboyStatsCollector(env)
-		a.SetID(fmt.Sprintf("amboy-stats-%d", ts))
-		catcher.Add(queue.Put(a))
 
-		h := units.NewHostStatsCollector()
-		h.SetID(fmt.Sprintf("host-stats-%d", ts))
-		catcher.Add(queue.Put(h))
+		catcher.Add(queue.Put(units.NewAmboyStatsCollector(env, fmt.Sprintf("amboy-stats-%d", ts))))
+		catcher.Add(queue.Put(units.NewHostStatsCollector(fmt.Sprintf("host-stats-%d", ts))))
+		catcher.Add(queue.Put(units.NewTaskStatsCollector(fmt.Sprintf("task-stats-%d", ts))))
 
-		t := units.NewTaskCollector()
-		h.SetID(fmt.Sprintf("task-stats-%d", ts))
-		catcher.Add(queue.Put(t))
+		return catcher.Resolve()
 	})
 
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
-		return queue.Put(units.NewSysInfoStatsCollector())
+		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
 }
 

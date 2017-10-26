@@ -31,9 +31,11 @@ type amboyStatsCollector struct {
 
 // NewAmboyStatsCollector reports the status of the local and remote
 // queues registered in the evergreen service Environment.
-func NewAmboyStatsCollector(env evergreen.Environment) amboy.Job {
+func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 	j := makeAmboyStatsCollector()
 	j.env = env
+	j.SetID(id)
+
 	return j
 }
 

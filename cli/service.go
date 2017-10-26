@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
@@ -11,8 +12,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/render"
-	"github.com/evergreen-ci/sink/units"
 	"github.com/gorilla/csrf"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -76,7 +77,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
-		return queue.Put(units.NewSysInfoStatsCollector())
+		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
 
 	catcher := grip.NewBasicCatcher()

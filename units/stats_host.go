@@ -12,14 +12,25 @@ import (
 
 const hostStatsCollectorJobName = "host-stats-collector"
 
-func init() { registry.AddJobType(hostStatsCollectorJobName, NewHostStatsCollector) }
+func init() {
+	registry.AddJobType(hostStatsCollectorJobName,
+		func() amboy.Job { return makeHostStatsCollector() })
+}
 
 type hostStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	logger   grip.Journaler
 }
 
-func NewHostStatsCollector() amboy.Job {
+// NewHostStatsCollector logs statistics about host utilization per
+// distro to the default grip logger.
+func NewHostStatsCollector(id string) amboy.Job {
+	j := makeHostStatsCollector()
+	j.SetID(id)
+	return j
+}
+
+func makeHostStatsCollector() *hostStatsCollector {
 	return &hostStatsCollector{
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{

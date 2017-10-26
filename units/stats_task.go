@@ -16,7 +16,10 @@ const (
 	taskStatsCollectorInterval = time.Minute
 )
 
-func init() { registry.AddJobType(taskStatsCollectorJobName, NewTaskStatsCollector) }
+func init() {
+	registry.AddJobType(taskStatsCollectorJobName,
+		func() amboy.Job { return makeTaskStatsCollector() })
+}
 
 type taskStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
@@ -25,7 +28,13 @@ type taskStatsCollector struct {
 
 // NewTaskStatsCollector captures a single report of the status of
 // tasks that have completed in the last minute.
-func NewTaskStatsCollector() amboy.Job {
+func NewTaskStatsCollector(id string) amboy.Job {
+	t := makeTaskStatsCollector()
+	t.SetID(id)
+	return t
+}
+
+func makeTaskStatsCollector() *taskStatsCollector {
 	return &taskStatsCollector{
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
