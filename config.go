@@ -487,7 +487,7 @@ var configValidationRules = []configValidator{
 	func(settings *Settings) error {
 		if settings.Slack.Token != "" {
 			if settings.Slack.Options.Channel == "" {
-				settings.Slack.Options.Channel = "#mci-alerts"
+				settings.Slack.Options.Channel = "#evergreen-ops-alerts"
 			}
 
 			if settings.Slack.Options.Name == "" {
