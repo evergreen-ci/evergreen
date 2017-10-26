@@ -102,8 +102,9 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 	work := make(chan *host.Host, len(hosts))
 	wg := &sync.WaitGroup{}
 
-	for _, h := range hosts {
-		work <- &h
+	// The naive range case does not work with pointers https://play.golang.org/p/JL17Ah7HdU.
+	for i := range hosts {
+		work <- &hosts[i]
 	}
 	close(work)
 
