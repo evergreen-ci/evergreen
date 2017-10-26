@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"os"
 
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -30,6 +31,10 @@ func (c *AgentCommand) Execute(_ []string) error {
 		StatusPort:       c.StatusPort,
 		LogPrefix:        c.LogPrefix,
 		WorkingDirectory: c.WorkingDirectory,
+	}
+
+	if err := os.MkdirAll(c.WorkingDirectory, 0777); err != nil {
+		return errors.Wrap("problem creating working directory")
 	}
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
