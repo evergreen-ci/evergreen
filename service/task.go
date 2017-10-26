@@ -128,34 +128,34 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	executionStr := mux.Vars(r)["execution"]
 	archived := false
+
+	// if there is an execution number, the task might be in the old_tasks collection, so we
+	// query that collection and set projCtx.Task to the old task if it exists.
 	if executionStr != "" {
-		// otherwise we can look in either tasks or old_tasks
-		// where tasks are looked up in the old_tasks collection with key made up of
-		// the original key and the execution number joined by an "_"
-		// and the tasks are looked up in the tasks collection by key and execution
-		// number, so that we avoid finding the wrong execution in the tasks
-		// collection
 		execution, err := strconv.Atoi(executionStr)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Bad execution number: %v", executionStr), http.StatusBadRequest)
 			return
 		}
+		// Construct the old task id.
 		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
+
+		// Try to find the task in the old_tasks collection.
 		taskFromDb, err := task.FindOneOld(task.ById(oldTaskId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		archived = true
 
-		if taskFromDb == nil {
-			if execution != projCtx.Task.Execution {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding old task"))
-				return
-			}
-			archived = false
-		} else {
+		// If we found a task, set the task context. Otherwise, if taskFromDb is nil, check
+		// that the execution matches the context's execution. If it does not, return an
+		// error, since that means we are searching for a task that does not exist.
+		if taskFromDb != nil {
 			projCtx.Task = taskFromDb
+			archived = true
+		} else if execution != projCtx.Task.Execution {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding old task"))
+			return
 		}
 	}
 
