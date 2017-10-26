@@ -16,6 +16,7 @@ const (
 
 	// event types
 	EventHostCreated              = "HOST_CREATED"
+	EventHostStarted              = "HOST_STARTED"
 	EventHostStatusChanged        = "HOST_STATUS_CHANGED"
 	EventHostDNSNameSet           = "HOST_DNS_NAME_SET"
 	EventHostProvisionFailed      = "HOST_PROVISION_FAILED"
@@ -64,6 +65,10 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	if err := logger.LogEvent(event); err != nil {
 		grip.Errorf("Error logging host event: %+v", err)
 	}
+}
+
+func LogHostStarted(hostId string) {
+	LogHostEvent(hostId, EventHostStarted, HostEventData{})
 }
 
 func LogHostCreated(hostId string) {

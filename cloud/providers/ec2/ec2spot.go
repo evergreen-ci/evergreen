@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
@@ -300,6 +301,7 @@ func (cloudManager *EC2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) 
 	grip.Error(err)
 	grip.DebugWhenf(err == nil, "attached tag name '%s' for '%s'",
 		h.Id, h.Id)
+	event.LogHostStarted(h.Id)
 
 	return h, nil
 }

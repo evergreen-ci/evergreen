@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
@@ -122,6 +123,8 @@ func (digoMgr *DigitalOceanManager) SpawnHost(h *host.Host) (*host.Host, error) 
 	// the document is updated later in hostinit, rather than here
 	h.Id = fmt.Sprintf("%v", newDroplet.Id)
 	h.Host = newDroplet.IpAddress
+	event.LogHostStarted(h.Id)
+
 	return h, nil
 
 }
