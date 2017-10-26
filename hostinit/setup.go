@@ -192,22 +192,20 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					})
 
 					// check whether or not the host is ready for its setup script to be run
-					ready, err := init.IsHostReady(&h)
-					if err != nil {
-						err = errors.Wrapf(err, "problem checking host %s for readiness", h.Id)
-						catcher.Add(err)
-						grip.Error(err.Error())
-						continue
-					}
-
 					// if the host isn't ready (for instance, it might not be up yet), skip it
-					if !ready {
-						grip.Debug(message.Fields{
+					if ready, err := init.IsHostReady(&h); !ready {
+						m := message.Fields{
 							"GUID":    init.GUID,
 							"message": "host not ready for setup",
 							"hostid":  h.Id,
 							"DNS":     h.Host,
-						})
+						}
+
+						if err != nil {
+							m["error"] = err.Error()
+						}
+
+						grip.Info(m)
 						continue
 					}
 
