@@ -11,9 +11,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
+	"github.com/evergreen-ci/sink/units"
 	"github.com/gorilla/csrf"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -74,7 +75,9 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-	go util.SystemInfoCollector(ctx)
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
+		return queue.Put(units.NewSysInfoStatsCollector())
+	})
 
 	catcher := grip.NewBasicCatcher()
 	apiWait := make(chan struct{})
