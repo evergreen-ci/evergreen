@@ -2,6 +2,7 @@
   <div class="timestamp col-lg-2 col-md-3 col-sm-4" style="min-width: 250px;">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
   <div class="event_details col-lg-9 col-md-8 col-sm-7" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
     <span ng-switch-when="HOST_CREATED">Host created</span>
+    <span ng-switch-when="HOST_STARTED">Host started</span>
     <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> </span>
     <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>
     <span ng-switch-when="HOST_PROVISIONED">Marked as <b>provisioned</b></span>
@@ -10,30 +11,30 @@
     <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.task_pid]]</b></span>
     <span ng-switch-when="HOST_MONITOR_FLAG">Flagged for termination because:
       <span ng-switch="eventLogObj.data.monitor">
-        <strong ng-switch-when="decommissioned">host was decommissioned.</strong>
-        <strong ng-switch-when="idle">host was idle.</strong>
-        <strong ng-switch-when="excess">pool exceeded maximum hosts limit.</strong>
-        <strong ng-switch-when="provision_timeout">host took too long for provisioning to complete.</strong>
-        <strong ng-switch-when="provision_failed">provisioning failed.</strong>
-        <strong ng-switch-when="expired">expiration time passed.</strong>
+	<strong ng-switch-when="decommissioned">host was decommissioned.</strong>
+	<strong ng-switch-when="idle">host was idle.</strong>
+	<strong ng-switch-when="excess">pool exceeded maximum hosts limit.</strong>
+	<strong ng-switch-when="provision_timeout">host took too long for provisioning to complete.</strong>
+	<strong ng-switch-when="provision_failed">provisioning failed.</strong>
+	<strong ng-switch-when="expired">expiration time passed.</strong>
       </span>
     </span>
     <span ng-switch-when="HOST_PROVISION_FAILED">
       <div>Provisioning failed.</div>
       <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
       <div ng-show="showlogs">
-        <pre>[[eventLogObj.data.logs]]</pre>
+	<pre>[[eventLogObj.data.logs]]</pre>
       </div>
     </span>
     <span ng-switch-when="HOST_TEARDOWN">
       <div> Teardown script
-        <span ng-show="eventLogObj.data.successful">ran successfully</span>
-        <span ng-show="!eventLogObj.data.successful"><strong>failed</strong></span>
-        in [[eventLogObj.data.duration | stringifyNanoseconds:true:true]].
+	<span ng-show="eventLogObj.data.successful">ran successfully</span>
+	<span ng-show="!eventLogObj.data.successful"><strong>failed</strong></span>
+	in [[eventLogObj.data.duration | stringifyNanoseconds:true:true]].
       </div>
       <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] teardown logs </div>
       <div ng-show="showlogs">
-        <pre>[[eventLogObj.data.logs]]</pre>
+	<pre>[[eventLogObj.data.logs]]</pre>
       </div>
     </span>
     <span ng-switch-when="HOST_TASK_FINISHED">Task <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:'...']]</a> completed with status: <b>[[eventLogObj.data.task_status]]</b></span>

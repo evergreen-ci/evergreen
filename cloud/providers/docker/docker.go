@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/anser/bsonutil"
@@ -146,6 +147,7 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		"message":   "created and started Docker container",
 		"container": h.Id,
 	})
+	event.LogHostStarted(h.Id)
 
 	// Retrieve container details
 	newContainer, err := m.client.GetContainer(h)

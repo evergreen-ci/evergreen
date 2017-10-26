@@ -165,8 +165,8 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	}
 	close(hosts)
 
-	numThreads := 12
-	if len(uninitializedHosts) < 12 {
+	numThreads := 16
+	if len(uninitializedHosts) < 16 {
 		numThreads = len(uninitializedHosts)
 	}
 
