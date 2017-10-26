@@ -1,7 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent db cli remote subprocess taskrunner util plugin hostinit
+packages := $(name) agent db cli remote subprocess taskrunner util plugin hostinit units
 packages += command plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task

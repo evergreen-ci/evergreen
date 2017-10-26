@@ -4,8 +4,13 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
+	edb "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/db"
+	anserMock "github.com/mongodb/anser/mock"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -14,13 +19,28 @@ var _ evergreen.Environment = &Environment{}
 
 type Environment struct {
 	Remote            amboy.Queue
+	Driver            *driver.Priority
 	Local             amboy.Queue
-	DBSession         db.Session
+	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
 }
 
 func (e *Environment) Configure(ctx context.Context, path string) error {
-	e.EvergreenSettings = TestConfig()
+	e.EvergreenSettings = testutil.TestConfig()
+	e.DBSession = anserMock.NewSession()
+	e.Driver = driver.NewPriority()
+
+	if err := e.Driver.Open(ctx); err != nil {
+		return err
+	}
+
+	rq := queue.NewRemoteUnordered(2)
+	rq.SetDriver(e.Driver)
+	e.Remote = rq
+	e.Local = queue.NewLocalUnordered(2)
+
+	edb.SetGlobalSessionProvider(e.EvergreenSettings.SessionFactory())
+
 	return nil
 }
 
