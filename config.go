@@ -232,9 +232,22 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 }
 
+type LoggerConfig struct {
+	Buffer         LogBuffering `yaml:"buffer"`
+	DefaultLevel   string       `yaml:"default_level"`
+	ThresholdLevel string       `yaml:"threshold_level"`
+}
+
+func (c LoggerConfig) Info() send.LevelInfo {
+	return send.LevelInfo{
+		Default:   level.FromString(c.DefaultLevel),
+		Threshold: level.FromString(c.ThresholdLevel),
+	}
+}
+
 type LogBuffering struct {
 	DurationSeconds int `yaml:"duration_seconds"`
-	BufferCount     int `yaml:"count"`
+	Count           int `yaml:"count"`
 }
 
 type AmboyConfig struct {
@@ -243,6 +256,12 @@ type AmboyConfig struct {
 	PoolSizeLocal  int    `yaml:"pool_size_local"`
 	PoolSizeRemote int    `yaml:"pool_size_remote"`
 	LocalStorage   int    `yaml:"local_storage_size"`
+}
+
+type SlackConfig struct {
+	Options send.SlackOptions `yaml:"options"`
+	Token   string            `yaml:"token"`
+	Level   string            `yaml:"threshold_level"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
@@ -256,6 +275,7 @@ type Settings struct {
 	SuperUsers          []string                  `yaml:"superusers"`
 	Jira                JiraConfig                `yaml:"jira"`
 	Splunk              send.SplunkConnectionInfo `yaml:"splunk"`
+	Slack               SlackConfig               `yaml:"slack"`
 	Providers           CloudProviders            `yaml:"providers"`
 	Keys                map[string]string         `yaml:"keys"`
 	Credentials         map[string]string         `yaml:"credentials"`
@@ -274,7 +294,7 @@ type Settings struct {
 	Expansions          map[string]string         `yaml:"expansions"`
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
-	LogBuffering        LogBuffering              `yaml:"log_buffering"`
+	LoggerConfig        LoggerConfig              `yaml:"logger_config"`
 	LogPath             string                    `yaml:"log_path"`
 	PprofPort           string                    `yaml:"pprof_port"`
 }
@@ -314,6 +334,8 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		senders  []send.Sender
 	)
 
+	levelInfo := s.LoggerConfig.Info()
+
 	fallback, err = send.NewErrorLogger("evergreen.err",
 		send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 	if err != nil {
@@ -324,8 +346,10 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-		if err != nil {
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "problem setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 			return nil, errors.Wrap(err, "problem setting error handler")
 		}
 	} else {
@@ -333,8 +357,10 @@ func (s *Settings) GetSender() (send.Sender, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
-		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-		if err != nil {
+		if err = sender.SetLevel(levelInfo); err != nil {
+			return nil, errors.Wrap(err, "problem setting level")
+		}
+		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 			return nil, errors.Wrap(err, "problem setting error handler")
 		}
 	}
@@ -344,29 +370,45 @@ func (s *Settings) GetSender() (send.Sender, error) {
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
-			err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-			if err != nil {
+			if err = sender.SetLevel(levelInfo); err != nil {
+				return nil, errors.Wrap(err, "problem setting level")
+			}
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
-					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
-					s.LogBuffering.BufferCount))
+					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
+					s.LoggerConfig.Buffer.Count))
 		}
 	}
 
 	if s.Splunk.Populated() {
 		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
 		if err == nil {
-			err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-			if err != nil {
+			if err = sender.SetLevel(levelInfo); err != nil {
+				return nil, errors.Wrap(err, "problem setting level")
+			}
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
-					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
-					s.LogBuffering.BufferCount))
+					time.Duration(s.LoggerConfig.Buffer.DurationSeconds)*time.Second,
+					s.LoggerConfig.Buffer.Count))
 		}
+	}
+
+	if s.Slack.Token != "" {
+		sender, err = send.NewSlackLogger(&s.Slack.Options, s.Slack.Token,
+			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
+		if err == nil {
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+				return nil, errors.Wrap(err, "problem setting error handler")
+			}
+			senders = append(senders, send.NewBufferedSender(sender, 10*time.Second, 3))
+		}
+		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
@@ -422,9 +464,45 @@ var configValidationRules = []configValidator{
 	},
 
 	func(settings *Settings) error {
-		if settings.LogBuffering.DurationSeconds == 0 {
-			settings.LogBuffering.DurationSeconds = defaultLogBufferingDuration
+		if settings.LoggerConfig.Buffer.DurationSeconds == 0 {
+			settings.LoggerConfig.Buffer.DurationSeconds = defaultLogBufferingDuration
 		}
+
+		if settings.LoggerConfig.DefaultLevel == "" {
+			settings.LoggerConfig.DefaultLevel = "info"
+		}
+
+		if settings.LoggerConfig.ThresholdLevel == "" {
+			settings.LoggerConfig.ThresholdLevel = "debug"
+		}
+
+		info := settings.LoggerConfig.Info()
+		if !info.Valid() {
+			return errors.Errorf("logging level configuration is not valid [%+v]", info)
+		}
+
+		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.Slack.Token != "" {
+			if settings.Slack.Options.Channel == "" {
+				settings.Slack.Options.Channel = "#evergreen-ops-alerts"
+			}
+
+			if settings.Slack.Options.Name == "" {
+				settings.Slack.Options.Name = "evergreen"
+			}
+
+			if err := settings.Slack.Options.Validate(); err != nil {
+				return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
+			}
+
+			if !level.IsValidPriority(level.FromString(settings.Slack.Level)) {
+				return errors.Errorf("%s is not a valid priority", settings.Slack.Level)
+			}
+		}
+
 		return nil
 	},
 
