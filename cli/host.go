@@ -180,7 +180,7 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, setupTimeout)
 	defer cancel()
 
-	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
+	grip.Warning(os.MkdirAll(c.WorkingDirectory, 0777))
 
 	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
 		return "", nil
@@ -197,7 +197,7 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 	catcher.Add(err)
 
 	catcher.Add(os.Remove(evergreen.SetupScriptName))
-	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
+	grip.Warning(os.MkdirAll(c.WorkingDirectory, 0777))
 
 	return string(out), catcher.Resolve()
 }
