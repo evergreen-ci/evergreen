@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -78,6 +79,7 @@ func (self liveHttp) doGet(url string, username string, password string) (*http.
 	tr := &http.Transport{
 		DisableCompression: true,
 		DisableKeepAlives:  false,
+		IdleConnTimeout:    time.Minute,
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -102,6 +104,7 @@ func (self liveHttp) postOrPut(method string, url string, username string, passw
 	tr := &http.Transport{
 		DisableCompression: true,
 		DisableKeepAlives:  false,
+		IdleConnTimeout:    time.Minute,
 	}
 
 	body := &bytes.Buffer{}
