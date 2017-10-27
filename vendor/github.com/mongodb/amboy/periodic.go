@@ -6,6 +6,7 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
 
@@ -83,6 +84,23 @@ func GroupQueueOperationFactory(first QueueOperation, ops ...QueueOperation) Que
 // terminate the background process.
 func PeriodicQueueOperation(ctx context.Context, q Queue, interval time.Duration, ignoreErrors bool, op QueueOperation) {
 	go func() {
+		var err error
+
+		defer func() {
+			err = recovery.HandlePanicWithError(recover(), err, "periodic background scheduler error")
+			if err != nil {
+				if !ignoreErrors {
+					return
+				}
+
+				if ctx.Err() != nil {
+					return
+				}
+
+				PeriodicQueueOperation(ctx, q, interval, ignoreErrors, op)
+			}
+		}()
+
 		timer := time.NewTimer(0)
 		defer timer.Stop()
 		count := 0
@@ -96,7 +114,7 @@ func PeriodicQueueOperation(ctx context.Context, q Queue, interval time.Duration
 				})
 				return
 			case <-timer.C:
-				if err := scheduleOp(q, op, ignoreErrors); err != nil {
+				if err = scheduleOp(q, op, ignoreErrors); err != nil {
 					return
 				}
 
@@ -112,13 +130,31 @@ func PeriodicQueueOperation(ctx context.Context, q Queue, interval time.Duration
 // schedule jobs every hour, or similar use-cases.
 func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration, startAt time.Time, ignoreErrors bool, op QueueOperation) {
 	go func() {
+		var err error
+
+		defer func() {
+			err = recovery.HandlePanicWithError(recover(), err, "interval background job scheduler")
+
+			if err != nil {
+				if !ignoreErrors {
+					return
+				}
+
+				if ctx.Err() != nil {
+					return
+				}
+
+				IntervalQueueOperation(ctx, q, interval, startAt, ignoreErrors, op)
+			}
+		}()
+
 		initialWait := time.Since(startAt)
 		if initialWait > time.Second {
 			grip.Infof("waiting %s to start scheduling an interval job", initialWait)
 			time.Sleep(initialWait)
 		}
 
-		if err := scheduleOp(q, op, ignoreErrors); err != nil {
+		if err = scheduleOp(q, op, ignoreErrors); err != nil {
 			return
 		}
 
@@ -134,7 +170,7 @@ func IntervalQueueOperation(ctx context.Context, q Queue, interval time.Duration
 				})
 				return
 			case <-ticker.C:
-				if err := scheduleOp(q, op, ignoreErrors); err != nil {
+				if err = scheduleOp(q, op, ignoreErrors); err != nil {
 					return
 				}
 

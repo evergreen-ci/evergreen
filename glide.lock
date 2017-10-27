@@ -119,4 +119,4 @@ imports:
   - name: github.com/mongodb/anser
     version: e8985904c129115d03fff712dc0314dc7bf12a65
   - name: github.com/mongodb/amboy
-    version: 773c4fa65d1ceef874904ddd6f2dc83e3f1ac59a
+    version: 6db0a7c5d37e9ac9323b6f0d03c7dcacee2bc8c2
