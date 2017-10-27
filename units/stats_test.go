@@ -55,7 +55,7 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	j = makeAmboyStatsCollector()
 	s.False(j.Status().Completed)
 	j.env = s.env
-	s.Equal(j, NewAmboyStatsCollector(s.env)) // validate the public constructor
+	s.Equal(j, NewAmboyStatsCollector(s.env, "")) // validate the public constructor
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 
@@ -101,7 +101,7 @@ func (s *StatUnitsSuite) TestHostStatsCollector() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, hostStatsCollectorJobName)
 
-	j, ok := NewHostStatsCollector().(*hostStatsCollector)
+	j, ok := NewHostStatsCollector("id").(*hostStatsCollector)
 	s.True(ok)
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
@@ -126,7 +126,7 @@ func (s *StatUnitsSuite) TestTaskStatsCollector() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, taskStatsCollectorJobName)
 
-	j, ok := NewTaskStatsCollector().(*taskStatsCollector)
+	j, ok := NewTaskStatsCollector("id").(*taskStatsCollector)
 	s.True(ok)
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
@@ -153,7 +153,7 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, sysInfoStatsCollectorJobName)
 
-	j, ok := NewSysInfoStatsCollector().(*sysInfoStatsCollector)
+	j, ok := NewSysInfoStatsCollector("id").(*sysInfoStatsCollector)
 	s.True(ok)
 	j.logger = logging.MakeGrip(s.sender)
 
