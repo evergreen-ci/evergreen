@@ -244,9 +244,9 @@ func (qp *QueueProcessor) newSlackProvider(alertConfg model.AlertConfig) (Delive
 	}
 
 	opts := send.SlackOptions{
-		Channel: channel,
-		Fields:  true,
-		// AllFields:     true,
+		Channel:       channel,
+		Fields:        true,
+		AllFields:     true,
 		BasicMetadata: false,
 		Name:          "evergreen-alerts",
 	}
