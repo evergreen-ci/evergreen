@@ -22,19 +22,19 @@ const (
 
 // testResult is an element of the embedded test_results array in a task.
 type testResult struct {
-	Status    string  `json:"status" bson:"status"`
-	TestFile  string  `json:"test_file" bson:"test_file"`
-	URL       string  `json:"url" bson:"url,omitempty"`
-	URLRaw    string  `json:"url_raw" bson:"url_raw,omitempty"`
-	LogID     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum   int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
-	ExitCode  int     `json:"exit_code" bson:"exit_code"`
-	StartTime float64 `json:"start" bson:"start"`
-	EndTime   float64 `json:"end" bson:"end"`
+	Status    string  `bson:"status"`
+	TestFile  string  `bson:"test_file"`
+	URL       string  `bson:"url,omitempty"`
+	URLRaw    string  `bson:"url_raw,omitempty"`
+	LogID     string  `bson:"log_id,omitempty"`
+	LineNum   int     `bson:"line_num,omitempty"`
+	ExitCode  int     `bson:"exit_code"`
+	StartTime float64 `bson:"start"`
+	EndTime   float64 `bson:"end"`
 
 	// Together, TaskID and Execution identify the task which created this testResult
-	TaskID    string `bson:"task_id" json:"task_id"`
-	Execution int    `bson:"task_execution" json:"task_execution"`
+	TaskID    string `bson:"task_id"`
+	Execution int    `bson:"task_execution"`
 }
 
 func makeTaskMigrationFunction(collection string) db.MigrationOperation {
