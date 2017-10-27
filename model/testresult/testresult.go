@@ -55,6 +55,9 @@ func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error
 	q := db.Query(bson.M{
 		TaskIDKey:    taskID,
 		ExecutionKey: execution,
+	}).Project(bson.M{
+		TaskIDKey:    0,
+		ExecutionKey: 0,
 	})
 	return find(q)
 }

@@ -170,10 +170,11 @@ func (s *TestResultSuite) TestFindByTaskIDAndExecution() {
 	tests, err := FindByTaskIDAndExecution("taskid-5", 5)
 	s.NoError(err)
 	s.Len(tests, 5)
-	for _, test := range tests {
+	for i, test := range tests {
 		s.Equal("pass", test.Status)
-		s.Equal("taskid-5", test.TaskID)
-		s.Equal(5, test.Execution)
+		s.Equal(fmt.Sprintf("file-%d", i+5), test.TestFile)
+		s.Equal(fmt.Sprintf("url-%d", i+5), test.URL)
+		s.Equal(fmt.Sprintf("logid-%d", i+5), test.LogID)
 	}
 
 	tests, err = FindByTaskIDAndExecution("taskid-1", 1)
