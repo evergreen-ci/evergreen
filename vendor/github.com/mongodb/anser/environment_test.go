@@ -113,7 +113,7 @@ func (s *EnvImplSuite) TestDepNetworkAccessor() {
 func (s *EnvImplSuite) TestManualMigrationOperationRegistry() {
 	count := 0
 
-	op := func(_ db.Session, _ bson.Raw) error { count++; return nil }
+	op := func(_ db.Session, _ bson.RawD) error { count++; return nil }
 	s.Len(s.env.migrations, 0)
 	s.NoError(s.env.RegisterManualMigrationOperation("foo", op))
 	s.Len(s.env.migrations, 1)
@@ -123,7 +123,7 @@ func (s *EnvImplSuite) TestManualMigrationOperationRegistry() {
 	fun, ok := s.env.GetManualMigrationOperation("foo")
 	s.True(ok)
 	s.Equal(0, count)
-	fun(nil, bson.Raw{})
+	fun(nil, bson.RawD{})
 	s.Equal(1, count)
 
 	fun, ok = s.env.GetManualMigrationOperation("bar")

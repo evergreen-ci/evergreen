@@ -19,4 +19,4 @@ type Processor interface {
 //
 // Implementors of MigrationOperations are responsible for
 // implementating idempotent operations.
-type MigrationOperation func(Session, bson.Raw) error
+type MigrationOperation func(Session, bson.RawD) error

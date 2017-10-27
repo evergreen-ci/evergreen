@@ -58,7 +58,7 @@ func (j *manualMigrationJob) Run() {
 	}
 	defer session.Close()
 
-	var doc bson.Raw
+	var doc bson.RawD
 	coll := session.DB(j.Definition.Namespace.DB).C(j.Definition.Namespace.Collection)
 	err = coll.FindId(j.Definition.ID).One(&doc)
 	if err != nil {
