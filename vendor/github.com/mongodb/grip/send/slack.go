@@ -93,9 +93,9 @@ type SlackOptions struct {
 	// options for the sender, and control where the messages are
 	// sent, which hostname the sender reports itself as, and the
 	// name of the journaler.
-	Channel  string
-	Hostname string
-	Name     string
+	Channel  string `bson:"channel" json:"channel" yaml:"channel"`
+	Hostname string `bson:"hostname" json:"hostname" yaml:"hostname"`
+	Name     string `bson:"name" json:"name" yaml:"name"`
 
 	// Configuration options for appending structured data to the
 	// message sent to slack. The BasicMetadata option appends
@@ -104,9 +104,10 @@ type SlackOptions struct {
 	// Composer returns a message.Fields map. If you specify a set
 	// of fields in the FieldsSet value, only those fields will be
 	// attached to the message.
-	BasicMetadata bool
-	Fields        bool
-	FieldsSet     map[string]struct{}
+	BasicMetadata bool            `bson:"add_basic_metadata" json:"add_basic_metadata" yaml:"add_basic_metadata"`
+	Fields        bool            `bson:"use_fields" json:"use_fields" yaml:"use_fields"`
+	AllFields     bool            `bson:"all_fields" json:"all_fields" yaml:"all_fields"`
+	FieldsSet     map[string]bool `bson:"fields" json:"fields" yaml:"fields"`
 
 	client slackClient
 	mutex  sync.RWMutex
@@ -120,13 +121,11 @@ func (o *SlackOptions) fieldSetShouldInclude(name string) bool {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 
-	if o.FieldsSet == nil {
+	if o.AllFields || o.FieldsSet == nil {
 		return true
 	}
 
-	_, ok := o.FieldsSet[name]
-
-	return ok
+	return o.FieldsSet[name]
 }
 
 // Validate inspects the contents SlackOptions struct and returns an
@@ -150,7 +149,7 @@ func (o *SlackOptions) Validate() error {
 	}
 
 	if o.FieldsSet == nil {
-		o.FieldsSet = map[string]struct{}{}
+		o.FieldsSet = map[string]bool{}
 	}
 	if o.client == nil {
 		o.client = &slackClientImpl{}
