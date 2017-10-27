@@ -464,6 +464,9 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	if err != nil {
 		return errors.Wrap(err, "error creating temporary script file")
 	}
+	if err := os.Chmod(file.Name(), 0700); err != nil {
+		return errors.Wrap(err, "error setting file permissions")
+	}
 	defer func() {
 		grip.Error(file.Close())
 		grip.Error(os.Remove(file.Name()))
