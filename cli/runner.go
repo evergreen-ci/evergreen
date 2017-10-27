@@ -46,10 +46,10 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	if err := env.Configure(ctx, c.ConfigPath); err != nil {
 		return errors.Wrap(err, "problem configuring application environment")
 	}
-
 	settings := env.Settings()
 
 	sender, err := settings.GetSender()
+
 	grip.CatchEmergencyFatal(err)
 	defer sender.Close()
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
@@ -164,7 +164,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 
 		if util.SliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
-		} else if util.SliceContains(infrequentRunInterval, r.Name()) {
+		} else if util.SliceContains(infrequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, infrequentRunInterval, wg)
 		} else {
 			go runnerBackgroundWorker(ctx, r, s, defaultRunInterval, wg)
