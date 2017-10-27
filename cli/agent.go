@@ -34,7 +34,7 @@ func (c *AgentCommand) Execute(_ []string) error {
 	}
 
 	if err := os.MkdirAll(c.WorkingDirectory, 0777); err != nil {
-		return errors.Wrap("problem creating working directory")
+		return errors.Wrap(err, "problem creating working directory")
 	}
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))

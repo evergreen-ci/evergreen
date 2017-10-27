@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/user"
-	"path/filepath"
 	"time"
 
 	"context"
@@ -162,7 +160,6 @@ func (cmd *HostTerminateCommand) Execute(_ []string) error {
 // HostSetupCommand runs setup.sh to set up a host.
 type HostSetupCommand struct {
 	WorkingDirectory string `long:"working_directory" default:"" description:"working directory"`
-	ScriptDirectory  string `long:"script_directory" default:"" description:"directory of setup script"`
 	SetupAsSudo      bool   `long:"setup_as_sudo" description:"run setup script as sudo"`
 }
 
@@ -170,14 +167,6 @@ type HostSetupCommand struct {
 func (c *HostSetupCommand) Execute(_ []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	if c.ScriptDirectory == "" {
-		usr, err := user.Current()
-		if err != nil {
-			return errors.Wrap(err, "could not resolve home directory")
-		}
-		c.ScriptDirectory = usr.HomeDir
-	}
 
 	out, err := c.runSetupScript(ctx)
 	if err != nil {
@@ -193,22 +182,21 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 
 	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
 
-	script := filepath.Join(c.ScriptDirectory, evergreen.SetupScriptName)
-	if _, err := os.Stat(script); os.IsNotExist(err) {
+	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
 		return "", nil
 	}
 
-	chmod := c.getChmodCommandWithSudo(ctx, script)
+	chmod := c.getChmodCommandWithSudo(ctx, evergreen.SetupScriptName)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return string(out), err
 	}
 
-	cmd := c.getShCommandWithSudo(ctx, script)
+	cmd := c.getShCommandWithSudo(ctx, evergreen.SetupScriptName)
 	out, err = cmd.CombinedOutput()
 	catcher.Add(err)
 
-	catcher.Add(os.Remove(script))
+	catcher.Add(os.Remove(evergreen.SetupScriptName))
 	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
 
 	return string(out), catcher.Resolve()
