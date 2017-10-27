@@ -87,16 +87,16 @@ func (s *SlackSuite) TestFieldSetIncludeCheck() {
 	s.NotNil(opts.FieldsSet)
 
 	s.False(opts.fieldSetShouldInclude("time"))
-	opts.FieldsSet["time"] = struct{}{}
+	opts.FieldsSet["time"] = true
 	s.False(opts.fieldSetShouldInclude("time"))
 
 	s.False(opts.fieldSetShouldInclude("msg"))
-	opts.FieldsSet["time"] = struct{}{}
+	opts.FieldsSet["time"] = true
 	s.False(opts.fieldSetShouldInclude("msg"))
 
 	for _, f := range []string{"a", "b", "c"} {
 		s.False(opts.fieldSetShouldInclude(f))
-		opts.FieldsSet[f] = struct{}{}
+		opts.FieldsSet[f] = true
 		s.True(opts.fieldSetShouldInclude(f))
 	}
 }
@@ -165,10 +165,10 @@ func (s *SlackSuite) TestFieldsMessageTypeIntegration() {
 	opts := &SlackOptions{Fields: true}
 	s.True(opts.Fields)
 	s.False(opts.BasicMetadata)
-	opts.FieldsSet = map[string]struct{}{
-		"message": struct{}{},
-		"other":   struct{}{},
-		"foo":     struct{}{},
+	opts.FieldsSet = map[string]bool{
+		"message": true,
+		"other":   true,
+		"foo":     true,
 	}
 
 	params := opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))

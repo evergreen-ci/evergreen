@@ -8,11 +8,20 @@ function NewAlert(recipient){
     return {
       provider: "jira",
       settings: {
-        project: args[1],
-        issue: args[2],
+	project: args[1],
+	issue: args[2],
       },
     }
+  } else if (recipient.startsWith("SLACK:")) {
+    var args = recipient.split(":")
+      return {
+	  provider: "slack",
+	  settings: {
+	      channel: args[1]
+	  }
+      }
   }
+
   // otherwise always default to email
   return {
     provider: "email",
@@ -22,4 +31,3 @@ function NewAlert(recipient){
 
   }
 }
-

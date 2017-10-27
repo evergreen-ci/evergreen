@@ -19,7 +19,9 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -28,6 +30,8 @@ import (
 const (
 	EmailProvider = "email"
 	JiraProvider  = "jira"
+	SlackProvider = "slack"
+	RunnerName    = "alerter"
 )
 
 // QueueProcessor handles looping over any unprocessed alerts in the queue and delivers them.
@@ -60,7 +64,7 @@ type AlertContext struct {
 	Settings     *evergreen.Settings
 }
 
-func (qp *QueueProcessor) Name() string { return "alerter" }
+func (qp *QueueProcessor) Name() string { return RunnerName }
 
 // loadAlertContext fetches details from the database for all documents that are associated with the
 // AlertRequest. For example, it populates the task/build/version/project using the
@@ -221,10 +225,54 @@ func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Delivere
 	}, nil
 }
 
+func (qp *QueueProcessor) newSlackProvider(alertConfg model.AlertConfig) (Deliverer, error) {
+	if qp.config.Slack.Token == "" {
+		return nil, errors.New("slack credentials are not stored")
+	}
+
+	if qp.config.Ui.Url == "" {
+		return nil, errors.New("'ui.url' must be set in Evergreen settings")
+	}
+
+	slackChan, ok := alertConfg.Settings["channel"]
+	if !ok {
+		return nil, errors.New("must specify a slack channel")
+	}
+	channel, ok := slackChan.(string)
+	if !ok {
+		return nil, errors.Errorf("slack channel [%+v] must be string [%T]", slackChan, slackChan)
+	}
+
+	opts := send.SlackOptions{
+		Channel:       channel,
+		Fields:        true,
+		AllFields:     true,
+		BasicMetadata: false,
+		Name:          "evergreen-alerts",
+	}
+
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err, "problem constructing slack options")
+	}
+
+	sender, err := send.NewSlackLogger(&opts, qp.config.Slack.Token, qp.config.LoggerConfig.Info())
+	if err != nil {
+		return nil, errors.Wrap(err, "problem constructing slack logger")
+	}
+
+	return &slackDeliverer{
+		logger: logging.MakeGrip(sender),
+		uiRoot: qp.config.Ui.Url,
+	}, nil
+
+}
+
 // getDeliverer returns the correct implementation of Deliverer according to the provider
 // specified in a project's alerts configuration.
 func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig) (Deliverer, error) {
 	switch alertConf.Provider {
+	case SlackProvider:
+		return qp.newSlackProvider(alertConf)
 	case JiraProvider:
 		return qp.newJIRAProvider(alertConf)
 	case EmailProvider:
