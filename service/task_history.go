@@ -315,13 +315,6 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	for i := range last {
-		if err := last[i].MergeNewTestResults(); err != nil {
-			http.Error(w, fmt.Sprintf("Error merging test results: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-	}
-
 	uis.WriteJSON(w, http.StatusOK, last)
 }
 
@@ -531,13 +524,6 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting sibling tasks")
 	}
-
-	for i := range tasks {
-		if err := tasks[i].MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging test results")
-		}
-	}
-
 	return createSiblingTaskGroups(tasks, versions), nil
 }
 

@@ -362,13 +362,6 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			return versionVariantData{}, errors.Wrap(err, "error fetching failed tasks")
 
 		}
-
-		for i := range failedAndStartedTasks {
-			if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
-				return versionVariantData{}, errors.Wrap(err, "error merging test results")
-			}
-		}
-
 		addFailedAndStartedTests(waterfallRows, failedAndStartedTasks)
 	}
 
