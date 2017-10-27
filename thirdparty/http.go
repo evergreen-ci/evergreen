@@ -104,6 +104,7 @@ func (self liveHttp) postOrPut(method string, url string, username string, passw
 	tr := &http.Transport{
 		DisableCompression: true,
 		DisableKeepAlives:  false,
+		IdleConnTimeout:    time.Minute,
 	}
 
 	body := &bytes.Buffer{}
