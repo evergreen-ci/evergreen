@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"context"
@@ -166,7 +165,10 @@ type HostSetupCommand struct {
 
 // Execute runs a script called "setup.sh" in the host's working directory.
 func (c *HostSetupCommand) Execute(_ []string) error {
-	out, err := c.runSetupScript(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	out, err := c.runSetupScript(ctx)
 	if err != nil {
 		return errors.Wrap(err, out)
 	}
@@ -174,29 +176,28 @@ func (c *HostSetupCommand) Execute(_ []string) error {
 }
 
 func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
-	script := filepath.Join(c.WorkingDirectory, evergreen.SetupScriptName)
-	if _, err := os.Stat(script); os.IsNotExist(err) {
-		return "", nil
-	}
-
+	catcher := grip.NewSimpleCatcher()
 	ctx, cancel := context.WithTimeout(ctx, setupTimeout)
 	defer cancel()
 
-	catcher := grip.NewSimpleCatcher()
+	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
 
-	chmod := c.getChmodCommandWithSudo(ctx, script)
+	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
+		return "", nil
+	}
+
+	chmod := c.getChmodCommandWithSudo(ctx, evergreen.SetupScriptName)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return string(out), err
 	}
 
-	cmd := c.getShCommandWithSudo(ctx, script)
+	cmd := c.getShCommandWithSudo(ctx, evergreen.SetupScriptName)
 	out, err = cmd.CombinedOutput()
 	catcher.Add(err)
 
-	if err := os.Remove(script); err != nil {
-		catcher.Add(err)
-	}
+	catcher.Add(os.Remove(evergreen.SetupScriptName))
+	catcher.Add(os.MkdirAll(c.WorkingDirectory, 0777))
 
 	return string(out), catcher.Resolve()
 }
