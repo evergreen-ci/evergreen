@@ -28,8 +28,9 @@ import (
 )
 
 const (
-	frequentRunInterval = 20 * time.Second
-	defaultRunInterval  = 60 * time.Second
+	frequentRunInterval   = 20 * time.Second
+	defaultRunInterval    = 60 * time.Second
+	infrequentRunInterval = 120 * time.Second
 )
 
 type ServiceRunnerCommand struct {
@@ -115,13 +116,15 @@ type processRunner interface {
 }
 
 var backgroundRunners = []processRunner{
-	&hostinit.Runner{},
-	&monitor.Runner{},
+	&alerts.QueueProcessor{},
 	&notify.Runner{},
 	&repotracker.Runner{},
-	&taskrunner.Runner{},
-	&alerts.QueueProcessor{},
+
 	&scheduler.Runner{},
+	&hostinit.Runner{},
+	&taskrunner.Runner{},
+
+	&monitor.Runner{},
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -129,23 +132,31 @@ var backgroundRunners = []processRunner{
 func startRunners(ctx context.Context, s *evergreen.Settings) {
 	wg := &sync.WaitGroup{}
 
-	duration := defaultRunInterval
-	if s.Runner.IntervalSeconds > 0 {
-		duration = time.Duration(s.Runner.IntervalSeconds) * time.Second
-	}
-
 	frequentRunners := []string{
 		scheduler.RunnerName,
 		hostinit.RunnerName,
 		taskrunner.RunnerName,
 	}
 
+	infrequentRunners := []string{
+		alerts.RunnerName,
+		notify.RunnerName,
+		repotracker.RunnerName,
+	}
+
 	grip.Notice(message.Fields{
-		"default_duration":  duration,
-		"default_span":      duration.String(),
-		"frequent_duration": frequentRunInterval,
-		"frequent_span":     frequentRunInterval.String(),
-		"frequent_runners":  frequentRunners,
+		"default_interval": defaultRunInterval,
+		"default_span":     defaultRunInterval.String(),
+		"frequent": message.Fields{
+			"interval": frequentRunInterval,
+			"span":     frequentRunInterval.String(),
+			"runners":  frequentRunners,
+		},
+		"infrequent": message.Fields{
+			"interval": infrequentRunInterval,
+			"span":     infrequentRunInterval.String(),
+			"runners":  infrequentRunners,
+		},
 	})
 
 	for _, r := range backgroundRunners {
@@ -153,8 +164,10 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 
 		if util.SliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
+		} else if util.SliceContains(infrequentRunInterval, r.Name()) {
+			go runnerBackgroundWorker(ctx, r, s, infrequentRunInterval, wg)
 		} else {
-			go runnerBackgroundWorker(ctx, r, s, duration, wg)
+			go runnerBackgroundWorker(ctx, r, s, defaultRunInterval, wg)
 		}
 	}
 

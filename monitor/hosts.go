@@ -109,7 +109,7 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 	}
 	close(work)
 
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 12; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

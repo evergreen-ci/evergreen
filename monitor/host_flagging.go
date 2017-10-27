@@ -13,21 +13,21 @@ import (
 
 const (
 	// ProvisioningCutoff is the threshold to consider as too long for a host to take provisioning
-	ProvisioningCutoff = 50 * time.Minute
+	ProvisioningCutoff = 25 * time.Minute
 
 	// UnreachableCutoff is the threshold to wait for an unreachable host to become marked
 	// as reachable again before giving up and terminating it.
-	UnreachableCutoff = 10 * time.Minute
+	UnreachableCutoff = 5 * time.Minute
 
 	// IdleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	IdleTimeCutoff = 15 * time.Minute
+	IdleTimeCutoff = 7 * time.Minute
 
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	MaxTimeTilNextPayment = 5 * time.Minute
 
 	// CommunicationTimeCutoff is the limit to how much time has passed before the host is marked as idle
 	// due to the agent not being able to communicate with the API server.
-	CommunicationTimeCutoff = 10 * time.Minute
+	CommunicationTimeCutoff = 7 * time.Minute
 )
 
 type hostFlagger struct {

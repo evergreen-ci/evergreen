@@ -104,14 +104,6 @@ type UIConfig struct {
 	CsrfKey string
 }
 
-// MonitorConfig holds logging settings for the monitor process.
-type MonitorConfig struct{}
-
-// RunnerConfig holds logging and timing settings for the runner process.
-type RunnerConfig struct {
-	IntervalSeconds int64
-}
-
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
 	SSHTimeoutSeconds int64
@@ -137,10 +129,6 @@ type SMTPConfig struct {
 type SchedulerConfig struct {
 	MergeToggle int    `yaml:"mergetoggle"`
 	TaskFinder  string `yaml:"task_finder"`
-}
-
-// TaskRunnerConfig holds logging settings for the scheduler process.
-type TaskRunnerConfig struct {
 }
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
@@ -281,15 +269,12 @@ type Settings struct {
 	Credentials         map[string]string         `yaml:"credentials"`
 	AuthConfig          AuthConfig                `yaml:"auth"`
 	RepoTracker         RepoTrackerConfig         `yaml:"repotracker"`
-	Monitor             MonitorConfig             `yaml:"monitor"`
 	Api                 APIConfig                 `yaml:"api"`
 	Alerts              AlertsConfig              `yaml:"alerts"`
 	Ui                  UIConfig                  `yaml:"ui"`
 	HostInit            HostInitConfig            `yaml:"hostinit"`
 	Notify              NotifyConfig              `yaml:"notify"`
-	Runner              RunnerConfig              `yaml:"runner"`
 	Scheduler           SchedulerConfig           `yaml:"scheduler"`
-	TaskRunner          TaskRunnerConfig          `yaml:"taskrunner"`
 	Amboy               AmboyConfig               `yaml:"amboy"`
 	Expansions          map[string]string         `yaml:"expansions"`
 	Plugins             PluginConfig              `yaml:"plugins"`
