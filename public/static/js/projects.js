@@ -50,6 +50,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if (spec.startsWith("JIRA:") && spec.split(":").length < 3) {
         return false
     }
+    if (spec.startsWith("SLACK:") && spec.split(":").length < 2) {
+        return false
+    }
     return true
   }
 
@@ -273,6 +276,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
     if (alertObj.provider=='jira'){
       return "File a "+alertObj.settings.issue+" JIRA ticket in "+ alertObj.settings.project
+    }
+    if (alertObj.provider=='slack'){
+      return "Send a slack message to "+alertObj.settings.channel
     }
     return 'unknown'
   }
