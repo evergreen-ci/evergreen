@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -76,11 +76,6 @@ func doFollowingRedirectsWithHeaders(client *http.Client, ireq *http.Request) (r
 }
 
 func (self liveHttp) doGet(url string, username string, password string) (*http.Response, error) {
-	tr := &http.Transport{
-		DisableCompression: true,
-		DisableKeepAlives:  false,
-		IdleConnTimeout:    time.Minute,
-	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -91,7 +86,9 @@ func (self liveHttp) doGet(url string, username string, password string) (*http.
 	req.SetBasicAuth(username, password)
 	req.Header.Add("Content-Type", "application/json")
 
-	client := &http.Client{Transport: tr}
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)
 	if err != nil {
@@ -101,12 +98,6 @@ func (self liveHttp) doGet(url string, username string, password string) (*http.
 }
 
 func (self liveHttp) postOrPut(method string, url string, username string, password string, content interface{}) (*http.Response, error) {
-	tr := &http.Transport{
-		DisableCompression: true,
-		DisableKeepAlives:  false,
-		IdleConnTimeout:    time.Minute,
-	}
-
 	body := &bytes.Buffer{}
 	if err := json.NewEncoder(body).Encode(content); err != nil {
 		return nil, errors.Wrap(err, "error encoding request")
@@ -121,7 +112,9 @@ func (self liveHttp) postOrPut(method string, url string, username string, passw
 	req.SetBasicAuth(username, password)
 	req.Header.Add("Content-Type", "application/json")
 
-	client := &http.Client{Transport: tr}
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)
 	if err != nil {

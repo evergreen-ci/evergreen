@@ -303,11 +303,9 @@ func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
 	if err != nil && err.Error() == rootsError.Error() {
 		// create a Transport which includes our TLSConfig with InsecureSkipVerify
 		// and client timeouts.
-		tlsConfig := tls.Config{InsecureSkipVerify: true}
-		tr := http.Transport{
-			TLSClientConfig: &tlsConfig}
-		// add the Transport to our http client
-		client := &http.Client{Transport: &tr}
+		client := util.GetHttpClient()
+		client.Transport.TLSClientConfig = tls.Config{InsecureSkipVerify: true}
+
 		s3Session = s3.New(*auth, region, client)
 	} else {
 		s3Session = s3.New(*auth, region)

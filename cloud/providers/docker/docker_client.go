@@ -5,9 +5,7 @@ package docker
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -16,6 +14,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -78,19 +77,7 @@ func (c *clientImpl) Init(apiVersion string) error {
 	c.apiVersion = apiVersion
 
 	// Create HTTP client
-	c.httpClient = &http.Client{
-		// This is the same configuration as the default in
-		// net/http with the disable keep alives option specified.
-		Transport: &http.Transport{
-			Proxy:             http.ProxyFromEnvironment,
-			DisableKeepAlives: true,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-	}
+	c.httpClient = util.GetHttpClient()
 	return nil
 }
 
