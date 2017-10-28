@@ -81,15 +81,7 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 }
 
 func GetGithubAPIStatus() (string, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), nil)
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := githubRequest(http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), "", nil)
 	if err != nil {
 		return "", errors.Wrap(err, "github request failed")
 	}
@@ -99,8 +91,7 @@ func GetGithubAPIStatus() (string, error) {
 		LastUpdated time.Time `json:"last_updated"`
 	}{}
 
-	err = util.ReadJSONInto(resp.Body, &gitStatus)
-	if err != nil {
+	if err = util.ReadJSONInto(resp.Body, &gitStatus); err != nil {
 		return "", errors.Wrap(err, "json read failed")
 	}
 
@@ -319,7 +310,9 @@ func githubRequest(method string, url string, oauthToken string, data interface{
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	client := &http.Client{}
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	return client.Do(req)
 }
 
