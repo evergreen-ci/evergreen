@@ -36,17 +36,26 @@ type ServiceWebCommand struct {
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
-	defer recovery.LogStackTraceAndExit("evergreen service")
-
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	env := evergreen.GetEnvironment()
-	if err := env.Configure(ctx, c.ConfigPath); err != nil {
-		return errors.Wrap(err, "problem configuring application environment")
-	}
+	grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, c.ConfigPath), "problem configuring application environment"))
 
 	settings := env.Settings()
+	sender, err := settings.GetSender()
+	grip.CatchEmergencyFatal(err)
+	grip.CatchEmergencyFatal(grip.SetSender(sender))
+
+	defer sender.Close()
+	defer recovery.LogStackTraceAndExit("evergreen service")
+	defer cancel()
+
+	grip.SetName("evergreen.service")
+	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
+
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
+		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
+	})
 
 	apiHandler, err := getHandlerAPI(settings)
 	if err != nil {
@@ -59,22 +68,6 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	}
 
 	pprofHandler := service.GetHandlerPprof(settings)
-	sender, err := settings.GetSender()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer sender.Close()
-
-	if err = grip.SetSender(sender); err != nil {
-		return errors.Wrap(err, "problem setting up logger")
-	}
-
-	grip.SetName("evergreen.service")
-	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
-
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
-		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
-	})
 
 	catcher := grip.NewBasicCatcher()
 	apiWait := make(chan struct{})
@@ -92,15 +85,14 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler))
 		close(uiWait)
 	}()
+
 	pprofWait := make(chan struct{})
-	if settings.PprofPort != "" {
-		go func() {
+	go func() {
+		if settings.PprofPort != "" {
 			catcher.Add(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
-			close(pprofWait)
-		}()
-	} else {
+		}
 		close(pprofWait)
-	}
+	}()
 
 	<-apiWait
 	<-uiWait

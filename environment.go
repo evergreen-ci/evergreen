@@ -135,7 +135,7 @@ func (e *envState) initDB() error {
 
 func (e *envState) createQueues(ctx context.Context) error {
 	// configure the local-only (memory-backed) queue.
-	e.localQueue = queue.NewLocalUnordered(e.settings.Amboy.PoolSizeLocal)
+	e.localQueue = queue.NewLocalLimitedSize(e.settings.Amboy.PoolSizeLocal, e.settings.Amboy.LocalStorage)
 
 	// configure the remote mongodb-backed amboy
 	// queue.
