@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
-	"net"
 	"net/http"
 	"os"
 	"os/user"
@@ -18,6 +17,7 @@ import (
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mongodb/anser/bsonutil"
@@ -133,21 +133,7 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]ec2.BlockDeviceMapping, err
 
 //helper function for getting an EC2 handle at US east
 func getUSEast(creds aws.Auth) *ec2.EC2 {
-	client := &http.Client{
-		// This is the same configuration as the default in
-		// net/http with the disable keep alives option specified.
-		Transport: &http.Transport{
-			Proxy:             http.ProxyFromEnvironment,
-			DisableKeepAlives: true,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-	}
-
-	return ec2.NewWithClient(creds, aws.USEast, client)
+	return ec2.NewWithClient(creds, aws.USEast, util.GetHttpClient())
 }
 
 func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {

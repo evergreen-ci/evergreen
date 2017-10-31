@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -93,7 +94,10 @@ func (self *RESTCrowdService) GetUser(username string) (*CrowdUser, error) {
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 	req.SetBasicAuth(self.crowdUsername, self.crowdPassword)
-	client := &http.Client{}
+
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -135,12 +139,14 @@ func (self *RESTCrowdService) GetUserFromToken(token string) (*CrowdUser, error)
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
 	req.SetBasicAuth(self.crowdUsername, self.crowdPassword)
-	client := &http.Client{}
+
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error making http request")
 	}
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -183,7 +189,9 @@ func (self *RESTCrowdService) CreateSession(username, password string) (*Session
 	req.Header.Add("Content-Type", "application/json")
 	req.SetBasicAuth(self.crowdUsername, self.crowdPassword)
 
-	client := &http.Client{}
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making http request")

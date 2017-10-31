@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 	"github.com/mongodb/grip"
@@ -93,76 +94,10 @@ func GetS3Location(s3URL string) (string, string, error) {
 	return urlParsed.Host, urlParsed.Path, nil
 }
 
-func CopyS3File(awsAuth *aws.Auth, fromS3URL string, toS3URL string, permissionACL string) error {
-	fromParsed, err := url.Parse(fromS3URL)
-	if err != nil {
-		return errors.WithStack(err)
-	}
+func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path, toS3Bucket, toS3Path, permissionACL string) error {
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
 
-	toParsed, err := url.Parse(toS3URL)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	client := &http.Client{}
-	destinationPath := fmt.Sprintf("http://%v.s3.amazonaws.com%v", toParsed.Host, toParsed.Path)
-	req, err := http.NewRequest("PUT", destinationPath, nil)
-	if err != nil {
-		return errors.Wrapf(err, "PUT request on %v failed", destinationPath)
-	}
-	req.Header.Add("x-amz-copy-source", fmt.Sprintf("/%v%v", fromParsed.Host, fromParsed.Path))
-	req.Header.Add("x-amz-date", time.Now().Format(time.RFC850))
-	if permissionACL != "" {
-		req.Header.Add("x-amz-acl", permissionACL)
-	}
-	SignAWSRequest(*awsAuth, "/"+toParsed.Host+toParsed.Path, req)
-
-	resp, err := client.Do(req)
-	if resp == nil {
-		return errors.Wrap(err, "Nil response received")
-	}
-	defer resp.Body.Close()
-
-	// attempt to read the response body to check for success/error message
-	respBody, respBodyErr := ioutil.ReadAll(resp.Body)
-	if respBodyErr != nil {
-		return errors.Wrap(respBodyErr, "Error reading s3 copy response body")
-	}
-
-	// Attempt to unmarshall the response body. If there's no errors, it means
-	// that the S3 copy was successful. If there's an error, or a non-200
-	// response code, it indicates a copy error
-	copyObjectResult := CopyObjectResult{}
-	xmlErr := xml.Unmarshal(respBody, &copyObjectResult)
-	if xmlErr != nil || resp.StatusCode != http.StatusOK {
-		var errMsg string
-		if xmlErr == nil {
-			errMsg = fmt.Sprintf("S3 returned status code: %d", resp.StatusCode)
-		} else {
-			errMsg = fmt.Sprintf("unmarshalling error: %v", xmlErr)
-		}
-		// an unmarshalling error or a non-200 status code indicates S3 returned
-		// an error so we'll now attempt to unmarshall that error response
-		copyObjectError := CopyObjectError{}
-		xmlErr = xml.Unmarshal(respBody, &copyObjectError)
-		if xmlErr != nil {
-			// *This should seldom happen since a non-200 status code or a
-			// copyObjectResult unmarshall error on a response from S3 should
-			// contain a CopyObjectError. An error here indicates possible
-			// backwards incompatible changes in the AWS API
-			return errors.Wrapf(xmlErr, "Unrecognized S3 response: %v", errMsg)
-		}
-		copyObjectError.ErrMsg = errMsg
-		// if we were able to parse out an error response, then we can reliably
-		// inform the user of the error
-		return copyObjectError
-	}
-	return errors.WithStack(err)
-}
-
-func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
-	toS3Bucket, toS3Path, permissionACL string) error {
-	client := &http.Client{}
 	destinationPath := fmt.Sprintf("http://%v.s3.amazonaws.com/%v",
 		toS3Bucket, toS3Path)
 	req, err := http.NewRequest("PUT", destinationPath, nil)
@@ -368,11 +303,9 @@ func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
 	if err != nil && err.Error() == rootsError.Error() {
 		// create a Transport which includes our TLSConfig with InsecureSkipVerify
 		// and client timeouts.
-		tlsConfig := tls.Config{InsecureSkipVerify: true}
-		tr := http.Transport{
-			TLSClientConfig: &tlsConfig}
-		// add the Transport to our http client
-		client := &http.Client{Transport: &tr}
+		client := util.GetHttpClient()
+		client.Transport.TLSClientConfig = tls.Config{InsecureSkipVerify: true}
+
 		s3Session = s3.New(*auth, region, client)
 	} else {
 		s3Session = s3.New(*auth, region)
