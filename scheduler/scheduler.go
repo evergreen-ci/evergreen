@@ -129,7 +129,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 						"operation": "scheduling distro",
 						"distro":    d.distroId,
 						"runner":    RunnerName,
-						"error":     err.Error(),
+						"error":     res.err.Error(),
 					})
 				}
 
@@ -162,7 +162,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		defer close(resDoneChan)
 		for res := range distroSchedulerResultChan {
 			if res.err != nil {
-				catcher.Add(errors.Wrapf(err, "error scheduling tasks on distro %v", res.distroId))
+				catcher.Add(errors.Wrapf(res.err, "error scheduling tasks on distro %v", res.distroId))
 				continue
 			}
 			schedulerEvents[res.distroId] = res.schedulerEvent
