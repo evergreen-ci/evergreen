@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -32,10 +31,10 @@ func TestSetupScript(t *testing.T) {
 	assert.Empty(out)
 
 	// With a setup script, run the script
-	script := filepath.Join(dir, evergreen.SetupScriptName)
 	content := []byte("echo \"hello, world\"")
-	err = ioutil.WriteFile(script, content, 0644)
+	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
+	defer os.Remove(evergreen.SetupScriptName)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	out, err = c.runSetupScript(ctx)
@@ -43,11 +42,11 @@ func TestSetupScript(t *testing.T) {
 	assert.NoError(err)
 
 	// Ensure the script is deleted after running
-	_, err = os.Stat(script)
+	_, err = os.Stat(evergreen.SetupScriptName)
 	assert.True(os.IsNotExist(err))
 
 	// Script should time out with context and return an error
-	err = ioutil.WriteFile(script, content, 0644)
+	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
@@ -59,7 +58,7 @@ func TestSetupScript(t *testing.T) {
 
 	// A non-zero exit status should return an error
 	content = []byte("exit 1")
-	err = ioutil.WriteFile(script, content, 0644)
+	err = ioutil.WriteFile(evergreen.SetupScriptName, content, 0644)
 	require.NoError(err)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Nanosecond)
 	defer cancel()
