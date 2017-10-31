@@ -311,7 +311,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	}
 	grip.Infof("Prioritizing %d tasks for distro: %s", len(runnableTasksForDistro), distroId)
 
-	prioritizedTasks, err := s.PrioritizeTasks(s.Settings,
+	prioritizedTasks, err := s.PrioritizeTasks(distroId, s.Settings,
 		runnableTasksForDistro)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")

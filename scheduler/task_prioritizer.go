@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -16,7 +17,7 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(settings *evergreen.Settings, tasks []task.Task) (
+	PrioritizeTasks(distroId string, settings *evergreen.Settings, tasks []task.Task) (
 		[]task.Task, error)
 }
 
@@ -70,6 +71,7 @@ type CmpBasedTaskPrioritizer struct{}
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
+	distroId string,
 	settings *evergreen.Settings, tasks []task.Task) ([]task.Task, error) {
 
 	comparator := NewCmpBasedTaskComparator()
@@ -77,15 +79,33 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 	// individually and merge
 	taskQueues := comparator.splitTasksByRequester(tasks)
 	prioritizedTaskLists := make([][]task.Task, 0, 3)
+	grip.Info(message.Fields{
+		"message":   "iterating over task list",
+		"distro":    distroId,
+		"runner":    "scheduler",
+		"operation": "prioritize tasks",
+	})
 	for _, taskList := range [][]task.Task{taskQueues.RepotrackerTasks, taskQueues.PatchTasks, taskQueues.HighPriorityTasks} {
 
 		comparator.tasks = taskList
 
+		grip.Info(message.Fields{
+			"message":   "running setup for prioritizing tasks",
+			"distro":    distroId,
+			"runner":    "scheduler",
+			"operation": "prioritize tasks",
+		})
 		err := comparator.setupForSortingTasks()
 		if err != nil {
 			return nil, errors.Wrap(err, "Error running setup for sorting tasks")
 		}
 
+		grip.Info(message.Fields{
+			"message":   "sorting tasks",
+			"distro":    distroId,
+			"runner":    "scheduler",
+			"operation": "prioritize tasks",
+		})
 		sort.Sort(comparator)
 
 		if len(comparator.errsDuringSort) > 0 {
@@ -103,6 +123,15 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 		PatchTasks:        prioritizedTaskLists[1],
 		HighPriorityTasks: prioritizedTaskLists[2],
 	}
+	grip.Info(message.Fields{
+		"message":             "finished prioritizing task queues",
+		"distro":              distroId,
+		"runner":              "scheduler",
+		"operation":           "prioritize tasks",
+		"repotracker tasks":   len(prioritizedTaskQueues.RepotrackerTasks),
+		"patch tasks":         len(prioritizedTaskQueues.PatchTasks),
+		"high priority tasks": len(prioritizedTaskQueues.HighPriorityTasks),
+	})
 
 	comparator.tasks = comparator.mergeTasks(settings, &prioritizedTaskQueues)
 
