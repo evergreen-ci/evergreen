@@ -311,7 +311,7 @@ func (t *Task) PreviousCompletedTask(project string,
 	if len(statuses) == 0 {
 		statuses = CompletedStatuses
 	}
-	return FindOne(ByBeforeRevisionWithStatuses(t.RevisionOrderNumber, statuses, t.BuildVariant,
+	return FindOneNoMerge(ByBeforeRevisionWithStatuses(t.RevisionOrderNumber, statuses, t.BuildVariant,
 		t.DisplayName, project))
 }
 

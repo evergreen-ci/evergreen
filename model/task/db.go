@@ -598,6 +598,16 @@ func GetRecentTasks(period time.Duration) ([]Task, error) {
 
 // DB Boilerplate
 
+// FindOneNoMerge is a FindOne without merging test results.
+func FindOneNoMerge(query db.Q) (*Task, error) {
+	task := &Task{}
+	err := db.FindOneQ(Collection, query, task)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return task, err
+}
+
 // FindOne returns one task that satisfies the query.
 func FindOne(query db.Q) (*Task, error) {
 	task := &Task{}
