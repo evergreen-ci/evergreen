@@ -16,7 +16,7 @@ import (
 //  taskRunDistros: a map of task id -> distros the task is allowed to run on
 // Returns a map of distro name -> how many hosts need to be spun up for that distro.
 type HostAllocator interface {
-	NewHostsNeeded(allocatorData HostAllocatorData,	settings *evergreen.Settings) (map[string]int, error)ds.
+	NewHostsNeeded(allocatorData HostAllocatorData, settings *evergreen.Settings) (map[string]int, error)
 }
 
 // HostAllocatorData is the set of parameters passed to a HostAllocator.
