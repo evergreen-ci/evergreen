@@ -113,7 +113,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	wg.Add(workers)
 
 	// make a channel to collect all of function results from scheduling the distros
-	distroSchedulerResultChan := make(chan *distroSchedulerResult)
+	distroSchedulerResultChan := make(chan distroSchedulerResult)
 
 	// for each worker, create a new goroutine
 	for i := 0; i < workers; i++ {
@@ -304,7 +304,7 @@ type distroSchedulerResult struct {
 }
 
 func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
-	taskExpectedDuration model.ProjectTaskDurations) *distroSchedulerResult {
+	taskExpectedDuration model.ProjectTaskDurations) distroSchedulerResult {
 
 	res := distroSchedulerResult{
 		distroId: distroId,
@@ -315,7 +315,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		runnableTasksForDistro)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")
-		return &res
+		return res
 	}
 
 	// persist the queue of tasks
@@ -324,7 +324,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		taskExpectedDuration)
 	if err != nil {
 		res.err = errors.Wrapf(err, "Error processing distro %s saving task queue", distroId)
-		return &res
+		return res
 	}
 
 	// track scheduled time for prioritized tasks
@@ -333,7 +333,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		res.err = errors.Wrapf(err,
 			"Error processing distro %s setting scheduled time for prioritized tasks",
 			distroId)
-		return &res
+		return res
 	}
 	res.taskQueueItem = queuedTasks
 
@@ -347,7 +347,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		NumHostsRunning:  0,
 		ExpectedDuration: totalDuration,
 	}
-	return &res
+	return res
 
 }
 
