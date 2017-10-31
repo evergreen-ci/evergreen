@@ -1,8 +1,10 @@
-// +build !darwin,!linux,!freebsd,!openbsd,!windows
+// +build !darwin,!linux,!freebsd,!openbsd,!solaris,!windows
 
 package cpu
 
-import "github.com/shirou/gopsutil/internal/common"
+import (
+	"github.com/shirou/gopsutil/internal/common"
+)
 
 func Times(percpu bool) ([]TimesStat, error) {
 	return []TimesStat{}, common.ErrNotImplementedError

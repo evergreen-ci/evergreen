@@ -203,7 +203,7 @@ func (s *DriverSuite) TestNextMethodReturnsJob() {
 
 	j := job.NewShellJob("echo foo", "")
 
-	s.NoError(s.driver.Save(j))
+	s.NoError(s.driver.Put(j))
 	stats := s.driver.Stats()
 	s.Equal(1, stats.Total)
 	s.Equal(1, stats.Pending)

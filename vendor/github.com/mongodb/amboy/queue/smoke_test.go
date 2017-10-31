@@ -55,6 +55,8 @@ func runUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int, assert 
 				j := job.NewShellJob(cmd, "")
 				assert.NoError(q.Put(j),
 					fmt.Sprintf("with %d workers", num))
+				_, ok := q.Get(j.ID())
+				assert.True(ok)
 			}
 			wg.Done()
 		}(i)
@@ -62,7 +64,7 @@ func runUnorderedSmokeTest(ctx context.Context, q amboy.Queue, size int, assert 
 	wg.Wait()
 
 	assert.Equal(numJobs, q.Stats().Total, fmt.Sprintf("with %d workers", size))
-	amboy.WaitCtx(ctx, q)
+	amboy.WaitCtxInterval(ctx, q, 10*time.Millisecond)
 
 	grip.Infof("workers complete for %d worker smoke test", size)
 	assert.Equal(numJobs, q.Stats().Completed, fmt.Sprintf("%+v", q.Stats()))
@@ -556,7 +558,7 @@ func TestSmokeLimitedSizeQueueWithSingleWorker(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	q := NewLocalLimitedSize(1, 150)
+	q := NewLocalLimitedSize(1, 1024)
 	runner := pool.NewSingle()
 	assert.NoError(runner.SetQueue(q))
 
@@ -573,7 +575,7 @@ func TestSmokeLimitedSizeQueueWithWorkerPools(t *testing.T) {
 		grip.Infoln("testing priority queue for:", poolSize)
 		ctx, cancel := context.WithCancel(baseCtx)
 
-		q := NewLocalLimitedSize(poolSize, 7*poolSize)
+		q := NewLocalLimitedSize(poolSize, 7*poolSize+1)
 		runUnorderedSmokeTest(ctx, q, poolSize, assert)
 
 		cancel()

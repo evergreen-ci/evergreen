@@ -91,3 +91,50 @@ func TestUserStat_String(t *testing.T) {
 		t.Errorf("UserStat string is invalid: %v", v)
 	}
 }
+
+func TestHostGuid(t *testing.T) {
+	hi, err := Info()
+	if err != nil {
+		t.Error(err)
+	}
+	if hi.HostID == "" {
+		t.Error("Host id is empty")
+	} else {
+		t.Logf("Host id value: %v", hi.HostID)
+	}
+}
+
+func TestTemperatureStat_String(t *testing.T) {
+	v := TemperatureStat{
+		SensorKey:   "CPU",
+		Temperature: 1.1,
+	}
+	s := `{"sensorKey":"CPU","sensorTemperature":1.1}`
+	if s != fmt.Sprintf("%v", v) {
+		t.Errorf("TemperatureStat string is invalid")
+	}
+}
+
+func TestVirtualization(t *testing.T) {
+	system, role, err := Virtualization()
+	if err != nil {
+		t.Errorf("Virtualization() failed, %v", err)
+	}
+	if system == "" || role == "" {
+		t.Errorf("Virtualization() retuns empty system or role:  %s, %s", system, role)
+	}
+
+	t.Logf("Virtualization(): %s, %s", system, role)
+}
+
+func TestKernelVersion(t *testing.T) {
+	version, err := KernelVersion()
+	if err != nil {
+		t.Errorf("KernelVersion() failed, %v", err)
+	}
+	if version == "" {
+		t.Errorf("KernelVersion() retuns empty: %s", version)
+	}
+
+	t.Logf("KernelVersion(): %s", version)
+}

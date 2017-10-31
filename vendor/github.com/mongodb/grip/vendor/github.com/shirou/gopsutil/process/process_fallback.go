@@ -11,17 +11,17 @@ import (
 )
 
 type MemoryMapsStat struct {
-	Path         string `json:"path" bson:"path,omitempty"`
-	Rss          uint64 `json:"rss" bson:"rss,omitempty"`
-	Size         uint64 `json:"size" bson:"size,omitempty"`
-	Pss          uint64 `json:"pss" bson:"pss,omitempty"`
-	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean,omitempty"`
-	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty,omitempty"`
-	PrivateClean uint64 `json:"privateClean" bson:"privateClean,omitempty"`
-	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty,omitempty"`
-	Referenced   uint64 `json:"referenced" bson:"referenced,omitempty"`
-	Anonymous    uint64 `json:"anonymous" bson:"anonymous,omitempty"`
-	Swap         uint64 `json:"swap" bson:"swap,omitempty"`
+	Path         string `json:"path"`
+	Rss          uint64 `json:"rss"`
+	Size         uint64 `json:"size"`
+	Pss          uint64 `json:"pss"`
+	SharedClean  uint64 `json:"sharedClean"`
+	SharedDirty  uint64 `json:"sharedDirty"`
+	PrivateClean uint64 `json:"privateClean"`
+	PrivateDirty uint64 `json:"privateDirty"`
+	Referenced   uint64 `json:"referenced"`
+	Anonymous    uint64 `json:"anonymous"`
+	Swap         uint64 `json:"swap"`
 }
 
 type MemoryInfoExStat struct {
@@ -80,6 +80,9 @@ func (p *Process) IOnice() (int32, error) {
 func (p *Process) Rlimit() ([]RlimitStat, error) {
 	return nil, common.ErrNotImplementedError
 }
+func (p *Process) RlimitUsage(_ bool) ([]RlimitStat, error) {
+	return nil, common.ErrNotImplementedError
+}
 func (p *Process) IOCounters() (*IOCountersStat, error) {
 	return nil, common.ErrNotImplementedError
 }
@@ -92,7 +95,7 @@ func (p *Process) NumFDs() (int32, error) {
 func (p *Process) NumThreads() (int32, error) {
 	return 0, common.ErrNotImplementedError
 }
-func (p *Process) Threads() (map[string]string, error) {
+func (p *Process) Threads() (map[int32]*cpu.TimesStat, error) {
 	return nil, common.ErrNotImplementedError
 }
 func (p *Process) Times() (*cpu.TimesStat, error) {

@@ -10,11 +10,11 @@ import (
 	"unsafe"
 
 	"github.com/StackExchange/wmi"
-	"github.com/shirou/w32"
-
-	"github.com/shirou/gopsutil/cpu"
+	cpu "github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/internal/common"
-	"github.com/shirou/gopsutil/net"
+	net "github.com/shirou/gopsutil/net"
+	"github.com/shirou/w32"
+	"golang.org/x/sys/windows"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 )
 
 var (
-	modpsapi                 = syscall.NewLazyDLL("psapi.dll")
+	modpsapi                 = windows.NewLazyDLL("psapi.dll")
 	procGetProcessMemoryInfo = modpsapi.NewProc("GetProcessMemoryInfo")
 )
 
@@ -191,8 +191,26 @@ func (p *Process) Status() (string, error) {
 	return "", common.ErrNotImplementedError
 }
 func (p *Process) Username() (string, error) {
-	return "", common.ErrNotImplementedError
+	pid := p.Pid
+	// 0x1000 is PROCESS_QUERY_LIMITED_INFORMATION
+	c, err := syscall.OpenProcess(0x1000, false, uint32(pid))
+	if err != nil {
+		return "", err
+	}
+	defer syscall.CloseHandle(c)
+
+	var token syscall.Token
+	err = syscall.OpenProcessToken(c, syscall.TOKEN_QUERY, &token)
+	if err != nil {
+		return "", err
+	}
+	defer token.Close()
+	tokenUser, err := token.GetTokenUser()
+
+	user, domain, _, err := tokenUser.User.Sid.LookupAccount("")
+	return domain + "\\" + user, err
 }
+
 func (p *Process) Uids() ([]int32, error) {
 	var uids []int32
 
@@ -218,6 +236,11 @@ func (p *Process) IOnice() (int32, error) {
 	return 0, common.ErrNotImplementedError
 }
 func (p *Process) Rlimit() ([]RlimitStat, error) {
+	var rlimit []RlimitStat
+
+	return rlimit, common.ErrNotImplementedError
+}
+func (p *Process) RlimitUsage(_ bool) ([]RlimitStat, error) {
 	var rlimit []RlimitStat
 
 	return rlimit, common.ErrNotImplementedError
@@ -250,12 +273,32 @@ func (p *Process) NumThreads() (int32, error) {
 	}
 	return int32(dst[0].ThreadCount), nil
 }
-func (p *Process) Threads() (map[string]string, error) {
-	ret := make(map[string]string, 0)
+func (p *Process) Threads() (map[int32]*cpu.TimesStat, error) {
+	ret := make(map[int32]*cpu.TimesStat)
 	return ret, common.ErrNotImplementedError
 }
 func (p *Process) Times() (*cpu.TimesStat, error) {
-	return nil, common.ErrNotImplementedError
+	sysTimes, err := getProcessCPUTimes(p.Pid)
+	if err != nil {
+		return nil, err
+	}
+
+	// User and kernel times are represented as a FILETIME structure
+	// wich contains a 64-bit value representing the number of
+	// 100-nanosecond intervals since January 1, 1601 (UTC):
+	// http://msdn.microsoft.com/en-us/library/ms724284(VS.85).aspx
+	// To convert it into a float representing the seconds that the
+	// process has executed in user/kernel mode I borrowed the code
+	// below from psutil's _psutil_windows.c, and in turn from Python's
+	// Modules/posixmodule.c
+
+	user := float64(sysTimes.UserTime.HighDateTime) * 429.4967296 + float64(sysTimes.UserTime.LowDateTime) * 1e-7
+	kernel := float64(sysTimes.KernelTime.HighDateTime) * 429.4967296 + float64(sysTimes.KernelTime.LowDateTime) * 1e-7
+
+	return &cpu.TimesStat{
+		User: user,
+		System: kernel,
+	}, nil
 }
 func (p *Process) CPUAffinity() ([]int32, error) {
 	return nil, common.ErrNotImplementedError
@@ -279,11 +322,12 @@ func (p *Process) MemoryInfoEx() (*MemoryInfoExStat, error) {
 
 func (p *Process) Children() ([]*Process, error) {
 	var dst []Win32_Process
-	query := wmi.CreateQuery(&dst, fmt.Sprintf("WHERE ParentProcessId = %d", p.Pid))
+	query := wmi.CreateQuery(&dst, fmt.Sprintf("Where ParentProcessId = %d", p.Pid))
 	err := wmi.Query(query, &dst)
 	if err != nil {
 		return nil, err
 	}
+
 	out := []*Process{}
 	for _, proc := range dst {
 		p, err := NewProcess(int32(proc.ProcessID))
@@ -292,6 +336,7 @@ func (p *Process) Children() ([]*Process, error) {
 		}
 		out = append(out, p)
 	}
+
 	return out, nil
 }
 
@@ -322,7 +367,7 @@ func NewProcess(pid int32) (*Process, error) {
 	return p, nil
 }
 
-func (p *Process) SendSignal(sig syscall.Signal) error {
+func (p *Process) SendSignal(sig windows.Signal) error {
 	return common.ErrNotImplementedError
 }
 
@@ -340,7 +385,7 @@ func (p *Process) Terminate() error {
 	w32.CloseHandle(proc)
 
 	if ret == false {
-		return syscall.GetLastError()
+		return windows.GetLastError()
 	} else {
 		return nil
 	}
@@ -353,23 +398,23 @@ func (p *Process) Kill() error {
 func (p *Process) getFromSnapProcess(pid int32) (int32, int32, string, error) {
 	snap := w32.CreateToolhelp32Snapshot(w32.TH32CS_SNAPPROCESS, uint32(pid))
 	if snap == 0 {
-		return 0, 0, "", syscall.GetLastError()
+		return 0, 0, "", windows.GetLastError()
 	}
 	defer w32.CloseHandle(snap)
 	var pe32 w32.PROCESSENTRY32
 	pe32.DwSize = uint32(unsafe.Sizeof(pe32))
 	if w32.Process32First(snap, &pe32) == false {
-		return 0, 0, "", syscall.GetLastError()
+		return 0, 0, "", windows.GetLastError()
 	}
 
 	if pe32.Th32ProcessID == uint32(pid) {
-		szexe := syscall.UTF16ToString(pe32.SzExeFile[:])
+		szexe := windows.UTF16ToString(pe32.SzExeFile[:])
 		return int32(pe32.Th32ParentProcessID), int32(pe32.CntThreads), szexe, nil
 	}
 
 	for w32.Process32Next(snap, &pe32) {
 		if pe32.Th32ProcessID == uint32(pid) {
-			szexe := syscall.UTF16ToString(pe32.SzExeFile[:])
+			szexe := windows.UTF16ToString(pe32.SzExeFile[:])
 			return int32(pe32.Th32ParentProcessID), int32(pe32.CntThreads), szexe, nil
 		}
 	}
@@ -412,22 +457,22 @@ func getProcInfo(pid int32) (*SystemProcessInformation, error) {
 		uintptr(unsafe.Pointer(&bufferSize)),
 		uintptr(unsafe.Pointer(&bufferSize)))
 	if ret != 0 {
-		return nil, syscall.GetLastError()
+		return nil, windows.GetLastError()
 	}
 
 	return &sysProcInfo, nil
 }
 
-func getRusage(pid int32) (*syscall.Rusage, error) {
-	var CPU syscall.Rusage
+func getRusage(pid int32) (*windows.Rusage, error) {
+	var CPU windows.Rusage
 
-	c, err := syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
+	c, err := windows.OpenProcess(windows.PROCESS_QUERY_INFORMATION, false, uint32(pid))
 	if err != nil {
 		return nil, err
 	}
-	defer syscall.CloseHandle(c)
+	defer windows.CloseHandle(c)
 
-	if err := syscall.GetProcessTimes(c, &CPU.CreationTime, &CPU.ExitTime, &CPU.KernelTime, &CPU.UserTime); err != nil {
+	if err := windows.GetProcessTimes(c, &CPU.CreationTime, &CPU.ExitTime, &CPU.KernelTime, &CPU.UserTime); err != nil {
 		return nil, err
 	}
 
@@ -436,11 +481,12 @@ func getRusage(pid int32) (*syscall.Rusage, error) {
 
 func getMemoryInfo(pid int32) (PROCESS_MEMORY_COUNTERS, error) {
 	var mem PROCESS_MEMORY_COUNTERS
-	c, err := syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
+	// PROCESS_QUERY_LIMITED_INFORMATION is 0x1000
+	c, err := windows.OpenProcess(0x1000, false, uint32(pid))
 	if err != nil {
 		return mem, err
 	}
-	defer syscall.CloseHandle(c)
+	defer windows.CloseHandle(c)
 	if err := getProcessMemoryInfo(c, &mem); err != nil {
 		return mem, err
 	}
@@ -448,7 +494,7 @@ func getMemoryInfo(pid int32) (PROCESS_MEMORY_COUNTERS, error) {
 	return mem, err
 }
 
-func getProcessMemoryInfo(h syscall.Handle, mem *PROCESS_MEMORY_COUNTERS) (err error) {
+func getProcessMemoryInfo(h windows.Handle, mem *PROCESS_MEMORY_COUNTERS) (err error) {
 	r1, _, e1 := syscall.Syscall(procGetProcessMemoryInfo.Addr(), 3, uintptr(h), uintptr(unsafe.Pointer(mem)), uintptr(unsafe.Sizeof(*mem)))
 	if r1 == 0 {
 		if e1 != 0 {
@@ -458,4 +504,32 @@ func getProcessMemoryInfo(h syscall.Handle, mem *PROCESS_MEMORY_COUNTERS) (err e
 		}
 	}
 	return
+}
+
+type SYSTEM_TIMES struct {
+	CreateTime syscall.Filetime
+	ExitTime syscall.Filetime
+	KernelTime syscall.Filetime
+	UserTime syscall.Filetime
+}
+
+func getProcessCPUTimes(pid int32) (SYSTEM_TIMES, error) {
+	var times SYSTEM_TIMES
+
+	// PROCESS_QUERY_LIMITED_INFORMATION is 0x1000
+	h, err := windows.OpenProcess(0x1000, false, uint32(pid))
+	if err != nil {
+		return times, err
+	}
+	defer windows.CloseHandle(h)
+
+	err = syscall.GetProcessTimes(
+		syscall.Handle(h),
+		&times.CreateTime,
+		&times.ExitTime,
+		&times.KernelTime,
+		&times.UserTime,
+	)
+
+	return times, err
 }

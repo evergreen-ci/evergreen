@@ -6,7 +6,6 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/pool"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -16,29 +15,28 @@ import (
 // incoming tasks and completed tasks. This makes it possible to use
 // these queues in situations as parts of services and in
 // longer-running contexts.
+//
+// Specify a capacity when constructing the queue; the queue will
+// store no more than 2x the number specified, and no more the
+// specified capacity of completed jobs.
 type LocalLimitedSize struct {
 	channel  chan amboy.Job
-	results  *driver.CappedResultStorage
-	runner   amboy.Runner
+	toDelete chan string
 	capacity int
-	counters struct {
-		queued    map[string]amboy.Job
-		total     int
-		started   int
-		completed int
-		sync.RWMutex
-	}
+	storage  map[string]amboy.Job
+
+	runner amboy.Runner
+	mu     sync.RWMutex
 }
 
 // NewLocalLimitedSize constructs a LocalLimitedSize queue instance
 // with the specified number of workers and capacity.
 func NewLocalLimitedSize(workers, capacity int) *LocalLimitedSize {
 	q := &LocalLimitedSize{
-		results:  driver.NewCappedResultStorage(capacity),
 		capacity: capacity,
+		storage:  make(map[string]amboy.Job),
 	}
 	q.runner = pool.NewLocalWorkers(workers, q)
-	q.counters.queued = make(map[string]amboy.Job)
 	return q
 }
 
@@ -53,21 +51,18 @@ func (q *LocalLimitedSize) Put(j amboy.Job) error {
 
 	name := j.ID()
 
-	if _, ok := q.results.Get(name); ok {
+	q.mu.RLock()
+	if _, ok := q.storage[name]; ok {
+		q.mu.RUnlock()
 		return errors.Errorf("cannot dispatch '%s', already complete", name)
 	}
-
-	q.counters.Lock()
-	defer q.counters.Unlock()
-
-	if _, ok := q.counters.queued[name]; ok {
-		return errors.Errorf("cannot dispatch '%s', already in progress.", name)
-	}
+	q.mu.RUnlock()
 
 	select {
 	case q.channel <- j:
-		q.counters.total++
-		q.counters.queued[j.ID()] = j
+		q.mu.Lock()
+		defer q.mu.Unlock()
+		q.storage[name] = j
 
 		return nil
 	default:
@@ -75,10 +70,15 @@ func (q *LocalLimitedSize) Put(j amboy.Job) error {
 	}
 }
 
-// Get returns a job, by name, from the results storage. This does not
-// retrieve pending tasks.
+// Get returns a job, by name. This will include all tasks currently
+// stored in the queue.
 func (q *LocalLimitedSize) Get(name string) (amboy.Job, bool) {
-	return q.results.Get(name)
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	j, ok := q.storage[name]
+
+	return j, ok
 }
 
 // Next returns the next pending job, and is used by amboy.Runner
@@ -86,67 +86,74 @@ func (q *LocalLimitedSize) Get(name string) (amboy.Job, bool) {
 // available or the context is canceled.
 func (q *LocalLimitedSize) Next(ctx context.Context) amboy.Job {
 	select {
+	case job := <-q.channel:
+		return job
 	case <-ctx.Done():
 		return nil
-	case job := <-q.channel:
-		q.counters.Lock()
-		defer q.counters.Unlock()
-		q.counters.started++
-		return job
 	}
 }
 
 // Started returns true if the queue is open and is processing jobs,
 // and false otherwise.
 func (q *LocalLimitedSize) Started() bool {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
 	return q.channel != nil
 }
 
 // Results is a generator of all completed tasks in the queue.
 func (q *LocalLimitedSize) Results(ctx context.Context) <-chan amboy.Job {
-	return q.results.Contents(ctx)
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	newCompleted := make(chan string, q.capacity)
+	out := make(chan amboy.Job, len(q.toDelete))
+	close(q.toDelete)
+	for name := range q.toDelete {
+		j := q.storage[name]
+		newCompleted <- name
+		out <- j
+	}
+	close(out)
+	q.toDelete = newCompleted
+
+	return out
 }
 
 // JobStats returns an iterator for job status documents for all jobs
 // in the queue. For this queue implementation *queued* jobs are returned
 // first.
 func (q *LocalLimitedSize) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
-	out := make(chan amboy.JobStatusInfo)
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
-	go func() {
-		defer close(out)
-		func() {
-			q.counters.RLock()
-			defer q.counters.RUnlock()
-			for _, j := range q.counters.queued {
-				if ctx.Err() != nil {
-					return
-				}
-				out <- j.Status()
-			}
-		}()
-		if ctx.Err() != nil {
-			return
-		}
+	out := make(chan amboy.JobStatusInfo, len(q.storage))
+	for name, job := range q.storage {
+		stat := job.Status()
+		stat.ID = name
+		out <- stat
+	}
+	close(out)
 
-		for j := range q.results.Contents(ctx) {
-			s := j.Status()
-			s.ID = j.ID()
-			out <- s
-		}
-	}()
 	return out
 }
 
 // Runner returns the Queue's embedded amboy.Runner instance.
 func (q *LocalLimitedSize) Runner() amboy.Runner {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
 	return q.runner
 }
 
 // SetRunner allows callers to, if the queue has not started, inject a
 // different runner implementation.
 func (q *LocalLimitedSize) SetRunner(r amboy.Runner) error {
-	if q.Started() {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.channel != nil {
 		return errors.New("cannot set runner on started queue")
 	}
 
@@ -158,45 +165,52 @@ func (q *LocalLimitedSize) SetRunner(r amboy.Runner) error {
 // Stats returns information about the current state of jobs in the
 // queue, and the amount of work completed.
 func (q *LocalLimitedSize) Stats() amboy.QueueStats {
-	q.counters.RLock()
-	defer q.counters.RUnlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 
-	return amboy.QueueStats{
-		Total:     q.counters.total,
-		Completed: q.counters.completed,
-		Running:   q.counters.started - q.counters.completed,
+	s := amboy.QueueStats{
+		Total:     len(q.storage),
+		Completed: len(q.toDelete),
 		Pending:   len(q.channel),
 	}
+	s.Running = s.Total - s.Completed - s.Pending
+	return s
 }
 
 // Complete marks a job complete in the queue.
 func (q *LocalLimitedSize) Complete(ctx context.Context, j amboy.Job) {
-	name := j.ID()
-	grip.Debugf("marking job (%s) as complete", name)
-	q.counters.Lock()
-	defer q.counters.Unlock()
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	q.counters.completed++
-	delete(q.counters.queued, name)
-	q.results.Add(j)
+	// save it
+	q.storage[j.ID()] = j
+
+	if len(q.toDelete) == q.capacity-1 {
+		delete(q.storage, <-q.toDelete)
+	}
+	q.toDelete <- j.ID()
 }
 
 // Start starts the runner and initializes the pending task
 // storage. Only produces an error if the underlying runner fails to
 // start.
 func (q *LocalLimitedSize) Start(ctx context.Context) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	if q.channel != nil {
-		return nil
+		return errors.New("cannot start a running queue")
 	}
 
+	q.toDelete = make(chan string, q.capacity)
 	q.channel = make(chan amboy.Job, q.capacity)
 
 	err := q.runner.Start(ctx)
-
 	if err != nil {
 		return err
 	}
 
 	grip.Info("job server running")
+
 	return nil
 }

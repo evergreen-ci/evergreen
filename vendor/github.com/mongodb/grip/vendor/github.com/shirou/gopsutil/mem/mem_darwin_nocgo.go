@@ -1,4 +1,5 @@
-// +build darwin,!cgo
+// +build darwin
+// +build !cgo
 
 package mem
 
@@ -6,7 +7,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // Runs vm_stat and returns Free and inactive pages
@@ -26,7 +28,7 @@ func parseVMStat(out string, vms *VirtualMemoryStat) error {
 	var err error
 
 	lines := strings.Split(out, "\n")
-	pagesize := uint64(syscall.Getpagesize())
+	pagesize := uint64(unix.Getpagesize())
 	for _, line := range lines {
 		fields := strings.Split(line, ":")
 		if len(fields) < 2 {

@@ -1,4 +1,5 @@
-// +build darwin,cgo
+// +build darwin
+// +build cgo
 
 package mem
 
@@ -9,8 +10,9 @@ import "C"
 
 import (
 	"fmt"
-	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 // VirtualMemory returns VirtualmemoryStat.
@@ -27,7 +29,7 @@ func VirtualMemory() (*VirtualMemoryStat, error) {
 		return nil, fmt.Errorf("host_statistics error=%d", status)
 	}
 
-	pageSize := uint64(syscall.Getpagesize())
+	pageSize := uint64(unix.Getpagesize())
 	total, err := getHwMemsize()
 	if err != nil {
 		return nil, err

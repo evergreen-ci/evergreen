@@ -14,27 +14,22 @@ This is a port of psutil (http://pythonhosted.org/psutil/). The challenge is por
 psutil functions on some architectures.
 
 
-.. highlights:: Breaking Changes!
+Breaking Changes! golang 1.8 is required
+-------------------------------------------
 
-   Breaking changes is introduced at v2. See `issue 174 <https://github.com/shirou/gopsutil/issues/174>`_ .
-
-
-Migrating to v2
--------------------------
-
-On gopsutil itself, `v2migration.sh <https://github.com/shirou/gopsutil/blob/v2/v2migration.sh>`_ is used for migration. It can not be commonly used, but it may help you with migration.
+After v2.17.04, golang 1.8 is required to build.
 
 
 Tag semantics
-^^^^^^^^^^^^^^^
+-------------------------
 
 gopsutil tag policy is almost same as Semantic Versioning, but automatically increase like Ubuntu versioning.
 
-for example, `v2.16.10` means
+for example, `v2.17.04` means
 
 - v2: major version
-- 16: release year, 2016
-- 10: release month
+- 17: release year, 2017
+- 04: release month
 
 gopsutil aims to keep backwards-compatiblity until major version change.
 
@@ -44,11 +39,12 @@ Taged at every end of month, but there are only a few commits, it can be skipped
 Available Architectures
 ------------------------------------
 
-- FreeBSD i386/amd64
+- FreeBSD i386/amd64/arm
 - Linux i386/amd64/arm(raspberry pi)
 - Windows/amd64
-- Darwin/amd64
+- Darwin i386/amd64
 - OpenBDS amd64 (Thank you @mpfz0r!)
+- Solaris amd64 (developed and tested on SmartOS/Illumos, Thank you @jen20!)
 
 All works are implemented without cgo by porting c struct to golang struct.
 
@@ -91,6 +87,8 @@ You can set an alternative location to :code:`/sys` by setting the :code:`HOST_S
 
 You can set an alternative location to :code:`/etc` by setting the :code:`HOST_ETC` environment variable.
 
+You can set an alternative location to :code:`/var` by setting the :code:`HOST_VAR` environment variable.
+
 Documentation
 ------------------------
 
@@ -99,7 +97,7 @@ see http://godoc.org/github.com/shirou/gopsutil
 Requirements
 -----------------
 
-- go1.5 or above is required.
+- go1.7 or above is required.
 
 
 More Info
@@ -133,6 +131,7 @@ Several methods have been added which are not present in psutil, but will provid
   - Mhz
   - CacheSize
   - Flags        (ex: "fpu vme de pse tsc msr pae mce cx8 ...")
+  - Microcode
 
 - load/LoadAvg()  (linux, freebsd)
 
@@ -172,13 +171,13 @@ Current Status
 - x: work
 - b: almost works, but something is broken
 
-=================== ====== ======= ======= ====== =======
-name                Linux  FreeBSD OpenBSD MacOSX Windows
+=================== ====== ======= ======= ====== ======= =======
+name                Linux  FreeBSD OpenBSD MacOSX Windows Solaris
 cpu_times             x      x       x       x       x
 cpu_count             x      x       x       x       x
 cpu_percent           x      x       x       x       x
 cpu_times_percent     x      x       x       x       x
-virtual_memory        x      x       x       x       x
+virtual_memory        x      x       x       x       x       b
 swap_memory           x      x       x       x
 disk_partitions       x      x       x       x       x
 disk_io_counters      x      x       x
@@ -203,8 +202,8 @@ name             Linux FreeBSD OpenBSD MacOSX Windows
 pid                 x     x      x       x       x
 ppid                x     x      x       x       x
 name                x     x      x       x       x
-cmdline             x                    x       x
-create_time         x
+cmdline             x     x              x       x
+create_time         x                    x
 status              x     x      x       x
 cwd                 x
 exe                 x     x      x               x
@@ -216,7 +215,7 @@ nice                x     x      x       x       x
 num_fds             x
 num_ctx_switches    x
 num_threads         x     x      x       x       x
-cpu_times           x
+cpu_times           x                            x
 memory_info         x     x      x       x       x
 memory_info_ex      x
 memory_maps         x
@@ -226,16 +225,16 @@ suspend             x     x      x       x
 resume              x     x      x       x
 terminate           x     x      x       x       x
 kill                x     x      x       x
-username            x
+username            x     x      x       x       x
 ionice
-rlimit
-num_handlres
-threads
+rlimit              x
+num_handlers
+threads             x
 cpu_percent         x            x       x
 cpu_affinity
 memory_percent
-parent              x            x       x
-children            x     x      x       x
+parent              x            x       x       x
+children            x     x      x       x       x
 connections         x            x       x
 is_running
 ================ ===== ======= ======= ====== =======
@@ -243,25 +242,26 @@ is_running
 Original Metrics
 ^^^^^^^^^^^^^^^^^^^
 
-================== ===== ======= ======= ====== =======
-item               Linux FreeBSD OpenBSD MacOSX Windows
+================== ===== ======= ======= ====== ======= =======
+item               Linux FreeBSD OpenBSD MacOSX Windows Solaris
 **HostInfo**
-hostname              x     x      x       x       x
-  uptime              x     x      x       x
-  proces              x     x      x
-  os                  x     x      x       x       x
-  platform            x     x      x       x
-  platformfamily      x     x      x       x
+hostname              x     x      x       x       x       x
+  uptime              x     x      x       x               x
+  proces              x     x      x                       x
+  os                  x     x      x       x       x       x
+  platform            x     x      x       x               x
+  platformfamily      x     x      x       x               x
   virtualization      x
 **CPU**
-  VendorID            x     x      x       x       x
-  Family              x     x      x       x       x
-  Model               x     x      x       x       x
-  Stepping            x     x      x       x       x
-  PhysicalID          x
-  CoreID              x
-  Cores               x                            x
-  ModelName           x     x      x       x       x
+  VendorID            x     x      x       x       x      x
+  Family              x     x      x       x       x      x
+  Model               x     x      x       x       x      x
+  Stepping            x     x      x       x       x      x
+  PhysicalID          x                                   x
+  CoreID              x                                   x
+  Cores               x                            x      x
+  ModelName           x     x      x       x       x      x
+  Microcode           x                                   x
 **LoadAvg**
   Load1               x     x      x       x
   Load5               x     x      x       x
@@ -273,7 +273,7 @@ hostname              x     x      x       x       x
   system              x     no     no      no      no
 **CgroupsMem**
   various             x     no     no      no      no
-================== ===== ======= ======= ====== =======
+================== ===== ======= ======= ====== ======= =======
 
 - future work
 

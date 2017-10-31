@@ -6,10 +6,7 @@ import (
 	"github.com/shirou/gopsutil/internal/common"
 )
 
-var (
-	invoke         common.Invoker
-	cachedBootTime = uint64(0)
-)
+var invoke common.Invoker
 
 func init() {
 	invoke = common.Invoke{}
@@ -18,25 +15,30 @@ func init() {
 // A HostInfoStat describes the host status.
 // This is not in the psutil but it useful.
 type InfoStat struct {
-	Hostname             string `json:"hostname" bson:"hostname,omitempty"`
-	Uptime               uint64 `json:"uptime" bson:"uptime,omitempty"`
-	BootTime             uint64 `json:"bootTime" bson:"bootTime,omitempty"`
-	Procs                uint64 `json:"procs" bson:"procs,omitempty"`                     // number of processes
-	OS                   string `json:"os" bson:"os,omitempty"`                           // ex: freebsd, linux
-	Platform             string `json:"platform" bson:"platform,omitempty"`               // ex: ubuntu, linuxmint
-	PlatformFamily       string `json:"platformFamily" bson:"platformFamily,omitempty"`   // ex: debian, rhel
-	PlatformVersion      string `json:"platformVersion" bson:"platformVersion,omitempty"` // version of the complete OS
-	KernelVersion        string `json:"kernelVersion" bson:"kernelVersion,omitempty"`     // version of the OS kernel (if available)
-	VirtualizationSystem string `json:"virtualizationSystem" bson:"virtualizationSystem,omitempty"`
-	VirtualizationRole   string `json:"virtualizationRole" bson:"virtualizationRole,omitempty"` // guest or host
-	HostID               string `json:"hostid" bson:"hostid,omitempty"`                         // ex: uuid
+	Hostname             string `json:"hostname"`
+	Uptime               uint64 `json:"uptime"`
+	BootTime             uint64 `json:"bootTime"`
+	Procs                uint64 `json:"procs"`           // number of processes
+	OS                   string `json:"os"`              // ex: freebsd, linux
+	Platform             string `json:"platform"`        // ex: ubuntu, linuxmint
+	PlatformFamily       string `json:"platformFamily"`  // ex: debian, rhel
+	PlatformVersion      string `json:"platformVersion"` // version of the complete OS
+	KernelVersion        string `json:"kernelVersion"`   // version of the OS kernel (if available)
+	VirtualizationSystem string `json:"virtualizationSystem"`
+	VirtualizationRole   string `json:"virtualizationRole"` // guest or host
+	HostID               string `json:"hostid"`             // ex: uuid
 }
 
 type UserStat struct {
-	User     string `json:"user" bson:"user,omitempty"`
-	Terminal string `json:"terminal" bson:"terminal,omitempty"`
-	Host     string `json:"host" bson:"host,omitempty"`
-	Started  int    `json:"started" bson:"started,omitempty"`
+	User     string `json:"user"`
+	Terminal string `json:"terminal"`
+	Host     string `json:"host"`
+	Started  int    `json:"started"`
+}
+
+type TemperatureStat struct {
+	SensorKey   string  `json:"sensorKey"`
+	Temperature float64 `json:"sensorTemperature"`
 }
 
 func (h InfoStat) String() string {
@@ -46,5 +48,10 @@ func (h InfoStat) String() string {
 
 func (u UserStat) String() string {
 	s, _ := json.Marshal(u)
+	return string(s)
+}
+
+func (t TemperatureStat) String() string {
+	s, _ := json.Marshal(t)
 	return string(s)
 }

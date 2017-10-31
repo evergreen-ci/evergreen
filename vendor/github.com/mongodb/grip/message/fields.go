@@ -16,6 +16,7 @@ type fieldMessage struct {
 	message      string
 	fields       Fields
 	cachedOutput string
+	skipMetadata bool
 	Base
 }
 
@@ -55,12 +56,62 @@ func MakeFieldsMessage(message string, f Fields) Composer {
 	return m
 }
 
-func (m *fieldMessage) setup() {
-	_ = m.Collect()
+// MakeSimpleFields returns a structured Composer that does
+// not attach basic logging metadata.
+func MakeSimpleFields(f Fields) Composer {
+	m := &fieldMessage{fields: f, skipMetadata: true}
+	m.setup()
+	return m
+}
 
+// NewSimpleFields returns a structured Composer that does not
+// attach basic logging metadata and allows callers to configure the
+// messages' log level.
+func NewSimpleFields(p level.Priority, f Fields) Composer {
+	m := MakeSimpleFields(f)
+	_ = m.SetPriority(p)
+	return m
+}
+
+// MakeSimpleFieldsMessage returns a structured Composer that does not attach
+// basic logging metadata, but allows callers to specify the message
+// (the "message" field) as a string.
+func MakeSimpleFieldsMessage(msg string, f Fields) Composer {
+	m := &fieldMessage{
+		message:      msg,
+		fields:       f,
+		skipMetadata: true,
+	}
+
+	m.setup()
+	return m
+}
+
+// NewSimpleFieldsMessage returns a structured Composer that does not attach
+// basic logging metadata, but allows callers to specify the message
+// (the "message" field) as well as the message's log-level.
+func NewSimpleFieldsMessage(p level.Priority, msg string, f Fields) Composer {
+	m := MakeSimpleFieldsMessage(msg, f)
+	_ = m.SetPriority(p)
+	return m
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Implementation
+//
+////////////////////////////////////////////////////////////////////////
+
+func (m *fieldMessage) setup() {
 	if _, ok := m.fields[FieldsMsgName]; !ok && m.message != "" {
 		m.fields[FieldsMsgName] = m.message
 	}
+
+	if m.skipMetadata {
+		return
+	}
+
+	_ = m.Collect()
 
 	if _, ok := m.fields["metadata"]; !ok {
 		m.fields["metadata"] = &m.Base
