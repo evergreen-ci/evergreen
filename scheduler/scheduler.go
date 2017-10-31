@@ -125,7 +125,12 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 				// schedule the distro
 				res := s.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
 				if res.err != nil {
-					grip.Error(err)
+					grip.Error(message.Fields{
+						"operation": "scheduling distro",
+						"distro":    d.distroId,
+						"runner":    RunnerName,
+						"error":     err.Error(),
+					})
 				}
 
 				if ctx.Err() != nil {
