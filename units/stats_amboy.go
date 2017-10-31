@@ -75,7 +75,7 @@ func (j *amboyStatsCollector) Run() {
 		j.logger.Info(message.Fields{
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(),
-			"report":  amboy.Report(ctx, remoteQueue, numAmboyJobsToReport),
+			// "report":  amboy.Report(ctx, remoteQueue, numAmboyJobsToReport),
 		})
 	}
 }

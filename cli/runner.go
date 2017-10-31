@@ -40,23 +40,20 @@ type ServiceRunnerCommand struct {
 
 func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	env := evergreen.GetEnvironment()
-	if err := env.Configure(ctx, c.ConfigPath); err != nil {
-		return errors.Wrap(err, "problem configuring application environment")
-	}
+	grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, c.ConfigPath), "problem configuring application environment"))
+
 	settings := env.Settings()
-
 	sender, err := settings.GetSender()
-
 	grip.CatchEmergencyFatal(err)
-	defer sender.Close()
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	grip.SetName("evg-runner")
 
+	defer sender.Close()
 	defer recovery.LogStackTraceAndExit("evergreen runner")
+	defer cancel()
 
+	grip.SetName("evergreen.runner")
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	if home := evergreen.FindEvergreenHome(); home == "" {
