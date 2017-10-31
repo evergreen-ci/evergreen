@@ -238,34 +238,36 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
 
-	if len(hostsSpawned) != 0 {
-		grip.Infof("Hosts spawned (%d distros total), by:", len(hostsSpawned))
-		for distro, hosts := range hostsSpawned {
-			taskQueueInfo := schedulerEvents[distro]
-			taskQueueInfo.NumHostsRunning += len(hosts)
-			schedulerEvents[distro] = taskQueueInfo
+	grip.Info(message.Fields{
+		"message":     "hosts spawned",
+		"num_distros": len(hostsSpawned),
+		"runner":      RunnerName,
+		"allocations": newHostsNeeded,
+	})
 
-			hostList := make([]string, len(hosts))
-			for idx, host := range hosts {
-				hostList[idx] = host.Id
-			}
+	for distro, hosts := range hostsSpawned {
+		taskQueueInfo := schedulerEvents[distro]
+		taskQueueInfo.NumHostsRunning += len(hosts)
+		schedulerEvents[distro] = taskQueueInfo
 
-			if ctx.Err() != nil {
-				return errors.New("scheduling run canceled")
-			}
-
-			makespan := taskQueueInfo.ExpectedDuration / time.Duration(len(hostsByDistro)+len(hostsSpawned))
-			grip.Info(message.Fields{
-				"runner":             RunnerName,
-				"distro":             distro,
-				"new_hosts":          hostList,
-				"queue":              taskQueueInfo,
-				"total_runtime":      taskQueueInfo.ExpectedDuration.String(),
-				"predicted_makespan": makespan.String(),
-			})
+		hostList := make([]string, len(hosts))
+		for idx, host := range hosts {
+			hostList[idx] = host.Id
 		}
-	} else {
-		grip.Info("no new hosts spawned")
+
+		if ctx.Err() != nil {
+			return errors.New("scheduling run canceled")
+		}
+
+		makespan := taskQueueInfo.ExpectedDuration / time.Duration(len(hostsByDistro)+len(hostsSpawned))
+		grip.Info(message.Fields{
+			"runner":             RunnerName,
+			"distro":             distro,
+			"new_hosts":          hostList,
+			"queue":              taskQueueInfo,
+			"total_runtime":      taskQueueInfo.ExpectedDuration.String(),
+			"predicted_makespan": makespan.String(),
+		})
 	}
 
 	for d, t := range schedulerEvents {
