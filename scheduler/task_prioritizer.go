@@ -141,14 +141,14 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 // Run all of the setup functions necessary for prioritizing the tasks.
 // Returns an error if any of the setup funcs return an error.
 func (self *CmpBasedTaskComparator) setupForSortingTasks(distroId string) error {
-	for _, setupFunc := range self.setupFuncs {
+	for i, setupFunc := range self.setupFuncs {
 		if err := setupFunc(self); err != nil {
 			grip.Error(message.Fields{
-				"message":    "error running sorting setup",
-				"distro":     distroId,
-				"runner":     RunnerName,
-				"operation":  "prioritize tasks",
-				"setup func": setupFunc,
+				"message":        "error running sorting setup",
+				"distro":         distroId,
+				"runner":         RunnerName,
+				"operation":      "prioritize tasks",
+				"setup_func_idx": i,
 			})
 			return errors.Wrap(err, "Error running setup for sorting")
 		}
