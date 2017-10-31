@@ -264,9 +264,11 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 			"runner":             RunnerName,
 			"distro":             distro,
 			"new_hosts":          hostList,
+			"num":                len(hostList),
 			"queue":              taskQueueInfo,
 			"total_runtime":      taskQueueInfo.ExpectedDuration.String(),
 			"predicted_makespan": makespan.String(),
+			"event":              taskQueueInfo,
 		})
 	}
 
