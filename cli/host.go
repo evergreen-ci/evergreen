@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"context"
@@ -182,23 +181,22 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 	defer cancel()
 
 	grip.Warning(os.MkdirAll(c.WorkingDirectory, 0777))
-	script := filepath.Join(c.WorkingDirectory, evergreen.SetupScriptName)
 
-	if _, err := os.Stat(script); os.IsNotExist(err) {
+	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
 		return "", nil
 	}
 
-	chmod := c.getChmodCommandWithSudo(ctx, script)
+	chmod := c.getChmodCommandWithSudo(ctx, evergreen.SetupScriptName)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return string(out), err
 	}
 
-	cmd := c.getShCommandWithSudo(ctx, script)
+	cmd := c.getShCommandWithSudo(ctx, evergreen.SetupScriptName)
 	out, err = cmd.CombinedOutput()
 	catcher.Add(err)
 
-	catcher.Add(os.Remove(script))
+	catcher.Add(os.Remove(evergreen.SetupScriptName))
 	grip.Warning(os.MkdirAll(c.WorkingDirectory, 0777))
 
 	return string(out), catcher.Resolve()
