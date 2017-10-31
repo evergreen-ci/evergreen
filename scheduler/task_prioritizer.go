@@ -82,7 +82,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 	grip.Info(message.Fields{
 		"message":   "iterating over task list",
 		"distro":    distroId,
-		"runner":    "scheduler",
+		"runner":    RunnerName,
 		"operation": "prioritize tasks",
 	})
 	for _, taskList := range [][]task.Task{taskQueues.RepotrackerTasks, taskQueues.PatchTasks, taskQueues.HighPriorityTasks} {
@@ -92,7 +92,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 		grip.Info(message.Fields{
 			"message":   "running setup for prioritizing tasks",
 			"distro":    distroId,
-			"runner":    "scheduler",
+			"runner":    RunnerName,
 			"operation": "prioritize tasks",
 		})
 		err := comparator.setupForSortingTasks()
@@ -103,7 +103,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 		grip.Info(message.Fields{
 			"message":   "sorting tasks",
 			"distro":    distroId,
-			"runner":    "scheduler",
+			"runner":    RunnerName,
 			"operation": "prioritize tasks",
 		})
 		sort.Sort(comparator)
@@ -126,7 +126,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 	grip.Info(message.Fields{
 		"message":             "finished prioritizing task queues",
 		"distro":              distroId,
-		"runner":              "scheduler",
+		"runner":              RunnerName,
 		"operation":           "prioritize tasks",
 		"repotracker tasks":   len(prioritizedTaskQueues.RepotrackerTasks),
 		"patch tasks":         len(prioritizedTaskQueues.PatchTasks),
