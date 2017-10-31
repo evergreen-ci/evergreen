@@ -34,13 +34,13 @@ const (
 
 // MemoryInfoExStat is different between OSes
 type MemoryInfoExStat struct {
-	RSS    uint64 `json:"rss"`    // bytes
-	VMS    uint64 `json:"vms"`    // bytes
-	Shared uint64 `json:"shared"` // bytes
-	Text   uint64 `json:"text"`   // bytes
-	Lib    uint64 `json:"lib"`    // bytes
-	Data   uint64 `json:"data"`   // bytes
-	Dirty  uint64 `json:"dirty"`  // bytes
+	RSS    uint64 `json:"rss" bson:"rss,omitempty"`       // bytes
+	VMS    uint64 `json:"vms" bson:"vms,omitempty"`       // bytes
+	Shared uint64 `json:"shared" bson:"shared,omitempty"` // bytes
+	Text   uint64 `json:"text" bson:"text,omitempty"`     // bytes
+	Lib    uint64 `json:"lib" bson:"lib,omitempty"`       // bytes
+	Data   uint64 `json:"data" bson:"data,omitempty"`     // bytes
+	Dirty  uint64 `json:"dirty" bson:"dirty,omitempty"`   // bytes
 }
 
 func (m MemoryInfoExStat) String() string {
@@ -49,17 +49,17 @@ func (m MemoryInfoExStat) String() string {
 }
 
 type MemoryMapsStat struct {
-	Path         string `json:"path"`
-	Rss          uint64 `json:"rss"`
-	Size         uint64 `json:"size"`
-	Pss          uint64 `json:"pss"`
-	SharedClean  uint64 `json:"sharedClean"`
-	SharedDirty  uint64 `json:"sharedDirty"`
-	PrivateClean uint64 `json:"privateClean"`
-	PrivateDirty uint64 `json:"privateDirty"`
-	Referenced   uint64 `json:"referenced"`
-	Anonymous    uint64 `json:"anonymous"`
-	Swap         uint64 `json:"swap"`
+	Path         string `json:"path" bson:"path,omitempty"`
+	Rss          uint64 `json:"rss" bson:"rss,omitempty"`
+	Size         uint64 `json:"size" bson:"size,omitempty"`
+	Pss          uint64 `json:"pss" bson:"pss,omitempty"`
+	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean,omitempty"`
+	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty,omitempty"`
+	PrivateClean uint64 `json:"privateClean" bson:"privateClean,omitempty"`
+	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty,omitempty"`
+	Referenced   uint64 `json:"referenced" bson:"referenced,omitempty"`
+	Anonymous    uint64 `json:"anonymous" bson:"anonymous,omitempty"`
+	Swap         uint64 `json:"swap" bson:"swap,omitempty"`
 }
 
 // String returns JSON value of the process.

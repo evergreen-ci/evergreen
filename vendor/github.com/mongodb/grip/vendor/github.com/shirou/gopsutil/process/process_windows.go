@@ -292,11 +292,11 @@ func (p *Process) Times() (*cpu.TimesStat, error) {
 	// below from psutil's _psutil_windows.c, and in turn from Python's
 	// Modules/posixmodule.c
 
-	user := float64(sysTimes.UserTime.HighDateTime) * 429.4967296 + float64(sysTimes.UserTime.LowDateTime) * 1e-7
-	kernel := float64(sysTimes.KernelTime.HighDateTime) * 429.4967296 + float64(sysTimes.KernelTime.LowDateTime) * 1e-7
+	user := float64(sysTimes.UserTime.HighDateTime)*429.4967296 + float64(sysTimes.UserTime.LowDateTime)*1e-7
+	kernel := float64(sysTimes.KernelTime.HighDateTime)*429.4967296 + float64(sysTimes.KernelTime.LowDateTime)*1e-7
 
 	return &cpu.TimesStat{
-		User: user,
+		User:   user,
 		System: kernel,
 	}, nil
 }
@@ -508,9 +508,9 @@ func getProcessMemoryInfo(h windows.Handle, mem *PROCESS_MEMORY_COUNTERS) (err e
 
 type SYSTEM_TIMES struct {
 	CreateTime syscall.Filetime
-	ExitTime syscall.Filetime
+	ExitTime   syscall.Filetime
 	KernelTime syscall.Filetime
-	UserTime syscall.Filetime
+	UserTime   syscall.Filetime
 }
 
 func getProcessCPUTimes(pid int32) (SYSTEM_TIMES, error) {

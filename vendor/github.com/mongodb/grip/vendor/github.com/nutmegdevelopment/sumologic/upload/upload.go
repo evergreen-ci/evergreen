@@ -99,7 +99,7 @@ func (u *httpUploader) Send(input []byte, name string) (err error) {
 		return
 	}
 
-	// // 	log.Debugf("Response: %s", resp.Status)
+	//// 	log.Debugf("Response: %s", resp.Status)
 
 	if resp.StatusCode != 200 {
 		return errors.New(resp.Status)

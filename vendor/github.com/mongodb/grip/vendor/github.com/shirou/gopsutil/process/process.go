@@ -17,7 +17,7 @@ func init() {
 }
 
 type Process struct {
-	Pid            int32 `json:"pid"`
+	Pid            int32 `json:"pid" bson:"pid,omitempty"`
 	name           string
 	status         string
 	parent         int32
@@ -33,44 +33,44 @@ type Process struct {
 }
 
 type OpenFilesStat struct {
-	Path string `json:"path"`
-	Fd   uint64 `json:"fd"`
+	Path string `json:"path" bson:"path,omitempty"`
+	Fd   uint64 `json:"fd" bson:"fd,omitempty"`
 }
 
 type MemoryInfoStat struct {
-	RSS    uint64 `json:"rss"`    // bytes
-	VMS    uint64 `json:"vms"`    // bytes
-	Data   uint64 `json:"data"`   // bytes
-	Stack  uint64 `json:"stack"`  // bytes
-	Locked uint64 `json:"locked"` // bytes
-	Swap   uint64 `json:"swap"`   // bytes
+	RSS    uint64 `json:"rss" bson:"rss,omitempty"`       // bytes
+	VMS    uint64 `json:"vms" bson:"vms,omitempty"`       // bytes
+	Data   uint64 `json:"data" bson:"data,omitempty"`     // bytes
+	Stack  uint64 `json:"stack" bson:"stack,omitempty"`   // bytes
+	Locked uint64 `json:"locked" bson:"locked,omitempty"` // bytes
+	Swap   uint64 `json:"swap" bson:"swap,omitempty"`     // bytes
 }
 
 type SignalInfoStat struct {
-	PendingProcess uint64 `json:"pending_process"`
-	PendingThread  uint64 `json:"pending_thread"`
-	Blocked        uint64 `json:"blocked"`
-	Ignored        uint64 `json:"ignored"`
-	Caught         uint64 `json:"caught"`
+	PendingProcess uint64 `json:"pending_process" bson:"pending_process,omitempty"`
+	PendingThread  uint64 `json:"pending_thread" bson:"pending_thread,omitempty"`
+	Blocked        uint64 `json:"blocked" bson:"blocked,omitempty"`
+	Ignored        uint64 `json:"ignored" bson:"ignored,omitempty"`
+	Caught         uint64 `json:"caught" bson:"caught,omitempty"`
 }
 
 type RlimitStat struct {
-	Resource int32  `json:"resource"`
-	Soft     int32  `json:"soft"` //TODO too small. needs to be uint64
-	Hard     int32  `json:"hard"` //TODO too small. needs to be uint64
-	Used     uint64 `json:"used"`
+	Resource int32  `json:"resource" bson:"resource,omitempty"`
+	Soft     int32  `json:"soft" bson:"soft,omitempty"` //TODO too small. needs to be uint64
+	Hard     int32  `json:"hard" bson:"hard,omitempty"` //TODO too small. needs to be uint64
+	Used     uint64 `json:"used" bson:"used,omitempty"`
 }
 
 type IOCountersStat struct {
-	ReadCount  uint64 `json:"readCount"`
-	WriteCount uint64 `json:"writeCount"`
-	ReadBytes  uint64 `json:"readBytes"`
-	WriteBytes uint64 `json:"writeBytes"`
+	ReadCount  uint64 `json:"readCount" bson:"readCount,omitempty"`
+	WriteCount uint64 `json:"writeCount" bson:"writeCount,omitempty"`
+	ReadBytes  uint64 `json:"readBytes" bson:"readBytes,omitempty"`
+	WriteBytes uint64 `json:"writeBytes" bson:"writeBytes,omitempty"`
 }
 
 type NumCtxSwitchesStat struct {
-	Voluntary   int64 `json:"voluntary"`
-	Involuntary int64 `json:"involuntary"`
+	Voluntary   int64 `json:"voluntary" bson:"voluntary,omitempty"`
+	Involuntary int64 `json:"involuntary" bson:"involuntary,omitempty"`
 }
 
 // Resource limit constants are from /usr/include/x86_64-linux-gnu/bits/resource.h
