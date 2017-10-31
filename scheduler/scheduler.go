@@ -347,7 +347,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		NumHostsRunning:  0,
 		ExpectedDuration: totalDuration,
 	}
-	return &res
+	return res
 
 }
 
