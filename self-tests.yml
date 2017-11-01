@@ -626,6 +626,9 @@ buildvariants:
       build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go"
     tasks:
       - name: "dist"
+        depends_on:
+          - name: "dist"
+            variant: "ubuntu1604"
 
   - name: race-detector
     display_name: Race Detector
