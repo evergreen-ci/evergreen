@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
@@ -55,7 +54,7 @@ type VersionData struct {
 
 // getVersion returns a StatusOK if the route is hit
 func getVersion(w http.ResponseWriter, r *http.Request) {
-	plugin.WriteJSON(w, http.StatusOK, "1")
+	util.WriteJSON(w, http.StatusOK, "1")
 }
 
 // getTasksForVersion sends back the list of TaskJSON documents associated with a version id.
@@ -85,7 +84,7 @@ func uiGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, jsonForTasks)
+	util.WriteJSON(w, http.StatusOK, jsonForTasks)
 	return
 }
 
@@ -112,7 +111,7 @@ func uiGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plugin.WriteJSON(w, http.StatusOK, data)
+	util.WriteJSON(w, http.StatusOK, data)
 }
 
 // getTasksForLatestVersion sends back the TaskJSON data associated with the latest version.

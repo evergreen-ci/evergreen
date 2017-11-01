@@ -1,7 +1,6 @@
 package util
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -13,36 +12,22 @@ import (
 )
 
 // WriteJSON writes a json response with the supplied code on the given writer.
-func WriteJSON(w *http.ResponseWriter, data interface{}, status int) {
+func WriteJSON(w http.ResponseWriter, status int, data interface{}) {
 	// write the response
-	(*w).Header().Add("Content-Type", "application/json")
-	(*w).Header().Add("Connection", "close")
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Connection", "close")
 
 	jsonBytes, err := json.Marshal(data)
+	grip.Notice(err)
 	if err != nil {
-		(*w).WriteHeader(500)
-		_, _ = (*w).Write([]byte("{}"))
+		w.WriteHeader(500)
+		_, _ = w.Write([]byte("{}"))
 		return
 	}
 
-	(*w).WriteHeader(status)
-	_, err = (*w).Write(jsonBytes)
-	grip.Warning(err)
-}
-
-// MakeTlsConfig creates a TLS Config from a certificate and key.
-func MakeTlsConfig(cert string, key string) (*tls.Config, error) {
-	// Adapted from http.ListenAndServeTLS
-	tlsConfig := &tls.Config{}
-	tlsConfig.NextProtos = []string{"http/1.1"}
-	tlsConfig.Certificates = make([]tls.Certificate, 1)
-	var err error
-	tlsConfig.Certificates[0], err =
-		tls.X509KeyPair([]byte(cert), []byte(key))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return tlsConfig, nil
+	w.WriteHeader(status)
+	_, err = w.Write(jsonBytes)
+	grip.Notice(err)
 }
 
 // MountHandler routes all requests to the given mux.Router under the prefix to be handled by

@@ -265,14 +265,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			return nil, errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
 		}
 
-		// check if a plugin is an app level plugin first
-		if appPlugin, ok := pl.(plugin.AppUIPlugin); ok {
-			// register the app level pa}rt of the plugin
-			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
-			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
-
-		}
-
 		// check if there are any errors getting the panel config
 		uiConf, err := pl.GetPanelConfig()
 		if err != nil {

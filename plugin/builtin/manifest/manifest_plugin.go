@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -122,5 +123,5 @@ func (m *ManifestPlugin) GetManifest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("manifest not found for version %v", version.Id), http.StatusNotFound)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, foundManifest)
+	util.WriteJSON(w, http.StatusOK, foundManifest)
 }

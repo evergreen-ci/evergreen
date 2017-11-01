@@ -77,23 +77,6 @@ func (e CopyObjectError) Error() string {
 		e.Code, e.Message, e.Resource, e.RequestId, e.ErrMsg)
 }
 
-//This is used to get the bucket and filename,
-//ignoring any username/password so that it can be
-//securely printed in logs
-//Returns: (bucket, filename, error)
-func GetS3Location(s3URL string) (string, string, error) {
-	urlParsed, err := url.Parse(s3URL)
-	if err != nil {
-		return "", "", err
-	}
-
-	if urlParsed.Scheme != "s3" {
-		return "", "", errors.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
-	}
-
-	return urlParsed.Host, urlParsed.Path, nil
-}
-
 func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path, toS3Bucket, toS3Path, permissionACL string) error {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)

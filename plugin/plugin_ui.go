@@ -113,7 +113,6 @@ type PanelManager interface {
 	Includes(PageScope) ([]template.HTML, error)
 	Panels(PageScope) (PanelLayout, error)
 	UIData(UIContext, PageScope) (map[string]interface{}, error)
-	GetAppPlugins() []AppUIPlugin
 }
 
 // private type for sorting alphabetically,
@@ -153,7 +152,6 @@ type SimplePanelManager struct {
 	includes    map[PageScope][]template.HTML
 	panelHTML   map[PageScope]PanelLayout
 	uiDataFuncs map[PageScope]map[string]UIDataFunction
-	appPlugins  []AppUIPlugin
 }
 
 // RegisterPlugins takes an array of plugins and registers them with the
@@ -173,15 +171,10 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 		VersionPage: {},
 	}
 
-	appPluginNames := []AppUIPlugin{}
 	for _, p := range plugins {
 		// don't register plugins twice
 		if registered[p.Name()] {
 			return errors.Errorf("plugin '%v' already registered", p.Name())
-		}
-		// check if a plugin is an app level plugin first
-		if appPlugin, ok := p.(AppUIPlugin); ok {
-			appPluginNames = append(appPluginNames, appPlugin)
 		}
 
 		if uiConf, err := p.GetPanelConfig(); uiConf != nil && err == nil {
@@ -228,8 +221,6 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 		registered[p.Name()] = true
 	}
 
-	self.appPlugins = appPluginNames
-
 	// sort registered plugins by name and cache their HTML
 	self.includes = map[PageScope][]template.HTML{
 		TaskPage:    sortAndExtractHTML(includesWithPair[TaskPage]),
@@ -268,10 +259,6 @@ func (self *SimplePanelManager) Includes(page PageScope) ([]template.HTML, error
 // the given page.
 func (self *SimplePanelManager) Panels(page PageScope) (PanelLayout, error) {
 	return self.panelHTML[page], nil
-}
-
-func (self *SimplePanelManager) GetAppPlugins() []AppUIPlugin {
-	return self.appPlugins
 }
 
 // UIData returns a map of plugin name -> data for inclusion

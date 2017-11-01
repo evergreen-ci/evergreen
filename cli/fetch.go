@@ -453,7 +453,6 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 
 				justFile = filepath.Base(fileName)
 				fmt.Printf("(worker %v) Downloading %v to directory %s%s\n", workerId, justFile, u.path, sizeLog)
-				//sizeTracker := util.SizeTrackingReader{0, resp.Body}
 				_, err = io.Copy(out, resp.Body)
 				if err != nil {
 					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)

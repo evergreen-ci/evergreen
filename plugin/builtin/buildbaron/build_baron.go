@@ -129,21 +129,21 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 	oldId := fmt.Sprintf("%v_%v", taskId, exec)
 	t, err := task.FindOneOld(task.ById(oldId))
 	if err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// if the archived task was not found, we must be looking for the most recent exec
 	if t == nil {
 		t, err = task.FindOne(task.ById(taskId))
 		if err != nil {
-			plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+			util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
 
 	bbProj, ok := bbp.opts.Projects[t.Project]
 	if !ok {
-		plugin.WriteJSON(w, http.StatusInternalServerError,
+		util.WriteJSON(w, http.StatusInternalServerError,
 			fmt.Sprintf("Corresponding JIRA project for %v not found", t.Project))
 		return
 	}
@@ -158,10 +158,10 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 	if err != nil {
 		message := fmt.Sprintf("%v: %v, %v", JIRAFailure, err, jql)
 		grip.Error(message)
-		plugin.WriteJSON(w, http.StatusInternalServerError, message)
+		util.WriteJSON(w, http.StatusInternalServerError, message)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, results.Issues)
+	util.WriteJSON(w, http.StatusOK, results.Issues)
 }
 
 // getNote retrieves the latest note from the database.
@@ -169,14 +169,14 @@ func (bbp *BuildBaronPlugin) getNote(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 	n, err := NoteForTask(taskId)
 	if err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if n == nil {
-		plugin.WriteJSON(w, http.StatusOK, "")
+		util.WriteJSON(w, http.StatusOK, "")
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, n)
+	util.WriteJSON(w, http.StatusOK, n)
 }
 
 // saveNote reads a request containing a note's content along with the last seen
@@ -185,13 +185,13 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 	n := &Note{}
 	if err := util.ReadJSONInto(r.Body, n); err != nil {
-		plugin.WriteJSON(w, http.StatusBadRequest, err.Error())
+		util.WriteJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// prevent incredibly large notes
 	if len(n.Content) > maxNoteSize {
-		plugin.WriteJSON(w, http.StatusBadRequest, "note is too large")
+		util.WriteJSON(w, http.StatusBadRequest, "note is too large")
 		return
 	}
 
@@ -200,14 +200,14 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 	// than the most recent edit, we error with a helpful message.
 	old, err := NoteForTask(taskId)
 	if err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// we compare times by millisecond rather than nanosecond so we can
 	// work around the rounding that occurs when javascript forces these
 	// large values into in float type.
 	if old != nil && n.UnixNanoTime/msPerNS != old.UnixNanoTime/msPerNS {
-		plugin.WriteJSON(w, http.StatusBadRequest,
+		util.WriteJSON(w, http.StatusBadRequest,
 			"this note has already been edited. Please refresh and try again.")
 		return
 	}
@@ -215,10 +215,10 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 	n.TaskId = taskId
 	n.UnixNanoTime = time.Now().UnixNano()
 	if err := n.Upsert(); err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, n)
+	util.WriteJSON(w, http.StatusOK, n)
 }
 
 // Generates a jira JQL string from the task
