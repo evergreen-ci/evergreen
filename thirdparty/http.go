@@ -36,6 +36,9 @@ func doFollowingRedirectsWithHeaders(client *http.Client, ireq *http.Request) (r
 	// write our own. See http://golang.org/src/pkg/net/http/client.go#L273
 	var base *url.URL
 	var urlStr string
+	if t, ok := client.Transport.(*http.Transport); ok {
+		defer t.CloseIdleConnections()
+	}
 	req := ireq
 	for redirect := 0; ; redirect++ {
 		if redirect != 0 {
