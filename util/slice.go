@@ -22,20 +22,6 @@ func SliceContains(slice, elt interface{}) bool {
 	return false
 }
 
-func StringSliceContains(slice []string, item string) bool {
-	if slice == nil {
-		return false
-	}
-
-	for idx := range slice {
-		if slice[idx] == item {
-			return true
-		}
-	}
-
-	return false
-}
-
 // StringSliceIntersection returns the intersecting elements of slices a and b.
 func StringSliceIntersection(a, b []string) []string {
 	inA := map[string]bool{}
