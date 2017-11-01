@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -259,12 +260,6 @@ func (s *AgentSuite) TestAbort() {
 	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
 }
 
-func (s *AgentSuite) TestAgentConstructorSetsHostData() {
-	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
-	s.Equal("host_id", agent.comm.GetHostID())
-	s.Equal("host_secret", agent.comm.GetHostSecret())
-}
-
 func (s *AgentSuite) TestWaitCompleteSuccess() {
 	heartbeat := make(chan string)
 	complete := make(chan string)
@@ -364,4 +359,12 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	status := s.a.wait(ctx, innerCtx, s.tc, heartbeat, complete)
 	s.Equal(evergreen.TaskFailed, status)
 	s.False(s.tc.hadTimedOut())
+}
+
+func TestAgentConstructorSetsHostData(t *testing.T) {
+	assert := assert.New(t) // nolint
+	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
+
+	assert.Equal("host_id", agent.comm.GetHostID())
+	assert.Equal("host_secret", agent.comm.GetHostSecret())
 }
