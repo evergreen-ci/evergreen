@@ -139,12 +139,12 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 				// write the results out to a results channel
 				distroSchedulerResultChan <- res
 				grip.Info(message.Fields{
-					"runner":                   RunnerName,
-					"distro":                   d.distroId,
-					"operation":                "scheduling distro",
-					"queue_size":               len(d.runnableTasksForDistro),
-					"expected_duration":        res.schedulerEvent.ExpectedDuration,
-					"expected_duration_string": res.schedulerEvent.ExpectedDuration.String(),
+					"runner":                 RunnerName,
+					"distro":                 d.distroId,
+					"operation":              "scheduling distro",
+					"queue_size":             len(d.runnableTasksForDistro),
+					"expected_duration":      res.schedulerEvent.ExpectedDuration,
+					"expected_duration_span": res.schedulerEvent.ExpectedDuration.String(),
 					"span":     time.Since(distroStartTime).String(),
 					"duration": time.Since(distroStartTime),
 				})
