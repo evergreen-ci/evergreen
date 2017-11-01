@@ -565,6 +565,9 @@ func FindOne(query db.Q) (*Task, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding task")
 	}
+	if task == nil {
+		return nil, nil
+	}
 	if err = task.MergeNewTestResults(); err != nil {
 		return nil, errors.Wrap(err, "errors merging new test results")
 	}
@@ -601,6 +604,9 @@ func FindOneOld(query db.Q) (*Task, error) {
 	task, err := FindOneOldNoMerge(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding task")
+	}
+	if task == nil {
+		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
 		return nil, errors.Wrap(err, "errors merging new test results")
