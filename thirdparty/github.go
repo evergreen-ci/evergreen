@@ -318,17 +318,17 @@ func githubRequest(method string, url string, oauthToken string, data interface{
 
 func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 	grip.Debugf("Attempting GitHub API call at '%s'", url)
-	retriableGet := util.RetriableFunc(
-		func() error {
+	retryFail, err := util.Retry(
+		func() (bool, error) {
 			resp, err = githubRequest("GET", url, oauthToken, nil)
 			if err != nil {
 				grip.Errorf("failed trying to call github GET on %s: %+v", url, err)
-				return util.RetriableError{err}
+				return true, err
 			}
 			if resp.StatusCode == http.StatusUnauthorized {
 				err = errors.Errorf("Calling github GET on %v failed: got 'unauthorized' response", url)
 				grip.Error(err)
-				return err
+				return false, err
 			}
 			if resp.StatusCode != http.StatusOK {
 				err = errors.Errorf("Calling github GET on %v got a bad response code: %v", url, resp.StatusCode)
@@ -336,11 +336,10 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 			// read the results
 			rateMessage, _ := getGithubRateLimit(resp.Header)
 			grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
-			return nil
-		},
-	)
 
-	retryFail, err := util.Retry(retriableGet, NumGithubRetries, GithubSleepTimeSecs*time.Second)
+			return false, nil
+		}, NumGithubRetries, GithubSleepTimeSecs*time.Second)
+
 	if err != nil {
 		// couldn't get it
 		if retryFail {
@@ -355,30 +354,27 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
 	grip.Errorf("Attempting GitHub API POST at ‘%s’", url)
-	retriableGet := util.RetriableFunc(
-		func() (retryError error) {
-			resp, err = githubRequest("POST", url, oauthToken, data)
-			if err != nil {
-				grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
-				return util.RetriableError{err}
-			}
-			if resp.StatusCode == http.StatusUnauthorized {
-				err = errors.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
-				grip.Error(err)
-				return err
-			}
-			if resp.StatusCode != http.StatusOK {
-				err = errors.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
-			}
-			// read the results
-			rateMessage, loglevel := getGithubRateLimit(resp.Header)
+	retryFail, err := util.Retry(func() (bool, error) {
+		resp, err = githubRequest("POST", url, oauthToken, data)
+		if err != nil {
+			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
+			return true, err
+		}
+		if resp.StatusCode == http.StatusUnauthorized {
+			err = errors.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
+			grip.Error(err)
+			return false, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			err = errors.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
+		}
+		// read the results
+		rateMessage, loglevel := getGithubRateLimit(resp.Header)
 
-			grip.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
-			return nil
-		},
-	)
+		grip.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
+		return false, nil
+	}, NumGithubRetries, GithubSleepTimeSecs*time.Second)
 
-	retryFail, err := util.Retry(retriableGet, NumGithubRetries, GithubSleepTimeSecs*time.Second)
 	if err != nil {
 		// couldn't post it
 		if retryFail {

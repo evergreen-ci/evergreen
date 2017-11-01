@@ -12,12 +12,7 @@ import (
 )
 
 var (
-	sourceURL     = "s3://build-push-testing/test/source/testfile"
-	destUrl       = "s3://build-push-testing/test/dest/testfile"
-	testURLBucket = "build-push-testing"
-	testURLPath   = "/test/push/path/mongodb-pushname-pusharch-latest.tgz"
-	testURL       = "s3://s3_key:s3_secret@build-push-testing/test/" +
-		"push/path/mongodb-pushname-pusharch-latest.tgz"
+	sourceURL = "s3://build-push-testing/test/source/testfile"
 )
 
 func TestPutS3File(t *testing.T) {

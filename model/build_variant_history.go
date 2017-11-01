@@ -93,7 +93,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 
 	pipeline := []bson.M{
 		{"$match": matchFilter},
-		{"$sort": bson.D{{task.RevisionOrderNumberKey, 1}}},
+		{"$sort": bson.D{{Name: task.RevisionOrderNumberKey, Value: 1}}},
 		{
 			"$group": bson.M{
 				"_id":   "$" + task.RevisionKey,

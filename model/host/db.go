@@ -203,19 +203,27 @@ func ByDistroId(distroId string) db.Q {
 
 // ById produces a query that returns a host with the given id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{IdKey, id}})
+	return db.Query(bson.D{{Name: IdKey, Value: id}})
 }
 
 // ByIds produces a query that returns all hosts in the given list of ids.
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.D{
-		{IdKey, bson.D{{"$in", ids}}},
+		{
+			Name: IdKey,
+			Value: bson.D{
+				{
+					Name:  "$in",
+					Value: ids,
+				},
+			},
+		},
 	})
 }
 
 // ByRunningTaskId returns a host running the task with the given id.
 func ByRunningTaskId(taskId string) db.Q {
-	return db.Query(bson.D{{RunningTaskKey, taskId}})
+	return db.Query(bson.D{{Name: RunningTaskKey, Value: taskId}})
 }
 
 // ByDynamicWithinTime is a query that returns all dynamic hosts running between a certain time and another time.
@@ -320,7 +328,7 @@ func ByExpiredSince(time time.Time) db.Q {
 
 // IsProvisioningFailure is a query that returns all hosts that
 // failed to provision.
-var IsProvisioningFailure = db.Query(bson.D{{StatusKey, evergreen.HostProvisionFailed}})
+var IsProvisioningFailure = db.Query(bson.D{{Name: StatusKey, Value: evergreen.HostProvisionFailed}})
 
 // NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
 // or have one that exists that is greater than the MaxLTCInterval duration away from the current time.

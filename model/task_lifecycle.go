@@ -317,7 +317,8 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 			"Error updating build status (1)")
 	}
 	if detail.Status == evergreen.TaskFailed && detail.Type != "system" {
-		shouldStepBack, err := getStepback(t.Id, p)
+		var shouldStepBack bool
+		shouldStepBack, err = getStepback(t.Id, p)
 		if err != nil {
 			return errors.WithStack(err)
 		}

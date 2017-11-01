@@ -758,13 +758,13 @@ func (nk NotificationKey) String() string {
 func TrySendNotification(recipients []string, subject, body string, mailer Mailer) (err error) {
 	// grip.Debugf("address: %s subject: %s body: %s", recipients, subject, body)
 	// return nil
-	_, err = util.Retry(func() error {
+	_, err = util.Retry(func() (bool, error) {
 		err = mailer.SendMail(recipients, subject, body)
 		if err != nil {
 			grip.Errorln("Error sending notification:", err)
-			return util.RetriableError{err}
+			return true, err
 		}
-		return nil
+		return false, nil
 	}, NumSmtpRetries, SmtpSleepTime)
 	return errors.WithStack(err)
 }

@@ -4,12 +4,23 @@ import (
 	"fmt"
 	"testing"
 
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
+
+// FindOne returns one test result that satisfies the query. Returns nil if no tasks match.
+func findOne(query db.Q) (*TestResult, error) {
+	test := &TestResult{}
+	err := db.FindOneQ(Collection, query, &test)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return test, err
+}
 
 type TestResultSuite struct {
 	suite.Suite
@@ -202,6 +213,7 @@ func (s *TestResultSuite) TestRemoveByTaskIDAndExecution() {
 	err = RemoveByTaskIDAndExecution("taskid-5", 5)
 	s.NoError(err)
 	tests, err = FindByTaskIDAndExecution("taskid-5", 5)
+	s.NoError(err)
 	s.Len(tests, 0)
 
 	for i, t := range s.tests {

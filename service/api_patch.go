@@ -438,7 +438,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			Action      string `json:"action"`
 			Description string `json:"description"`
 		}{}
-		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		if err = util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
@@ -448,7 +448,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	// dispatch to handlers based on specified action
 	switch action {
 	case "update":
-		err := p.SetDescription(desc)
+		err = p.SetDescription(desc)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

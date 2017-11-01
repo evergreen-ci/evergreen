@@ -335,8 +335,8 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 				Convey("the $sort and $project stages should have the correct fields", func() {
 					So(pipeline[5], ShouldContainKey, "$sort")
 					So(pipeline[5]["$sort"], ShouldResemble, bson.D{
-						{task.RevisionOrderNumberKey, -1},
-						{task.TestResultsKey + "." + task.TestResultTestFileKey, -1},
+						{Name: task.RevisionOrderNumberKey, Value: -1},
+						{Name: task.TestResultsKey + "." + task.TestResultTestFileKey, Value: -1},
 					})
 					So(pipeline[6], ShouldContainKey, "$project")
 					So(pipeline[6]["$project"], ShouldResemble, bson.M{

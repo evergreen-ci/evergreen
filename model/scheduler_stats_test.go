@@ -298,12 +298,12 @@ func TestFindPredictedMakespan(t *testing.T) {
 	Convey("With a simple set of tasks that are dependent on each other and different times taken", t, func() {
 
 		a := task.Task{Id: "a", TimeTaken: time.Duration(5) * time.Second, DependsOn: []task.Dependency{}}
-		b := task.Task{Id: "b", TimeTaken: time.Duration(3) * time.Second, DependsOn: []task.Dependency{{"a", evergreen.TaskFailed}}}
-		c := task.Task{Id: "c", TimeTaken: time.Duration(4) * time.Second, DependsOn: []task.Dependency{{"a", evergreen.TaskFailed}}}
-		f := task.Task{Id: "f", TimeTaken: time.Duration(40) * time.Second, DependsOn: []task.Dependency{{"b", evergreen.TaskFailed}}}
+		b := task.Task{Id: "b", TimeTaken: time.Duration(3) * time.Second, DependsOn: []task.Dependency{{TaskId: "a", Status: evergreen.TaskFailed}}}
+		c := task.Task{Id: "c", TimeTaken: time.Duration(4) * time.Second, DependsOn: []task.Dependency{{TaskId: "a", Status: evergreen.TaskFailed}}}
+		f := task.Task{Id: "f", TimeTaken: time.Duration(40) * time.Second, DependsOn: []task.Dependency{{TaskId: "b", Status: evergreen.TaskFailed}}}
 
 		d := task.Task{Id: "d", TimeTaken: time.Duration(10) * time.Second}
-		e := task.Task{Id: "e", TimeTaken: time.Duration(5) * time.Second, DependsOn: []task.Dependency{{"d", evergreen.TaskFailed}}}
+		e := task.Task{Id: "e", TimeTaken: time.Duration(5) * time.Second, DependsOn: []task.Dependency{{TaskId: "d", Status: evergreen.TaskFailed}}}
 
 		Convey("with one tree of dependencies", func() {
 			allTasks := []task.Task{a, b, c}

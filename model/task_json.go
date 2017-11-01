@@ -146,11 +146,14 @@ func GetTaskJSONCommit(projectId, revision, variant, taskName, name string) (Tas
 	err := db.FindOneQ(TaskJSONCollection,
 		db.Query(bson.M{
 			TaskJSONProjectIdKey: projectId,
-			TaskJSONRevisionKey:  bson.RegEx{"^" + regexp.QuoteMeta(revision), "i"}, // make it case insensitive
-			TaskJSONVariantKey:   variant,
-			TaskJSONTaskNameKey:  taskName,
-			TaskJSONNameKey:      name,
-			TaskJSONIsPatchKey:   false,
+			TaskJSONRevisionKey: bson.RegEx{
+				Pattern: "^" + regexp.QuoteMeta(revision),
+				Options: "i", // make it case insensitive
+			},
+			TaskJSONVariantKey:  variant,
+			TaskJSONTaskNameKey: taskName,
+			TaskJSONNameKey:     name,
+			TaskJSONIsPatchKey:  false,
 		}), &jsonForTask)
 	if err != nil {
 		return TaskJSON{}, err

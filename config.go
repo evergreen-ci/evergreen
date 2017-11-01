@@ -247,9 +247,9 @@ type AmboyConfig struct {
 }
 
 type SlackConfig struct {
-	Options send.SlackOptions `yaml:"options"`
-	Token   string            `yaml:"token"`
-	Level   string            `yaml:"threshold_level"`
+	Options *send.SlackOptions `yaml:"options"`
+	Token   string             `yaml:"token"`
+	Level   string             `yaml:"threshold_level"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
@@ -385,7 +385,7 @@ func (s *Settings) GetSender() (send.Sender, error) {
 	}
 
 	if s.Slack.Token != "" {
-		sender, err = send.NewSlackLogger(&s.Slack.Options, s.Slack.Token,
+		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {
 			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
@@ -470,6 +470,10 @@ var configValidationRules = []configValidator{
 	},
 
 	func(settings *Settings) error {
+		if settings.Slack.Options == nil {
+			settings.Slack.Options = &send.SlackOptions{}
+		}
+
 		if settings.Slack.Token != "" {
 			if settings.Slack.Options.Channel == "" {
 				settings.Slack.Options.Channel = "#evergreen-ops-alerts"

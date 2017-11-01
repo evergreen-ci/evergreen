@@ -480,7 +480,7 @@ func TestActivateVersion(t *testing.T) {
 			Message:             "some-message",
 			Status:              "success",
 			BuildIds:            []string{build.Id},
-			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}}, // nolint
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",

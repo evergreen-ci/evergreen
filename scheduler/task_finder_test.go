@@ -116,8 +116,8 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 	// have no dependencies, and one to have successfully met
 	// dependencies
 	s.tasks[0].DependsOn = []task.Dependency{}
-	s.tasks[1].DependsOn = []task.Dependency{{s.depTasks[0].Id, evergreen.TaskSucceeded}}
-	s.tasks[2].DependsOn = []task.Dependency{{s.depTasks[1].Id, evergreen.TaskSucceeded}}
+	s.tasks[1].DependsOn = []task.Dependency{{TaskId: s.depTasks[0].Id, Status: evergreen.TaskSucceeded}}
+	s.tasks[2].DependsOn = []task.Dependency{{TaskId: s.depTasks[1].Id, Status: evergreen.TaskSucceeded}}
 
 	s.insertTasks()
 

@@ -54,7 +54,7 @@ func (self *DBTaskDurationEstimator) GetExpectedDurations(
 			}
 			durations.TaskDurationByProject[t.Project].
 				TaskDurationByBuildVariant[t.BuildVariant] =
-				&model.TaskDurations{expTaskDurationByDisplayName}
+				&model.TaskDurations{TaskDurationByDisplayName: expTaskDurationByDisplayName}
 		}
 	}
 	return durations, nil

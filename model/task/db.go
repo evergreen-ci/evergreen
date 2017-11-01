@@ -101,12 +101,21 @@ var (
 
 // ById creates a query that finds a task by its _id.
 func ById(id string) db.Q {
-	return db.Query(bson.D{{IdKey, id}})
+	return db.Query(bson.D{{
+		Name:  IdKey,
+		Value: id,
+	}})
 }
 
 // ByIds creates a query that finds all tasks with the given ids.
 func ByIds(ids []string) db.Q {
-	return db.Query(bson.D{{IdKey, bson.D{{"$in", ids}}}})
+	return db.Query(bson.D{{
+		Name: IdKey,
+		Value: bson.D{{
+			Name:  "$in",
+			Value: ids,
+		}},
+	}})
 }
 
 // ByBuildId creates a query to return tasks with a certain build id

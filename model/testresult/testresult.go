@@ -5,7 +5,6 @@ import (
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -95,16 +94,6 @@ func find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
 	err := db.FindAllQ(Collection, query, &tests)
 	return tests, err
-}
-
-// FindOne returns one test result that satisfies the query. Returns nil if no tasks match.
-func findOne(query db.Q) (*TestResult, error) {
-	test := &TestResult{}
-	err := db.FindOneQ(Collection, query, &test)
-	if err == mgo.ErrNotFound {
-		return nil, nil
-	}
-	return test, err
 }
 
 // Insert writes a test result to the database.

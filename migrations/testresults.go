@@ -53,11 +53,11 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 				}
 			case "_id":
 				if err := raw.Value.Unmarshal(&id); err != nil {
-					errors.Wrap(err, "error unmarshaling task id")
+					return errors.Wrap(err, "error unmarshaling task id")
 				}
 			case "execution":
 				if err := raw.Value.Unmarshal(&execution); err != nil {
-					errors.Wrap(err, "error unmarshaling task execution")
+					return errors.Wrap(err, "error unmarshaling task execution")
 				}
 			}
 		}
