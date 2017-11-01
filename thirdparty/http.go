@@ -34,6 +34,9 @@ func shouldRedirectGet(statusCode int) bool {
 func doFollowingRedirectsWithHeaders(client *http.Client, ireq *http.Request) (resp *http.Response, err error) {
 	// Default Go HTTP client silently wipes headers on redirect, so we need to
 	// write our own. See http://golang.org/src/pkg/net/http/client.go#L273
+	if t, ok := client.Transport.(*http.Transport); ok {
+		defer t.CloseIdleConnections()
+	}
 	var base *url.URL
 	var urlStr string
 	req := ireq
