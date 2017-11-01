@@ -135,7 +135,10 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 		grip.Error(err)
 		return err
 	}
-	return attachTags(getUSEast(*cloudManager.awsCredentials), tags, spotReq.InstanceId)
+	ec2handle, client := getUSEast(*cloudManager.awsCredentials)
+	defer util.PutHttpClient(client)
+
+	return attachTags(ec2handle, tags, spotReq.InstanceId)
 }
 
 func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
@@ -169,7 +172,8 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 
 	//Spot request has been fulfilled, so get status of the instance itself
 	if spotDetails.InstanceId != "" {
-		ec2Handle := getUSEast(*cloudManager.awsCredentials)
+		ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
+		defer util.PutHttpClient(client)
 		instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
 		if err != nil {
 			err = errors.Wrap(err, "Got an error checking spot details")
@@ -216,7 +220,8 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 	}
 
 	//Spot request is fulfilled, find the instance info and get DNS info
-	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
+	defer util.PutHttpClient(client)
 	instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
 	if err != nil {
 		return "", err
@@ -233,7 +238,8 @@ func (cloudManager *EC2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) 
 	if h.Distro.Provider != SpotProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, h.Distro.Id, h.Distro.Provider)
 	}
-	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
+	defer util.PutHttpClient(client)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2SpotSettings{}
@@ -332,7 +338,8 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 
 	grip.Infoln("Canceling spot request", host.Id)
 	//First cancel the spot request
-	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
+	defer util.PutHttpClient(client)
 
 	resp, err := ec2Handle.CancelSpotRequests([]string{host.Id})
 	grip.Debugf("host=%s, cancelResp=%+v", host.Id, resp)
@@ -370,7 +377,9 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 // Note that if the SpotRequestResult object returned has a non-blank InstanceId
 // field, this indicates that the spot request has been fulfilled.
 func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.SpotRequestResult, error) {
-	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
+	defer util.PutHttpClient(client)
+
 	resp, err := ec2Handle.DescribeSpotRequests([]string{spotReqId}, nil)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -416,7 +425,9 @@ func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end tim
 	if err != nil {
 		return 0, err
 	}
-	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
+	defer util.PutHttpClient(client)
+
 	instance, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
 	if err != nil {
 		return 0, err

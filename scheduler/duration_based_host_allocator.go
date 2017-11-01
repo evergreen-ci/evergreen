@@ -227,11 +227,10 @@ func computeRunningTasksDuration(existingDistroHosts []host.Host,
 	for _, runningTaskId := range runningTaskIds {
 		runningTask, ok := runningTasksMap[runningTaskId]
 		if !ok {
-			return runningTasksDuration, errors.Errorf("Unable to find running "+
-				"task with _id %v", runningTaskId)
+			return runningTasksDuration, errors.Errorf(
+				"Unable to find running task with _id %v", runningTaskId)
 		}
-		expectedDuration := model.GetTaskExpectedDuration(runningTask,
-			taskDurations)
+		expectedDuration := model.GetTaskExpectedDuration(runningTask, taskDurations)
 		elapsedTime := time.Since(runningTask.StartTime)
 		if elapsedTime > expectedDuration {
 			// probably an outlier; or an unknown data point
@@ -252,8 +251,7 @@ func computeDurationBasedNumNewHosts(scheduledTasksDuration,
 	maxDurationPerHost time.Duration) (numNewHosts int) {
 
 	// total duration of scheduled and currently running tasks
-	totalDistroTasksDuration := scheduledTasksDuration +
-		runningTasksDuration
+	totalDistroTasksDuration := scheduledTasksDuration + runningTasksDuration
 
 	// number of hosts needed to meet the duration based turnaround requirement
 	numHostsForTurnaroundRequirement := totalDistroTasksDuration /
@@ -263,8 +261,17 @@ func computeDurationBasedNumNewHosts(scheduledTasksDuration,
 	durationBasedNumNewHostsNeeded := numHostsForTurnaroundRequirement -
 		numExistingDistroHosts
 
+	// in the case where we need a fractional host, we should
+	// generally round down, as the allocator has proven a bit
+	// generous; however, we probably ought to spin up a single
+	// host to avoid small queues getting stuck without any running hosts.
+	if numExistingDistroHosts < 1 && durationBasedNumNewHostsNeeded > 0 && durationBasedNumNewHostsNeeded < 1 {
+		numNewHosts = 1
+		return
+	}
+
 	// duration based number of new hosts needed
-	numNewHosts = int(math.Ceil(durationBasedNumNewHostsNeeded))
+	numNewHosts = int(math.Floor(durationBasedNumNewHostsNeeded))
 
 	// return 0 if numNewHosts is less than 0
 	if numNewHosts < 0 {
