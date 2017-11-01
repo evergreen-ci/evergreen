@@ -617,6 +617,19 @@ buildvariants:
       - name: "dist"
       - name: ".test"
 
+  - name: ubuntu1604-debug
+    display_name: Ubuntu 16.04 Debug
+    run_on:
+      - ubuntu1604-test
+      - ubuntu1604-build
+    expansions:
+      build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go"
+    tasks:
+      - name: "dist"
+        depends_on:
+          - name: "dist"
+            variant: "ubuntu1604"
+
   - name: race-detector
     display_name: Race Detector
     run_on:
