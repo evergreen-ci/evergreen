@@ -85,6 +85,7 @@ func GetGithubAPIStatus() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "github request failed")
 	}
+	defer resp.Body.Close()
 
 	gitStatus := struct {
 		Status      string    `json:"status"`
