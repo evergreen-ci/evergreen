@@ -279,7 +279,7 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(fromDB), ShouldEqual, 10)
 			for _, logMsg := range fromDB {
-				So(logMsg.Severity != apimodels.LogDebugPrefix || logMsg.Severity != apimodels.LogInfoPrefix,
+				So(logMsg.Severity != apimodels.LogDebugPrefix || logMsg.Severity != apimodels.LogInfoPrefix, // nolint
 					ShouldBeTrue)
 			}
 

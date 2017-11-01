@@ -16,9 +16,6 @@ import (
 )
 
 const (
-	newresultsAllExecutionsField     = "newresults_all_executions"
-	newresultsCurrentExecutionsField = "newresults_current_execution"
-
 	edgesKey = "edges"
 	taskKey  = "task"
 )
@@ -145,7 +142,7 @@ func (d *Dependency) SetBSON(raw bson.Raw) error {
 	}
 
 	// hack to support the legacy depends_on, since we can't just unmarshal a string
-	strBytes, _ := bson.Marshal(bson.RawD{{"str", raw}})
+	strBytes, _ := bson.Marshal(bson.RawD{{Name: "str", Value: raw}})
 	var strStruct struct {
 		String string `bson:"str"`
 	}

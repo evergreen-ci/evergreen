@@ -116,7 +116,8 @@ func TestBuildRestart(t *testing.T) {
 			So(taskTwo.Insert(), ShouldBeNil)
 
 			So(RestartBuild(b.Id, []string{"task1", "task2"}, true, evergreen.DefaultTaskActivator), ShouldBeNil)
-			b, err := build.FindOne(build.ById(b.Id))
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildCreated)
 			So(b.Activated, ShouldEqual, true)
@@ -152,7 +153,8 @@ func TestBuildRestart(t *testing.T) {
 			So(taskFour.Insert(), ShouldBeNil)
 
 			So(RestartBuild(b.Id, []string{"task3", "task4"}, false, evergreen.DefaultTaskActivator), ShouldBeNil)
-			b, err := build.FindOne(build.ById(b.Id))
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildCreated)
@@ -202,8 +204,9 @@ func TestBuildMarkAborted(t *testing.T) {
 		Convey("when marking it as aborted", func() {
 
 			Convey("it should be deactivated", func() {
+				var err error
 				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
-				b, err := build.FindOne(build.ById(b.Id))
+				b, err = build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
 			})
@@ -483,7 +486,8 @@ func TestBuildMarkStarted(t *testing.T) {
 			So(build.TryMarkStarted(b.Id, startTime), ShouldBeNil)
 
 			// refresh from db and check again
-			b, err := build.FindOne(build.ById(b.Id))
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.StartTime.Round(time.Second).Equal(
@@ -516,9 +520,9 @@ func TestBuildMarkFinished(t *testing.T) {
 			So(b.FinishTime.Equal(finishTime), ShouldBeTrue)
 			So(b.TimeTaken, ShouldEqual, finishTime.Sub(startTime))
 
+			var err error
 			// refresh from db and check again
-
-			b, err := build.FindOne(build.ById(b.Id))
+			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 			So(b.FinishTime.Round(time.Second).Equal(
@@ -745,30 +749,30 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[0].Priority, ShouldEqual, 5)
 			So(tasks[1].Priority, ShouldEqual, 5)
 			So(tasks[2].DependsOn, ShouldResemble,
-				[]task.Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
+				[]task.Dependency{{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded}})
 
 			// taskB
 			So(tasks[3].DependsOn, ShouldResemble,
-				[]task.Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
+				[]task.Dependency{{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded}})
 			So(tasks[4].DependsOn, ShouldResemble,
-				[]task.Dependency{{tasks[0].Id, evergreen.TaskSucceeded}}) //cross-variant
+				[]task.Dependency{{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded}}) //cross-variant
 			So(tasks[3].Priority, ShouldEqual, 0)
 			So(tasks[4].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
 			So(tasks[5].DependsOn, ShouldResemble,
 				[]task.Dependency{
-					{tasks[0].Id, evergreen.TaskSucceeded},
-					{tasks[3].Id, evergreen.TaskSucceeded}})
+					{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: tasks[3].Id, Status: evergreen.TaskSucceeded}})
 			So(tasks[6].DependsOn, ShouldResemble,
 				[]task.Dependency{
-					{tasks[1].Id, evergreen.TaskSucceeded},
-					{tasks[4].Id, evergreen.TaskSucceeded}})
+					{TaskId: tasks[1].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: tasks[4].Id, Status: evergreen.TaskSucceeded}})
 			So(tasks[7].DependsOn, ShouldResemble,
 				[]task.Dependency{
-					{tasks[0].Id, evergreen.TaskSucceeded},
-					{tasks[3].Id, evergreen.TaskSucceeded},
-					{tasks[5].Id, evergreen.TaskSucceeded}})
+					{TaskId: tasks[0].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: tasks[3].Id, Status: evergreen.TaskSucceeded},
+					{TaskId: tasks[5].Id, Status: evergreen.TaskSucceeded}})
 			So(tasks[8].DisplayName, ShouldEqual, "taskE")
 			So(len(tasks[8].DependsOn), ShouldEqual, 8)
 		})
@@ -1025,7 +1029,8 @@ func TestDeletingBuild(t *testing.T) {
 
 			So(DeleteBuild(b.Id), ShouldBeNil)
 
-			b, err := build.FindOne(build.ById(b.Id))
+			var err error
+			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b, ShouldBeNil)
 

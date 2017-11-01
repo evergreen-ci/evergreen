@@ -83,7 +83,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 	grip.Infof("performing S3 copy: '%s' => '%s'", copyFromLocation, copyToLocation)
 
-	_, err = util.Retry(func() error {
+	_, err = util.Retry(func() (bool, error) {
 		err = errors.WithStack(thirdparty.S3CopyFile(auth,
 			s3CopyReq.S3SourceBucket,
 			s3CopyReq.S3SourcePath,
@@ -93,7 +93,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 		))
 		if err != nil {
 			grip.Errorf("S3 copy failed for task %s, retrying: %+v", task.Id, err)
-			return util.RetriableError{err}
+			return true, err
 		}
 
 		err = errors.Wrapf(newPushLog.UpdateStatus(model.PushLogSuccess),
@@ -101,7 +101,7 @@ func (as *APIServer) s3copyPlugin(w http.ResponseWriter, r *http.Request) {
 
 		grip.Error(err)
 
-		return err
+		return false, err
 	}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second)
 
 	if err != nil {
