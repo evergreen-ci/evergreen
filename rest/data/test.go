@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -12,45 +11,14 @@ import (
 // from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
 
+// TODO Fix this after PM-810
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string, limit,
 	sortDir int) ([]task.TestResult, error) {
 
-	pipeline := task.TestResultsByTaskIdPipeline(taskId, testFilename, status, limit, sortDir)
-	res := []task.TestResult{}
-
-	err := task.Aggregate(pipeline, &res)
-	if err != nil {
-		return []task.TestResult{}, err
+	return []task.TestResult{}, &rest.APIError{
+		StatusCode: http.StatusNotFound,
+		Message:    "find tests by task id is not implemented pending PM-810",
 	}
-	if len(res) == 0 {
-		var message string
-		if status != "" {
-			message = fmt.Sprintf("tests for task with taskId '%s' and status '%s' not found", taskId, status)
-		} else {
-			message = fmt.Sprintf("tests for task with taskId '%s' not found", taskId)
-		}
-		return []task.TestResult{}, &rest.APIError{
-			StatusCode: http.StatusNotFound,
-			Message:    message,
-		}
-	}
-
-	if testFilename != "" {
-		found := false
-		for _, t := range res {
-			if t.TestFile == testFilename {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return []task.TestResult{}, &rest.APIError{
-				StatusCode: http.StatusNotFound,
-				Message:    fmt.Sprintf("test with filename %s not found", testFilename),
-			}
-		}
-	}
-	return res, nil
 }
 
 // MockTaskConnector stores a cached set of tests that are queried against by the

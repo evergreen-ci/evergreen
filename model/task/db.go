@@ -1,7 +1,6 @@
 package task
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -380,54 +379,6 @@ var (
 	})
 )
 
-// TestResultsByTaskIdPipeline returns an aggregation pipeline for fetching a list
-// of test from a task by its Id.
-func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
-	sortDir int) []bson.M {
-	sortOperator := "$gte"
-	if sortDir < 0 {
-		sortOperator = "$lte"
-	}
-
-	pipeline := mergeNewTestResultsPipeline(taskId, false)
-
-	pipeline = append(pipeline, bson.M{"$unwind": fmt.Sprintf("$%s", TestResultsKey)})
-	pipeline = append(pipeline, bson.M{
-		"$project": bson.M{
-			"status":    fmt.Sprintf("$%s.%s", TestResultsKey, TestResultStatusKey),
-			"test_file": fmt.Sprintf("$%s.%s", TestResultsKey, TestResultTestFileKey),
-			"log_id":    fmt.Sprintf("$%s.%s", TestResultsKey, TestResultLogIdKey),
-			"line_num":  fmt.Sprintf("$%s.%s", TestResultsKey, TestResultLineNumKey),
-			"exit_code": fmt.Sprintf("$%s.%s", TestResultsKey, TestResultExitCodeKey),
-			"url":       fmt.Sprintf("$%s.%s", TestResultsKey, TestResultURLKey),
-			"url_raw":   fmt.Sprintf("$%s.%s", TestResultsKey, TestResultURLRawKey),
-			"start":     fmt.Sprintf("$%s.%s", TestResultsKey, TestResultStartTimeKey),
-			"end":       fmt.Sprintf("$%s.%s", TestResultsKey, TestResultEndTimeKey),
-			"_id":       0,
-		}})
-	if testStatus != "" {
-		statusMatch := bson.M{
-			"$match": bson.M{TestResultStatusKey: testStatus},
-		}
-		pipeline = append(pipeline, statusMatch)
-	}
-	equalityStage := bson.M{
-		"$match": bson.M{TestResultTestFileKey: bson.M{sortOperator: testFilename}},
-	}
-	pipeline = append(pipeline, equalityStage)
-	sortStage := bson.M{
-		"$sort": bson.M{TestResultTestFileKey: 1},
-	}
-	pipeline = append(pipeline, sortStage)
-	if limit > 0 {
-		limitStage := bson.M{
-			"$limit": limit,
-		}
-		pipeline = append(pipeline, limitStage)
-	}
-	return pipeline
-}
-
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
 func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string,
@@ -610,9 +561,11 @@ func FindOneNoMerge(query db.Q) (*Task, error) {
 
 // FindOne returns one task that satisfies the query.
 func FindOne(query db.Q) (*Task, error) {
-	task := &Task{}
-	err := db.FindOneQ(Collection, query, task)
-	if err == mgo.ErrNotFound {
+	task, err := FindOneNoMerge(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task")
+	}
+	if task == nil {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {
@@ -636,11 +589,23 @@ func FindOneId(id string) (*Task, error) {
 	return task, nil
 }
 
-// FindOneOld returns one task from the old tasks collection that satisfies the query.
-func FindOneOld(query db.Q) (*Task, error) {
+// FindOneOldNoMerge is a FindOneOld without merging test results.
+func FindOneOldNoMerge(query db.Q) (*Task, error) {
 	task := &Task{}
 	err := db.FindOneQ(OldCollection, query, task)
 	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return task, err
+}
+
+// FindOneOld returns one task from the old tasks collection that satisfies the query.
+func FindOneOld(query db.Q) (*Task, error) {
+	task, err := FindOneOldNoMerge(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "error finding task")
+	}
+	if task == nil {
 		return nil, nil
 	}
 	if err = task.MergeNewTestResults(); err != nil {

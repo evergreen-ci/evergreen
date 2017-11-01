@@ -950,89 +950,30 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 	return expDurations, nil
 }
 
-func mergeNewTestResultsPipeline(id string, archived bool) []bson.M {
-	lookupLocalField := IdKey
-	if archived {
-		lookupLocalField = OldTaskIdKey
-	}
-
-	// aggregation stages
-	matchStage := bson.M{"$match": bson.M{IdKey: id}}
-	lookupStage := bson.M{"$lookup": bson.M{
-		"from":         testresult.Collection,
-		"localField":   lookupLocalField,
-		"foreignField": testresult.TaskIDKey,
-		"as":           newresultsAllExecutionsField,
-	}}
-	addNewResultsStage := bson.M{"$addFields": bson.M{
-		newresultsCurrentExecutionsField: bson.M{
-			"$filter": bson.M{
-				"input": "$" + newresultsAllExecutionsField,
-				"as":    "testresult",
-				"cond": bson.M{
-					"$eq": []string{
-						"$$" + "testresult" + "." + testresult.ExecutionKey,
-						"$" + ExecutionKey,
-					},
-				},
-			},
-		},
-	}}
-	deleteNewTestResultFieldsStage := bson.M{"$project": bson.M{
-		newresultsCurrentExecutionsField + "." + IdKey:                   0,
-		newresultsCurrentExecutionsField + "." + testresult.TaskIDKey:    0,
-		newresultsCurrentExecutionsField + "." + testresult.ExecutionKey: 0,
-	}}
-	concatStage := bson.M{"$addFields": bson.M{
-		TestResultsKey: bson.M{
-			"$setUnion": []bson.M{
-				bson.M{
-					"$ifNull": []interface{}{
-						"$" + TestResultsKey,
-						[]string{},
-					},
-				},
-				bson.M{
-					"$ifNull": []interface{}{
-						"$" + newresultsCurrentExecutionsField,
-						[]string{},
-					},
-				},
-			},
-		},
-	}}
-	cleanupStage := bson.M{"$project": bson.M{
-		newresultsAllExecutionsField:     0,
-		newresultsCurrentExecutionsField: 0,
-	}}
-
-	return []bson.M{
-		matchStage,
-		lookupStage,
-		addNewResultsStage,
-		deleteNewTestResultFieldsStage,
-		concatStage,
-		cleanupStage,
-	}
-}
-
 // MergeNewTestResults returns the task with both old (embedded in
 // the tasks collection) and new (from the testresults collection) test results
 // merged in the Task's TestResults field.
 func (t *Task) MergeNewTestResults() error {
-	collection := Collection
+	id := t.Id
 	if t.Archived {
-		collection = OldCollection
+		id = t.OldTaskId
 	}
-
-	pipeline := mergeNewTestResultsPipeline(t.Id, t.Archived)
-
-	tasks := []Task{}
-	if err := db.Aggregate(collection, pipeline, &tasks); err != nil {
-		return errors.Wrap(err, "problem merging new test results")
+	newTestResults, err := testresult.FindByTaskIDAndExecution(id, t.Execution)
+	if err != nil {
+		return errors.Wrap(err, "problem finding test results")
 	}
-	if len(tasks) == 1 {
-		*t = tasks[0]
+	for _, result := range newTestResults {
+		t.TestResults = append(t.TestResults, TestResult{
+			Status:    result.Status,
+			TestFile:  result.TestFile,
+			URL:       result.URL,
+			URLRaw:    result.URLRaw,
+			LogId:     result.LogID,
+			LineNum:   result.LineNum,
+			ExitCode:  result.ExitCode,
+			StartTime: result.StartTime,
+			EndTime:   result.EndTime,
+		})
 	}
 	return nil
 }
