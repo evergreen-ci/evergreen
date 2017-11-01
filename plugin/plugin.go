@@ -1,12 +1,8 @@
 package plugin
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -81,20 +77,4 @@ func Publish(plugin Plugin) {
 	if !published {
 		panic(fmt.Sprintf("Plugin '%v' does not implement any of CommandPlugin, or UIPlugin", plugin.Name()))
 	}
-}
-
-// WriteJSON writes data encoded in JSON format (Content-type: "application/json")
-// to the ResponseWriter with the supplied HTTP status code. Writes a 500 error
-// if the data cannot be JSON-encoded.
-func WriteJSON(w http.ResponseWriter, statusCode int, data interface{}) {
-	out, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	_, err = w.Write(out)
-	grip.Warning(errors.WithStack(err))
 }

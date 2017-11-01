@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
@@ -27,10 +26,10 @@ func uiGetCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+		util.WriteJSON(w, http.StatusOK, jsonForTask)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+	util.WriteJSON(w, http.StatusOK, jsonForTask)
 }
 
 func uiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +48,7 @@ func uiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, history)
+	util.WriteJSON(w, http.StatusOK, history)
 }
 
 // uiGetTaskById sends back a JSONTask with the corresponding task id.
@@ -65,7 +64,7 @@ func uiGetTaskById(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "{}", http.StatusNotFound)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+	util.WriteJSON(w, http.StatusOK, jsonForTask)
 }
 
 func uiGetTags(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +74,7 @@ func uiGetTags(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, tags)
+	util.WriteJSON(w, http.StatusOK, tags)
 }
 
 // handleTaskTags will update the TaskJSON's tags depending on the request.
@@ -110,7 +109,7 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plugin.WriteJSON(w, http.StatusOK, "")
+	util.WriteJSON(w, http.StatusOK, "")
 }
 
 func uiGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
@@ -131,8 +130,8 @@ func uiGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+		util.WriteJSON(w, http.StatusOK, jsonForTask)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+	util.WriteJSON(w, http.StatusOK, jsonForTask)
 }

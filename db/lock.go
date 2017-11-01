@@ -21,30 +21,6 @@ type Lock struct {
 	LockedAt time.Time `bson:"locked_at"`
 }
 
-// InitializeGlobalLock should be called once, at program initialization.
-func InitializeGlobalLock() error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	// for safety's sake, check if it's there.  this will make this
-	// function idempotent
-	lock := Lock{}
-	err = db.C(LockCollection).Find(bson.M{"_id": GlobalLockId}).One(&lock)
-	if err != nil && err != mgo.ErrNotFound {
-		return err
-	}
-
-	// already exists
-	if lock.Id != "" {
-		return nil
-	}
-
-	return db.C(LockCollection).Insert(bson.M{"_id": GlobalLockId, "locked": false})
-}
-
 // WaitTillAcquireGlobalLock "spins" on acquiring the given database lock,
 // for the process id, until timeoutMS. Returns whether or not the lock was
 // acquired.

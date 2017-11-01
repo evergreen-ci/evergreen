@@ -6,7 +6,6 @@ import (
 	mgo "gopkg.in/mgo.v2"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 )
@@ -99,15 +98,15 @@ func (as *APIServer) getTaskJSONForVariant(w http.ResponseWriter, r *http.Reques
 
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			plugin.WriteJSON(w, http.StatusNotFound, nil)
+			as.WriteJSON(w, http.StatusNotFound, nil)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if len(r.FormValue("full")) != 0 { // if specified, include the json data's container as well
-		plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+		as.WriteJSON(w, http.StatusOK, jsonForTask)
 		return
 	}
-	plugin.WriteJSON(w, http.StatusOK, jsonForTask.Data)
+	as.WriteJSON(w, http.StatusOK, jsonForTask.Data)
 }

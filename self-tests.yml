@@ -327,9 +327,6 @@ tasks:
     name: test-hostutil
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
-    name: test-remote
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
     name: test-auth
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -456,9 +453,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-hostutil
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-remote
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-auth

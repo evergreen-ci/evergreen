@@ -20,18 +20,6 @@ var (
 		"push/path/mongodb-pushname-pusharch-latest.tgz"
 )
 
-func TestS3ParseUrl(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3ParseUrl")
-	Convey("When given an S3 location to parse...", t, func() {
-		Convey("the bucket and path should be parsed correctly", func() {
-			bucket, path, err := GetS3Location(testURL)
-			So(err, ShouldBeNil)
-			So(bucket, ShouldEqual, testURLBucket)
-			So(path, ShouldEqual, testURLPath)
-		})
-	})
-}
-
 func TestPutS3File(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPutS3File")
 	Convey("When given a file to copy to S3...", t, func() {

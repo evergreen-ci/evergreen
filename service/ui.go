@@ -270,7 +270,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			// register the app level pa}rt of the plugin
 			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
 			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
-
 		}
 
 		// check if there are any errors getting the panel config

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -23,22 +22,6 @@ const (
 	DefaultExpiration = time.Duration(24 * time.Hour)
 )
 
-var SpawnLimitErr = errors.New("User is already running the max allowed # of spawn hosts")
-
-// BadOptionsErr represents an in valid set of spawn options.
-type BadOptionsErr struct {
-	message string
-}
-
-func (bsoe BadOptionsErr) Error() string {
-	return "Invalid spawn options:" + bsoe.message
-}
-
-// Spawn handles Spawning hosts for users.
-type Spawn struct {
-	settings *evergreen.Settings
-}
-
 // Options holds the required parameters for spawning a host.
 type Options struct {
 	Distro    string
@@ -46,24 +29,24 @@ type Options struct {
 	PublicKey string
 	UserData  string
 	TaskId    string
-}
-
-// New returns an initialized Spawn controller.
-func New(settings *evergreen.Settings) Spawn {
-	return Spawn{settings}
+	Owner     *user.DBUser
 }
 
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
-func Validate(so Options) error {
+func (so *Options) validate() error {
+	if so.Owner == nil {
+		return errors.New("spawn options include nil user")
+	}
+
 	d, err := distro.FindOne(distro.ById(so.Distro))
 	if err != nil {
-		return BadOptionsErr{fmt.Sprintf("Invalid dist %v", so.Distro)}
+		return errors.Errorf("Invalid spawn options: distro %v", so.Distro)
 	}
 
 	if !d.SpawnAllowed {
-		return BadOptionsErr{fmt.Sprintf("Spawning not allowed for dist %v", so.Distro)}
+		return errors.Errorf("Invalid spawn options: spawning not allowed for distro  %v", so.Distro)
 	}
 
 	// if the user already has too many active spawned hosts, deny the request
@@ -73,7 +56,8 @@ func Validate(so Options) error {
 	}
 
 	if len(activeSpawnedHosts) >= MaxPerUser {
-		return SpawnLimitErr
+		return errors.Errorf("User is already running the max allowed number of spawn hosts (%d of %d)",
+			len(activeSpawnedHosts), MaxPerUser)
 	}
 
 	// validate public key
@@ -82,7 +66,7 @@ func Validate(so Options) error {
 	isRSA := strings.HasPrefix(so.PublicKey, rsa)
 	isDSS := strings.HasPrefix(so.PublicKey, dss)
 	if !isRSA && !isDSS {
-		return BadOptionsErr{"key does not start with ssh-rsa or ssh-dss"}
+		return errors.New("Invalid spawn options: key does not start with ssh-rsa or ssh-dss")
 	}
 
 	sections := strings.Split(so.PublicKey, " ")
@@ -91,17 +75,17 @@ func Validate(so Options) error {
 		if sections[0] == dss {
 			keyType = dss
 		}
-		return BadOptionsErr{fmt.Sprintf("missing space after '%v'", keyType)}
+		return errors.Errorf("Invalid spawn options: missing space after '%s'", keyType)
 	}
 
 	// check for valid base64
 	if _, err = base64.StdEncoding.DecodeString(sections[1]); err != nil {
-		return BadOptionsErr{"key contains invalid base64 string"}
+		return errors.New("Invalid spawn options: key contains invalid base64 string")
 	}
 
 	if d.UserData.File != "" {
 		if strings.TrimSpace(so.UserData) == "" {
-			return BadOptionsErr{}
+			return errors.New("user data not specified")
 		}
 
 		var err error
@@ -117,14 +101,17 @@ func Validate(so Options) error {
 		}
 
 		if err != nil {
-			return BadOptionsErr{fmt.Sprintf("invalid %v: %v", d.UserData.Validate, err)}
+			return errors.Wrapf(err, "invalid spawn options: %s", d.UserData.Validate)
 		}
 	}
 	return nil
 }
 
 // CreateHost spawns a host with the given options.
-func CreateHost(so Options, owner *user.DBUser) (*host.Host, error) {
+func CreateHost(so Options) (*host.Host, error) {
+	if err := so.validate(); err != nil {
+		return nil, errors.WithStack(err)
+	}
 
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.Distro))
@@ -156,7 +143,7 @@ func CreateHost(so Options, owner *user.DBUser) (*host.Host, error) {
 	provisionOptions := &host.ProvisionOptions{
 		LoadCLI: true,
 		TaskId:  so.TaskId,
-		OwnerId: owner.Id,
+		OwnerId: so.Owner.Id,
 	}
 	expiration := DefaultExpiration
 	hostOptions := cloud.HostOptions{

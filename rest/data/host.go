@@ -65,13 +65,10 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userDat
 		PublicKey: keyVal,
 		TaskId:    taskID,
 		UserData:  userData,
+		Owner:     user,
 	}
 
-	if err = spawn.Validate(spawnOptions); err != nil {
-		return nil, err
-	}
-
-	intentHost, err := spawn.CreateHost(spawnOptions, user)
+	intentHost, err := spawn.CreateHost(spawnOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -188,13 +185,10 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userD
 		PublicKey: keyVal,
 		TaskId:    taskID,
 		UserData:  userData,
+		Owner:     user,
 	}
 
-	if err = spawn.Validate(spawnOptions); err != nil {
-		return nil, err
-	}
-
-	intentHost, err := spawn.CreateHost(spawnOptions, user)
+	intentHost, err := spawn.CreateHost(spawnOptions)
 	if err != nil {
 		return nil, err
 	}

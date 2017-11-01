@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -53,33 +54,33 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 	}
 
 	// grab the task and user info to fill out the ticket
 	u := plugin.GetUser(r)
 	if u == nil {
-		plugin.WriteJSON(w, http.StatusUnauthorized, "must be logged in to file a ticket")
+		util.WriteJSON(w, http.StatusUnauthorized, "must be logged in to file a ticket")
 		return
 	}
 	// Find information about the task
 	t, err := task.FindOne(task.ById(input.TaskId))
 	if err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if t == nil {
-		plugin.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("task not found for id %v", input.TaskId))
+		util.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("task not found for id %v", input.TaskId))
 		return
 	}
 	// Find the host the task ran on
 	h, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if h == nil {
-		plugin.WriteJSON(w, http.StatusInternalServerError, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
+		util.WriteJSON(w, http.StatusInternalServerError, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
 		return
 	}
 
@@ -112,7 +113,7 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 	request["description"], err = getDescription(t, h, u.Id, tests)
 
 	if err != nil {
-		plugin.WriteJSON(
+		util.WriteJSON(
 			w, http.StatusBadRequest, fmt.Sprintf("error creating description: %v", err))
 		return
 	}
@@ -128,11 +129,11 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		msg := fmt.Sprintf("error creating JIRA ticket: %v", err)
 		grip.Error(msg)
-		plugin.WriteJSON(w, http.StatusBadRequest, msg)
+		util.WriteJSON(w, http.StatusBadRequest, msg)
 		return
 	}
 	grip.Infof("Ticket %s successfully created", result.Key)
-	plugin.WriteJSON(w, http.StatusOK, result)
+	util.WriteJSON(w, http.StatusOK, result)
 }
 
 func cleanTestName(path string) string {
