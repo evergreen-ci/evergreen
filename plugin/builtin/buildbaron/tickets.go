@@ -113,7 +113,8 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 	request["description"], err = getDescription(t, h, u.Id, tests)
 
 	if err != nil {
-		util.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("error creating description: %v", err))
+		util.WriteJSON(
+			w, http.StatusBadRequest, fmt.Sprintf("error creating description: %v", err))
 		return
 	}
 

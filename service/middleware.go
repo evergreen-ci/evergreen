@@ -333,6 +333,14 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		})
 	}
 
+	if len(uis.GetAppPlugins()) > 0 {
+		pluginNames := []string{}
+		for _, p := range uis.GetAppPlugins() {
+			pluginNames = append(pluginNames, p.Name())
+		}
+		pc.PluginNames = pluginNames
+	}
+
 	return pc, nil
 }
 
