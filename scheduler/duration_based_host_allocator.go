@@ -265,7 +265,7 @@ func computeDurationBasedNumNewHosts(scheduledTasksDuration,
 	// generally round down, as the allocator has proven a bit
 	// generous; however, we probably ought to spin up a single
 	// host to avoid small queues getting stuck without any running hosts.
-	if numExistingDistroHosts < 1 && durationBasedNumNewHostsNeeded > 0 && durationBasedNumNewHostsNeeded > .5 {
+	if numExistingDistroHosts < 1 && durationBasedNumNewHostsNeeded > 0 && durationBasedNumNewHostsNeeded < 1 {
 		numNewHosts = 1
 		return
 	}
