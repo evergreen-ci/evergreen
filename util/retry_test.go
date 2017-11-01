@@ -15,8 +15,8 @@ const TriesTillPass = 2
 func TestRetriesUsedUp(t *testing.T) {
 	Convey("When retrying a function that never succeeds", t, func() {
 
-		failingFunc := func() error {
-			return RetriableError{errors.New("something went wrong")}
+		failingFunc := func() (bool, error) {
+			return true, errors.New("something went wrong")
 		}
 
 		start := time.Now()
@@ -39,12 +39,12 @@ func TestRetryUntilSuccess(t *testing.T) {
 	Convey("When retrying a function that succeeds after 3 tries", t, func() {
 
 		tryCounter := TriesTillPass
-		retryPassingFunc := func() error {
+		retryPassingFunc := func() (bool, error) {
 			tryCounter--
 			if tryCounter <= 0 {
-				return nil
+				return false, nil
 			}
-			return RetriableError{errors.New("something went wrong")}
+			return true, errors.New("something went wrong")
 		}
 
 		start := time.Now()
@@ -69,8 +69,8 @@ func TestRetryUntilSuccess(t *testing.T) {
 
 func TestNonRetriableFailure(t *testing.T) {
 	Convey("When retrying a func that returns non-retriable err", t, func() {
-		failingFuncNoRetry := func() error {
-			return errors.New("something went wrong")
+		failingFuncNoRetry := func() (bool, error) {
+			return false, errors.New("something went wrong")
 		}
 
 		retryFail, err := Retry(failingFuncNoRetry, TestRetries, TestSleep)
