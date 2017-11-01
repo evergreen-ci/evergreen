@@ -28,7 +28,8 @@ func TestFindTestsByTaskId(t *testing.T) {
 	}
 	sort.StringSlice(testFileNames).Sort()
 
-	Convey("When there are task documents in the database with tests", t, func() {
+	//TODO: remove the skip after PM-810
+	SkipConvey("When there are task documents in the database with tests", t, func() {
 		testutil.HandleTestingErr(db.Clear(task.Collection), t, "Error clearing"+
 			" '%v' collection", task.Collection)
 		for i := 0; i < numTasks; i++ {
