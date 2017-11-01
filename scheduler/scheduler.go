@@ -201,7 +201,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		"operation": "removing stale intent hosts older than 3 minutes",
 	})
 
-	if err := host.RemoveAllStaleInitializing(); err != nil {
+	if err = host.RemoveAllStaleInitializing(); err != nil {
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 

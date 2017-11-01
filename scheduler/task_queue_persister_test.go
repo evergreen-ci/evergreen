@@ -91,7 +91,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 		}
 
 		durationMappings := model.ProjectTaskDurations{
-			map[string]*model.BuildVariantTaskDurations{
+			TaskDurationByProject: map[string]*model.BuildVariantTaskDurations{
 				projects[0]: {
 					map[string]*model.TaskDurations{
 						buildVariants[0]: {
