@@ -12,8 +12,6 @@ import (
 )
 
 func TestRestClientLogSenderMessageContents(t *testing.T) {
-	t.Parallel()
-
 	assert := assert.New(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -41,7 +39,6 @@ func TestRestClientLogSenderMessageContents(t *testing.T) {
 }
 
 func TestRestClientLogSenderDoesNotLogInErrorConditions(t *testing.T) {
-	t.Parallel()
 	assert := assert.New(t) // nolint
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -80,7 +77,6 @@ func TestLevelConverters(t *testing.T) {
 }
 
 func TestTimeoutLogSender(t *testing.T) {
-	t.Parallel()
 	assert := assert.New(t) // nolint
 
 	ctx, cancel := context.WithCancel(context.Background())
