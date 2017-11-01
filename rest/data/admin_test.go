@@ -1,11 +1,13 @@
 package data
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -18,10 +20,13 @@ import (
 
 type AdminDataSuite struct {
 	ctx Connector
+	env *mock.Environment
 	suite.Suite
 }
 
 func TestDataConnectorSuite(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestDataConnectorSuite")
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
@@ -88,9 +93,17 @@ func TestDataConnectorSuite(t *testing.T) {
 }
 
 func TestMockConnectorSuite(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestMockConnectorSuite")
 	s := new(AdminDataSuite)
 	s.ctx = &MockConnector{}
 	suite.Run(t, s)
+}
+
+func (s *AdminDataSuite) SetupSuite() {
+	s.env = &mock.Environment{}
+	s.Require().NoError(s.env.Configure(context.Background(), ""))
+	s.Require().NoError(s.env.Local.Start(context.Background()))
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
@@ -120,21 +133,17 @@ func (s *AdminDataSuite) TestRestart() {
 	userName := "user"
 
 	// test dry run
-	dryRunResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, model.RestartTaskOptions{
+	opts := model.RestartTaskOptions{
 		DryRun:     true,
 		OnlyRed:    false,
-		OnlyPurple: false})
+		OnlyPurple: false}
+	dryRunResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, opts, s.env)
 	s.NoError(err)
 	s.NotZero(len(dryRunResp.TasksRestarted))
 	s.Nil(dryRunResp.TasksErrored)
 
-	// test restarting tasks
-	realResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, model.RestartTaskOptions{
-		DryRun:     false,
-		OnlyRed:    false,
-		OnlyPurple: false})
+	// test that restarting tasks successfully puts a job on the queue
+	opts.DryRun = false
+	_, err = s.ctx.RestartFailedTasks(startTime, endTime, userName, opts, s.env)
 	s.NoError(err)
-	s.NotZero(len(realResp.TasksRestarted))
-	s.Nil(realResp.TasksErrored)
-	s.Equal(len(dryRunResp.TasksRestarted), len(realResp.TasksRestarted))
 }

@@ -100,11 +100,14 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     if (dryRun === false) {
       $scope.disableRestart = true;
       var successHandler = function(resp) {
-        window.location.href = "/admin";
+        $("#divMsg").text("The below tasks have been queued to restart. Feel free to close this popup or inspect the tasks listed.");
+        $scope.disableSubmit = false;
       }
     }
     else {
       $scope.disableSubmit = true;
+      $scope.disableRestart = false;
+      $("#divMsg").text("");
       dryRun = true;
       var successHandler = function(resp) {
         $scope.tasks = resp.data.tasks_restarted;
@@ -139,30 +142,6 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.jumpToTask = function(taskId) {
     window.open("/task/" + taskId);
-  }
-
-  bannerPreview = function bannerPreview(theme) {
-    switch(theme) {
-      case "important":
-        $("#bannerIcon").append("<i class='fa fa-exclamation'></i>");
-        $("#bannerIcon").addClass("banner-icon-important");
-        $("#bannerBack").addClass("banner-text-important");
-        break;
-      case "warning":
-        $("#bannerIcon").append("<i class='fa fa-exclamation-triangle'></i>");
-        $("#bannerIcon").addClass("banner-icon-warning");
-        $("#bannerBack").addClass("banner-text-warning");
-        break;
-      case "information":
-        $("#bannerIcon").append("<i class='fa fa-info-circle'></i>");
-        $("#bannerIcon").addClass("banner-icon-information");
-        $("#bannerBack").addClass("banner-text-information");
-        break;
-      default:
-        $("#bannerIcon").append("<i class='fa fa-bullhorn'></i>");
-        $("#bannerIcon").addClass("banner-icon-announcement");
-        $("#bannerBack").addClass("banner-text-announcement");
-    }
   }
 
   $scope.load();

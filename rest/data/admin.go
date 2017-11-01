@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/mongodb/grip"
+	"github.com/evergreen-ci/evergreen/units"
+	"github.com/pkg/errors"
 )
 
 type DBAdminConnector struct{}
@@ -81,12 +83,21 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
-	grip.Infof("User %v attempting to restart all failed tasks between %v and %v", user, startTime.String(), endTime.String())
-	results, err := model.RestartFailedTasks(startTime, endTime, user, opts)
-	if err != nil {
-		return nil, err
+func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions, env evergreen.Environment) (*restModel.RestartTasksResponse, error) {
+	var results model.RestartTaskResults
+	var err error
+	if opts.DryRun {
+		results, err = model.RestartFailedTasks(startTime, endTime, user, opts)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		job := units.NewTasksRestartJob(startTime, endTime, user, opts)
+		if err = env.LocalQueue().Put(job); err != nil {
+			return nil, errors.Wrap(err, "error starting background job for task restart")
+		}
 	}
+
 	return &restModel.RestartTasksResponse{
 		TasksRestarted: results.TasksRestarted,
 		TasksErrored:   results.TasksErrored,
@@ -139,7 +150,7 @@ func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.
 }
 
 // RestartFailedTasks mocks a response to restarting failed tasks
-func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
+func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions, env evergreen.Environment) (*restModel.RestartTasksResponse, error) {
 	return &restModel.RestartTasksResponse{
 		TasksRestarted: []string{"task1", "task2", "task3"},
 		TasksErrored:   nil,
