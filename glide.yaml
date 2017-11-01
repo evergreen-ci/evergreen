@@ -13,9 +13,6 @@ import:
       - s3
       - ec2
       - aws
-  - package: github.com/10gen-labs/slogger/
-    subpackages:
-      - v1
   - package: github.com/codegangsta/inject
   - package: github.com/docker/docker
   - package: github.com/docker/go-connections

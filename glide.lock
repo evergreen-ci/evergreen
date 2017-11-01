@@ -19,10 +19,6 @@ imports:
       - s3
       - aws
       - ec2
-  - name: github.com/10gen-labs/slogger
-    version: c972902347f8b08b39dac87b43955d01caedb63a
-    subpackages:
-      - v1
   - name: github.com/codegangsta/inject
     version: 37d7f8432a3e684eef9b2edece76bdfa6ac85b39
   - name: github.com/docker/docker
