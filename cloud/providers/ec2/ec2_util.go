@@ -132,8 +132,9 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]ec2.BlockDeviceMapping, err
 }
 
 //helper function for getting an EC2 handle at US east
-func getUSEast(creds aws.Auth) *ec2.EC2 {
-	return ec2.NewWithClient(creds, aws.USEast, util.GetHttpClient())
+func getUSEast(creds aws.Auth) (*ec2.EC2, *http.Client) {
+	client := util.GetHttpClient()
+	return ec2.NewWithClient(creds, aws.USEast, client), client
 }
 
 func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {

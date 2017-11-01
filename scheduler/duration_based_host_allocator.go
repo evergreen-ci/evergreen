@@ -252,8 +252,7 @@ func computeDurationBasedNumNewHosts(scheduledTasksDuration,
 	maxDurationPerHost time.Duration) (numNewHosts int) {
 
 	// total duration of scheduled and currently running tasks
-	totalDistroTasksDuration := scheduledTasksDuration +
-		runningTasksDuration
+	totalDistroTasksDuration := scheduledTasksDuration + runningTasksDuration
 
 	// number of hosts needed to meet the duration based turnaround requirement
 	numHostsForTurnaroundRequirement := totalDistroTasksDuration /
@@ -264,7 +263,7 @@ func computeDurationBasedNumNewHosts(scheduledTasksDuration,
 		numExistingDistroHosts
 
 	// duration based number of new hosts needed
-	numNewHosts = int(math.Ceil(durationBasedNumNewHostsNeeded))
+	numNewHosts = int(math.Floor(durationBasedNumNewHostsNeeded))
 
 	// return 0 if numNewHosts is less than 0
 	if numNewHosts < 0 {
