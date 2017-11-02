@@ -50,7 +50,7 @@ func generatorDependency(o model.GeneratorOptions) dependency.Manager {
 
 // addMigrationJobs takes an amboy.Queue, processes the results, and
 // adds any jobs produced by the generator to the queue.
-func addMigrationJobs(ctx context.Context, q amboy.Queue, dryRun bool) (int, error) {
+func addMigrationJobs(ctx context.Context, q amboy.Queue, dryRun bool, limit int) (int, error) {
 	catcher := grip.NewCatcher()
 	count := 0
 	for job := range q.Results(ctx) {
@@ -66,10 +66,12 @@ func addMigrationJobs(ctx context.Context, q amboy.Queue, dryRun bool) (int, err
 				continue
 			}
 
+			if limit > 0 && count >= limit {
+				return count, catcher.Resolve()
+			}
 			catcher.Add(q.Put(j))
+			count++
 		}
-
-		count++
 	}
 
 	grip.Infof("added %d migration operations", count)

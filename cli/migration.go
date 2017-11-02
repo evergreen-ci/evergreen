@@ -12,6 +12,7 @@ type MigrationCommand struct {
 	ConfigPath string `long:"conf" default:"/etc/mci_settings.yml" description:"path to the service configuration file"`
 	MongoDBURI string `long:"mongodburi" default:"" description:"alternate mongodb uri, override config file"`
 	DryRun     bool   `long:"dry-run" short:"n" description:"run migration in a dry-run mode"`
+	Limit      int    `long:"limit" short:"l" description:"run migration with a limit"`
 }
 
 const migrationFeatureDisabled = true
@@ -47,5 +48,6 @@ func (c *MigrationCommand) Execute(_ []string) error {
 		return errors.Wrap(err, "problem configuring migration application")
 	}
 	app.DryRun = c.DryRun
+	app.Limit = c.Limit
 	return errors.Wrap(app.Run(ctx), "problem running migration operation")
 }
