@@ -140,7 +140,7 @@ type Connector interface {
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
-	RestartFailedTasks(time.Time, time.Time, string, model.RestartTaskOptions, evergreen.Environment) (*restModel.RestartTasksResponse, error)
+	RestartFailedTasks(evergreen.Environment, time.Time, time.Time, string, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 

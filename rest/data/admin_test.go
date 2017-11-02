@@ -137,13 +137,13 @@ func (s *AdminDataSuite) TestRestart() {
 		DryRun:     true,
 		OnlyRed:    false,
 		OnlyPurple: false}
-	dryRunResp, err := s.ctx.RestartFailedTasks(startTime, endTime, userName, opts, s.env)
+	dryRunResp, err := s.ctx.RestartFailedTasks(s.env, startTime, endTime, userName, opts)
 	s.NoError(err)
 	s.NotZero(len(dryRunResp.TasksRestarted))
 	s.Nil(dryRunResp.TasksErrored)
 
 	// test that restarting tasks successfully puts a job on the queue
 	opts.DryRun = false
-	_, err = s.ctx.RestartFailedTasks(startTime, endTime, userName, opts, s.env)
+	_, err = s.ctx.RestartFailedTasks(s.env, startTime, endTime, userName, opts)
 	s.NoError(err)
 }

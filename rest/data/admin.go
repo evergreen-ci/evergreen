@@ -83,7 +83,7 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions, env evergreen.Environment) (*restModel.RestartTasksResponse, error) {
+func (ac *DBAdminConnector) RestartFailedTasks(env evergreen.Environment, startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
 	var results model.RestartTaskResults
 	var err error
 	if opts.DryRun {
@@ -150,7 +150,7 @@ func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.
 }
 
 // RestartFailedTasks mocks a response to restarting failed tasks
-func (ac *MockAdminConnector) RestartFailedTasks(startTime, endTime time.Time, user string, opts model.RestartTaskOptions, env evergreen.Environment) (*restModel.RestartTasksResponse, error) {
+func (ac *MockAdminConnector) RestartFailedTasks(env evergreen.Environment, startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
 	return &restModel.RestartTasksResponse{
 		TasksRestarted: []string{"task1", "task2", "task3"},
 		TasksErrored:   nil,

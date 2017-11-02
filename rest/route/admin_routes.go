@@ -278,7 +278,7 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 		OnlyRed:    h.OnlyRed,
 		OnlyPurple: h.OnlyPurple,
 	}
-	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), opts, evergreen.GetEnvironment())
+	resp, err := sc.RestartFailedTasks(evergreen.GetEnvironment(), h.StartTime, h.EndTime, u.Username(), opts)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Error restarting tasks")
