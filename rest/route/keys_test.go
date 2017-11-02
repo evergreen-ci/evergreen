@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -80,4 +81,77 @@ func (s *UserConnectorSuite) TestGetSshKeysWithEmptyPubKeys() {
 	data, err := s.rm.Methods[0].Execute(ctx, s.sc)
 	s.Len(data.Result, 0)
 	s.NoError(err)
+}
+
+func (s *UserConnectorSuite) TestAddSshKeyWithNoUserPanics() {
+	s.PanicsWithValue("no user attached to request", func() {
+		_, _ = s.rm.Methods[1].Execute(context.TODO(), s.sc)
+	})
+}
+
+func (s *UserConnectorSuite) TestAddSshKey() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyName = "Test"
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-fake 12345"
+	data, err := s.rm.Methods[1].Execute(ctx, s.sc)
+
+	s.Empty(data.Result)
+	s.NoError(err)
+
+	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
+}
+
+func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	s.TestAddSshKey()
+
+	data, err := s.rm.Methods[1].Execute(ctx, s.sc)
+
+	s.Empty(data.Result)
+	s.Error(err)
+
+	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
+}
+
+func TestPostHandlerKeyValidationEmptyNameAndKey(t *testing.T) {
+	assert := assert.New(t)
+
+	h := keysPostHandler{}
+	key := model.APIPubKey{}
+	err := h.validatePublicKey(key)
+	assert.Error(err)
+
+	assert.Equal(err.Error(), "empty key or value")
+}
+
+func TestPostHandlerKeyValidationWhiteSpaceAsName(t *testing.T) {
+	assert := assert.New(t)
+
+	h := keysPostHandler{}
+	key := model.APIPubKey{
+		Name: "    ",
+		Key:  "ssh-mock 12345",
+	}
+	err := h.validatePublicKey(key)
+	assert.Error(err)
+
+	assert.Equal(err.Error(), "empty key or value")
+}
+
+func TestPostHandlerKeyValidationSantizedCorrectly(t *testing.T) {
+	assert := assert.New(t)
+
+	h := keysPostHandler{}
+	key := model.APIPubKey{
+		Name: " my key ",
+		Key:  "ssh-mock 12345 ",
+	}
+	err := h.validatePublicKey(key)
+	assert.NoError(err)
+
+	assert.Equal(h.keyName, " my key ")
+	assert.Equal(h.keyValue, "ssh-mock 12345 ")
 }
