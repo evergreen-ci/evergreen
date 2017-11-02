@@ -55,9 +55,6 @@ func (s *UserConnectorSuite) SetupTest() {
 }
 
 func (s *UserConnectorSuite) TestGetSshKeysWithNoUserPanics() {
-	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyName = "Test"
-	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-fake 12345"
-
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
@@ -87,6 +84,9 @@ func (s *UserConnectorSuite) TestGetSshKeysWithEmptyPubKeys() {
 }
 
 func (s *UserConnectorSuite) TestAddSshKeyWithNoUserPanics() {
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyName = "Test"
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-fake 12345"
+
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[1].Execute(context.TODO(), s.sc)
 	})
@@ -104,6 +104,8 @@ func (s *UserConnectorSuite) TestAddSshKey() {
 	s.NoError(err)
 
 	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
+	s.Equal(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Name, "Test")
+	s.Equal(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Key, "ssh-fake 12345")
 }
 
 func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
@@ -119,42 +121,16 @@ func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
 	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
 }
 
-func TestPostHandlerKeyValidationEmptyNameAndKey(t *testing.T) {
-	assert := assert.New(t)
-
-	h := keysPostHandler{}
-	key := model.APIPubKey{}
-	err := h.validatePublicKey(key)
-	assert.Error(err)
-
-	assert.Equal(err.Error(), "empty key or value")
-}
-
-func TestPostHandlerKeyValidationWhiteSpaceAsName(t *testing.T) {
+func TestPostHandlerKeyWithWhiteSpaceValuesFails(t *testing.T) {
 	assert := assert.New(t)
 
 	h := keysPostHandler{}
 	key := model.APIPubKey{
 		Name: "    ",
-		Key:  "ssh-mock 12345",
+		Key:  "    ",
 	}
 	err := h.validatePublicKey(key)
 	assert.Error(err)
 
 	assert.Equal(err.Error(), "empty key or value")
-}
-
-func TestPostHandlerKeyValidationSantizedCorrectly(t *testing.T) {
-	assert := assert.New(t)
-
-	h := keysPostHandler{}
-	key := model.APIPubKey{
-		Name: " my key ",
-		Key:  "ssh-mock 12345 ",
-	}
-	err := h.validatePublicKey(key)
-	assert.NoError(err)
-
-	assert.Equal(h.keyName, " my key ")
-	assert.Equal(h.keyValue, "ssh-mock 12345 ")
 }
