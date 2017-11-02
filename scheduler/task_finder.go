@@ -57,11 +57,12 @@ func AlternateTaskFinder() ([]task.Task, error) {
 		}
 	}
 
-	taskIds := make([]string, len(lookupSet))
-	idx := 0
+	taskIds := []string{}
 	for t := range lookupSet {
-		taskIds[idx] = t
-		idx++
+		if _, ok := cache[t]; ok {
+			continue
+		}
+		taskIds = append(taskIds, t)
 	}
 
 	tasksToCache, err := task.Find(task.ByIds(taskIds).WithFields(task.StatusKey))
@@ -75,7 +76,7 @@ func AlternateTaskFinder() ([]task.Task, error) {
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
-		depsMet, err := t.DependenciesMet(cache)
+		depsMet, err := t.AllDependenciesSatisfied(cache)
 		catcher.Add(err)
 		if depsMet {
 			runnabletasks = append(runnabletasks, t)

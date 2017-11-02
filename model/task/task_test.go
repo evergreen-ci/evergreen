@@ -77,6 +77,13 @@ func TestDependenciesMet(t *testing.T) {
 			So(depTask.Insert(), ShouldBeNil)
 		}
 
+		Convey("sanity check the local version of the function in the nil case", func() {
+			task.DependsOn = []Dependency{}
+			met, err := task.AllDependenciesSatisfied(map[string]Task{})
+			So(err, ShouldBeNil)
+			So(met, ShouldBeTrue)
+		})
+
 		Convey("if the task has no dependencies its dependencies should"+
 			" be met by default", func() {
 			task.DependsOn = []Dependency{}
@@ -146,6 +153,15 @@ func TestDependenciesMet(t *testing.T) {
 
 		})
 
+		Convey("new task resolver should error if cache is empty, but there are deps", func() {
+			updateTestDepTasks(t)
+			dependencyCache := make(map[string]Task)
+			task.DependsOn = depTaskIds
+			met, err := task.AllDependenciesSatisfied(dependencyCache)
+			So(err, ShouldNotBeNil)
+			So(met, ShouldBeFalse)
+		})
+
 		Convey("extraneous tasks in the dependency cache should be ignored",
 			func() {
 				So(UpdateOne(
@@ -180,10 +196,18 @@ func TestDependenciesMet(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(met, ShouldBeFalse)
 
+				met, err = task.AllDependenciesSatisfied(dependencyCache)
+				So(err, ShouldBeNil)
+				So(met, ShouldBeFalse)
+
 				// remove the failed task from the dependencies (but not from
 				// the cache).  it should be ignored in the next pass
 				task.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1]}
 				met, err = task.DependenciesMet(dependencyCache)
+				So(err, ShouldBeNil)
+				So(met, ShouldBeTrue)
+
+				met, err = task.AllDependenciesSatisfied(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
 			})
