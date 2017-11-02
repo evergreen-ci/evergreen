@@ -148,6 +148,15 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 					"span":     time.Since(distroStartTime).String(),
 					"duration": time.Since(distroStartTime),
 				})
+				if len(d.runnableTasksForDistro) != len(res.taskQueueItem) {
+					grip.Alert(message.Fields{
+						"runner":       RunnerName,
+						"distro":       d.distroId,
+						"message":      "inconsistency with scheduler input and output",
+						"input_queue":  d.runnableTasksForDistro,
+						"output_queue": res.taskQueueItem,
+					})
+				}
 			}
 		}()
 	}
