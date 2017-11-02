@@ -1197,7 +1197,7 @@ Add a Public Key to the Current User
  Both name and key must not be empty strings, nor strings consisting entirely
  of whitespace
 
- If the key was succesfully inserted, the server will return HTTP status code
+ If the key was successfully inserted, the server will return HTTP status code
  200 OK
 
  Any other status code indicates that the key was not successfully added.
