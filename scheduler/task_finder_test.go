@@ -158,7 +158,7 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 
 	grip.Info("start new")
 	s2start := time.Now()
-	s.newRunnableTasks, err = FindRunnableTasks()
+	s.newRunnableTasks, err = RunnableTasksPipeline()
 	s2dur := time.Since(s2start)
 	s.NoError(err)
 	grip.Info("end db")

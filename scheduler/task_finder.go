@@ -5,11 +5,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type TaskFinder func() ([]task.Task, error)
 
-func FindRunnableTasks() ([]task.Task, error) {
+func RunnableTasksPipeline() ([]task.Task, error) {
 	return task.FindRunnable()
 }
 
@@ -56,21 +57,26 @@ func AlternateTaskFinder() ([]task.Task, error) {
 		}
 	}
 
+	taskIds := []string{}
 	for t := range lookupSet {
 		if _, ok := cache[t]; ok {
 			continue
 		}
-		nt, err := task.FindOneId(t)
-		catcher.Add(err)
-		if nt == nil {
-			continue
-		}
-		cache[t] = *nt
+		taskIds = append(taskIds, t)
+	}
+
+	tasksToCache, err := task.Find(task.ByIds(taskIds).WithFields(task.StatusKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding task dependencies")
+	}
+
+	for _, t := range tasksToCache {
+		cache[t.Id] = t
 	}
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
-		depsMet, err := t.DependenciesMet(cache)
+		depsMet, err := t.AllDependenciesSatisfied(cache)
 		catcher.Add(err)
 		if depsMet {
 			runnabletasks = append(runnabletasks, t)
@@ -110,7 +116,7 @@ func ParallelTaskFinder() ([]task.Task, error) {
 		go func() {
 			defer wg.Done()
 			for id := range toLookup {
-				nt, err := task.FindOneId(id)
+				nt, err := task.FindOneIdWithFields(id, task.StatusKey)
 				catcher.Add(err)
 				if nt == nil {
 					continue
@@ -129,7 +135,7 @@ func ParallelTaskFinder() ([]task.Task, error) {
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
-		depsMet, err := t.DependenciesMet(cache)
+		depsMet, err := t.AllDependenciesSatisfied(cache)
 		catcher.Add(err)
 		if depsMet {
 			runnabletasks = append(runnabletasks, t)

@@ -261,6 +261,41 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	return true, nil
 }
 
+// AllDependenciesSatisfied inspects the tasks first-order
+// dependencies with regards to the cached tasks, and reports if all
+// of the dependencies have been satisfied.
+//
+// If the cached tasks do not include a dependency specified by one of
+// the tasks, the function returns an error.
+func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
+	if len(t.DependsOn) == 0 {
+		return true, nil
+	}
+
+	catcher := grip.NewBasicCatcher()
+	deps := []Task{}
+	for _, dep := range t.DependsOn {
+		if cachedDep, ok := cache[dep.TaskId]; !ok {
+			catcher.Add(errors.Errorf("cannot resolve task %s", dep.TaskId))
+			continue
+		} else {
+			deps = append(deps, cachedDep)
+		}
+	}
+
+	if catcher.HasErrors() {
+		return false, catcher.Resolve()
+	}
+
+	for _, depTask := range deps {
+		if !t.satisfiesDependency(&depTask) {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
 // HasFailedTests iterates through a tasks' tests and returns true if
 // that task had any failed tests.
 func (t *Task) HasFailedTests() bool {

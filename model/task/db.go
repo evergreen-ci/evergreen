@@ -608,6 +608,26 @@ func FindOneOldNoMerge(query db.Q) (*Task, error) {
 	return task, err
 }
 
+func FindOneIdWithFields(id string, projected ...string) (*Task, error) {
+	task := &Task{}
+	query := db.Query(bson.M{IdKey: id})
+
+	if len(projected) > 0 {
+		query = query.WithFields(projected...)
+	}
+
+	err := db.FindOneQ(Collection, query, task)
+
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "")
+	}
+
+	return task, nil
+}
+
 // FindOneOld returns one task from the old tasks collection that satisfies the query.
 func FindOneOld(query db.Q) (*Task, error) {
 	task, err := FindOneOldNoMerge(query)
