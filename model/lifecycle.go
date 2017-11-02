@@ -218,8 +218,17 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
+	restartIds := make([]string, 0)
+	if abortInProgress {
+		restartIds = taskIds
+	} else {
+		for _, t := range allTasks {
+			restartIds = append(restartIds, t.Id)
+		}
+	}
+
 	// Set all the task fields to indicate restarted
-	if err = task.ResetTasks(taskIds); err != nil {
+	if err = task.ResetTasks(restartIds); err != nil {
 		return errors.WithStack(err)
 	}
 
