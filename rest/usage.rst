@@ -1191,13 +1191,13 @@ Add a Public Key to the Current User
  POST /keys
 
  Add a single public key to the current user (as determined by the
- Api-User and Api-Key headers) as a Key object. The name and key objects
- will not be trimmed of surrounding whitespace. If you attempt to insert a key
+ Api-User and Api-Key headers) as a Key object. If you attempt to insert a key
  with a duplicate name, it will fail
 
- Both name and key must not be empty strings
+ Both name and key must not be empty strings, nor strings consisting entirely
+ of whitespace
 
  If the key was succesfully inserted, the server will return HTTP status code
  200 OK
 
- Any other status code indicates that the key was not added.
+ Any other status code indicates that the key was not successfully added.

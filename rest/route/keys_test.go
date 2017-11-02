@@ -55,6 +55,9 @@ func (s *UserConnectorSuite) SetupTest() {
 }
 
 func (s *UserConnectorSuite) TestGetSshKeysWithNoUserPanics() {
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyName = "Test"
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-fake 12345"
+
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
