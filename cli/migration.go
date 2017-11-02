@@ -15,13 +15,7 @@ type MigrationCommand struct {
 	Limit      int    `long:"limit" short:"l" description:"run migration with a limit"`
 }
 
-const migrationFeatureDisabled = true
-
 func (c *MigrationCommand) Execute(_ []string) error {
-	if migrationFeatureDisabled {
-		return errors.New("migrations are not enabled in this build")
-	}
-
 	settings, err := evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
