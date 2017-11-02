@@ -116,7 +116,7 @@ func ParallelTaskFinder() ([]task.Task, error) {
 		go func() {
 			defer wg.Done()
 			for id := range toLookup {
-				nt, err := task.FindOneId(id)
+				nt, err := task.FindOneIdWithFields(id, task.StatusKey)
 				catcher.Add(err)
 				if nt == nil {
 					continue
@@ -135,7 +135,7 @@ func ParallelTaskFinder() ([]task.Task, error) {
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
-		depsMet, err := t.DependenciesMet(cache)
+		depsMet, err := t.AllDependenciesSatisfied(cache)
 		catcher.Add(err)
 		if depsMet {
 			runnabletasks = append(runnabletasks, t)
