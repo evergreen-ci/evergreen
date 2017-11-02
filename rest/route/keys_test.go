@@ -85,7 +85,7 @@ func (s *UserConnectorSuite) TestGetSshKeysWithEmptyPubKeys() {
 
 func (s *UserConnectorSuite) TestAddSshKeyWithNoUserPanics() {
 	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyName = "Test"
-	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-fake 12345"
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-rsa 12345"
 
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[1].Execute(context.TODO(), s.sc)
@@ -97,7 +97,7 @@ func (s *UserConnectorSuite) TestAddSshKey() {
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
 
 	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyName = "Test"
-	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-fake 12345"
+	s.rm.Methods[1].RequestHandler.(*keysPostHandler).keyValue = "ssh-dss 12345"
 	data, err := s.rm.Methods[1].Execute(ctx, s.sc)
 
 	s.Empty(data.Result)
@@ -105,7 +105,7 @@ func (s *UserConnectorSuite) TestAddSshKey() {
 
 	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
 	s.Equal(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Name, "Test")
-	s.Equal(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Key, "ssh-fake 12345")
+	s.Equal(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys[2].Key, "ssh-dss 12345")
 }
 
 func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
@@ -132,5 +132,5 @@ func TestPostHandlerKeyWithWhiteSpaceValuesFails(t *testing.T) {
 	err := h.validatePublicKey(key)
 	assert.Error(err)
 
-	assert.Equal(err.Error(), "empty key or value")
+	assert.Equal(err.Error(), "empty key name")
 }

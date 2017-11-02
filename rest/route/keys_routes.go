@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest"
@@ -12,6 +13,10 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
+
+// XXX: If you are changing the validation in this function, you must also
+// update the BASE64REGEX in directives.spawn.js
+const keyRegex = "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$"
 
 type keysGetHandler struct{}
 
@@ -94,11 +99,27 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 	return nil
 }
 
+// XXX: If you are changing the validation in this function, you must also
+// update keyBaseValid in directives.spawn.js
 func (h *keysPostHandler) validatePublicKey(key model.APIPubKey) error {
 	h.keyName = string(key.Name)
 	h.keyValue = string(key.Key)
-	if strings.TrimSpace(h.keyName) == "" || strings.TrimSpace(h.keyValue) == "" {
-		return errors.New("empty key or value")
+	if strings.TrimSpace(h.keyName) == "" {
+		return errors.New("empty key name")
+	}
+
+	if !strings.HasPrefix(h.keyValue, "ssh-rsa") || !strings.HasPrefix(h.keyValue, "ssh-dss") {
+		return errors.New("invalid public key")
+	}
+
+	splitKey := strings.Split(h.keyValue, " ")
+	if len(splitKey) < 2 {
+		return errors.New("invalid public key")
+	}
+
+	matched, err := regexp.MatchString(keyRegex, splitKey[1])
+	if err != nil || !matched {
+		return errors.New("invalid public key")
 	}
 
 	return nil

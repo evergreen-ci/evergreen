@@ -26,7 +26,7 @@ func TestDBUser(t *testing.T) {
 }
 
 func (s *UserTestSuite) SetupTest() {
-	db.ClearCollections(Collection)
+	s.NoError(db.ClearCollections(Collection))
 	s.users = []*DBUser{
 		&DBUser{
 			Id:     "Test1",
@@ -51,11 +51,26 @@ func (s *UserTestSuite) SetupTest() {
 }
 
 func (s *UserTestSuite) TeardownTest() {
-	db.ClearCollections(Collection)
+	s.NoError(db.ClearCollections(Collection))
+}
+
+func (s *UserTestSuite) TestGetPublicKey() {
+	key, err := s.users[1].GetPublicKey("key1")
+	s.NoError(err)
+	s.Equal(key, "ssh-mock 12345")
+}
+
+func (s *UserTestSuite) TestGetPublicKeyThatDoesntExist() {
+	key, err := s.users[1].GetPublicKey("key2thatdoesntexist")
+	s.Error(err)
+	s.Empty(key)
 }
 
 func (s *UserTestSuite) TestAddKey() {
 	s.NoError(s.users[0].AddPublicKey("key1", "ssh-mock 67890"))
+	key, err := s.users[0].GetPublicKey("key1")
+	s.Equal(key, "ssh-mock 67890")
+	s.NoError(err)
 
 	u, err := FindOne(ById(s.users[0].Id))
 	s.NoError(err)
