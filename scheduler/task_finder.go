@@ -5,11 +5,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type TaskFinder func() ([]task.Task, error)
 
-func FindRunnableTasks() ([]task.Task, error) {
+func RunnableTasksPipeline() ([]task.Task, error) {
 	return task.FindRunnable()
 }
 
@@ -56,16 +57,20 @@ func AlternateTaskFinder() ([]task.Task, error) {
 		}
 	}
 
+	taskIds := make([]string, len(lookupSet))
+	idx := 0
 	for t := range lookupSet {
-		if _, ok := cache[t]; ok {
-			continue
-		}
-		nt, err := task.FindOneId(t)
-		catcher.Add(err)
-		if nt == nil {
-			continue
-		}
-		cache[t] = *nt
+		taskIds[idx] = t
+		idx++
+	}
+
+	tasksToCache, err := task.Find(task.ByIds(taskIds).WithFields(task.StatusKey))
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding task dependencies")
+	}
+
+	for _, t := range tasksToCache {
+		cache[t.Id] = t
 	}
 
 	runnabletasks := []task.Task{}

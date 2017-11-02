@@ -58,7 +58,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	case "legacy":
 		schedulerInstance.FindRunnableTasks = LegacyFindRunnableTasks
 	case "pipeline":
-		schedulerInstance.FindRunnableTasks = FindRunnableTasks
+		schedulerInstance.FindRunnableTasks = RunnableTasksPipeline
 	case "alternate":
 		schedulerInstance.FindRunnableTasks = AlternateTaskFinder
 	}
