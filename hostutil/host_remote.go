@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/rand"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,60 +22,6 @@ const (
 	// SSHTimeout is the timeout for SSH commands.
 	SSHTimeout = 2 * time.Minute
 )
-
-// RunRemoteScript executes a command, returning logs and any errors that occur.
-//
-// WARNING: RunRemoteScript is not safe to use for non-trivial scripts, as it
-// naively handles shell quoting.
-func RunRemoteScript(ctx context.Context, h *host.Host, script string, sshOptions []string) (string, error) {
-	// parse the hostname into the user, host and port
-	hostInfo, err := util.ParseSSHInfo(h.Host)
-	if err != nil {
-		return "", err
-	}
-	user := h.Distro.User
-	if hostInfo.User != "" {
-		user = hostInfo.User
-	}
-
-	cmdArgs := []string{
-		"cd ~;",
-	}
-
-	// run the remote script as sudo, if appropriate
-	if h.Distro.SetupAsSudo {
-		cmdArgs = append(cmdArgs, "sudo")
-	}
-
-	cmdArgs = append(cmdArgs, "sh", "-c", fmt.Sprintf("'%s'", script))
-
-	// run command to ssh into remote machine and execute script
-	sshCmdStd := &util.CappedWriter{
-		Buffer:   &bytes.Buffer{},
-		MaxBytes: 1024 * 1024, // 1MB
-	}
-
-	cmd := &subprocess.RemoteCommand{
-		CmdString:      strings.Join(cmdArgs, " "),
-		Stdout:         sshCmdStd,
-		Stderr:         sshCmdStd,
-		RemoteHostName: hostInfo.Hostname,
-		User:           user,
-		Options:        []string{"-t", "-t", "-p", hostInfo.Port},
-		Background:     false,
-	}
-
-	if len(sshOptions) > 0 {
-		cmd.Options = append(cmd.Options, sshOptions...)
-	}
-
-	// run the ssh command with given timeout
-	ctx, cancel := context.WithTimeout(ctx, SSHTimeout)
-	defer cancel()
-	err = cmd.Run(ctx)
-
-	return sshCmdStd.String(), errors.WithStack(err)
-}
 
 // ExecutableSubPath returns the directory containing the compiled agents.
 func executableSubPath(d *distro.Distro) string {
@@ -112,4 +61,54 @@ func SetupCommand(host *host.Host) string {
 	cmd += fmt.Sprintf(" --working_directory=%s", host.Distro.WorkDir)
 
 	return cmd
+}
+
+// TearDownCommand returns a command for running a teardown script on a host.
+func TearDownCommand(host *host.Host) string {
+	cmd := fmt.Sprintf("%s host teardown",
+		filepath.Join("~", binaryName(&host.Distro)))
+	return cmd
+}
+
+// RunSSHCommand runs an SSH command on a remote host.
+func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
+	// compute any info necessary to ssh into the host
+	hostInfo, err := util.ParseSSHInfo(host.Host)
+	if err != nil {
+		return errors.Wrapf(err, "error parsing ssh info %v", host.Host)
+	}
+
+	output := newCappedOutputLog()
+	shellCmd := &subprocess.RemoteCommand{
+		Id:             fmt.Sprintf("%s-%s-%d", id, host.Id, rand.Int()),
+		CmdString:      cmd,
+		Stdout:         output,
+		Stderr:         output,
+		RemoteHostName: hostInfo.Hostname,
+		User:           host.User,
+		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
+	}
+	grip.Info(message.Fields{
+		"command": shellCmd,
+		"host_id": host.Id,
+		"message": "running command over ssh",
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), SSHTimeout)
+	defer cancel()
+	err = shellCmd.Run(ctx)
+
+	grip.Notice(shellCmd.Stop())
+	if err != nil {
+		return errors.Errorf("error running shell cmd: %s (%v)", output.String(), err)
+	}
+	return nil
+}
+
+func newCappedOutputLog() *util.CappedWriter {
+	// store up to 1MB of streamed command output to print if a command fails
+	return &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
 }

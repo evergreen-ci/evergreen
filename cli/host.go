@@ -186,13 +186,13 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 		return "", nil
 	}
 
-	chmod := c.getChmodCommandWithSudo(ctx, evergreen.SetupScriptName)
+	chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, c.SetupAsSudo)
 	out, err := chmod.CombinedOutput()
 	if err != nil {
 		return string(out), err
 	}
 
-	cmd := c.getShCommandWithSudo(ctx, evergreen.SetupScriptName)
+	cmd := getShCommandWithSudo(ctx, evergreen.SetupScriptName, c.SetupAsSudo)
 	out, err = cmd.CombinedOutput()
 	catcher.Add(err)
 
@@ -202,18 +202,37 @@ func (c *HostSetupCommand) runSetupScript(ctx context.Context) (string, error) {
 	return string(out), catcher.Resolve()
 }
 
-func (c *HostSetupCommand) getShCommandWithSudo(ctx context.Context, script string) *exec.Cmd {
-	if c.SetupAsSudo {
+func getShCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
+	if sudo {
 		return exec.CommandContext(ctx, "sudo", "sh", script)
 	}
 	return exec.CommandContext(ctx, "sh", script)
 }
 
-func (c *HostSetupCommand) getChmodCommandWithSudo(ctx context.Context, script string) *exec.Cmd {
+func getChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {
 	args := []string{}
-	if c.SetupAsSudo {
+	if sudo {
 		args = append(args, "sudo")
 	}
 	args = append(args, "chmod", "+x", script)
 	return exec.CommandContext(ctx, args[0], args[1:]...)
+}
+
+// HostTeardownCommand runs host teardown script.
+type HostTeardownCommand struct{}
+
+func (c *HostTeardownCommand) runTeardownScript(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, setupTimeout)
+	defer cancel()
+
+	chmod := getChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
+	out, err := chmod.CombinedOutput()
+	if err != nil {
+		return string(out), err
+	}
+
+	cmd := getShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
+	out, err = cmd.CombinedOutput()
+
+	return string(out), err
 }
