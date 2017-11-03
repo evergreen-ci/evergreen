@@ -17,6 +17,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -41,7 +42,8 @@ func TestGetBuildInfo(t *testing.T) {
 		DisableCache: true,
 	})
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	Convey("When finding info on a particular build", t, func() {
@@ -212,7 +214,8 @@ func TestGetBuildStatus(t *testing.T) {
 	})
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	Convey("When finding the status of a particular build", t, func() {

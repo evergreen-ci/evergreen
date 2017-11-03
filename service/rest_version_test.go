@@ -20,6 +20,7 @@ import (
 	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/urfave/negroni"
 )
@@ -45,7 +46,8 @@ func TestGetRecentVersions(t *testing.T) {
 	})
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
@@ -251,7 +253,8 @@ func TestGetVersionInfo(t *testing.T) {
 	})
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err := uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
@@ -355,7 +358,8 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	})
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	projectName := "project_test"
@@ -449,7 +453,8 @@ func TestActivateVersion(t *testing.T) {
 	})
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err := uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	n := negroni.New()
@@ -593,7 +598,8 @@ func TestGetVersionStatus(t *testing.T) {
 	})
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	Convey("When finding the status of a particular version", t, func() {

@@ -23,7 +23,8 @@ func init() {
 }
 
 func (as *APIServer) Handler() (http.Handler, error) {
-	router := as.NewRouter()
+	router := mux.NewRouter()
+	as.AttachRoutes(router)
 
 	n := negroni.New()
 	n.Use(NewLogger())

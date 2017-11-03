@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -44,7 +45,8 @@ func TestGetTestHistory(t *testing.T) {
 	})
 
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem installing plugins")
-	router, err := uis.NewRouter()
+	router := mux.NewRouter()
+	err = uis.AttachRoutes(router)
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	Convey("When retrieving the test history", t, func() {
