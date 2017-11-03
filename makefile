@@ -217,8 +217,7 @@ phony += vendor-clean
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testTimeout := --test.timeout=10m
-testArgs := -test.v $(testTimeout)
+testArgs := -test.v
 testRunEnv := EVGHOME=$(shell pwd)
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`)
@@ -234,6 +233,11 @@ testArgs += -testify.m='$(RUN_CASE)'
 endif
 ifneq (,$(RUN_COUNT))
 testArgs += -test.count='$(RUN_COUNT)'
+endif
+ifneq (,$(TEST_TIMEOUT))
+testArgs += -test.timeout=$(TEST_TIMEOUT)
+else
+testArgs += -test.timeout=10m
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)

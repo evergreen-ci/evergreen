@@ -637,7 +637,7 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      build_env: "EVERGREEN_ALL=true RACE_ENABLED=true RUN_COUNT=5"
+      build_env: "EVERGREEN_ALL=true RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.7.tgz
     tasks:
       - name: "dist"
