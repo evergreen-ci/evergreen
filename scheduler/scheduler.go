@@ -149,12 +149,22 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 					"duration": time.Since(distroStartTime),
 				})
 				if len(d.runnableTasksForDistro) != len(res.taskQueueItem) {
+					delta := make(map[string]string)
+					for _, t := range res.taskQueueItem {
+						delta[t.Id] = "res.taskQueueItem"
+					}
+					for _, i := range d.runnableTasksForDistro {
+						if delta[i.Id] == "res.taskQueueItem" {
+							delete(delta, i.Id)
+						} else {
+							delta[i.Id] = "d.runnableTasksForDistro"
+						}
+					}
 					grip.Alert(message.Fields{
-						"runner":       RunnerName,
-						"distro":       d.distroId,
-						"message":      "inconsistency with scheduler input and output",
-						"input_queue":  d.runnableTasksForDistro,
-						"output_queue": res.taskQueueItem,
+						"runner":             RunnerName,
+						"distro":             d.distroId,
+						"message":            "inconsistency with scheduler input and output",
+						"inconsistent_tasks": delta,
 					})
 				}
 			}
