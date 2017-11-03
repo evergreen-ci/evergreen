@@ -5,7 +5,6 @@ package gce
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -190,8 +189,11 @@ func parseMachineType(m string) (*machineType, error) {
 // If this function errors, that means Google may have changed the way
 // it structures its pricing data in the JSON file.
 func getComputePrices() (*computePrices, error) {
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	// Read the data from the endpoint.
-	res, err := http.Get(pricesJSON)
+	res, err := client.Get(pricesJSON)
 	if res != nil {
 		defer res.Body.Close()
 	}

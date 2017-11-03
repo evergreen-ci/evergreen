@@ -267,7 +267,6 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 // certificates on darwin machines. Note that the client
 // returned can only connect successfully to the
 // supplied s3's region.
-
 func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
 	var s3Session *s3.S3
 	cert := x509.Certificate{}
