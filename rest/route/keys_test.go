@@ -121,43 +121,28 @@ func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
 	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 3)
 }
 
-func TestKeyValidationFailsWithWhitespaceValues(t *testing.T) {
+func TestKeyValidationFailsWithInvalidKeys(t *testing.T) {
 	assert := assert.New(t)
 
-	key := model.APIPubKey{
-		Name: "    ",
-		Key:  "    ",
-	}
-	keyName, err := validateKeyName(key.Name)
+	err := validateKeyName("    ")
 	assert.Error(err)
-	assert.Equal("", keyName)
 	assert.Equal("empty key name", err.Error())
 
-	keyValue, err2 := validateKeyValue(key.Key)
+	err2 := validateKeyValue("    ")
 	assert.Error(err2)
-	assert.Equal(keyValue, "")
 	assert.Equal("invalid public key", err2.Error())
 
-	key.Key = "ssh-rsa notvalidbase64"
-
-	keyValue, err2 = validateKeyValue(key.Key)
-	assert.Error(err2)
-	assert.Equal(keyValue, "")
-	assert.Equal("invalid public key: key contents invalid", err2.Error())
+	err3 := validateKeyValue("ssh-rsa notvalidbase64")
+	assert.Error(err3)
+	assert.Equal("invalid public key: key contents invalid", err3.Error())
 }
 
 func TestKeyValidation(t *testing.T) {
 	assert := assert.New(t)
-	key := model.APIPubKey{
-		Name: "key1 ",
-		Key:  "ssh-rsa YWJjZDEyMzQK",
-	}
 
-	keyName, err := validateKeyName(key.Name)
+	err := validateKeyName("key1 ")
 	assert.NoError(err)
-	assert.Equal("key1 ", keyName)
 
-	keyValue, err2 := validateKeyValue(key.Key)
+	err2 := validateKeyValue("ssh-rsa YWJjZDEyMzQK")
 	assert.NoError(err2)
-	assert.Equal("ssh-rsa YWJjZDEyMzQK", keyValue)
 }
