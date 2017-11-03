@@ -249,7 +249,7 @@ type AmboyConfig struct {
 type SlackConfig struct {
 	Options *send.SlackOptions `yaml:"options"`
 	Token   string             `yaml:"token"`
-	Level   string             `yaml:"threshold_level"`
+	Level   string             `yaml:"level"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
