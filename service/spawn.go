@@ -9,11 +9,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/subprocess"
@@ -119,13 +117,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	// save the supplied public key if needed
 	if putParams.SaveKey {
-		dbuser, err := user.FindOne(user.ById(authedUser.Username()))
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching user"))
-			return
-		}
-		err = model.AddUserPublicKey(dbuser.Id, putParams.KeyName, putParams.PublicKey)
-		if err != nil {
+		if err := authedUser.AddPublicKey(putParams.KeyName, putParams.PublicKey); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error saving public key"))
 			return
 		}

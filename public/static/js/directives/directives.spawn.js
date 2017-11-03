@@ -102,6 +102,10 @@ directives.spawn.directive('userDataValid', function() {
   };
 });
 
+
+// XXX: If you are changing the key validation here, you must also update
+// (h *keysPostHandler) validatePublicKey in rest/route/keys_routes.go to
+// match
 var RSA = 'ssh-rsa';
 var DSS = 'ssh-dss';
 var BASE64REGEX = new RegExp("^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$");

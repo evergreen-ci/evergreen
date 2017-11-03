@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -63,6 +64,28 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 		}
 	}
 	return "", errors.Errorf("Unable to find public key '%v' for user '%v'", keyname, u.Username())
+}
+
+func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
+	key := PubKey{
+		Name:      keyName,
+		Key:       keyValue,
+		CreatedAt: time.Now(),
+	}
+	userWithoutKey := bson.M{
+		IdKey: u.Id,
+		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$ne": keyName},
+	}
+	update := bson.M{
+		"$push": bson.M{PubKeysKey: key},
+	}
+
+	if err := UpdateOne(userWithoutKey, update); err != nil {
+		return err
+	}
+
+	u.PubKeys = append(u.PubKeys, key)
+	return nil
 }
 
 func (u *DBUser) PublicKeys() []PubKey {
