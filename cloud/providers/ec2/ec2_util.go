@@ -345,7 +345,11 @@ func fetchEBSPricing() (map[string]float64, error) {
 	// there is no true EBS pricing API, so we have to wrangle it from EC2's frontend
 	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
 	grip.Debugln("Loading EBS pricing from", endpoint)
-	resp, err := http.Get(endpoint)
+
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
+	resp, err := client.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -527,7 +531,11 @@ func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
 	// the On Demand pricing API is not part of the normal EC2 API
 	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
 	grip.Debugln("Loading On Demand pricing from", endpoint)
-	resp, err := http.Get(endpoint)
+
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
+	resp, err := client.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

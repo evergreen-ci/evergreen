@@ -13,6 +13,7 @@ func init() {
 	httpClientPool = &sync.Pool{
 		New: func() interface{} {
 			return &http.Client{
+				Timeout: 5 * time.Minute,
 				Transport: &http.Transport{
 					Proxy:               http.ProxyFromEnvironment,
 					DisableCompression:  false,
