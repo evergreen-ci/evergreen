@@ -442,5 +442,5 @@ func (c *Mock) AddPublicKey(ctx context.Context, keyName, keyValue string) error
 }
 
 func (c *Mock) DeletePublicKey(ctx context.Context, keyName string) error {
-	return nil
+	return errors.New("(c *Mock) DeletePublicKey not implemented")
 }
