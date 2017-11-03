@@ -14,7 +14,7 @@ import (
 
 type CommandSuite struct {
 	suite.Suite
-	a                Agent
+	a                *Agent
 	mockCommunicator *client.Mock
 	tmpDirName       string
 }
@@ -24,7 +24,7 @@ func TestCommandSuite(t *testing.T) {
 }
 
 func (s *CommandSuite) SetupTest() {
-	s.a = Agent{
+	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
 			HostSecret: "secret",

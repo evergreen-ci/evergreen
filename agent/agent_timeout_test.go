@@ -14,7 +14,7 @@ import (
 
 type TimeoutSuite struct {
 	suite.Suite
-	a                Agent
+	a                *Agent
 	mockCommunicator *client.Mock
 	tmpFile          *os.File
 	tmpFileName      string
@@ -26,7 +26,7 @@ func TestTimeoutSuite(t *testing.T) {
 }
 
 func (s *TimeoutSuite) SetupTest() {
-	s.a = Agent{
+	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
 			HostSecret: "secret",
