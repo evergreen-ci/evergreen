@@ -105,8 +105,8 @@ func (uis *UIServer) InitPlugins() error {
 
 // NewRouter sets up a request router for the UI, installing
 // hard-coded routes as well as those belonging to plugins.
-func (uis *UIServer) NewRouter() (*mux.Router, error) {
-	r := mux.NewRouter().StrictSlash(true)
+func (uis *UIServer) AttachRoutes(r *mux.Router) error {
+	r = r.StrictSlash(true)
 
 	// User login and logout
 	r.HandleFunc("/login", uis.loginPage).Methods("GET")
@@ -262,7 +262,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
+			return errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
 		}
 
 		// check if a plugin is an app level plugin first
@@ -275,7 +275,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		// check if there are any errors getting the panel config
 		uiConf, err := pl.GetPanelConfig()
 		if err != nil {
-			panic(fmt.Sprintf("Error getting UI config for plugin %v: %v", pl.Name(), err))
+			return errors.Wrapf(err, "Error getting UI config for plugin %v: %v", pl.Name())
 		}
 		if uiConf == nil {
 			grip.Debugf("No UI config needed for plugin %s, skipping", pl.Name())
@@ -299,7 +299,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
 	}
 
-	return r, nil
+	return nil
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted

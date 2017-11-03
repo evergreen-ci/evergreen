@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service/testutil"
+	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/urfave/negroni"
 )
@@ -44,10 +45,12 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	var l net.Listener
 	protocol := "http"
 
+	router := mux.NewRouter()
+	as.AttachRoutes(router)
 	n := negroni.New()
 	n.Use(NewLogger())
 	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
-	n.UseHandler(as.NewRouter())
+	n.UseHandler(router)
 
 	server := httptest.NewUnstartedServer(n)
 	server.TLS = tlsConfig

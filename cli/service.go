@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/csrf"
+	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -57,12 +58,14 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
 
-	apiHandler, err := getHandlerAPI(settings)
+	router := mux.NewRouter()
+
+	apiHandler, err := getHandlerAPI(settings, router)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	uiHandler, err := getHandlerUI(settings)
+	uiHandler, err := getHandlerUI(settings, router)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -101,14 +104,14 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	return catcher.Resolve()
 }
 
-func getHandlerAPI(settings *evergreen.Settings) (http.Handler, error) {
+func getHandlerAPI(settings *evergreen.Settings, router *mux.Router) (http.Handler, error) {
 	as, err := service.NewAPIServer(settings)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create API server")
 		return nil, err
 	}
 
-	router := as.NewRouter()
+	as.AttachRoutes(router)
 
 	n := negroni.New()
 	n.Use(service.NewLogger())
@@ -117,7 +120,7 @@ func getHandlerAPI(settings *evergreen.Settings) (http.Handler, error) {
 	return n, nil
 }
 
-func getHandlerUI(settings *evergreen.Settings) (http.Handler, error) {
+func getHandlerUI(settings *evergreen.Settings, router *mux.Router) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
@@ -128,7 +131,7 @@ func getHandlerUI(settings *evergreen.Settings) (http.Handler, error) {
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}
 
-	router, err := uis.NewRouter()
+	err = uis.AttachRoutes(router)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem creating router")
 	}
