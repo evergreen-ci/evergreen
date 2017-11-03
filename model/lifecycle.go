@@ -218,6 +218,22 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
+	if abortInProgress {
+		// abort in-progress tasks in this build
+		_, err = task.UpdateAll(
+			bson.M{
+				task.VersionKey: versionId,
+				task.IdKey:      bson.M{"$in": taskIds},
+				task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+			},
+			bson.M{"$set": bson.M{task.AbortedKey: true}},
+		)
+
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+
 	restartIds := make([]string, 0)
 	if abortInProgress {
 		restartIds = taskIds
@@ -260,22 +276,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		return errors.WithStack(err)
 	}
 
-	if abortInProgress {
-		// abort in-progress tasks in this build
-		_, err = task.UpdateAll(
-			bson.M{
-				task.VersionKey: versionId,
-				task.IdKey:      bson.M{"$in": taskIds},
-				task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
-			},
-			bson.M{"$set": bson.M{task.AbortedKey: true}},
-		)
-
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	}
-
 	// update activation for all the builds
 	for _, b := range buildIdList {
 		if err := build.UpdateActivation(b, true, caller); err != nil {
@@ -283,7 +283,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 	return nil
-
 }
 
 // RestartBuild restarts completed tasks associated with a given buildId.
