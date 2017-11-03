@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -1236,4 +1237,133 @@ func TestSortTasks(t *testing.T) {
 			So(sortedTasks[5].DisplayName, ShouldEqual, "A")
 		})
 	})
+}
+
+func TestVersionRestart(t *testing.T) {
+	assert := assert.New(t)
+	assert.NoError(resetTaskData())
+
+	// test that restarting a version restarts its tasks
+	taskIds := []string{"task1", "task3", "task4"}
+	assert.NoError(RestartVersion("version", taskIds, false, "test"))
+	tasks, err := task.Find(task.ByIds(taskIds))
+	assert.NoError(err)
+	assert.NotEmpty(tasks)
+	for _, t := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, t.Status)
+		assert.True(t.Activated)
+	}
+
+	// test that aborting in-progress tasks works correctly
+	assert.NoError(resetTaskData())
+	taskIds = []string{"task2"}
+	assert.NoError(RestartVersion("version", taskIds, true, "test"))
+	dbTask, err := task.FindOne(task.ById("task2"))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.True(dbTask.Aborted)
+	assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	assert.True(dbTask.Activated)
+
+	// test that not aborting in-progress tasks does not reset them
+	assert.NoError(resetTaskData())
+	taskIds = []string{"task2"}
+	assert.NoError(RestartVersion("version", taskIds, false, "test"))
+	dbTask, err = task.FindOne(task.ById("task2"))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.False(dbTask.Aborted)
+	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
+}
+
+func resetTaskData() error {
+	if err := db.ClearCollections(build.Collection, task.Collection, version.Collection, task.OldCollection); err != nil {
+		return err
+	}
+	v := &version.Version{
+		Id: "version",
+	}
+	if err := v.Insert(); err != nil {
+		return err
+	}
+	build1 := &build.Build{
+		Id:      "build1",
+		Version: v.Id,
+		Tasks: []build.TaskCache{
+			{
+				Id:        "task1",
+				Status:    evergreen.TaskSucceeded,
+				Activated: true,
+			},
+			{
+				Id:        "task2",
+				Status:    evergreen.TaskDispatched,
+				Activated: true,
+			},
+		},
+	}
+	build2 := &build.Build{
+		Id:      "build2",
+		Version: v.Id,
+		Tasks: []build.TaskCache{
+			{
+				Id:        "task3",
+				Status:    evergreen.TaskSucceeded,
+				Activated: true,
+			},
+			{
+				Id:        "task4",
+				Status:    evergreen.TaskFailed,
+				Activated: true,
+			},
+		},
+	}
+	if err := build1.Insert(); err != nil {
+		return err
+	}
+	if err := build2.Insert(); err != nil {
+		return err
+	}
+	task1 := &task.Task{
+		Id:          "task1",
+		DisplayName: "task1",
+		BuildId:     build1.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskSucceeded,
+	}
+	if err := task1.Insert(); err != nil {
+		return err
+	}
+	task2 := &task.Task{
+		Id:          "task2",
+		DisplayName: "task2",
+		BuildId:     build1.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskDispatched,
+	}
+	if err := task2.Insert(); err != nil {
+		return err
+	}
+	task3 := &task.Task{
+		Id:          "task3",
+		DisplayName: "task3",
+		BuildId:     build2.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskSucceeded,
+	}
+	if err := task3.Insert(); err != nil {
+		return err
+	}
+	task4 := &task.Task{
+		Id:          "task4",
+		DisplayName: "task4",
+		BuildId:     build2.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskFailed,
+	}
+	if err := task4.Insert(); err != nil {
+		return err
+	}
+
+	return nil
 }
