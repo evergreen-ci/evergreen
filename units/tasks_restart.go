@@ -1,10 +1,11 @@
 package units
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -18,7 +19,9 @@ const restartTasksJobName = "restart-tasks"
 
 func init() {
 	registry.AddJobType(restartTasksJobName,
-		func() amboy.Job { return &restartTasksJob{} })
+		func() amboy.Job {
+			return NewTasksRestartJob(time.Now(), time.Now(), evergreen.User, model.RestartTaskOptions{})
+		})
 }
 
 type restartTasksJob struct {
@@ -45,7 +48,7 @@ func NewTasksRestartJob(startTime, endTime time.Time, user string, opts model.Re
 		Version: 0,
 		Format:  amboy.BSON,
 	}
-	job.SetID(util.RandomString())
+	job.SetID(fmt.Sprintf("restart-tasks-%d-%d", startTime.Unix(), endTime.Unix()))
 	return &job
 }
 
