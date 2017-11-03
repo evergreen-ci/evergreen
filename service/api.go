@@ -689,9 +689,7 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 }
 
 // NewRouter returns the root router for all APIServer endpoints.
-func (as *APIServer) NewRouter() *mux.Router {
-	root := mux.NewRouter()
-
+func (as *APIServer) AttachRoutes(root *mux.Router) {
 	// attaches the /rest/v1 routes
 	AttachRESTHandler(root, as)
 	// attaches /rest/v2 routes
@@ -793,6 +791,4 @@ func (as *APIServer) NewRouter() *mux.Router {
 	taskRouter.HandleFunc("/json/data/{name}", as.checkTask(false, as.insertTaskJSON)).Methods("POST")
 	taskRouter.HandleFunc("/json/data/{task_name}/{name}", as.checkTask(false, as.getTaskJSONByName)).Methods("GET")
 	taskRouter.HandleFunc("/json/data/{task_name}/{name}/{variant}", as.checkTask(false, as.getTaskJSONForVariant)).Methods("GET")
-
-	return root
 }
