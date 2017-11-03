@@ -88,6 +88,21 @@ func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
 	return nil
 }
 
+func (u *DBUser) DeletePublicKey(keyName string) error {
+	selector := bson.M{
+		IdKey: u.Id,
+		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$eq": keyName},
+	}
+	update := bson.M{
+		"$pull": bson.M{
+			PubKeysKey: bson.M{
+				PubKeyNameKey: keyName,
+			},
+		},
+	}
+	return UpdateOne(selector, update)
+}
+
 func (u *DBUser) PublicKeys() []PubKey {
 	return u.PubKeys
 }

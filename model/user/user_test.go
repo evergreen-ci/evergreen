@@ -97,3 +97,21 @@ func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) 
 	s.Equal(fromDB.Id, expected.Id)
 	s.Equal(fromDB.APIKey, expected.APIKey)
 }
+
+func (s *UserTestSuite) TestDeletePublicKey() {
+	s.NoError(s.users[1].DeletePublicKey("key1"))
+
+	u, err := FindOne(ById(s.users[1].Id))
+	s.NoError(err)
+	s.Len(u.PubKeys, 0)
+	s.Equal(u.APIKey, "67890")
+}
+
+func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
+	s.Error(s.users[0].DeletePublicKey("key1"))
+
+	u, err := FindOne(ById(s.users[0].Id))
+	s.NoError(err)
+	s.Len(u.PubKeys, 0)
+	s.Equal(u.APIKey, "12345")
+}
