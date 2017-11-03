@@ -128,4 +128,7 @@ type Communicator interface {
 	GetCurrentUsersKeys(context.Context) ([]restmodel.APIPubKey, error)
 
 	AddPublicKey(context.Context, string, string) error
+
+	// Delete a key with specified name from the current authenticated user
+	DeletePublicKey(context.Context, string) error
 }

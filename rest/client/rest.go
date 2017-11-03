@@ -247,10 +247,10 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 	}
 
 	resp, client_err := c.request(ctx, info, "")
+	defer resp.Body.Close()
 	if client_err != nil {
 		return nil, errors.Wrap(client_err, "problem fetching keys list")
 	}
-	defer resp.Body.Close()
 
 	keys := []model.APIPubKey{}
 
@@ -281,6 +281,22 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.Wrap(err, "problem adding key")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) error {
+	info := requestInfo{
+		method:  delete,
+		version: apiVersion2,
+		path:    "keys/" + keyName,
+	}
+
+	resp, client_err := c.request(ctx, info, "")
+	defer resp.Body.Close()
+	if client_err != nil || resp.StatusCode != http.StatusOK {
+		return errors.Wrap(client_err, "problem deleting key")
 	}
 
 	return nil
