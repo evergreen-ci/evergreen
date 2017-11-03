@@ -88,41 +88,59 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 			Message:    fmt.Sprintf("failed to unmarshal public key: %s", err),
 		}
 	}
+	keyName, err := validateKeyName(key.Name)
+	if err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("invalid public key name: %s", err),
+		}
+	}
 
-	if err := h.validatePublicKey(key); err != nil {
+	keyValue, err := validateKeyValue(key.Key)
+	if err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    fmt.Sprintf("invalid public key: %s", err),
 		}
 	}
 
+	h.keyName = keyName
+	h.keyValue = keyValue
+
 	return nil
 }
 
-// XXX: If you are changing the validation in this function, you must also
-// update keyBaseValid in directives.spawn.js
-func (h *keysPostHandler) validatePublicKey(key model.APIPubKey) error {
-	h.keyName = string(key.Name)
-	h.keyValue = string(key.Key)
-	if strings.TrimSpace(h.keyName) == "" {
-		return errors.New("empty key name")
+// XXX: If you are changing the validation in either validateKey* function,
+// you must also update keyBaseValid in directives.spawn.js
+func validateKeyName(name model.APIString) (string, error) {
+	keyName := string(name)
+	if strings.TrimSpace(keyName) == "" {
+		return "", errors.New("empty key name")
 	}
 
-	if !strings.HasPrefix(h.keyValue, "ssh-rsa") || !strings.HasPrefix(h.keyValue, "ssh-dss") {
-		return errors.New("invalid public key")
+	return keyName, nil
+}
+
+func validateKeyValue(value model.APIString) (string, error) {
+	keyValue := string(value)
+
+	if !strings.HasPrefix(keyValue, "ssh-rsa") && !strings.HasPrefix(keyValue, "ssh-dss") {
+		return "", errors.New("invalid public key")
 	}
 
-	splitKey := strings.Split(h.keyValue, " ")
+	splitKey := strings.Split(keyValue, " ")
 	if len(splitKey) < 2 {
-		return errors.New("invalid public key")
+		return "", errors.New("invalid public key")
 	}
 
 	matched, err := regexp.MatchString(keyRegex, splitKey[1])
-	if err != nil || !matched {
-		return errors.New("invalid public key")
+	if err != nil {
+		return "", errors.Wrap(err, "invalid public key")
+	} else if !matched {
+		return "", errors.New("invalid public key: key contents invalid")
 	}
 
-	return nil
+	return keyValue, nil
 }
 
 func (h *keysPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
