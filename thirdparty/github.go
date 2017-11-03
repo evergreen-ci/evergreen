@@ -327,13 +327,13 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 				return true, err
 			}
 			if resp.StatusCode == http.StatusUnauthorized {
-				resp.Body.Close()
+				defer resp.Body.Close()
 				err = errors.Errorf("Calling github GET on %v failed: got 'unauthorized' response", url)
 				grip.Error(err)
 				return false, err
 			}
 			if resp.StatusCode != http.StatusOK {
-				resp.Body.Close()
+				defer resp.Body.Close()
 				err = errors.Errorf("Calling github GET on %v got a bad response code: %v", url, resp.StatusCode)
 			}
 			// read the results
@@ -365,12 +365,12 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 		}
 		if resp.StatusCode == http.StatusUnauthorized {
 			err = errors.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
-			resp.Body.Close()
+			defer resp.Body.Close()
 			grip.Error(err)
 			return false, err
 		}
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			defer resp.Body.Close()
 			err = errors.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
 		}
 		// read the results
