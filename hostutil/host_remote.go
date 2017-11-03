@@ -86,7 +86,7 @@ func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
 		Stderr:         output,
 		RemoteHostName: hostInfo.Hostname,
 		User:           host.User,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
+		Options:        append([]string{"-p", hostInfo.Port, "-t", "-t"}, sshOptions...),
 	}
 	grip.Info(message.Fields{
 		"command": shellCmd,
