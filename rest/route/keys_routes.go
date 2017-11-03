@@ -100,7 +100,7 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 	if err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("invalid public key: %s", err),
+			Message:    err.Error(),
 		}
 	}
 
