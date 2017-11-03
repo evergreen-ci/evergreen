@@ -18,7 +18,7 @@ import (
 
 type AgentSuite struct {
 	suite.Suite
-	a                Agent
+	a                *Agent
 	mockCommunicator *client.Mock
 	tc               *taskContext
 	canceler         context.CancelFunc
@@ -29,7 +29,7 @@ func TestAgentSuite(t *testing.T) {
 }
 
 func (s *AgentSuite) SetupTest() {
-	s.a = Agent{
+	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
 			HostSecret: "secret",
