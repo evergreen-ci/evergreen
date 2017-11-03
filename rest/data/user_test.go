@@ -6,40 +6,68 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestFindUserById(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindUserById")
+func init() {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+}
 
-	serviceContext := &DBConnector{}
-	numUsers := 10
+type DBUserConnectorSuite struct {
+	suite.Suite
+	sc       *DBConnector
+	numUsers int
+	users    []*user.DBUser
+}
 
-	Convey("When there are user documents in the database", t, func() {
-		testutil.HandleTestingErr(db.Clear(user.Collection), t, "Error clearing"+
-			" '%v' collection", user.Collection)
-		for i := 0; i < numUsers; i++ {
-			testUser := &user.DBUser{
-				Id:     fmt.Sprintf("user_%d", i),
-				APIKey: fmt.Sprintf("apikey_%d", i),
-			}
-			So(testUser.Insert(), ShouldBeNil)
+func (s *DBUserConnectorSuite) SetupTest() {
+	db.Clear(user.Collection)
+	s.sc = &DBConnector{}
+	s.numUsers = 10
+
+	for i := 0; i < s.numUsers; i++ {
+		testUser := &user.DBUser{
+			Id:     fmt.Sprintf("user_%d", i),
+			APIKey: fmt.Sprintf("apikey_%d", i),
+			PubKeys: []user.PubKey{
+				{
+					Name: fmt.Sprintf("user_%d_0", i),
+					Key:  "ssh-rsa 12345",
+				},
+			},
 		}
+		s.NoError(testUser.Insert())
+		s.users = append(s.users, testUser)
+	}
+}
 
-		Convey("then properly finding each user should succeed", func() {
-			for i := 0; i < numUsers; i++ {
-				found, err := serviceContext.FindUserById(fmt.Sprintf("user_%d", i))
-				So(err, ShouldBeNil)
-				So(found.GetAPIKey(), ShouldEqual, fmt.Sprintf("apikey_%d", i))
-			}
-		})
-		Convey("then searching for user that doesn't exist should return nil",
-			func() {
-				found, err := serviceContext.FindUserById("fake_user")
-				So(err, ShouldBeNil)
-				So(found, ShouldBeNil)
-			})
-	})
+func (s *DBUserConnectorSuite) TeardownTest() {
+	db.Clear(user.Collection)
+}
+
+func (s *DBUserConnectorSuite) TestFindUserById() {
+	for i := 0; i < s.numUsers; i++ {
+		found, err := s.sc.FindUserById(fmt.Sprintf("user_%d", i))
+		s.NoError(err)
+		s.Equal(found.GetAPIKey(), fmt.Sprintf("apikey_%d", i))
+	}
+
+	found, err := s.sc.FindUserById("fake_user")
+	s.Nil(found)
+	s.NoError(err)
+}
+
+func (s *DBUserConnectorSuite) TestDeletePublicKey() {
+	for _, u := range s.users {
+		s.sc.DeletePublicKey(u, u.Id+"_0")
+
+		dbUser, err := user.FindOne(user.ById(u.Id))
+		s.NoError(err)
+		s.Len(dbUser.PubKeys, 0)
+	}
+}
+
+func TestDBUserConnector(t *testing.T) {
+	s := &DBUserConnectorSuite{}
+	suite.Run(t, s)
 }

@@ -100,7 +100,18 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 			},
 		},
 	}
-	return UpdateOne(selector, update)
+	if err := UpdateOne(selector, update); err != nil {
+		return err
+	}
+
+	newKeys := []PubKey{}
+	for _, key := range u.PubKeys {
+		if key.Name != keyName {
+			newKeys = append(newKeys, key)
+		}
+	}
+	u.PubKeys = newKeys
+	return nil
 }
 
 func (u *DBUser) PublicKeys() []PubKey {

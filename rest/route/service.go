@@ -60,6 +60,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/status/hosts/distros":                                getHostStatsByDistroManager,
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
 		"/keys":                                                getKeysRouteManager,
+		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
 	}
 
 	for path, getManager := range routes {

@@ -27,6 +27,10 @@ func (u *DBUserConnector) AddPublicKey(user *user.DBUser, keyName, keyValue stri
 	return user.AddPublicKey(keyName, keyValue)
 }
 
+func (u *DBUserConnector) DeletePublicKey(user *user.DBUser, keyName string) error {
+	return user.DeletePublicKey(keyName)
+}
+
 // MockUserConnector stores a cached set of users that are queried against by the
 // implementations of the UserConnector interface's functions.
 type MockUserConnector struct {
@@ -58,5 +62,27 @@ func (muc *MockUserConnector) AddPublicKey(dbuser *user.DBUser, keyName, keyValu
 		CreatedAt: time.Now(),
 	})
 
+	return nil
+}
+
+func (muc *MockUserConnector) DeletePublicKey(u *user.DBUser, keyName string) error {
+	cu, ok := muc.CachedUsers[u.Id]
+	if !ok {
+		return errors.New(fmt.Sprintf("User '%s' doesn't exist", u.Id))
+	}
+
+	newKeys := []user.PubKey{}
+	var found bool = false
+	for _, key := range cu.PubKeys {
+		if key.Name != keyName {
+			newKeys = append(newKeys, key)
+		} else {
+			found = true
+		}
+	}
+	if !found {
+		return errors.New(fmt.Sprintf("User '%s' has no key named '%s'", u.Id, keyName))
+	}
+	cu.PubKeys = newKeys
 	return nil
 }

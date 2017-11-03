@@ -150,4 +150,5 @@ type Connector interface {
 	GetHostStatsByDistro() ([]host.StatsByDistro, error)
 
 	AddPublicKey(*user.DBUser, string, string) error
+	DeletePublicKey(*user.DBUser, string) error
 }

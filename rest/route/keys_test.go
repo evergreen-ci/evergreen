@@ -146,3 +146,76 @@ func TestKeyValidation(t *testing.T) {
 	err2 := validateKeyValue("ssh-rsa YWJjZDEyMzQK")
 	assert.NoError(err2)
 }
+
+type UserConnectorDeleteSuite struct {
+	sc *data.MockConnector
+	rm *RouteManager
+	suite.Suite
+}
+
+func (s *UserConnectorDeleteSuite) SetupTest() {
+	s.rm = getKeysDeleteRouteManager("", 2)
+	s.sc = &data.MockConnector{MockUserConnector: data.MockUserConnector{
+		CachedUsers: map[string]*user.DBUser{
+			"user0": {
+				Id:     "user0",
+				APIKey: "apikey0",
+				PubKeys: []user.PubKey{
+					{
+						Name:      "user0_pubkey0",
+						Key:       "ssh-mock 12345",
+						CreatedAt: time.Now(),
+					},
+					{
+						Name:      "user0_pubkey1",
+						Key:       "ssh-mock 67890",
+						CreatedAt: time.Now(),
+					},
+				},
+			},
+			"user1": {
+				Id:     "user1",
+				APIKey: "apikey1",
+				// no pub keys
+			},
+		},
+	}}
+}
+
+func (s *UserConnectorDeleteSuite) TestDeleteSshKeys() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	s.rm.Methods[0].RequestHandler.(*keysDeleteHandler).keyName = "user0_pubkey0"
+	data, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Empty(data.Result)
+	s.Len(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys, 1)
+
+	s.rm.Methods[0].RequestHandler.(*keysDeleteHandler).keyName = "user0_pubkey1"
+	data2, err2 := s.rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err2)
+	s.Empty(data2.Result)
+	s.Empty(s.sc.MockUserConnector.CachedUsers["user0"].PubKeys)
+}
+
+func (s *UserConnectorDeleteSuite) TestDeleteSshKeysWithEmptyPubKeys() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+
+	s.rm.Methods[0].RequestHandler.(*keysDeleteHandler).keyName = "keythatdoesntexist"
+	data, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Error(err)
+}
+
+func (s *UserConnectorDeleteSuite) TestDeleteSshKeysWithNoUserFails() {
+	s.PanicsWithValue("no user attached to request", func() {
+		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+	})
+}
+
+func TestUserConnectorDeleteSuite(t *testing.T) {
+	s := new(UserConnectorDeleteSuite)
+	suite.Run(t, s)
+}
