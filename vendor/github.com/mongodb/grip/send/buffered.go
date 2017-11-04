@@ -118,6 +118,10 @@ func (s *bufferedSender) backgroundWorker(work <-chan []message.Composer, comple
 }
 
 func (s *bufferedSender) Send(msg message.Composer) {
+	if !s.Level().ShouldLog(msg) {
+		return
+	}
+
 	switch msg := msg.(type) {
 	case *message.GroupComposer:
 		for _, m := range msg.Messages() {

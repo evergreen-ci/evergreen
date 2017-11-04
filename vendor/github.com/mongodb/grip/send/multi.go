@@ -36,7 +36,13 @@ func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) 
 		_ = sender.SetLevel(l)
 	}
 
-	return &multiSender{senders: senders, Base: NewBase(name)}, nil
+	s := &multiSender{senders: senders, Base: NewBase(name)}
+
+	if err := s.Base.SetLevel(l); err != nil {
+		return nil, fmt.Errorf("level %+v is not valid", l)
+	}
+
+	return s, nil
 }
 
 // NewConfiguredMultiSender returns a multi sender implementation with
@@ -104,6 +110,12 @@ func (s *multiSender) SetName(n string) {
 
 func (s *multiSender) Level() LevelInfo { return s.Base.Level() }
 func (s *multiSender) SetLevel(l LevelInfo) error {
+	// if the base level isn't valid, then we shouldn't overwrite
+	// constinuent senders (this is the indication that they were overridden.)
+	if !s.Base.Level().Valid() {
+		return nil
+	}
+
 	if err := s.Base.SetLevel(l); err != nil {
 		return err
 	}
