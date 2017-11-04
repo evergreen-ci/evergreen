@@ -200,7 +200,7 @@ func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHo
 	}
 	startTime := time.Now()
 	// run the teardown script with the agent
-	if err := hostutil.RunSSHCommand("teardown", hostutil.TearDownCommand(h), sshOptions, *h); err != nil {
+	if err = hostutil.RunSSHCommand("teardown", hostutil.TearDownCommand(h), sshOptions, *h); err != nil {
 		return errors.Wrap(err, "error running teardown script on remote host")
 	}
 	event.LogHostTeardown(h.Id, err.Error(), err == nil, time.Since(startTime))

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -1361,9 +1362,11 @@ func resetTaskData() error {
 		Version:     v.Id,
 		Status:      evergreen.TaskFailed,
 	}
+
 	if err := task4.Insert(); err != nil {
 		return err
 	}
 
+	grip.Info("reset task data")
 	return nil
 }
