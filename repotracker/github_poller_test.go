@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 var (
@@ -47,6 +48,7 @@ func resetProjectRefs() {
 
 func init() {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	reporting.QuietMode()
 	resetProjectRefs()
 }
 

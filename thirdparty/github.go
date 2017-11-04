@@ -327,13 +327,11 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 				return true, err
 			}
 			if resp.StatusCode == http.StatusUnauthorized {
-				defer resp.Body.Close()
 				err = errors.Errorf("Calling github GET on %v failed: got 'unauthorized' response", url)
 				grip.Error(err)
 				return false, err
 			}
 			if resp.StatusCode != http.StatusOK {
-				defer resp.Body.Close()
 				err = errors.Errorf("Calling github GET on %v got a bad response code: %v", url, resp.StatusCode)
 			}
 			// read the results
