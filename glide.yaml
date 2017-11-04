@@ -1,9 +1,9 @@
 package: github.com/evergreen-ci/evergreen
 import:
   - package: golang.org/x/crypto
-    subpackages:
-      - ssh
   - package: golang.org/x/net
+  - package: golang.org/x/oauth2
+  - package: golang.org/x/sys/windows
   - package: github.com/vaughan0/go-ini
   - package: github.com/10gen/goamz/
     subpackages:
@@ -48,8 +48,6 @@ import:
     subpackages:
       - compute
   - package: github.com/vmware/govmomi
-  - package: golang.org/x/oauth2
-  - package: golang.org/x/sys/windows
   - package: github.com/mongodb/anser
   - package: github.com/mongodb/amboy
   - package: github.com/tychoish/tarjan
