@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/mongodb/amboy"
@@ -25,6 +26,10 @@ type JobInterchange struct {
 // structure, for easier serialization.
 func MakeJobInterchange(j amboy.Job) (*JobInterchange, error) {
 	typeInfo := j.Type()
+
+	if typeInfo.Version < 0 {
+		return nil, errors.New("cannot use jobs with versions less than 0 with job interchange")
+	}
 
 	dep, err := makeDependencyInterchange(typeInfo.Format, j.Dependency())
 	if err != nil {

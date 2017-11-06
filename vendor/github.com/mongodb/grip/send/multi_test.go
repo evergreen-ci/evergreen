@@ -9,7 +9,8 @@ import (
 )
 
 func TestMultiSenderRespectsLevel(t *testing.T) {
-	// this is a limited test to prevent
+	// this is a limited test to prevent level filtering to behave
+	// differently than expected
 	assert := assert.New(t) // nolint
 
 	mock, err := NewInternalLogger("mock", LevelInfo{Default: level.Critical, Threshold: level.Alert})

@@ -2,6 +2,7 @@ package send
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -57,6 +58,13 @@ func (s *SenderSuite) SetupTest() {
 	s.senders["native"] = native
 
 	s.senders["writer"] = NewWriterSender(native)
+
+	var asyncOne, asyncTwo Sender
+	asyncOne, err = NewNativeLogger("async-one", l)
+	s.Require().NoError(err)
+	asyncTwo, err = NewNativeLogger("async-two", l)
+	s.Require().NoError(err)
+	s.senders["async"] = NewAsyncGroupSender(context.Background(), 16, asyncOne, asyncTwo)
 
 	nativeErr, err := NewErrorLogger("error", l)
 	s.Require().NoError(err)
@@ -206,6 +214,13 @@ func (s *SenderSuite) TestLevelSetterRejectsInvalidSettings() {
 	}
 
 	for n, sender := range s.senders {
+		if n == "async" {
+			// the async sender doesn't meaningfully have
+			// its own level because it passes this down
+			// to its constituent senders.
+			continue
+		}
+
 		s.NoError(sender.SetLevel(LevelInfo{level.Debug, level.Alert}))
 		for _, l := range levels {
 			s.True(sender.Level().Valid(), string(n))

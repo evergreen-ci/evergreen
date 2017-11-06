@@ -88,6 +88,7 @@ func (g *Group) Run() {
 		runnableJob, err := registry.ConvertToJob(job)
 		if err != nil {
 			g.AddError(err)
+			continue
 		}
 
 		depState := runnableJob.Dependency().State()

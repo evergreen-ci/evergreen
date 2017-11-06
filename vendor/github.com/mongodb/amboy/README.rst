@@ -114,6 +114,13 @@ JSON formated Job object can use the REST API.
 See the documentation of the `REST package
 <https://godoc.org/github.com/mongodb/amboy/rest>`_
 
+Logger
+~~~~~~
+
+The Logger package provides amboy.Queue backed implementation of the
+grip logging system's sender interface for asynchronous log message
+delivery. These jobs do not support remote-backed queues.
+
 Patterns
 --------
 
