@@ -50,7 +50,7 @@ func (s *UserTestSuite) SetupTest() {
 	}
 }
 
-func (s *UserTestSuite) TeardownTest() {
+func (s *UserTestSuite) TearDownTest() {
 	s.NoError(db.ClearCollections(Collection))
 }
 
