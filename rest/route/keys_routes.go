@@ -143,7 +143,7 @@ func (h *keysPostHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	if _, err := u.GetPublicKey(h.keyName); err == nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    "duplicate key name",
+			Message:    "a public key with this name already exists for user",
 		}
 	}
 
