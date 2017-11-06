@@ -82,6 +82,7 @@ func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Gener
 			Collection: tasksCollection,
 		},
 		Query: bson.M{"testresults.0": bson.M{"$exists": true}},
+		JobID: "migration-testresults-tasks",
 	}
 
 	oldTasksopts := model.GeneratorOptions{
@@ -90,6 +91,7 @@ func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Gener
 			Collection: oldTasksCollection,
 		},
 		Query: bson.M{"testresults.0": bson.M{"$exists": true}},
+		JobID: "migration-testresults-oldtasks",
 	}
 
 	return []anser.Generator{
