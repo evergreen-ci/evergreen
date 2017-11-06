@@ -187,6 +187,7 @@ Admin Settings
           <h2 class="modal-title">[[modalTitle]]</h2>
         </div>
         <div class="modal-body">
+          <div id="divMsg"></div>
           <div>The following [[tasks.length]] tasks will be restarted:</div>
           <div id="tasksDisplay">
             <li ng-repeat="task in tasks" class="link" ng-click="jumpToTask(task)">[[task]]</li>

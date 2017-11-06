@@ -93,11 +93,10 @@ func ActivatePreviousTask(taskId, caller string) error {
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
 func resetTask(taskId string) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
-
 	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
@@ -116,7 +115,7 @@ func resetTask(taskId string) error {
 
 // TryResetTask resets a task
 func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.TaskEndDetail) error {
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -362,7 +361,7 @@ func updateMakespans(b *build.Build) error {
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	// retrieve the task by the task id
-	t, err := task.FindOne(task.ById(taskId))
+	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -624,8 +623,8 @@ type RestartTaskResults struct {
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
 // It returns a slice of task IDs that were successfully restarted as well as a slice
 // of task IDs that failed to restart
-// the dryRun parameter will return the tasks that will be restarted if sent true
-// the red and purple params will only restart tasks that were failed due to the test
+// opts.dryRun will return the tasks that will be restarted if sent true
+// opts.red and opts.purple will only restart tasks that were failed due to the test
 // or due to the system, respectively
 func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartTaskOptions) (RestartTaskResults, error) {
 	results := RestartTaskResults{}
@@ -647,13 +646,21 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartT
 			evergreen.TaskSystemUnresponse)
 	}
 
+	// if this is a dry run, immediately return the tasks found
+	if opts.DryRun {
+		for _, t := range tasksToRestart {
+			results.TasksRestarted = append(results.TasksRestarted, t.Id)
+		}
+		return results, nil
+	}
+
+	return doRestartFailedTasks(tasksToRestart, user, results), nil
+}
+
+func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskResults) RestartTaskResults {
 	var tasksErrored []string
 
-	for _, t := range tasksToRestart {
-		if opts.DryRun {
-			results.TasksRestarted = append(results.TasksRestarted, t.Id)
-			continue
-		}
+	for _, t := range tasks {
 		projectRef, err := FindOneProjectRef(t.Project)
 		if err != nil {
 			tasksErrored = append(tasksErrored, t.Id)
@@ -689,10 +696,7 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartT
 			results.TasksRestarted = append(results.TasksRestarted, t.Id)
 		}
 	}
+	results.TasksErrored = tasksErrored
 
-	if !opts.DryRun {
-		results.TasksErrored = tasksErrored
-	}
-
-	return results, nil
+	return results
 }

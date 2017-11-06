@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	dataModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -272,11 +273,12 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 
 func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	resp, err := sc.RestartFailedTasks(h.StartTime, h.EndTime, u.Username(), dataModel.RestartTaskOptions{
+	opts := dataModel.RestartTaskOptions{
 		DryRun:     h.DryRun,
 		OnlyRed:    h.OnlyRed,
 		OnlyPurple: h.OnlyPurple,
-	})
+	}
+	resp, err := sc.RestartFailedTasks(evergreen.GetEnvironment(), h.StartTime, h.EndTime, u.Username(), opts)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Error restarting tasks")
