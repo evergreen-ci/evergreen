@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
 
@@ -49,8 +48,6 @@ func (c *AgentCommand) Execute(_ []string) error {
 	}
 
 	grip.SetName("evergreen.agent")
-	grip.Warning(grip.SetDefaultLevel(level.Info))
-	grip.Warning(grip.SetThreshold(level.Debug))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

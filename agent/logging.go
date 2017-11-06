@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -35,7 +35,7 @@ func GetSender(prefix, taskId string) (send.Sender, error) {
 		senders []send.Sender
 	)
 
-	level := grip.GetSender().Level()
+	level := send.LevelInfo{Default: level.Info, Threshold: level.Debug}
 
 	if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
 		sender, err = send.NewSplunkLogger(taskId, splunk, level)
