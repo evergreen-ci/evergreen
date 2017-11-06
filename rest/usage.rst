@@ -1200,4 +1200,7 @@ Add a Public Key to the Current User
  If the key was successfully inserted, the server will return HTTP status code
  200 OK
 
+ If the a key with the supplied name already exists, the key will not be added,
+ and the route will return status code 400 Bad Request.
+
  Any other status code indicates that the key was not successfully added.
