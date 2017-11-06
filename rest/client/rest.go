@@ -293,10 +293,13 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 		path:    "keys/" + keyName,
 	}
 
-	resp, client_err := c.request(ctx, info, "")
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrap(err, "problem reaching evergreen API server")
+	}
 	defer resp.Body.Close()
-	if client_err != nil || resp.StatusCode != http.StatusOK {
-		return errors.Wrap(client_err, "problem deleting key")
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(err, "problem deleting key")
 	}
 
 	return nil
