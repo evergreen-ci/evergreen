@@ -81,7 +81,7 @@ func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Gener
 			DB:         db,
 			Collection: tasksCollection,
 		},
-		Query: bson.M{"testresults.0": bson.M{"$exists": true}},
+		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
 		JobID: "migration-testresults-tasks",
 	}
 
