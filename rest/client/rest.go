@@ -247,10 +247,10 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 	}
 
 	resp, client_err := c.request(ctx, info, "")
-	defer resp.Body.Close()
 	if client_err != nil {
 		return nil, errors.Wrap(client_err, "problem fetching keys list")
 	}
+	defer resp.Body.Close()
 
 	keys := []model.APIPubKey{}
 
