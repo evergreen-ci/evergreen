@@ -73,12 +73,10 @@ func MakeSlackLogger(opts *SlackOptions) (Sender, error) {
 
 func (s *slackJournal) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
-		msg := m.String()
-
 		s.Base.mutex.RLock()
 		defer s.Base.mutex.RUnlock()
 
-		params := s.opts.getParams(m)
+		msg, params := s.opts.produceMessage(m)
 		if err := s.opts.client.ChatPostMessage(s.opts.Channel, msg, params); err != nil {
 			s.ErrorHandler(err, message.NewFormattedMessage(m.Priority(),
 				"%s: %s\n", params.Attachments[0].Fallback, msg))
@@ -114,7 +112,7 @@ type SlackOptions struct {
 }
 
 func (o *SlackOptions) fieldSetShouldInclude(name string) bool {
-	if name == "time" || name == message.FieldsMsgName {
+	if name == "time" || name == "metadata" {
 		return false
 	}
 
@@ -174,7 +172,9 @@ func (o *SlackOptions) Validate() error {
 	return nil
 }
 
-func (o *SlackOptions) getParams(m message.Composer) *slack.ChatPostMessageOpt {
+func (o *SlackOptions) produceMessage(m message.Composer) (string, *slack.ChatPostMessageOpt) {
+	var msg string
+
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 
@@ -207,7 +207,7 @@ func (o *SlackOptions) getParams(m message.Composer) *slack.ChatPostMessageOpt {
 		fallbacks = append(fallbacks, fmt.Sprintf("priority=%s", p))
 		attachment.Fields = append(attachment.Fields,
 			&slack.AttachmentField{
-				Title: "Priority",
+				Title: "priority",
 				Value: p.String(),
 				Short: true,
 			})
@@ -215,12 +215,8 @@ func (o *SlackOptions) getParams(m message.Composer) *slack.ChatPostMessageOpt {
 
 	if o.Fields {
 		fields, ok := m.Raw().(message.Fields)
-
 		if ok {
 			for k, v := range fields {
-				if k == message.FieldsMsgName {
-					continue
-				}
 				if !o.fieldSetShouldInclude(k) {
 					continue
 				}
@@ -234,7 +230,11 @@ func (o *SlackOptions) getParams(m message.Composer) *slack.ChatPostMessageOpt {
 						Short: true,
 					})
 			}
+		} else {
+			msg = m.String()
 		}
+	} else {
+		msg = m.String()
 	}
 
 	if len(fallbacks) > 0 {
@@ -251,7 +251,7 @@ func (o *SlackOptions) getParams(m message.Composer) *slack.ChatPostMessageOpt {
 
 	}
 
-	return &slack.ChatPostMessageOpt{
+	return msg, &slack.ChatPostMessageOpt{
 		Attachments: []*slack.Attachment{&attachment},
 	}
 }

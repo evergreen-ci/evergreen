@@ -116,47 +116,55 @@ func (s *SlackSuite) TestGetParamsWithAttachementOptsDisabledLevelImpact() {
 	s.False(opts.Fields)
 	s.False(opts.BasicMetadata)
 
-	params := opts.getParams(message.NewString("foo"))
+	msg, params := opts.produceMessage(message.NewString("foo"))
 	s.Equal("good", params.Attachments[0].Color)
+	s.Equal("foo", msg)
 
 	for _, l := range []level.Priority{level.Emergency, level.Alert, level.Critical} {
-		params = opts.getParams(message.NewDefaultMessage(l, "foo"))
+		msg, params = opts.produceMessage(message.NewDefaultMessage(l, "foo"))
 		s.Equal("danger", params.Attachments[0].Color)
+		s.Equal("foo", msg)
 	}
 
 	for _, l := range []level.Priority{level.Warning, level.Notice} {
-		params = opts.getParams(message.NewDefaultMessage(l, "foo"))
+		msg, params = opts.produceMessage(message.NewDefaultMessage(l, "foo"))
 		s.Equal("warning", params.Attachments[0].Color)
+		s.Equal("foo", msg)
 	}
 
 	for _, l := range []level.Priority{level.Debug, level.Info, level.Trace} {
-		params = opts.getParams(message.NewDefaultMessage(l, "foo"))
+		msg, params = opts.produceMessage(message.NewDefaultMessage(l, "foo"))
 		s.Equal("good", params.Attachments[0].Color)
+		s.Equal("foo", msg)
 	}
 }
 
-func (s *SlackSuite) TestGetParamsWithBasicMetaDataEnabled() {
+func (s *SlackSuite) TestProduceMessageWithBasicMetaDataEnabled() {
 	opts := &SlackOptions{BasicMetadata: true}
 	s.False(opts.Fields)
 	s.True(opts.BasicMetadata)
 
-	params := opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))
+	msg, params := opts.produceMessage(message.NewDefaultMessage(level.Alert, "foo"))
 	s.Equal("danger", params.Attachments[0].Color)
+	s.Equal("foo", msg)
 	s.Len(params.Attachments[0].Fields, 1)
 	s.True(strings.Contains(params.Attachments[0].Fallback, "priority=alert"), params.Attachments[0].Fallback)
 
 	opts.Hostname = "!"
-	params = opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))
+	msg, params = opts.produceMessage(message.NewDefaultMessage(level.Alert, "foo"))
+	s.Equal("foo", msg)
 	s.Len(params.Attachments[0].Fields, 1)
 	s.False(strings.Contains(params.Attachments[0].Fallback, "host"), params.Attachments[0].Fallback)
 
 	opts.Hostname = "foo"
-	params = opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))
+	msg, params = opts.produceMessage(message.NewDefaultMessage(level.Alert, "foo"))
+	s.Equal("foo", msg)
 	s.Len(params.Attachments[0].Fields, 2)
 	s.True(strings.Contains(params.Attachments[0].Fallback, "host=foo"), params.Attachments[0].Fallback)
 
 	opts.Name = "foo"
-	params = opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))
+	msg, params = opts.produceMessage(message.NewDefaultMessage(level.Alert, "foo"))
+	s.Equal("foo", msg)
 	s.Len(params.Attachments[0].Fields, 3)
 	s.True(strings.Contains(params.Attachments[0].Fallback, "journal=foo"), params.Attachments[0].Fallback)
 }
@@ -171,29 +179,36 @@ func (s *SlackSuite) TestFieldsMessageTypeIntegration() {
 		"foo":     true,
 	}
 
-	params := opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))
+	msg, params := opts.produceMessage(message.NewDefaultMessage(level.Alert, "foo"))
+	s.Equal("foo", msg)
 	s.Equal("danger", params.Attachments[0].Color)
 	s.Len(params.Attachments[0].Fields, 0)
 
 	// if the fields are nil, then we end up ignoring things, except the message
-	params = opts.getParams(message.NewFieldsMessage(level.Alert, "foo", message.Fields{}))
-	s.Len(params.Attachments[0].Fields, 0)
+	msg, params = opts.produceMessage(message.NewFieldsMessage(level.Alert, "foo", message.Fields{}))
+	s.Equal("", msg)
+	s.Len(params.Attachments[0].Fields, 1)
 
 	// when msg and the message match we ignore
-	params = opts.getParams(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"msg": "foo"}))
-	s.Len(params.Attachments[0].Fields, 0)
-
-	params = opts.getParams(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"foo": "bar"}))
+	msg, params = opts.produceMessage(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"msg": "foo"}))
+	s.Equal("", msg)
 	s.Len(params.Attachments[0].Fields, 1)
 
-	params = opts.getParams(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"other": "baz"}))
-	s.Len(params.Attachments[0].Fields, 1)
-
-	params = opts.getParams(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"untracked": "false", "other": "bar"}))
-	s.Len(params.Attachments[0].Fields, 1)
-
-	params = opts.getParams(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"foo": "false", "other": "bass"}))
+	msg, params = opts.produceMessage(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"foo": "bar"}))
+	s.Equal("", msg)
 	s.Len(params.Attachments[0].Fields, 2)
+
+	msg, params = opts.produceMessage(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"other": "baz"}))
+	s.Equal("", msg)
+	s.Len(params.Attachments[0].Fields, 2)
+
+	msg, params = opts.produceMessage(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"untracked": "false", "other": "bar"}))
+	s.Equal("", msg)
+	s.Len(params.Attachments[0].Fields, 2)
+
+	msg, params = opts.produceMessage(message.NewFieldsMessage(level.Alert, "foo", message.Fields{"foo": "false", "other": "bass"}))
+	s.Equal("", msg)
+	s.Len(params.Attachments[0].Fields, 3)
 }
 
 func (s *SlackSuite) TestMockSenderWithMakeConstructor() {
@@ -274,4 +289,23 @@ func (s *SlackSuite) TestCreateMethodChangesClientState() {
 	s.Equal(base, new)
 	new.Create("foo")
 	s.NotEqual(base, new)
+}
+
+func (s *SlackSuite) TestSendMethodDoesIncorrectlyAllowTooLowMessages() {
+	sender, err := NewSlackLogger(s.opts, "foo", LevelInfo{level.Trace, level.Info})
+	s.NotNil(sender)
+	s.NoError(err)
+
+	mock, ok := s.opts.client.(*slackClientMock)
+	s.True(ok)
+	s.Equal(mock.numSent, 0)
+
+	sender.SetLevel(LevelInfo{Default: level.Critical, Threshold: level.Alert})
+	s.Equal(mock.numSent, 0)
+	sender.Send(message.NewDefaultMessage(level.Info, "hello"))
+	s.Equal(mock.numSent, 0)
+	sender.Send(message.NewDefaultMessage(level.Alert, "hello"))
+	s.Equal(mock.numSent, 1)
+	sender.Send(message.NewDefaultMessage(level.Alert, "hello"))
+	s.Equal(mock.numSent, 2)
 }

@@ -391,7 +391,7 @@ func (s *Settings) GetSender() (send.Sender, error) {
 			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
-			senders = append(senders, send.NewBufferedSender(sender, 10*time.Second, 3))
+			senders = append(senders, sender)
 		}
 		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
 	}

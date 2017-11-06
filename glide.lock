@@ -9,8 +9,6 @@ imports:
     version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
     subpackages:
       - context
-  - name: github.com/pkg/sftp
-    version: 506297c9013d2893d5c5daaa9155e7333a1c58de
   - name: github.com/vaughan0/go-ini
     version: a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
   - name: github.com/10gen/goamz # github.com/goamz/goamz
@@ -111,7 +109,7 @@ imports:
     version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
 
   - name: github.com/mongodb/grip
-    version: d18f59a65e9fd93872ebae7657af07c32be6b3f7
+    version: d4bea6d9c27d435df70e20c8a97a8e86a84acc02
   - name: github.com/mongodb/anser
     version: bb062a07cc15212d7fdb578481ac45a01acc185b
   - name: github.com/mongodb/amboy
