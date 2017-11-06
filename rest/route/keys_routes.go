@@ -194,6 +194,13 @@ func (h *keysDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 func (h *keysDeleteHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	user := MustHaveUser(ctx)
 
+	if _, err := user.GetPublicKey(h.keyName); err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("key with name '%s' does not exist", h.keyName),
+		}
+	}
+
 	if err := sc.DeletePublicKey(user, h.keyName); err != nil {
 		return ResponseData{}, errors.New("couldn't delete key")
 	}

@@ -1218,4 +1218,7 @@ Delete A Specified Public Key from the Current User
  If a public key with name '{key_name}' was successfully deleted, HTTP
  status code 200 OK will be returned.
 
+ If a public key with name '{key_name}' does not exist, HTTP status code 400
+ Bad Request will be returned.
+
  Any other code indicates that the public key was not deleted
