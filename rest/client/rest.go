@@ -274,10 +274,13 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 		Key:  model.APIString(keyValue),
 	}
 
-	resp, client_err := c.request(ctx, info, key)
+	resp, err := c.request(ctx, info, key)
+	if err != nil {
+		return errors.Wrap(err, "problem reaching evergreen API server")
+	}
 	defer resp.Body.Close()
-	if client_err != nil || resp.StatusCode != http.StatusOK {
-		return errors.Wrap(client_err, "problem adding key")
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(err, "problem adding key")
 	}
 
 	return nil
