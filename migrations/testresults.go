@@ -41,6 +41,7 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
 		testresults := []testResult{}
 		var id string
+		var oldTaskID string
 		var execution int
 		for _, raw := range rawD {
 			switch raw.Name {
@@ -55,6 +56,10 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 				if err := raw.Value.Unmarshal(&id); err != nil {
 					return errors.Wrap(err, "error unmarshaling task id")
 				}
+			case "old_task_id":
+				if err := raw.Value.Unmarshal(&oldTaskID); err != nil {
+					return errors.Wrap(err, "error unmarshaling task id")
+				}
 			case "execution":
 				if err := raw.Value.Unmarshal(&execution); err != nil {
 					return errors.Wrap(err, "error unmarshaling task execution")
@@ -63,7 +68,11 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 		}
 
 		for _, test := range testresults {
-			test.TaskID = id
+			if oldTaskID == "" {
+				test.TaskID = id
+			} else {
+				test.TaskID = oldTaskID
+			}
 			test.Execution = execution
 			if err := evg.Insert(testResultsCollection, test); err != nil {
 				return errors.Wrap(err, "error saving testresult")
@@ -90,13 +99,13 @@ func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Gener
 			DB:         db,
 			Collection: oldTasksCollection,
 		},
-		Query: bson.M{"testresults.0": bson.M{"$exists": true}},
+		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
 		JobID: "migration-testresults-oldtasks",
 	}
 
 	return []anser.Generator{
-		anser.NewManualMigrationGenerator(env, tasksOpts, "tasksTestResultsMigration"),
-		anser.NewManualMigrationGenerator(env, oldTasksopts, "oldTasksTestResultsMigration"),
+		anser.NewManualMigrationGenerator(env, tasksOpts, "tasks_testresults"),
+		anser.NewManualMigrationGenerator(env, oldTasksopts, "old_tasks_testresults"),
 	}
 }
 

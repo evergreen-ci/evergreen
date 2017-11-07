@@ -22,18 +22,40 @@ type TestResultsMigrationSuite struct {
 	migration     db.MigrationOperation
 	collection    string
 	database      *mgo.Database
+	taskID        string
+	oldTaskID     string
 }
 
 func TestTestResultsMigration(t *testing.T) {
 	s := &TestResultsMigrationSuite{
 		migration:  makeTaskMigrationFunction(tasksCollection),
 		collection: tasksCollection,
+		task: bson.M{
+			"_id":       "taskid-1",
+			"secret":    "secret-1",
+			"version":   "version-1",
+			"branch":    "project-1",
+			"gitspec":   "revision-1",
+			"execution": 1,
+		},
+		taskID: "taskid-1",
 	}
 	suite.Run(t, s)
 
 	s = &TestResultsMigrationSuite{
 		migration:  makeTaskMigrationFunction(oldTasksCollection),
 		collection: oldTasksCollection,
+		task: bson.M{
+			"_id":         "taskid-1_1",
+			"secret":      "secret-1",
+			"version":     "version-1",
+			"branch":      "project-1",
+			"gitspec":     "revision-1",
+			"execution":   1,
+			"old_task_id": "taskid-1",
+		},
+		taskID:    "taskid-1_1",
+		oldTaskID: "taskid-1",
 	}
 	suite.Run(t, s)
 }
@@ -45,15 +67,6 @@ func (s *TestResultsMigrationSuite) SetupSuite() {
 	s.Require().NoError(err)
 	s.dbName = database.Name
 	s.session = db.WrapSession(mgoSession)
-
-	s.task = bson.M{
-		"_id":       "taskid-1",
-		"secret":    "secret-1",
-		"version":   "version-1",
-		"branch":    "project-1",
-		"gitspec":   "revision-1",
-		"execution": 1,
-	}
 
 	s.invariantTask = bson.M{
 		"_id":       "taskid-2",
@@ -107,16 +120,12 @@ func (s *TestResultsMigrationSuite) SetupTest() {
 	s.Require().NoError(evg.Insert(s.collection, s.invariantTask))
 }
 
-func (s *TestResultsMigrationSuite) TearDownTest() {
-
-}
-
 func (s *TestResultsMigrationSuite) TestNoTestResults() {
 	s.Require().NoError(evg.Insert(s.collection, s.task))
 
 	var doc bson.RawD
 	coll := s.session.DB(s.dbName).C(s.collection)
-	s.Require().NoError(coll.FindId("taskid-1").One(&doc))
+	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
 	s.Assert().NoError(s.migration(s.session, doc))
 
 	count, err := evg.Count(s.collection, bson.M{})
@@ -124,7 +133,7 @@ func (s *TestResultsMigrationSuite) TestNoTestResults() {
 	s.Equal(2, count)
 
 	var task bson.M
-	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
 	s.NotContains(task, "test_results")
 
 	count, err = evg.Count(testResultsCollection, bson.M{})
@@ -138,13 +147,13 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 
 	// the task has test_results
 	var task bson.M
-	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
 	s.Contains(task, "test_results")
 
 	// run the migration
 	var doc bson.RawD
 	coll := s.session.DB(s.dbName).C(s.collection)
-	s.Require().NoError(coll.FindId("taskid-1").One(&doc))
+	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
 	s.Assert().NoError(s.migration(s.session, doc))
 
 	// there's still 2 tasks
@@ -153,7 +162,7 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 	s.Equal(2, count)
 
 	// the task no longer contains test results
-	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": s.taskID}).One(&task))
 	s.NotContains(task, "test_results")
 
 	// the test results collection has the correct items
@@ -172,7 +181,14 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 		s.Equal(i+1, test["exit_code"])
 		s.Equal(float64(i+1), test["start"])
 		s.Equal(float64(i+1), test["end"])
-		s.Equal("taskid-1", test["task_id"])
 		s.Equal(1, test["task_execution"])
+
+		// for a task in the tasks collection, testresult.task_id should equal task._id, but
+		// for a task in the old_tasks collection, testresult.task_id should equal old_task.old_task_id
+		if s.oldTaskID == "" {
+			s.Equal(s.taskID, test["task_id"])
+		} else {
+			s.Equal(s.oldTaskID, test["task_id"])
+		}
 	}
 }
