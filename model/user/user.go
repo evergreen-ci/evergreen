@@ -1,7 +1,6 @@
 package user
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -112,7 +111,7 @@ func (u *DBUser) DeletePublicKey(keyName string) error {
 		return errors.Wrap(err, "couldn't delete public key from user")
 	}
 	if change.Updated != 1 {
-		return errors.New(fmt.Sprintf("public key deletion query succeeded but unexpected ChangeInfo: %+v", change))
+		return errors.Errorf("public key deletion query succeeded but unexpected ChangeInfo: %+v", change)
 	}
 	u.PubKeys = newUser.PubKeys
 	return nil
