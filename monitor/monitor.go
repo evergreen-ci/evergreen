@@ -98,9 +98,7 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	// clean up any necessary tasks
-	errs := withGlobalLock("task cleanup",
-		func() []error { return taskMonitor.CleanupTasks(ctx, projects) })
-	for _, err := range errs {
+	for _, err := range taskMonitor.CleanupTasks(ctx, projects) {
 		grip.Error(errors.Wrap(err, "Error cleaning up tasks"))
 	}
 
@@ -113,12 +111,8 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 		flaggingFuncs:   defaultHostFlaggingFuncs,
 		monitoringFuncs: defaultHostMonitoringFuncs,
 	}
-
 	// clean up any necessary hosts
-	errs = withGlobalLock("host cleanup",
-		func() []error { return hostMonitor.CleanupHosts(ctx, distros, settings) })
-
-	for _, err := range errs {
+	for _, err := range hostMonitor.CleanupHosts(ctx, distros, settings) {
 		grip.Error(errors.Wrap(err, "Error cleaning up hosts"))
 	}
 
@@ -127,9 +121,7 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	// run monitoring checks
-	errs = withGlobalLock("host monitoring",
-		func() []error { return hostMonitor.RunMonitoringChecks(ctx, settings) })
-	for _, err := range errs {
+	for _, err := range hostMonitor.RunMonitoringChecks(ctx, settings) {
 		grip.Error(errors.Wrap(err, "Error running host monitoring checks"))
 	}
 
@@ -143,8 +135,7 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	// send notifications
-	errs = notifier.Notify(settings)
-	for _, err := range errs {
+	for _, err := range notifier.Notify(settings) {
 		grip.Error(errors.Wrap(err, "Error sending notifications"))
 	}
 
@@ -165,33 +156,4 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	return nil
-}
-
-// withGlobalLock is a wrapper for grabbing the global lock for each segment of the monitor.
-func withGlobalLock(name string, f func() []error) (errs []error) {
-	grip.Debugln("Attempting to acquire global lock for monitor:", name)
-	// sleep for 1 second to give other spinning locks a chance to preempt this one
-	time.Sleep(time.Second)
-	acquired, err := db.WaitTillAcquireGlobalLock(name, db.LockTimeout)
-	if err != nil {
-		grip.Errorf("problem acquiring global lock for monitor %s: %+v", name, err)
-		return []error{errors.Errorf("error acquiring global lock for %s: %v", name, err)}
-	}
-
-	if !acquired {
-		grip.Errorln("Timed out attempting to acquire global lock for monitor:", name)
-		return []error{errors.Errorf("timed out acquiring global lock for monitor %s", name)}
-	}
-	defer func() {
-		grip.Debugln("Releasing global lock for monitor", name)
-		if err := db.ReleaseGlobalLock(name); err != nil {
-			grip.Errorf("Error releasing global lock for monitor %s: %+v", name, err)
-			errs = append(errs, errors.Errorf("error releasing global lock for monitor %v: %v", name, err))
-		} else {
-			grip.Debugln("Released global lock for monitor:", name)
-		}
-	}()
-	grip.Debugln("Acquired global lock for monitor:", name)
-	errs = f()
-	return errs
 }
