@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -199,13 +200,10 @@ func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHo
 		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 	}
 	startTime := time.Now()
-	// run the teardown script with the agent
-	if err = hostutil.RunSSHCommand("teardown", hostutil.TearDownCommand(h), sshOptions, *h); err != nil {
-		return errors.Wrap(err, "error running teardown script on remote host")
-	}
-	event.LogHostTeardown(h.Id, err.Error(), err == nil, time.Since(startTime))
+	logs, err := hostutil.RunRemoteScript(ctx, h, filepath.Join("~", "teardown.sh"), sshOptions)
+	event.LogHostTeardown(h.Id, logs, err == nil, time.Since(startTime))
 	if err != nil {
-		return errors.Wrapf(err, "error running %s over ssh", evergreen.TeardownScriptName)
+		return errors.Wrapf(err, "error running teardown.sh over ssh: %v", logs)
 	}
 	return nil
 }

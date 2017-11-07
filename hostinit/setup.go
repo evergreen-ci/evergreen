@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -503,25 +502,22 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			grip.ErrorWhenf(err != nil, "Failed to fetch data onto host %s: %v", h.Id, err)
 		}
 
+		grip.Infof("Running setup script for spawn host %s", h.Id)
+		args := []string{lcr.BinaryPath, "host", "setup", fmt.Sprintf("--working_directory=%s", h.Distro.WorkDir)}
+		if h.Distro.SetupAsSudo {
+			args = append(args, "--setup_as_sudo")
+		}
 		cloudHost, err := providers.GetCloudHost(h, init.Settings)
 		if err != nil {
-			return errors.Wrapf(err, "Failed to get cloud host for %s", h.Id)
+			return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
 		}
 		sshOptions, err := cloudHost.GetSSHOptions()
 		if err != nil {
-			return errors.Wrapf(err, "Error getting ssh options for host %s", h.Id)
+			return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 		}
-
-		d, err := distro.FindOne(distro.ById(h.Distro.Id))
+		out, err := hostutil.RunRemoteScript(ctx, h, strings.Join(args, " "), sshOptions)
 		if err != nil {
-			return errors.Wrapf(err, "error finding distro %s", h.Distro.Id)
-		}
-		h.Distro = *d
-
-		grip.Infof("Running setup script for spawn host %s", h.Id)
-		// run the setup script with the agent
-		if err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
-			return errors.Wrap(err, "error running setup script on remote host")
+			return errors.Wrapf(err, "error running setup script with agent for host %s (%s)", h.Id, out)
 		}
 	}
 
