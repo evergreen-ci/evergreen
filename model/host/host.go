@@ -334,10 +334,13 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 			},
 		})
 
+	if err != nil {
+		return err
+	}
+
 	host.RunningTask = ""
 
-	return err
-
+	return nil
 }
 
 // UpdateRunningTask takes two id strings - an old task and a new one - finds
