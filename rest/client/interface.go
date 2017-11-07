@@ -126,4 +126,6 @@ type Communicator interface {
 
 	// Fetch the current authenticated user's public keys
 	GetCurrentUsersKeys(context.Context) ([]restmodel.APIPubKey, error)
+
+	AddPublicKey(context.Context, string, string) error
 }

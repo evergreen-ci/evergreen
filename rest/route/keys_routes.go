@@ -140,6 +140,13 @@ func validateKeyValue(keyValue string) error {
 func (h *keysPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
+	if _, err := u.GetPublicKey(h.keyName); err == nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "a public key with this name already exists for user",
+		}
+	}
+
 	if err := sc.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
 		return ResponseData{}, errors.Wrap(err, "failed to add key")
 	}
