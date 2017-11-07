@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -131,13 +130,8 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 							grip.Debugf("host %s not found in EC2, changed to terminated", hostToTerminate.Id)
 							return
 						}
-						if err == util.ErrTimedOut {
-							catcher.Add(errors.Errorf("timeout terminating host %s", hostToTerminate.Id))
-							return
-						}
-						err = errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id)
-						catcher.Add(err)
-						grip.Warning(err)
+
+						catcher.Add(errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id))
 					}
 				}()
 

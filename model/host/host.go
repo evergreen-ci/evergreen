@@ -316,9 +316,6 @@ func (h *Host) MarkAsProvisioned() error {
 // ClearRunningTask unsets the running task key on the host and updates the last task
 // completed fields.
 func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) error {
-	host.LastTaskCompleted = prevTaskId
-	host.LastTaskCompletedTime = finishTime
-	event.LogHostRunningTaskCleared(host.Id, prevTaskId)
 	err := UpdateOne(
 		bson.M{
 			IdKey:          host.Id,
@@ -338,7 +335,10 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 		return err
 	}
 
+	event.LogHostRunningTaskCleared(host.Id, prevTaskId)
 	host.RunningTask = ""
+	host.LastTaskCompleted = prevTaskId
+	host.LastTaskCompletedTime = finishTime
 
 	return nil
 }
