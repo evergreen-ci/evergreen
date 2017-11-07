@@ -88,6 +88,35 @@ func (u *DBUser) AddPublicKey(keyName, keyValue string) error {
 	return nil
 }
 
+func (u *DBUser) DeletePublicKey(keyName string) error {
+	newUser := DBUser{}
+
+	selector := bson.M{
+		IdKey: u.Id,
+		bsonutil.GetDottedKeyName(PubKeysKey, PubKeyNameKey): bson.M{"$eq": keyName},
+	}
+	c := mgo.Change{
+		Update: bson.M{
+			"$pull": bson.M{
+				PubKeysKey: bson.M{
+					PubKeyNameKey: keyName,
+				},
+			},
+		},
+		ReturnNew: true,
+	}
+	change, err := db.FindAndModify(Collection, selector, nil, c, &newUser)
+
+	if err != nil {
+		return errors.Wrap(err, "couldn't delete public key from user")
+	}
+	if change.Updated != 1 {
+		return errors.Errorf("public key deletion query succeeded but unexpected ChangeInfo: %+v", change)
+	}
+	u.PubKeys = newUser.PubKeys
+	return nil
+}
+
 func (u *DBUser) PublicKeys() []PubKey {
 	return u.PubKeys
 }

@@ -50,7 +50,7 @@ func (s *UserTestSuite) SetupTest() {
 	}
 }
 
-func (s *UserTestSuite) TeardownTest() {
+func (s *UserTestSuite) TearDownTest() {
 	s.NoError(db.ClearCollections(Collection))
 }
 
@@ -96,4 +96,24 @@ func (s *UserTestSuite) TestAddDuplicateKeyFails() {
 func (s *UserTestSuite) checkUserNotDestroyed(fromDB *DBUser, expected *DBUser) {
 	s.Equal(fromDB.Id, expected.Id)
 	s.Equal(fromDB.APIKey, expected.APIKey)
+}
+
+func (s *UserTestSuite) TestDeletePublicKey() {
+	s.NoError(s.users[1].DeletePublicKey("key1"))
+	s.Len(s.users[1].PubKeys, 0)
+	s.Equal("67890", s.users[1].APIKey)
+
+	u, err := FindOne(ById(s.users[1].Id))
+	s.NoError(err)
+	s.checkUserNotDestroyed(u, s.users[1])
+}
+
+func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
+	s.Error(s.users[0].DeletePublicKey("key1"))
+	s.Len(s.users[0].PubKeys, 0)
+	s.Equal("12345", s.users[0].APIKey)
+
+	u, err := FindOne(ById(s.users[0].Id))
+	s.NoError(err)
+	s.checkUserNotDestroyed(u, s.users[0])
 }

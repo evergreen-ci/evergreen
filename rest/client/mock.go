@@ -440,3 +440,7 @@ func (c *Mock) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, erro
 func (c *Mock) AddPublicKey(ctx context.Context, keyName, keyValue string) error {
 	return errors.New("(c *Mock) AddPublicKey not implemented")
 }
+
+func (c *Mock) DeletePublicKey(ctx context.Context, keyName string) error {
+	return errors.New("(c *Mock) DeletePublicKey not implemented")
+}

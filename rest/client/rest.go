@@ -285,3 +285,22 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 
 	return nil
 }
+
+func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) error {
+	info := requestInfo{
+		method:  delete,
+		version: apiVersion2,
+		path:    "keys/" + keyName,
+	}
+
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrap(err, "problem reaching evergreen API server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.Wrap(err, "problem deleting key")
+	}
+
+	return nil
+}

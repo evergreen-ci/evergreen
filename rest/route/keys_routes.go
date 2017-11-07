@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -149,6 +150,59 @@ func (h *keysPostHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 
 	if err := sc.AddPublicKey(u, h.keyName, h.keyValue); err != nil {
 		return ResponseData{}, errors.Wrap(err, "failed to add key")
+	}
+
+	return ResponseData{}, nil
+}
+
+type keysDeleteHandler struct {
+	keyName string
+}
+
+func getKeysDeleteRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			MethodHandler{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &keysDeleteHandler{},
+				MethodType:        http.MethodDelete,
+			},
+		},
+		Version: version,
+	}
+}
+
+func (h *keysDeleteHandler) Handler() RequestHandler {
+	return &keysDeleteHandler{}
+}
+
+func (h *keysDeleteHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	h.keyName = vars["key_name"]
+	if strings.TrimSpace(h.keyName) == "" {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "empty key name",
+		}
+	}
+
+	return nil
+}
+
+func (h *keysDeleteHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	user := MustHaveUser(ctx)
+
+	if _, err := user.GetPublicKey(h.keyName); err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("key with name '%s' does not exist", h.keyName),
+		}
+	}
+
+	if err := sc.DeletePublicKey(user, h.keyName); err != nil {
+		return ResponseData{}, errors.New("couldn't delete key")
 	}
 
 	return ResponseData{}, nil
