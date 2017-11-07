@@ -220,7 +220,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 			grip.Infoln("Cleanly terminated runner process:", r.Name())
 			return
 		case <-timer.C:
-			if err := r.Run(ctx, s); err != nil {
+			if err = r.Run(ctx, s); err != nil {
 				grip.Info(message.Fields{
 					"message":  "run complete, encountered error",
 					"runner":   r.Name(),
@@ -233,6 +233,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
 					grip.Error(errors.Wrap(err, "sending email"))
 				}
+				err = nil
 			} else {
 				grip.Info(message.Fields{
 					"message":  "run completed, successfully",
