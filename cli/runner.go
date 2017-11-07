@@ -158,7 +158,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 
 	for _, r := range backgroundRunners {
 		wg.Add(1)
-
 		if util.SliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
 		} else if util.SliceContains(infrequentRunners, r.Name()) {
@@ -203,7 +202,13 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 	timer := time.NewTimer(0)
 	defer wg.Done()
 	defer timer.Stop()
-	defer recovery.LogStackTraceAndContinue("background runner process for", r.Name())
+	defer func() {
+		err := recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
+		if err != nil {
+			wg.Add(1)
+			go runnerBackgroundWorker(ctx, r, s, dur, wg)
+		}
+	}()
 
 	grip.Infoln("Starting runner process:", r.Name())
 
@@ -224,9 +229,8 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 
 				subject := fmt.Sprintf("%s failure", r.Name())
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
-					grip.Errorf("sending email: %+v", err)
+					grip.Error(errors.Wrap(err, "sending email"))
 				}
-
 			} else {
 				grip.Info(message.Fields{
 					"message":  "run completed, successfully",
