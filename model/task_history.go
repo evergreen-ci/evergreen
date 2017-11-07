@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -21,6 +22,7 @@ import (
 const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
+	testResultsKey    = "test_results"
 )
 
 type taskHistoryIterator struct {
@@ -301,8 +303,28 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 			},
 			{"$sort": bson.D{{Name: task.RevisionOrderNumberKey, Value: -1}}},
 			{"$limit": numCommits},
-			{"$unwind": fmt.Sprintf("$%v", task.TestResultsKey)},
-			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", task.TestResultsKey, task.TestResultTestFileKey)}},
+			{"$lookup": bson.M{
+				"from":         testresult.Collection,
+				"localField":   task.IdKey,
+				"foreignField": testresult.TaskIDKey,
+				"as":           testResultsKey},
+			},
+			{"$project": bson.M{
+				testResultsKey: bson.M{
+					"$filter": bson.M{
+						// Filter off non-matching executions. This should be replaced once
+						// multi-key $lookups are supported in 3.6
+						"input": "$" + testResultsKey,
+						"as":    "tr",
+						"cond": bson.M{
+							"$eq": []string{"$$tr.task_execution", "$execution"}},
+					},
+				},
+				task.IdKey:                 1,
+				task.TestResultTestFileKey: 1,
+			}},
+			{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
+			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
 	)
 
@@ -345,7 +367,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 
 	// find all the relevant failed tests
 	failedTestsMap := make(map[string][]task.TestResult)
-	tasks, err := task.Find(task.ByIds(failedTaskIds).WithFields(task.IdKey, task.TestResultsKey))
+	tasks, err := task.Find(task.ByIds(failedTaskIds))
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +493,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 
 	// construct the test match query
 	testMatchQuery := bson.M{
-		task.TestResultsKey + "." + task.TestResultStatusKey: bson.M{"$in": testHistoryParameters.TestStatuses},
+		testResultsKey + "." + testresult.StatusKey: bson.M{"$in": testHistoryParameters.TestStatuses},
 	}
 
 	// separate out pass/fail from timeouts and system failures
@@ -531,8 +553,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		taskMatchQuery[task.BuildVariantKey] = bson.M{"$in": testHistoryParameters.BuildVariants}
 	}
 	if len(testHistoryParameters.TestNames) > 0 {
-		taskMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
-		testMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
+		testMatchQuery[testResultsKey+"."+testresult.TestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
 	}
 
 	// add in date to  task query if necessary
@@ -600,11 +621,26 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	}
 
 	pipeline = append(pipeline,
+		bson.M{"$lookup": bson.M{
+			"from":         testresult.Collection,
+			"localField":   task.IdKey,
+			"foreignField": testresult.TaskIDKey,
+			"as":           testResultsKey},
+		},
 		bson.M{"$project": bson.M{
+			testResultsKey: bson.M{
+				"$filter": bson.M{
+					// Filter off non-matching executions. This should be replaced once
+					// multi-key $lookups are supported in 3.6
+					"input": "$" + testResultsKey,
+					"as":    "tr",
+					"cond": bson.M{
+						"$eq": []string{"$$tr.task_execution", "$execution"}},
+				},
+			},
 			task.DisplayNameKey:         1,
 			task.BuildVariantKey:        1,
 			task.StatusKey:              1,
-			task.TestResultsKey:         1,
 			task.RevisionKey:            1,
 			task.IdKey:                  1,
 			task.ExecutionKey:           1,
@@ -614,7 +650,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.ProjectKey:             1,
 			task.DetailsKey:             1,
 		}},
-		bson.M{"$unwind": "$" + task.TestResultsKey},
+		bson.M{"$unwind": "$test_results"},
 		bson.M{"$match": testMatchQuery})
 	if testHistoryParameters.Limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
@@ -622,24 +658,25 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	pipeline = append(pipeline,
 		bson.M{"$sort": bson.D{
 			{Name: task.RevisionOrderNumberKey, Value: testHistoryParameters.Sort},
-			{Name: task.TestResultsKey + "." + task.TestResultTestFileKey, Value: testHistoryParameters.Sort},
+			{Name: testResultsKey + "." + testresult.TaskIDKey, Value: testHistoryParameters.Sort},
+			{Name: testResultsKey + "." + testresult.TestFileKey, Value: testHistoryParameters.Sort},
 		}},
 		bson.M{"$project": bson.M{
-			TestFileKey:        "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
+			TestFileKey:        "$" + testResultsKey + "." + task.TestResultTestFileKey,
 			TaskIdKey:          "$" + task.IdKey,
-			TestStatusKey:      "$" + task.TestResultsKey + "." + task.TestResultStatusKey,
+			TestStatusKey:      "$" + testResultsKey + "." + task.TestResultStatusKey,
 			TaskStatusKey:      "$" + task.StatusKey,
 			RevisionKey:        "$" + task.RevisionKey,
 			ProjectKey:         "$" + task.ProjectKey,
 			TaskNameKey:        "$" + task.DisplayNameKey,
 			BuildVariantKey:    "$" + task.BuildVariantKey,
-			StartTimeKey:       "$" + task.TestResultsKey + "." + task.TestResultStartTimeKey,
-			EndTimeKey:         "$" + task.TestResultsKey + "." + task.TestResultEndTimeKey,
+			StartTimeKey:       "$" + testResultsKey + "." + task.TestResultStartTimeKey,
+			EndTimeKey:         "$" + testResultsKey + "." + task.TestResultEndTimeKey,
 			ExecutionKey:       "$" + task.ExecutionKey + "." + task.ExecutionKey,
 			OldTaskIdKey:       "$" + task.OldTaskIdKey,
-			UrlKey:             "$" + task.TestResultsKey + "." + task.TestResultURLKey,
-			UrlRawKey:          "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
-			LogIdKey:           "$" + task.TestResultsKey + "." + task.TestResultLogIdKey,
+			UrlKey:             "$" + testResultsKey + "." + task.TestResultURLKey,
+			UrlRawKey:          "$" + testResultsKey + "." + task.TestResultURLRawKey,
+			LogIdKey:           "$" + testResultsKey + "." + task.TestResultLogIdKey,
 			TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
 			TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
 		}})

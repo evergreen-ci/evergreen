@@ -97,8 +97,8 @@ type Task struct {
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
 
-	// test results captured and sent back by agent
-	TestResults []TestResult `bson:"test_results" json:"test_results"`
+	// test results embedded from the testresults collection
+	TestResults []TestResult `bson:"-" json:"test_results"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -383,9 +383,8 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				DistroIdKey:      distroId,
 			},
 			"$unset": bson.M{
-				AbortedKey:     "",
-				TestResultsKey: "",
-				DetailsKey:     "",
+				AbortedKey: "",
+				DetailsKey: "",
 			},
 		},
 	)
@@ -414,7 +413,6 @@ func (t *Task) MarkAsUndispatched() error {
 				DistroIdKey:      "",
 				HostIdKey:        "",
 				AbortedKey:       "",
-				TestResultsKey:   "",
 				DetailsKey:       "",
 			},
 		},
@@ -576,7 +574,6 @@ func (t *Task) Reset() error {
 			StartTimeKey:     util.ZeroTime,
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
-			TestResultsKey:   []TestResult{},
 		},
 		"$unset": bson.M{
 			DetailsKey: "",
@@ -603,7 +600,6 @@ func ResetTasks(taskIds []string) error {
 			StartTimeKey:     util.ZeroTime,
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
-			TestResultsKey:   []TestResult{},
 		},
 		"$unset": bson.M{
 			DetailsKey: "",
