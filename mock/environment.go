@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen"
 	edb "github.com/evergreen-ci/evergreen/db"
@@ -23,9 +24,13 @@ type Environment struct {
 	Local             amboy.Queue
 	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
+	mu                sync.RWMutex
 }
 
 func (e *Environment) Configure(ctx context.Context, path string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	e.EvergreenSettings = testutil.TestConfig()
 	e.DBSession = anserMock.NewSession()
 	e.Driver = driver.NewPriority()
@@ -44,7 +49,26 @@ func (e *Environment) Configure(ctx context.Context, path string) error {
 	return nil
 }
 
-func (e *Environment) RemoteQueue() amboy.Queue      { return e.Remote }
-func (e *Environment) LocalQueue() amboy.Queue       { return e.Local }
-func (e *Environment) Session() db.Session           { return e.DBSession }
-func (e *Environment) Settings() *evergreen.Settings { return e.EvergreenSettings }
+func (e *Environment) RemoteQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.Remote
+}
+
+func (e *Environment) LocalQueue() amboy.Queue {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.Local
+}
+
+func (e *Environment) Session() db.Session {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.DBSession
+}
+
+func (e *Environment) Settings() *evergreen.Settings {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.EvergreenSettings
+}
