@@ -713,7 +713,7 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 
 	cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 	makeShellCmd := &subprocess.RemoteCommand{
-		CmdString:      fmt.Sprintf("%s -c '%s' fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
+		CmdString:      fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
 		Stdout:         cmdOutput,
 		Stderr:         cmdOutput,
 		RemoteHostName: hostSSHInfo.Hostname,
