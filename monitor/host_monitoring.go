@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +26,11 @@ type hostMonitoringFunc func(*evergreen.Settings) []error
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
 func monitorReachability(settings *evergreen.Settings) []error {
-	grip.Info("Running reachability checks...")
+	grip.Info(message.Fields{
+		"runner":   RunnerName,
+		"function": "monitorReachability",
+		"message":  "Running reachability checks",
+	})
 
 	// used to store any errors that occur
 	var errs []error
@@ -85,7 +90,12 @@ func monitorReachability(settings *evergreen.Settings) []error {
 
 // check reachability for a single host, and take any necessary action
 func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
-	grip.Infoln("Running reachability check for host:", host.Id)
+	grip.Info(message.Fields{
+		"runner":   RunnerName,
+		"function": "monitorReachability",
+		"message":  "Running reachability check for host",
+		"host":     host.Id,
+	})
 
 	// get a cloud version of the host
 	cloudHost, err := providers.GetCloudHost(&host, settings)
@@ -110,9 +120,19 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 
 		// log the status update if the reachability of the host is changing
 		if host.Status == evergreen.HostUnreachable && reachable {
-			grip.Infof("Setting host %s as reachable", host.Id)
+			grip.Info(message.Fields{
+				"runner":   RunnerName,
+				"function": "monitorReachability",
+				"message":  "Setting host as reachable",
+				"host":     host.Id,
+			})
 		} else if host.Status != evergreen.HostUnreachable && !reachable {
-			grip.Infof("Setting host %s as unreachable", host.Id)
+			grip.Info(message.Fields{
+				"runner":   RunnerName,
+				"function": "monitorReachability",
+				"message":  "Setting host as unreachable",
+				"host":     host.Id,
+			})
 		}
 
 		// mark the host appropriately
@@ -120,7 +140,12 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 			return errors.Wrapf(err, "error updating reachability for host %s", host.Id)
 		}
 	case cloud.StatusTerminated:
-		grip.Infof("Host %s terminated externally; updating db status to terminated", host.Id)
+		grip.Info(message.Fields{
+			"runner":   RunnerName,
+			"function": "monitorReachability",
+			"message":  "Host terminated externally; updating db status to terminated",
+			"host":     host.Id,
+		})
 		event.LogHostTerminatedExternally(host.Id)
 
 		// the instance was terminated from outside our control
