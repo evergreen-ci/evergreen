@@ -318,11 +318,11 @@ func (h *Host) MarkAsProvisioned() error {
 func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) error {
 	host.LastTaskCompleted = prevTaskId
 	host.LastTaskCompletedTime = finishTime
-	host.RunningTask = ""
 	event.LogHostRunningTaskCleared(host.Id, prevTaskId)
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
-			IdKey: host.Id,
+			IdKey:          host.Id,
+			RunningTaskKey: host.RunningTask,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -333,6 +333,10 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 				RunningTaskKey: 1,
 			},
 		})
+
+	host.RunningTask = ""
+
+	return err
 
 }
 

@@ -116,29 +116,30 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 			for hostToTerminate := range work {
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
 
-				err := util.RunFunctionWithTimeout(func() error {
-					return terminateHost(ctx, hostToTerminate, settings)
-				}, 12*time.Minute)
+				func() { // use a function so that the defer works
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
+					defer cancel()
 
-				if err != nil {
-					if strings.Contains(err.Error(), ec2.EC2ErrorNotFound) {
-						err = hostToTerminate.Terminate()
-						if err != nil {
-							catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
-							continue
+					if err := terminateHost(ctx, hostToTerminate, settings); err != nil {
+						if strings.Contains(err.Error(), ec2.EC2ErrorNotFound) {
+							err = hostToTerminate.Terminate()
+							if err != nil {
+								catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
+								return
+							}
+							grip.Debugf("host %s not found in EC2, changed to terminated", hostToTerminate.Id)
+							return
 						}
-						grip.Debugf("host %s not found in EC2, changed to terminated", hostToTerminate.Id)
-						continue
+						if err == util.ErrTimedOut {
+							catcher.Add(errors.Errorf("timeout terminating host %s", hostToTerminate.Id))
+							return
+						}
+						err = errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id)
+						catcher.Add(err)
+						grip.Warning(err)
 					}
-					if err == util.ErrTimedOut {
-						catcher.Add(errors.Errorf("timeout terminating host %s", hostToTerminate.Id))
-						continue
-					}
-					err = errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id)
-					catcher.Add(err)
-					grip.Warning(err)
-					continue
-				}
+				}()
 
 				grip.Infoln("Successfully terminated host", hostToTerminate.Id)
 			}
