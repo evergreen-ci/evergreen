@@ -21,7 +21,7 @@ type DBUserConnectorSuite struct {
 }
 
 func (s *DBUserConnectorSuite) SetupTest() {
-	db.Clear(user.Collection)
+	s.NoError(db.Clear(user.Collection))
 	s.sc = &DBConnector{}
 	s.numUsers = 10
 
@@ -42,7 +42,7 @@ func (s *DBUserConnectorSuite) SetupTest() {
 }
 
 func (s *DBUserConnectorSuite) TeardownTest() {
-	db.Clear(user.Collection)
+	s.NoError(db.Clear(user.Collection))
 }
 
 func (s *DBUserConnectorSuite) TestFindUserById() {
@@ -59,7 +59,7 @@ func (s *DBUserConnectorSuite) TestFindUserById() {
 
 func (s *DBUserConnectorSuite) TestDeletePublicKey() {
 	for _, u := range s.users {
-		s.sc.DeletePublicKey(u, u.Id+"_0")
+		s.NoError(s.sc.DeletePublicKey(u, u.Id+"_0"))
 
 		dbUser, err := user.FindOne(user.ById(u.Id))
 		s.NoError(err)

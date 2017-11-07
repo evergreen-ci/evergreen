@@ -80,8 +80,8 @@ func TestHostSudoShHelper(t *testing.T) {
 
 func TestHostTeardownScript(t *testing.T) {
 	c := HostTeardownCommand{}
-	assert := assert.New(t)
-	require := require.New(t)
+	assert := assert.New(t)   // nolint
+	require := require.New(t) // nolint
 
 	dir, err := ioutil.TempDir("", "")
 	require.NoError(err)
