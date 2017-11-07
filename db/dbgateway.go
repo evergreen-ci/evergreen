@@ -12,6 +12,7 @@ import (
 var (
 	globalSessionProvider SessionProvider = nil
 	defaultSocketTimeout                  = 90 * time.Second
+	mu                    sync.RWMutex
 )
 
 // SessionFactory contains information for connecting to Evergreen's
@@ -84,11 +85,15 @@ func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 
 // SetGlobalSessionProvider sets the global session provider.
 func SetGlobalSessionProvider(sessionProvider SessionProvider) {
+	mu.Lock()
+	defer mu.Unlock()
 	globalSessionProvider = sessionProvider
 }
 
 // GetGlobalSessionFactory returns the global session provider.
 func GetGlobalSessionFactory() SessionProvider {
+	mu.RLock()
+	defer mu.RUnlock()
 	if globalSessionProvider == nil {
 		panic("No global session provider has been set.")
 	}
