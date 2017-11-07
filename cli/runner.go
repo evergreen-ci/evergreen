@@ -199,13 +199,11 @@ func runProcessByName(ctx context.Context, name string, settings *evergreen.Sett
 }
 
 func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.Settings, dur time.Duration, wg *sync.WaitGroup) {
-	var err error
-
 	timer := time.NewTimer(0)
 	defer wg.Done()
 	defer timer.Stop()
 	defer func() {
-		err = recovery.HandlePanicWithError(recover(), err, "worker process encountered error")
+		err := recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
 		if err != nil {
 			wg.Add(1)
 			go runnerBackgroundWorker(ctx, r, s, dur, wg)
@@ -220,7 +218,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 			grip.Infoln("Cleanly terminated runner process:", r.Name())
 			return
 		case <-timer.C:
-			if err = r.Run(ctx, s); err != nil {
+			if err := r.Run(ctx, s); err != nil {
 				grip.Info(message.Fields{
 					"message":  "run complete, encountered error",
 					"runner":   r.Name(),
@@ -233,7 +231,6 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
 					grip.Error(errors.Wrap(err, "sending email"))
 				}
-				err = nil
 			} else {
 				grip.Info(message.Fields{
 					"message":  "run completed, successfully",
