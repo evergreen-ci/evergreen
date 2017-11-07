@@ -233,7 +233,6 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
 					grip.Error(errors.Wrap(err, "sending email"))
 				}
-				err = nil
 			} else {
 				grip.Info(message.Fields{
 					"message":  "run completed, successfully",
