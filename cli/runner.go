@@ -159,9 +159,9 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 
 	for _, r := range backgroundRunners {
 		wg.Add(1)
-		if util.SliceContains(frequentRunners, r.Name()) {
+		if util.StringSliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
-		} else if util.SliceContains(infrequentRunners, r.Name()) {
+		} else if util.StringSliceContains(infrequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, infrequentRunInterval, wg)
 		} else {
 			go runnerBackgroundWorker(ctx, r, s, defaultRunInterval, wg)

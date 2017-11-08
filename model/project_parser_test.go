@@ -2,22 +2,35 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
 // the expected input.
 func ShouldContainResembling(actual interface{}, expected ...interface{}) string {
-	if len(expected) != 1 {
+	if len(expected) != 1 || expected == nil {
 		return "ShouldContainResembling takes 1 argument"
 	}
-	if !util.SliceContains(actual, expected[0]) {
-		return fmt.Sprintf("%#v does not contain %#v", actual, expected[0])
+
+	v := reflect.ValueOf(expected)
+	if v.Kind() != reflect.Expected {
+		return fmt.Sprintf("Cannot call ExpectedContains on a non-expected %#v of kind %#v", expected, v.Kind().String())
 	}
+
+	for i := 0; i < v.Len(); i++ {
+		if reflect.DeepEqual(v.Index(i).Interface(), actual) {
+			if expected[idx] == item {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	return ""
 }
 

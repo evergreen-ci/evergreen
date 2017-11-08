@@ -204,12 +204,12 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 		for iter.Next(&logObj) {
 			for _, logMsg := range logObj.Messages {
 				if len(severities) > 0 &&
-					!util.SliceContains(severities, logMsg.Severity) {
+					!util.StringSliceContains(severities, logMsg.Severity) {
 					continue
 				}
 				if len(msgTypes) > 0 {
-					if !(util.SliceContains(msgTypes, logMsg.Type) ||
-						util.SliceContains(oldMsgTypes, logMsg.Type)) {
+					if !(util.StringSliceContains(msgTypes, logMsg.Type) ||
+						util.StringSliceContains(oldMsgTypes, logMsg.Type)) {
 						continue
 					}
 				}
@@ -268,12 +268,12 @@ func FindMostRecentLogMessages(taskId string, execution int, numMsgs int,
 			for _, logMsg := range messages {
 				// filter by severity and type
 				if len(severities) != 0 &&
-					!util.SliceContains(severities, logMsg.Severity) {
+					!util.StringSliceContains(severities, logMsg.Severity) {
 					continue
 				}
 				if len(msgTypes) != 0 {
-					if !(util.SliceContains(msgTypes, logMsg.Type) ||
-						util.SliceContains(oldMsgTypes, logMsg.Type)) {
+					if !(util.StringSliceContains(msgTypes, logMsg.Type) ||
+						util.StringSliceContains(oldMsgTypes, logMsg.Type)) {
 						continue
 					}
 				}

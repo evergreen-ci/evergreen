@@ -121,7 +121,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	case "updateStatus":
 		currentStatus := h.Status
 		newStatus := opts.Status
-		if !util.SliceContains(validUpdateToStatuses, newStatus) {
+		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
 			http.Error(w, fmt.Sprintf("'%v' is not a valid status", newStatus), http.StatusBadRequest)
 			return
 		}
@@ -176,7 +176,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	switch opts.Action {
 	case "updateStatus":
 		newStatus := opts.Status
-		if !util.SliceContains(validUpdateToStatuses, newStatus) {
+		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
 			http.Error(w, fmt.Sprintf("Invalid status: %v", opts.Status), http.StatusBadRequest)
 			return
 		}

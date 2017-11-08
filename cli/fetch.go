@@ -239,7 +239,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			}
 
 			// skip the module if this build variant does not use it
-			if !util.SliceContains(variant.Modules, module.Name) {
+			if !util.StringSliceContains(variant.Modules, module.Name) {
 				continue
 			}
 

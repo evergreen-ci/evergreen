@@ -131,7 +131,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
 func ensureUniqueId(d *distro.Distro, distroIds []string) []ValidationError {
-	if util.SliceContains(distroIds, d.Id) {
+	if util.StringSliceContains(distroIds, d.Id) {
 		return []ValidationError{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}
 	return nil

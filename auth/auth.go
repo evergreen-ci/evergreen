@@ -66,7 +66,7 @@ func IsSuperUser(superUsers []string, u User) bool {
 	if u == nil || u.IsNil() {
 		return false
 	}
-	if util.SliceContains(superUsers, u.Username()) ||
+	if util.StringSliceContains(superUsers, u.Username()) ||
 		len(superUsers) == 0 {
 		return true
 	}

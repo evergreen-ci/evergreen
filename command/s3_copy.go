@@ -149,7 +149,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for _, s3CopyFile := range c.S3CopyFiles {
-		if len(s3CopyFile.BuildVariants) > 0 && !util.SliceContains(
+		if len(s3CopyFile.BuildVariants) > 0 && !util.StringSliceContains(
 			s3CopyFile.BuildVariants, conf.BuildVariant.Name) {
 			continue
 		}

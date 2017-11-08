@@ -60,7 +60,7 @@ func (p *ProjectAdminAuthenticator) Authenticate(ctx context.Context, sc data.Co
 
 	// If either a superuser or admin, request is allowed to proceed.
 	if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
-		util.SliceContains(projCtx.ProjectRef.Admins, u.Username()) {
+		util.StringSliceContains(projCtx.ProjectRef.Admins, u.Username()) {
 		return nil
 	}
 
