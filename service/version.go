@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -146,9 +147,16 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent pluginData
 		CanEdit       bool
 		JiraHost      string
+		Patch         *patch.Patch
 		ViewData
-	}{&versionAsUI, pluginContent, canEditPatch,
-		uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
+	}{
+		Version:       &versionAsUI,
+		PluginContent: pluginContent,
+		CanEdit:       canEditPatch,
+		JiraHost:      uis.Settings.Jira.Host,
+		Patch:         patchDoc,
+		ViewData:      uis.GetCommonViewData(w, r, false, true),
+	}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {

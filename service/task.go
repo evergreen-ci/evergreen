@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -269,11 +270,18 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Task          uiTaskData
 		Host          *host.Host
+		Patch         *patch.Patch
 		PluginContent pluginData
 		JiraHost      string
 		ViewData
-	}{task, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
-		"task.html", "base_angular.html", "menu.html")
+	}{
+		Task:          task,
+		Host:          taskHost,
+		Patch:         ctxPatch,
+		PluginContent: pluginContent,
+		JiraHost:      uis.Settings.Jira.Host,
+		ViewData:      uis.GetCommonViewData(w, r, false, true),
+	}, "base", "task.html", "base_angular.html", "menu.html")
 }
 
 type taskHistoryPageData struct {

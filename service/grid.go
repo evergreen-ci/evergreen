@@ -108,6 +108,14 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		GridCells        grid.Grid
 		Failures         grid.Failures
 		RevisionFailures grid.RevisionFailures
+		Version          *version.Version
 		ViewData
-	}{versions, cells, failures, revisionFailures, uis.GetCommonViewData(w, r, false, true)}, "base", "grid.html", "base_angular.html", "menu.html")
+	}{
+		Versions:         versions,
+		GridCells:        cells,
+		Failures:         failures,
+		RevisionFailures: revisionFailures,
+		Version:          ver,
+		ViewData:         uis.GetCommonViewData(w, r, false, true),
+	}, "base", "grid.html", "base_angular.html", "menu.html")
 }

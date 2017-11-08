@@ -82,9 +82,16 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Variants map[string]model.BuildVariant
 		Tasks    []interface{}
 		CanEdit  bool
+		Patch    *patch.Patch
 		ViewData
-	}{versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, patchDoc), uis.GetCommonViewData(w, r, true, true)}, "base",
-		"patch_version.html", "base_angular.html", "menu.html")
+	}{
+		Version:  versionAsUI,
+		Variants: variantMappings,
+		Tasks:    tasksList,
+		Patch:    patchDoc,
+		CanEdit:  uis.canEditPatch(currentUser, patchDoc),
+		ViewData: uis.GetCommonViewData(w, r, true, true),
+	}, "base", "patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {

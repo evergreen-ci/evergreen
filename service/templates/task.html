@@ -37,7 +37,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
 {{define "content"}}
 
-{{ if not .ProjectData.Patch }}
+{{ if not .Patch }}
 <div ng-controller="TaskHistoryDrawerCtrl" id="drawer">
   <div id="drawer-contents">
     <div id="drawer-filled">
