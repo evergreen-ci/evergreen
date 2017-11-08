@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"sync"
@@ -199,7 +200,7 @@ func runProcessByName(ctx context.Context, name string, settings *evergreen.Sett
 }
 
 func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.Settings, dur time.Duration, wg *sync.WaitGroup) {
-	timer := time.NewTimer(0)
+	timer := time.NewTimer(time.Duration(rand.Int63n(int64(dur))))
 	defer wg.Done()
 	defer timer.Stop()
 	defer func() {
