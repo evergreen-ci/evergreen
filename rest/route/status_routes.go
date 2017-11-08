@@ -75,6 +75,7 @@ func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) 
 
 	if h.taskType != "" {
 		tasks = task.FilterTasksOnStatus(tasks, h.taskType)
+		h.verbose = true
 	}
 
 	if h.verbose {
