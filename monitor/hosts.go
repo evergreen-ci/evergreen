@@ -33,8 +33,6 @@ type HostMonitor struct {
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
 func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergreen.Settings) []error {
-	grip.Info("Running host monitoring checks...")
-
 	// used to store any errors that occur
 	var errs []error
 
@@ -49,31 +47,39 @@ func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergr
 		}
 	}
 
-	grip.Info("Finished running host monitoring checks")
-
 	return errs
-
 }
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
 func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro, settings *evergreen.Settings) []error {
 
-	grip.Info("Running host cleanup...")
-
 	// used to store any errors that occur
 	var errs []error
 
-	for idx, flagger := range hm.flaggingFuncs {
+	for _, flagger := range hm.flaggingFuncs {
 		if ctx.Err() != nil {
 			return append(errs, errors.New("host monitor canceled"))
 		}
 
-		grip.Infoln("Searching for flagged hosts under criteria:", flagger.Reason)
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"message": "Running flagging function for hosts",
+			"reason":  flagger.Reason,
+		})
 		// find the next batch of hosts to terminate
 		hostsToTerminate, err := flagger.hostFlaggingFunc(distros, settings)
-		grip.Infof("Found %v hosts flagged for '%v'", len(hostsToTerminate), flagger.Reason)
-
+		hostIdsToTerminate := []string{}
+		for _, h := range hostsToTerminate {
+			hostIdsToTerminate = append(hostIdsToTerminate, h.Id)
+		}
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"message": "found hosts for termination",
+			"reason":  flagger.Reason,
+			"count":   len(hostIdsToTerminate),
+			"hosts":   hostIdsToTerminate,
+		})
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
 		if err != nil {
@@ -81,14 +87,20 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 			continue
 		}
 
-		grip.Infof("Check %v: found %v hosts to be terminated", idx, len(hostsToTerminate))
-
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
 		if err = terminateHosts(ctx, hostsToTerminate, settings, flagger.Reason); err != nil {
 			errs = append(errs, errors.Wrap(err, "error terminating host"))
 			continue
 		}
+
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"message": "terminated flagged hosts",
+			"reason":  flagger.Reason,
+			"count":   len(hostIdsToTerminate),
+			"hosts":   hostIdsToTerminate,
+		})
 	}
 
 	return errs
@@ -127,15 +139,17 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 								catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
 								return
 							}
-							grip.Debugf("host %s not found in EC2, changed to terminated", hostToTerminate.Id)
+							grip.Debug(message.Fields{
+								"runner":  RunnerName,
+								"message": "host not found in EC2, changed to terminated",
+								"host":    hostToTerminate.Id,
+							})
 							return
 						}
 
 						catcher.Add(errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id))
 					}
 				}()
-
-				grip.Infoln("Successfully terminated host", hostToTerminate.Id)
 			}
 		}()
 	}
@@ -149,11 +163,19 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
 	// clear the running task of the host in case one has been assigned.
 	if h.RunningTask != "" {
-		grip.Warningf("Host has running task: %s. Clearing running task field for host"+
-			"before terminating.", h.RunningTask)
+		grip.Warning(message.Fields{
+			"runner":  RunnerName,
+			"message": "Host has running task; clearing before terminating",
+			"host":    h.Id,
+			"task":    h.RunningTask,
+		})
 		err := h.ClearRunningTask(h.RunningTask, time.Now())
 		if err != nil {
-			grip.Errorf("Error clearing running task for host: %s", h.Id)
+			grip.Error(message.Fields{
+				"runner":  RunnerName,
+				"message": "Error clearing running task for host",
+				"host":    h.Id,
+			})
 		}
 	}
 	// convert the host to a cloud host
@@ -164,13 +186,18 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 
 	// run teardown script if we have one, sending notifications if things go awry
 	if h.Distro.Teardown != "" && h.Provisioned {
-		grip.Error(message.Fields{
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
 			"message": "running teardown script for host",
 			"host":    h.Id,
 		})
 
 		if err := runHostTeardown(ctx, h, cloudHost); err != nil {
-			grip.Error(errors.Wrapf(err, "Error running teardown script for %s", h.Id))
+			grip.Error(message.Fields{
+				"runner":  RunnerName,
+				"message": "Error running teardown script",
+				"host":    h.Id,
+			})
 
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
 				notify.TeardownFailurePreface, h.Id)

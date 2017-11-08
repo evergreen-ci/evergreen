@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -175,9 +174,6 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 					break
 				}
 			}
-
-			grip.Infof("Found %d excess hosts for distro %s", counter, d.Id)
-
 		}
 
 	}
