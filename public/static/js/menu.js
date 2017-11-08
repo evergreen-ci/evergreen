@@ -1,6 +1,6 @@
 function setBanner() {
   var theme = window.BannerTheme;
-  $("#bannerText").text(window.BannerText);
+  $("#bannerText").html(window.BannerText);
   switch(theme) {
     case "important":
       $("#bannerIcon").append("<i class='fa fa-exclamation'></i>");
