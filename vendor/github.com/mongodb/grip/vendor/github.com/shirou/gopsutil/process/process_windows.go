@@ -95,7 +95,7 @@ func init() {
 func Pids() ([]int32, error) {
 	var ret []int32
 
-	procs, err := processes()
+	procs, err := Processes()
 	if err != nil {
 		return ret, nil
 	}
@@ -422,7 +422,7 @@ func (p *Process) getFromSnapProcess(pid int32) (int32, int32, string, error) {
 }
 
 // Get processes
-func processes() ([]*Process, error) {
+func Processes() ([]*Process, error) {
 	var dst []Win32_Process
 	q := wmi.CreateQuery(&dst, "")
 	err := wmi.Query(q, &dst)
