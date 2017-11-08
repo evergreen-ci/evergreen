@@ -59,7 +59,6 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Pr
 		"runner":  RunnerName,
 		"message": "Cleaning up tasks",
 		"count":   len(taskWrappers),
-		"tasks":   taskWrappers,
 	})
 
 	// used to store any errors that occur
