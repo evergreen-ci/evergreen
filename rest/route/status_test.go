@@ -3,9 +3,12 @@ package route
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -27,8 +30,30 @@ func TestStatusSuite(t *testing.T) {
 func (s *StatusSuite) SetupSuite() {
 	s.data = data.MockStatusConnector{
 		CachedTasks: []task.Task{
-			{Id: "task1"},
-			{Id: "task2"},
+			{
+				Id:     "task1",
+				Status: evergreen.TaskUndispatched,
+			},
+			{
+				Id:     "task2",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "task3",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "task4",
+				Status: evergreen.TaskStarted,
+			},
+			{
+				Id:     "task5",
+				Status: evergreen.TaskFailed,
+				Details: apimodels.TaskEndDetail{
+					Type:     "system",
+					TimedOut: true,
+				},
+			},
 		},
 		CachedResults: &task.ResultCounts{
 			Total:              1,
@@ -134,9 +159,48 @@ func (s *StatusSuite) TestExecuteVerbose() {
 	resp, err := s.h.Execute(context.Background(), s.sc)
 	s.NoError(err)
 	s.NotNil(resp)
+	s.Len(resp.Result, 5)
+	for i, result := range resp.Result {
+		t := result.(*model.APITask)
+		s.Equal(model.APIString(fmt.Sprintf("task%d", i+1)), t.Id)
+	}
+}
+
+func (s *StatusSuite) TaskTaskType() {
+	s.h.minutes = 0
+	s.h.verbose = true
+
+	s.h.taskType = evergreen.TaskUnstarted
+	resp, err := s.h.Execute(context.Background(), s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Len(resp.Result, 1)
+	found := resp.Result[0].(*model.APITask)
+	s.Equal(model.APIString("task1"), found.Id)
+
+	s.h.taskType = evergreen.TaskStarted
+	resp, err = s.h.Execute(context.Background(), s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Len(resp.Result, 1)
+	found = resp.Result[0].(*model.APITask)
+	s.Equal(model.APIString("task2"), found.Id)
+
+	s.h.taskType = evergreen.TaskSucceeded
+	resp, err = s.h.Execute(context.Background(), s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
 	s.Len(resp.Result, 2)
-	t1 := resp.Result[0].(*model.APITask)
-	t2 := resp.Result[1].(*model.APITask)
-	s.Equal(model.APIString("task1"), t1.Id)
-	s.Equal(model.APIString("task2"), t2.Id)
+	found = resp.Result[0].(*model.APITask)
+	s.Equal(model.APIString("task3"), found.Id)
+	found = resp.Result[1].(*model.APITask)
+	s.Equal(model.APIString("task4"), found.Id)
+
+	s.h.taskType = evergreen.TaskSystemTimedOut
+	resp, err = s.h.Execute(context.Background(), s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Len(resp.Result, 1)
+	found = resp.Result[0].(*model.APITask)
+	s.Equal(model.APIString("task5"), found.Id)
 }
