@@ -370,10 +370,6 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	t.HostId = hostId
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
-	err := testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution)
-	if err != nil {
-		return errors.Wrap(err, "error removing tests from testresults collection")
-	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -404,10 +400,6 @@ func (t *Task) MarkAsUndispatched() error {
 	// then, update the task document
 	t.Status = evergreen.TaskUndispatched
 
-	err := testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution)
-	if err != nil {
-		return errors.Wrap(err, "error removing tests from testresults collection")
-	}
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
@@ -575,10 +567,6 @@ func (t *Task) Reset() error {
 	t.StartTime = util.ZeroTime
 	t.ScheduledTime = util.ZeroTime
 	t.FinishTime = util.ZeroTime
-	err := testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution)
-	if err != nil {
-		return errors.Wrap(err, "error removing tests from testresults collection")
-	}
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -606,11 +594,6 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	for _, id := range taskIds {
-		if err := testresult.RemoveByTaskIDAndExecution(id, 0); err != nil {
-			return err
-		}
-	}
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -761,24 +744,6 @@ func (t *Task) MarkUnscheduled() error {
 		},
 	)
 
-}
-
-// ClearResults sets the TestResults to an empty list
-func (t *Task) ClearResults() error {
-	catcher := grip.NewSimpleCatcher()
-	catcher.Add(testresult.RemoveByTaskIDAndExecution(t.Id, t.Execution))
-	t.TestResults = []TestResult{}
-	catcher.Add(UpdateOne(
-		bson.M{
-			IdKey: t.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				TestResultsKey: []TestResult{},
-			},
-		},
-	))
-	return catcher.Resolve()
 }
 
 // SetCost updates the task's Cost field
