@@ -33,15 +33,15 @@ func (s *GithubSuite) SetupTest() {
 
 func (s *GithubSuite) TestNewGithubIntent() {
 	intent, err := NewGithubIntent(0, s.sha, s.url)
-	s.Equal(GithubIntent{}, intent)
+	s.Equal(&githubIntent{}, intent)
 	s.Error(err)
 
 	intent, err = NewGithubIntent(s.pr, "12345", s.url)
-	s.Equal(GithubIntent{}, intent)
+	s.Equal(&githubIntent{}, intent)
 	s.Error(err)
 
 	intent, err = NewGithubIntent(s.pr, s.sha, "foo")
-	s.Equal(GithubIntent{}, intent)
+	s.Equal(&githubIntent{}, intent)
 	s.Error(err)
 
 	intent, err = NewGithubIntent(s.pr, s.sha, s.url)
@@ -81,8 +81,8 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(err)
 	s.Len(found, 0)
 
-	var intents []GithubIntent
-	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{ProcessedKey: true}), &intents))
+	var intents []githubIntent
+	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.sha, intents[0].HeadSHA)
@@ -92,22 +92,22 @@ func (s *GithubSuite) TestSetProcessed() {
 }
 
 func (s *GithubSuite) FindUnprocessedGithubIntents() {
-	intents := []GithubIntent{
-		GithubIntent{
+	intents := []githubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{},
-		GithubIntent{},
-		GithubIntent{},
+		githubIntent{},
+		githubIntent{},
+		githubIntent{},
 	}
 
 	for _, intent := range intents {

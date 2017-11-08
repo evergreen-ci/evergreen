@@ -35,7 +35,7 @@ type Intent interface {
 // githubIntent represents an intent to create a patch build as a result of a
 // PullRequestEvent webhook. These intents are processed asynchronously by an
 // amboy queue.
-type GithubIntent struct {
+type githubIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
 	ID bson.ObjectId `bson:"_id"`
 
@@ -57,17 +57,17 @@ type GithubIntent struct {
 
 // BSON fields for the patches
 var (
-	IDKey         = bsonutil.MustHaveTag(GithubIntent{}, "ID")
-	PRNumberKey   = bsonutil.MustHaveTag(GithubIntent{}, "PRNumber")
-	HeadSHAKey    = bsonutil.MustHaveTag(GithubIntent{}, "HeadSHA")
-	URLKey        = bsonutil.MustHaveTag(GithubIntent{}, "URL")
-	ProcessedKey  = bsonutil.MustHaveTag(GithubIntent{}, "Processed")
-	IntentTypeKey = bsonutil.MustHaveTag(GithubIntent{}, "IntentType")
+	idKey         = bsonutil.MustHaveTag(githubIntent{}, "ID")
+	prNumberKey   = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
+	headSHAKey    = bsonutil.MustHaveTag(githubIntent{}, "HeadSHA")
+	urlKey        = bsonutil.MustHaveTag(githubIntent{}, "URL")
+	processedKey  = bsonutil.MustHaveTag(githubIntent{}, "Processed")
+	intentTypeKey = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
 // NewGithubIntent return a new github patch intent.
-func NewGithubIntent(pr int, sha string, url string) (GithubIntent, error) {
-	g := GithubIntent{}
+func NewGithubIntent(pr int, sha string, url string) (*githubIntent, error) {
+	g := &githubIntent{}
 	if pr == 0 {
 		return g, errors.New("PR number must not be 0")
 	}
@@ -88,11 +88,11 @@ func NewGithubIntent(pr int, sha string, url string) (GithubIntent, error) {
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
-func (g GithubIntent) SetProcessed() error {
+func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
 	return updateOneIntent(
-		bson.M{IDKey: g.ID},
-		bson.M{"$set": bson.M{ProcessedKey: g.Processed}},
+		bson.M{idKey: g.ID},
+		bson.M{"$set": bson.M{processedKey: g.Processed}},
 	)
 }
 
@@ -106,26 +106,26 @@ func updateOneIntent(query interface{}, update interface{}) error {
 }
 
 // IsProcessed returns whether a patch exists for this intent.
-func (g GithubIntent) IsProcessed() bool {
+func (g *githubIntent) IsProcessed() bool {
 	return g.Processed
 }
 
 // GetType returns the patch intent, e.g., GithubIntentType.
-func (g GithubIntent) GetType() string {
+func (g *githubIntent) GetType() string {
 	return g.IntentType
 }
 
 // Insert inserts a patch intent in the database.
-func (g GithubIntent) Insert() error {
+func (g *githubIntent) Insert() error {
 	return db.Insert(IntentCollection, g)
 }
 
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
-func FindUnprocessedGithubIntents() ([]GithubIntent, error) {
-	var intents []GithubIntent
-	err := db.FindAllQ(IntentCollection, db.Query(bson.M{ProcessedKey: false}), &intents)
+func FindUnprocessedGithubIntents() ([]githubIntent, error) {
+	var intents []githubIntent
+	err := db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: false}), &intents)
 	if err != nil {
-		return []GithubIntent{}, err
+		return []githubIntent{}, err
 	}
 	return intents, nil
 }
