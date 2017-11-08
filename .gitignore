@@ -58,17 +58,6 @@ command/testdata/archive/target.tgz
 command/testdata/target.tgz
 creds.yml
 
-
-plugin/config/build_baron.go
-plugin/config/keyval.go
-plugin/config/perf.go
-plugin/config/perf_dashboard.go
-service/plugins/dashboard/
-service/plugins/perf/
-vendor/github.com/10gen/evg-perf-dashboard/
-vendor/github.com/10gen/evg-perf/
-vendor/github.com/evergreen-ci/build-baron-plugin/
-vendor/github.com/evergreen-ci/keyval/
 fabfile.py
 *.pyc
 .idea

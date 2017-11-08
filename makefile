@@ -67,14 +67,6 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 ######################################################################
 
 
-# start rules for services and clients
-plugins:$(buildDir)/.plugins
-$(buildDir)/.plugins:Plugins install_plugins.sh
-	./install_plugins.sh
-	@touch $@
-# end rules for building server binaries
-
-
 # start rules for building services and clients
 ifeq ($(OS),Windows_NT)
 cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
