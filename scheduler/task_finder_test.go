@@ -355,7 +355,7 @@ func makeRandomTasks() []task.Task {
 		evergreen.TaskConflict,
 	}
 
-	numTasks := rand.Intn(20) + 20
+	numTasks := rand.Intn(10) + 10
 	for i := 0; i < numTasks; i++ {
 		// pick a random status
 		statusIndex := rand.Intn(len(statuses))
@@ -415,7 +415,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 			)
 		}
 
-		numDeps := rand.Intn(8)
+		numDeps := rand.Intn(6)
 		for i := 0; i < numDeps; i++ {
 			childId := parentTask.Id + "-child" + strconv.Itoa(i)
 
