@@ -204,24 +204,3 @@ func (s *TestResultSuite) TestFindByTaskIDAndExecution() {
 	s.NoError(err)
 	s.Len(tests, 0)
 }
-
-func (s *TestResultSuite) TestRemoveByTaskIDAndExecution() {
-	tests, err := FindByTaskIDAndExecution("taskid-5", 5)
-	s.Require().NoError(err)
-	s.Require().Len(tests, 5)
-
-	err = RemoveByTaskIDAndExecution("taskid-5", 5)
-	s.NoError(err)
-	tests, err = FindByTaskIDAndExecution("taskid-5", 5)
-	s.NoError(err)
-	s.Len(tests, 0)
-
-	for i, t := range s.tests {
-		test, err := findOne(db.Query(bson.M{
-			"_id": t.ID,
-		}))
-		s.NoError(err)
-		s.NotNil(test)
-		s.Equal(fmt.Sprintf("taskid-%d", i), test.TaskID)
-	}
-}

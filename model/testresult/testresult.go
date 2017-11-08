@@ -80,15 +80,6 @@ func InsertManyByTaskIDAndExecution(testResults []TestResult, taskID string, exe
 	return catcher.Resolve()
 }
 
-// RemoveByTaskIDAndExecution removes test result from the testresults collection for a given task.
-func RemoveByTaskIDAndExecution(taskID string, execution int) error {
-	q := bson.M{
-		TaskIDKey:    taskID,
-		ExecutionKey: execution,
-	}
-	return db.RemoveAll(Collection, q)
-}
-
 // find returns all test results that satisfy the query. Returns an empty slice no tasks match.
 func find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
