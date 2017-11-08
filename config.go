@@ -5,6 +5,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
@@ -311,7 +312,7 @@ func (settings *Settings) Validate() error {
 	return nil
 }
 
-func (s *Settings) GetSender() (send.Sender, error) {
+func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 	var (
 		sender   send.Sender
 		fallback send.Sender
@@ -391,7 +392,8 @@ func (s *Settings) GetSender() (send.Sender, error) {
 			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
-			senders = append(senders, sender)
+
+			senders = append(senders, logger.MakeQueueSender(env.LocalQueue(), sender))
 		}
 		grip.Warning(errors.Wrap(err, "problem setting up slack alert logger"))
 	}

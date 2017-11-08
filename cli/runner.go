@@ -44,7 +44,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, c.ConfigPath), "problem configuring application environment"))
 
 	settings := env.Settings()
-	sender, err := settings.GetSender()
+	sender, err := settings.GetSender(env)
 	grip.CatchEmergencyFatal(err)
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	grip.SetName("evg-runner")
