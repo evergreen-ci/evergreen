@@ -17,6 +17,7 @@ func Setup(ctx context.Context, mongodbURI string) (anser.Environment, error) {
 	env := anser.GetEnvironment()
 	env.RegisterCloser(func() error { cancel(); return nil })
 
+	// This should be switched back to an ordered queue (EVG-2318)
 	q := queue.NewLocalUnordered(8)
 	if err := q.Start(ctx); err != nil {
 		return nil, errors.WithStack(err)
