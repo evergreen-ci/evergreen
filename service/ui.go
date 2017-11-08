@@ -49,7 +49,7 @@ type UIServer struct {
 
 	//authManager
 	UserManager     auth.UserManager
-	Settings        evergreen.Settings
+	Settings        *evergreen.Settings
 	CookieStore     *sessions.CookieStore
 	PluginTemplates map[string]*htmlTemplate.Template
 	clientConfig    *evergreen.ClientConfig
@@ -76,7 +76,7 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	uis.Settings = *settings
+	uis.Settings = settings
 	uis.Home = home
 
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)

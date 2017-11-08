@@ -105,24 +105,28 @@ type uiDep struct {
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
-	if projCtx.Task == nil {
+	ctxTask, _ := projCtx.GetTask()
+	if ctxTask == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
-	if projCtx.Build == nil {
+	ctxBuild, _ := projCtx.GetBuild()
+	if ctxBuild == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("build not found"))
 		return
 	}
 
-	if projCtx.Version == nil {
+	ver, _ := projCtx.GetVersion()
+	if ver == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("version not found"))
 		return
 	}
 
-	if projCtx.ProjectRef == nil {
+	pref, _ := projCtx.GetProjectRef()
+	if pref == nil {
 		grip.Error("Project ref is nil")
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("version not found"))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("project not found"))
 		return
 	}
 
@@ -138,7 +142,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Construct the old task id.
-		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
+		oldTaskId := fmt.Sprintf("%v_%v", ctxTask.Id, executionStr)
 
 		// Try to find the task in the old_tasks collection.
 		taskFromDb, err := task.FindOneOld(task.ById(oldTaskId))
@@ -151,20 +155,20 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		// that the execution matches the context's execution. If it does not, return an
 		// error, since that means we are searching for a task that does not exist.
 		if taskFromDb != nil {
-			projCtx.Task = taskFromDb
+			ctxTask = taskFromDb
 			archived = true
-		} else if execution != projCtx.Task.Execution {
+		} else if execution != ctxTask.Execution {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding old task"))
 			return
 		}
 	}
 
 	// Build a struct containing the subset of task data needed for display in the UI
-	tId := projCtx.Task.Id
-	totalExecutions := projCtx.Task.Execution
+	tId := ctxTask.Id
+	totalExecutions := ctxTask.Execution
 
 	if archived {
-		tId = projCtx.Task.OldTaskId
+		tId = ctxTask.OldTaskId
 
 		// Get total number of executions for executions drop down
 		mostRecentExecution, err := task.FindOne(task.ById(tId))
@@ -178,40 +182,40 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	task := uiTaskData{
 		Id:                  tId,
-		DisplayName:         projCtx.Task.DisplayName,
-		Revision:            projCtx.Task.Revision,
-		Status:              projCtx.Task.Status,
-		TaskEndDetails:      projCtx.Task.Details,
-		Distro:              projCtx.Task.DistroId,
-		BuildVariant:        projCtx.Task.BuildVariant,
-		BuildId:             projCtx.Task.BuildId,
-		Activated:           projCtx.Task.Activated,
-		Restarts:            projCtx.Task.Restarts,
-		Execution:           projCtx.Task.Execution,
-		Requester:           projCtx.Task.Requester,
-		StartTime:           projCtx.Task.StartTime.UnixNano(),
-		DispatchTime:        projCtx.Task.DispatchTime.UnixNano(),
-		FinishTime:          projCtx.Task.FinishTime.UnixNano(),
-		ExpectedDuration:    projCtx.Task.ExpectedDuration,
-		PushTime:            projCtx.Task.PushTime,
-		TimeTaken:           projCtx.Task.TimeTaken,
-		Priority:            projCtx.Task.Priority,
-		TestResults:         projCtx.Task.TestResults,
-		Aborted:             projCtx.Task.Aborted,
+		DisplayName:         ctxTask.DisplayName,
+		Revision:            ctxTask.Revision,
+		Status:              ctxTask.Status,
+		TaskEndDetails:      ctxTask.Details,
+		Distro:              ctxTask.DistroId,
+		BuildVariant:        ctxTask.BuildVariant,
+		BuildId:             ctxTask.BuildId,
+		Activated:           ctxTask.Activated,
+		Restarts:            ctxTask.Restarts,
+		Execution:           ctxTask.Execution,
+		Requester:           ctxTask.Requester,
+		StartTime:           ctxTask.StartTime.UnixNano(),
+		DispatchTime:        ctxTask.DispatchTime.UnixNano(),
+		FinishTime:          ctxTask.FinishTime.UnixNano(),
+		ExpectedDuration:    ctxTask.ExpectedDuration,
+		PushTime:            ctxTask.PushTime,
+		TimeTaken:           ctxTask.TimeTaken,
+		Priority:            ctxTask.Priority,
+		TestResults:         ctxTask.TestResults,
+		Aborted:             ctxTask.Aborted,
 		CurrentTime:         time.Now().UnixNano(),
-		BuildVariantDisplay: projCtx.Build.DisplayName,
-		Message:             projCtx.Version.Message,
-		Project:             projCtx.Version.Identifier,
-		Author:              projCtx.Version.Author,
-		AuthorEmail:         projCtx.Version.AuthorEmail,
-		VersionId:           projCtx.Version.Id,
-		RepoOwner:           projCtx.ProjectRef.Owner,
-		Repo:                projCtx.ProjectRef.Repo,
+		BuildVariantDisplay: ctxBuild.DisplayName,
+		Message:             ver.Message,
+		Project:             ver.Identifier,
+		Author:              ver.Author,
+		AuthorEmail:         ver.AuthorEmail,
+		VersionId:           ver.Id,
+		RepoOwner:           pref.Owner,
+		Repo:                pref.Repo,
 		Archived:            archived,
 		TotalExecutions:     totalExecutions,
 	}
 
-	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
+	deps, taskWaiting, err := getTaskDependencies(ctxTask)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -229,11 +233,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var taskHost *host.Host
-	if projCtx.Task.HostId != "" {
-		task.HostDNS = projCtx.Task.HostId
-		task.HostId = projCtx.Task.HostId
+	if ctxTask.HostId != "" {
+		task.HostDNS = ctxTask.HostId
+		task.HostId = ctxTask.HostId
 		var err error
-		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
+		taskHost, err = host.FindOne(host.ById(ctxTask.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -243,18 +247,19 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if projCtx.Patch != nil {
-		taskOnBaseCommit, err := projCtx.Task.FindTaskOnBaseCommit()
+	ctxPatch, _ := projCtx.GetPatch()
+	if ctxPatch != nil {
+		taskOnBaseCommit, err := ctxTask.FindTaskOnBaseCommit()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		taskPatch := &uiPatch{Patch: *projCtx.Patch}
+		taskPatch := &uiPatch{Patch: ctxPatch}
 		if taskOnBaseCommit != nil {
 			taskPatch.BaseTaskId = taskOnBaseCommit.Id
 			taskPatch.BaseTimeTaken = taskOnBaseCommit.TimeTaken
 		}
-		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, projCtx.Task).Tests
+		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, ctxTask).Tests
 		task.PatchInfo = taskPatch
 	}
 
@@ -462,8 +467,8 @@ type taskLogsWrapper struct {
 
 func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
-	if projCtx.Task == nil {
+	ctxTask, _ := projCtx.GetTask()
+	if ctxTask == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
@@ -477,7 +482,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	wrapper := &taskLogsWrapper{}
 	if logType == "EV" {
-		loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
+		loggedEvents, err := event.Find(event.AllLogCollection, event.MostRecentTaskEvents(ctxTask.Id, DefaultLogMessages))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -485,7 +490,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, loggedEvents)
 		return
 	} else {
-		taskLogs, err := getTaskLogs(projCtx.Task.Id, execution, DefaultLogMessages, logType, GetUser(r) != nil)
+		taskLogs, err := getTaskLogs(ctxTask.Id, execution, DefaultLogMessages, logType, GetUser(r) != nil)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -497,8 +502,8 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
-	if projCtx.Task == nil {
+	ctxTask, _ := projCtx.GetTask()
+	if ctxTask == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
@@ -527,7 +532,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	channel, err := model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
+	channel, err := model.GetRawTaskLogChannel(ctxTask.Id, execution, []string{}, logTypeFilter)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
 		return
@@ -555,7 +560,8 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if projCtx.Task == nil {
+	ctxTask, _ := projCtx.GetTask()
+	if ctxTask == nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -589,45 +595,45 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "restart":
-		if err = model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, project, nil); err != nil {
-			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
+		if err = model.TryResetTask(ctxTask.Id, authName, evergreen.UIPackage, project, nil); err != nil {
+			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", ctxTask.Id, err), http.StatusInternalServerError)
 			return
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		ctxTask, err = task.FindOne(task.ById(ctxTask.Id))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		uis.WriteJSON(w, http.StatusOK, ctxTask)
 		return
 	case "abort":
-		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
-			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
+		if err = model.AbortTask(ctxTask.Id, authName); err != nil {
+			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", ctxTask.Id, err), http.StatusInternalServerError)
 			return
 		}
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		ctxTask, err = task.FindOne(task.ById(ctxTask.Id))
 
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		uis.WriteJSON(w, http.StatusOK, ctxTask)
 		return
 	case "set_active":
 		active := putParams.Active
-		if err = model.SetActiveState(projCtx.Task.Id, authName, active); err != nil {
-			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
+		if err = model.SetActiveState(ctxTask.Id, authName, active); err != nil {
+			http.Error(w, fmt.Sprintf("Error activating task %v: %v", ctxTask.Id, err),
 				http.StatusInternalServerError)
 			return
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		ctxTask, err = task.FindOne(task.ById(ctxTask.Id))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		uis.WriteJSON(w, http.StatusOK, ctxTask)
 		return
 	case "set_priority":
 		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
@@ -645,16 +651,16 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Cannot set a negative priority. If this task should not run, it should be unscheduled.", http.StatusBadRequest)
 			return
 		}
-		if err = projCtx.Task.SetPriority(priority); err != nil {
-			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
+		if err = ctxTask.SetPriority(priority); err != nil {
+			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", ctxTask.Id, err), http.StatusInternalServerError)
 			return
 		}
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		ctxTask, err = task.FindOne(task.ById(ctxTask.Id))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
+		uis.WriteJSON(w, http.StatusOK, ctxTask)
 		return
 	default:
 		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action: "+putParams.Action)

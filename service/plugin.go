@@ -65,18 +65,13 @@ func (uis *UIServer) PluginWriteHTML(w http.ResponseWriter, status int, data int
 // GetPluginHandler returns a handler function given the template route and data to go to that page.
 func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projCtx := MustHaveProjectContext(r)
-		u := GetUser(r)
 		pluginCtx := plugin.UIContext{
-			Settings:   uis.Settings,
-			User:       u,
-			Task:       projCtx.Task,
-			Build:      projCtx.Build,
-			Version:    projCtx.Version,
-			Patch:      projCtx.Patch,
-			ProjectRef: projCtx.ProjectRef,
-			Request:    r,
+			Settings: uis.Settings,
+			Request:  r,
+			User:     GetUser(r),
+			Metadata: MustHaveProjectContext(r).Context,
 		}
+
 		pluginData, err := uiPage.DataFunc(pluginCtx)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
