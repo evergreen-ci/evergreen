@@ -31,6 +31,7 @@ const (
 	jiraFailingTasksField     = "customfield_12950"
 	jiraFailingVariantField   = "customfield_14277"
 	jiraEvergreenProjectField = "customfield_14278"
+	jiraFailingRevisionField  = "customfield_14851"
 )
 
 // supportedJiraProjects are all of the projects, by name that we
@@ -85,6 +86,7 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 		request[jiraFailingTasksField] = []string{ctx.Task.DisplayName}
 		request[jiraFailingVariantField] = []string{ctx.Task.BuildVariant}
 		request[jiraEvergreenProjectField] = []string{ctx.ProjectRef.Identifier}
+		request[jiraFailingRevisionField] = []string{ctx.Task.Revision}
 	}
 
 	if err != nil {
