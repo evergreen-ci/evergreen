@@ -34,7 +34,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
-		Settings:    *versionTestConfig,
+		Settings:    versionTestConfig,
 		UserManager: userManager,
 	}
 
@@ -242,7 +242,7 @@ func TestGetVersionInfo(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
-		Settings:    *versionTestConfig,
+		Settings:    versionTestConfig,
 		UserManager: serviceutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
@@ -346,7 +346,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
-		Settings:    *versionTestConfig,
+		Settings:    versionTestConfig,
 		UserManager: userManager,
 	}
 
@@ -441,7 +441,7 @@ func TestActivateVersion(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
-		Settings:    *versionTestConfig,
+		Settings:    versionTestConfig,
 		UserManager: serviceutil.MockUserManager{},
 	}
 
@@ -586,7 +586,7 @@ func TestGetVersionStatus(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
-		Settings:    *versionTestConfig,
+		Settings:    versionTestConfig,
 		UserManager: userManager,
 	}
 

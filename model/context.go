@@ -40,6 +40,19 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) *Context
 	}
 }
 
+// CreateContext builds a context from its constituent parts, and is
+// mostly useful for testing purposes.
+func CreateContext(pref *ProjectRef, proj *Project, patchDoc *patch.Patch, ver *version.Version, b *build.Build, t *task.Task) *Context {
+	return &Context{
+		projectRef: pref,
+		project:    proj,
+		patch:      patchDoc,
+		version:    ver,
+		build:      b,
+		task:       t,
+	}
+}
+
 func (ctx *Context) GetTask() (*task.Task, error) {
 	if ctx.task != nil {
 		return ctx.task, nil
@@ -55,6 +68,10 @@ func (ctx *Context) GetTask() (*task.Task, error) {
 	if err != nil {
 		ctx.taskID = ""
 		return nil, err
+	}
+
+	if ctx.task == nil {
+		return nil, errors.New("could not resolve task from request")
 	}
 
 	if ctx.buildID != ctx.task.BuildId {
@@ -93,6 +110,10 @@ func (ctx *Context) GetBuild() (*build.Build, error) {
 		return nil, errors.Wrapf(err, "problem resolving build from id '%s'", ctx.buildID)
 	}
 
+	if ctx.build == nil {
+		return nil, errors.New("could not resolve build")
+	}
+
 	if ctx.versionID != ctx.build.Version {
 		ctx.versionID = ctx.build.Version
 		ctx.version = nil
@@ -125,6 +146,10 @@ func (ctx *Context) GetVersion() (*version.Version, error) {
 		return nil, err
 	}
 
+	if ctx.version == nil {
+		return nil, errors.New("could not resolve version from request context")
+	}
+
 	if ctx.projectID != ctx.version.Identifier {
 		ctx.projectID = ctx.version.Identifier
 		ctx.projectRef = nil
@@ -140,7 +165,7 @@ func (ctx *Context) GetPatch() (*patch.Patch, error) {
 	}
 
 	if ctx.patchID == "" {
-		return nil, errors.New("cannot resolve patch from request context")
+		return nil, nil
 	}
 
 	if err := ctx.populatePatch(ctx.patchID); err != nil {

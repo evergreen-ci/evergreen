@@ -194,8 +194,8 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 // specified in the request.
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	srcVersion, _ := projCtx.GetVersion()
-	if srcVersion == nil {
+	srcVersion, err := projCtx.GetVersion()
+	if err != nil || srcVersion == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding version"})
 		return
 	}

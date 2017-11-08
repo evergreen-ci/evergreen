@@ -249,7 +249,7 @@ func TestNextTask(t *testing.T) {
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
-		taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
+		taskRunnerInstance := taskrunner.NewTaskRunner(as.Settings)
 		agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 		So(err, ShouldBeNil)
 
@@ -491,7 +491,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
-		taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
+		taskRunnerInstance := taskrunner.NewTaskRunner(as.Settings)
 		agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 		So(err, ShouldBeNil)
 

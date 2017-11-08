@@ -97,7 +97,6 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 			Message:    err.Error(),
 		}
 	}
-
 	if patch != nil && user == nil {
 		return ctx, rest.APIError{
 			StatusCode: http.StatusNotFound,
@@ -105,7 +104,7 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 		}
 	}
 
-	ctx = context.WithValue(ctx, RequestContext, &opCtx)
+	ctx = context.WithValue(ctx, RequestContext, opCtx)
 
 	return ctx, nil
 }

@@ -33,7 +33,7 @@ func TestGetTestHistory(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    *taskTestConfig,
+		Settings:    taskTestConfig,
 		UserManager: userManager,
 	}
 
