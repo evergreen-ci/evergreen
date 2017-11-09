@@ -29,6 +29,7 @@ func main() {
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: opts})
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: opts})
 	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
+	parser.AddCommand("keys", "manage your public keys", "", &cli.PublicKeyCommand{GlobalOpts: opts})
 
 	host, _ := parser.AddCommand("host", "host-related commands", "", &struct{}{})
 	host.AddCommand("create", "spawn a host", "", &cli.HostCreateCommand{GlobalOpts: opts})
