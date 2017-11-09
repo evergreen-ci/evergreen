@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -21,6 +22,10 @@ type PublicKeyCommand struct {
 }
 
 func (c *PublicKeyCommand) Execute(args []string) error {
+	sender := send.MakeJSONConsoleLogger()
+	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
+	grip.CatchWarning(grip.SetSender(sender))
+
 	if err := c.validateFlags(args); err != nil {
 		return err
 	}
