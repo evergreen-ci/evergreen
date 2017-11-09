@@ -107,7 +107,7 @@ func getSummary(ctx AlertContext) string {
 	subj := &bytes.Buffer{}
 	failed := []string{}
 
-	for _, test := range ctx.Task.TestResults {
+	for _, test := range ctx.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			failed = append(failed, cleanTestName(test.TestFile))
 		}
@@ -164,7 +164,7 @@ func logURL(test task.TestResult, root string) string {
 func getDescription(ctx AlertContext, uiRoot string) (string, error) {
 	// build a list of all failed tests to include
 	tests := []jiraTestFailure{}
-	for _, test := range ctx.Task.TestResults {
+	for _, test := range ctx.Task.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.TestFile),

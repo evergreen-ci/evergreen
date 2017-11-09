@@ -29,13 +29,13 @@ func (s *TaskTestResultSuite) SetupSuite() {
 	s.tasks = []Task{}
 	for i := 0; i < 5; i++ {
 		s.tasks = append(s.tasks, Task{
-			Id:          fmt.Sprintf("taskid-%d", i),
-			Secret:      fmt.Sprintf("secret-%d", i),
-			CreateTime:  time.Unix(int64(i), 0),
-			Version:     fmt.Sprintf("version-%d", i),
-			Project:     fmt.Sprintf("project-%d", i),
-			Revision:    fmt.Sprintf("revision-%d", i),
-			TestResults: []TestResult{},
+			Id:               fmt.Sprintf("taskid-%d", i),
+			Secret:           fmt.Sprintf("secret-%d", i),
+			CreateTime:       time.Unix(int64(i), 0),
+			Version:          fmt.Sprintf("version-%d", i),
+			Project:          fmt.Sprintf("project-%d", i),
+			Revision:         fmt.Sprintf("revision-%d", i),
+			LocalTestResults: []TestResult{},
 		})
 	}
 
@@ -90,7 +90,7 @@ func (s *TaskTestResultSuite) TestNoOldNoNewTestResults() {
 	s.Equal("project-2", t.Project)
 	s.Equal("revision-2", t.Revision)
 
-	s.Empty(t.TestResults)
+	s.Empty(t.LocalTestResults)
 }
 
 func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
@@ -142,7 +142,7 @@ func (s *TaskTestResultSuite) TestNoOldNewTestResults() {
 	s.Equal("project-10", t.Project)
 	s.Equal("revision-10", t.Revision)
 
-	s.Len(t.TestResults, 9)
+	s.Len(t.LocalTestResults, 9)
 }
 
 func (s *TaskTestResultSuite) TestArchivedTask() {
@@ -196,5 +196,5 @@ func (s *TaskTestResultSuite) TestArchivedTask() {
 	s.Equal("project-20", t.Project)
 	s.Equal("revision-20", t.Revision)
 
-	s.Len(t.TestResults, 9)
+	s.Len(t.LocalTestResults, 9)
 }

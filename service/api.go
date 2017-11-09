@@ -321,7 +321,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 // AttachResults attaches the received results to the task in the database.
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	results := &task.TestResults{}
+	results := &task.LocalTestResults{}
 	err := util.ReadJSONInto(util.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)

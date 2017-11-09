@@ -90,7 +90,7 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 		testIds[testId] = true
 	}
 	tests := []jiraTestFailure{}
-	for _, test := range t.TestResults {
+	for _, test := range t.LocalTestResults {
 		if testIds[test.TestFile] {
 			tests = append(tests, jiraTestFailure{
 				Name:       cleanTestName(test.TestFile),

@@ -725,7 +725,7 @@ func TestGetTestHistory(t *testing.T) {
 			StartTime:           now,
 			RevisionOrderNumber: 1,
 			Status:              evergreen.TaskFailed,
-			TestResults: []task.TestResult{
+			LocalTestResults: []task.TestResult{
 				task.TestResult{
 					Status:   evergreen.TestFailedStatus,
 					TestFile: "test1",

@@ -49,12 +49,12 @@ type TaskHistory struct {
 }
 
 type aggregatedTaskHistory struct {
-	Id           string                   `bson:"_id" json:"_id"`
-	Status       string                   `bson:"status" json:"status"`
-	Activated    bool                     `bson:"activated" json:"activated"`
-	TimeTaken    time.Duration            `bson:"time_taken" json:"time_taken"`
-	BuildVariant string                   `bson:"build_variant" json:"build_variant"`
-	TestResults  apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
+	Id               string                   `bson:"_id" json:"_id"`
+	Status           string                   `bson:"status" json:"status"`
+	Activated        bool                     `bson:"activated" json:"activated"`
+	TimeTaken        time.Duration            `bson:"time_taken" json:"time_taken"`
+	BuildVariant     string                   `bson:"build_variant" json:"build_variant"`
+	LocalTestResults apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
 }
 type TaskDetails struct {
 	TimedOut bool   `bson:"timed_out"`
@@ -374,7 +374,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 
 	// create the mapping of the task id to the list of failed tasks
 	for _, task := range tasks {
-		for _, test := range task.TestResults {
+		for _, test := range task.LocalTestResults {
 			if test.Status == evergreen.TestFailedStatus {
 				failedTestsMap[task.Id] = append(failedTestsMap[task.Id], test)
 			}

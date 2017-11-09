@@ -257,7 +257,7 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild) error {
 	failedTestsByTaskId := map[string][]string{}
 	for _, t := range failedTasks {
 		failedTests := []string{}
-		for _, r := range t.TestResults {
+		for _, r := range t.LocalTestResults {
 			if r.Status == evergreen.TestFailedStatus {
 				failedTests = append(failedTests, r.TestFile)
 			}
