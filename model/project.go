@@ -74,6 +74,11 @@ type BuildVariantTask struct {
 	Distros []string `yaml:"distros,omitempty" bson:"distros"`
 }
 
+type DisplayTask struct {
+	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
+	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
+}
+
 // Populate updates the base fields of the BuildVariantTask with
 // fields from the project task definition.
 func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
@@ -146,7 +151,8 @@ type BuildVariant struct {
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
 	// all of the tasks to be run on the build variant, compile through tests.
-	Tasks []BuildVariantTask `yaml:"tasks,omitempty" bson:"tasks"`
+	Tasks        []BuildVariantTask `yaml:"tasks,omitempty" bson:"tasks"`
+	DisplayTasks []DisplayTask      `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
 type Module struct {

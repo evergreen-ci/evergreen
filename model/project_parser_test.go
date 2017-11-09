@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -546,4 +547,114 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestDisplayTaskParsing(t *testing.T) {
+	assert := assert.New(t) //nolint
+	yml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - execTask3
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+	p, errs := createIntermediateProject([]byte(yml))
+
+	// check that display tasks in bv1 parsed correctly
+	assert.Len(errs, 0)
+	assert.Len(p.BuildVariants[0].DisplayTasks, 1)
+	assert.Equal("displayTask1", p.BuildVariants[0].DisplayTasks[0].Name)
+	assert.Len(p.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("execTask1", p.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("execTask3", p.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+
+	// check that bv2 did not parse any display tasks
+	assert.Len(p.BuildVariants[1].DisplayTasks, 0)
+
+	// check that bv1 has the correct execution tasks
+	assert.Len(p.BuildVariants[0].Tasks, 3)
+	assert.Equal("execTask1", p.BuildVariants[0].Tasks[0].Name)
+	assert.Equal("execTask3", p.BuildVariants[0].Tasks[1].Name)
+	assert.Equal("execTask4", p.BuildVariants[0].Tasks[2].Name)
+}
+
+func TestDisplayTaskValidation(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	// check that yml with valid display tasks does not error
+	validYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - execTask3
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
+
+	invalidYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - notHere
+    - execTask3
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(invalidYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
 }

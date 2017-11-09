@@ -2,6 +2,7 @@ package model
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -74,6 +75,11 @@ type parserTask struct {
 	Tags            parserStringSlice   `yaml:"tags"`
 	Patchable       *bool               `yaml:"patchable"`
 	Stepback        *bool               `yaml:"stepback"`
+}
+
+type displayTask struct {
+	Name           string   `yaml:"name"`
+	ExecutionTasks []string `yaml:"execution_tasks"`
 }
 
 // helper methods for task tag evaluations
@@ -211,17 +217,18 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name        string            `yaml:"name"`
-	DisplayName string            `yaml:"display_name"`
-	Expansions  util.Expansions   `yaml:"expansions"`
-	Tags        parserStringSlice `yaml:"tags"`
-	Modules     parserStringSlice `yaml:"modules"`
-	Disabled    bool              `yaml:"disabled"`
-	Push        bool              `yaml:"push"`
-	BatchTime   *int              `yaml:"batchtime"`
-	Stepback    *bool             `yaml:"stepback"`
-	RunOn       parserStringSlice `yaml:"run_on"`
-	Tasks       parserBVTasks     `yaml:"tasks"`
+	Name         string            `yaml:"name"`
+	DisplayName  string            `yaml:"display_name"`
+	Expansions   util.Expansions   `yaml:"expansions"`
+	Tags         parserStringSlice `yaml:"tags"`
+	Modules      parserStringSlice `yaml:"modules"`
+	Disabled     bool              `yaml:"disabled"`
+	Push         bool              `yaml:"push"`
+	BatchTime    *int              `yaml:"batchtime"`
+	Stepback     *bool             `yaml:"stepback"`
+	RunOn        parserStringSlice `yaml:"run_on"`
+	Tasks        parserBVTasks     `yaml:"tasks"`
+	DisplayTasks []displayTask     `yaml:"display_tasks"`
 
 	// internal matrix stuff
 	matrixId  string
@@ -538,6 +545,24 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 						existing[t.Name] = &t
 					}
 				}
+			}
+		}
+		// check that display tasks contain real tasks
+		bvTasks := make(map[string]string)
+		for _, t := range bv.Tasks {
+			bvTasks[t.Name] = ""
+		}
+		for _, dt := range pbv.DisplayTasks {
+			projectDt := DisplayTask{Name: dt.Name}
+			for _, et := range dt.ExecutionTasks {
+				if _, exists := bvTasks[et]; !exists {
+					evalErrs = append(evalErrs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
+				} else {
+					projectDt.ExecutionTasks = append(projectDt.ExecutionTasks, et)
+				}
+			}
+			if len(projectDt.ExecutionTasks) > 0 {
+				bv.DisplayTasks = append(bv.DisplayTasks, projectDt)
 			}
 		}
 		evalErrs = append(evalErrs, errs...)
