@@ -16,22 +16,17 @@ func ShouldContainResembling(actual interface{}, expected ...interface{}) string
 		return "ShouldContainResembling takes 1 argument"
 	}
 
-	v := reflect.ValueOf(expected)
-	if v.Kind() != reflect.Expected {
+	v := reflect.ValueOf(actual)
+	if v.Kind() != reflect.Slice {
 		return fmt.Sprintf("Cannot call ExpectedContains on a non-expected %#v of kind %#v", expected, v.Kind().String())
 	}
-
 	for i := 0; i < v.Len(); i++ {
-		if reflect.DeepEqual(v.Index(i).Interface(), actual) {
-			if expected[idx] == item {
-				return true
-			}
+		if reflect.DeepEqual(v.Index(i).Interface(), expected[0]) {
+			return ""
 		}
-
-		return false
 	}
 
-	return ""
+	return fmt.Sprintf("%#v does not contain %#v", actual, expected[0])
 }
 
 func TestCreateIntermediateProjectDependencies(t *testing.T) {
