@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -251,6 +252,15 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 		return nil, errors.Wrap(client_err, "problem fetching keys list")
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errMsg := rest.APIError{}
+
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return nil, errors.Wrap(err, "problem fetching key list and parsing error message")
+		} else {
+			return nil, errors.Wrap(errMsg, "problem fetching key list")
+		}
+	}
 
 	keys := []model.APIPubKey{}
 
@@ -280,7 +290,13 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return errors.Wrap(err, "problem adding key")
+		errMsg := rest.APIError{}
+
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem adding key and parsing error message")
+		} else {
+			return errors.Wrap(errMsg, "problem adding key")
+		}
 	}
 
 	return nil
@@ -299,7 +315,13 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return errors.Wrap(err, "problem deleting key")
+		errMsg := rest.APIError{}
+
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem deleting key and parsing error message")
+		} else {
+			return errors.Wrap(errMsg, "problem deleting key")
+		}
 	}
 
 	return nil
