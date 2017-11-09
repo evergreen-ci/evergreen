@@ -17,6 +17,21 @@ var LINK_REGEXP =
 
 var JIRA_REGEXP = /[A-Z]{1,10}-\d{1,6}/ig;
 
+var jiraLinkify = function(input, jiraHost) {
+  if (!input) {
+    return input;
+  }
+  return input.replace(JIRA_REGEXP, function(match) {
+    return '<a href="https://'+jiraHost +'/browse/' + match + '">' + match + '</a>';
+  });
+};
+
+var escapeHtml = function(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+};
+
 filters.common.filter('conditional', function() {
   return function(b, t, f) {
     return b ? t : f;
@@ -146,14 +161,7 @@ filters.common.filter('conditional', function() {
     });
   };
 }).filter('jiraLinkify', function() {
-  return function(input, jiraHost) {
-    if (!input) {
-      return input;
-    }
-    return input.replace(JIRA_REGEXP, function(match) {
-      return '<a href="https://'+jiraHost +'/browse/' + match + '">' + match + '</a>';
-    });
-  }
+  return jiraLinkify;
 }).filter('convertDateToUserTimezone', function() {
   return function(input, timezone, format) {
     return moment(input).tz(timezone).format(format);
@@ -173,11 +181,7 @@ filters.common.filter('conditional', function() {
     return $sce.trustAsHtml(input);
   };
 }).filter('escapeHtml', function() {
-  return function(str) {
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-  };
+  return escapeHtml;
 }).filter('pretty', function() {
   return function(obj) {
     return JSON.stringify(obj, null, 2);
