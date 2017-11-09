@@ -93,7 +93,7 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 
 func TestAssignNextAvailableTask(t *testing.T) {
 	Convey("with a task queue and a host", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection); err != nil {
+		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, model.ProjectRefCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
@@ -122,6 +122,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			Id:        "task1",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
+			Project:   "exists",
 		}
 		So(task1.Insert(), ShouldBeNil)
 
@@ -129,7 +130,14 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			Id:        "task2",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
+			Project:   "exists",
 		}
+		pref := &model.ProjectRef{
+			Identifier: "exists",
+			Enabled:    true,
+		}
+
+		So(pref.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
 		Convey("a host should get the task at the top of the queue", func() {
 			t, err := assignNextAvailableTask(tq, &sampleHost)
@@ -199,12 +207,14 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				t1 := task.Task{
 					Id:        "sampleTask",
 					Status:    evergreen.TaskUndispatched,
+					Project:   "exists",
 					Activated: true,
 				}
 				So(t1.Insert(), ShouldBeNil)
 				t2 := task.Task{
 					Id:        "another",
 					Status:    evergreen.TaskUndispatched,
+					Project:   "exists",
 					Activated: true,
 				}
 				So(t2.Insert(), ShouldBeNil)
@@ -217,6 +227,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				Convey("the task that is in the other host should not be assigned to another host", func() {
 					t, err := assignNextAvailableTask(tq, &h2)
 					So(err, ShouldBeNil)
+					So(t, ShouldNotBeNil)
 					So(t.Id, ShouldEqual, t2.Id)
 					h, err := host.FindOne(host.ById(h2.Id))
 					So(err, ShouldBeNil)
@@ -280,6 +291,7 @@ func TestNextTask(t *testing.T) {
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
 			BuildId:   buildId,
+			Project:   "exists",
 		}
 		So(task1.Insert(), ShouldBeNil)
 
@@ -287,6 +299,7 @@ func TestNextTask(t *testing.T) {
 			Id:        "task2",
 			Status:    evergreen.TaskUndispatched,
 			Activated: true,
+			Project:   "exists",
 			BuildId:   buildId,
 		}
 		So(task2.Insert(), ShouldBeNil)
@@ -299,6 +312,21 @@ func TestNextTask(t *testing.T) {
 			},
 		}
 		So(testBuild.Insert(), ShouldBeNil)
+
+		task3 := task.Task{
+			Id:        "another",
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+		}
+		So(task3.Insert(), ShouldBeNil)
+
+		pref := &model.ProjectRef{
+			Identifier: "exists",
+			Enabled:    true,
+		}
+
+		So(pref.Insert(), ShouldBeNil)
+
 		Convey("getting the next task api endpoint should work", func() {
 			resp := getNextTaskEndpoint(t, as, sampleHost.Id)
 			So(resp, ShouldNotBeNil)
