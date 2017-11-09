@@ -257,9 +257,8 @@ func (c *communicatorImpl) GetCurrentUsersKeys(ctx context.Context) ([]model.API
 
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return nil, errors.Wrap(err, "problem fetching key list and parsing error message")
-		} else {
-			return nil, errors.Wrap(errMsg, "problem fetching key list")
 		}
+		return nil, errors.Wrap(errMsg, "problem fetching key list")
 	}
 
 	keys := []model.APIPubKey{}
@@ -294,9 +293,8 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem adding key and parsing error message")
-		} else {
-			return errors.Wrap(errMsg, "problem adding key")
 		}
+		return errors.Wrap(errMsg, "problem adding key")
 	}
 
 	return nil
@@ -319,9 +317,8 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 
 		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
 			return errors.Wrap(err, "problem deleting key and parsing error message")
-		} else {
-			return errors.Wrap(errMsg, "problem deleting key")
 		}
+		return errors.Wrap(errMsg, "problem deleting key")
 	}
 
 	return nil
