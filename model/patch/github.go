@@ -59,7 +59,7 @@ type GithubIntent struct {
 var (
 	idKey         = bsonutil.MustHaveTag(GithubIntent{}, "ID")
 	prNumberKey   = bsonutil.MustHaveTag(GithubIntent{}, "PRNumber")
-	headSHAKey    = bsonutil.MustHaveTag(GithubIntent{}, "HeadHash")
+	headHashKey   = bsonutil.MustHaveTag(GithubIntent{}, "HeadHash")
 	urlKey        = bsonutil.MustHaveTag(GithubIntent{}, "URL")
 	processedKey  = bsonutil.MustHaveTag(GithubIntent{}, "Processed")
 	intentTypeKey = bsonutil.MustHaveTag(GithubIntent{}, "IntentType")
@@ -72,7 +72,7 @@ func NewGithubIntent(pr int, sha string, url string) (Intent, error) {
 		return nil, errors.New("PR number must not be 0")
 	}
 	if len(sha) == 0 {
-		return nil, errors.New("Base SHA must not be empty")
+		return nil, errors.New("Base hash must not be empty")
 	}
 	if !strings.HasPrefix(url, "http") {
 		return nil, errors.Errorf("URL does not appear valid (%s)", g.URL)
