@@ -425,6 +425,8 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	_, _ := projecCtx.GetTask()
 	ver, err := projCtx.GetVersion()
 	if err != nil || ver == nil {
 		http.Error(w, "no version available", http.StatusBadRequest)
