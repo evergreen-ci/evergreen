@@ -2,29 +2,26 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 type PublicKeyCommand struct {
-	GlobalOpts *Options       `no-flag:"true"`
-	List       bool           `short:"l" long:"list" description:"list the public keys for your user that evergreen knows about"`
-	Delete     bool           `short:"D" long:"delete" description:"delete a public key with given name from evergreen"`
-	Add        bool           `short:"a" long:"add" description:"add a public key with given name and public key file"`
-	Positional positionalArgs `positional-args:"yes"`
+	GlobalOpts *Options `no-flag:"true"`
+	List       bool     `short:"l" long:"list" description:"list the public keys for your user that evergreen knows about"`
+	Delete     bool     `short:"D" long:"delete" description:"delete a public key with given name from evergreen"`
+	Add        bool     `short:"a" long:"add" description:"add a public key with given name and public key file"`
+
+	keyName string
+	keyFile string
 }
 
-type positionalArgs struct {
-	KeyName string
-	KeyFile string
-}
-
-func (c *PublicKeyCommand) Execute(x []string) error {
-	if err := c.validateFlags(); err != nil {
+func (c *PublicKeyCommand) Execute(args []string) error {
+	if err := c.validateFlags(args); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -47,7 +44,7 @@ func (c *PublicKeyCommand) Execute(x []string) error {
 	}
 }
 
-func (c *PublicKeyCommand) validateFlags() error {
+func (c *PublicKeyCommand) validateFlags(args []string) error {
 	opts := []bool{c.List, c.Delete, c.Add}
 	numOpts := 0
 	for _, b := range opts {
@@ -67,6 +64,32 @@ func (c *PublicKeyCommand) validateFlags() error {
 		return errors.Errorf("%s, specify exactly one of --add [KeyName] [KeyFile], --delete [KeyName], or --list", errStr)
 	}
 
+	if c.List {
+		if len(args) != 0 {
+			return errors.New("Unexpected extra arguments to list")
+		}
+
+	} else if c.Delete {
+		if len(args) == 0 {
+			return errors.New("Too few arguments to delete, need key name")
+
+		} else if len(args) > 1 {
+			return errors.New("Unexpected extra arguments to delete")
+		}
+
+		c.keyName = args[0]
+
+	} else if c.Add {
+		if len(args) < 2 {
+			return errors.New("Too few arguments to add, need key name and public key file path")
+
+		} else if len(args) > 2 {
+			return errors.New("Unexpected extra arguments to add")
+		}
+		c.keyName = args[0]
+		c.keyFile = args[1]
+	}
+
 	return nil
 }
 
@@ -76,38 +99,38 @@ func (c *PublicKeyCommand) listKeys(ctx context.Context, client client.Communica
 		return err
 	}
 
-	fmt.Println("Public keys stored in Evergreen:")
+	grip.Infoln("Public keys stored in Evergreen:")
 	if len(keys) == 0 {
-		fmt.Println("No keys found")
+		grip.Infoln("No keys found")
 
 	} else {
 		for _, key := range keys {
-			fmt.Printf("Name: '%s', Key: '%s'\n", key.Name, key.Key)
+			grip.Infof("Name: '%s', Key: '%s'\n", key.Name, key.Key)
 		}
 	}
 	return nil
 }
 
 func (c *PublicKeyCommand) listDeleteKey(ctx context.Context, client client.Communicator) error {
-	if c.Positional.KeyName == "" {
+	if c.keyName == "" {
 		return errors.New("keys delete requires a key name")
 	}
 
-	if err := client.DeletePublicKey(ctx, c.Positional.KeyName); err != nil {
+	if err := client.DeletePublicKey(ctx, c.keyName); err != nil {
 		return err
 	}
 
-	fmt.Printf("Successfully deleted key: '%s'\n", c.Positional.KeyName)
+	grip.Infof("Successfully deleted key: '%s'\n", c.keyName)
 
 	return nil
 }
 
 func (c *PublicKeyCommand) listAddKey(ctx context.Context, client client.Communicator) error {
-	if c.Positional.KeyName == "" || c.Positional.KeyFile == "" {
+	if c.keyName == "" || c.keyFile == "" {
 		return errors.New("keys add requires key name and a path to a public key file")
 	}
 
-	keyFileContents, err := ioutil.ReadFile(c.Positional.KeyFile)
+	keyFileContents, err := ioutil.ReadFile(c.keyFile)
 	if err != nil {
 		return errors.Wrap(err, "can't read public key file")
 	}
@@ -115,14 +138,14 @@ func (c *PublicKeyCommand) listAddKey(ctx context.Context, client client.Communi
 	pubKey := string(keyFileContents)
 	// verify that this isn't a private key
 	if !strings.HasPrefix(strings.TrimSpace(pubKey), "ssh-") {
-		return errors.Errorf("'%s' does not appear to be an ssh public key", c.Positional.KeyFile)
+		return errors.Errorf("'%s' does not appear to be an ssh public key", c.keyFile)
 	}
 
-	if err := client.AddPublicKey(ctx, c.Positional.KeyName, pubKey); err != nil {
+	if err := client.AddPublicKey(ctx, c.keyName, pubKey); err != nil {
 		return err
 	}
 
-	fmt.Printf("Successfully added key: '%s'\n", c.Positional.KeyName)
+	grip.Infof("Successfully added key: '%s'\n", c.keyName)
 
 	return nil
 }
