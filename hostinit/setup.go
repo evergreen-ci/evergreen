@@ -687,7 +687,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	return &LoadClientResult{
 		BinaryPath: filepath.Join("~", "evergreen"),
-		ConfigPath: fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
+		ConfigPath: fmt.Sprintf("%s/.evergreen.yml", targetDir),
 	}, nil
 }
 
@@ -722,5 +722,10 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
-	return errors.WithStack(makeShellCmd.Run(ctx))
+
+	if err := makeShellCmd.Run(ctx); err != nil {
+		grip.Errorf("Fetching data for host %s failed: %s", hostSSHInfo.Hostname, cmdOutput)
+		return err
+	}
+	return nil
 }
