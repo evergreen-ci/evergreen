@@ -123,7 +123,7 @@ func FilterTasksOnStatus(tasks []Task, statuses ...string) []Task {
 	out := make([]Task, 0)
 	for _, task := range tasks {
 		status := task.ResultStatus()
-		if util.SliceContains(statuses, status) {
+		if util.StringSliceContains(statuses, status) {
 			out = append(out, task)
 		}
 	}

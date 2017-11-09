@@ -49,7 +49,7 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interfac
 	r := map[string]interface{}{
 		// IsSuperUser returns true if the given user Id has super user privileges.
 		"IsSuperUser": func(userName string) bool {
-			return len(superUsers) == 0 || util.SliceContains(superUsers, userName)
+			return len(superUsers) == 0 || util.StringSliceContains(superUsers, userName)
 		},
 		// Gravatar returns a Gravatar URL for the given email string.
 		"Gravatar": func(email string) string {

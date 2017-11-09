@@ -384,7 +384,7 @@ func (t *TestHistoryParameters) validate() []string {
 		evergreen.TestSucceededStatus,
 	}
 	for _, status := range t.TestStatuses {
-		if !util.SliceContains(validTestStatuses, status) {
+		if !util.StringSliceContains(validTestStatuses, status) {
 			validationErrors = append(validationErrors, fmt.Sprintf("invalid test status in parameters: %v", status))
 		}
 	}
@@ -392,7 +392,7 @@ func (t *TestHistoryParameters) validate() []string {
 	// task statuses can be fail, pass, or timeout.
 	validTaskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded, TaskTimeout, TaskSystemFailure}
 	for _, status := range t.TaskStatuses {
-		if !util.SliceContains(validTaskStatuses, status) {
+		if !util.StringSliceContains(validTaskStatuses, status) {
 			validationErrors = append(validationErrors, fmt.Sprintf("invalid task status in parameters: %v", status))
 		}
 	}

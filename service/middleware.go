@@ -171,7 +171,7 @@ func (uis *UIServer) isSuperUser(u *user.DBUser) bool {
 	if u == nil {
 		return false
 	}
-	if util.SliceContains(uis.Settings.SuperUsers, u.Id) ||
+	if util.StringSliceContains(uis.Settings.SuperUsers, u.Id) ||
 		len(uis.Settings.SuperUsers) == 0 {
 		return true
 	}
@@ -186,7 +186,7 @@ func isAdmin(u *user.DBUser, project *model.ProjectRef) bool {
 	if u == nil {
 		return false
 	}
-	return util.SliceContains(project.Admins, u.Id)
+	return util.StringSliceContains(project.Admins, u.Id)
 }
 
 // RedirectToLogin forces a redirect to the login page. The redirect param is set on the query

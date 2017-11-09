@@ -70,7 +70,7 @@ func isXgenProjBF(host, project string) bool {
 		return false
 	}
 
-	return util.SliceContains(supportedJiraProjects, project)
+	return util.StringSliceContains(supportedJiraProjects, project)
 }
 
 // Deliver posts the alert defined by the AlertContext to JIRA.

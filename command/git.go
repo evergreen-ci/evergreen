@@ -303,7 +303,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			}
 
 			// skip the module if this build variant does not use it
-			if !util.SliceContains(conf.BuildVariant.Modules, module.Name) {
+			if !util.StringSliceContains(conf.BuildVariant.Modules, module.Name) {
 				logger.Execution().Infof(
 					"Skipping patch for module %v: the current build variant does not use it",
 					module.Name)

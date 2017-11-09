@@ -182,7 +182,7 @@ func computeScheduledTasksDuration(
 		// it to the total duration of 'shared tasks' for the distro and all
 		// other distros it can be run on
 		distroIds, ok := taskRunDistros[taskQueueItem.Id]
-		if ok && util.SliceContains(distroIds, currentDistroId) {
+		if ok && util.StringSliceContains(distroIds, currentDistroId) {
 			for _, distroId := range distroIds {
 				sharedTasksDuration[distroId] +=
 					taskQueueItem.ExpectedDuration.Seconds()

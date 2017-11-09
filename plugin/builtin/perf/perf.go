@@ -2,13 +2,14 @@ package git
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/mapstructure"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mitchellh/mapstructure"
 )
 
 func init() {
@@ -57,7 +58,7 @@ func (pp *PerfPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{util.SliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil
+					}{util.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil
 				},
 			},
 		},

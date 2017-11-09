@@ -101,7 +101,7 @@ func (pdp *PerfDashboardPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
 					exists := false
 					for _, projects := range pdp.Branches {
-						if util.SliceContains(projects, context.ProjectRef.Identifier) {
+						if util.StringSliceContains(projects, context.ProjectRef.Identifier) {
 							exists = true
 							break
 						}

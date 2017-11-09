@@ -53,17 +53,16 @@ func validateS3BucketName(bucket string) error {
 }
 
 func validS3Permissions(perm string) bool {
-	return util.SliceContains(
-		[]s3.ACL{
-			s3.Private,
-			s3.PublicRead,
-			s3.PublicReadWrite,
-			s3.AuthenticatedRead,
-			s3.BucketOwnerRead,
-			s3.BucketOwnerFull,
-		},
-		s3.ACL(perm),
-	)
+	perms := []string{
+		string(s3.Private),
+		string(s3.PublicRead),
+		string(s3.PublicReadWrite),
+		string(s3.AuthenticatedRead),
+		string(s3.BucketOwnerRead),
+		string(s3.BucketOwnerFull),
+	}
+
+	return util.StringSliceContains(perms, perm)
 }
 
 func getS3OpBackoff() *backoff.Backoff {

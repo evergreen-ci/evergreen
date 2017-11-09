@@ -509,7 +509,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 					toRemove = append(toRemove, removed...)
 				}
 				for _, t := range bv.Tasks {
-					if !util.SliceContains(toRemove, t.Name) {
+					if !util.StringSliceContains(toRemove, t.Name) {
 						prunedTasks = append(prunedTasks, t)
 					}
 				}

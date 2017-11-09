@@ -510,7 +510,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 			b.Requester == evergreen.PatchVersionRequester {
 			continue
 		}
-		if createAll || util.SliceContains(taskNames, task.Name) {
+		if createAll || util.StringSliceContains(taskNames, task.Name) {
 			tasksToCreate = append(tasksToCreate, task)
 		}
 	}
