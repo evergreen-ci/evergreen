@@ -70,16 +70,19 @@ func (m *ManifestPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				Position:  plugin.PageRight,
 				PanelHTML: "<div ng-include=\"'/plugin/manifest/static/partials/version_manifest_panel.html'\"></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					if context.Version == nil {
+					ver, err := context.Metadata.GetVersion()
+					if err != nil || ver == nil {
 						return nil, nil
 					}
-					currentManifest, err := manifest.FindOne(manifest.ById(context.Version.Id))
+
+					currentManifest, err := manifest.FindOne(manifest.ById(ver.Id))
 					if err != nil {
 						return nil, err
 					}
 					if currentManifest == nil {
 						return nil, nil
 					}
+
 					prettyManifest, err := json.MarshalIndent(currentManifest, "", "  ")
 					if err != nil {
 						return nil, err

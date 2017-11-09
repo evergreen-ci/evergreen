@@ -232,7 +232,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	project, patchDoc, err := apiRequest.CreatePatch(
-		finalize, as.Settings.Credentials["github"], dbUser, &as.Settings)
+		finalize, as.Settings.Credentials["github"], dbUser, as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "Invalid patch"))
 		return
@@ -279,7 +279,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if finalize {
-		if _, err = model.FinalizePatch(patchDoc, &as.Settings); err != nil {
+		if _, err = model.FinalizePatch(patchDoc, as.Settings); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -459,7 +459,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		patchedProject, err := validator.GetPatchedProject(p, &as.Settings)
+		patchedProject, err := validator.GetPatchedProject(p, as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -470,7 +470,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 		p.PatchedConfig = string(projectYamlBytes)
-		_, err = model.FinalizePatch(p, &as.Settings)
+		_, err = model.FinalizePatch(p, as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

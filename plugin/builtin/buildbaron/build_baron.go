@@ -111,10 +111,18 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/plugin/buildbaron/static/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					_, enabled := bbp.opts.Projects[context.ProjectRef.Identifier]
+					var result bool
+
+					pref, err := context.Metadata.GetProjectRef()
+					if err == nil && pref != nil {
+						_, result = bbp.opts.Projects[pref.Identifier]
+					}
+
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{enabled}, nil
+					}{
+						Enabled: result,
+					}, nil
 				},
 			},
 		},

@@ -44,7 +44,7 @@ type buildStatusByTask map[string]buildStatus
 // specified in the request.
 func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	b := projCtx.Build
+	b, _ := projCtx.GetBuild()
 	if b == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
@@ -86,7 +86,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 // The keys of the object are the task names.
 func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	b := projCtx.Build
+	b, _ := projCtx.GetBuild()
 	if b == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return

@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -19,34 +20,42 @@ import (
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil || projCtx.Version == nil {
+	pref, err := projCtx.GetProjectRef()
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	project, _ := projCtx.GetProject()
+	ver, _ := projCtx.GetVersion()
+	if project == nil || ver == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
 	// Set the config to blank to avoid writing it to the UI unnecessarily.
-	projCtx.Version.Config = ""
+	ver.Config = ""
 
 	versionAsUI := uiVersion{
-		Version:   *projCtx.Version,
-		RepoOwner: projCtx.ProjectRef.Owner,
-		Repo:      projCtx.ProjectRef.Repo,
+		Version:   ver,
+		RepoOwner: pref.Owner,
+		Repo:      pref.Repo,
 	}
 
-	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
+	dbBuilds, err := build.Find(build.ByIds(ver.BuildIds))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	var canEditPatch bool
 	currentUser := GetUser(r)
-	if projCtx.Patch != nil {
-		canEditPatch = uis.canEditPatch(currentUser, projCtx.Patch)
-		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
+	patchDoc, _ := projCtx.GetPatch()
+	if patchDoc != nil {
+		canEditPatch = uis.canEditPatch(currentUser, patchDoc)
+		versionAsUI.PatchInfo = &uiPatch{Patch: patchDoc}
 		// diff builds for each build in the version
 		var baseBuilds []build.Build
-		baseBuilds, err = build.Find(build.ByRevision(projCtx.Version.Revision))
+		baseBuilds, err = build.Find(build.ByRevision(ver.Revision))
 		if err != nil {
 			http.Error(w,
 				fmt.Sprintf("error loading base builds for patch: %v", err),
@@ -70,13 +79,13 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		var baseVersion *version.Version
-		baseVersion, err = version.FindOne(version.BaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
+		baseVersion, err = version.FindOne(version.BaseVersionFromPatch(ver.Identifier, ver.Revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if baseVersion == nil {
-			grip.Warningln("Could not find version for base commmit of patch build: ", projCtx.Version.Id)
+			grip.Warningln("Could not find version for base commmit of patch build: ", ver.Id)
 		}
 		baseId := ""
 		if baseVersion != nil {
@@ -87,7 +96,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	failedTaskIds := []string{}
-	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
+	uiBuilds := make([]uiBuild, 0, len(ver.BuildIds))
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
 
@@ -138,21 +147,27 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent pluginData
 		CanEdit       bool
 		JiraHost      string
+		Patch         *patch.Patch
 		ViewData
-	}{&versionAsUI, pluginContent, canEditPatch,
-		uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
+	}{
+		Version:       &versionAsUI,
+		PluginContent: pluginContent,
+		CanEdit:       canEditPatch,
+		JiraHost:      uis.Settings.Jira.Host,
+		Patch:         patchDoc,
+		ViewData:      uis.GetCommonViewData(w, r, false, true),
+	}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
-	var err error
-
+	user := MustHaveUser(r)
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil || projCtx.Version == nil {
+	project, _ := projCtx.GetProject()
+	ver, _ := projCtx.GetVersion()
+	if project == nil || ver == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	user := MustHaveUser(r)
 
 	jsonMap := struct {
 		Action   string   `json:"action"`
@@ -162,7 +177,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		TaskIds  []string `json:"task_ids"`
 	}{}
 
-	if err = util.ReadJSONInto(util.NewRequestReader(r), &jsonMap); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &jsonMap); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -170,18 +185,18 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch jsonMap.Action {
 	case "restart":
-		if err = model.RestartVersion(projCtx.Version.Id, jsonMap.TaskIds, jsonMap.Abort, user.Id); err != nil {
+		if err := model.RestartVersion(ver.Id, jsonMap.TaskIds, jsonMap.Abort, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	case "set_active":
 		if jsonMap.Abort {
-			if err = model.AbortVersion(projCtx.Version.Id); err != nil {
+			if err := model.AbortVersion(ver.Id); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
-		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
+		if err := model.SetVersionActivation(ver.Id, jsonMap.Active, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -193,7 +208,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if err = model.SetVersionPriority(projCtx.Version.Id, jsonMap.Priority); err != nil {
+		if err := model.SetVersionPriority(ver.Id, jsonMap.Priority); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -202,26 +217,33 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var err error
+
 	// After the version has been modified, re-load it from DB and send back the up-to-date view
 	// to the client.
-	projCtx.Version, err = version.FindOne(version.ById(projCtx.Version.Id))
+	ver, err = version.FindOne(version.ById(ver.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
+	pref, err := projCtx.GetProjectRef()
+	if err != nil || pref == nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	versionAsUI := uiVersion{
-		Version:   *projCtx.Version,
-		RepoOwner: projCtx.ProjectRef.Owner,
-		Repo:      projCtx.ProjectRef.Repo,
+		Version:   ver,
+		RepoOwner: pref.Owner,
+		Repo:      pref.Repo,
 	}
-	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
+	dbBuilds, err := build.Find(build.ByIds(ver.BuildIds))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
+	uiBuilds := make([]uiBuild, 0, len(ver.BuildIds))
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
@@ -277,7 +299,13 @@ func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild) error {
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	data, err := getVersionHistory(projCtx.Version.Id, 5)
+	ver, err := projCtx.GetVersion()
+	if err != nil || ver == nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := getVersionHistory(ver.Id, 5)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -286,18 +314,23 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	versions := make([]*uiVersion, 0, len(data))
 
+	pref, err := projCtx.GetProjectRef()
+	if err != nil || pref == nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	for _, version := range data {
 		// Check whether the project associated with the particular version
 		// is accessible to this user. If not, we exclude it from the version
 		// history. This is done to hide the existence of the private project.
-		if projCtx.ProjectRef.Private && user == nil {
+		if pref == nil || user == nil {
 			continue
 		}
 
 		versionAsUI := uiVersion{
-			Version:   version,
-			RepoOwner: projCtx.ProjectRef.Owner,
-			Repo:      projCtx.ProjectRef.Repo,
+			Version:   &version,
+			RepoOwner: pref.Owner,
+			Repo:      pref.Repo,
 		}
 		versions = append(versions, &versionAsUI)
 
@@ -307,7 +340,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
+		uiBuilds := make([]uiBuild, 0, len(ver.BuildIds))
 		for _, b := range dbBuilds {
 			buildAsUI := uiBuild{Build: b}
 			uiTasks := make([]uiTask, 0, len(b.Tasks))

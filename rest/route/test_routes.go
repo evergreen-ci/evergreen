@@ -57,16 +57,19 @@ func (hgh *testGetHandler) Handler() RequestHandler {
 // sets them as part of the args.
 func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
-	if projCtx.Task == nil {
+	task, err := projCtx.GetTask()
+	if err != nil || task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
+
 	tgh.Args = testGetHandlerArgs{
-		taskId:     projCtx.Task.Id,
+		taskId:     task.Id,
 		testStatus: r.URL.Query().Get("status"),
 	}
+
 	return tgh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 

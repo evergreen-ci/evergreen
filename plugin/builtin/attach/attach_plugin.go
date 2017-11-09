@@ -71,10 +71,13 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				PanelHTML: "<div ng-include=\"'/plugin/attach/static/partials/task_files_panel.html'\" " +
 					"ng-init='files=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					if context.Task == nil {
+					t, err := context.Metadata.GetTask()
+
+					if err != nil || t == nil {
 						return nil, nil
 					}
-					artifactEntry, err := artifact.FindOne(artifact.ByTaskId(context.Task.Id))
+
+					artifactEntry, err := artifact.FindOne(artifact.ByTaskId(t.Id))
 					if err != nil {
 						return nil, errors.Wrap(err, "error finding artifact files for task")
 					}
@@ -90,10 +93,12 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				PanelHTML: "<div ng-include=\"'/plugin/attach/static/partials/build_files_panel.html'\" " +
 					"ng-init='filesByTask=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					if context.Build == nil {
+					b, err := context.Metadata.GetBuild()
+					if err != nil || b == nil {
 						return nil, nil
 					}
-					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(context.Build.Id))
+
+					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(b.Id))
 					if err != nil {
 						return nil, errors.Wrap(err, "error finding artifact files for build")
 					}

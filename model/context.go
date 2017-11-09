@@ -13,64 +13,187 @@ import (
 // function, all the other applicable fields in the Context can
 // inferred and populated from the id of any one of the fields.
 type Context struct {
-	Task       *task.Task
-	Build      *build.Build
-	Version    *version.Version
-	Patch      *patch.Patch
-	ProjectRef *ProjectRef
+	projectRef *ProjectRef
+	project    *Project
+	patch      *patch.Patch
+	version    *version.Version
+	build      *build.Build
+	task       *task.Task
 
-	project *Project
+	taskID    string
+	buildID   string
+	versionID string
+	patchID   string
+	projectID string
 }
 
 // LoadContext builds a Context from the set of given resource ID's
 // by inferring all the relationships between them - for example, e.g. loading a project based on
 // the the task, or the version based on the patch, etc.
-func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context, error) {
-	ctx := &Context{}
+func LoadContext(taskId, buildId, versionId, patchId, projectId string) *Context {
+	return &Context{
+		taskID:    taskId,
+		buildID:   buildId,
+		versionID: versionId,
+		patchID:   patchId,
+		projectID: projectId,
+	}
+}
 
-	pId, err := ctx.populateTaskBuildVersion(taskId, buildId, versionId)
+// CreateContext builds a context from its constituent parts, and is
+// mostly useful for testing purposes.
+func CreateContext(pref *ProjectRef, proj *Project, patchDoc *patch.Patch, ver *version.Version, b *build.Build, t *task.Task) *Context {
+	return &Context{
+		projectRef: pref,
+		project:    proj,
+		patch:      patchDoc,
+		version:    ver,
+		build:      b,
+		task:       t,
+	}
+}
+
+func (ctx *Context) GetTask() (*task.Task, error) {
+	if ctx.task != nil {
+		return ctx.task, nil
+	}
+
+	if ctx.taskID == "" {
+		return nil, errors.New("cannot resolve task from request context")
+	}
+
+	var err error
+
+	ctx.task, err = task.FindOne(task.ById(ctx.taskID))
 	if err != nil {
-		return *ctx, err
-	}
-	if len(projectId) == 0 || (len(pId) > 0 && pId != projectId) {
-		projectId = pId
+		ctx.taskID = ""
+		return nil, err
 	}
 
-	err = ctx.populatePatch(patchId)
+	if ctx.task == nil {
+		return nil, errors.New("could not resolve task from request")
+	}
+
+	if ctx.buildID != ctx.task.BuildId {
+		ctx.build = nil
+		ctx.buildID = ctx.task.BuildId
+	}
+
+	if ctx.versionID != ctx.task.Version {
+		ctx.version = nil
+		ctx.versionID = ctx.task.Version
+	}
+
+	if ctx.projectID != ctx.task.Project {
+		ctx.project = nil
+		ctx.projectRef = nil
+		ctx.projectID = ctx.task.Project
+	}
+
+	return ctx.task, nil
+}
+
+func (ctx *Context) GetBuild() (*build.Build, error) {
+	if ctx.build != nil {
+		return ctx.build, nil
+	}
+
+	if ctx.buildID == "" {
+		return nil, errors.New("cannot resolve build from request context")
+	}
+
+	var err error
+
+	ctx.build, err = build.FindOne(build.ById(ctx.buildID))
 	if err != nil {
-		return *ctx, err
-	}
-	if ctx.Patch != nil && len(projectId) == 0 {
-		projectId = ctx.Patch.Project
+		ctx.buildID = ""
+		return nil, errors.Wrapf(err, "problem resolving build from id '%s'", ctx.buildID)
 	}
 
-	// Try to load project for the ID we found, and set cookie with it for subsequent requests
-	if len(projectId) > 0 {
-		// Also lookup the ProjectRef itself and add it to context.
-		ctx.ProjectRef, err = FindOneProjectRef(projectId)
-		if err != nil {
-			return *ctx, err
-		}
+	if ctx.build == nil {
+		return nil, errors.New("could not resolve build")
 	}
-	return *ctx, nil
+
+	if ctx.versionID != ctx.build.Version {
+		ctx.versionID = ctx.build.Version
+		ctx.version = nil
+	}
+
+	if ctx.projectID != ctx.build.Project {
+		ctx.projectID = ctx.build.Project
+		ctx.project = nil
+		ctx.projectRef = nil
+	}
+
+	return ctx.build, nil
+
+}
+
+func (ctx *Context) GetVersion() (*version.Version, error) {
+	if ctx.version != nil {
+		return ctx.version, nil
+	}
+
+	if ctx.versionID == "" {
+		return nil, errors.New("no version specified, cannot populate version")
+	}
+
+	var err error
+
+	ctx.version, err = version.FindOne(version.ById(ctx.versionID))
+	if err != nil {
+		ctx.versionID = ""
+		return nil, err
+	}
+
+	if ctx.version == nil {
+		return nil, errors.New("could not resolve version from request context")
+	}
+
+	if ctx.projectID != ctx.version.Identifier {
+		ctx.projectID = ctx.version.Identifier
+		ctx.projectRef = nil
+		ctx.project = nil
+	}
+
+	return ctx.version, nil
+}
+
+func (ctx *Context) GetPatch() (*patch.Patch, error) {
+	if ctx.patch != nil {
+		return ctx.patch, nil
+	}
+
+	if ctx.patchID == "" {
+		return nil, nil
+	}
+
+	if err := ctx.populatePatch(ctx.patchID); err != nil {
+		ctx.patchID = ""
+		return nil, err
+	}
+
+	if ctx.projectID != ctx.patch.Project {
+		ctx.projectID = ctx.patch.Project
+		ctx.projectRef = nil
+		ctx.project = nil
+	}
+
+	return ctx.patch, nil
 }
 
 // GetProject returns the project associated with the Context.
 func (ctx *Context) GetProject() (*Project, error) {
-	var err error
-
-	// if no project, use the first project as the default project
-	if ctx.ProjectRef == nil {
-		ctx.ProjectRef, err = FindFirstProjectRef()
-		if err != nil {
-			return nil, errors.Wrap(err, "error finding project ref")
-		}
-	}
-
 	if ctx.project != nil {
 		return ctx.project, nil
 	}
-	ctx.project, err = FindProject("", ctx.ProjectRef)
+
+	projRef, err := ctx.GetProjectRef()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem resolving project ref")
+	}
+
+	ctx.project, err = FindProject("", projRef)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding project")
 	}
@@ -78,49 +201,31 @@ func (ctx *Context) GetProject() (*Project, error) {
 	return ctx.project, nil
 }
 
-// populateTaskBuildVersion takes a task, build, and version ID and populates a Context
-// with as many of the task, build, and version documents as possible.
-// If any of the provided IDs is blank, they will be inferred from the more selective ones.
-// Returns the project ID of the data found, which may be blank if the IDs are empty.
-func (ctx *Context) populateTaskBuildVersion(taskId, buildId, versionId string) (string, error) {
-	projectId := ""
+func (ctx *Context) GetProjectRef() (*ProjectRef, error) {
+	if ctx.projectRef != nil {
+		return ctx.projectRef, nil
+	}
+
 	var err error
-	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
-	if len(taskId) > 0 {
-		ctx.Task, err = task.FindOne(task.ById(taskId))
+
+	if ctx.projectID == "" {
+		ctx.projectRef, err = FindFirstProjectRef()
 		if err != nil {
-			return "", err
+			return nil, errors.Wrap(err, "error finding project ref")
 		}
 
-		if ctx.Task != nil {
-			// override build and version ID with the ones this task belongs to
-			buildId = ctx.Task.BuildId
-			versionId = ctx.Task.Version
-			projectId = ctx.Task.Project
-		}
+		ctx.projectID = ctx.projectRef.Identifier
+
+		return ctx.projectRef, nil
 	}
 
-	// Fetch build if there's a build ID present; if we find one, populate version ID from it
-	if len(buildId) > 0 {
-		ctx.Build, err = build.FindOne(build.ById(buildId))
-		if err != nil {
-			return "", err
-		}
-		if ctx.Build != nil {
-			versionId = ctx.Build.Version
-			projectId = ctx.Build.Project
-		}
+	ctx.projectRef, err = FindOneProjectRef(ctx.projectID)
+	if err != nil {
+		ctx.projectID = ""
+		return nil, errors.Wrapf(err, "problem finding project record for '%s'", ctx.projectID)
 	}
-	if len(versionId) > 0 {
-		ctx.Version, err = version.FindOne(version.ById(versionId))
-		if err != nil {
-			return "", err
-		}
-		if ctx.Version != nil {
-			projectId = ctx.Version.Identifier
-		}
-	}
-	return projectId, nil
+
+	return ctx.projectRef, nil
 }
 
 // populatePatch loads a patch into the project context, using patchId if provided.
@@ -133,10 +238,10 @@ func (ctx *Context) populatePatch(patchId string) error {
 		if !patch.IsValidId(patchId) {
 			return errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
-		ctx.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
-	} else if ctx.Version != nil {
+		ctx.patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
+	} else if ctx.version != nil {
 		// patch isn't in URL but the version in context has one, get it
-		ctx.Patch, err = patch.FindOne(patch.ByVersion(ctx.Version.Id).Project(patch.ExcludePatchDiff))
+		ctx.patch, err = patch.FindOne(patch.ByVersion(ctx.version.Id).Project(patch.ExcludePatchDiff))
 	}
 	if err != nil {
 		return err
@@ -144,8 +249,8 @@ func (ctx *Context) populatePatch(patchId string) error {
 
 	// If there's a finalized patch loaded into context but not a version, load the version
 	// associated with the patch as the context's version.
-	if ctx.Version == nil && ctx.Patch != nil && ctx.Patch.Version != "" {
-		ctx.Version, err = version.FindOne(version.ById(ctx.Patch.Version))
+	if ctx.version == nil && ctx.patch != nil && ctx.patch.Version != "" {
+		ctx.version, err = version.FindOne(version.ById(ctx.patch.Version))
 		if err != nil {
 			return errors.WithStack(err)
 		}

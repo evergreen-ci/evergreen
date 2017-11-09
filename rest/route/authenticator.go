@@ -57,10 +57,16 @@ type ProjectAdminAuthenticator struct{}
 func (p *ProjectAdminAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	projCtx := MustHaveProjectContext(ctx)
 	u := GetUser(ctx)
+	pref, err := projCtx.GetProjectRef()
+	if err != nil {
+		return rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
+	}
 
 	// If either a superuser or admin, request is allowed to proceed.
-	if auth.IsSuperUser(sc.GetSuperUsers(), u) ||
-		util.StringSliceContains(projCtx.ProjectRef.Admins, u.Username()) {
+	if auth.IsSuperUser(sc.GetSuperUsers(), u) || util.StringSliceContains(pref.Admins, u.Username()) {
 		return nil
 	}
 

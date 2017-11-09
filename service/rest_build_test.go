@@ -30,7 +30,7 @@ func TestGetBuildInfo(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     buildTestConfig.Ui.Url,
-		Settings:    *buildTestConfig,
+		Settings:    buildTestConfig,
 		UserManager: userManager,
 	}
 	testutil.HandleTestingErr(uis.InitPlugins(), t, "error installing plugins")
@@ -202,7 +202,7 @@ func TestGetBuildStatus(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     buildTestConfig.Ui.Url,
-		Settings:    *buildTestConfig,
+		Settings:    buildTestConfig,
 		UserManager: userManager,
 	}
 

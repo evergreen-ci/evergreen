@@ -415,7 +415,22 @@ func TestUIDataInjection(t *testing.T) {
 								Page:     TaskPage,
 								Position: PageCenter,
 								DataFunc: func(ctx UIContext) (interface{}, error) {
-									return ctx.Task.Id + ctx.Build.Id + ctx.Version.Id, nil
+									t, err := ctx.Metadata.GetTask()
+									if err != nil || t == nil {
+										return nil, errors.New("cannot resolve task")
+									}
+
+									b, err := ctx.Metadata.GetBuild()
+									if err != nil || t == nil {
+										return nil, errors.New("cannot resolve build")
+									}
+
+									v, err := ctx.Metadata.GetBuild()
+									if err != nil || t == nil {
+										return nil, errors.New("cannot resolve version")
+									}
+
+									return t.Id + b.Id + v.Id, nil
 								},
 							},
 						},

@@ -56,11 +56,12 @@
           #footer{ font-size:.8em; color:#888; }
         </style>
         <script type="text/javascript">
+        {{if .ProjectRef}}
+            var project = {{.ProjectRef.Identifier}};
+            var projectName = {{.ProjectRef.DisplayName}};
+        {{end}}
+
         {{if .ProjectData}}
-            {{if .ProjectData.ProjectRef}}
-                var project = {{.ProjectData.ProjectRef.Identifier}};
-                var projectName = {{.ProjectData.ProjectRef.DisplayName}};
-            {{end}}
                 // allProjects only has the identifier and display name properties
                 var allProjects = {{.ProjectData.AllProjects}};
                 var redirect = {{.ProjectData.AuthRedirect}};

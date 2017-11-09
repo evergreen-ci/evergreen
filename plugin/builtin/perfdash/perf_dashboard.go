@@ -99,13 +99,18 @@ func (pdp *PerfDashboardPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				Position:  plugin.PageCenter,
 				PanelHTML: template.HTML(dashboardHTML),
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					exists := false
-					for _, projects := range pdp.Branches {
-						if util.StringSliceContains(projects, context.ProjectRef.Identifier) {
-							exists = true
-							break
+					var exists bool
+
+					pref, err := context.Metadata.GetProjectRef()
+					if err == nil && pref != nil {
+						for _, projects := range pdp.Branches {
+							if util.StringSliceContains(projects, pref.Identifier) {
+								exists = true
+								break
+							}
 						}
 					}
+
 					return struct {
 						Enabled bool `json:"enabled"`
 					}{exists}, nil

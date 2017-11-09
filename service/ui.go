@@ -49,7 +49,7 @@ type UIServer struct {
 
 	//authManager
 	UserManager     auth.UserManager
-	Settings        evergreen.Settings
+	Settings        *evergreen.Settings
 	CookieStore     *sessions.CookieStore
 	PluginTemplates map[string]*htmlTemplate.Template
 	clientConfig    *evergreen.ClientConfig
@@ -60,7 +60,8 @@ type UIServer struct {
 type ViewData struct {
 	User        *user.DBUser
 	ProjectData projectContext
-	Project     model.Project
+	Project     *model.Project
+	ProjectRef  *model.ProjectRef
 	Flashes     []interface{}
 	Banner      string
 	BannerTheme string
@@ -76,7 +77,7 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	uis.Settings = *settings
+	uis.Settings = settings
 	uis.Home = home
 
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
@@ -348,7 +349,15 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 			uis.ProjectNotFound(projectCtx, w, r)
 			return ViewData{}
 		}
-		viewData.Project = *project
+		viewData.Project = project
+		pref, err := projectCtx.GetProjectRef()
+
+		if err != nil || pref == nil {
+			grip.Errorf(errors.Wrap(err, "no project ref attached to request").Error())
+			uis.ProjectNotFound(projectCtx, w, r)
+			return ViewData{}
+		}
+		viewData.ProjectRef = pref
 	}
 	settings, err := admin.GetSettings()
 	if err != nil {

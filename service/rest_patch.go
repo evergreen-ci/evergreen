@@ -25,28 +25,28 @@ type RestPatch struct {
 // specified in the request.
 func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	if projCtx.Patch == nil {
+	patchDoc, _ := projCtx.GetPatch()
+	if patchDoc == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
 
-	err := projCtx.Patch.FetchPatchFiles()
-	if err != nil {
+	if err := patchDoc.FetchPatchFiles(); err != nil {
 		restapi.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "error occurred fetching patch data"))
 		return
 	}
 
 	destPatch := &RestPatch{
-		Id:          projCtx.Patch.Id.Hex(),
-		Description: projCtx.Patch.Description,
-		Project:     projCtx.Patch.Project,
-		Revision:    projCtx.Patch.Githash,
-		PatchNumber: projCtx.Patch.PatchNumber,
-		Author:      projCtx.Patch.Author,
-		Version:     projCtx.Patch.Version,
-		CreateTime:  projCtx.Patch.CreateTime,
-		Patches:     projCtx.Patch.Patches,
+		Id:          patchDoc.Id.Hex(),
+		Description: patchDoc.Description,
+		Project:     patchDoc.Project,
+		Revision:    patchDoc.Githash,
+		PatchNumber: patchDoc.PatchNumber,
+		Author:      patchDoc.Author,
+		Version:     patchDoc.Version,
+		CreateTime:  patchDoc.CreateTime,
+		Patches:     patchDoc.Patches,
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destPatch)
@@ -55,12 +55,14 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 // getPatchConfig returns the patched config for a given patch.
 func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	if projCtx.Patch == nil {
+	patchDoc, _ := projCtx.GetPatch()
+	if patchDoc == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "patch not found"})
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(projCtx.Patch.PatchedConfig))
+	_, err := w.Write([]byte(patchDoc.PatchedConfig))
 	grip.Warning(err)
 }
