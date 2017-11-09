@@ -161,6 +161,11 @@ func (s *TaskFinderComparisonSuite) SetupSuite() {
 		Enabled:    true,
 	}
 	s.NoError(ref.Insert())
+
+	ref = &model.ProjectRef{
+		Identifier: "disabled",
+		Enabled:    false,
+	}
 }
 
 func (s *TaskFinderComparisonSuite) TearDownSuite() {
@@ -360,6 +365,12 @@ func TestCompareTaskRunnersWithStaticTasks(t *testing.T) {
 				Status:    evergreen.TaskUndispatched,
 				Activated: true,
 			},
+			task.Task{
+				Id:        "foo",
+				Status:    evergreen.TaskUndispatched,
+				Activated: true,
+				Project:   "disabled",
+			},
 		}
 	}
 
@@ -405,9 +416,16 @@ func makeRandomTasks() []task.Task {
 		subTasks = append(subTasks, makeRandomSubTasks(statuses, &subTasks[i]))
 	}
 
-	for i, _ := range subTasks {
+	for i := range subTasks {
 		tasks = append(tasks, subTasks[i]...)
 	}
+
+	tasks = append(tasks, task.Task{
+		Id:        "doesn't exist task name",
+		Status:    evergreen.TaskUndispatched,
+		Activated: true,
+		Project:   "doesn't exist",
+	})
 
 	return tasks
 }
@@ -505,6 +523,13 @@ func TestCompareTaskRunnersWithHugeTasks(t *testing.T) {
 				Project:   "exists",
 			})
 		}
+
+		tasks = append(tasks, task.Task{
+			Id:        "skipped-project00",
+			Status:    evergreen.TaskUndispatched,
+			Activated: true,
+			Project:   "doesn't exist",
+		})
 
 		return tasks
 	}

@@ -121,10 +121,24 @@ func AlternateTaskFinder() ([]task.Task, error) {
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "could not find project for task",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
 			continue
 		}
 
 		if !ref.Enabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
 			continue
 		}
 
@@ -197,10 +211,25 @@ func ParallelTaskFinder() ([]task.Task, error) {
 	for _, t := range undispatchedTasks {
 		ref, ok := projectRefCache[t.Project]
 		if !ok {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "could not find project for task",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+
 			continue
 		}
 
 		if !ref.Enabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
 			continue
 		}
 
