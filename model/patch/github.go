@@ -66,7 +66,7 @@ var (
 )
 
 // NewGithubIntent return a new github patch intent.
-func NewGithubIntent(pr int, sha string, url string) (*GithubIntent, error) {
+func NewGithubIntent(pr int, sha string, url string) (Intent, error) {
 	g := &GithubIntent{}
 	if pr == 0 {
 		return g, errors.New("PR number must not be 0")
