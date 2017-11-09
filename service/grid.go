@@ -24,11 +24,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ver, err := projCtx.GetVersion()
-	if err != nil || ver == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
-		return
-	}
+	ver, _ := projCtx.GetVersion()
 
 	// If no version was specified in the URL, grab the latest version on the project
 	if ver == nil {
@@ -41,6 +37,10 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		if len(v) > 0 {
 			ver = &v[0]
 		}
+	}
+	if ver == nil {
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
+		return
 	}
 
 	var versions map[string]version.Version
