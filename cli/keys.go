@@ -122,5 +122,7 @@ func (c *PublicKeyCommand) listAddKey(ctx context.Context, client client.Communi
 		return err
 	}
 
+	fmt.Printf("Successfully added key: '%s'\n", c.Positional.KeyName)
+
 	return nil
 }
