@@ -65,6 +65,7 @@ type ViewData struct {
 	Banner      string
 	BannerTheme string
 	Csrf        htmlTemplate.HTML
+	JiraHost    string
 }
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
@@ -359,5 +360,6 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 	viewData.ProjectData = projectCtx
 	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
 	viewData.Csrf = csrf.TemplateField(r)
+	viewData.JiraHost = uis.Settings.Jira.Host
 	return viewData
 }

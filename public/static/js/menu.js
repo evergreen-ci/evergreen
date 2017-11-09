@@ -1,6 +1,7 @@
 function setBanner() {
   var theme = window.BannerTheme;
-  $("#bannerText").text(window.BannerText);
+  var text = escapeHtml(window.BannerText);
+  $("#bannerText").html(jiraLinkify(text, window.JiraHost));
   switch(theme) {
     case "important":
       $("#bannerIcon").append("<i class='fa fa-exclamation'></i>");
@@ -22,4 +23,4 @@ function setBanner() {
       $("#bannerIcon").addClass("banner-icon-announcement");
       $("#bannerBack").addClass("banner-text-announcement");
   }
-}
+};
