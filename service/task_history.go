@@ -426,7 +426,11 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = projecCtx.GetTask() // load the task first so we know what version to get.
+	t, err := projCtx.GetTask() // load the task first so we know what version to get.
+	if err != nil || t == nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	ver, err := projCtx.GetVersion()
 	if err != nil || ver == nil {
 		http.Error(w, "no version available", http.StatusBadRequest)
@@ -436,12 +440,6 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	versions, err := getVersionsInWindow(drawerInfo.window, ver.Identifier,
 		ver.RevisionOrderNumber, drawerInfo.radius, ver)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	t, err := projCtx.GetTask()
-	if err != nil || t == nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
