@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -57,13 +58,27 @@ func TestParallelTaskFinder(t *testing.T) {
 	suite.Run(t, s)
 }
 
+func (s *TaskFinderSuite) SetupSuite() {
+	s.NoError(db.Clear(model.ProjectRefCollection))
+
+	ref := &model.ProjectRef{
+		Identifier: "exists",
+		Enabled:    true,
+	}
+	s.NoError(ref.Insert())
+}
+
+func (s *TaskFinderSuite) TearDownSuite() {
+	s.NoError(db.Clear(model.ProjectRefCollection))
+}
+
 func (s *TaskFinderSuite) SetupTest() {
 	taskIds := []string{"t1", "t2", "t3", "t4"}
 	s.tasks = []task.Task{
-		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
-		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true},
-		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true},
-		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
+		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists"},
+		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists"},
+		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists"},
+		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists"},
 	}
 
 	depTaskIds := []string{"td1", "td2"}
@@ -136,6 +151,20 @@ type TaskFinderComparisonSuite struct {
 	newRunnableTasks []task.Task
 	altRunnableTasks []task.Task
 	pllRunnableTasks []task.Task
+}
+
+func (s *TaskFinderComparisonSuite) SetupSuite() {
+	s.NoError(db.Clear(model.ProjectRefCollection))
+
+	ref := &model.ProjectRef{
+		Identifier: "exists",
+		Enabled:    true,
+	}
+	s.NoError(ref.Insert())
+}
+
+func (s *TaskFinderComparisonSuite) TearDownSuite() {
+	s.NoError(db.Clear(model.ProjectRefCollection))
 }
 
 func (s *TaskFinderComparisonSuite) SetupTest() {
@@ -364,6 +393,7 @@ func makeRandomTasks() []task.Task {
 			Id:        id,
 			Status:    statuses[statusIndex],
 			Activated: true,
+			Project:   "exists",
 		})
 	}
 
@@ -424,6 +454,7 @@ func makeRandomSubTasks(statuses []string, parentTasks *[]task.Task) []task.Task
 				Activated: true,
 				Status:    pickSubtaskStatus(statuses, dependsOn),
 				DependsOn: dependsOn,
+				Project:   "exists",
 			})
 
 		}
@@ -452,6 +483,7 @@ func TestCompareTaskRunnersWithHugeTasks(t *testing.T) {
 				Status:    evergreen.TaskUndispatched,
 				OldTaskId: hugeString("huge"),
 				Activated: true,
+				Project:   "exists",
 			},
 		}
 
@@ -470,6 +502,7 @@ func TestCompareTaskRunnersWithHugeTasks(t *testing.T) {
 				OldTaskId: hugeString(fmt.Sprintf("%d", i)),
 				Status:    evergreen.TaskSucceeded,
 				Activated: true,
+				Project:   "exists",
 			})
 		}
 
