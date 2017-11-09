@@ -426,7 +426,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ := projecCtx.GetTask()
+	_, _ = projecCtx.GetTask() // load the task first so we know what version to get.
 	ver, err := projCtx.GetVersion()
 	if err != nil || ver == nil {
 		http.Error(w, "no version available", http.StatusBadRequest)
