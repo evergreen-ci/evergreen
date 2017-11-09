@@ -42,8 +42,8 @@ type GithubIntent struct {
 	// PRNumber is the PR number for the project in GitHub.
 	PRNumber int `bson:"pr_number"`
 
-	// HeadSHA is the base SHA of the patch.
-	HeadSHA string `bson:"head_sha"`
+	// HeadHash is the base SHA of the patch.
+	HeadHash string `bson:"head_sha"`
 
 	// URL is the URL of the patch in GitHub.
 	URL string `bson:"url"`
@@ -59,7 +59,7 @@ type GithubIntent struct {
 var (
 	idKey         = bsonutil.MustHaveTag(GithubIntent{}, "ID")
 	prNumberKey   = bsonutil.MustHaveTag(GithubIntent{}, "PRNumber")
-	headSHAKey    = bsonutil.MustHaveTag(GithubIntent{}, "HeadSHA")
+	headSHAKey    = bsonutil.MustHaveTag(GithubIntent{}, "HeadHash")
 	urlKey        = bsonutil.MustHaveTag(GithubIntent{}, "URL")
 	processedKey  = bsonutil.MustHaveTag(GithubIntent{}, "Processed")
 	intentTypeKey = bsonutil.MustHaveTag(GithubIntent{}, "IntentType")
@@ -69,17 +69,17 @@ var (
 func NewGithubIntent(pr int, sha string, url string) (Intent, error) {
 	g := &GithubIntent{}
 	if pr == 0 {
-		return g, errors.New("PR number must not be 0")
+		return nil, errors.New("PR number must not be 0")
 	}
-	if len(sha) != 40 {
-		return g, errors.New("Base SHA must be 40 characters long")
+	if len(sha) == 0 {
+		return nil, errors.New("Base SHA must not be empty")
 	}
 	if !strings.HasPrefix(url, "http") {
-		return g, errors.Errorf("URL does not appear valid (%s)", g.URL)
+		return nil, errors.Errorf("URL does not appear valid (%s)", g.URL)
 	}
 
 	g.PRNumber = pr
-	g.HeadSHA = sha
+	g.HeadHash = sha
 	g.URL = url
 	g.IntentType = GithubIntentType
 	g.ID = bson.NewObjectId()

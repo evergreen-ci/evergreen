@@ -33,15 +33,15 @@ func (s *GithubSuite) SetupTest() {
 
 func (s *GithubSuite) TestNewGithubIntent() {
 	intent, err := NewGithubIntent(0, s.sha, s.url)
-	s.Equal(&GithubIntent{}, intent)
+	s.Equal(nil, intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent(s.pr, "12345", s.url)
-	s.Equal(&GithubIntent{}, intent)
+	intent, err = NewGithubIntent(s.pr, "", s.url)
+	s.Equal(nil, intent)
 	s.Error(err)
 
 	intent, err = NewGithubIntent(s.pr, s.sha, "foo")
-	s.Equal(&GithubIntent{}, intent)
+	s.Equal(nil, intent)
 	s.Error(err)
 
 	intent, err = NewGithubIntent(s.pr, s.sha, s.url)
@@ -49,7 +49,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	githubIntent, ok := intent.(*GithubIntent)
 	s.True(ok)
 	s.Equal(s.pr, githubIntent.PRNumber)
-	s.Equal(s.sha, githubIntent.HeadSHA)
+	s.Equal(s.sha, githubIntent.HeadHash)
 	s.Equal(s.url, githubIntent.URL)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
@@ -67,7 +67,7 @@ func (s *GithubSuite) TestInsert() {
 
 	found := intents[0]
 	s.Equal(s.pr, found.PRNumber)
-	s.Equal(s.sha, found.HeadSHA)
+	s.Equal(s.sha, found.HeadHash)
 	s.Equal(s.url, found.URL)
 	s.False(found.IsProcessed())
 	s.Equal(GithubIntentType, found.GetType())
@@ -87,7 +87,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
-	s.Equal(s.sha, intents[0].HeadSHA)
+	s.Equal(s.sha, intents[0].HeadHash)
 	s.Equal(s.url, intents[0].URL)
 	s.True(intents[0].IsProcessed())
 	s.Equal(GithubIntentType, intents[0].GetType())
