@@ -1,6 +1,7 @@
 package taskrunner
 
 import (
+	"math/rand"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -50,10 +51,10 @@ func (tr *TaskRunner) Run() error {
 
 	freeHostChan := make(chan agentStartData, len(freeHosts))
 
-	// put all of the information needed about the host in a channel
-	for _, h := range freeHosts {
+	// put all of the information needed about the host in a channel in a shuffled order
+	for _, r := range rand.Perm(len(freeHosts)) {
 		freeHostChan <- agentStartData{
-			Host:     h,
+			Host:     freeHosts[r],
 			Settings: tr.Settings,
 		}
 	}
