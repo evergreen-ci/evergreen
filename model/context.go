@@ -165,12 +165,25 @@ func (ctx *Context) GetPatch() (*patch.Patch, error) {
 	}
 
 	if ctx.patchID == "" {
-		return nil, nil
+		if ctx.taskID != "" {
+			t, _ := ctx.GetTask()
+			if t != nil {
+				ctx.buildID = t.BuildId
+				ctx.versionID = t.Version
+				ctx.GetVersion()
+			} else {
+				return nil, nil
+			}
+		}
 	}
 
 	if err := ctx.populatePatch(ctx.patchID); err != nil {
 		ctx.patchID = ""
 		return nil, err
+	}
+
+	if ctx.patch == nil {
+		return nil, nil
 	}
 
 	if ctx.projectID != ctx.patch.Project {
