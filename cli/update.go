@@ -89,7 +89,9 @@ func prepareUpdate(url, newVersion string) (string, error) {
 
 	// XXX: All executables on windows must end in .exe
 	if runtime.GOOS == "windows" {
-		os.Rename(tempPath, tempPath+".exe")
+		if err = os.Rename(tempPath, tempPath+".exe"); err != nil {
+			return "", errors.Wrap(err, "problem renaming file")
+		}
 	}
 
 	// Run the new binary's "version" command to verify that it is in fact the correct upgraded
