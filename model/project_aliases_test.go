@@ -54,8 +54,9 @@ func (s *ProjectAliasSuite) TestInsert() {
 }
 
 func (s *ProjectAliasSuite) TestRemove() {
-	for _, a := range s.aliases {
+	for i, a := range s.aliases {
 		s.NoError(a.Insert())
+		s.aliases[i] = a
 	}
 	var out []ProjectAlias
 	q := db.Query(bson.M{})

@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	idKey        = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
 	projectIDKey = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
 	aliasKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
 	variantsKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Variants")
@@ -40,11 +41,11 @@ const (
 // “linux”; and to run all tasks beginning with the string “compile” to run on all
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
-	ID        string `bson:"_id,omitempty"`
-	ProjectID string `bson:"project_id"`
-	Alias     string `bson:"alias"`
-	Variants  string `bson:"variants"`
-	Tasks     string `bson:"tasks"`
+	ID        bson.ObjectId `bson:"_id"`
+	ProjectID string        `bson:"project_id"`
+	Alias     string        `bson:"alias"`
+	Variants  string        `bson:"variants"`
+	Tasks     string        `bson:"tasks"`
 }
 
 // FindProjectAliases finds aliases with a given name for a project.
@@ -62,25 +63,25 @@ func FindProjectAliases(projectID, alias string) ([]ProjectAlias, error) {
 }
 
 // Insert adds a project alias to the database.
-func (p ProjectAlias) Insert() error {
+func (p *ProjectAlias) Insert() error {
+	if p.ID == "" {
+		p.ID = bson.NewObjectId()
+	}
 	err := db.Insert(ProjectAliasCollection, p)
 	if err != nil {
-		return errors.Wrap(err, "failed to insert project alias")
+		return errors.Wrapf(err, "failed to insert project alias", p.ID)
 	}
 	return nil
 }
 
 // Remove removes a matching project alias from the database.
-func (p ProjectAlias) Remove() error {
-	q := db.Query(bson.M{
-		projectIDKey: p.ProjectID,
-		aliasKey:     p.Alias,
-		variantsKey:  p.Variants,
-		tasksKey:     p.Tasks,
-	})
-	err := db.Remove(ProjectAliasCollection, q)
+func (p *ProjectAlias) Remove() error {
+	if p.ID == "" {
+		return errors.New("can't remove project alias with empty id")
+	}
+	err := db.Remove(ProjectAliasCollection, db.Query(bson.M{idKey: p.ID}))
 	if err != nil {
-		return errors.Wrap(err, "failed to remove project alias")
+		return errors.Wrapf(err, "failed to remove project alias %s", p.ID)
 	}
 	return nil
 }
