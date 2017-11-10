@@ -165,25 +165,12 @@ func (ctx *Context) GetPatch() (*patch.Patch, error) {
 	}
 
 	if ctx.patchID == "" {
-		if ctx.taskID != "" {
-			t, _ := ctx.GetTask()
-			if t != nil {
-				ctx.buildID = t.BuildId
-				ctx.versionID = t.Version
-				ctx.GetVersion()
-			} else {
-				return nil, errors.New("could not resolve patch from request context")
-			}
-		}
+		return nil, nil
 	}
 
 	if err := ctx.populatePatch(ctx.patchID); err != nil {
 		ctx.patchID = ""
 		return nil, err
-	}
-
-	if ctx.patch == nil {
-		return nil, errors.New("could not resolve patch from request context")
 	}
 
 	if ctx.projectID != ctx.patch.Project {
