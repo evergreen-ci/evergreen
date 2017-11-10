@@ -43,7 +43,7 @@ type githubIntent struct {
 	PRNumber int `bson:"pr_number"`
 
 	// HeadHash is the base SHA of the patch.
-	HeadHash string `bson:"head_sha"`
+	HeadHash string `bson:"head_hash"`
 
 	// URL is the URL of the patch in GitHub.
 	URL string `bson:"url"`
