@@ -50,6 +50,8 @@ type GithubAuthConfig struct {
 	ClientSecret string   `yaml:"client_secret"`
 	Users        []string `yaml:"users"`
 	Organization string   `yaml:"organization"`
+	// TODO this assumes evergreen will have a singular webhook endpoint
+	HookSecret []byte `yaml:"hook_secret"`
 }
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
