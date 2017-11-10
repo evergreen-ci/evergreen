@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
 	"github.com/pkg/errors"
@@ -19,7 +20,7 @@ func Setup(ctx context.Context, mongodbURI string) (anser.Environment, error) {
 	env.RegisterCloser(func() error { cancel(); return nil })
 
 	q := queue.NewAdaptiveOrderedLocalQueue(1)
-	runner, err := pool.NewMovingAveragerateLimitedWorkers(16, 1024, time.Second, q)
+	runner, err := pool.NewMovingAverageRateLimitedWorkers(16, 512, time.Second, q)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
