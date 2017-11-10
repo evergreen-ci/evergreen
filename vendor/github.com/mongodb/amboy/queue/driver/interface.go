@@ -18,7 +18,7 @@ type Driver interface {
 	SaveStatus(amboy.Job, amboy.JobStatusInfo) error
 
 	Jobs() <-chan amboy.Job
-	Next() amboy.Job
+	Next(context.Context) amboy.Job
 
 	Stats() amboy.QueueStats
 	JobStats(context.Context) <-chan amboy.JobStatusInfo

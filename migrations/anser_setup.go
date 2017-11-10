@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"time"
 
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
@@ -17,13 +18,21 @@ func Setup(ctx context.Context, mongodbURI string) (anser.Environment, error) {
 	env := anser.GetEnvironment()
 	env.RegisterCloser(func() error { cancel(); return nil })
 
-	// This should be switched back to an ordered queue (EVG-2318)
-	q := queue.NewLocalUnordered(8)
-	if err := q.Start(ctx); err != nil {
+	q := queue.NewAdaptiveOrderedLocalQueue(1)
+	runner, err := pool.NewMovingAveragerateLimitedWorkers(16, 1024, time.Second, q)
+	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	if err := env.Setup(q, mongodbURI); err != nil {
+	if err = q.SetRunner(runner); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err = q.Start(ctx); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if err = env.Setup(q, mongodbURI); err != nil {
 		return nil, errors.WithStack(err)
 	}
 

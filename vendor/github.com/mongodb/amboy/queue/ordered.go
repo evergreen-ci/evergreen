@@ -10,6 +10,9 @@ shared state between queue implementations.
 
 By default, LocalOrdered uses the amboy/pool.Workers implementation of
 amboy.Runner interface.
+
+The Local Ordered queue requires that *all* jobs be added to the queue
+before starting work.
 */
 
 package queue

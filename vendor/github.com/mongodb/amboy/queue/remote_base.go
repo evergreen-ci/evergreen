@@ -65,7 +65,7 @@ func (q *remoteBase) jobServer(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			job := q.driver.Next()
+			job := q.driver.Next(ctx)
 			if !q.canDispatch(job) {
 				continue
 			}

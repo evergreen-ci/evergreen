@@ -114,6 +114,8 @@ func (q *LocalShuffled) Get(name string) (amboy.Job, bool) {
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job) {
 
+		defer close(ret)
+
 		if job, ok := pending[name]; ok {
 			ret <- job
 			return
@@ -128,8 +130,6 @@ func (q *LocalShuffled) Get(name string) (amboy.Job, bool) {
 			ret <- job
 			return
 		}
-
-		close(ret)
 	}
 
 	job, ok := <-ret
