@@ -5,6 +5,8 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -39,6 +41,13 @@ type streamMigrationJob struct {
 }
 
 func (j *streamMigrationJob) Run() {
+	grip.Info(message.Fields{
+		"message":   "starting migration",
+		"migration": j.Definition.Migration,
+		"operation": "stream",
+		"id":        j.ID(),
+	})
+
 	defer j.FinishMigration(j.Definition.Migration, &j.Base)
 
 	env := j.Env()

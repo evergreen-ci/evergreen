@@ -96,10 +96,9 @@ func (e *Environment) GetDocumentProcessor(name string) (db.Processor, bool) {
 
 func (e *Environment) MetadataNamespace() model.Namespace { return e.MetaNS }
 
-func (e *Environment) NewDependencyManager(n string, q map[string]interface{}, ns model.Namespace) dependency.Manager {
+func (e *Environment) NewDependencyManager(n string, ns model.Namespace) dependency.Manager {
 	e.DependecyManagers[n] = &DependencyManager{
 		Name:     n,
-		Query:    q,
 		NS:       ns,
 		JobEdges: dependency.NewJobEdges(),
 	}

@@ -97,7 +97,7 @@ func (j *streamMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 			Namespace:     j.NS,
 		}).(*streamMigrationJob)
 
-		m.SetDependency(env.NewDependencyManager(j.ID(), j.Query, j.NS))
+		m.SetDependency(env.NewDependencyManager(j.ID(), j.NS))
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
