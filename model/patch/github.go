@@ -56,7 +56,6 @@ type githubIntent struct {
 }
 
 // BSON fields for the patches
-// nolint
 var (
 	idKey         = bsonutil.MustHaveTag(githubIntent{}, "ID")
 	prNumberKey   = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")

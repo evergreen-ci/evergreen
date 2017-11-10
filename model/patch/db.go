@@ -65,17 +65,17 @@ func NewId(id string) bson.ObjectId {
 
 // ById produces a query to return the patch with the given _id.
 func ById(id bson.ObjectId) db.Q {
-	return db.Query(bson.M{IdKey: id})
+	return db.Query(bson.D{{IdKey, id}})
 }
 
 // ByProject produces a query that returns projects with the given identifier.
 func ByProject(project string) db.Q {
-	return db.Query(bson.M{ProjectKey: project})
+	return db.Query(bson.D{{ProjectKey, project}})
 }
 
 // ByUser produces a query that returns patches by the given user.
 func ByUser(user string) db.Q {
-	return db.Query(bson.M{AuthorKey: user})
+	return db.Query(bson.D{{AuthorKey, user}})
 }
 
 // ByUserPaginated produces a query that returns patches by the given user
@@ -108,7 +108,7 @@ func ByUserProjectAndGitspec(user string, project string, gitspec string) db.Q {
 
 // ByVersion produces a query that returns the patch for a given version.
 func ByVersion(version string) db.Q {
-	return db.Query(bson.M{VersionKey: version})
+	return db.Query(bson.D{{VersionKey, version}})
 }
 
 // ByVersion produces a query that returns the patch for a given version.
@@ -117,8 +117,8 @@ func ByVersions(versions []string) db.Q {
 }
 
 // ExcludePatchDiff is a projection that excludes diff data, helping load times.
-var ExcludePatchDiff = bson.M{
-	bsonutil.GetDottedKeyName(PatchesKey, ModulePatchSetKey, PatchSetPatchKey): 0,
+var ExcludePatchDiff = bson.D{
+	{PatchesKey + "." + ModulePatchSetKey + "." + PatchSetPatchKey, 0},
 }
 
 // Query Functions

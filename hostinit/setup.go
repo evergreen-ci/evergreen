@@ -496,13 +496,6 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			return err
 		}
 
-		if h.ProvisionOptions.OwnerId != "" &&
-			len(h.ProvisionOptions.TaskId) > 0 {
-			grip.Infof("Fetching data for task %s onto host %s", h.ProvisionOptions.TaskId, h.Id)
-			err = init.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
-			grip.ErrorWhenf(err != nil, "Failed to fetch data onto host %s: %v", h.Id, err)
-		}
-
 		cloudHost, err := providers.GetCloudHost(h, init.Settings)
 		if err != nil {
 			return errors.Wrapf(err, "Failed to get cloud host for %s", h.Id)
@@ -522,6 +515,13 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		// run the setup script with the agent
 		if err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
 			return errors.Wrap(err, "error running setup script on remote host")
+		}
+
+		if h.ProvisionOptions.OwnerId != "" &&
+			len(h.ProvisionOptions.TaskId) > 0 {
+			grip.Infof("Fetching data for task %s onto host %s", h.ProvisionOptions.TaskId, h.Id)
+			err = init.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
+			grip.ErrorWhenf(err != nil, "Failed to fetch data onto host %s: %v", h.Id, err)
 		}
 	}
 
@@ -687,7 +687,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	return &LoadClientResult{
 		BinaryPath: filepath.Join("~", "evergreen"),
-		ConfigPath: fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
+		ConfigPath: fmt.Sprintf("%s/.evergreen.yml", targetDir),
 	}, nil
 }
 
@@ -707,13 +707,10 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
-	// When testing, use this writer to force a copy of the output to be written to standard out so
-	// that remote command failures also show up in server log output.
-	//cmdOutput := io.MultiWriter(&util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}, os.Stdout)
-
 	cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 	makeShellCmd := &subprocess.RemoteCommand{
-		CmdString:      fmt.Sprintf("%s -c '%s' fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
+		Id:             fmt.Sprintf("fetch-artifacts-%s", taskId),
+		CmdString:      fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
 		Stdout:         cmdOutput,
 		Stderr:         cmdOutput,
 		RemoteHostName: hostSSHInfo.Hostname,
@@ -725,5 +722,16 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
-	return errors.WithStack(makeShellCmd.Run(ctx))
+
+	if err := makeShellCmd.Run(ctx); err != nil {
+		grip.Error(message.Fields{
+			"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
+			"host":    hostSSHInfo.Hostname,
+			"cmd":     makeShellCmd.CmdString,
+			"error":   err,
+			"output":  cmdOutput,
+		})
+		return err
+	}
+	return nil
 }
