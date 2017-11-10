@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -79,7 +78,7 @@ func LogHostCreated(hostId string) {
 }
 
 func LogHostAgentDeployed(hostId string) {
-	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
+	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{})
 }
 
 func LogHostTerminatedExternally(hostId string) {
