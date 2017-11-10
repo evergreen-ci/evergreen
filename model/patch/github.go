@@ -11,7 +11,7 @@ import (
 
 const (
 	// IntentCollection is the database collection that stores patch intents.
-	IntentCollection = "patch_intent"
+	IntentCollection = "patch_intents"
 
 	// GithubIntentType represents patch intents created for GitHub.
 	GithubIntentType = "github"
