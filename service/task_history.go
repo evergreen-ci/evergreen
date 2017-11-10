@@ -159,7 +159,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		grip.WarningWhen(beforeCommit == nil, "'before' was specified but query returned nil")
 	}
 
-	project, err := projCtx.GetProject()
+	project, err := model.FindProject("", projCtx.ProjectRef)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -390,15 +390,9 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ver, err := projCtx.GetVersion()
-	if err != nil || ver == nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, ver.Identifier,
-		ver.RevisionOrderNumber, drawerInfo.radius, ver)
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier,
+		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -426,26 +420,21 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := projCtx.GetTask() // load the task first so we know what version to get.
-	if err != nil || t == nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	ver, err := projCtx.GetVersion()
-	if err != nil || ver == nil {
+	if projCtx.Version == nil {
 		http.Error(w, "no version available", http.StatusBadRequest)
 		return
 	}
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, ver.Identifier,
-		ver.RevisionOrderNumber, drawerInfo.radius, ver)
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier,
+		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
+
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	// populate task groups for the versions in the window
-	taskGroups, err := getTaskDrawerItems(t.DisplayName, t.BuildVariant, false, versions)
+	taskGroups, err := getTaskDrawerItems(projCtx.Task.DisplayName, projCtx.Task.BuildVariant, false, versions)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

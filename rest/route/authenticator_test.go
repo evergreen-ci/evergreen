@@ -30,26 +30,30 @@ func TestAdminAuthenticator(t *testing.T) {
 
 			Convey("if user is in the admins, should succeed", func() {
 				projectRef.Admins = []string{"test_user"}
-				opCtx := model.CreateContext(&projectRef, &model.Project{}, nil, nil, nil, nil)
+				opCtx := model.Context{
+					ProjectRef: &projectRef,
+				}
 
 				u := user.DBUser{
 					Id: "test_user",
 				}
 				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-				ctx = context.WithValue(ctx, RequestContext, opCtx)
+				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				So(author.Authenticate(ctx, serviceContext), ShouldBeNil)
 			})
 			Convey("if user is in the super users, should succeed", func() {
 				superUsers := []string{"test_user"}
 				projectRef.Admins = []string{"other_user"}
-				opCtx := model.CreateContext(&projectRef, nil, nil, nil, nil, nil)
+				opCtx := model.Context{
+					ProjectRef: &projectRef,
+				}
 				serviceContext.SetSuperUsers(superUsers)
 
 				u := user.DBUser{
 					Id: "test_user",
 				}
 				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-				ctx = context.WithValue(ctx, RequestContext, opCtx)
+				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				So(author.Authenticate(ctx, serviceContext), ShouldBeNil)
 			})
 			Convey("if user is not in the admin and not a super user, should error", func() {
@@ -57,12 +61,15 @@ func TestAdminAuthenticator(t *testing.T) {
 				serviceContext.SetSuperUsers(superUsers)
 
 				projectRef.Admins = []string{"other_user"}
-				opCtx := model.CreateContext(&projectRef, nil, nil, nil, nil, nil)
+				opCtx := model.Context{
+					ProjectRef: &projectRef,
+				}
+
 				u := user.DBUser{
 					Id: "test_user",
 				}
 				ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-				ctx = context.WithValue(ctx, RequestContext, opCtx)
+				ctx = context.WithValue(ctx, RequestContext, &opCtx)
 				err := author.Authenticate(ctx, serviceContext)
 
 				errToResemble := rest.APIError{

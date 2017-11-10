@@ -86,7 +86,7 @@ type taskStatusByTest map[string]taskTestResult
 // specified in the request.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	srcTask, _ := projCtx.GetTask()
+	srcTask := projCtx.Task
 	if srcTask == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
@@ -170,10 +170,9 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	patchDoc, _ := projCtx.GetPatch()
-	if patchDoc != nil {
-		destTask.PatchNumber = patchDoc.PatchNumber
-		destTask.PatchId = patchDoc.Id.Hex()
+	if projCtx.Patch != nil {
+		destTask.PatchNumber = projCtx.Patch.PatchNumber
+		destTask.PatchId = projCtx.Patch.Id.Hex()
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destTask)
@@ -183,7 +182,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 // The keys of the object are the test names.
 func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	task, _ := projCtx.GetTask()
+	task := projCtx.Task
 	if task == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return

@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 // restContextKey is the type used to store
@@ -16,7 +17,7 @@ const RestContext restContextKey = 0
 
 type restAPIService interface {
 	WriteJSON(w http.ResponseWriter, status int, data interface{})
-	GetSettings() *evergreen.Settings
+	GetSettings() evergreen.Settings
 	LoggedError(http.ResponseWriter, *http.Request, int, error)
 }
 
@@ -29,26 +30,29 @@ type restAPI struct {
 func (ra *restAPI) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		ctx := model.LoadContext(
-			vars["task_id"],
-			vars["build_id"],
-			vars["version_id"],
-			vars["patch_id"],
-			vars["project_id"])
-		pref, _ := ctx.GetProjectRef()
-
-		if pref != nil && pref.Private && GetUser(r) == nil {
+		taskId := vars["task_id"]
+		buildId := vars["build_id"]
+		versionId := vars["version_id"]
+		patchId := vars["patch_id"]
+		projectId := vars["project_id"]
+		ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
+		if err != nil {
+			// Some database lookup failed when fetching the data - log it
+			ra.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrap(err, "Error loading project context"))
+			return
+		}
+		if ctx.ProjectRef != nil && ctx.ProjectRef.Private && GetUser(r) == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		patchDoc, _ := ctx.GetPatch()
-		if patchDoc != nil && GetUser(r) == nil {
+		if ctx.Patch != nil && GetUser(r) == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		r = setRestContext(r, ctx)
+		r = setRestContext(r, &ctx)
 		next(w, r)
 	}
 }

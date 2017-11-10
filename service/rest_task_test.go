@@ -71,7 +71,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    taskTestConfig,
+		Settings:    *taskTestConfig,
 		UserManager: userManager,
 	}
 
@@ -275,7 +275,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    taskTestConfig,
+		Settings:    *taskTestConfig,
 		UserManager: userManager,
 	}
 

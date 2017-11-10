@@ -24,9 +24,8 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ver, _ := projCtx.GetVersion()
 	// If no version was specified in the URL, grab the latest version on the project
-	if ver == nil {
+	if projCtx.Version == nil {
 		var v []version.Version
 		v, err = version.Find(version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
 		if err != nil {
@@ -34,7 +33,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(v) > 0 {
-			ver = &v[0]
+			projCtx.Version = &v[0]
 		}
 	}
 
@@ -59,9 +58,9 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ver != nil {
+	if projCtx.Version != nil {
 		recentVersions, err := version.Find(version.
-			ByProjectIdAndOrder(ver.Identifier, ver.RevisionOrderNumber).
+			ByProjectIdAndOrder(projCtx.Version.Identifier, projCtx.Version.RevisionOrderNumber).
 			WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey, version.AuthorKey, version.CreateTimeKey).
 			Sort([]string{"-" + version.RevisionOrderNumberKey}).
 			Limit(depth + 1))
@@ -75,19 +74,19 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 			versions[v.Revision] = v
 		}
 
-		cells, err = grid.FetchCells(*ver, depth)
+		cells, err = grid.FetchCells(*projCtx.Version, depth)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching builds"))
 			return
 		}
 
-		failures, err = grid.FetchFailures(*ver, depth)
+		failures, err = grid.FetchFailures(*projCtx.Version, depth)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching builds"))
 			return
 		}
 
-		revisionFailures, err = grid.FetchRevisionOrderFailures(*ver, depth)
+		revisionFailures, err = grid.FetchRevisionOrderFailures(*projCtx.Version, depth)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching revision failures"))
 			return
@@ -103,14 +102,6 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		GridCells        grid.Grid
 		Failures         grid.Failures
 		RevisionFailures grid.RevisionFailures
-		Version          *version.Version
 		ViewData
-	}{
-		Versions:         versions,
-		GridCells:        cells,
-		Failures:         failures,
-		RevisionFailures: revisionFailures,
-		Version:          ver,
-		ViewData:         uis.GetCommonViewData(w, r, false, true),
-	}, "base", "grid.html", "base_angular.html", "menu.html")
+	}{versions, cells, failures, revisionFailures, uis.GetCommonViewData(w, r, false, true)}, "base", "grid.html", "base_angular.html", "menu.html")
 }

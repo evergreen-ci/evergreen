@@ -36,7 +36,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
 
 {{define "content"}}
 <span ng-controller="VersionController">
-{{ if not .Patch }}
+{{ if not .ProjectData.Patch }}
 <div ng-controller="VersionHistoryDrawerCtrl" id="drawer">
   <div id="drawer-contents">
     <div id="drawer-filled">

@@ -756,13 +756,13 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 	Convey("With handler and a project context and user", t, func() {
 		tep := &TaskExecutionPatchHandler{}
 
-		projCtx := serviceModel.CreateContext(nil, nil, nil, nil, nil,
-			&task.Task{
+		projCtx := serviceModel.Context{
+			Task: &task.Task{
 				Id:        "testTaskId",
 				Priority:  0,
 				Activated: false,
-			})
-
+			},
+		}
 		u := user.DBUser{
 			Id: "testUser",
 		}
@@ -771,7 +771,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-			ctx = context.WithValue(ctx, RequestContext, projCtx)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
@@ -794,7 +794,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-			ctx = context.WithValue(ctx, RequestContext, projCtx)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
@@ -816,7 +816,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-			ctx = context.WithValue(ctx, RequestContext, projCtx)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
@@ -840,7 +840,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-			ctx = context.WithValue(ctx, RequestContext, projCtx)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldBeNil)
 			So(*tep.Activated, ShouldBeTrue)
@@ -896,13 +896,13 @@ func TestTaskResetPrepare(t *testing.T) {
 	Convey("With handler and a project context and user", t, func() {
 		trh := &taskRestartHandler{}
 
-		projCtx := serviceModel.CreateContext(nil, nil, nil, nil, nil,
-			&task.Task{
+		projCtx := serviceModel.Context{
+			Task: &task.Task{
 				Id:        "testTaskId",
 				Priority:  0,
 				Activated: false,
-			})
-
+			},
+		}
 		u := user.DBUser{
 			Id: "testUser",
 		}
@@ -912,18 +912,18 @@ func TestTaskResetPrepare(t *testing.T) {
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-			ctx = context.WithValue(ctx, RequestContext, projCtx)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := "Project not found"
 			So(err.Error(), ShouldContainSubstring, expectedErr)
 		})
 		Convey("then should error on empty task", func() {
-			projCtx = &serviceModel.Context{}
+			projCtx.Task = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
 			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
-			ctx = context.WithValue(ctx, RequestContext, projCtx)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{

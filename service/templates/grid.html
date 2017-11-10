@@ -1,8 +1,8 @@
 {{define "scripts"}}
 <script src="{{Static "js" "grid.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
-  var baseVersion = {{.Version}};
-  var baseRef = {{.ProjectRef}};
+  var baseVersion = {{.ProjectData.Version}};
+  var baseRef = {{.ProjectData.ProjectRef}};
   var gridCells = {{.GridCells}};
   var allVersions = {{.Versions}};
   var revisionFailures = {{.RevisionFailures}};
@@ -19,7 +19,7 @@ Evergreen - Grid
     <h1>Summary</h1>
   </header>
   <div class="row">
-    {{if not .Version}}
+    {{if not .ProjectData.Version}}
     <p class="text-center">There are no builds of this project</p>
     {{end}}
   </div>

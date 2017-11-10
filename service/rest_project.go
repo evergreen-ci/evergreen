@@ -10,7 +10,7 @@ import (
 // Returns a JSON response of an array with the ref information for the requested project_id.
 func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	ref, _ := projCtx.GetProjectRef()
+	ref := projCtx.ProjectRef
 	if ref == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding project"})
 		return
