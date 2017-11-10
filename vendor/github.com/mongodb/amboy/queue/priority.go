@@ -14,7 +14,7 @@ import (
 // LocalPriorityQueue is an amboy.Queue implementation that dispatches
 // jobs in priority order, using the Priority method of the Job
 // interface to determine priority. These queues do not have shared
-// storage.
+// storage.e
 type LocalPriorityQueue struct {
 	storage  *driver.PriorityStorage
 	channel  chan amboy.Job

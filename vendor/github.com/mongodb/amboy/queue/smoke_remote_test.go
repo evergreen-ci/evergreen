@@ -38,7 +38,7 @@ func TestRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 		assert.NoError(q.Put(j))
 	}
 
-	amboy.WaitCtxInterval(ctx, q, 500*time.Millisecond)
+	amboy.WaitCtxInterval(ctx, q, 5*time.Second)
 
 	grip.Notice(q.Stats())
 	assert.Equal(atStart+40, mockJobCounters.Count())

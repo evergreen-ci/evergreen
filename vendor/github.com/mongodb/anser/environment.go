@@ -53,7 +53,7 @@ type Environment interface {
 	GetManualMigrationOperation(string) (db.MigrationOperation, bool)
 	RegisterDocumentProcessor(string, db.Processor) error
 	GetDocumentProcessor(string) (db.Processor, bool)
-	NewDependencyManager(string, map[string]interface{}, model.Namespace) dependency.Manager
+	NewDependencyManager(string, model.Namespace) dependency.Manager
 	RegisterCloser(func() error)
 	Close() error
 }
@@ -197,14 +197,13 @@ func (e *envState) MetadataNamespace() model.Namespace {
 	return e.metadataNS
 }
 
-func (e *envState) NewDependencyManager(migrationID string, query map[string]interface{}, ns model.Namespace) dependency.Manager {
+func (e *envState) NewDependencyManager(migrationID string, ns model.Namespace) dependency.Manager {
 	d := makeMigrationDependencyManager()
 
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
 	d.MigrationHelper = NewMigrationHelper(e)
-	d.Query = query
 	d.MigrationID = migrationID
 	d.NS = ns
 

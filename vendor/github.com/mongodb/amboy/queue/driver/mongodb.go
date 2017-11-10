@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
@@ -314,13 +316,12 @@ func (d *MongoDB) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 }
 
 // Next returns one job, not marked complete from the database.
-func (d *MongoDB) Next() amboy.Job {
+func (d *MongoDB) Next(ctx context.Context) amboy.Job {
 	session, jobs := d.getJobsCollection()
 	if session == nil || jobs == nil {
 		return nil
 	}
 	defer session.Close()
-
 	j := &registry.JobInterchange{}
 
 	query := jobs.Find(bson.M{"status.completed": false, "status.in_prog": false})
@@ -328,20 +329,46 @@ func (d *MongoDB) Next() amboy.Job {
 		query = query.Sort("-priority")
 	}
 
-	err := query.One(j)
-	if err != nil {
-		grip.DebugWhenln(err.Error() != "not found",
-			"could not find a job ready for processing:", err.Error())
-		return nil
-	}
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
-	job, err := registry.ConvertToJob(j)
-	if err != nil {
-		grip.Errorf("problem converting from MongoDB to job object: %+v", err.Error())
-		return nil
-	}
+	var misses int64
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+			err := query.One(j)
+			if err != nil {
+				if misses < 30 {
+					misses++
+				}
 
-	return job
+				if err == mgo.ErrNotFound {
+					timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+					continue
+				}
+				grip.Warning(message.Fields{
+					"message": "problem retreiving jobs from MongoDB",
+					"error":   err.Error(),
+				})
+				return nil
+			}
+
+			job, err := registry.ConvertToJob(j)
+			if err != nil {
+				grip.Warning(message.Fields{
+					"message": "problem converting job object from mongodb",
+					"error":   err.Error(),
+				})
+				timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+				continue
+			}
+
+			return job
+		}
+
+	}
 }
 
 // Stats returns a Stats object that contains information about the
