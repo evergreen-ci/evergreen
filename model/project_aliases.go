@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	ProjectIDKey = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
-	AliasKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
-	VariantsKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Variants")
-	TasksKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Tasks")
+	projectIDKey = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
+	aliasKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
+	variantsKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Variants")
+	tasksKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Tasks")
 )
 
 const (
@@ -40,6 +40,7 @@ const (
 // “linux”; and to run all tasks beginning with the string “compile” to run on all
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
+	ID        string `bson:"_id,omitempty"`
 	ProjectID string `bson:"project_id"`
 	Alias     string `bson:"alias"`
 	Variants  string `bson:"variants"`
@@ -50,8 +51,8 @@ type ProjectAlias struct {
 func FindProjectAliases(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
-		ProjectIDKey: projectID,
-		AliasKey:     alias,
+		projectIDKey: projectID,
+		aliasKey:     alias,
 	})
 	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
@@ -72,10 +73,10 @@ func (p ProjectAlias) Insert() error {
 // Remove removes a matching project alias from the database.
 func (p ProjectAlias) Remove() error {
 	q := db.Query(bson.M{
-		ProjectIDKey: p.ProjectID,
-		AliasKey:     p.Alias,
-		VariantsKey:  p.Variants,
-		TasksKey:     p.Tasks,
+		projectIDKey: p.ProjectID,
+		aliasKey:     p.Alias,
+		variantsKey:  p.Variants,
+		tasksKey:     p.Tasks,
 	})
 	err := db.Remove(ProjectAliasCollection, q)
 	if err != nil {

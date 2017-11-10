@@ -44,7 +44,7 @@ func (s *ProjectAliasSuite) TestInsert() {
 
 	var out ProjectAlias
 	for i, a := range s.aliases {
-		q := db.Query(bson.M{ProjectIDKey: fmt.Sprintf("project-%d", i)})
+		q := db.Query(bson.M{projectIDKey: fmt.Sprintf("project-%d", i)})
 		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
