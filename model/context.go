@@ -183,7 +183,7 @@ func (ctx *Context) GetPatch() (*patch.Patch, error) {
 	}
 
 	if ctx.patch == nil {
-		return nil, nil
+		return nil, errors.New("could not resolve patch from request context")
 	}
 
 	if ctx.projectID != ctx.patch.Project {
