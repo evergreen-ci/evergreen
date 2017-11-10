@@ -724,7 +724,13 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	defer cancel()
 
 	if err := makeShellCmd.Run(ctx); err != nil {
-		grip.Errorf("Fetching data for host %s failed: %s", hostSSHInfo.Hostname, cmdOutput)
+		grip.Error(message.Fields{
+			"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
+			"host":    hostSSHInfo.Hostname,
+			"cmd":     makeShellCmd.CmdString,
+			"error":   err,
+			"output":  cmdOutput,
+		})
 		return err
 	}
 	return nil
