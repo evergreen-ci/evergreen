@@ -171,9 +171,9 @@ func (ctx *Context) GetPatch() (*patch.Patch, error) {
 				ctx.buildID = t.BuildId
 				ctx.versionID = t.Version
 				ctx.GetVersion()
+			} else {
+				return nil, errors.New("could not resolve patch from request context")
 			}
-		} else {
-			return nil, nil
 		}
 	}
 
