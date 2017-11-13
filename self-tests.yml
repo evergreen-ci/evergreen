@@ -125,8 +125,8 @@ functions:
     command: shell.exec
     params:
        script: |
+         set -o xtrace
          set -o errexit
-         set -o verbose
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
@@ -157,8 +157,8 @@ functions:
     command: shell.exec
     param:
       script: |
+        set -o xtrace
         set -o errexit
-        set -o verbose
 
         tar -zxvf dist-test.tar.gz
 
@@ -233,8 +233,8 @@ functions:
       type: system
       params:
         script: |
+          set -o xtrace
           set -o errexit
-          set -o verbose
 
           rm -rf mongodb
           mkdir mongodb
@@ -253,8 +253,8 @@ functions:
       params:
         background: true
         script: |
+          set -o xtrace
           set -o errexit
-          set -o verbose
 
           cd mongodb
           echo "starting mongod..."
@@ -264,8 +264,8 @@ functions:
       type: system
       params:
         script: |
+          set -o xtrace
           set -o errexit
-          set -o verbose
 
           cd mongodb
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
