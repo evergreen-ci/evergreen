@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +41,12 @@ func (c *AgentCommand) Execute(_ []string) error {
 
 	sender, err := agent.GetSender(opts.LogPrefix, "init")
 	if err != nil {
+		return errors.Wrap(err, "problem configuring logger")
+	}
+
+	l := sender.Level()
+	l.Threshold = level.Debug
+	if err = sender.SetLevel(l); err != nil {
 		return errors.Wrap(err, "problem configuring logger")
 	}
 
