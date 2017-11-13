@@ -43,6 +43,7 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 		var id string
 		var oldTaskID string
 		var execution int
+		var hasExecution bool
 		for _, raw := range rawD {
 			switch raw.Name {
 			case "test_results":
@@ -64,7 +65,13 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 				if err := raw.Value.Unmarshal(&execution); err != nil {
 					return errors.Wrap(err, "error unmarshaling task execution")
 				}
+				hasExecution = true
 			}
+		}
+
+		// Very old tasks may not have an execution field. We should ignore those tasks, as they also have odd shapes.
+		if !hasExecution {
+			return nil
 		}
 
 		for _, test := range testresults {

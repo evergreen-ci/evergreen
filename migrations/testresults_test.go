@@ -192,3 +192,50 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 		}
 	}
 }
+
+func (s *TestResultsMigrationSuite) TestLegacyTask() {
+	legacyTask := bson.M{
+		"_id":     "taskid-1",
+		"secret":  "secret-1",
+		"version": "version-1",
+		"branch":  "project-1",
+		"gitspec": "revision-1",
+		"test_results": bson.M{
+			"status":    "pass",
+			"test_file": "file-1",
+			"url":       "url-1",
+			"url_raw":   "urlraw-1",
+			"log_id":    "logid-1",
+			"line_num":  1,
+			"exit_code": 1,
+			"start":     float64(1),
+			"end":       float64(1),
+		},
+	}
+	s.Require().NoError(evg.Insert(s.collection, legacyTask))
+
+	// the task has test_results
+	var task bson.M
+	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	s.Contains(task, "test_results")
+
+	// run the migration
+	var doc bson.RawD
+	coll := s.session.DB(s.dbName).C(s.collection)
+	s.Require().NoError(coll.FindId("taskid-1").One(&doc))
+	s.Assert().NoError(s.migration(s.session, doc))
+
+	// there's still 2 tasks
+	count, err := evg.Count(s.collection, bson.M{})
+	s.NoError(err)
+	s.Equal(2, count)
+
+	// the task still contains test results
+	s.NoError(s.database.C(s.collection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	s.Contains(task, "test_results")
+
+	// the testresults collection is empty
+	count, err = evg.Count(testResultsCollection, bson.M{})
+	s.NoError(err)
+	s.Equal(0, count)
+}
