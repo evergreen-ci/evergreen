@@ -123,8 +123,8 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 				"message":           "not flagging idle host, waiting for an agent",
 				"host":              freeHost.Id,
 				"distro":            freeHost.Distro.Id,
-				"idle":              time.Now().Sub(idleTime).String(),
-				"last_communicated": time.Now().Sub(communicationTime).String(),
+				"idle":              idleTime.String(),
+				"last_communicated": communicationTime.String(),
 			})
 			continue
 		}
