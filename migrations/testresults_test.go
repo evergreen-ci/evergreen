@@ -7,6 +7,8 @@ import (
 	evg "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser/db"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -156,7 +158,7 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
 	s.Assert().NoError(s.migration(s.session, doc))
 
-	// there's still 2 tasks
+	// there are still 2 tasks
 	count, err := evg.Count(s.collection, bson.M{})
 	s.NoError(err)
 	s.Equal(2, count)
@@ -191,4 +193,54 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 			s.Equal(s.oldTaskID, test["task_id"])
 		}
 	}
+}
+
+func TestTestResultsLegacyTask(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	evg.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	mgoSession, database, err := evg.GetGlobalSessionFactory().GetSession()
+	require.NoError(err)
+	dbName := database.Name
+	session := db.WrapSession(mgoSession)
+	require.NoError(evg.Clear(tasksCollection))
+
+	legacyTask := bson.M{
+		"_id":     "taskid-1",
+		"secret":  "secret-1",
+		"version": "version-1",
+		"branch":  "project-1",
+		"gitspec": "revision-1",
+		"test_results": bson.M{
+			"status":    "pass",
+			"test_file": "file-1",
+			"url":       "url-1",
+			"url_raw":   "urlraw-1",
+			"log_id":    "logid-1",
+			"line_num":  1,
+			"exit_code": 1,
+			"start":     float64(1),
+			"end":       float64(1),
+		},
+	}
+	require.NoError(evg.Insert(tasksCollection, legacyTask))
+
+	// the task has test_results and no execution field
+	var task bson.M
+	assert.NoError(database.C(tasksCollection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	assert.Contains(task, "test_results")
+	assert.NotContains(task, "execution")
+
+	// run the migration
+	var doc bson.RawD
+	coll := session.DB(dbName).C(tasksCollection)
+	assert.NoError(coll.FindId("taskid-1").One(&doc))
+	assert.NoError(makeLegacyTaskMigrationFunction()(session, doc))
+
+	// the task still contains test results, and now contains an execution field
+	assert.NoError(database.C(tasksCollection).Find(bson.M{"_id": "taskid-1"}).One(&task))
+	assert.Contains(task, "test_results")
+	assert.Contains(task, "execution")
+	assert.Equal(0, task["execution"].(int))
 }
