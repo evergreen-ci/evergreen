@@ -117,8 +117,8 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 			continue
 		}
 
-		if freeHost.IsWaitingForAgent() && (communicationTime >= idleWaitingForAgentCutoff || idleTime >= idleWaitingForAgentCutoff) {
-			grip.Warning(message.Fields{
+		if freeHost.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
+			grip.Notice(message.Fields{
 				"runner":            RunnerName,
 				"message":           "not flagging idle host, waiting for an agent",
 				"host":              freeHost.Id,

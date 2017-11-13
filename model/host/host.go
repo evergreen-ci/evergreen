@@ -399,6 +399,10 @@ func (h *Host) IsWaitingForAgent() bool {
 		return true
 	}
 
+	if util.IsZeroTime(h.LastCommunicationTime) {
+		return true
+	}
+
 	if h.LastCommunicationTime.Before(time.Now().Add(-MaxLCTInterval)) {
 		return true
 	}
