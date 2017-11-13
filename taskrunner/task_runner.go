@@ -61,7 +61,7 @@ func (tr *TaskRunner) Run() error {
 	// close the free hosts channel
 	close(freeHostChan)
 	wg := sync.WaitGroup{}
-	workers := runtime.NumCPU()
+	workers := runtime.NumCPU() * 2
 	wg.Add(workers)
 
 	catcher := grip.NewBasicCatcher()
