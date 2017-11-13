@@ -805,7 +805,7 @@ func gitDiff(base string, diffArgs ...string) (string, error) {
 		"--no-ext-diff",
 		"--binary",
 	}, diffArgs...)
-	return gitCmd("diff", base, args)
+	return gitCmd("diff", base, args...)
 }
 
 // getLog runs "git log <base>
