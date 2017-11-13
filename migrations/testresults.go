@@ -98,7 +98,10 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 			Collection: tasksCollection,
 		},
 		Limit: limit,
-		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
+		Query: bson.M{
+			"test_results.0": bson.M{"$exists": true},
+			"execution":      bson.M{"$exists": true},
+		},
 		JobID: "migration-testresults-tasks",
 	}
 
@@ -108,7 +111,10 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 			Collection: oldTasksCollection,
 		},
 		Limit: limit,
-		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
+		Query: bson.M{
+			"test_results.0": bson.M{"$exists": true},
+			"execution":      bson.M{"$exists": true},
+		},
 		JobID: "migration-testresults-oldtasks",
 	}
 
