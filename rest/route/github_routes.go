@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type githubHookApi struct {
@@ -20,15 +21,17 @@ type githubHookApi struct {
 }
 
 func getGithubHooksRouteManager(route string, version int) *RouteManager {
-	secret := evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret
 	methods := []MethodHandler{}
-	if len(secret) > 0 {
-		handler := &githubHookApi{}
+	if secret, err := getWebhookSecret(); err == nil && len(secret) > 0 {
+		handler := &githubHookApi{
+			secret: secret,
+		}
 		methods = append(methods, MethodHandler{
 			Authenticator:  &NoAuthAuthenticator{},
-			RequestHandler: handler.Handler(),
+			RequestHandler: handler,
 			MethodType:     http.MethodPost,
 		})
+
 	} else {
 		grip.Warning("Github webhook secret is empty! Github webhooks have been disabled!")
 	}
@@ -41,11 +44,23 @@ func getGithubHooksRouteManager(route string, version int) *RouteManager {
 }
 
 func (gh *githubHookApi) Handler() RequestHandler {
-	secret := evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret
-
+	// TOOO ehhhhh
+	secret, _ := getWebhookSecret()
 	return &githubHookApi{
-		secret: []byte(secret),
+		secret: secret,
 	}
+}
+
+func getWebhookSecret() ([]byte, error) {
+	settings := evergreen.GetEnvironment().Settings()
+	if settings != nil {
+		secret := settings.Api.GithubWebhookSecret
+		if len(secret) != 0 {
+			return []byte(secret), nil
+		}
+	}
+
+	return []byte{}, errors.New("No secret key")
 }
 
 func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) error {
@@ -88,7 +103,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				}
 			}
 
-			if err := ghi.Insert(); err != nil {
+			if err := sc.AddPatchIntent(ghi); err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusInternalServerError,
 					Message:    "failed to created patch intent",
