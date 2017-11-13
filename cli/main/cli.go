@@ -6,6 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen/cli"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 )
 
 func main() {
@@ -50,6 +52,11 @@ func main() {
 
 	deploy, _ := service.AddCommand("deploy", "deployment helper (e.g. migration tools)", "", &struct{}{})
 	deploy.AddCommand("anser", "migration helper", "", &cli.MigrationCommand{})
+
+	sender := grip.GetSender()
+	l := sender.Level()
+	l.Threshold = level.Info
+	grip.CatchEmergency(sender.SetLevel(l))
 
 	// run commands
 	_, err := parser.Parse()
