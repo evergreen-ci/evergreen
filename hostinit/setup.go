@@ -513,8 +513,8 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
-		if err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
-			return errors.Wrap(err, "error running setup script on remote host")
+		if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
+			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
 		if h.ProvisionOptions.OwnerId != "" &&

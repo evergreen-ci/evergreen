@@ -150,13 +150,13 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 // 3. Run the setup script with the binary.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
-	if err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "error downloading agent binary on remote host")
+	if logs, err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
+		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
 	// run the setup script with the agent
-	if err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "error running setup script on remote host")
+	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
+		return "", errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 	}
 
 	return agbh.GetAgentRevision()
