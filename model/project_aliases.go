@@ -11,8 +11,6 @@ var (
 	idKey        = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
 	projectIDKey = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
 	aliasKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
-	variantsKey  = bsonutil.MustHaveTag(ProjectAlias{}, "Variants")
-	tasksKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Tasks")
 )
 
 const (
