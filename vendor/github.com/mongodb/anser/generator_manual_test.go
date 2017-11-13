@@ -82,6 +82,7 @@ func TestManualMigrationGenerator(t *testing.T) {
 		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
 		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
 		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
+		NewManualMigration(env, model.Manual{}).(*manualMigrationJob),
 	}
 	counter := 0
 	for migration := range job.Jobs() {
@@ -94,11 +95,12 @@ func TestManualMigrationGenerator(t *testing.T) {
 	job = factory().(*manualMigrationGenerator)
 	job.NS = ns
 	job.MigrationHelper = mh
+	job.Limit = 3
 	job.SetID("manual")
 	iter := &mock.Iterator{
 		ShouldIter: true,
 		Results: []interface{}{
-			&doc{"one"}, &doc{"two"}, &doc{"three"},
+			&doc{"one"}, &doc{"two"}, &doc{"three"}, &doc{"four"},
 		},
 	}
 

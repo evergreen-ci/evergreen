@@ -26,7 +26,7 @@ func NewSimpleMigrationGenerator(e Environment, opts model.GeneratorOptions, upd
 	j.NS = opts.NS
 	j.Query = opts.Query
 	j.Update = update
-
+	j.Limit = opts.Limit
 	return j
 }
 
@@ -46,6 +46,7 @@ func makeSimpleGenerator() *simpleMigrationGenerator {
 type simpleMigrationGenerator struct {
 	NS              model.Namespace        `bson:"ns" json:"ns" yaml:"ns"`
 	Query           map[string]interface{} `bson:"source_query" json:"source_query" yaml:"source_query"`
+	Limit           int                    `bson:"limit" json:"limit" yaml:"limit"`
 	Update          map[string]interface{} `bson:"update" json:"update" yaml:"update"`
 	Migrations      []*simpleMigrationJob  `bson:"migrations" json:"migrations" yaml:"migrations"`
 	job.Base        `bson:"job_base" json:"job_base" yaml:"job_base"`
@@ -90,7 +91,9 @@ func (j *simpleMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 
 	j.mu.Lock()
 	defer j.mu.Unlock()
+	count := 0
 	for iter.Next(&doc) {
+		count++
 		m := NewSimpleMigration(env, model.Simple{
 			ID:        doc.ID,
 			Update:    j.Update,
@@ -102,6 +105,10 @@ func (j *simpleMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
+
+		if j.Limit > 0 && count >= j.Limit {
+			break
+		}
 	}
 
 	return ids
