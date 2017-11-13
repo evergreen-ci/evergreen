@@ -25,7 +25,7 @@ import (
 
 const (
 	// SSHTimeout defines the timeout for the SSH commands in this package.
-	SSHTimeout = 1 * time.Minute
+	sshTimeout = 30 * time.Second
 	agentFile  = "agent"
 )
 
@@ -225,7 +225,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), sshTimeout)
 	defer cancel()
 	err = startAgentCmd.Run(ctx)
 
