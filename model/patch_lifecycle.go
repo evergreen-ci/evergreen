@@ -71,7 +71,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
-	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
+	execTable, displayTable := NewPatchTaskIdTable(project, patchVersion, pairs)
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
@@ -95,7 +95,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 		if len(taskNames) == 0 {
 			continue
 		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, pair.Variant, p.Activated, taskNames)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, execTable, displayTable, pair.Variant, p.Activated, taskNames)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			patchVersion.Id, pair.Variant, p.Activated)
 		if err != nil {
@@ -324,7 +324,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		p.VariantsTasks = TVPairsToVariantTasks(pairs)
 	}
 
-	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
+	execTable, displayTable := NewPatchTaskIdTable(project, patchVersion, pairs)
 	variantsProcessed := map[string]bool{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {
@@ -332,7 +332,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		}
 
 		var buildId string
-		buildId, err = CreateBuildFromVersion(project, patchVersion, tt, vt.Variant, true, vt.Tasks)
+		buildId, err = CreateBuildFromVersion(project, patchVersion, execTable, displayTable, vt.Variant, true, vt.Tasks)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

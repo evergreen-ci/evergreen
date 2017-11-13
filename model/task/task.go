@@ -99,6 +99,10 @@ type Task struct {
 
 	// test results captured and sent back by agent
 	TestResults []TestResult `bson:"test_results" json:"test_results"`
+
+	// display task fields
+	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning

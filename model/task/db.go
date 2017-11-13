@@ -656,6 +656,30 @@ func FindOld(query db.Q) ([]Task, error) {
 		}
 		tasks[i] = task
 	}
+
+	// remove display tasks from results
+	for i := len(tasks) - 1; i >= 0; i-- {
+		t := tasks[i]
+		if t.DisplayOnly {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+		}
+	}
+	return tasks, err
+}
+
+func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(OldCollection, query, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	for i, task := range tasks {
+		if err = task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
+		}
+		tasks[i] = task
+	}
+
 	return tasks, err
 }
 
@@ -666,12 +690,24 @@ func Find(query db.Q) ([]Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	// for i, task := range tasks {
-	//	if err = task.MergeNewTestResults(); err != nil {
-	//		return nil, errors.Wrap(err, "error merging new test results")
-	//	}
-	//	tasks[i] = task
-	// }
+
+	// remove display tasks from results
+	for i := len(tasks) - 1; i >= 0; i-- {
+		t := tasks[i]
+		if t.DisplayOnly {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+		}
+	}
+	return tasks, err
+}
+
+func FindWithDisplayTasks(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, query, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+
 	return tasks, err
 }
 

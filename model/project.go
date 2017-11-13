@@ -393,17 +393,16 @@ func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []strin
 }
 
 // TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *version.Version) TaskIdTable {
+func NewTaskIdTable(p *Project, v *version.Version) (TaskIdTable, TaskIdTable) {
 	// init the variant map
-	table := TaskIdTable{}
+	execTable := TaskIdTable{}
+	displayTable := TaskIdTable{}
 	for _, bv := range p.BuildVariants {
+		rev := v.Revision
+		if v.Requester == evergreen.PatchVersionRequester {
+			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+		}
 		for _, t := range bv.Tasks {
-
-			rev := v.Revision
-			if v.Requester == evergreen.PatchVersionRequester {
-				rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
-			}
-
 			// create a unique Id for each task
 			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
 				p.Identifier,
@@ -412,15 +411,28 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdTable {
 				rev,
 				v.CreateTime.Format(build.IdTimeLayout))
 
-			table[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
+			execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
+		}
+
+		for _, dt := range bv.DisplayTasks {
+			name := fmt.Sprintf("display_%s", dt.Name)
+			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
+				p.Identifier,
+				bv.Name,
+				name,
+				rev,
+				v.CreateTime.Format(build.IdTimeLayout))
+
+			displayTable[TVPair{bv.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
-	return table
+	return execTable, displayTable
 }
 
 // NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task id])
-func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSet) TaskIdTable {
-	table := TaskIdTable{}
+func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSet) (TaskIdTable, TaskIdTable) {
+	execTable := TaskIdTable{}
+	displayTable := TaskIdTable{}
 	processedVariants := map[string]bool{}
 	for _, vt := range patchConfig {
 		// don't hit the same variant more than once
@@ -432,14 +444,14 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSe
 		// so that we don't create Ids for variants that don't exist.
 		projBV := proj.FindBuildVariant(vt.Variant)
 		taskNamesForVariant := patchConfig.TaskNames(vt.Variant)
+
+		rev := v.Revision
+		if v.Requester == evergreen.PatchVersionRequester {
+			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+		}
 		for _, t := range projBV.Tasks {
 			// create Ids for each task that can run on the variant and is requested by the patch.
 			if util.StringSliceContains(taskNamesForVariant, t.Name) {
-
-				rev := v.Revision
-				if v.Requester == evergreen.PatchVersionRequester {
-					rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
-				}
 
 				// create a unique Id for each task
 				taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
@@ -449,11 +461,23 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSe
 					rev,
 					v.CreateTime.Format(build.IdTimeLayout))
 
-				table[TVPair{vt.Variant, t.Name}] = util.CleanName(taskId)
+				execTable[TVPair{vt.Variant, t.Name}] = util.CleanName(taskId)
 			}
 		}
+
+		for _, dt := range projBV.DisplayTasks {
+			name := fmt.Sprintf("display_%s", dt.Name)
+			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
+				proj.Identifier,
+				projBV.Name,
+				name,
+				rev,
+				v.CreateTime.Format(build.IdTimeLayout))
+
+			displayTable[TVPair{projBV.Name, dt.Name}] = util.CleanName(taskId)
+		}
 	}
-	return table
+	return execTable, displayTable
 }
 
 var (

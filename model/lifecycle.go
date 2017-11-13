@@ -381,8 +381,9 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	}
 
 	// create the new tasks for the build
+	execTable, displayTable := NewTaskIdTable(project, v)
 	tasks, err := createTasksForBuild(
-		project, buildVariant, b, v, NewTaskIdTable(project, v), taskNames)
+		project, buildVariant, b, v, execTable, displayTable, taskNames)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -405,7 +406,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
-func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable,
+func CreateBuildFromVersion(project *Project, v *version.Version, execTable TaskIdTable, displayTable TaskIdTable,
 	buildName string, activated bool, taskNames []string) (string, error) {
 
 	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
@@ -453,7 +454,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, tt, taskNames)
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, execTable, displayTable, taskNames)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -486,7 +487,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant,
-	b *build.Build, v *version.Version, tt TaskIdTable, taskNames []string) ([]*task.Task, error) {
+	b *build.Build, v *version.Version, execTable TaskIdTable, displayTable TaskIdTable, taskNames []string) ([]*task.Task, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -518,13 +519,13 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	// if any tasks already exist in the build, add them to the id table
 	// so they can be used as dependencies
 	for _, task := range b.Tasks {
-		tt.AddId(b.BuildVariant, task.DisplayName, task.Id)
+		execTable.AddId(b.BuildVariant, task.DisplayName, task.Id)
 	}
 
 	// create and insert all of the actual tasks
-	tasks := make([]*task.Task, 0, len(tasksToCreate))
+	tasks := make([]*task.Task, 0)
 	for _, t := range tasksToCreate {
-		newTask := createOneTask(tt.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
+		newTask := createOneTask(execTable.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
 
 		// set Tags based on the spec
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
@@ -540,7 +541,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 				if t.DependsOn[0].Status != "" {
 					status = t.DependsOn[0].Status
 				}
-				id := tt.GetId(b.BuildVariant, dep.Name)
+				id := execTable.GetId(b.BuildVariant, dep.Name)
 				if len(id) == 0 || dep.Name == newTask.DisplayName {
 					continue
 				}
@@ -566,13 +567,13 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 					// for * case, we need to add all variants of the task
 					var ids []string
 					if dep.Name != AllDependencies {
-						ids = tt.GetIdsForAllVariantsExcluding(
+						ids = execTable.GetIdsForAllVariantsExcluding(
 							dep.Name,
 							TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant},
 						)
 					} else {
 						// edge case where variant and task are both *
-						ids = tt.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
+						ids = execTable.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
 					}
 					for _, id := range ids {
 						if len(id) != 0 {
@@ -581,7 +582,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 					}
 				} else {
 					// general case
-					id := tt.GetId(bv, dep.Name)
+					id := execTable.GetId(bv, dep.Name)
 					// only create the dependency if the task exists--it always will,
 					// except for patches with patch_optional dependencies.
 					if len(id) != 0 {
@@ -600,6 +601,12 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
 	setNumDeps(tasks)
+
+	// Create display tasks
+	for _, dt := range buildVariant.DisplayTasks {
+		id := displayTable.GetId(b.BuildVariant, dt.Name)
+		tasks = append(tasks, createDisplayTask(id, dt.Name, dt.ExecutionTasks, buildVariant, b, v, project))
+	}
 
 	// return all of the tasks created
 	return tasks, nil
@@ -695,6 +702,24 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 		Revision:            v.Revision,
 		Project:             project.Identifier,
 		Priority:            buildVarTask.Priority,
+	}
+}
+
+func createDisplayTask(id string, displayName string, execTasks []string,
+	bv *BuildVariant, b *build.Build, v *version.Version, p *Project) *task.Task {
+	return &task.Task{
+		Id:                  id,
+		DisplayName:         displayName,
+		BuildVariant:        bv.Name,
+		BuildId:             b.Id,
+		CreateTime:          b.CreateTime,
+		PushTime:            b.PushTime,
+		RevisionOrderNumber: v.RevisionOrderNumber,
+		Version:             v.Id,
+		Revision:            v.Revision,
+		Project:             p.Identifier,
+		DisplayOnly:         true,
+		ExecutionTasks:      execTasks,
 	}
 }
 
