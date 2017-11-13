@@ -154,7 +154,7 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 			continue
 		}
 
-		resources = append(resources, vol.DeviceName)
+		resources = append(resources, vol.EBS.VolumeId)
 	}
 
 	return attachTagsToResources(ec2handle, tags, resources)
