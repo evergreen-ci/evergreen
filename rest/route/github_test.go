@@ -16,7 +16,10 @@ import (
 
 func init() {
 	ctx := context.Background()
-	evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
+	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
+	if err != nil {
+		panic("Failed to Configure environment")
+	}
 }
 
 type PatchIntentConnectorSuite struct {
@@ -53,7 +56,9 @@ func (s *PatchIntentConnectorSuite) TestAddIntent() {
 	s.rm.Methods[0].RequestHandler.(*githubHookApi).msgId = "1"
 
 	ctx := context.Background()
-	s.rm.Methods[0].Execute(ctx, s.sc)
+	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Len(resp.Result, 0)
 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
@@ -68,7 +73,9 @@ func (s *PatchIntentConnectorSuite) TestAddIntentWithClosedPRHasNoSideEffects() 
 	s.rm.Methods[0].RequestHandler.(*githubHookApi).msgId = "1"
 
 	ctx := context.Background()
-	s.rm.Methods[0].Execute(ctx, s.sc)
+	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Len(resp.Result, 0)
 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 0)
 }
