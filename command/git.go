@@ -66,8 +66,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	}
 
 	gitCommands := []string{
+		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
-		fmt.Sprintf("set -o verbose"),
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
@@ -149,8 +149,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 
 		moduleCmds := []string{
+			fmt.Sprintf("set -o xtrace"),
 			fmt.Sprintf("set -o errexit"),
-			fmt.Sprintf("set -o verbose"),
 			fmt.Sprintf("git clone %v '%v'", module.Repo, filepath.ToSlash(moduleBase)),
 			fmt.Sprintf("cd %v; git checkout '%v'", filepath.ToSlash(moduleBase), revision),
 		}
@@ -255,7 +255,7 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 // need to be executed. If the patch is empty it will not apply the patch.
 func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []string {
 	patchCommands := []string{
-		fmt.Sprintf("set -o verbose"),
+		fmt.Sprintf("set -o xtrace"),
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("ls"),
 		fmt.Sprintf("cd '%s'", dir),
@@ -267,7 +267,7 @@ func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []st
 	return append(patchCommands, []string{
 		fmt.Sprintf("git apply --check --whitespace=fix '%v'", patchPath),
 		fmt.Sprintf("git apply --stat '%v'", patchPath),
-		fmt.Sprintf("git apply --whitespace=fix < '%v'", patchPath),
+		fmt.Sprintf("git apply --binary --whitespace=fix < '%v'", patchPath),
 	}...)
 }
 
