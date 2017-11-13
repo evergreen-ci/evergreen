@@ -10,6 +10,13 @@ import (
 	"github.com/mongodb/grip/level"
 )
 
+func init() {
+	sender := grip.GetSender()
+	l := sender.Level()
+	l.Threshold = level.Info
+	grip.CatchEmergencyPanic(sender.SetLevel(l))
+}
+
 func main() {
 	opts := &cli.Options{}
 	parser := flags.NewParser(opts, flags.Default)
@@ -52,11 +59,6 @@ func main() {
 
 	deploy, _ := service.AddCommand("deploy", "deployment helper (e.g. migration tools)", "", &struct{}{})
 	deploy.AddCommand("anser", "migration helper", "", &cli.MigrationCommand{})
-
-	sender := grip.GetSender()
-	l := sender.Level()
-	l.Threshold = level.Info
-	grip.CatchEmergency(sender.SetLevel(l))
 
 	// run commands
 	_, err := parser.Parse()

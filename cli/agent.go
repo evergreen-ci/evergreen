@@ -5,9 +5,11 @@ import (
 	"os"
 
 	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -36,6 +38,13 @@ func (c *AgentCommand) Execute(_ []string) error {
 	if err := os.MkdirAll(c.WorkingDirectory, 0777); err != nil {
 		return errors.Wrap(err, "problem creating working directory")
 	}
+
+	grip.Info(message.Fields{
+		"message":  "starting agent",
+		"commands": command.RegisteredCommandNames(),
+		"dir":      c.WorkingDirectory,
+		"host":     c.HostID,
+	})
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
 
