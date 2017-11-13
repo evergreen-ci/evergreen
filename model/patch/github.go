@@ -36,14 +36,20 @@ type Intent interface {
 // PullRequestEvent webhook. These intents are processed asynchronously by an
 // amboy queue.
 type githubIntent struct {
-	// ID is created by the driver and has no special meaning to the application.
-	ID bson.ObjectId `bson:"_id"`
+	// ID is from the unique message id from the X-GitHub-Delivery header
+	Id string `bson:"_id"`
 
-	// PRNumber is the PR number for the project in GitHub.
+	// Full Repository name, ex: mongodb/mongo
+	RepoName string `bson:"repo_name"`
+
+	// Pull request number for the project in GitHub.
 	PRNumber int `bson:"pr_number"`
 
-	// HeadHash is the base SHA of the patch.
-	HeadHash string `bson:"head_hash"`
+	// Github user that created the pull request
+	User string `bson:"user"`
+
+	// BaseHash is the base hash of the patch.
+	BaseHash string `bson:"base_hash"`
 
 	// URL is the URL of the patch in GitHub.
 	URL string `bson:"url"`
@@ -58,41 +64,53 @@ type githubIntent struct {
 // BSON fields for the patches
 // nolint
 var (
-	idKey         = bsonutil.MustHaveTag(githubIntent{}, "ID")
+	idKey         = bsonutil.MustHaveTag(githubIntent{}, "Id")
+	repoNameKey   = bsonutil.MustHaveTag(githubIntent{}, "RepoName")
 	prNumberKey   = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
-	headHashKey   = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
+	userKey       = bsonutil.MustHaveTag(githubIntent{}, "User")
+	baseHashKey   = bsonutil.MustHaveTag(githubIntent{}, "BaseHash")
 	urlKey        = bsonutil.MustHaveTag(githubIntent{}, "URL")
 	processedKey  = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	intentTypeKey = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
 // NewGithubIntent return a new github patch intent.
-func NewGithubIntent(pr int, sha string, url string) (Intent, error) {
-	g := &githubIntent{}
-	if pr == 0 {
+func NewGithubIntent(msgDeliveryId, repoName string, prNumber int, user, baseHash, url string) (Intent, error) {
+	if msgDeliveryId == "" {
+		return nil, errors.New("Unique msg id cannot be empty")
+	}
+	if repoName == "" || len(strings.Split(repoName, "/")) != 2 {
+		return nil, errors.New("Repo name is invalid")
+	}
+	if prNumber == 0 {
 		return nil, errors.New("PR number must not be 0")
 	}
-	if len(sha) == 0 {
+	if user == "" {
+		return nil, errors.New("Github user name must not be empty string")
+	}
+	if len(baseHash) == 0 {
 		return nil, errors.New("Base hash must not be empty")
 	}
 	if !strings.HasPrefix(url, "http") {
-		return nil, errors.Errorf("URL does not appear valid (%s)", g.URL)
+		return nil, errors.Errorf("URL does not appear valid (%s)", url)
 	}
 
-	g.PRNumber = pr
-	g.HeadHash = sha
-	g.URL = url
-	g.IntentType = GithubIntentType
-	g.ID = bson.NewObjectId()
-
-	return g, nil
+	return &githubIntent{
+		Id:         msgDeliveryId,
+		RepoName:   repoName,
+		PRNumber:   prNumber,
+		User:       user,
+		BaseHash:   baseHash,
+		URL:        url,
+		IntentType: GithubIntentType,
+	}, nil
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
 func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
 	return updateOneIntent(
-		bson.M{idKey: g.ID},
+		bson.M{idKey: g.Id},
 		bson.M{"$set": bson.M{processedKey: g.Processed}},
 	)
 }

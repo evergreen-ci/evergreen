@@ -61,7 +61,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
-		"/third_party/github":                                  getGithubHooksRouteManager,
+		"/hooks/github":                                        getGithubHooksRouteManager,
 	}
 
 	for path, getManager := range routes {
