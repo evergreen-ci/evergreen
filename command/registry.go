@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -59,6 +58,8 @@ func Render(c model.PluginCommandConf, fns map[string]*model.YAMLCommandSet) ([]
 	return evgRegistry.renderCommands(c, fns)
 }
 
+func RegisteredCommandNames() []string { return evgRegistry.registeredCommandNames() }
+
 type CommandFactory func() Command
 
 type commandRegistry struct {
@@ -71,6 +72,19 @@ func newCommandRegistry() *commandRegistry {
 		cmds: map[string]CommandFactory{},
 		mu:   &sync.RWMutex{},
 	}
+}
+
+func (r *commandRegistry) registeredCommandNames() []string {
+	out := []string{}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for name := range r.cmds {
+		out = append(out, name)
+	}
+
+	return out
 }
 
 func (r *commandRegistry) registerCommand(name string, factory CommandFactory) error {
@@ -88,11 +102,6 @@ func (r *commandRegistry) registerCommand(name string, factory CommandFactory) e
 	if factory == nil {
 		return errors.Errorf("cannot register a nil factory for command '%s'", name)
 	}
-
-	grip.Debug(message.Fields{
-		"message": "registering command",
-		"command": name,
-	})
 
 	r.cmds[name] = factory
 	return nil
