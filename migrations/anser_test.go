@@ -11,7 +11,7 @@ import (
 
 func TestAnserBasicPlaceholder(t *testing.T) {
 	assert := assert.New(t)
-	app, err := Application(mock.NewEnvironment(), "mci_test")
+	app, err := Application(mock.NewEnvironment(), "mci_test", 0)
 	assert.NoError(err)
 	assert.False(app.DryRun)
 
