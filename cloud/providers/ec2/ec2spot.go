@@ -138,7 +138,26 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	ec2handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
-	return attachTags(ec2handle, tags, spotReq.InstanceId)
+	resources := []string{
+		spotReq.InstanceId,
+	}
+
+	instance, err := getInstanceInfo(ec2handle, spotReq.InstanceId)
+	if err != nil {
+		err = errors.Wrap(err, "problem getting underlying request")
+		grip.Error(err)
+		return err
+	}
+
+	for _, vol := range instance.BlockDevices {
+		if vol.DeviceName == "" {
+			continue
+		}
+
+		resources = append(resources, vol.DeviceName)
+	}
+
+	return attachTagsToResources(ec2handle, tags, resources)
 }
 
 func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
