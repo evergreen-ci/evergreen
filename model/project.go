@@ -303,6 +303,11 @@ type TaskConfig struct {
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
 
+type TaskIdConfig struct {
+	ExecutionTasks TaskIdTable
+	DisplayTasks   TaskIdTable
+}
+
 // TVPair is a helper type for mapping bv/task pairs to ids.
 type TVPair struct {
 	Variant  string
@@ -393,7 +398,7 @@ func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []strin
 }
 
 // TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *version.Version) (TaskIdTable, TaskIdTable) {
+func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
@@ -426,11 +431,11 @@ func NewTaskIdTable(p *Project, v *version.Version) (TaskIdTable, TaskIdTable) {
 			displayTable[TVPair{bv.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
-	return execTable, displayTable
+	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
 }
 
 // NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task id])
-func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSet) (TaskIdTable, TaskIdTable) {
+func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSet) TaskIdConfig {
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
 	processedVariants := map[string]bool{}
@@ -477,7 +482,7 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSe
 			displayTable[TVPair{projBV.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
-	return execTable, displayTable
+	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
 }
 
 var (

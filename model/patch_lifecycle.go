@@ -71,7 +71,9 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
-	execTable, displayTable := NewPatchTaskIdTable(project, patchVersion, pairs)
+	taskIds := NewPatchTaskIdTable(project, patchVersion, pairs)
+	execTable := taskIds.ExecutionTasks
+	displayTable := taskIds.DisplayTasks
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
@@ -324,7 +326,9 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		p.VariantsTasks = TVPairsToVariantTasks(pairs)
 	}
 
-	execTable, displayTable := NewPatchTaskIdTable(project, patchVersion, pairs)
+	taskIds := NewPatchTaskIdTable(project, patchVersion, pairs)
+	execTable := taskIds.ExecutionTasks
+	displayTable := taskIds.DisplayTasks
 	variantsProcessed := map[string]bool{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {

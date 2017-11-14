@@ -381,7 +381,9 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	}
 
 	// create the new tasks for the build
-	execTable, displayTable := NewTaskIdTable(project, v)
+	taskIds := NewTaskIdTable(project, v)
+	execTable := taskIds.ExecutionTasks
+	displayTable := taskIds.DisplayTasks
 	tasks, err := createTasksForBuild(
 		project, buildVariant, b, v, execTable, displayTable, taskNames)
 	if err != nil {
