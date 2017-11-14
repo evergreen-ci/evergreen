@@ -40,19 +40,19 @@ type GithubIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
 	Id bson.ObjectId `bson:"_id"`
 
-	// the unique message id as provided by Github (X-Github-Delivery)
+	// MsgId is the unique message id as provided by Github (X-Github-Delivery)
 	MsgId string `bson:"msg_id"`
 
 	// CreatedAt is the time that this intent was stored in the database
 	CreatedAt time.Time `bson:"created_at"`
 
-	// Full Repository name, ex: mongodb/mongo
+	// RepoName is the full repository name, ex: mongodb/mongo
 	RepoName string `bson:"repo_name"`
 
-	// Pull request number for the project in GitHub.
+	// PRNumber is the pull request number in GitHub.
 	PRNumber int `bson:"pr_number"`
 
-	// Github user that created the pull request
+	// User is the login username of the Github user that created the pull request
 	User string `bson:"user"`
 
 	// BaseHash is the base hash of the patch.
@@ -64,7 +64,7 @@ type GithubIntent struct {
 	// Processed indicates whether a patch intent has been processed by the amboy queue.
 	Processed bool `bson:"processed"`
 
-	// the time that this intent was processed
+	// ProcessedAt is the time that this intent was processed
 	ProcessedAt time.Time `bson:"processed_at"`
 
 	// IntentType indicates the type of the patch intent, i.e., GithubIntentType
