@@ -20,19 +20,17 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func init() {
-	ctx := context.Background()
-	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
-	if err != nil {
-		panic("Failed to Configure environment")
-	}
-}
-
 type PatchIntentConnectorSuite struct {
 	sc     *data.MockConnector
 	rm     *RouteManager
 	prBody []byte
 	suite.Suite
+}
+
+func (s *PatchIntentConnectorSuite) SetupSuite() {
+	ctx := context.Background()
+	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
+	s.NoError(err)
 }
 
 func (s *PatchIntentConnectorSuite) SetupTest() {

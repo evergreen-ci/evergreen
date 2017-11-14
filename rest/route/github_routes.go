@@ -10,22 +10,24 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 type githubHookApi struct {
-	event interface{}
+	secret []byte
 
+	event interface{}
 	msgId string
 }
 
 func getGithubHooksRouteManager(route string, version int) *RouteManager {
 	methods := []MethodHandler{}
-	if secret, err := getWebhookSecret(); err == nil && len(secret) > 0 {
+	if secret := getWebhookSecret(); len(secret) > 0 {
 		methods = append(methods, MethodHandler{
-			Authenticator:  &NoAuthAuthenticator{},
-			RequestHandler: &githubHookApi{},
-			MethodType:     http.MethodPost,
+			Authenticator: &NoAuthAuthenticator{},
+			RequestHandler: &githubHookApi{
+				secret: secret,
+			},
+			MethodType: http.MethodPost,
 		})
 
 	} else {
@@ -40,33 +42,31 @@ func getGithubHooksRouteManager(route string, version int) *RouteManager {
 }
 
 func (gh *githubHookApi) Handler() RequestHandler {
-	return &githubHookApi{}
+	return &githubHookApi{
+		secret: getWebhookSecret(),
+	}
 }
 
-func getWebhookSecret() ([]byte, error) {
-	settings := evergreen.GetEnvironment().Settings()
-	if settings != nil {
-		secret := settings.Api.GithubWebhookSecret
-		if len(secret) != 0 {
-			return []byte(secret), nil
-		}
+func getWebhookSecret() []byte {
+	secret := ""
+	if settings := evergreen.GetEnvironment().Settings(); settings != nil {
+		secret = settings.Api.GithubWebhookSecret
 	}
 
-	return nil, errors.New("No secret key")
+	return []byte(secret)
 }
 
 func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	eventType := r.Header.Get("X-Github-Event")
 	gh.msgId = r.Header.Get("X-Github-Delivery")
 
-	secret, err := getWebhookSecret()
-	if err != nil {
+	if len(gh.secret) == 0 {
 		return rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 		}
 	}
 
-	body, err := github.ValidatePayload(r, secret)
+	body, err := github.ValidatePayload(r, gh.secret)
 	if err != nil {
 		grip.Errorf("Rejecting Github webhook POST: %+v", err)
 		return rest.APIError{
