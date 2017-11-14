@@ -89,7 +89,14 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
-		grip.Info("Received Github Webhook Ping")
+		if event.Hook == nil || event.Hook.URL == nil {
+			return ResponseData{}, rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "bad ping",
+			}
+
+		}
+		grip.Infof("Received Github Webhook Ping for hook: %s", event.Hook.URL)
 
 	case *github.PullRequestEvent:
 		if !validatePullRequestEvent(event) {
