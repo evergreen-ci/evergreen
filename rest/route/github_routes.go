@@ -14,8 +14,7 @@ import (
 )
 
 type githubHookApi struct {
-	secret []byte
-	event  interface{}
+	event interface{}
 
 	msgId string
 }
@@ -23,12 +22,9 @@ type githubHookApi struct {
 func getGithubHooksRouteManager(route string, version int) *RouteManager {
 	methods := []MethodHandler{}
 	if secret, err := getWebhookSecret(); err == nil && len(secret) > 0 {
-		handler := &githubHookApi{
-			secret: secret,
-		}
 		methods = append(methods, MethodHandler{
 			Authenticator:  &NoAuthAuthenticator{},
-			RequestHandler: handler,
+			RequestHandler: &githubHookApi{},
 			MethodType:     http.MethodPost,
 		})
 
@@ -44,11 +40,7 @@ func getGithubHooksRouteManager(route string, version int) *RouteManager {
 }
 
 func (gh *githubHookApi) Handler() RequestHandler {
-	// TOOO ehhhhh
-	secret, _ := getWebhookSecret()
-	return &githubHookApi{
-		secret: secret,
-	}
+	return &githubHookApi{}
 }
 
 func getWebhookSecret() ([]byte, error) {
@@ -60,14 +52,21 @@ func getWebhookSecret() ([]byte, error) {
 		}
 	}
 
-	return []byte{}, errors.New("No secret key")
+	return nil, errors.New("No secret key")
 }
 
 func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	eventType := r.Header.Get("X-Github-Event")
 	gh.msgId = r.Header.Get("X-Github-Delivery")
 
-	body, err := github.ValidatePayload(r, gh.secret)
+	secret, err := getWebhookSecret()
+	if err != nil {
+		return rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+
+	body, err := github.ValidatePayload(r, secret)
 	if err != nil {
 		grip.Errorf("Rejecting Github webhook POST: %+v", err)
 		return rest.APIError{
@@ -93,7 +92,13 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 		grip.Info("Received Github Webhook Ping")
 
 	case *github.PullRequestEvent:
-		// TODO look at all these pointers!
+		if !validatePullRequestEvent(event) {
+			return ResponseData{}, rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "bad pull request",
+			}
+
+		}
 		if *event.Action == "opened" || *event.Action == "synchronize" {
 			ghi, err := patch.NewGithubIntent(gh.msgId, *event.Repo.FullName, *event.Number, *event.Sender.Login, *event.PullRequest.Base.SHA, *event.PullRequest.PatchURL)
 			if err != nil {
@@ -113,4 +118,17 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 	}
 
 	return ResponseData{}, nil
+}
+
+func validatePullRequestEvent(event *github.PullRequestEvent) bool {
+	// crying
+	if event.Action == nil || event.Number == nil ||
+		event.Repo == nil || event.Repo.FullName == nil ||
+		event.Sender == nil || event.Sender.Login == nil ||
+		event.PullRequest == nil || event.PullRequest.PatchURL == nil ||
+		event.PullRequest.Base == nil || event.PullRequest.Base.SHA == nil {
+		return false
+	}
+
+	return true
 }
