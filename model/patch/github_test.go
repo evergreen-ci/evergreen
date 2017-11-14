@@ -32,24 +32,24 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent(0, s.sha, s.url)
+	intent, err := NewGithubIntent("1", "evergreen-ci/evergreen", 0, "octocat", s.sha, s.url)
 	s.Equal(nil, intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent(s.pr, "", s.url)
+	intent, err = NewGithubIntent("2", "evergreen-ci/evergreen", s.pr, "octocat", "", s.url)
 	s.Equal(nil, intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent(s.pr, s.sha, "foo")
+	intent, err = NewGithubIntent("3", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, "foo")
 	s.Equal(nil, intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent(s.pr, s.sha, s.url)
+	intent, err = NewGithubIntent("4", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
 	s.Implements((*Intent)(nil), intent)
 	githubIntent, ok := intent.(*githubIntent)
 	s.True(ok)
 	s.Equal(s.pr, githubIntent.PRNumber)
-	s.Equal(s.sha, githubIntent.HeadHash)
+	s.Equal(s.sha, githubIntent.BaseHash)
 	s.Equal(s.url, githubIntent.URL)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
@@ -57,7 +57,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent(s.pr, s.sha, s.url)
+	intent, err := NewGithubIntent("1", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
 	s.NoError(err)
 	s.NoError(intent.Insert())
 
@@ -67,14 +67,14 @@ func (s *GithubSuite) TestInsert() {
 
 	found := intents[0]
 	s.Equal(s.pr, found.PRNumber)
-	s.Equal(s.sha, found.HeadHash)
+	s.Equal(s.sha, found.BaseHash)
 	s.Equal(s.url, found.URL)
 	s.False(found.IsProcessed())
 	s.Equal(GithubIntentType, found.GetType())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent(s.pr, s.sha, s.url)
+	intent, err := NewGithubIntent("1", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
 	s.NoError(err)
 	s.NoError(intent.Insert())
 	s.NoError(intent.SetProcessed())
@@ -87,7 +87,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
-	s.Equal(s.sha, intents[0].HeadHash)
+	s.Equal(s.sha, intents[0].BaseHash)
 	s.Equal(s.url, intents[0].URL)
 	s.True(intents[0].IsProcessed())
 	s.Equal(GithubIntentType, intents[0].GetType())
