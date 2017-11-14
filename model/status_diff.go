@@ -114,18 +114,18 @@ func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
 		Diff:     StatusDetailsDiff{original.Details, patch.Details},
 	}
 
-	if original.TestResults == nil || patch.TestResults == nil {
+	if original.LocalTestResults == nil || patch.LocalTestResults == nil {
 		return diff
 	}
 
 	// build maps of test statuses, for matching
 	originalTests := make(map[string]task.TestResult)
-	for _, test := range original.TestResults {
+	for _, test := range original.LocalTestResults {
 		originalTests[test.TestFile] = test
 	}
 
 	// iterate through all patch tests and create diffs
-	for _, test := range patch.TestResults {
+	for _, test := range patch.LocalTestResults {
 		baseTest := originalTests[test.TestFile]
 
 		// get the base name for windows/non-windows paths

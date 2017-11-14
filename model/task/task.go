@@ -97,8 +97,8 @@ type Task struct {
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
 
-	// test results captured and sent back by agent
-	TestResults []TestResult `bson:"test_results" json:"test_results"`
+	// test results embedded from the testresults collection
+	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -157,8 +157,8 @@ func (d *Dependency) SetBSON(raw bson.Raw) error {
 	return bson.SetZero
 }
 
-// TestResults is only used when transferring data from agent to api.
-type TestResults struct {
+// LocalTestResults is only used when transferring data from agent to api.
+type LocalTestResults struct {
 	Results []TestResult `json:"results"`
 }
 
@@ -299,7 +299,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 // HasFailedTests iterates through a tasks' tests and returns true if
 // that task had any failed tests.
 func (t *Task) HasFailedTests() bool {
-	for _, test := range t.TestResults {
+	for _, test := range t.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			return true
 		}
@@ -383,9 +383,8 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				DistroIdKey:      distroId,
 			},
 			"$unset": bson.M{
-				AbortedKey:     "",
-				TestResultsKey: "",
-				DetailsKey:     "",
+				AbortedKey: "",
+				DetailsKey: "",
 			},
 		},
 	)
@@ -414,7 +413,6 @@ func (t *Task) MarkAsUndispatched() error {
 				DistroIdKey:      "",
 				HostIdKey:        "",
 				AbortedKey:       "",
-				TestResultsKey:   "",
 				DetailsKey:       "",
 			},
 		},
@@ -576,7 +574,6 @@ func (t *Task) Reset() error {
 			StartTimeKey:     util.ZeroTime,
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
-			TestResultsKey:   []TestResult{},
 		},
 		"$unset": bson.M{
 			DetailsKey: "",
@@ -603,7 +600,6 @@ func ResetTasks(taskIds []string) error {
 			StartTimeKey:     util.ZeroTime,
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
-			TestResultsKey:   []TestResult{},
 		},
 		"$unset": bson.M{
 			DetailsKey: "",
@@ -705,7 +701,7 @@ func (t *Task) MarkStart(startTime time.Time) error {
 	)
 }
 
-// SetResults sets the results of the task in TestResults
+// SetResults sets the results of the task in LocalTestResults
 func (t *Task) SetResults(results []TestResult) error {
 	catcher := grip.NewSimpleCatcher()
 	var testResult testresult.TestResult
@@ -949,7 +945,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 
 // MergeNewTestResults returns the task with both old (embedded in
 // the tasks collection) and new (from the testresults collection) test results
-// merged in the Task's TestResults field.
+// merged in the Task's LocalTestResults field.
 func (t *Task) MergeNewTestResults() error {
 	id := t.Id
 	if t.Archived {
@@ -960,7 +956,7 @@ func (t *Task) MergeNewTestResults() error {
 		return errors.Wrap(err, "problem finding test results")
 	}
 	for _, result := range newTestResults {
-		t.TestResults = append(t.TestResults, TestResult{
+		t.LocalTestResults = append(t.LocalTestResults, TestResult{
 			Status:    result.Status,
 			TestFile:  result.TestFile,
 			URL:       result.URL,
