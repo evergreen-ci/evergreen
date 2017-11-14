@@ -382,10 +382,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v)
-	execTable := taskIds.ExecutionTasks
-	displayTable := taskIds.DisplayTasks
-	tasks, err := createTasksForBuild(
-		project, buildVariant, b, v, execTable, displayTable, taskNames)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -408,7 +405,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
-func CreateBuildFromVersion(project *Project, v *version.Version, execTable TaskIdTable, displayTable TaskIdTable,
+func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskIdConfig,
 	buildName string, activated bool, taskNames []string) (string, error) {
 
 	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
@@ -456,7 +453,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, execTable Task
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, execTable, displayTable, taskNames)
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -489,12 +486,14 @@ func CreateBuildFromVersion(project *Project, v *version.Version, execTable Task
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant,
-	b *build.Build, v *version.Version, execTable TaskIdTable, displayTable TaskIdTable, taskNames []string) ([]*task.Task, error) {
+	b *build.Build, v *version.Version, taskIds TaskIdConfig, taskNames []string) ([]*task.Task, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
 	tasksToCreate := []BuildVariantTask{}
 	createAll := len(taskNames) == 0
+	execTable := taskIds.ExecutionTasks
+	displayTable := taskIds.DisplayTasks
 	for _, task := range buildVariant.Tasks {
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)

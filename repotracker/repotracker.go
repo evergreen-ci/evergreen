@@ -460,15 +460,13 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
 	// generate all task Ids so that we can easily reference them for dependencies
 	taskIds := model.NewTaskIdTable(project, v)
-	execTable := taskIds.ExecutionTasks
-	displayTable := taskIds.DisplayTasks
 
 	// create all builds for the version
 	for _, buildvariant := range project.BuildVariants {
 		if buildvariant.Disabled {
 			continue
 		}
-		buildId, err := model.CreateBuildFromVersion(project, v, execTable, displayTable, buildvariant.Name, false, nil)
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil)
 		if err != nil {
 			return errors.WithStack(err)
 		}

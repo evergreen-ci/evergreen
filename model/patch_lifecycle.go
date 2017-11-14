@@ -72,8 +72,6 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
 	taskIds := NewPatchTaskIdTable(project, patchVersion, pairs)
-	execTable := taskIds.ExecutionTasks
-	displayTable := taskIds.DisplayTasks
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
@@ -97,7 +95,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 		if len(taskNames) == 0 {
 			continue
 		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, execTable, displayTable, pair.Variant, p.Activated, taskNames)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, taskIds, pair.Variant, p.Activated, taskNames)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			patchVersion.Id, pair.Variant, p.Activated)
 		if err != nil {
@@ -327,8 +325,6 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 	}
 
 	taskIds := NewPatchTaskIdTable(project, patchVersion, pairs)
-	execTable := taskIds.ExecutionTasks
-	displayTable := taskIds.DisplayTasks
 	variantsProcessed := map[string]bool{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {
@@ -336,7 +332,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		}
 
 		var buildId string
-		buildId, err = CreateBuildFromVersion(project, patchVersion, execTable, displayTable, vt.Variant, true, vt.Tasks)
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
