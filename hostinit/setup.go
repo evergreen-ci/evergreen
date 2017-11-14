@@ -462,6 +462,15 @@ func (init *HostInit) expandScript(s string) (string, error) {
 	return script, err
 }
 
+func unprovisionHost(h *host.Host) {
+	if h == nil {
+		return
+	}
+	if err := h.SetUnprovisioned(); err != nil {
+		grip.Errorf("unprovisioning host %s failed: %s", h.Id, err.Error())
+	}
+}
+
 // Provision the host, and update the database accordingly.
 func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
@@ -480,7 +489,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 		// mark the host's provisioning as failed
 		if err := h.SetUnprovisioned(); err != nil {
-			grip.Errorf("unprovisioning host %s failed: %+v", h.Id, err)
+			unprovisionHost(h)
 		}
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
@@ -493,20 +502,24 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		if err != nil {
 			err = errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 			grip.Errorf("Failed to load client binary onto host %s: %+v", h.Id, err)
+			unprovisionHost(h)
 			return err
 		}
 
 		cloudHost, err := providers.GetCloudHost(h, init.Settings)
 		if err != nil {
+			unprovisionHost(h)
 			return errors.Wrapf(err, "Failed to get cloud host for %s", h.Id)
 		}
 		sshOptions, err := cloudHost.GetSSHOptions()
 		if err != nil {
+			unprovisionHost(h)
 			return errors.Wrapf(err, "Error getting ssh options for host %s", h.Id)
 		}
 
 		d, err := distro.FindOne(distro.ById(h.Distro.Id))
 		if err != nil {
+			unprovisionHost(h)
 			return errors.Wrapf(err, "error finding distro %s", h.Distro.Id)
 		}
 		h.Distro = *d
@@ -514,6 +527,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
 		if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
+			unprovisionHost(h)
 			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
