@@ -227,7 +227,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		patchCommandStrings := []string{
 			fmt.Sprintf("set -o xtrace"),
 			fmt.Sprintf("set -o errexit"),
-			fmt.Sprintf("git apply--whitespace=fix --include=%v < '%v'",
+			fmt.Sprintf("git apply --whitespace=fix --include=%v < '%v'",
 				remoteConfigPath, patchFilePath),
 		}
 
