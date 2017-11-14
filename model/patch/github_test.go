@@ -11,9 +11,11 @@ import (
 
 type GithubSuite struct {
 	suite.Suite
-	pr  int
-	sha string
-	url string
+	pr   int
+	hash string
+	url  string
+	repo string
+	user string
 }
 
 func TestGithubSuite(t *testing.T) {
@@ -23,8 +25,10 @@ func TestGithubSuite(t *testing.T) {
 func (s *GithubSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.pr = 5
-	s.sha = "67da19930b1b18d346477e99a8e18094a672f48a"
+	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
 	s.url = "http://www.example.com"
+	s.user = "octocat"
+	s.repo = "evergreen-ci/evergreen"
 }
 
 func (s *GithubSuite) SetupTest() {
@@ -32,33 +36,39 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent("1", "evergreen-ci/evergreen", 0, "octocat", s.sha, s.url)
-	s.Equal(nil, intent)
+	intent, err := NewGithubIntent("1", s.repo, 0, s.user, s.hash, s.url)
+	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", "evergreen-ci/evergreen", s.pr, "octocat", "", s.url)
-	s.Equal(nil, intent)
+	intent, err = NewGithubIntent("2", s.repo, s.pr, s.user, "", s.url)
+	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, "foo")
-	s.Equal(nil, intent)
+	intent, err = NewGithubIntent("3", s.repo, s.pr, s.user, s.hash, "foo")
+	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("4", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
+	intent, err = NewGithubIntent("4", s.repo, s.pr, s.user, s.hash, s.url)
+	s.NoError(err)
+	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
 	githubIntent, ok := intent.(*GithubIntent)
 	s.True(ok)
+	s.Equal("4", githubIntent.MsgId)
+	s.Equal(s.repo, githubIntent.RepoName)
 	s.Equal(s.pr, githubIntent.PRNumber)
-	s.Equal(s.sha, githubIntent.BaseHash)
+	s.Equal(s.user, githubIntent.User)
+	s.Equal(s.hash, githubIntent.BaseHash)
 	s.Equal(s.url, githubIntent.URL)
+	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
-	s.NoError(err)
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent("1", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
+	intent, err := NewGithubIntent("1", s.repo, s.pr, s.user, s.hash, s.url)
 	s.NoError(err)
+	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
 	intents, err := FindUnprocessedGithubIntents()
@@ -67,15 +77,16 @@ func (s *GithubSuite) TestInsert() {
 
 	found := intents[0]
 	s.Equal(s.pr, found.PRNumber)
-	s.Equal(s.sha, found.BaseHash)
+	s.Equal(s.hash, found.BaseHash)
 	s.Equal(s.url, found.URL)
 	s.False(found.IsProcessed())
 	s.Equal(GithubIntentType, found.GetType())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent("1", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
+	intent, err := NewGithubIntent("1", s.repo, s.pr, s.user, s.hash, s.url)
 	s.NoError(err)
+	s.NotNil(intent)
 	s.NoError(intent.Insert())
 	s.NoError(intent.SetProcessed())
 
@@ -87,7 +98,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
-	s.Equal(s.sha, intents[0].BaseHash)
+	s.Equal(s.hash, intents[0].BaseHash)
 	s.Equal(s.url, intents[0].URL)
 	s.True(intents[0].IsProcessed())
 	s.Equal(GithubIntentType, intents[0].GetType())
