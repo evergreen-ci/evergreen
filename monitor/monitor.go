@@ -176,13 +176,13 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	for _, h := range expiringSoonHosts {
-		err := alerts.RunSpawnWarningTriggers(&h)
-
-		grip.Error(message.Fields{
-			"runner":  RunnerName,
-			"message": "Error queuing alert",
-			"error":   err,
-		})
+		if err := alerts.RunSpawnWarningTriggers(&h); err != nil {
+			grip.Error(message.Fields{
+				"runner":  RunnerName,
+				"message": "Error queuing alert",
+				"error":   err,
+			})
+		}
 	}
 
 	return nil
