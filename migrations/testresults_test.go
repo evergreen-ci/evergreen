@@ -240,7 +240,6 @@ func TestTestResultsLegacyTask(t *testing.T) {
 
 	// the task still contains test results, and now contains an execution field
 	assert.NoError(database.C(tasksCollection).Find(bson.M{"_id": "taskid-1"}).One(&task))
-	fmt.Printf("\nbson.M: %+v\n", task)
 	assert.Contains(task, "test_results")
 	assert.Contains(task, "execution")
 	assert.Equal(0, task["execution"].(int))
