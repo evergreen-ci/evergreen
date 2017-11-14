@@ -161,7 +161,7 @@ func (d *Internal) Jobs() <-chan amboy.Job {
 // Next returns a job that is not complete from the queue. If there
 // are no pending jobs, then this method returns nil, but does not
 // block.
-func (d *Internal) Next() amboy.Job {
+func (d *Internal) Next(ctx context.Context) amboy.Job {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 
@@ -170,6 +170,10 @@ func (d *Internal) Next() amboy.Job {
 	}
 
 	for idx, name := range d.jobs.pending {
+		if ctx.Err() != nil {
+			return nil
+		}
+
 		// delete item from pending slice at index
 		d.jobs.pending[idx] = d.jobs.pending[len(d.jobs.pending)-1]
 		d.jobs.pending[len(d.jobs.pending)-1] = ""

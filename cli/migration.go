@@ -34,11 +34,10 @@ func (c *MigrationCommand) Execute(_ []string) error {
 	}
 	defer anserEnv.Close()
 
-	app, err := migrations.Application(anserEnv, settings.Database.DB)
+	app, err := migrations.Application(anserEnv, settings.Database.DB, c.Limit)
 	if err != nil {
 		return errors.Wrap(err, "problem configuring migration application")
 	}
 	app.DryRun = c.DryRun
-	app.Limit = c.Limit
 	return errors.Wrap(app.Run(ctx), "problem running migration operation")
 }

@@ -1,0 +1,8 @@
+<div>
+	<div class="row" ng-repeat="(taskName, variants) in getProjectData(project).unfinishedTasks" ng-show="variants.length > 0">
+		<h4 class="unfinished-task"> 
+			[[taskName]] on [[variants.join(",")]] 
+			<span class="no-data" ng-show="allPassing(project,task)">No Data</span>
+		</h4>
+	</div>
+</div>

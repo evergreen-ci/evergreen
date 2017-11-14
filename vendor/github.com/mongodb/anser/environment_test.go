@@ -148,7 +148,7 @@ func (s *EnvImplSuite) TestDocumentProcessor() {
 }
 
 func (s *EnvImplSuite) TestDependencyNetworkConstructor() {
-	dep := s.env.NewDependencyManager("foo", map[string]interface{}{}, model.Namespace{"db", "coll"})
+	dep := s.env.NewDependencyManager("foo", model.Namespace{"db", "coll"})
 
 	s.NotNil(dep)
 	mdep := dep.(*migrationDependency)

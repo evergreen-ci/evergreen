@@ -84,12 +84,13 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 }
 
 // testResultsGeneratorFactory returns generators for the tasks and old_tasks collections.
-func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Generator {
+func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []anser.Generator {
 	tasksOpts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
 			Collection: tasksCollection,
 		},
+		Limit: limit,
 		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
 		JobID: "migration-testresults-tasks",
 	}
@@ -99,6 +100,7 @@ func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Gener
 			DB:         db,
 			Collection: oldTasksCollection,
 		},
+		Limit: limit,
 		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
 		JobID: "migration-testresults-oldtasks",
 	}

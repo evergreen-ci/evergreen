@@ -100,7 +100,7 @@ func (c *s3get) shouldRunForVariant(buildVariantName string) bool {
 	}
 
 	//Only run if the buildvariant specified appears in our list.
-	return util.SliceContains(c.BuildVariants, buildVariantName)
+	return util.StringSliceContains(c.BuildVariants, buildVariantName)
 }
 
 // Apply the expansions from the relevant task config to all appropriate

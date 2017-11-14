@@ -6,7 +6,16 @@ import (
 	"github.com/evergreen-ci/evergreen/cli"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 )
+
+func init() {
+	sender := grip.GetSender()
+	l := sender.Level()
+	l.Threshold = level.Info
+	grip.CatchEmergencyPanic(sender.SetLevel(l))
+}
 
 func main() {
 	opts := &cli.Options{}
@@ -29,6 +38,7 @@ func main() {
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: opts})
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: opts})
 	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
+	parser.AddCommand("keys", "manage your public keys", "", &cli.PublicKeyCommand{GlobalOpts: opts})
 
 	host, _ := parser.AddCommand("host", "host-related commands", "", &struct{}{})
 	host.AddCommand("create", "spawn a host", "", &cli.HostCreateCommand{GlobalOpts: opts})

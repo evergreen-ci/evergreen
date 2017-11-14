@@ -51,7 +51,7 @@ type BuildEmail struct {
 
 func (self *BuildEmail) ShouldSkip(skipVariants []string) bool {
 	buildVariant := self.Trigger.Current.BuildVariant
-	if util.SliceContains(skipVariants, buildVariant) {
+	if util.StringSliceContains(skipVariants, buildVariant) {
 		grip.Debugf("Skipping buildvariant %s '%s' notification: '%s'",
 			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
 		return true
@@ -77,7 +77,7 @@ type TaskEmail struct {
 func (self *TaskEmail) ShouldSkip(skipVariants []string) bool {
 	// skip the buildvariant notification if necessary
 	buildVariant := self.Trigger.Current.BuildVariant
-	if util.SliceContains(skipVariants, buildVariant) {
+	if util.StringSliceContains(skipVariants, buildVariant) {
 		grip.Debugf("Skipping buildvariant %s '%s' notification: '%s'",
 			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
 		return true

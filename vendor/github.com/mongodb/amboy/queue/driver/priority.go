@@ -124,7 +124,7 @@ func (p *Priority) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 // Next returns the next, highest priority Job from the Driver's
 // backing storage. If there are no queued jobs, the job object is
 // nil.
-func (p *Priority) Next() amboy.Job {
+func (p *Priority) Next(_ context.Context) amboy.Job {
 	j := p.storage.Pop()
 
 	if j == nil || j.Status().Completed {

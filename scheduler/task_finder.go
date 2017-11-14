@@ -3,8 +3,10 @@ package scheduler
 import (
 	"sync"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -23,18 +25,54 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 		return nil, err
 	}
 
+	projectRefCache, err := getProjectRefCache()
+	if err != nil {
+		return nil, err
+	}
+
 	// filter out any tasks whose dependencies are not met
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	dependencyCaches := make(map[string]task.Task)
 	for _, task := range undispatchedTasks {
-		depsMet, err := task.DependenciesMet(dependencyCaches)
-		if err != nil {
-			grip.Errorf("Error checking dependencies for task %s: %+v", task.Id, err)
+		ref, ok := projectRefCache[task.Project]
+		if !ok {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "could not find project for task",
+				"outcome": "skipping",
+				"task":    task.Id,
+				"project": task.Project,
+			})
 			continue
 		}
-		if depsMet {
-			runnableTasks = append(runnableTasks, task)
+
+		if !ref.Enabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    task.Id,
+				"project": task.Project,
+			})
+			continue
 		}
+
+		depsMet, err := task.DependenciesMet(dependencyCaches)
+		if err != nil {
+			grip.Warning(message.Fields{
+				"runner":  RunnerName,
+				"message": "error checking dependencies for task",
+				"outcome": "skipping",
+				"task":    task.Id,
+				"error":   err.Error(),
+			})
+			continue
+		}
+		if !depsMet {
+			continue
+		}
+
+		runnableTasks = append(runnableTasks, task)
 	}
 
 	return runnableTasks, nil
@@ -42,6 +80,11 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 
 func AlternateTaskFinder() ([]task.Task, error) {
 	undispatchedTasks, err := task.Find(task.IsUndispatched)
+	if err != nil {
+		return nil, err
+	}
+
+	projectRefCache, err := getProjectRefCache()
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +119,36 @@ func AlternateTaskFinder() ([]task.Task, error) {
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
+		ref, ok := projectRefCache[t.Project]
+		if !ok {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "could not find project for task",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if !ref.Enabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
 		depsMet, err := t.AllDependenciesSatisfied(cache)
 		catcher.Add(err)
-		if depsMet {
-			runnabletasks = append(runnabletasks, t)
+		if !depsMet {
+			continue
 		}
+		runnabletasks = append(runnabletasks, t)
+
 	}
 	grip.Info(catcher.Resolve())
 
@@ -93,6 +161,11 @@ func ParallelTaskFinder() ([]task.Task, error) {
 		return nil, err
 	}
 
+	projectRefCache, err := getProjectRefCache()
+	if err != nil {
+		return nil, err
+	}
+
 	cache := make(map[string]task.Task)
 	catcher := grip.NewBasicCatcher()
 	lookupSet := make(map[string]struct{})
@@ -101,6 +174,7 @@ func ParallelTaskFinder() ([]task.Task, error) {
 		for _, dep := range t.DependsOn {
 			lookupSet[dep.TaskId] = struct{}{}
 		}
+
 	}
 
 	results := make(chan *task.Task, len(lookupSet))
@@ -135,13 +209,57 @@ func ParallelTaskFinder() ([]task.Task, error) {
 
 	runnabletasks := []task.Task{}
 	for _, t := range undispatchedTasks {
-		depsMet, err := t.AllDependenciesSatisfied(cache)
-		catcher.Add(err)
-		if depsMet {
-			runnabletasks = append(runnabletasks, t)
+		ref, ok := projectRefCache[t.Project]
+		if !ok {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "could not find project for task",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+
+			continue
 		}
+
+		if !ref.Enabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		depsMet, err := t.AllDependenciesSatisfied(cache)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+
+		if !depsMet {
+			continue
+		}
+
+		runnabletasks = append(runnabletasks, t)
 	}
 	grip.Info(catcher.Resolve())
 
 	return runnabletasks, nil
+}
+
+func getProjectRefCache() (map[string]model.ProjectRef, error) {
+	out := map[string]model.ProjectRef{}
+	refs, err := model.FindAllProjectRefs()
+	if err != nil {
+		return out, err
+	}
+
+	for _, ref := range refs {
+		out[ref.Identifier] = ref
+	}
+
+	return out, nil
 }

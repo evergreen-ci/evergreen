@@ -71,11 +71,11 @@ func TearDownCommand(host *host.Host) string {
 }
 
 // RunSSHCommand runs an SSH command on a remote host.
-func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
+func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) (string, error) {
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(host.Host)
 	if err != nil {
-		return errors.Wrapf(err, "error parsing ssh info %v", host.Host)
+		return "", errors.Wrapf(err, "error parsing ssh info %v", host.Host)
 	}
 
 	output := newCappedOutputLog()
@@ -99,10 +99,7 @@ func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) error {
 	err = shellCmd.Run(ctx)
 
 	grip.Notice(shellCmd.Stop())
-	if err != nil {
-		return errors.Errorf("error running shell cmd: %s (%v)", output.String(), err)
-	}
-	return nil
+	return output.String(), errors.Wrap(err, "error running shell cmd")
 }
 
 func newCappedOutputLog() *util.CappedWriter {

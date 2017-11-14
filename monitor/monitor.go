@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -80,12 +81,21 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 		// continue on error to stop the whole monitoring process from
 		// being held up
 		if err != nil {
-			grip.Errorf("error finding project %s: %+v", ref.Identifier, err)
+			grip.Error(message.Fields{
+				"message": "error finding project",
+				"runner":  RunnerName,
+				"project": ref.Identifier,
+				"error":   err,
+			})
 			continue
 		}
 
 		if project == nil {
-			grip.Errorf("no project entry found for ref %s", ref.Identifier)
+			grip.Error(message.Fields{
+				"message": "no project entry found",
+				"runner":  RunnerName,
+				"project": ref.Identifier,
+			})
 			continue
 		}
 
@@ -99,7 +109,11 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 
 	// clean up any necessary tasks
 	for _, err := range taskMonitor.CleanupTasks(ctx, projects) {
-		grip.Error(errors.Wrap(err, "Error cleaning up tasks"))
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"message": "Error cleaning up tasks",
+			"error":   err,
+		})
 	}
 
 	if ctx.Err() != nil {
@@ -113,7 +127,11 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 	// clean up any necessary hosts
 	for _, err := range hostMonitor.CleanupHosts(ctx, distros, settings) {
-		grip.Error(errors.Wrap(err, "Error cleaning up hosts"))
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"message": "Error cleaning up hosts",
+			"error":   err,
+		})
 	}
 
 	if ctx.Err() != nil {
@@ -122,7 +140,11 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 
 	// run monitoring checks
 	for _, err := range hostMonitor.RunMonitoringChecks(ctx, settings) {
-		grip.Error(errors.Wrap(err, "Error running host monitoring checks"))
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"message": "Error running host monitor checks",
+			"error":   err,
+		})
 	}
 
 	if ctx.Err() != nil {
@@ -136,7 +158,11 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 
 	// send notifications
 	for _, err := range notifier.Notify(settings) {
-		grip.Error(errors.Wrap(err, "Error sending notifications"))
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"message": "Error sending notifications",
+			"error":   err,
+		})
 	}
 
 	// Do alerts for spawnhosts - collect all hosts expiring in the next 12 hours.
@@ -150,9 +176,13 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	for _, h := range expiringSoonHosts {
-		err := alerts.RunSpawnWarningTriggers(&h)
-
-		grip.Error(errors.Wrap(err, "Error queuing alert"))
+		if err := alerts.RunSpawnWarningTriggers(&h); err != nil {
+			grip.Error(message.Fields{
+				"runner":  RunnerName,
+				"message": "Error queuing alert",
+				"error":   err,
+			})
+		}
 	}
 
 	return nil

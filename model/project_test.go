@@ -122,13 +122,13 @@ func TestGetVariantsWithTask(t *testing.T) {
 
 				variants := project.GetVariantsWithTask("suite1")
 				So(len(variants), ShouldEqual, 2)
-				So(util.SliceContains(variants, "bv1"), ShouldBeTrue)
-				So(util.SliceContains(variants, "bv2"), ShouldBeTrue)
+				So(util.StringSliceContains(variants, "bv1"), ShouldBeTrue)
+				So(util.StringSliceContains(variants, "bv2"), ShouldBeTrue)
 
 				variants = project.GetVariantsWithTask("suite2")
 				So(len(variants), ShouldEqual, 2)
-				So(util.SliceContains(variants, "bv2"), ShouldBeTrue)
-				So(util.SliceContains(variants, "bv3"), ShouldBeTrue)
+				So(util.StringSliceContains(variants, "bv2"), ShouldBeTrue)
+				So(util.StringSliceContains(variants, "bv3"), ShouldBeTrue)
 
 			})
 

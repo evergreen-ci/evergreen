@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -17,8 +18,9 @@ const (
 )
 
 type recentTasksGetHandler struct {
-	minutes int
-	verbose bool
+	minutes  int
+	verbose  bool
+	taskType string
 }
 
 func getRecentTasksRouteManager(route string, version int) *RouteManager {
@@ -57,6 +59,8 @@ func (h *recentTasksGetHandler) ParseAndValidate(ctx context.Context, r *http.Re
 		h.verbose = true
 	}
 
+	h.taskType = r.URL.Query().Get("status")
+
 	return nil
 }
 
@@ -67,6 +71,11 @@ func (h *recentTasksGetHandler) Execute(ctx context.Context, sc data.Connector) 
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err
+	}
+
+	if h.taskType != "" {
+		tasks = task.FilterTasksOnStatus(tasks, h.taskType)
+		h.verbose = true
 	}
 
 	if h.verbose {

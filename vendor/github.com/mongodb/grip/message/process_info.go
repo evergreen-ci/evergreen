@@ -80,6 +80,26 @@ func CollectProcessInfoWithChildren(pid int32) []Composer {
 	return results
 }
 
+// CollectAllProcesses returns a slice of populated ProcessInfo
+// message.Composer interfaces for all processes currently running on
+// a system.
+func CollectAllProcesses() []Composer {
+	procs, err := process.Processes()
+	if err != nil {
+		return []Composer{}
+	}
+
+	results := make([]Composer, len(procs))
+	for idx, p := range procs {
+		cm := &ProcessInfo{}
+		cm.loggable = true
+		cm.populate(p)
+		results[idx] = cm
+	}
+
+	return results
+}
+
 func getChildrenRecursively(proc *process.Process) []*process.Process {
 	var out []*process.Process
 

@@ -428,7 +428,7 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSe
 		taskNamesForVariant := patchConfig.TaskNames(vt.Variant)
 		for _, t := range projBV.Tasks {
 			// create Ids for each task that can run on the variant and is requested by the patch.
-			if util.SliceContains(taskNamesForVariant, t.Name) {
+			if util.StringSliceContains(taskNamesForVariant, t.Name) {
 
 				rev := v.Revision
 				if v.Requester == evergreen.PatchVersionRequester {
@@ -545,7 +545,7 @@ func (p *Project) GetVariantsWithTask(taskName string) []string {
 
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
-	return len(p.Variants) == 0 || util.SliceContains(p.Variants, variant)
+	return len(p.Variants) == 0 || util.StringSliceContains(p.Variants, variant)
 }
 
 // GetDisplayName returns the  display name of the plugin command. If none is

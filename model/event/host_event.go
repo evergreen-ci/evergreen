@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -17,6 +18,7 @@ const (
 	// event types
 	EventHostCreated              = "HOST_CREATED"
 	EventHostStarted              = "HOST_STARTED"
+	EventHostAgentDeployed        = "HOST_AGENT_DEPLOYED"
 	EventHostStatusChanged        = "HOST_STATUS_CHANGED"
 	EventHostDNSNameSet           = "HOST_DNS_NAME_SET"
 	EventHostProvisionFailed      = "HOST_PROVISION_FAILED"
@@ -35,17 +37,18 @@ type HostEventData struct {
 	// necessary for IsValid
 	ResourceType string `bson:"r_type" json:"resource_type"`
 
-	OldStatus  string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
-	NewStatus  string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
-	Logs       string        `bson:"log,omitempty" json:"logs,omitempty"`
-	Hostname   string        `bson:"hn,omitempty" json:"hostname,omitempty"`
-	TaskId     string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
-	TaskPid    string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
-	TaskStatus string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
-	Execution  string        `bson:"execution,omitempty" json:"execution,omitempty"`
-	MonitorOp  string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
-	Successful bool          `bson:"successful,omitempty" json:"successful"`
-	Duration   time.Duration `bson:"duration,omitempty" json:"duration"`
+	AgentRevision string        `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
+	OldStatus     string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
+	NewStatus     string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
+	Logs          string        `bson:"log,omitempty" json:"logs,omitempty"`
+	Hostname      string        `bson:"hn,omitempty" json:"hostname,omitempty"`
+	TaskId        string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskPid       string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	TaskStatus    string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	Execution     string        `bson:"execution,omitempty" json:"execution,omitempty"`
+	MonitorOp     string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	Successful    bool          `bson:"successful,omitempty" json:"successful"`
+	Duration      time.Duration `bson:"duration,omitempty" json:"duration"`
 }
 
 func (self HostEventData) IsValid() bool {
@@ -73,6 +76,10 @@ func LogHostStarted(hostId string) {
 
 func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{})
+}
+
+func LogHostAgentDeployed(hostId string) {
+	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
 }
 
 func LogHostTerminatedExternally(hostId string) {

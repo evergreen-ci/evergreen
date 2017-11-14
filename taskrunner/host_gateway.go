@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
@@ -24,7 +25,7 @@ import (
 
 const (
 	// SSHTimeout defines the timeout for the SSH commands in this package.
-	SSHTimeout = 1 * time.Minute
+	sshTimeout = 30 * time.Second
 	agentFile  = "agent"
 )
 
@@ -149,13 +150,13 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 // 3. Run the setup script with the binary.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
-	if err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "error downloading agent binary on remote host")
+	if logs, err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
+		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
 	// run the setup script with the agent
-	if err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrap(err, "error running setup script on remote host")
+	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
+		return "", errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 	}
 
 	return agbh.GetAgentRevision()
@@ -224,7 +225,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), sshTimeout)
 	defer cancel()
 	err = startAgentCmd.Run(ctx)
 
@@ -237,5 +238,8 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		}
 		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())
 	}
+
+	event.LogHostAgentDeployed(hostObj.Id)
+
 	return nil
 }

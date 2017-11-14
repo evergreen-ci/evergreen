@@ -56,13 +56,13 @@ func (g *Grip) CriticalWhenf(conditional bool, msg string, args ...interface{}) 
 /////////////
 
 func (g *Grip) ErrorWhen(conditional bool, m interface{}) {
-	g.sendConditional(conditional, message.ConvertToComposer(level.Critical, m))
+	g.sendConditional(conditional, message.ConvertToComposer(level.Error, m))
 }
 func (g *Grip) ErrorWhenln(conditional bool, msg ...interface{}) {
-	g.sendConditional(conditional, message.NewLineMessage(level.Critical, msg...))
+	g.sendConditional(conditional, message.NewLineMessage(level.Error, msg...))
 }
 func (g *Grip) ErrorWhenf(conditional bool, msg string, args ...interface{}) {
-	g.sendConditional(conditional, message.NewFormattedMessage(level.Critical, msg, args...))
+	g.sendConditional(conditional, message.NewFormattedMessage(level.Error, msg, args...))
 }
 
 /////////////

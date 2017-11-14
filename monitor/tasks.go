@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -23,7 +24,6 @@ type TaskMonitor struct {
 // need to be cleaned up and taking appropriate action. takes in a map
 // of project name -> project info
 func (tm *TaskMonitor) CleanupTasks(ctx context.Context, projects map[string]model.Project) []error {
-	grip.Info("Cleaning up tasks...")
 
 	// used to store any errors that occur
 	var errs []error
@@ -50,20 +50,21 @@ func (tm *TaskMonitor) CleanupTasks(ctx context.Context, projects map[string]mod
 		}
 	}
 
-	grip.Info("Done cleaning up tasks")
-
 	return errs
 }
 
 // clean up the passed-in slice of tasks
 func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Project) []error {
-	grip.Infof("Cleaning up %d tasks...", len(taskWrappers))
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"message": "Cleaning up tasks",
+		"count":   len(taskWrappers),
+	})
 
 	// used to store any errors that occur
 	var errs []error
 
 	for _, wrapper := range taskWrappers {
-		grip.Infof("Cleaning up task %s, for reason '%s'", wrapper.task.Id, wrapper.reason)
 
 		// clean up the task. continue on error to let others be cleaned up
 		if err := cleanUpTask(wrapper, projects); err != nil {
@@ -71,7 +72,11 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Pr
 				"error cleaning up task %v", wrapper.task.Id))
 			continue
 		}
-		grip.Infoln("Successfully cleaned up task", wrapper.task.Id)
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"message": "Successfully cleaned up task",
+			"task":    wrapper.task.Id,
+		})
 	}
 
 	return errs
@@ -96,7 +101,11 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 
 	// if there's no relevant host, something went wrong
 	if host == nil {
-		grip.Errorln("no entry found for host:", wrapper.task.HostId)
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"message": "no entry found for host",
+			"host":    wrapper.task.HostId,
+		})
 		return errors.WithStack(wrapper.task.MarkUnscheduled())
 	}
 

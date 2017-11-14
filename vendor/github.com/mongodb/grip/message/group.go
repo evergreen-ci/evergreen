@@ -98,8 +98,8 @@ func (g *GroupComposer) Priority() level.Priority {
 // returning an error after encountering a single error.
 func (g *GroupComposer) SetPriority(l level.Priority) error {
 	for _, m := range g.messages {
-		if err := m.SetPriority(l); err != nil {
-			return err
+		if m.Priority() == 0 {
+			_ = m.SetPriority(l)
 		}
 	}
 

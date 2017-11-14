@@ -70,8 +70,8 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			for _, h := range decommissioned {
 				ids = append(ids, h.Id)
 			}
-			So(util.SliceContains(ids, host3.Id), ShouldBeTrue)
-			So(util.SliceContains(ids, host4.Id), ShouldBeTrue)
+			So(util.StringSliceContains(ids, host3.Id), ShouldBeTrue)
+			So(util.StringSliceContains(ids, host4.Id), ShouldBeTrue)
 		})
 
 	})

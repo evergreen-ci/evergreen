@@ -1,8 +1,8 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent db cli subprocess taskrunner util plugin hostinit units
-packages += command plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron
+packages := $(name) agent db cli subprocess taskrunner util plugin hostinit units command 
+packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task
 packages += cloud-providers cloud-providers-docker cloud-providers-ec2 cloud-providers-gce cloud-providers-openstack cloud-providers-vsphere
@@ -65,14 +65,6 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 ## Build rules and instructions for building evergreen binaries and targets.
 ##
 ######################################################################
-
-
-# start rules for services and clients
-plugins:$(buildDir)/.plugins
-$(buildDir)/.plugins:Plugins install_plugins.sh
-	./install_plugins.sh
-	@touch $@
-# end rules for building server binaries
 
 
 # start rules for building services and clients
@@ -147,9 +139,9 @@ $(buildDir)/make-tarball:scripts/make-tarball.go
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(clientBuildDir)/version
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball clis $(clientBuildDir)/version
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item))
-$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(distTestContents) # $(distTestRaceContents)
+$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) # $(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/"

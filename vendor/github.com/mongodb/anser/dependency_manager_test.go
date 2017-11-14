@@ -43,16 +43,6 @@ func (s *DependencyManagerSuite) TestDefaultTypeInfo() {
 	s.Equal(s.dep.Type().Name, "anser-migration")
 }
 
-func (s *DependencyManagerSuite) TestStateIsPassedIfNoPendingMigrations() {
-	// this is the default state of the mock
-	s.Equal(s.dep.State(), dependency.Passed)
-}
-
-func (s *DependencyManagerSuite) TestStateIsUnresolvedIfPendingMigrationsError() {
-	s.helper.NumPendingMigrations = -1
-	s.Equal(s.dep.State(), dependency.Unresolved)
-}
-
 func (s *DependencyManagerSuite) TestNoEdgesReported() {
 	s.helper.NumPendingMigrations = 2
 	s.Equal(s.dep.State(), dependency.Ready)

@@ -98,11 +98,12 @@ func TestStreamMigrationGenerator(t *testing.T) {
 	job = factory().(*streamMigrationGenerator)
 	job.NS = ns
 	job.MigrationHelper = mh
+	job.Limit = 3
 	job.SetID("stream")
 	iter := &mock.Iterator{
 		ShouldIter: true,
 		Results: []interface{}{
-			&doc{"one"}, &doc{"two"}, &doc{"three"},
+			&doc{"one"}, &doc{"two"}, &doc{"three"}, &doc{"four"},
 		},
 	}
 

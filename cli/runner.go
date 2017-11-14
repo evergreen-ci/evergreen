@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"sync"
@@ -158,9 +159,9 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 
 	for _, r := range backgroundRunners {
 		wg.Add(1)
-		if util.SliceContains(frequentRunners, r.Name()) {
+		if util.StringSliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
-		} else if util.SliceContains(infrequentRunners, r.Name()) {
+		} else if util.StringSliceContains(infrequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, infrequentRunInterval, wg)
 		} else {
 			go runnerBackgroundWorker(ctx, r, s, defaultRunInterval, wg)
@@ -199,7 +200,7 @@ func runProcessByName(ctx context.Context, name string, settings *evergreen.Sett
 }
 
 func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.Settings, dur time.Duration, wg *sync.WaitGroup) {
-	timer := time.NewTimer(0)
+	timer := time.NewTimer(time.Duration(rand.Int63n(int64(dur))))
 	defer wg.Done()
 	defer timer.Stop()
 	defer func() {

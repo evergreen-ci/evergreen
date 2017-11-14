@@ -125,8 +125,8 @@ functions:
     command: shell.exec
     params:
        script: |
+         set -o xtrace
          set -o errexit
-         set -o verbose
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
@@ -157,8 +157,8 @@ functions:
     command: shell.exec
     param:
       script: |
+        set -o xtrace
         set -o errexit
-        set -o verbose
 
         tar -zxvf dist-test.tar.gz
 
@@ -233,8 +233,8 @@ functions:
       type: system
       params:
         script: |
+          set -o xtrace
           set -o errexit
-          set -o verbose
 
           rm -rf mongodb
           mkdir mongodb
@@ -253,8 +253,8 @@ functions:
       params:
         background: true
         script: |
+          set -o xtrace
           set -o errexit
-          set -o verbose
 
           cd mongodb
           echo "starting mongod..."
@@ -264,8 +264,8 @@ functions:
       type: system
       params:
         script: |
+          set -o xtrace
           set -o errexit
-          set -o verbose
 
           cd mongodb
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
@@ -441,11 +441,11 @@ tasks:
     tags: ["db", "test"]
     name: test-plugin-builtin-buildbaron
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-manifest
+    tags: ["db", "test"]
+    name: test-plugin-builtin-perfdash
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-attach
+    tags: ["db", "test"]
+    name: test-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-migrations
@@ -563,17 +563,20 @@ tasks:
     tags: ["db", "race"]
     name: race-rest-data
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
+    tags: ["db", "race"]
     name: race-plugin
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
+    tags: ["db", "race"]
     name: race-plugin-builtin-buildbaron
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
+    tags: ["db", "race"]
     name: race-plugin-builtin-attach
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
+    tags: ["db", "race"]
     name: race-plugin-builtin-manifest
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-perfdash 
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
@@ -597,12 +600,6 @@ tasks:
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "agent"]
     name: xc-util
-  - <<: *run-xc-test-suite-with-mongodb
-    tags: ["db", "xc", "agent"]
-    name: xc-plugin-builtin-manifest
-  - <<: *run-xc-test-suite-with-mongodb
-    tags: ["db", "xc", "agent"]
-    name: xc-plugin-builtin-attach
 
 
 buildvariants:

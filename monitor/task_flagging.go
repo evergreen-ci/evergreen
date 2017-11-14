@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -34,7 +35,10 @@ type doomedTaskWrapper struct {
 // flagTimedOutHeartbeats is a taskFlaggingFunc to flag any tasks whose
 // heartbeats have timed out
 func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
-	grip.Info("Finding tasks with timed-out heartbeats...")
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"message": "Finding tasks with timed-out heartbeats",
+	})
 
 	// fetch any running tasks whose last heartbeat was too long in the past
 	threshold := time.Now().Add(-HeartbeatTimeoutThreshold)
@@ -52,7 +56,11 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 		wrappers = append(wrappers, doomedTaskWrapper{task, HeartbeatTimeout})
 	}
 
-	grip.Infof("Found %d tasks whose heartbeats timed out", len(wrappers))
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"message": "Found tasks with timed out heartbeats",
+		"count":   len(wrappers),
+	})
 
 	return wrappers, nil
 }

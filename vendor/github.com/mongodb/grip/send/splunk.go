@@ -54,13 +54,14 @@ func (info SplunkConnectionInfo) Populated() bool {
 }
 
 func (s *splunkLogger) Send(m message.Composer) {
-	if s.Level().ShouldLog(m) {
+	lvl := s.Level()
+
+	if lvl.ShouldLog(m) {
 		g, ok := m.(*message.GroupComposer)
 		if ok {
 			batch := []*hec.Event{}
-			level := s.Level()
 			for _, c := range g.Messages() {
-				if level.ShouldLog(c) {
+				if lvl.ShouldLog(c) {
 					e := hec.NewEvent(c.Raw())
 					e.SetHost(s.hostname)
 					batch = append(batch, e)

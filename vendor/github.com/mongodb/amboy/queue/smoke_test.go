@@ -756,6 +756,51 @@ func TestSmokeLocalOrderedQueueWithSingleWorker(t *testing.T) {
 	runOrderedSmokeTest(ctx, q, 1, false, assert)
 }
 
+func TestSmokeAdaptiveOrderingWithOrderedWorkAndVariablePools(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	for _, poolSize := range []int{2, 4, 8, 16, 32, 64} {
+		ctx, cancel := context.WithCancel(context.Background())
+		q := NewAdaptiveOrderedLocalQueue(poolSize)
+
+		runOrderedSmokeTest(ctx, q, poolSize, true, assert)
+		cancel()
+	}
+}
+
+func TestSmokeAdaptiveOrderingWithUnorderedWorkAndVariablePools(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	for _, poolSize := range []int{2, 4, 8, 16, 32, 64} {
+		ctx, cancel := context.WithCancel(context.Background())
+		q := NewAdaptiveOrderedLocalQueue(poolSize)
+
+		runUnorderedSmokeTest(ctx, q, poolSize, assert)
+		cancel()
+	}
+}
+
+func TestSmokeAdaptiveOrderingWithOrderedWorkAndSinglePools(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	ctx, cancel := context.WithCancel(context.Background())
+	q := NewAdaptiveOrderedLocalQueue(1)
+	assert.NoError(q.SetRunner(pool.NewSingle()))
+
+	runOrderedSmokeTest(ctx, q, 1, true, assert)
+	cancel()
+}
+
+func TestSmokeAdaptiveOrderingWithUnorderedWorkAndSinglePools(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	ctx, cancel := context.WithCancel(context.Background())
+	q := NewAdaptiveOrderedLocalQueue(1)
+	assert.NoError(q.SetRunner(pool.NewSingle()))
+	runUnorderedSmokeTest(ctx, q, 1, assert)
+	cancel()
+}
+
 func TestSmokeRemoteOrderedWithWorkerPoolsAndMongoDB(t *testing.T) {
 	assert := assert.New(t) // nolint
 	opts := driver.DefaultMongoDBOptions()
@@ -770,7 +815,9 @@ func TestSmokeRemoteOrderedWithWorkerPoolsAndMongoDB(t *testing.T) {
 
 		runOrderedSmokeTest(ctx, q, poolSize, true, assert)
 		cancel()
+		cleanupMongoDB(name, opts)
 	}
+
 }
 
 func TestSmokeRemoteOrderedWithWorkerPoolsAndLocalDriver(t *testing.T) {

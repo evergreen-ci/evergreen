@@ -257,15 +257,17 @@ func makeTags(intentHost *host.Host) map[string]string {
 }
 
 //attachTags makes a call to EC2 to attach the given map of tags to a resource.
-func attachTags(ec2Handle *ec2.EC2,
-	tags map[string]string, instance string) error {
+func attachTags(ec2Handle *ec2.EC2, tags map[string]string, instance string) error {
+	return attachTagsToResources(ec2Handle, tags, []string{instance})
+}
 
+func attachTagsToResources(ec2Handle *ec2.EC2, tags map[string]string, instances []string) error {
 	tagSlice := []ec2.Tag{}
 	for tag, value := range tags {
 		tagSlice = append(tagSlice, ec2.Tag{tag, value})
 	}
 
-	_, err := ec2Handle.CreateTags([]string{instance}, tagSlice)
+	_, err := ec2Handle.CreateTags(instances, tagSlice)
 	return err
 }
 

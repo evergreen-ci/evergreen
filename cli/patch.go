@@ -801,9 +801,10 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 
 // gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
 func gitDiff(base string, diffArgs ...string) (string, error) {
-	args := make([]string, 0, 1+len(diffArgs))
-	args = append(args, "--no-ext-diff")
-	args = append(args, diffArgs...)
+	args := append([]string{
+		"--no-ext-diff",
+		"--binary",
+	}, diffArgs...)
 	return gitCmd("diff", base, args...)
 }
 

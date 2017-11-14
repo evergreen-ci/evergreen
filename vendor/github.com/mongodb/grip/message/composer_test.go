@@ -122,6 +122,7 @@ func TestDataCollecterComposerConstructors(t *testing.T) {
 	multiCases := [][]Composer{
 		CollectProcessInfoSelfWithChildren(),
 		CollectProcessInfoWithChildren(int32(1)),
+		CollectAllProcesses(),
 	}
 
 	for _, group := range multiCases {

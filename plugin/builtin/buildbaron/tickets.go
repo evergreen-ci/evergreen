@@ -20,6 +20,7 @@ const (
 	FailingTasksField     = "customfield_12950"
 	FailingVariantField   = "customfield_14277"
 	EvergreenProjectField = "customfield_14278"
+	FailingRevisionField  = "customfield_14851"
 	UIRoot                = "https://evergreen.mongodb.com"
 )
 
@@ -107,6 +108,7 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 	request[FailingTasksField] = []string{t.DisplayName}
 	request[FailingVariantField] = []string{t.BuildVariant}
 	request[EvergreenProjectField] = []string{t.Project}
+	request[FailingRevisionField] = []string{t.Revision}
 	request["issuetype"] = map[string]string{"name": "Build Failure"}
 	request["assignee"] = map[string]string{"name": u.Id}
 	request["reporter"] = map[string]string{"name": u.Id}

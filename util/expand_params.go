@@ -105,7 +105,7 @@ func expandStruct(inputVal reflect.Value, expansions *Expansions) error {
 		tagParts := strings.Split(fieldTag, ",")
 
 		// see if the field is expandable
-		if !SliceContains(tagParts, pluginExpandAllowed) {
+		if !StringSliceContains(tagParts, pluginExpandAllowed) {
 			continue
 		}
 

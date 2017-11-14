@@ -27,12 +27,11 @@ func (s *GripInternalSuite) SetupSuite() {
 	s.name = "test"
 	s.grip = NewGrip(s.name)
 	s.Equal(s.grip.Name(), s.name)
-	s.NoError(s.grip.SetThreshold(level.Trace))
 }
 
 func (s *GripInternalSuite) SetupTest() {
 	s.grip.SetName(s.name)
-	sender, err := send.NewNativeLogger(s.grip.Name(), s.grip.GetSender().Level())
+	sender, err := send.NewNativeLogger(s.grip.Name(), send.LevelInfo{Default: level.Info, Threshold: level.Trace})
 	s.NoError(err)
 	s.NoError(s.grip.SetSender(sender))
 }
@@ -47,7 +46,7 @@ func (s *GripInternalSuite) TestPanicSenderActuallyPanics() {
 			s.Nil(recover())
 		}()
 
-		s.grip.GetSender().Send(message.NewLineMessage(s.grip.DefaultLevel(), "foo"))
+		s.grip.GetSender().Send(message.NewLineMessage(level.Critical, "foo"))
 	}()
 
 	func() {
@@ -56,7 +55,7 @@ func (s *GripInternalSuite) TestPanicSenderActuallyPanics() {
 			s.NotNil(recover())
 		}()
 
-		s.grip.sendPanic(message.NewLineMessage(s.grip.DefaultLevel(), "foo"))
+		s.grip.sendPanic(message.NewLineMessage(level.Info, "foo"))
 	}()
 }
 
@@ -65,8 +64,9 @@ func (s *GripInternalSuite) TestSetSenderErrorsForNil() {
 }
 
 func (s *GripInternalSuite) TestPanicSenderRespectsTThreshold() {
-	s.NoError(s.grip.SetThreshold(level.Notice))
-	s.True(level.Debug < s.grip.ThresholdLevel())
+	s.True(level.Debug > s.grip.GetSender().Level().Threshold)
+	s.NoError(s.grip.GetSender().SetLevel(send.LevelInfo{Default: level.Info, Threshold: level.Notice}))
+	s.True(level.Debug < s.grip.GetSender().Level().Threshold)
 
 	// test that there is a no panic if the message isn't "logabble"
 	defer func() {
@@ -257,7 +257,7 @@ func (s *GripInternalSuite) TestCatchMethods() {
 func TestSendFatalExits(t *testing.T) {
 	grip := NewGrip("test")
 	if os.Getenv("SHOULD_CRASH") == "1" {
-		grip.sendFatal(message.NewLineMessage(grip.DefaultLevel(), "foo"))
+		grip.sendFatal(message.NewLineMessage(level.Error, "foo"))
 		return
 	}
 

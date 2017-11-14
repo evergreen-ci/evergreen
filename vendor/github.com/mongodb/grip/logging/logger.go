@@ -31,8 +31,8 @@ func MakeGrip(s send.Sender) *Grip {
 func NewGrip(name string) *Grip {
 	sender, _ := send.NewNativeLogger(name,
 		send.LevelInfo{
-			Threshold: level.Info,
-			Default:   level.Notice,
+			Threshold: level.Trace,
+			Default:   level.Trace,
 		})
 
 	return &Grip{impl: sender}

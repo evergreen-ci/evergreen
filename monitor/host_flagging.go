@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -19,15 +20,12 @@ const (
 	// as reachable again before giving up and terminating it.
 	UnreachableCutoff = 5 * time.Minute
 
-	// IdleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	IdleTimeCutoff = 7 * time.Minute
-
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	MaxTimeTilNextPayment = 5 * time.Minute
 
-	// CommunicationTimeCutoff is the limit to how much time has passed before the host is marked as idle
-	// due to the agent not being able to communicate with the API server.
-	CommunicationTimeCutoff = 7 * time.Minute
+	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
+	idleTimeCutoff            = 7 * time.Minute
+	idleWaitingForAgentCutoff = 10 * time.Minute
 )
 
 type hostFlagger struct {
@@ -115,14 +113,26 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 		// ask how long until the next payment for the host
 		tilNextPayment := cloudManager.TimeTilNextPayment(&freeHost)
 
-		// current determinants for idle:
-		//  idle for at least 15 minutes or last communication time has been more than 10 mins and
-		//  less than 5 minutes til next payment
-		if (communicationTime >= CommunicationTimeCutoff || idleTime >= IdleTimeCutoff) &&
-			tilNextPayment <= MaxTimeTilNextPayment {
-			idleHosts = append(idleHosts, freeHost)
+		if tilNextPayment > MaxTimeTilNextPayment {
+			continue
 		}
 
+		if freeHost.IsWaitingForAgent() && (communicationTime < idleWaitingForAgentCutoff || idleTime < idleWaitingForAgentCutoff) {
+			grip.Notice(message.Fields{
+				"runner":            RunnerName,
+				"message":           "not flagging idle host, waiting for an agent",
+				"host":              freeHost.Id,
+				"distro":            freeHost.Distro.Id,
+				"idle":              idleTime.String(),
+				"last_communicated": communicationTime.String(),
+			})
+			continue
+		}
+
+		// if we haven't heard from the host or it's been idle for longer than the cutoff, we should flag.
+		if communicationTime >= idleTimeCutoff || idleTime >= idleTimeCutoff {
+			idleHosts = append(idleHosts, freeHost)
+		}
 	}
 
 	return idleHosts, nil
@@ -175,9 +185,6 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 					break
 				}
 			}
-
-			grip.Infof("Found %d excess hosts for distro %s", counter, d.Id)
-
 		}
 
 	}

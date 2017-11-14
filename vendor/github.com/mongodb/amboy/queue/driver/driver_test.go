@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
@@ -198,8 +199,8 @@ func (s *DriverSuite) TestStatsCallReportsCompletedJobs() {
 }
 
 func (s *DriverSuite) TestNextMethodReturnsJob() {
+	ctx := context.Background()
 	s.Equal(0, s.driver.Stats().Total)
-	s.Nil(s.driver.Next())
 
 	j := job.NewShellJob("echo foo", "")
 
@@ -208,7 +209,7 @@ func (s *DriverSuite) TestNextMethodReturnsJob() {
 	s.Equal(1, stats.Total)
 	s.Equal(1, stats.Pending)
 
-	nj := s.driver.Next()
+	nj := s.driver.Next(ctx)
 	stats = s.driver.Stats()
 	s.Equal(0, stats.Completed)
 	s.Equal(1, stats.Pending)
@@ -218,14 +219,12 @@ func (s *DriverSuite) TestNextMethodReturnsJob() {
 	if s.NotNil(nj) {
 		s.Equal(j.ID(), nj.ID())
 		s.NoError(s.driver.Lock(j))
-		// won't dispatch the same job more than once.
-		s.Nil(s.driver.Next())
-		s.Nil(s.driver.Next())
-		s.Nil(s.driver.Next())
 	}
 }
 
 func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
 	j := job.NewShellJob("echo foo", "")
 	j.MarkComplete()
 
@@ -237,7 +236,7 @@ func (s *DriverSuite) TestNextMethodSkipsCompletedJos() {
 	s.Equal(0, s.driver.Stats().Pending)
 	s.Equal(1, s.driver.Stats().Completed)
 
-	s.Nil(s.driver.Next(), fmt.Sprintf("%T", s.driver))
+	s.Nil(s.driver.Next(ctx), fmt.Sprintf("%T", s.driver))
 }
 
 func (s *DriverSuite) TestJobsMethodReturnsAllJobs() {
@@ -285,5 +284,4 @@ func (s *DriverSuite) TestStatsMethodReturnsAllJobs() {
 	}
 	s.Equal(len(names), counter)
 	s.Equal(counter, 30)
-
 }

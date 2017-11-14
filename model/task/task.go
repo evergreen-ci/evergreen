@@ -1032,6 +1032,27 @@ func FindRunnable() ([]Task, error) {
 		},
 	}
 
+	joinProjectRef := bson.M{
+		"$lookup": bson.M{
+			"from":         "project_ref",
+			"localField":   ProjectKey,
+			"foreignField": "identifier",
+			"as":           "project_ref",
+		},
+	}
+
+	filterDisabledProejcts := bson.M{
+		"$match": bson.M{
+			"project_ref.0." + "enabled": true,
+		},
+	}
+
+	removeProjectRef := bson.M{
+		"$project": bson.M{
+			"project_ref": 0,
+		},
+	}
+
 	pipeline := []bson.M{
 		matchActivatedUndispatchedTasks,
 		graphLookupTaskDeps,
@@ -1039,6 +1060,9 @@ func FindRunnable() ([]Task, error) {
 		removeEdgesFromTask,
 		redactUnrunnableTasks,
 		replaceRoot,
+		joinProjectRef,
+		filterDisabledProejcts,
+		removeProjectRef,
 	}
 
 	runnableTasks := []Task{}
