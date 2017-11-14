@@ -1,8 +1,13 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"testing"
 
@@ -11,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -89,4 +95,48 @@ func (s *PatchIntentConnectorSuite) TestAddIntentWithClosedPRHasNoSideEffects() 
 	s.Empty(resp.Result)
 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 0)
+}
+
+func (s *PatchIntentConnectorSuite) TestParseAndValidateFailsWithoutSignature() {
+	ctx := context.Background()
+	req, err := makeRequest("1", s.prBody)
+	s.NoError(err)
+	req.Header.Del("X-Hub-Signature")
+
+	err = s.rm.Methods[0].RequestHandler.ParseAndValidate(ctx, req)
+	s.Error(err)
+}
+
+func (s *PatchIntentConnectorSuite) TestParseAndValidate() {
+	ctx := context.Background()
+	req, err := makeRequest("1", s.prBody)
+	s.NoError(err)
+
+	err = s.rm.Methods[0].RequestHandler.ParseAndValidate(ctx, req)
+	s.NoError(err)
+}
+
+func makeRequest(uid string, body []byte) (*http.Request, error) {
+	req, err := http.NewRequest("POST", "http://example.com/rest/v2/hooks/github", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+
+	// from genMAC in google/go-github/github/messages.go
+	mac := hmac.New(sha256.New, []byte("test"))
+	n, err := mac.Write(body)
+	if n != len(body) {
+		return nil, errors.Errorf("Body length expected to be %d, but was %d", len(body), n)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	signature := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+
+	req.Header.Add("Content-type", "application/json")
+	req.Header.Add("X-Github-Event", "pull_request")
+	req.Header.Add("X-GitHub-Delivery", uid)
+	req.Header.Add("X-Hub-Signature", signature)
+	return req, nil
 }
