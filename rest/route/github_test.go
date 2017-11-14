@@ -32,7 +32,7 @@ type PatchIntentConnectorSuite struct {
 func (s *PatchIntentConnectorSuite) SetupTest() {
 	s.rm = getGithubHooksRouteManager("", 2)
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
-		CachedIntents: []patch.Intent{},
+		CachedIntents: map[string]patch.Intent{},
 	}}
 
 	var err error
@@ -58,7 +58,18 @@ func (s *PatchIntentConnectorSuite) TestAddIntent() {
 	ctx := context.Background()
 	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
-	s.Len(resp.Result, 0)
+	s.Empty(resp.Result)
+
+	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
+}
+
+func (s *PatchIntentConnectorSuite) TestAddDuplicateIntentFails() {
+	s.TestAddIntent()
+
+	ctx := context.Background()
+	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	s.Error(err)
+	s.Empty(resp.Result)
 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
@@ -75,7 +86,7 @@ func (s *PatchIntentConnectorSuite) TestAddIntentWithClosedPRHasNoSideEffects() 
 	ctx := context.Background()
 	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
-	s.Len(resp.Result, 0)
+	s.Empty(resp.Result)
 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 0)
 }

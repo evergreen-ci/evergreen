@@ -46,7 +46,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 
 	intent, err = NewGithubIntent("4", "evergreen-ci/evergreen", s.pr, "octocat", s.sha, s.url)
 	s.Implements((*Intent)(nil), intent)
-	githubIntent, ok := intent.(*githubIntent)
+	githubIntent, ok := intent.(*GithubIntent)
 	s.True(ok)
 	s.Equal(s.pr, githubIntent.PRNumber)
 	s.Equal(s.sha, githubIntent.BaseHash)
@@ -83,7 +83,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(err)
 	s.Len(found, 0)
 
-	var intents []githubIntent
+	var intents []GithubIntent
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
@@ -94,22 +94,22 @@ func (s *GithubSuite) TestSetProcessed() {
 }
 
 func (s *GithubSuite) FindUnprocessedGithubIntents() {
-	intents := []githubIntent{
-		githubIntent{
+	intents := []GithubIntent{
+		GithubIntent{
 			Processed: true,
 		},
-		githubIntent{
+		GithubIntent{
 			Processed: true,
 		},
-		githubIntent{
+		GithubIntent{
 			Processed: true,
 		},
-		githubIntent{
+		GithubIntent{
 			Processed: true,
 		},
-		githubIntent{},
-		githubIntent{},
-		githubIntent{},
+		GithubIntent{},
+		GithubIntent{},
+		GithubIntent{},
 	}
 
 	for _, intent := range intents {

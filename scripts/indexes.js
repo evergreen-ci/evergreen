@@ -41,6 +41,9 @@ db.patches.ensureIndex({ "branch" : 1, "create_time" : 1 })
 db.patches.ensureIndex({ "version" : 1 })
 db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
 
+//======patch_intents======//
+db.patch_intents.ensureIndex({ "msg_id" : 1 }, { "unique" : true, "partialFilterExpression" : { "intent_type" : "github"}})
+
 //======project_ref======//
 db.project_ref.ensureIndex({ "identifier" : 1 })
 
