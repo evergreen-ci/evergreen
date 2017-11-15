@@ -45,7 +45,7 @@ func (items *adaptiveOrderItems) add(j amboy.Job) error {
 	return nil
 }
 
-func (items *adaptiveOrderItems) refilter(ctx context.Context) {
+func (items *adaptiveOrderItems) updateWaiting(ctx context.Context) {
 	new := []string{}
 	for _, id := range items.waiting {
 		if ctx.Err() != nil {
@@ -78,8 +78,10 @@ func (items *adaptiveOrderItems) refilter(ctx context.Context) {
 		}
 	}
 	items.waiting = new
+}
 
-	new = []string{}
+func (items *adaptiveOrderItems) updateStalled(ctx context.Context) {
+	new := []string{}
 	for _, id := range items.stalled {
 		if ctx.Err() != nil {
 			return
@@ -114,12 +116,17 @@ func (items *adaptiveOrderItems) refilter(ctx context.Context) {
 	}
 
 	items.stalled = new
+}
+
+func (items *adaptiveOrderItems) refilter(ctx context.Context) {
+	items.updateWaiting(ctx)
+	items.updateStalled(ctx)
 
 	// shuffle the order of the ready queue.
 	//   in the future this might be good to sort based on the
 	//   number of edges, and randomized otherwise.
 	if len(items.ready) > 1 {
-		new = make([]string, len(items.ready))
+		new := make([]string, len(items.ready))
 		for i, r := range rand.Perm(len(items.ready)) {
 			new[i] = items.ready[r]
 		}

@@ -166,9 +166,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     name: test-queue
     tags: ["test"]
-  - <<: *run-go-test-suite-with-mongodb
-    name: test-queue-driver
-    tags: ["test"]
 
   # run the suites with the race detector (one variant only)
   - <<: *run-build
@@ -201,11 +198,6 @@ tasks:
       - name: build-race
   - <<: *run-go-test-suite-with-mongodb
     name: race-queue
-    tags: ["race"]
-    depends_on:
-      - name: build-race
-  - <<: *run-go-test-suite-with-mongodb
-    name: race-queue-driver
     tags: ["race"]
     depends_on:
       - name: build-race

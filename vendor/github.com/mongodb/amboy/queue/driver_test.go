@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
 	"github.com/satori/go.uuid"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +21,6 @@ type DriverSuite struct {
 	driver            Driver
 	driverConstructor func() Driver
 	tearDown          func()
-	require           *require.Assertions
 	suite.Suite
 }
 
@@ -32,7 +30,7 @@ func TestDriverSuiteWithLocalInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()
 	tests.driverConstructor = func() Driver {
-		return NewInternal()
+		return NewInternalDriver()
 	}
 
 	suite.Run(t, tests)
@@ -42,7 +40,7 @@ func TestDriverSuiteWithPriorityInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()
 	tests.driverConstructor = func() Driver {
-		return NewPriority()
+		return NewPriorityDriver()
 	}
 
 	suite.Run(t, tests)
@@ -51,9 +49,9 @@ func TestDriverSuiteWithPriorityInstance(t *testing.T) {
 func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 	tests := new(DriverSuite)
 	tests.uuid = uuid.NewV4().String()
-	mDriver := NewMongoDB(
+	mDriver := NewMongoDBDriver(
 		"test-"+tests.uuid,
-		DefaultMongoDBOptions())
+		DefaultMongoDBOptions()).(*mongoDB)
 	tests.driverConstructor = func() Driver {
 		return mDriver
 	}
@@ -71,7 +69,6 @@ func TestDriverSuiteWithMongoDBInstance(t *testing.T) {
 
 func (s *DriverSuite) SetupSuite() {
 	job.RegisterDefaultJobs()
-	s.require = s.Require()
 }
 
 func (s *DriverSuite) SetupTest() {

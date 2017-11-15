@@ -40,7 +40,7 @@ import (
 // should be roughly equivalent to other non-ordered queues. If there
 // are cycles in the dependency graph, the queue will error before
 // starting.
-type LocalOrdered struct {
+type depGraphOrderedLocal struct {
 	started    bool
 	numStarted int
 	channel    chan amboy.Job
@@ -59,8 +59,8 @@ type LocalOrdered struct {
 
 // NewLocalOrdered constructs an LocalOrdered object. The "workers"
 // argument is passed to a default pool.SimplePool object.
-func NewLocalOrdered(workers int) *LocalOrdered {
-	q := &LocalOrdered{
+func NewLocalOrdered(workers int) amboy.Queue {
+	q := &depGraphOrderedLocal{
 		channel: make(chan amboy.Job, 100),
 	}
 	q.tasks.m = make(map[string]amboy.Job)
@@ -78,7 +78,7 @@ func NewLocalOrdered(workers int) *LocalOrdered {
 // Put adds a job to the queue. If the queue has started dispatching
 // jobs you cannot add new jobs to the queue. Additionally all jobs
 // must have unique names. (i.e. job.ID() values.)
-func (q *LocalOrdered) Put(j amboy.Job) error {
+func (q *depGraphOrderedLocal) Put(j amboy.Job) error {
 	name := j.ID()
 
 	q.mutex.Lock()
@@ -104,14 +104,14 @@ func (q *LocalOrdered) Put(j amboy.Job) error {
 }
 
 // Runner returns the embedded task runner.
-func (q *LocalOrdered) Runner() amboy.Runner {
+func (q *depGraphOrderedLocal) Runner() amboy.Runner {
 	return q.runner
 }
 
 // SetRunner allows users to substitute alternate Runner
 // implementations at run time. This method fails if the runner has
 // started.
-func (q *LocalOrdered) SetRunner(r amboy.Runner) error {
+func (q *depGraphOrderedLocal) SetRunner(r amboy.Runner) error {
 	if q.Started() {
 		return errors.New("cannot change runners after starting")
 	}
@@ -122,14 +122,14 @@ func (q *LocalOrdered) SetRunner(r amboy.Runner) error {
 
 // Started returns true when the Queue has begun dispatching tasks to
 // runners.
-func (q *LocalOrdered) Started() bool {
+func (q *depGraphOrderedLocal) Started() bool {
 	return q.started
 }
 
 // Next returns a job from the Queue. This call is non-blocking. If
 // there are no pending jobs at the moment, then Next returns an
 // error.
-func (q *LocalOrdered) Next(ctx context.Context) amboy.Job {
+func (q *depGraphOrderedLocal) Next(ctx context.Context) amboy.Job {
 	select {
 	case <-ctx.Done():
 		return nil
@@ -143,7 +143,7 @@ func (q *LocalOrdered) Next(ctx context.Context) amboy.Job {
 // closed when all results have been exhausted, even if there are more
 // results pending. Other implementations may have different semantics
 // for this method.
-func (q *LocalOrdered) Results(ctx context.Context) <-chan amboy.Job {
+func (q *depGraphOrderedLocal) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
 	go func() {
@@ -166,7 +166,7 @@ func (q *LocalOrdered) Results(ctx context.Context) <-chan amboy.Job {
 
 // JobStats returns job status documents for all jobs tracked by the
 // queue. This implementation returns status for jobs in a random order.
-func (q *LocalOrdered) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+func (q *depGraphOrderedLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	output := make(chan amboy.JobStatusInfo)
 	go func() {
 		q.mutex.RLock()
@@ -185,7 +185,7 @@ func (q *LocalOrdered) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo 
 }
 
 // Get takes a name and returns a completed job.
-func (q *LocalOrdered) Get(name string) (amboy.Job, bool) {
+func (q *depGraphOrderedLocal) Get(name string) (amboy.Job, bool) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -196,7 +196,7 @@ func (q *LocalOrdered) Get(name string) (amboy.Job, bool) {
 
 // Stats returns a statistics object with data about the total number
 // of jobs tracked by the queue.
-func (q *LocalOrdered) Stats() amboy.QueueStats {
+func (q *depGraphOrderedLocal) Stats() amboy.QueueStats {
 	s := amboy.QueueStats{}
 
 	q.mutex.RLock()
@@ -210,7 +210,7 @@ func (q *LocalOrdered) Stats() amboy.QueueStats {
 	return s
 }
 
-func (q *LocalOrdered) buildGraph() error {
+func (q *depGraphOrderedLocal) buildGraph() error {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
@@ -250,7 +250,7 @@ func (q *LocalOrdered) buildGraph() error {
 
 // Start starts the runner worker processes organizes the graph and
 // begins dispatching jobs to the workers.
-func (q *LocalOrdered) Start(ctx context.Context) error {
+func (q *depGraphOrderedLocal) Start(ctx context.Context) error {
 	if q.started {
 		return nil
 	}
@@ -279,7 +279,7 @@ func (q *LocalOrdered) Start(ctx context.Context) error {
 
 // Job dispatching that takes an ordering of graph.Nodsand waits for
 // dependencies to be resolved before adding them to the queue.
-func (q *LocalOrdered) jobDispatch(ctx context.Context, orderedJobs []graph.Node) {
+func (q *depGraphOrderedLocal) jobDispatch(ctx context.Context, orderedJobs []graph.Node) {
 	// we need to make sure that dependencies don't just get
 	// dispatched before their dependents but that they're
 	// finished. We iterate through the sorted list in reverse
@@ -360,7 +360,7 @@ func (q *LocalOrdered) jobDispatch(ctx context.Context, orderedJobs []graph.Node
 }
 
 // Complete marks a job as complete in the context of this queue instance.
-func (q *LocalOrdered) Complete(ctx context.Context, j amboy.Job) {
+func (q *depGraphOrderedLocal) Complete(ctx context.Context, j amboy.Job) {
 	grip.Debugf("marking job (%s) as complete", j.ID())
 	q.mutex.Lock()
 	defer q.mutex.Unlock()

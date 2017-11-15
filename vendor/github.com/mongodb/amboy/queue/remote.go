@@ -9,17 +9,25 @@ import (
 	"github.com/mongodb/grip"
 )
 
+// Remote queues extend the queue interface to allow a
+// pluggable-storage backend, or "driver"
+type Remote interface {
+	amboy.Queue
+	SetDriver(Driver) error
+	Driver() Driver
+}
+
 // RemoteUnordered are queues that use a Driver as backend for job
 // storage and processing and do not impose any additional ordering
 // beyond what's provided by the driver.
-type RemoteUnordered struct {
+type remoteUnordered struct {
 	*remoteBase
 }
 
 // NewRemoteUnordered returns a queue that has been initialized with a
 // local worker pool Runner instance of the specified size.
-func NewRemoteUnordered(size int) *RemoteUnordered {
-	q := &RemoteUnordered{
+func NewRemoteUnordered(size int) Remote {
+	q := &remoteUnordered{
 		remoteBase: newRemoteBase(),
 	}
 
@@ -34,7 +42,7 @@ func NewRemoteUnordered(size int) *RemoteUnordered {
 // context is canceled. The operation is blocking until an
 // undispatched, unlocked job is available. This operation takes a job
 // lock.
-func (q *RemoteUnordered) Next(ctx context.Context) amboy.Job {
+func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 	start := time.Now()
 	count := 0
 	for {

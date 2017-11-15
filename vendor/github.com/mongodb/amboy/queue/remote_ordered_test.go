@@ -9,7 +9,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
@@ -22,10 +21,10 @@ func init() {
 }
 
 type SimpleRemoteOrderedSuite struct {
-	queue             amboy.Queue
+	queue             Remote
 	tearDown          func() error
-	driver            driver.Driver
-	driverConstructor func() driver.Driver
+	driver            Driver
+	driverConstructor func() Driver
 	canceler          context.CancelFunc
 	suite.Suite
 }
@@ -37,8 +36,8 @@ func TestSimpleRemoteOrderedSuiteMongoDB(t *testing.T) {
 func (s *SimpleRemoteOrderedSuite) SetupSuite() {
 	name := "test-" + uuid.NewV4().String()
 	uri := "mongodb://localhost"
-	s.driverConstructor = func() driver.Driver {
-		return driver.NewMongoDB(name, driver.DefaultMongoDBOptions())
+	s.driverConstructor = func() Driver {
+		return NewMongoDBDriver(name, DefaultMongoDBOptions())
 	}
 
 	s.tearDown = func() error {

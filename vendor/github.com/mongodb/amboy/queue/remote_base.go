@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
 type remoteBase struct {
 	started    bool
-	driver     driver.Driver
+	driver     Driver
 	channel    chan amboy.Job
 	blocked    map[string]struct{}
 	dispatched map[string]struct{}
@@ -179,14 +178,14 @@ func (q *remoteBase) SetRunner(r amboy.Runner) error {
 // Driver provides access to the embedded driver instance which
 // provides access to the Queue's persistence layer. This method is
 // not part of the amboy.Queue interface.
-func (q *remoteBase) Driver() driver.Driver {
+func (q *remoteBase) Driver() Driver {
 	return q.driver
 }
 
 // SetDriver allows callers to inject at runtime alternate driver
 // instances. It is an error to change Driver instances after starting
 // a queue. This method is not part of the amboy.Queue interface.
-func (q *remoteBase) SetDriver(d driver.Driver) error {
+func (q *remoteBase) SetDriver(d Driver) error {
 	if q.Started() {
 		return errors.New("cannot change drivers after starting queue")
 	}

@@ -21,14 +21,14 @@ import (
 // more complex dependency graphs. Internally SimpleRemoteOrdered and
 // RemoteUnordred share an implementation *except* for the Next method,
 // which differs in task dispatching strategies.
-type SimpleRemoteOrdered struct {
+type remoteSimpleOrdered struct {
 	*remoteBase
 }
 
 // NewSimpleRemoteOrdered returns a queue with a configured local
 // runner with the specified number of workers.
-func NewSimpleRemoteOrdered(size int) *SimpleRemoteOrdered {
-	q := &SimpleRemoteOrdered{remoteBase: newRemoteBase()}
+func NewSimpleRemoteOrdered(size int) Remote {
+	q := &remoteSimpleOrdered{remoteBase: newRemoteBase()}
 	grip.CatchError(q.SetRunner(pool.NewLocalWorkers(size, q)))
 	grip.Infof("creating new remote job queue with %d workers", size)
 
@@ -45,7 +45,7 @@ func NewSimpleRemoteOrdered(size int) *SimpleRemoteOrdered {
 // that the next time this job is dispatched its dependencies will be
 // ready. if there is only one Edge reported, blocked will attempt to
 // dispatch the dependent job.
-func (q *SimpleRemoteOrdered) Next(ctx context.Context) amboy.Job {
+func (q *remoteSimpleOrdered) Next(ctx context.Context) amboy.Job {
 	start := time.Now()
 	count := 1
 	for {

@@ -152,7 +152,7 @@ func TestLocalWorkerPoolConstructorDoesNotAllowSizeValuesLessThanOne(t *testing.
 }
 
 func TestPanicJobPanics(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

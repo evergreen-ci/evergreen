@@ -12,21 +12,28 @@ import (
 	"github.com/pkg/errors"
 )
 
-type localAdaptiveOrdering struct {
+type adaptiveLocalOrdering struct {
 	// the ops are: all map:jobs || ready | blocked | passed+unresolved
 	operations chan func(context.Context, *adaptiveOrderItems)
 	starter    sync.Once
 	runner     amboy.Runner
 }
 
+// NewAdaptiveOrderedLocalQueue provides a queue implementation that
+// stores jobs in memory, and dispatches tasks based on the dependency
+// information.
+//
+// Use this implementation rather than LocalOrderedQueue when you need
+// to add jobs *after* starting the queue, and when you want to avoid
+// the higher potential overhead of the remote-backed queues.
 func NewAdaptiveOrderedLocalQueue(workers int) amboy.Queue {
-	q := &localAdaptiveOrdering{}
+	q := &adaptiveLocalOrdering{}
 	r := pool.NewLocalWorkers(workers, q)
 	q.runner = r
 	return q
 }
 
-func (q *localAdaptiveOrdering) Start(ctx context.Context) error {
+func (q *adaptiveLocalOrdering) Start(ctx context.Context) error {
 	if q.runner == nil {
 		return errors.New("cannot start queue without a runner")
 	}
@@ -41,7 +48,7 @@ func (q *localAdaptiveOrdering) Start(ctx context.Context) error {
 	return nil
 }
 
-func (q *localAdaptiveOrdering) reactor(ctx context.Context) {
+func (q *adaptiveLocalOrdering) reactor(ctx context.Context) {
 	items := &adaptiveOrderItems{
 		jobs: make(map[string]amboy.Job),
 	}
@@ -63,7 +70,7 @@ func (q *localAdaptiveOrdering) reactor(ctx context.Context) {
 	}
 }
 
-func (q *localAdaptiveOrdering) Put(j amboy.Job) error {
+func (q *adaptiveLocalOrdering) Put(j amboy.Job) error {
 	if !q.Started() {
 		return errors.New("cannot add job to unopened queue")
 	}
@@ -77,7 +84,7 @@ func (q *localAdaptiveOrdering) Put(j amboy.Job) error {
 	return <-out
 }
 
-func (q *localAdaptiveOrdering) Get(name string) (amboy.Job, bool) {
+func (q *adaptiveLocalOrdering) Get(name string) (amboy.Job, bool) {
 	if !q.Started() {
 		return nil, false
 	}
@@ -96,7 +103,7 @@ func (q *localAdaptiveOrdering) Get(name string) (amboy.Job, bool) {
 	return job, ok
 
 }
-func (q *localAdaptiveOrdering) Results(ctx context.Context) <-chan amboy.Job {
+func (q *adaptiveLocalOrdering) Results(ctx context.Context) <-chan amboy.Job {
 	ret := make(chan chan amboy.Job)
 
 	q.operations <- func(opctx context.Context, items *adaptiveOrderItems) {
@@ -116,7 +123,7 @@ func (q *localAdaptiveOrdering) Results(ctx context.Context) <-chan amboy.Job {
 	return <-ret
 }
 
-func (q *localAdaptiveOrdering) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+func (q *adaptiveLocalOrdering) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	ret := make(chan chan amboy.JobStatusInfo)
 
 	q.operations <- func(opctx context.Context, items *adaptiveOrderItems) {
@@ -139,7 +146,7 @@ func (q *localAdaptiveOrdering) JobStats(ctx context.Context) <-chan amboy.JobSt
 	return <-ret
 }
 
-func (q *localAdaptiveOrdering) Stats() amboy.QueueStats {
+func (q *adaptiveLocalOrdering) Stats() amboy.QueueStats {
 	if !q.Started() {
 		return amboy.QueueStats{}
 	}
@@ -160,8 +167,8 @@ func (q *localAdaptiveOrdering) Stats() amboy.QueueStats {
 	return <-ret
 }
 
-func (q *localAdaptiveOrdering) Started() bool { return q.operations != nil }
-func (q *localAdaptiveOrdering) Next(ctx context.Context) amboy.Job {
+func (q *adaptiveLocalOrdering) Started() bool { return q.operations != nil }
+func (q *adaptiveLocalOrdering) Next(ctx context.Context) amboy.Job {
 	ret := make(chan amboy.Job)
 
 	q.operations <- func(ctx context.Context, items *adaptiveOrderItems) {
@@ -206,14 +213,14 @@ func (q *localAdaptiveOrdering) Next(ctx context.Context) amboy.Job {
 	return <-ret
 }
 
-func (q *localAdaptiveOrdering) Complete(ctx context.Context, j amboy.Job) {
+func (q *adaptiveLocalOrdering) Complete(ctx context.Context, j amboy.Job) {
 	q.operations <- func(ctx context.Context, items *adaptiveOrderItems) {
 		items.completed = append(items.completed, j.ID())
 	}
 }
 
-func (q *localAdaptiveOrdering) Runner() amboy.Runner { return q.runner }
-func (q *localAdaptiveOrdering) SetRunner(r amboy.Runner) error {
+func (q *adaptiveLocalOrdering) Runner() amboy.Runner { return q.runner }
+func (q *adaptiveLocalOrdering) SetRunner(r amboy.Runner) error {
 	if q.runner != nil && q.runner.Started() {
 		return errors.New("cannot set a runner, current runner is running")
 	}

@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -7,14 +7,12 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/satori/go.uuid"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2"
 )
 
 type MongoDBDriverSuite struct {
-	driver      *MongoDB
-	require     *require.Assertions
+	driver      *mongoDB
 	collections []string
 	uri         string
 	dbName      string
@@ -28,12 +26,11 @@ func TestMongoDBDriverSuite(t *testing.T) {
 func (s *MongoDBDriverSuite) SetupSuite() {
 	s.uri = "mongodb://localhost:27017"
 	s.dbName = "amboy"
-	s.require = s.Require()
 }
 
 func (s *MongoDBDriverSuite) SetupTest() {
 	name := uuid.NewV4().String()
-	s.driver = NewMongoDB(name, DefaultMongoDBOptions())
+	s.driver = NewMongoDBDriver(name, DefaultMongoDBOptions()).(*mongoDB)
 	s.driver.dbName = s.dbName
 	s.collections = append(s.collections, name+".jobs", name+".locks")
 }

@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -27,21 +28,25 @@ import (
 // order of jobs, relative the insertion order. Unlike
 // some of the other local queue implementations that predate LocalShuffled
 // (e.g. LocalUnordered,) there are no mutexes uses in the implementation.
-//
-// To use the LocalShuffled queue, simply construct a pointer to a
-// LocalShuffled instance, use SetRunner() to specify the runner, and
-// call the Start() method to begin accepting jobs. You cannot add jobs
-// this queue before without starting it.
-type LocalShuffled struct {
+type shuffledLocal struct {
 	operations chan func(map[string]amboy.Job, map[string]amboy.Job, map[string]amboy.Job)
 	starter    sync.Once
 	runner     amboy.Runner
 }
 
+// NewShuffledLocal provides a queue implementation that shuffles the
+// order of jobs, relative the insertion order.
+func NewShuffledLocal(workers int) amboy.Queue {
+	q := &shuffledLocal{}
+	q.runner = pool.NewLocalWorkers(workers, q)
+
+	return q
+}
+
 // Start takes a context object and starts the embedded Runner instance
 // and the queue's own background dispatching thread. Returns an error
 // if there is no embedded runner, but is safe to call multiple times.
-func (q *LocalShuffled) Start(ctx context.Context) error {
+func (q *shuffledLocal) Start(ctx context.Context) error {
 	if q.runner == nil {
 		return errors.New("cannot start queue without a runner")
 	}
@@ -57,7 +62,7 @@ func (q *LocalShuffled) Start(ctx context.Context) error {
 }
 
 // reactor is the background dispatching process.
-func (q *LocalShuffled) reactor(ctx context.Context) {
+func (q *shuffledLocal) reactor(ctx context.Context) {
 	pending := make(map[string]amboy.Job)
 	completed := make(map[string]amboy.Job)
 	dispatched := make(map[string]amboy.Job)
@@ -75,7 +80,7 @@ func (q *LocalShuffled) reactor(ctx context.Context) {
 
 // Put adds a job to the queue, and returns errors if the queue hasn't
 // started or if a job with the same ID value already exists.
-func (q *LocalShuffled) Put(j amboy.Job) error {
+func (q *shuffledLocal) Put(j amboy.Job) error {
 	id := j.ID()
 
 	if !q.Started() {
@@ -104,7 +109,7 @@ func (q *LocalShuffled) Put(j amboy.Job) error {
 
 // Get returns a job based on the specified ID. Considers all pending,
 // completed, and in progress jobs.
-func (q *LocalShuffled) Get(name string) (amboy.Job, bool) {
+func (q *shuffledLocal) Get(name string) (amboy.Job, bool) {
 	if !q.Started() {
 		return nil, false
 	}
@@ -138,7 +143,7 @@ func (q *LocalShuffled) Get(name string) (amboy.Job, bool) {
 }
 
 // Results returns all completed jobs processed by the queue.
-func (q *LocalShuffled) Results(ctx context.Context) <-chan amboy.Job {
+func (q *shuffledLocal) Results(ctx context.Context) <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
 	if !q.Started() {
@@ -168,7 +173,7 @@ func (q *LocalShuffled) Results(ctx context.Context) <-chan amboy.Job {
 // queue. The operation returns jobs first that have been dispatched
 // (e.g. currently working,) then pending (queued for dispatch,) and
 // finally completed.
-func (q *LocalShuffled) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+func (q *shuffledLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	out := make(chan amboy.JobStatusInfo)
 
 	q.operations <- func(pending map[string]amboy.Job,
@@ -207,7 +212,7 @@ func (q *LocalShuffled) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo
 
 // Stats returns a standard report on the number of pending, running,
 // and completed jobs processed by the queue.
-func (q *LocalShuffled) Stats() amboy.QueueStats {
+func (q *shuffledLocal) Stats() amboy.QueueStats {
 	if !q.Started() {
 		return amboy.QueueStats{}
 	}
@@ -234,14 +239,14 @@ func (q *LocalShuffled) Stats() amboy.QueueStats {
 // Started returns true after the queue has started processing work,
 // and false otherwise. When the queue has terminated (as a result of
 // the starting context's cancellation.
-func (q *LocalShuffled) Started() bool {
+func (q *shuffledLocal) Started() bool {
 	return q.operations != nil
 }
 
 // Next returns a new pending job, and is used by the Runner interface
 // to fetch new jobs. This method returns a nil job object is there are
 // no pending jobs.
-func (q *LocalShuffled) Next(ctx context.Context) amboy.Job {
+func (q *shuffledLocal) Next(ctx context.Context) amboy.Job {
 	ret := make(chan amboy.Job)
 	q.operations <- func(pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
@@ -272,7 +277,7 @@ func (q *LocalShuffled) Next(ctx context.Context) amboy.Job {
 // Complete marks a job as complete in the internal representation. If
 // the context is canceled after calling Complete but before it
 // executes, no change occurs.
-func (q *LocalShuffled) Complete(ctx context.Context, j amboy.Job) {
+func (q *shuffledLocal) Complete(ctx context.Context, j amboy.Job) {
 	q.operations <- func(pending map[string]amboy.Job,
 		completed map[string]amboy.Job,
 		dispatched map[string]amboy.Job) {
@@ -292,7 +297,7 @@ func (q *LocalShuffled) Complete(ctx context.Context, j amboy.Job) {
 
 // SetRunner modifies the embedded amboy.Runner instance, and return an
 // error if the current runner has started.
-func (q *LocalShuffled) SetRunner(r amboy.Runner) error {
+func (q *shuffledLocal) SetRunner(r amboy.Runner) error {
 	if q.runner != nil && q.runner.Started() {
 		return errors.New("cannot set a runner, current runner is running")
 	}
@@ -302,6 +307,6 @@ func (q *LocalShuffled) SetRunner(r amboy.Runner) error {
 }
 
 // Runner returns the embedded runner.
-func (q *LocalShuffled) Runner() amboy.Runner {
+func (q *shuffledLocal) Runner() amboy.Runner {
 	return q.runner
 }

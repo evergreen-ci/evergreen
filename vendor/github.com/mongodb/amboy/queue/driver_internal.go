@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-// Internal implements the driver interface, but rather than
+// driverInternal implements the driver interface, but rather than
 // connecting to a remote data source, this implementation is mostly
 // for testing the queue implementation locally, and providing a proof
 // of concept for the remote driver. May also be useful for converting
 // a remote queue into a local-only architecture in a
 // dependency-injection situation.
-type Internal struct {
+type driverInternal struct {
 	jobs struct {
 		dispatched map[string]struct{}
 		pending    []string
@@ -24,31 +24,30 @@ type Internal struct {
 		sync.RWMutex
 	}
 	closer context.CancelFunc
-	*LockManager
+	LockManager
 }
 
-// NewInternal creates a local persistence layer object.
-func NewInternal() *Internal {
-	d := &Internal{}
+// NewdriverInternal creates a local persistence layer object.
+func NewInternalDriver() Driver {
+	d := &driverInternal{}
 	d.jobs.m = make(map[string]amboy.Job)
 	d.jobs.dispatched = make(map[string]struct{})
-	d.LockManager = NewLockManager(uuid.NewV4().String(), d)
 	return d
 }
 
-// Open is a noop for the Internal implementation, and exists to
+// Open is a noop for the driverInternal implementation, and exists to
 // satisfy the Driver interface.
-func (d *Internal) Open(ctx context.Context) error {
+func (d *driverInternal) Open(ctx context.Context) error {
 	_, cancel := context.WithCancel(ctx)
 	d.closer = cancel
-	d.LockManager.Open(ctx)
+	d.LockManager = NewLockManager(ctx, uuid.NewV4().String(), d)
 
 	return nil
 }
 
-// Close is a noop for the Internal implementation, and exists to
+// Close is a noop for the driverInternal implementation, and exists to
 // satisfy the Driver interface.
-func (d *Internal) Close() {
+func (d *driverInternal) Close() {
 	if d.closer != nil {
 		d.closer()
 	}
@@ -57,7 +56,7 @@ func (d *Internal) Close() {
 // Get retrieves a job object from the persistence system based on the
 // name (ID) of the job. If no job exists by this name, the error is
 // non-nil.
-func (d *Internal) Get(name string) (amboy.Job, error) {
+func (d *driverInternal) Get(name string) (amboy.Job, error) {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 
@@ -71,7 +70,7 @@ func (d *Internal) Get(name string) (amboy.Job, error) {
 }
 
 // Put saves a new job to the queue, returning if it already exists.
-func (d *Internal) Put(j amboy.Job) error {
+func (d *driverInternal) Put(j amboy.Job) error {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 	name := j.ID()
@@ -90,7 +89,7 @@ func (d *Internal) Put(j amboy.Job) error {
 // Save takes a job and persists it in the storage for this driver. If
 // there is no job with a matching ID, then this operation returns an
 // error.
-func (d *Internal) Save(j amboy.Job) error {
+func (d *driverInternal) Save(j amboy.Job) error {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 	name := j.ID()
@@ -106,7 +105,7 @@ func (d *Internal) Save(j amboy.Job) error {
 }
 
 // JobStats returns job status documents for all jobs in the storage layer.
-func (d *Internal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+func (d *driverInternal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 	out := make(chan amboy.JobStatusInfo, len(d.jobs.m))
@@ -128,7 +127,7 @@ func (d *Internal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 // SaveStatus persists only the status document in the job in the
 // persistence layer. If the job does not exist, this method produces
 // an error.
-func (d *Internal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
+func (d *driverInternal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 	name := j.ID()
@@ -144,7 +143,7 @@ func (d *Internal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 
 // Jobs is a generator of all Job objects stored by the driver. There
 // is no additional filtering of the jobs produced by this generator.
-func (d *Internal) Jobs() <-chan amboy.Job {
+func (d *driverInternal) Jobs() <-chan amboy.Job {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 	output := make(chan amboy.Job, len(d.jobs.m))
@@ -161,7 +160,7 @@ func (d *Internal) Jobs() <-chan amboy.Job {
 // Next returns a job that is not complete from the queue. If there
 // are no pending jobs, then this method returns nil, but does not
 // block.
-func (d *Internal) Next(ctx context.Context) amboy.Job {
+func (d *driverInternal) Next(ctx context.Context) amboy.Job {
 	d.jobs.Lock()
 	defer d.jobs.Unlock()
 
@@ -201,7 +200,7 @@ func (d *Internal) Next(ctx context.Context) amboy.Job {
 // Stats iterates through all of the jobs stored in the driver and
 // determines how many locked, completed, and pending jobs are stored
 // in the queue.
-func (d *Internal) Stats() amboy.QueueStats {
+func (d *driverInternal) Stats() amboy.QueueStats {
 	d.jobs.RLock()
 	defer d.jobs.RUnlock()
 

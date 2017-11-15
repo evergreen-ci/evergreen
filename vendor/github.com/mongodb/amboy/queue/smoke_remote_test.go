@@ -8,7 +8,6 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
@@ -18,11 +17,11 @@ import (
 
 func TestRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 	assert := assert.New(t)
-	opts := driver.DefaultMongoDBOptions()
+	opts := DefaultMongoDBOptions()
 	name := uuid.NewV4().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	d := driver.NewMongoDB(name, opts)
-	q := NewRemoteUnordered(3)
+	d := NewMongoDBDriver(name, opts)
+	q := NewRemoteUnordered(3).(*remoteSimpleOrdered)
 
 	defer cleanupMongoDB(name, opts)
 	defer cancel()

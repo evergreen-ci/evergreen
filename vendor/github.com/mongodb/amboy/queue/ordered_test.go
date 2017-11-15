@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/suite"
@@ -58,8 +57,8 @@ func TestRemoteMongoDBOrderedQueueSuiteFourWorkers(t *testing.T) {
 	s.size = 4
 
 	s.setup = func() {
-		remote := NewSimpleRemoteOrdered(s.size)
-		d := driver.NewMongoDB(name, driver.DefaultMongoDBOptions())
+		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
+		d := NewMongoDBDriver(name, DefaultMongoDBOptions())
 		s.Require().NoError(d.Open(ctx))
 		s.Require().NoError(remote.SetDriver(d))
 		s.queue = remote
@@ -90,8 +89,8 @@ func TestRemoteInternalOrderedQueueSuite(t *testing.T) {
 	s.size = 4
 
 	s.reset = func() {
-		d := driver.NewPriority()
-		remote := NewSimpleRemoteOrdered(s.size)
+		d := NewPriorityDriver()
+		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
 		s.Require().NotNil(remote.remoteBase)
 		s.Require().NoError(d.Open(ctx))
 		s.Require().NoError(remote.SetDriver(d))
@@ -116,8 +115,8 @@ func TestRemotePriorityOrderedQueueSuite(t *testing.T) {
 	s.size = 4
 
 	s.reset = func() {
-		d := driver.NewInternal()
-		remote := NewSimpleRemoteOrdered(s.size)
+		d := NewInternalDriver()
+		remote := NewSimpleRemoteOrdered(s.size).(*remoteSimpleOrdered)
 		s.Require().NotNil(remote.remoteBase)
 		s.Require().NoError(d.Open(ctx))
 		s.Require().NoError(remote.SetDriver(d))
@@ -294,7 +293,7 @@ func (s *OrderedQueueSuite) TestPassedIsCompletedButDoesNotRun() {
 ////////////////////////////////////////////////////////////////////////
 
 type LocalOrderedSuite struct {
-	queue *LocalOrdered
+	queue *depGraphOrderedLocal
 	suite.Suite
 }
 
@@ -303,7 +302,7 @@ func TestLocalOrderedSuite(t *testing.T) {
 }
 
 func (s *LocalOrderedSuite) SetupTest() {
-	s.queue = NewLocalOrdered(2)
+	s.queue = NewLocalOrdered(2).(*depGraphOrderedLocal)
 }
 
 func (s *LocalOrderedSuite) TestLocalQueueFailsToStartIfGraphIsOutOfSync() {
