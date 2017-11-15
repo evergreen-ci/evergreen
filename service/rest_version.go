@@ -204,7 +204,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	copyVersion(srcVersion, destVersion)
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Errorln("adding BuildVariant", buildStatus.BuildVariant)
+		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
@@ -251,7 +251,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Errorln("adding BuildVariant", buildStatus.BuildVariant)
+		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
