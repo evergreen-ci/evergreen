@@ -725,6 +725,9 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		Project:             p.Identifier,
 		DisplayOnly:         true,
 		ExecutionTasks:      execTasks,
+		Status:              evergreen.TaskUndispatched,
+		StartTime:           util.ZeroTime,
+		Activated:           b.Activated,
 	}
 }
 
