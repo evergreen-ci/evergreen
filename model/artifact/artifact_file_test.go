@@ -82,5 +82,5 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 	s.Equal("http://placekitten.com/300/400", entryFromDb.Files[2].Link)
 	s.Equal("the_value_of_four", entryFromDb.Files[3].Name)
 	s.Equal("4", entryFromDb.Files[3].Link)
-	s.Equal(5, entryFromDb.Execution)
+	s.Equal(1, entryFromDb.Execution)
 }
