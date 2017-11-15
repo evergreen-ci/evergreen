@@ -156,6 +156,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// run the setup script with the agent
 	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
+		event.LogProvisionFailed(hostObj.Id, logs)
 		return "", errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 	}
 

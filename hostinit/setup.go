@@ -517,6 +517,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		// run the setup script with the agent
 		if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
 			grip.Error(h.SetUnprovisioned())
+			event.LogProvisionFailed(h.Id, logs)
 			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
