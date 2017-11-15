@@ -627,7 +627,7 @@ tasks:
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
 
-	invalidYml := `
+	nonexistentTaskYml := `
 buildvariants:
 - name: "bv1"
   tasks:
@@ -651,10 +651,40 @@ tasks:
 - name: execTask4
 `
 
-	proj, errs = projectFromYAML([]byte(invalidYml))
+	proj, errs = projectFromYAML([]byte(nonexistentTaskYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
+	assert.EqualError(errs[0], "display task displayTask1 contains execution task notHere which does not exist in build variant")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
+
+	duplicateTaskYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - execTask3
+  - name: displayTask2
+    execution_tasks:
+    - execTask4
+    - execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(duplicateTaskYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.EqualError(errs[0], "execution task execTask3 is listed in more than 1 display task")
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 }

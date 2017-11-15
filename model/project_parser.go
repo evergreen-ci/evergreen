@@ -547,8 +547,9 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 				}
 			}
 		}
-		// check that display tasks contain real tasks
-		bvTasks := make(map[string]string)
+		// check that display tasks contain real tasks that are not duplicated
+		bvTasks := make(map[string]string)          // map of all execution tasks
+		displayTaskContents := make(map[string]int) // map of execution tasks in a display task
 		for _, t := range bv.Tasks {
 			bvTasks[t.Name] = ""
 		}
@@ -559,12 +560,20 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 					evalErrs = append(evalErrs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
 				} else {
 					projectDt.ExecutionTasks = append(projectDt.ExecutionTasks, et)
+					displayTaskContents[et]++
 				}
 			}
 			if len(projectDt.ExecutionTasks) > 0 {
 				bv.DisplayTasks = append(bv.DisplayTasks, projectDt)
 			}
 		}
+		for taskId, count := range displayTaskContents {
+			if count > 1 {
+				evalErrs = append(evalErrs, fmt.Errorf("execution task %s is listed in more than 1 display task", taskId))
+				bv.DisplayTasks = nil
+			}
+		}
+
 		evalErrs = append(evalErrs, errs...)
 		bvs = append(bvs, bv)
 	}

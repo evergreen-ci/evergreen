@@ -56,6 +56,7 @@ var (
 	PriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey         = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	CostKey                = bsonutil.MustHaveTag(Task{}, "Cost")
+	ExecutionTasksKey      = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -378,6 +379,14 @@ func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, sta
 		VersionKey:      versionId,
 		DispatchTimeKey: bson.M{"$ne": util.ZeroTime},
 		StatusKey:       bson.M{"$in": statuses},
+	})
+}
+
+func ByExecutionTask(taskId string) db.Q {
+	return db.Query(bson.M{
+		ExecutionTasksKey: bson.M{
+			"$in": []string{taskId},
+		},
 	})
 }
 
