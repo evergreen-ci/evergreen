@@ -128,7 +128,6 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 }
 
 func validatePullRequestEvent(event *github.PullRequestEvent) bool {
-	// crying
 	if event.Action == nil || event.Number == nil ||
 		event.Repo == nil || event.Repo.FullName == nil ||
 		event.Sender == nil || event.Sender.Login == nil ||
