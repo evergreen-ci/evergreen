@@ -59,7 +59,6 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 		{"cat_pix", "http://placekitten.com/300/400", ""},
 		{"the_value_of_four", "4", ""},
 	}
-	s.testEntry.Execution = 5
 	s.NoError(s.testEntry.Upsert())
 
 	count, err := db.Count(Collection, bson.M{})
