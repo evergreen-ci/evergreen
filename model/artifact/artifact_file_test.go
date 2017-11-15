@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -13,74 +13,74 @@ func init() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
-func reset(t *testing.T) {
-	testutil.HandleTestingErr(
-		db.Clear(Collection),
-		t, "Error clearing collection")
+type TestArtifactFileSuite struct {
+	testEntry Entry
+	suite.Suite
 }
 
-func TestEntryUpsert(t *testing.T) {
-	Convey("With an artifact file entry", t, func() {
-		reset(t)
+func TestArtifactFile(t *testing.T) {
+	s := &TestArtifactFileSuite{}
+	suite.Run(t, s)
+}
 
-		testEntry := Entry{
-			TaskId:          "task1",
-			TaskDisplayName: "Task One",
-			BuildId:         "build1",
-			Files: []File{
-				{"cat_pix", "http://placekitten.com/800/600", ""},
-				{"fast_download", "https://fastdl.mongodb.org", ""},
-			},
-		}
+func (s *TestArtifactFileSuite) SetupTest() {
+	s.NoError(db.Clear(Collection))
+	s.testEntry = Entry{
+		TaskId:          "task1",
+		TaskDisplayName: "Task One",
+		BuildId:         "build1",
+		Files: []File{
+			{"cat_pix", "http://placekitten.com/800/600", ""},
+			{"fast_download", "https://fastdl.mongodb.org", ""},
+		},
+		Execution: 1,
+	}
 
-		Convey("upsert should succeed", func() {
-			So(testEntry.Upsert(), ShouldBeNil)
+	s.NoError(s.testEntry.Upsert())
+}
 
-			Convey("so all fields should be present in the db", func() {
-				entryFromDb, err := FindOne(ByTaskId("task1"))
-				So(err, ShouldBeNil)
-				So(entryFromDb.TaskId, ShouldEqual, "task1")
-				So(entryFromDb.TaskDisplayName, ShouldEqual, "Task One")
-				So(entryFromDb.BuildId, ShouldEqual, "build1")
-				So(len(entryFromDb.Files), ShouldEqual, 2)
-				So(entryFromDb.Files[0].Name, ShouldEqual, "cat_pix")
-				So(entryFromDb.Files[0].Link, ShouldEqual, "http://placekitten.com/800/600")
-				So(entryFromDb.Files[1].Name, ShouldEqual, "fast_download")
-				So(entryFromDb.Files[1].Link, ShouldEqual, "https://fastdl.mongodb.org")
-			})
+func (s *TestArtifactFileSuite) TestArtifactFieldsArePresent() {
+	entryFromDb, err := FindOne(ByTaskId("task1"))
+	s.NoError(err)
 
-			Convey("and with a following update", func() {
-				// reusing test entry but overwriting files field --
-				// consider this as an additional update from the agent
-				testEntry.Files = []File{
-					{"cat_pix", "http://placekitten.com/300/400", ""},
-					{"the_value_of_four", "4", ""},
-				}
-				So(testEntry.Upsert(), ShouldBeNil)
-				count, err := db.Count(Collection, bson.M{})
-				So(err, ShouldBeNil)
-				So(count, ShouldEqual, 1)
+	s.Equal("task1", entryFromDb.TaskId)
+	s.Equal("Task One", entryFromDb.TaskDisplayName)
+	s.Equal("build1", entryFromDb.BuildId)
+	s.Len(entryFromDb.Files, 2)
+	s.Equal("cat_pix", entryFromDb.Files[0].Name)
+	s.Equal("http://placekitten.com/800/600", entryFromDb.Files[0].Link)
+	s.Equal("fast_download", entryFromDb.Files[1].Name)
+	s.Equal("https://fastdl.mongodb.org", entryFromDb.Files[1].Link)
+	s.Equal(1, entryFromDb.Execution)
+}
 
-				Convey("all updated fields should change,", func() {
-					entryFromDb, err := FindOne(ByTaskId("task1"))
-					So(err, ShouldBeNil)
-					So(len(entryFromDb.Files), ShouldEqual, 4)
-					So(entryFromDb.Files[0].Name, ShouldEqual, "cat_pix")
-					So(entryFromDb.Files[0].Link, ShouldEqual, "http://placekitten.com/800/600")
-					So(entryFromDb.Files[1].Name, ShouldEqual, "fast_download")
-					So(entryFromDb.Files[1].Link, ShouldEqual, "https://fastdl.mongodb.org")
-					So(entryFromDb.Files[2].Name, ShouldEqual, "cat_pix")
-					So(entryFromDb.Files[2].Link, ShouldEqual, "http://placekitten.com/300/400")
-					So(entryFromDb.Files[3].Name, ShouldEqual, "the_value_of_four")
-					So(entryFromDb.Files[3].Link, ShouldEqual, "4")
+func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
+	s.testEntry.Files = []File{
+		{"cat_pix", "http://placekitten.com/300/400", ""},
+		{"the_value_of_four", "4", ""},
+	}
+	s.testEntry.Execution = 5
+	s.NoError(s.testEntry.Upsert())
 
-					Convey("but non-updated fields should remain unchanged in db", func() {
-						So(entryFromDb.TaskId, ShouldEqual, "task1")
-						So(entryFromDb.TaskDisplayName, ShouldEqual, "Task One")
-						So(entryFromDb.BuildId, ShouldEqual, "build1")
-					})
-				})
-			})
-		})
-	})
+	count, err := db.Count(Collection, bson.M{})
+	s.NoError(err)
+	s.Equal(1, count)
+
+	entryFromDb, err := FindOne(ByTaskId("task1"))
+	s.NoError(err)
+	s.NotNil(entryFromDb)
+
+	s.Equal("task1", entryFromDb.TaskId)
+	s.Equal("Task One", entryFromDb.TaskDisplayName)
+	s.Equal("build1", entryFromDb.BuildId)
+	s.Len(entryFromDb.Files, 4)
+	s.Equal("cat_pix", entryFromDb.Files[0].Name)
+	s.Equal("http://placekitten.com/800/600", entryFromDb.Files[0].Link)
+	s.Equal("fast_download", entryFromDb.Files[1].Name)
+	s.Equal("https://fastdl.mongodb.org", entryFromDb.Files[1].Link)
+	s.Equal("cat_pix", entryFromDb.Files[2].Name)
+	s.Equal("http://placekitten.com/300/400", entryFromDb.Files[2].Link)
+	s.Equal("the_value_of_four", entryFromDb.Files[3].Name)
+	s.Equal("4", entryFromDb.Files[3].Link)
+	s.Equal(5, entryFromDb.Execution)
 }

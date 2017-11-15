@@ -9,12 +9,13 @@ import (
 
 var (
 	// BSON fields for artifact file structs
-	TaskIdKey   = bsonutil.MustHaveTag(Entry{}, "TaskId")
-	TaskNameKey = bsonutil.MustHaveTag(Entry{}, "TaskDisplayName")
-	BuildIdKey  = bsonutil.MustHaveTag(Entry{}, "BuildId")
-	FilesKey    = bsonutil.MustHaveTag(Entry{}, "Files")
-	NameKey     = bsonutil.MustHaveTag(File{}, "Name")
-	LinkKey     = bsonutil.MustHaveTag(File{}, "Link")
+	TaskIdKey    = bsonutil.MustHaveTag(Entry{}, "TaskId")
+	TaskNameKey  = bsonutil.MustHaveTag(Entry{}, "TaskDisplayName")
+	BuildIdKey   = bsonutil.MustHaveTag(Entry{}, "BuildId")
+	FilesKey     = bsonutil.MustHaveTag(Entry{}, "Files")
+	ExecutionKey = bsonutil.MustHaveTag(Entry{}, "Execution")
+	NameKey      = bsonutil.MustHaveTag(File{}, "Name")
+	LinkKey      = bsonutil.MustHaveTag(File{}, "Link")
 )
 
 // === Queries ===
@@ -45,6 +46,9 @@ func (e Entry) Upsert() error {
 			bson.M{
 				"$addToSet": bson.M{
 					FilesKey: file,
+				},
+				"$set": bson.M{
+					ExecutionKey: e.Execution,
 				},
 			},
 		)
