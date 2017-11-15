@@ -198,7 +198,7 @@ func (cloudManager *EC2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 			continue
 		}
 
-		resources = append(resources, vol.DeviceName)
+		resources = append(resources, vol.EBS.VolumeId)
 	}
 
 	// attach the tags to this instance
