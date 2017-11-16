@@ -24,7 +24,10 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	assert.NoError(err)
 	assert.False(app.DryRun)
 
-	env, err := opts.Setup(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, err := opts.Setup(ctx)
 	assert.NoError(err)
 	assert.NotNil(env)
 	assert.NoError(env.Close())
@@ -36,4 +39,7 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(env)
 	assert.NoError(env.Close())
+
+	anser.ResetEnvironment()
+
 }
