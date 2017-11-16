@@ -23,7 +23,7 @@ type MigrationCommand struct {
 func (c *MigrationCommand) Execute(_ []string) error {
 	period, err := time.ParseDuration(c.Period)
 	if err != nil {
-		return errors.Wrap(err, "problem parsing arguemnts")
+		return errors.Wrap(err, "problem parsing arguments")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

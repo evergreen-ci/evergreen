@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/mock"
@@ -11,11 +12,19 @@ import (
 
 func TestAnserBasicPlaceholder(t *testing.T) {
 	assert := assert.New(t)
-	app, err := Application(mock.NewEnvironment(), "mci_test", 0)
+	opts := Options{
+		Database: "mci_test",
+		URI:      "mongodb://localhost:27017",
+		Period:   time.Second,
+		Target:   2,
+		Workers:  2,
+	}
+
+	app, err := opts.Application(mock.NewEnvironment())
 	assert.NoError(err)
 	assert.False(app.DryRun)
 
-	env, err := Setup(context.Background(), "mongodb://localhost:27017")
+	env, err := opts.Setup(context.Background())
 	assert.NoError(err)
 	assert.NotNil(env)
 	assert.NoError(env.Close())
@@ -23,14 +32,8 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	anser.ResetEnvironment()
 
 	// will use default
-	env, err = Setup(context.Background(), "")
+	env, err = opts.Setup(context.Background())
 	assert.NoError(err)
 	assert.NotNil(env)
 	assert.NoError(env.Close())
-
-	anser.ResetEnvironment()
-
-	env, err = Setup(context.Background(), "mongodb://localhost:38128")
-	assert.Error(err)
-	assert.Nil(env)
 }
