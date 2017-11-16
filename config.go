@@ -79,7 +79,7 @@ type ClientConfig struct {
 
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	HttpListenAddr      string
+	HttpListenAddr      string `yaml:"httplistenaddr"`
 	GithubWebhookSecret string `yaml:"github_webhook_secret"`
 }
 
