@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	evg "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
@@ -37,8 +36,10 @@ type testResult struct {
 	Execution int    `bson:"task_execution"`
 }
 
-func makeLegacyTaskMigrationFunction() db.MigrationOperation {
+func makeLegacyTaskMigrationFunction(db, collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
+
 		var id string
 		for _, raw := range rawD {
 			switch raw.Name {
@@ -52,12 +53,14 @@ func makeLegacyTaskMigrationFunction() db.MigrationOperation {
 			}
 		}
 
-		return evg.Update(tasksCollection, bson.M{"_id": id}, bson.M{"$set": bson.M{"execution": 0}})
+		return session.DB(db).C(collection).Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"execution": 0}})
 	}
 }
 
-func makeTaskMigrationFunction(collection string) db.MigrationOperation {
+func makeTaskMigrationFunction(db, collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
+
 		testresults := []testResult{}
 		var id string
 		var oldTaskID string
@@ -100,12 +103,13 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 				test.TaskID = oldTaskID
 			}
 			test.Execution = execution
-			if err := evg.Insert(testResultsCollection, test); err != nil {
+
+			if err := session.DB(db).C(collection).Insert(test); err != nil {
 				return errors.Wrap(err, "error saving testresult")
 			}
 		}
 
-		return evg.Update(collection, bson.M{"_id": id, "execution": execution}, bson.M{"$unset": bson.M{"test_results": 0}})
+		return session.DB(db).C(collection).Update(bson.M{"_id": id, "execution": execution}, bson.M{"$unset": bson.M{"test_results": 0}})
 	}
 }
 
@@ -159,13 +163,13 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 }
 
 func registerTestResultsMigrationOperations(env anser.Environment) error {
-	if err := env.RegisterManualMigrationOperation("tasks_testresults_noexecution", makeLegacyTaskMigrationFunction()); err != nil {
+	if err := env.RegisterManualMigrationOperation("tasks_testresults_noexecution", makeLegacyTaskMigrationFunction(db, tasksCollection)); err != nil {
 		return err
 	}
-	if err := env.RegisterManualMigrationOperation("tasks_testresults", makeTaskMigrationFunction(tasksCollection)); err != nil {
+	if err := env.RegisterManualMigrationOperation("tasks_testresults", makeTaskMigrationFunction(db, tasksCollection)); err != nil {
 		return err
 	}
-	if err := env.RegisterManualMigrationOperation("old_tasks_testresults", makeTaskMigrationFunction(oldTasksCollection)); err != nil {
+	if err := env.RegisterManualMigrationOperation("old_tasks_testresults", makeTaskMigrationFunction(db, oldTasksCollection)); err != nil {
 		return err
 	}
 	return nil
