@@ -96,7 +96,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			}
 
 		}
-		grip.Infof("Received Github Webhook Ping for hook: %s", event.Hook.URL)
+		grip.Infof("Received Github Webhook Ping for hook: %s", *event.Hook.URL)
 
 	case *github.PullRequestEvent:
 		if !validatePullRequestEvent(event) {

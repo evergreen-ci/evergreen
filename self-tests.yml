@@ -193,6 +193,8 @@ functions:
         }
 
         api_url: http://localhost:8080
+        api:
+          github_webhook_secret: "${github_webhook_secret}"
         ui:
           secret: "secret for UI"
           defaultproject: "mci"

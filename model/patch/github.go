@@ -38,7 +38,7 @@ type Intent interface {
 // amboy queue.
 type GithubIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
-	Id bson.ObjectId `bson:"_id"`
+	ID bson.ObjectId `bson:"_id"`
 
 	// MsgId is the unique message id as provided by Github (X-Github-Delivery)
 	MsgId string `bson:"msg_id"`
@@ -74,7 +74,7 @@ type GithubIntent struct {
 // BSON fields for the patches
 // nolint
 var (
-	idKey          = bsonutil.MustHaveTag(GithubIntent{}, "Id")
+	idKey          = bsonutil.MustHaveTag(GithubIntent{}, "ID")
 	msgIdKey       = bsonutil.MustHaveTag(GithubIntent{}, "MsgId")
 	createdAtKey   = bsonutil.MustHaveTag(GithubIntent{}, "CreatedAt")
 	repoNameKey    = bsonutil.MustHaveTag(GithubIntent{}, "RepoName")
@@ -88,8 +88,8 @@ var (
 )
 
 // NewGithubIntent return a new github patch intent.
-func NewGithubIntent(msgDeliveryId, repoName string, prNumber int, user, baseHash, url string) (Intent, error) {
-	if msgDeliveryId == "" {
+func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHash, url string) (Intent, error) {
+	if msgDeliveryID == "" {
 		return nil, errors.New("Unique msg id cannot be empty")
 	}
 	if repoName == "" || len(strings.Split(repoName, "/")) != 2 {
@@ -109,8 +109,8 @@ func NewGithubIntent(msgDeliveryId, repoName string, prNumber int, user, baseHas
 	}
 
 	return &GithubIntent{
-		Id:         bson.NewObjectId(),
-		MsgId:      msgDeliveryId,
+		ID:         bson.NewObjectId(),
+		MsgId:      msgDeliveryID,
 		RepoName:   repoName,
 		PRNumber:   prNumber,
 		User:       user,
@@ -124,7 +124,7 @@ func NewGithubIntent(msgDeliveryId, repoName string, prNumber int, user, baseHas
 func (g *GithubIntent) SetProcessed() error {
 	g.Processed = true
 	return updateOneIntent(
-		bson.M{idKey: g.Id},
+		bson.M{idKey: g.ID},
 		bson.M{"$set": bson.M{processedKey: g.Processed}},
 	)
 }
