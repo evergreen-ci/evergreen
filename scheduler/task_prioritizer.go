@@ -58,6 +58,7 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 			byPriority,
 			byNumDeps,
 			byAge,
+			byRuntime,
 			bySimilarFailing,
 			byRecentlyFailing,
 		},

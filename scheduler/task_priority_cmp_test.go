@@ -49,6 +49,40 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(cmpResult, ShouldEqual, -1)
 		})
 
+		Convey("all other things being equal, the longer"+
+			"running tasks should be before tests", func() {
+
+			tasks[0].TimeTaken = 20 * time.Minute
+			tasks[1].TimeTaken = time.Hour
+
+			taskComparator.previousTasksCache = map[string]task.Task{}
+			taskComparator.previousTasksCache[tasks[0].Id] = tasks[0]
+			taskComparator.previousTasksCache[tasks[1].Id] = tasks[1]
+
+			result, err := byRuntime(tasks[0], tasks[1], taskComparator)
+			So(err, ShouldBeNil)
+			So(result, ShouldEqual, -1)
+
+			result, err = byRuntime(tasks[1], tasks[0], taskComparator)
+			So(err, ShouldBeNil)
+			So(result, ShouldEqual, 1)
+
+			result, err = byRuntime(tasks[0], tasks[0], taskComparator)
+			So(err, ShouldBeNil)
+			So(result, ShouldEqual, 0)
+
+			tasks[0].TimeTaken = time.Duration(0)
+			taskComparator.previousTasksCache[tasks[0].Id] = tasks[0]
+
+			result, err = byRuntime(tasks[0], tasks[1], taskComparator)
+			So(err, ShouldBeNil)
+			So(result, ShouldEqual, 0)
+
+			result, err = byRuntime(tasks[1], tasks[0], taskComparator)
+			So(err, ShouldBeNil)
+			So(result, ShouldEqual, 0)
+		})
+
 		Convey("the dependent count comparator should prioritize a task"+
 			" if its number of dependents is higher", func() {
 

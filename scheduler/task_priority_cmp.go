@@ -76,6 +76,32 @@ func byAge(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
 	}
 }
 
+// byRuntime orders tasks so that the tasks that we expect to take
+// longer will start before the tasks that we expect to take less time,
+// which we expect will shorten makespan (without shortening total
+// runtime,) leading to faster feedback for users.
+func byRuntime(t1, t2 task.Task, comp *CmpBasedTaskComparator) (int, error) {
+	prevOne, okOne := comp.previousTasksCache[t1.Id]
+	prevTwo, okTwo := comp.previousTasksCache[t2.Id]
+	if !okOne || !okTwo {
+		return 0, nil
+	}
+
+	if prevOne.TimeTaken == 0 || prevTwo.TimeTaken == 0 {
+		return 0, nil
+	}
+
+	if prevOne.TimeTaken == prevTwo.TimeTaken {
+		return 0, nil
+	}
+
+	if prevOne.TimeTaken > prevTwo.TimeTaken {
+		return 1, nil
+	}
+
+	return -1, nil
+}
+
 // byRecentlyFailing compares the results of the previous executions of each
 // Task, and considers one more important if its previous execution resulted in
 // failure.
