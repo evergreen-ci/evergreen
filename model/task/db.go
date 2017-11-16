@@ -384,9 +384,7 @@ func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, sta
 
 func ByExecutionTask(taskId string) db.Q {
 	return db.Query(bson.M{
-		ExecutionTasksKey: bson.M{
-			"$in": []string{taskId},
-		},
+		ExecutionTasksKey: taskId,
 	})
 }
 
