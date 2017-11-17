@@ -416,13 +416,14 @@ func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 		http.StatusForbidden)
 }
 
-// Logger is a middleware handler that logs the request as it goes in and the response as it goes out.
+// RecoveryLogger is a middleware handler that logs the request as it goes in and the response as it goes out.
 type RecoveryLogger struct {
 	// ids is a channel producing unique, autoincrementing request ids that are included in logs.
 	ids chan int
 }
 
-// NewLogger returns a new Logger instance
+// NewRecoveryLogger returns negroni middleware that logs each
+// request, and recovers from panics encountered during request processing.
 func NewRecoveryLogger() *RecoveryLogger {
 	ids := make(chan int, 100)
 	go func() {
