@@ -34,13 +34,14 @@ func (c *MigrationCommand) Execute(_ []string) error {
 	settings := env.Settings()
 
 	opts := migrations.Options{
-		Period: period,
-		Target: c.Target,
-		Limit:  c.Limit,
-		URI:    c.MongoDBURI,
+		Period:   period,
+		Target:   c.Target,
+		Limit:    c.Limit,
+		URI:      c.MongoDBURI,
+		Database: settings.Database.DB,
 	}
 	if opts.URI == "" {
-		opts.URI = settings.Database.DB
+		opts.URI = settings.Database.Url
 	}
 
 	anserEnv, err := opts.Setup(ctx)
