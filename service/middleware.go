@@ -416,14 +416,15 @@ func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 		http.StatusForbidden)
 }
 
-// Logger is a middleware handler that logs the request as it goes in and the response as it goes out.
-type Logger struct {
+// RecoveryLogger is a middleware handler that logs the request as it goes in and the response as it goes out.
+type RecoveryLogger struct {
 	// ids is a channel producing unique, autoincrementing request ids that are included in logs.
 	ids chan int
 }
 
-// NewLogger returns a new Logger instance
-func NewLogger() *Logger {
+// NewRecoveryLogger returns negroni middleware that logs each
+// request, and recovers from panics encountered during request processing.
+func NewRecoveryLogger() *RecoveryLogger {
 	ids := make(chan int, 100)
 	go func() {
 		reqId := 0
@@ -433,10 +434,10 @@ func NewLogger() *Logger {
 		}
 	}()
 
-	return &Logger{ids}
+	return &RecoveryLogger{ids}
 }
 
-func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
 	reqID := <-l.ids
 
@@ -447,6 +448,26 @@ func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Ha
 		"request": reqID,
 		"path":    r.URL.Path,
 	})
+
+	defer func() {
+		if err := recover(); err != nil {
+			if rw.Header().Get("Content-Type") == "" {
+				rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			}
+
+			rw.WriteHeader(http.StatusInternalServerError)
+
+			grip.Critical(message.Fields{
+				"stack":    message.NewStack(2, "").Raw(),
+				"panic":    err,
+				"action":   "aborted",
+				"request":  reqID,
+				"duration": time.Since(start),
+				"path":     r.URL.Path,
+				"span":     time.Since(start).String(),
+			})
+		}
+	}()
 
 	next(rw, r)
 

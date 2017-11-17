@@ -38,7 +38,7 @@ func GetHandlerPprof(settings *evergreen.Settings) http.Handler {
 	root.HandleFunc("/trace", http.HandlerFunc(trace))
 
 	n := negroni.New()
-	n.Use(NewLogger())
+	n.Use(NewRecoveryLogger())
 	n.UseHandler(router)
 	return n
 }

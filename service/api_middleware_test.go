@@ -27,7 +27,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	as.AttachRoutes(router)
 
 	n := negroni.New()
-	n.Use(NewLogger())
+	n.Use(NewRecoveryLogger())
 	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
 	n.UseHandler(router)
 	return n, nil

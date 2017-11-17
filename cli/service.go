@@ -114,7 +114,7 @@ func getHandlerAPI(settings *evergreen.Settings, router *mux.Router) (http.Handl
 	as.AttachRoutes(router)
 
 	n := negroni.New()
-	n.Use(service.NewLogger())
+	n.Use(service.NewRecoveryLogger())
 	n.Use(negroni.HandlerFunc(service.UserMiddleware(as.UserManager)))
 	n.UseHandler(router)
 	return n, nil
@@ -166,7 +166,7 @@ func getHandlerUI(settings *evergreen.Settings, router *mux.Router) (http.Handle
 
 	n := negroni.New()
 	n.Use(negroni.NewStatic(http.Dir(webHome)))
-	n.Use(service.NewLogger())
+	n.Use(service.NewRecoveryLogger())
 	n.Use(negroni.HandlerFunc(service.UserMiddleware(uis.UserManager)))
 	n.UseHandler(router)
 
