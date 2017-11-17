@@ -400,32 +400,26 @@ type taskRestartHandler struct {
 // sets them on the taskRestartHandler to be used by Execute.
 func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	projCtx := MustHaveProjectContext(ctx)
-	task, err := projCtx.GetTask()
-	if err != nil || task == nil {
+	if projCtx.Task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
-	trh.taskId = task.Id
-
-	pref, err := projCtx.GetProjectRef()
-	if err != nil || pref != nil {
+	if projCtx.ProjectRef == nil {
 		return rest.APIError{
 			Message:    "Project not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
-
+	trh.taskId = projCtx.Task.Id
 	project, err := projCtx.GetProject()
 	if err != nil || project == nil {
 		return errors.Wrap(err, "Unable to fetch associated project")
 	}
 	trh.project = project
-
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
-
 	return nil
 }
 
@@ -508,17 +502,16 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *h
 		}
 	}
 	projCtx := MustHaveProjectContext(ctx)
-
-	task, err := projCtx.GetTask()
-	if err != nil || task == nil {
+	if projCtx.Task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
 	}
 
-	tep.task = task
-	tep.user = MustHaveUser(ctx)
+	tep.task = projCtx.Task
+	u := MustHaveUser(ctx)
+	tep.user = u
 	return nil
 }
 

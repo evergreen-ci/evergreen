@@ -13,7 +13,7 @@ import (
 
 type LocalQueueSuite struct {
 	size    int
-	queue   *LocalUnordered
+	queue   *unorderedLocal
 	require *require.Assertions
 	suite.Suite
 }
@@ -35,7 +35,7 @@ func (s *LocalQueueSuite) SetupSuite() {
 }
 
 func (s *LocalQueueSuite) SetupTest() {
-	s.queue = NewLocalUnordered(s.size)
+	s.queue = NewLocalUnordered(s.size).(*unorderedLocal)
 }
 
 func (s *LocalQueueSuite) TestDefaultStateOfQueueObjectIsExpected() {

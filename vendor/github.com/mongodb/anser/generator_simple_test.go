@@ -94,11 +94,12 @@ func TestSimpleMigrationGenerator(t *testing.T) {
 	job = factory().(*simpleMigrationGenerator)
 	job.NS = ns
 	job.MigrationHelper = mh
+	job.Limit = 3
 	job.SetID("simple")
 	iter := &mock.Iterator{
 		ShouldIter: true,
 		Results: []interface{}{
-			&doc{"one"}, &doc{"two"}, &doc{"three"},
+			&doc{"one"}, &doc{"two"}, &doc{"three"}, &doc{"four"},
 		},
 	}
 

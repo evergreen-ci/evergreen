@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
 )
@@ -20,7 +19,7 @@ var _ evergreen.Environment = &Environment{}
 
 type Environment struct {
 	Remote            amboy.Queue
-	Driver            *driver.Priority
+	Driver            queue.Driver
 	Local             amboy.Queue
 	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
@@ -33,7 +32,7 @@ func (e *Environment) Configure(ctx context.Context, path string) error {
 
 	e.EvergreenSettings = testutil.TestConfig()
 	e.DBSession = anserMock.NewSession()
-	e.Driver = driver.NewPriority()
+	e.Driver = queue.NewPriorityDriver()
 
 	if err := e.Driver.Open(ctx); err != nil {
 		return err

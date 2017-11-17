@@ -90,7 +90,7 @@ type Connector interface {
 	NewIntentHost(string, string, string, string, *user.DBUser) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
-	FetchContext(string, string, string, string, string) *model.Context
+	FetchContext(string, string, string, string, string) (model.Context, error)
 
 	// FindAllDistros is a method to find a sorted list of all distros.
 	FindAllDistros() ([]distro.Distro, error)

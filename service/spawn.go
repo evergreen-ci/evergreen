@@ -177,7 +177,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.WriteJSON(w, http.StatusOK, "host terminated")
 			return
 		}
-		cloudHost, err := providers.GetCloudHost(h, uis.Settings)
+		cloudHost, err := providers.GetCloudHost(h, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -189,7 +189,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, "host terminated")
 		return
 	case HostPasswordUpdate:
-		pwdUpdateCmd, err := constructPwdUpdateCommand(uis.Settings, h, updateParams.RDPPwd)
+		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.Settings, h, updateParams.RDPPwd)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error constructing host RDP password"))
 			return

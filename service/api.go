@@ -52,7 +52,7 @@ const (
 type APIServer struct {
 	*render.Render
 	UserManager  auth.UserManager
-	Settings     *evergreen.Settings
+	Settings     evergreen.Settings
 	clientConfig *evergreen.ClientConfig
 }
 
@@ -75,7 +75,7 @@ func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
 	as := &APIServer{
 		Render:       render.New(render.Options{}),
 		UserManager:  authManager,
-		Settings:     settings,
+		Settings:     *settings,
 		clientConfig: clientConfig,
 	}
 
@@ -321,7 +321,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 // AttachResults attaches the received results to the task in the database.
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	results := &task.TestResults{}
+	results := &task.LocalTestResults{}
 	err := util.ReadJSONInto(util.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -361,6 +361,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		TaskId:          t.Id,
 		TaskDisplayName: t.DisplayName,
 		BuildId:         t.BuildId,
+		Execution:       t.Execution,
 	}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)
@@ -523,7 +524,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		hostLink := fmt.Sprintf("%v/host/%v", as.Settings.Ui.Url, hostObj.Id)
 		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
 			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
-		if err = notify.NotifyAdmins(subject, message, as.Settings); err != nil {
+		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			grip.Errorln("Error sending email:", err)
 		}
 
@@ -550,14 +551,14 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cloudManager, err := providers.GetCloudManager(hostObj.Provider, as.Settings)
+	cloudManager, err := providers.GetCloudManager(hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",
 			notify.ProvisionFailurePreface, hostObj.Distro.Id)
 		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
 			hostObj.Id, hostObj.Provider, err)
-		if err = notify.NotifyAdmins(subject, message, as.Settings); err != nil {
+		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			grip.Errorln("Error sending email:", err)
 		}
 		return
@@ -684,7 +685,7 @@ func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetSettings returns the global evergreen settings.
-func (as *APIServer) GetSettings() *evergreen.Settings {
+func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
 }
 

@@ -10,7 +10,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/pool"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/grip"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
@@ -23,9 +22,9 @@ func init() {
 }
 
 type RemoteUnorderedSuite struct {
-	queue             *RemoteUnordered
-	driver            driver.Driver
-	driverConstructor func() driver.Driver
+	queue             *remoteUnordered
+	driver            Driver
+	driverConstructor func() Driver
 	tearDown          func()
 	require           *require.Assertions
 	canceler          context.CancelFunc
@@ -38,8 +37,8 @@ func TestRemoteUnorderedInternalDriverSuite(t *testing.T) {
 	}
 
 	tests := new(RemoteUnorderedSuite)
-	tests.driverConstructor = func() driver.Driver {
-		return driver.NewInternal()
+	tests.driverConstructor = func() Driver {
+		return NewInternalDriver()
 	}
 	tests.tearDown = func() {}
 
@@ -52,8 +51,8 @@ func TestRemoteUnorderedPriorityDriverSuite(t *testing.T) {
 	}
 
 	tests := new(RemoteUnorderedSuite)
-	tests.driverConstructor = func() driver.Driver {
-		return driver.NewPriority()
+	tests.driverConstructor = func() Driver {
+		return NewPriorityDriver()
 	}
 	tests.tearDown = func() {}
 
@@ -64,8 +63,8 @@ func TestRemoteUnorderedMongoDBSuite(t *testing.T) {
 	tests := new(RemoteUnorderedSuite)
 	name := "test-" + uuid.NewV4().String()
 	uri := "mongodb://localhost"
-	tests.driverConstructor = func() driver.Driver {
-		return driver.NewMongoDB(name, driver.DefaultMongoDBOptions())
+	tests.driverConstructor = func() Driver {
+		return NewMongoDBDriver(name, DefaultMongoDBOptions())
 	}
 
 	tests.tearDown = func() {
@@ -98,7 +97,7 @@ func (s *RemoteUnorderedSuite) SetupTest() {
 	s.driver = s.driverConstructor()
 	s.canceler = canceler
 	s.NoError(s.driver.Open(ctx))
-	s.queue = NewRemoteUnordered(2)
+	s.queue = NewRemoteUnordered(2).(*remoteUnordered)
 }
 
 func (s *RemoteUnorderedSuite) TearDownTest() {

@@ -10,7 +10,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// Hard limit on patch size.
+// SizeLimit is a hard limit on patch size.
 const SizeLimit = 1024 * 1024 * 100
 
 // VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
@@ -19,48 +19,58 @@ type VariantTasks struct {
 	Tasks   []string
 }
 
-// Stores all details related to a patch request
+// Patch stores all details related to a patch request
 type Patch struct {
-	Id            bson.ObjectId  `bson:"_id,omitempty"`
-	Description   string         `bson:"desc"`
-	Project       string         `bson:"branch"`
-	Githash       string         `bson:"githash"`
-	PatchNumber   int            `bson:"patch_number"`
-	Author        string         `bson:"author"`
-	Version       string         `bson:"version"`
-	Status        string         `bson:"status"`
-	CreateTime    time.Time      `bson:"create_time"`
-	StartTime     time.Time      `bson:"start_time"`
-	FinishTime    time.Time      `bson:"finish_time"`
-	BuildVariants []string       `bson:"build_variants"`
-	Tasks         []string       `bson:"tasks"`
-	VariantsTasks []VariantTasks `bson:"variants_tasks"`
-	Patches       []ModulePatch  `bson:"patches"`
-	Activated     bool           `bson:"activated"`
-	PatchedConfig string         `bson:"patched_config"`
+	Id              bson.ObjectId  `bson:"_id,omitempty"`
+	Description     string         `bson:"desc"`
+	Project         string         `bson:"branch"`
+	Githash         string         `bson:"githash"`
+	PatchNumber     int            `bson:"patch_number"`
+	Author          string         `bson:"author"`
+	Version         string         `bson:"version"`
+	Status          string         `bson:"status"`
+	CreateTime      time.Time      `bson:"create_time"`
+	StartTime       time.Time      `bson:"start_time"`
+	FinishTime      time.Time      `bson:"finish_time"`
+	BuildVariants   []string       `bson:"build_variants"`
+	Tasks           []string       `bson:"tasks"`
+	VariantsTasks   []VariantTasks `bson:"variants_tasks"`
+	Patches         []ModulePatch  `bson:"patches"`
+	Activated       bool           `bson:"activated"`
+	PatchedConfig   string         `bson:"patched_config"`
+	GithubPatchData GithubPatch    `bson:"github_patch_data,omitempty"`
 }
 
-// this stores request details for a patch
+// GithubPatch stores patch data for patches create from GitHub pull requests
+type GithubPatch struct {
+	PRNumber     int    `bson:"pr_number"`
+	Organization string `bson:"organization"`
+	Repository   string `bson:"repository"`
+	Author       string `bson:"author"`
+}
+
+// ModulePatch stores request details for a patch
 type ModulePatch struct {
 	ModuleName string   `bson:"name"`
 	Githash    string   `bson:"githash"`
 	PatchSet   PatchSet `bson:"patch_set"`
 }
 
-// this stores information about the actual patch
+// PatchSet stores information about the actual patch
 type PatchSet struct {
 	Patch       string    `bson:"patch,omitempty"`
 	PatchFileId string    `bson:"patch_file_id,omitempty"`
 	Summary     []Summary `bson:"summary"`
 }
 
-// this stores summary patch information
+// Summary stores summary patch information
 type Summary struct {
 	Name      string `bson:"filename"`
 	Additions int    `bson:"additions"`
 	Deletions int    `bson:"deletions"`
 }
 
+// SetDescription sets a patch's description in the database
 func (p *Patch) SetDescription(desc string) error {
 	p.Description = desc
 	return UpdateOne(
@@ -138,7 +148,7 @@ func (p *Patch) SyncVariantsTasks(variantsTasks []VariantTasks) {
 	p.BuildVariants = variants
 }
 
-// Updates the variant/tasks pairs in the database.
+// SetVariantsTasks updates the variant/tasks pairs in the database.
 // Also updates the Tasks and Variants fields to maintain backwards compatibility between
 // the old and new fields.
 func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
@@ -265,7 +275,7 @@ func (p *Patch) SetActivation(activated bool) error {
 	)
 }
 
-// Add or update a module within a patch.
+// UpdateModulePatch adds or updates a module within a patch.
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	// check that a patch for this module exists
 	query := bson.M{

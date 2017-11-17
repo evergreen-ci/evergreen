@@ -8,6 +8,7 @@ import (
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -83,9 +84,10 @@ func TestAvergeTimeCalculator(t *testing.T) {
 	// average is uninitialized by default
 	assert.Equal(p.ewma.Value(), float64(0))
 
-	// some initial setup, guesses at actual values
-	assert.True(5*time.Second-p.getNextTime(time.Millisecond) < 100*time.Millisecond)
-	assert.True(4*time.Second-p.getNextTime(time.Minute) < 100*time.Millisecond)
+	// some initial setup, sanity check an actual value
+	result := p.getNextTime(time.Millisecond)
+	assert.InDelta(5*time.Second, result, float64(time.Second), "actual:%s", result)
+	result = p.getNextTime(time.Minute)
 
 	// priming the average and watching the return value of the
 	// function increase:
@@ -97,9 +99,9 @@ func TestAvergeTimeCalculator(t *testing.T) {
 	// means the values are going up in this function.
 	var last time.Duration
 	for i := 0; i < 100; i++ {
-		result := p.getNextTime(time.Second)
+		result = p.getNextTime(time.Second)
 
-		assert.True(last < result)
+		assert.True(last <= result, "%d:%s<=%s", i, last, result)
 		last = result
 	}
 
@@ -153,4 +155,31 @@ func TestEWMARateLimitingWorkerHandlesPanicingJobs(t *testing.T) {
 		storage:   make(map[string]amboy.Job),
 	}
 	assert.NotPanics(func() { p.worker(ctx, jobsChanWithPanicingJobs(ctx, 10)) })
+}
+
+func TestMultipleWorkers(t *testing.T) {
+	assert := assert.New(t) // nolint
+	for workers := time.Duration(1); workers <= 10; workers++ {
+		ema := ewmaRateLimiting{
+			period: time.Minute,
+			target: 60,
+			size:   int(workers),
+			queue:  nil,
+			ewma:   ewma.NewMovingAverage(),
+		}
+		for i := 0; i < 100; i++ {
+			next := ema.getNextTime(time.Millisecond)
+			if !assert.True(next*workers > 750*time.Millisecond) || !assert.True(next < workers*time.Second) {
+				grip.Errorf("workers=%d, iter=%d, next=%s", workers, i, next)
+			}
+
+			// sam's test
+			assert.InDelta(time.Duration(workers)*time.Second, float64(next), float64(workers*10*time.Millisecond),
+				"next=%s, workers=%d, iter=%d", next, workers, i)
+
+			// brian's test:
+			assert.InDelta(time.Duration(workers)*time.Second, next, float64(100*time.Millisecond),
+				"next=%s, workers=%d, iter=%d", next, workers, i)
+		}
+	}
 }

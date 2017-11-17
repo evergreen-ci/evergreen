@@ -106,7 +106,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			baseVersionId = baseVersion.Id
 		}
 		patch.Patches = nil
-		uiPatches = append(uiPatches, uiPatch{Patch: &patch, BaseVersionId: baseVersionId})
+		uiPatches = append(uiPatches, uiPatch{Patch: patch, BaseVersionId: baseVersionId})
 	}
 	versions, err := version.Find(version.ByIds(versionIds).WithoutFields(version.ConfigKey))
 	if err != nil {

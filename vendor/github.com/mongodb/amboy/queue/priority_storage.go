@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"container/heap"
@@ -9,25 +9,25 @@ import (
 	"github.com/pkg/errors"
 )
 
-// PriorityStorage is a local storage system for Jobs in priority
+// priorityStorage is a local storage system for Jobs in priority
 // order. Used by the LocalPriorityQueue, and wrapped by the
 // LocalPriorityDriver for use in remote queues.
-type PriorityStorage struct {
+type priorityStorage struct {
 	pq    priorityQueue
 	table map[string]*queueItem
 	mutex sync.RWMutex
 }
 
-// NewPriorityStorage returns an initialized PriorityStorage object.
-func NewPriorityStorage() *PriorityStorage {
-	return &PriorityStorage{
+// makePriorityStorage returns an initialized priorityStorage object.
+func makePriorityStorage() *priorityStorage {
+	return &priorityStorage{
 		table: make(map[string]*queueItem),
 	}
 }
 
 // Save inserts a job into the priority queue. If the Job exists (by
 // ID), then this operation updates the existing job.
-func (s *PriorityStorage) Save(j amboy.Job) {
+func (s *priorityStorage) Save(j amboy.Job) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -50,7 +50,7 @@ func (s *PriorityStorage) Save(j amboy.Job) {
 
 // Insert adds a job to the storage back-end, succeeding only if the
 // job is uniquely named.
-func (s *PriorityStorage) Insert(j amboy.Job) error {
+func (s *priorityStorage) Insert(j amboy.Job) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -72,7 +72,7 @@ func (s *PriorityStorage) Insert(j amboy.Job) error {
 
 // Pop returns the next highest priority job from the queue. If there
 // are no Jobs in the queue, Pop returns nil.
-func (s *PriorityStorage) Pop() amboy.Job {
+func (s *priorityStorage) Pop() amboy.Job {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -86,7 +86,7 @@ func (s *PriorityStorage) Pop() amboy.Job {
 
 // Contents returns a generator of all jobs. tracked by this
 // instance. This includes completed jobs.
-func (s *PriorityStorage) Contents() <-chan amboy.Job {
+func (s *priorityStorage) Contents() <-chan amboy.Job {
 	output := make(chan amboy.Job)
 
 	go func() {
@@ -105,7 +105,7 @@ func (s *PriorityStorage) Contents() <-chan amboy.Job {
 // JobServer takes a channel constructed outside of this instance, and
 // pushes jobs from the priority queue through that channel. The
 // JobServer does not push nil jobs through the channel.
-func (s *PriorityStorage) JobServer(ctx context.Context, jobs chan amboy.Job) {
+func (s *priorityStorage) JobServer(ctx context.Context, jobs chan amboy.Job) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -123,7 +123,7 @@ func (s *PriorityStorage) JobServer(ctx context.Context, jobs chan amboy.Job) {
 
 // Get returns a job from the queue's storage by name, with the
 // boolean value used to validate the job's existence.
-func (s *PriorityStorage) Get(name string) (amboy.Job, bool) {
+func (s *priorityStorage) Get(name string) (amboy.Job, bool) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -137,7 +137,7 @@ func (s *PriorityStorage) Get(name string) (amboy.Job, bool) {
 }
 
 // Size returns the total number of jobs stored in the instance.
-func (s *PriorityStorage) Size() int {
+func (s *priorityStorage) Size() int {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return len(s.table)
@@ -145,7 +145,7 @@ func (s *PriorityStorage) Size() int {
 
 // Pending returns the total number of pending jobs waiting for
 // dispatch.
-func (s *PriorityStorage) Pending() int {
+func (s *priorityStorage) Pending() int {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.pq.Len()

@@ -56,18 +56,9 @@ func (pp *PerfPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 				Position:  plugin.PageCenter,
 				PanelHTML: template.HTML(panelHTML),
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					var result bool
-
-					pref, err := context.Metadata.GetProjectRef()
-					if err == nil && pref != nil {
-						result = util.StringSliceContains(pp.Projects, pref.Identifier)
-					}
-
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{
-						Enabled: result,
-					}, nil
+					}{util.StringSliceContains(pp.Projects, context.ProjectRef.Identifier)}, nil
 				},
 			},
 		},

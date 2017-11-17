@@ -309,7 +309,7 @@ func (mtc *MockTaskConnector) ResetTask(taskId, username string, proj *serviceMo
 			t.StartTime = util.ZeroTime
 			t.ScheduledTime = util.ZeroTime
 			t.FinishTime = util.ZeroTime
-			t.TestResults = []task.TestResult{}
+			t.LocalTestResults = []task.TestResult{}
 			mtc.CachedTasks[ix] = t
 		}
 	}

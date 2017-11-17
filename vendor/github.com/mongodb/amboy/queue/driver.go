@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -18,13 +18,10 @@ type Driver interface {
 	SaveStatus(amboy.Job, amboy.JobStatusInfo) error
 
 	Jobs() <-chan amboy.Job
-	Next() amboy.Job
+	Next(context.Context) amboy.Job
 
 	Stats() amboy.QueueStats
 	JobStats(context.Context) <-chan amboy.JobStatusInfo
 
-	// The Lock and Unlock methods are typically provided by the
-	// LockManager type.
-	Lock(amboy.Job) error
-	Unlock(amboy.Job) error
+	LockManager
 }

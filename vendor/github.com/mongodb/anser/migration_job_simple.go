@@ -5,6 +5,8 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -41,6 +43,14 @@ type simpleMigrationJob struct {
 }
 
 func (j *simpleMigrationJob) Run() {
+	grip.Info(message.Fields{
+		"message":   "starting migration",
+		"operation": "simple",
+		"migration": j.Definition.Migration,
+		"target":    j.Definition.ID,
+		"id":        j.ID(),
+	})
+
 	defer j.FinishMigration(j.Definition.Migration, &j.Base)
 
 	env := j.Env()

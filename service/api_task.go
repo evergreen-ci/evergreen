@@ -176,7 +176,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		grip.Errorln("Error updating expected duration:", err)
 	}
-	taskRunnerInstance := taskrunner.NewTaskRunner(as.Settings)
+	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 	if err != nil {
 		grip.Errorf("error getting current agent revision %+v", err)
@@ -206,7 +206,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 // are logged but not returned, since any number of API failures could happen and
 // we shouldn't sacrifice a task's status for them.
 func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.Time) {
-	manager, err := providers.GetCloudManager(h.Provider, as.Settings)
+	manager, err := providers.GetCloudManager(h.Provider, &as.Settings)
 	if err != nil {
 		grip.Errorf("Error loading provider for host %s cost calculation: %+v", t.HostId, err)
 		return
@@ -319,7 +319,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskRunnerInstance := taskrunner.NewTaskRunner(as.Settings)
+	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
 	// check host health before getting next task
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 	if err != nil {

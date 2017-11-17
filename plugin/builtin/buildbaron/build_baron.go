@@ -111,18 +111,10 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					template.HTML(`<script type="text/javascript" src="/plugin/buildbaron/static/js/task_build_baron.js"></script>`),
 				},
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
-					var result bool
-
-					pref, err := context.Metadata.GetProjectRef()
-					if err == nil && pref != nil {
-						_, result = bbp.opts.Projects[pref.Identifier]
-					}
-
+					_, enabled := bbp.opts.Projects[context.ProjectRef.Identifier]
 					return struct {
 						Enabled bool `json:"enabled"`
-					}{
-						Enabled: result,
-					}, nil
+					}{enabled}, nil
 				},
 			},
 		},
@@ -237,7 +229,7 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 func taskToJQL(t *task.Task, searchProjects []string) string {
 	var jqlParts []string
 	var jqlClause string
-	for _, testResult := range t.TestResults {
+	for _, testResult := range t.LocalTestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
 			fileParts := eitherSlash.Split(testResult.TestFile, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", fileParts[len(fileParts)-1]))

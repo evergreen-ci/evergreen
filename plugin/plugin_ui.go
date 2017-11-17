@@ -9,7 +9,11 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/pkg/errors"
 )
 
@@ -84,10 +88,14 @@ type UIPanel struct {
 
 // UIContext stores all relevant models for a plugin page.
 type UIContext struct {
-	Settings *evergreen.Settings
-	User     *user.DBUser
-	Request  *http.Request
-	Metadata *model.Context
+	Settings   evergreen.Settings
+	User       *user.DBUser
+	Task       *task.Task
+	Build      *build.Build
+	Version    *version.Version
+	Patch      *patch.Patch
+	ProjectRef *model.ProjectRef
+	Request    *http.Request
 }
 
 // PanelLayout tells the view renderer what panel HTML data to inject and where

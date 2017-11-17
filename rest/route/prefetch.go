@@ -71,18 +71,14 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
 
-	opCtx := sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
-	user := GetUser(ctx)
-
-	pref, err := opCtx.GetProjectRef()
+	opCtx, err := sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
-		return ctx, rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}
+		return ctx, err
 	}
 
-	if pref != nil && pref.Private && user == nil {
+	user := GetUser(ctx)
+
+	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
 		// Project is private and user is not authorized so return not found
 		return ctx, rest.APIError{
 			StatusCode: http.StatusNotFound,
@@ -90,21 +86,14 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 		}
 	}
 
-	patch, err := opCtx.GetPatch()
-	if err != nil {
-		return ctx, rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
-		}
-	}
-	if patch != nil && user == nil {
+	if opCtx.Patch != nil && user == nil {
 		return ctx, rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
 		}
 	}
 
-	ctx = context.WithValue(ctx, RequestContext, opCtx)
+	ctx = context.WithValue(ctx, RequestContext, &opCtx)
 
 	return ctx, nil
 }

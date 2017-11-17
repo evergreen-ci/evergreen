@@ -8,4 +8,5 @@ type GeneratorOptions struct {
 	DependsOn []string
 	NS        Namespace
 	Query     map[string]interface{}
+	Limit     int
 }

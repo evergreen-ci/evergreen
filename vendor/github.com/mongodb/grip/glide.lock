@@ -43,5 +43,7 @@ imports:
   version: 7a51fb928f52a196d5f31daefb8a489453ef54ff
 - name: golang.org/x/oauth2
   version: f047394b6d14284165300fd82dad67edb3a4d7f6
+- name: golang.org/x/sys
+  version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
 
 devImports: []

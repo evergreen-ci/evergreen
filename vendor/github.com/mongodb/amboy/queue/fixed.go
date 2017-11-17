@@ -19,7 +19,7 @@ import (
 // Specify a capacity when constructing the queue; the queue will
 // store no more than 2x the number specified, and no more the
 // specified capacity of completed jobs.
-type LocalLimitedSize struct {
+type limitedSizeLocal struct {
 	channel  chan amboy.Job
 	toDelete chan string
 	capacity int
@@ -31,8 +31,8 @@ type LocalLimitedSize struct {
 
 // NewLocalLimitedSize constructs a LocalLimitedSize queue instance
 // with the specified number of workers and capacity.
-func NewLocalLimitedSize(workers, capacity int) *LocalLimitedSize {
-	q := &LocalLimitedSize{
+func NewLocalLimitedSize(workers, capacity int) amboy.Queue {
+	q := &limitedSizeLocal{
 		capacity: capacity,
 		storage:  make(map[string]amboy.Job),
 	}
@@ -44,7 +44,7 @@ func NewLocalLimitedSize(workers, capacity int) *LocalLimitedSize {
 // opened, a task of that name exists has been completed (and is
 // stored in the results storage,) or is pending, and finally if the
 // queue is at capacity.
-func (q *LocalLimitedSize) Put(j amboy.Job) error {
+func (q *limitedSizeLocal) Put(j amboy.Job) error {
 	if !q.Started() {
 		return errors.Errorf("queue not open. could not add %s", j.ID())
 	}
@@ -72,7 +72,7 @@ func (q *LocalLimitedSize) Put(j amboy.Job) error {
 
 // Get returns a job, by name. This will include all tasks currently
 // stored in the queue.
-func (q *LocalLimitedSize) Get(name string) (amboy.Job, bool) {
+func (q *limitedSizeLocal) Get(name string) (amboy.Job, bool) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -84,7 +84,7 @@ func (q *LocalLimitedSize) Get(name string) (amboy.Job, bool) {
 // Next returns the next pending job, and is used by amboy.Runner
 // implementations to fetch work. This operation blocks until a job is
 // available or the context is canceled.
-func (q *LocalLimitedSize) Next(ctx context.Context) amboy.Job {
+func (q *limitedSizeLocal) Next(ctx context.Context) amboy.Job {
 	select {
 	case job := <-q.channel:
 		return job
@@ -95,7 +95,7 @@ func (q *LocalLimitedSize) Next(ctx context.Context) amboy.Job {
 
 // Started returns true if the queue is open and is processing jobs,
 // and false otherwise.
-func (q *LocalLimitedSize) Started() bool {
+func (q *limitedSizeLocal) Started() bool {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -103,7 +103,7 @@ func (q *LocalLimitedSize) Started() bool {
 }
 
 // Results is a generator of all completed tasks in the queue.
-func (q *LocalLimitedSize) Results(ctx context.Context) <-chan amboy.Job {
+func (q *limitedSizeLocal) Results(ctx context.Context) <-chan amboy.Job {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -124,7 +124,7 @@ func (q *LocalLimitedSize) Results(ctx context.Context) <-chan amboy.Job {
 // JobStats returns an iterator for job status documents for all jobs
 // in the queue. For this queue implementation *queued* jobs are returned
 // first.
-func (q *LocalLimitedSize) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
+func (q *limitedSizeLocal) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -140,7 +140,7 @@ func (q *LocalLimitedSize) JobStats(ctx context.Context) <-chan amboy.JobStatusI
 }
 
 // Runner returns the Queue's embedded amboy.Runner instance.
-func (q *LocalLimitedSize) Runner() amboy.Runner {
+func (q *limitedSizeLocal) Runner() amboy.Runner {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -149,7 +149,7 @@ func (q *LocalLimitedSize) Runner() amboy.Runner {
 
 // SetRunner allows callers to, if the queue has not started, inject a
 // different runner implementation.
-func (q *LocalLimitedSize) SetRunner(r amboy.Runner) error {
+func (q *limitedSizeLocal) SetRunner(r amboy.Runner) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -164,7 +164,7 @@ func (q *LocalLimitedSize) SetRunner(r amboy.Runner) error {
 
 // Stats returns information about the current state of jobs in the
 // queue, and the amount of work completed.
-func (q *LocalLimitedSize) Stats() amboy.QueueStats {
+func (q *limitedSizeLocal) Stats() amboy.QueueStats {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
 
@@ -178,7 +178,7 @@ func (q *LocalLimitedSize) Stats() amboy.QueueStats {
 }
 
 // Complete marks a job complete in the queue.
-func (q *LocalLimitedSize) Complete(ctx context.Context, j amboy.Job) {
+func (q *limitedSizeLocal) Complete(ctx context.Context, j amboy.Job) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -194,7 +194,7 @@ func (q *LocalLimitedSize) Complete(ctx context.Context, j amboy.Job) {
 // Start starts the runner and initializes the pending task
 // storage. Only produces an error if the underlying runner fails to
 // start.
-func (q *LocalLimitedSize) Start(ctx context.Context) error {
+func (q *limitedSizeLocal) Start(ctx context.Context) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

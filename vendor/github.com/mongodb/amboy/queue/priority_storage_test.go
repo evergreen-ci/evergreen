@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 type PriorityStorageSuite struct {
-	ps      *PriorityStorage
+	ps      *priorityStorage
 	require *require.Assertions
 	suite.Suite
 }
@@ -25,7 +25,7 @@ func (s *PriorityStorageSuite) SetupSuite() {
 }
 
 func (s *PriorityStorageSuite) SetupTest() {
-	s.ps = NewPriorityStorage()
+	s.ps = makePriorityStorage()
 }
 
 func (s *PriorityStorageSuite) TestInitialInstanceHasNoItems() {

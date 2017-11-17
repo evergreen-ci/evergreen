@@ -20,6 +20,7 @@ type Entry struct {
 	TaskDisplayName string `json:"task_name" bson:"task_name"`
 	BuildId         string `json:"build" bson:"build"`
 	Files           []File `json:"files" bson:"files"`
+	Execution       int    `json:"execution" bson:"execution"`
 }
 
 // Params stores file entries as key-value pairs, for easy parameter parsing.

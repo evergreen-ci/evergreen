@@ -7,7 +7,6 @@ import (
 	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/amboy/queue/driver"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -139,15 +138,12 @@ func (e *envState) createQueues(ctx context.Context) error {
 
 	// configure the remote mongodb-backed amboy
 	// queue.
-	opts := driver.DefaultMongoDBOptions()
+	opts := queue.DefaultMongoDBOptions()
 	opts.URI = e.settings.Database.Url
 	opts.DB = e.settings.Amboy.DB
 	opts.Priority = true
 
-	var qmdb *driver.MongoDB
-	var err error
-
-	qmdb, err = driver.OpenNewMongoDB(ctx, e.settings.Amboy.Name, opts, e.session)
+	qmdb, err := queue.OpenNewMongoDBDriver(ctx, e.settings.Amboy.Name, opts, e.session)
 	if err != nil {
 		return errors.Wrap(err, "problem setting queue backend")
 	}

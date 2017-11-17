@@ -36,7 +36,7 @@ type pluginData struct {
 }
 
 type uiVersion struct {
-	Version     *version.Version
+	Version     version.Version
 	Builds      []uiBuild
 	PatchInfo   *uiPatch `json:",omitempty"`
 	ActiveTasks int
@@ -45,7 +45,7 @@ type uiVersion struct {
 }
 
 type uiPatch struct {
-	Patch       *patch.Patch
+	Patch       patch.Patch
 	StatusDiffs interface{}
 
 	// only used on task pages
@@ -151,7 +151,7 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 		buildAsUI.Tasks = uiTasks
 		uiBuilds[buildIdx] = buildAsUI
 	}
-	return &uiVersion{Version: version, Builds: uiBuilds}, nil
+	return &uiVersion{Version: (*version), Builds: uiBuilds}, nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -180,7 +180,7 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 	// create the necessary uiVersion struct for each version
 	uiVersions := make([]uiVersion, len(versionsFromDB))
 	for versionIdx, version := range versionsFromDB {
-		versionAsUI := uiVersion{Version: &version}
+		versionAsUI := uiVersion{Version: version}
 		uiVersions[versionIdx] = versionAsUI
 
 		buildIds := version.BuildIds

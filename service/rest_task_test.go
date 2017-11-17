@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
@@ -24,7 +25,7 @@ import (
 
 var taskTestConfig = testutil.TestConfig()
 
-func insertTaskForTesting(taskId, versionId, projectName string, testResult task.TestResult) (*task.Task, error) {
+func insertTaskForTesting(taskId, versionId, projectName string, testResult testresult.TestResult) (*task.Task, error) {
 	task := &task.Task{
 		Id:                  taskId,
 		CreateTime:          time.Now().Add(-20 * time.Minute),
@@ -58,10 +59,13 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult task
 		Aborted:          false,
 		TimeTaken:        time.Duration(100 * time.Millisecond),
 		ExpectedDuration: time.Duration(99 * time.Millisecond),
-		TestResults:      []task.TestResult{testResult},
 	}
 
-	return task, task.Insert()
+	err := task.Insert()
+	if err != nil {
+		return nil, err
+	}
+	return task, testresult.InsertManyByTaskIDAndExecution([]testresult.TestResult{testResult}, task.Id, task.Execution)
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -71,7 +75,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    taskTestConfig,
+		Settings:    *taskTestConfig,
 		UserManager: userManager,
 	}
 
@@ -87,14 +91,14 @@ func TestGetTaskInfo(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	Convey("When finding info on a particular task", t, func() {
-		testutil.HandleTestingErr(db.Clear(task.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t,
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
 		versionId := "my-version"
 		projectName := "project_test"
 
-		testResult := task.TestResult{
+		testResult := testresult.TestResult{
 			Status:    "success",
 			TestFile:  "some-test",
 			URL:       "some-url",
@@ -275,7 +279,7 @@ func TestGetTaskStatus(t *testing.T) {
 
 	uis := UIServer{
 		RootURL:     taskTestConfig.Ui.Url,
-		Settings:    taskTestConfig,
+		Settings:    *taskTestConfig,
 		UserManager: userManager,
 	}
 
@@ -292,12 +296,12 @@ func TestGetTaskStatus(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
 	Convey("When finding the status of a particular task", t, func() {
-		testutil.HandleTestingErr(db.Clear(task.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t,
 			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
 
-		testResult := task.TestResult{
+		testResult := testresult.TestResult{
 			Status:    "success",
 			TestFile:  "some-test",
 			URL:       "some-url",
@@ -312,9 +316,9 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			TestResults: []task.TestResult{testResult},
 		}
 		So(testTask.Insert(), ShouldBeNil)
+		So(testresult.InsertManyByTaskIDAndExecution([]testresult.TestResult{testResult}, testTask.Id, testTask.Execution), ShouldBeNil)
 
 		url, err := router.Get("task_status").URL("task_id", taskId)
 		So(err, ShouldBeNil)

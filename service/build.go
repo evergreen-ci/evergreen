@@ -44,62 +44,47 @@ func getUiTaskCache(build *build.Build) ([]uiTask, error) {
 
 func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	buildDoc, err := projCtx.GetBuild()
-	if err != nil || buildDoc == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
-		return
-	}
 
-	ver, err := projCtx.GetVersion()
-	if err != nil || ver == nil {
+	if projCtx.Build == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 	buildAsUI := &uiBuild{
-		Build:       *buildDoc,
+		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
-		Elapsed:     time.Since(buildDoc.StartTime),
-		Version:     *ver,
+		Elapsed:     time.Since(projCtx.Build.StartTime),
+		Version:     *projCtx.Version,
 	}
 
-	pref, _ := projCtx.GetProjectRef()
-	if pref != nil {
-		buildAsUI.RepoOwner = pref.Owner
-		buildAsUI.Repo = pref.Repo
+	if projCtx.ProjectRef != nil {
+		buildAsUI.RepoOwner = projCtx.ProjectRef.Owner
+		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
-	uiTasks, err := getUiTaskCache(buildDoc)
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	buildAsUI.Tasks = uiTasks
 
-	if buildDoc.Requester == evergreen.PatchVersionRequester {
-		buildOnBaseCommit, err := buildDoc.FindBuildOnBaseCommit()
+	if projCtx.Build.Requester == evergreen.PatchVersionRequester {
+		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if buildOnBaseCommit == nil {
 			grip.Warningln("Could not find build for base commit of patch build:",
-				buildDoc.Id)
+				projCtx.Build.Id)
 		}
-		diffs := model.StatusDiffBuilds(buildOnBaseCommit, buildDoc)
+		diffs := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
 
 		baseId := ""
 		if buildOnBaseCommit != nil {
 			baseId = buildOnBaseCommit.Id
 		}
-
-		patch, err := projCtx.GetPatch()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-
-		}
-
-		buildAsUI.PatchInfo = &uiPatch{Patch: patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
+		buildAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
 	}
 
 	// set data for plugin data function injection
@@ -118,21 +103,8 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	user := MustHaveUser(r)
 
-	buildDoc, err := projCtx.GetBuild()
-	if err != nil || buildDoc == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
-		return
-	}
-
-	ver, err := projCtx.GetVersion()
-	if err != nil || ver == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
-		return
-	}
-
-	pref, err := projCtx.GetProjectRef()
-	if err != nil || pref == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
+	if projCtx.Build == nil {
+		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
@@ -160,12 +132,12 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "abort":
-		if err := model.AbortBuild(buildDoc.Id, user.Id); err != nil {
-			http.Error(w, fmt.Sprintf("Error aborting build %v", buildDoc.Id), http.StatusInternalServerError)
+		if err := model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
+			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-		if err := model.RefreshTasksCache(buildDoc.Id); err != nil {
-			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", buildDoc.Id), http.StatusInternalServerError)
+		if err := model.RefreshTasksCache(projCtx.Build.Id); err != nil {
+			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
 	case "set_priority":
@@ -182,28 +154,28 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		err = model.SetBuildPriority(buildDoc.Id, priority)
+		err = model.SetBuildPriority(projCtx.Build.Id, priority)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error setting priority on build %v", buildDoc.Id),
+			http.Error(w, fmt.Sprintf("Error setting priority on build %v", projCtx.Build.Id),
 				http.StatusInternalServerError)
 			return
 		}
 	case "set_active":
-		err := model.SetBuildActivation(buildDoc.Id, putParams.Active, user.Id)
+		err := model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", buildDoc.Id, putParams.Active),
+			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", projCtx.Build.Id, putParams.Active),
 				http.StatusInternalServerError)
 			return
 		}
 		if !putParams.Active && putParams.Abort {
-			if err = task.AbortBuild(buildDoc.Id); err != nil {
+			if err = task.AbortBuild(projCtx.Build.Id); err != nil {
 				http.Error(w, "Error unscheduling tasks", http.StatusInternalServerError)
 				return
 			}
 		}
 	case "restart":
-		if err := model.RestartBuild(buildDoc.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
-			http.Error(w, fmt.Sprintf("Error restarting build %v", buildDoc.Id), http.StatusInternalServerError)
+		if err := model.RestartBuild(projCtx.Build.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
+			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
 	default:
@@ -212,22 +184,21 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// After updating the build, fetch updated version to serve back to client
-	buildDoc, err = build.FindOne(build.ById(buildDoc.Id))
+	projCtx.Build, err = build.FindOne(build.ById(projCtx.Build.Id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
 	updatedBuild := uiBuild{
-		Build:       *buildDoc,
+		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
-		Elapsed:     time.Since(buildDoc.StartTime),
-		RepoOwner:   pref.Owner,
-		Repo:        pref.Repo,
-		Version:     *ver,
+		Elapsed:     time.Since(projCtx.Build.StartTime),
+		RepoOwner:   projCtx.ProjectRef.Owner,
+		Repo:        projCtx.ProjectRef.Repo,
+		Version:     *projCtx.Version,
 	}
 
-	uiTasks, err := getUiTaskCache(buildDoc)
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

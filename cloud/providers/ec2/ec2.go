@@ -189,12 +189,25 @@ func (cloudManager *EC2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	// create some tags based on user, hostname, owner, time, etc.
 	tags := makeTags(h)
 
+	resources := []string{
+		instance.InstanceId,
+	}
+
+	for _, vol := range instance.BlockDevices {
+		if vol.DeviceName == "" {
+			continue
+		}
+
+		resources = append(resources, vol.EBS.VolumeId)
+	}
+
 	// attach the tags to this instance
-	if err = attachTags(ec2Handle, tags, instance.InstanceId); err != nil {
+	if err = attachTagsToResources(ec2Handle, tags, resources); err != nil {
 		err = errors.Wrapf(err, "unable to attach tags for %s", instance.InstanceId)
 		grip.Error(err)
 		return nil, err
 	}
+
 	grip.Debugf("attached tags for '%s'", instance.InstanceId)
 	event.LogHostStarted(newHost.Id)
 

@@ -21,37 +21,26 @@ type patchVariantsTasksRequest struct {
 }
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
-	currentUser := MustHaveUser(r)
 	projCtx := MustHaveProjectContext(r)
-	patchDoc, _ := projCtx.Context.GetPatch()
-	if patchDoc == nil {
+	if projCtx.Patch == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	ver, err := projCtx.Context.GetVersion()
-	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-
-	pref, err := projCtx.Context.GetProjectRef()
-	if err != nil || pref == nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
+	currentUser := MustHaveUser(r)
 
 	var versionAsUI *uiVersion
-	if ver != nil { // Patch is already finalized
+	if projCtx.Version != nil { // Patch is already finalized
 		versionAsUI = &uiVersion{
-			Version:   ver,
-			RepoOwner: pref.Owner,
-			Repo:      pref.Repo,
+			Version:   *projCtx.Version,
+			RepoOwner: projCtx.ProjectRef.Owner,
+			Repo:      projCtx.ProjectRef.Repo,
 		}
 	}
 
 	// get the new patch document with the patched configuration
-	patchDoc, err = patch.FindOne(patch.ById(patchDoc.Id))
+	var err error
+	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
 		return
@@ -59,7 +48,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
 	project := &model.Project{}
-	if err := yaml.Unmarshal([]byte(patchDoc.PatchedConfig), project); err != nil {
+	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
 	}
 
@@ -82,35 +71,25 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Variants map[string]model.BuildVariant
 		Tasks    []interface{}
 		CanEdit  bool
-		Patch    *patch.Patch
 		ViewData
-	}{
-		Version:  versionAsUI,
-		Variants: variantMappings,
-		Tasks:    tasksList,
-		Patch:    patchDoc,
-		CanEdit:  uis.canEditPatch(currentUser, patchDoc),
-		ViewData: uis.GetCommonViewData(w, r, true, true),
-	}, "base", "patch_version.html", "base_angular.html", "menu.html")
+	}{versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch), uis.GetCommonViewData(w, r, true, true)}, "base",
+		"patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	patchDoc, _ := projCtx.Context.GetPatch()
-	if patchDoc == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+	if projCtx.Patch == nil {
+		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-
 	curUser := GetUser(r)
-	if !uis.canEditPatch(curUser, patchDoc) {
+	if !uis.canEditPatch(curUser, projCtx.Patch) {
 		http.Error(w, "Not authorized to schedule patch", http.StatusUnauthorized)
 		return
 	}
-
 	// grab patch again, as the diff  was excluded
 	var err error
-	patchDoc, err = patch.FindOne(patch.ById(patchDoc.Id))
+	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
 		return
@@ -118,7 +97,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if err = yaml.Unmarshal([]byte(patchDoc.PatchedConfig), project); err != nil {
+	if err = yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
 
@@ -150,57 +129,57 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the description for both reconfigured and new patches
-	if err = patchDoc.SetDescription(patchUpdateReq.Description); err != nil {
+	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "Error setting description"))
 		return
 	}
 
 	// update the description for both reconfigured and new patches
-	if err = patchDoc.SetVariantsTasks(model.TVPairsToVariantTasks(pairs)); err != nil {
+	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs)); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "Error setting description"))
 		return
 	}
 
-	if patchDoc.Version != "" {
-		patchDoc.Activated = true
+	if projCtx.Patch.Version != "" {
+		projCtx.Patch.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
-		ver, err := projCtx.GetVersion()
-		if err != nil || ver == nil {
+		if projCtx.Version == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Errorf("Couldn't find patch for id %v", patchDoc.Version))
+				errors.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
 			return
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(patchDoc, ver, project, pairs)
+		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, pairs)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new tasks for version `%v`", ver.Id))
+				errors.Wrapf(err, "Error creating new tasks for version `%v`", projCtx.Version.Id))
 			return
 		}
 
-		if err = model.AddNewBuildsForPatch(patchDoc, ver, project, pairs); err != nil {
+		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, project, pairs)
+		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error creating new builds for version `%v`", err, ver.Id))
+				errors.Wrapf(err, "Error creating new builds for version `%v`", err, projCtx.Version.Id))
 			return
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Builds and tasks successfully added to patch."))
 		uis.WriteJSON(w, http.StatusOK, struct {
 			VersionId string `json:"version"`
-		}{ver.Id})
+		}{projCtx.Version.Id})
 	} else {
-		patchDoc.Activated = true
-		err = patchDoc.SetVariantsTasks(model.TVPairsToVariantTasks(pairs))
+		projCtx.Patch.Activated = true
+		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error setting patch variants and tasks"))
 			return
 		}
 
-		ver, err := model.FinalizePatch(patchDoc, uis.Settings)
+		ver, err := model.FinalizePatch(projCtx.Patch, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))
@@ -215,15 +194,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	patchDoc, _ := projCtx.Context.GetPatch()
-	if patchDoc == nil {
+	if projCtx.Patch == nil {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
 	// We have to reload the patch outside of the project context,
 	// since the raw diff is excluded by default. This redundancy is
 	// worth the time savings this behavior offers other pages.
-	fullPatch, err := patch.FindOne(patch.ById(patchDoc.Id))
+	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %s", err.Error()),
 			http.StatusInternalServerError)
@@ -239,12 +217,11 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	patchDoc, _ := projCtx.Context.GetPatch()
-	if patchDoc == nil {
+	if projCtx.Patch == nil {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-	fullPatch, err := patch.FindOne(patch.ById(patchDoc.Id))
+	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %s", err.Error()),
 			http.StatusInternalServerError)
@@ -264,12 +241,11 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	patchDoc, _ := projCtx.Context.GetPatch()
-	if patchDoc == nil {
+	if projCtx.Patch == nil {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-	fullPatch, err := patch.FindOne(patch.ById(patchDoc.Id))
+	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error loading patch: %s", err.Error()),
 			http.StatusInternalServerError)

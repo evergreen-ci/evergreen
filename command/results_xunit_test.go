@@ -69,7 +69,7 @@ func dBTests(taskId string) {
 	t, err := task.FindOne(task.ById(taskId))
 	So(err, ShouldBeNil)
 	So(t, ShouldNotBeNil)
-	So(len(t.TestResults), ShouldNotEqual, 0)
+	So(len(t.LocalTestResults), ShouldNotEqual, 0)
 
 	Convey("along with the proper logs", func() {
 		// junit_3.xml
@@ -87,7 +87,7 @@ func dBTests(taskId string) {
 func dBTestsWildcard(taskId string) {
 	t, err := task.FindOne(task.ById(taskId))
 	So(err, ShouldBeNil)
-	So(len(t.TestResults), ShouldEqual, TotalResultCount)
+	So(len(t.LocalTestResults), ShouldEqual, TotalResultCount)
 
 	Convey("along with the proper logs", func() {
 		// junit_1.xml

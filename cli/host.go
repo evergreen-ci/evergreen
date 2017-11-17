@@ -221,6 +221,17 @@ func getChmodCommandWithSudo(ctx context.Context, script string, sudo bool) *exe
 // HostTeardownCommand runs host teardown script.
 type HostTeardownCommand struct{}
 
+func (c *HostTeardownCommand) Execute(_ []string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	out, err := c.runTeardownScript(ctx)
+	if err != nil {
+		return errors.Wrap(err, out)
+	}
+	return nil
+}
+
 func (c *HostTeardownCommand) runTeardownScript(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, setupTimeout)
 	defer cancel()

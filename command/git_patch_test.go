@@ -159,7 +159,7 @@ func TestGetPatchCommands(t *testing.T) {
 		})
 		Convey("on a patch with content, the set of commands should apply the patch", func() {
 			commands := getPatchCommands(testPatch.Patches[1], "", "")
-			So(len(commands), ShouldEqual, 8)
+			So(len(commands), ShouldEqual, 7)
 		})
 	})
 }

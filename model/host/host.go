@@ -392,6 +392,24 @@ func (h *Host) SetAgentRevision(agentRevision string) error {
 	return nil
 }
 
+// IsWaitingForAgent provides a local predicate for the logic in the
+// "NeedsNewAgent" query.
+func (h *Host) IsWaitingForAgent() bool {
+	if h.NeedsNewAgent {
+		return true
+	}
+
+	if util.IsZeroTime(h.LastCommunicationTime) {
+		return true
+	}
+
+	if h.LastCommunicationTime.Before(time.Now().Add(-MaxLCTInterval)) {
+		return true
+	}
+
+	return false
+}
+
 // SetNeedsNewAgent sets the "needs new agent" flag on the host
 func (h *Host) SetNeedsNewAgent(needsAgent bool) error {
 	err := UpdateOne(bson.M{IdKey: h.Id},

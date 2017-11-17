@@ -7,21 +7,13 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/smartystreets/goconvey/convey/reporting"
 )
-
-func init() {
-	reporting.QuietMode()
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
 func TestPrefetchUser(t *testing.T) {
 	Convey("When there are users to fetch and a request", t, func() {
@@ -111,10 +103,10 @@ func TestPrefetchProject(t *testing.T) {
 		Convey("When fetching the project context", func() {
 			ctx := context.Background()
 			Convey("should error if project is private and no user is set", func() {
-				pref := &model.ProjectRef{
+				opCtx := model.Context{}
+				opCtx.ProjectRef = &model.ProjectRef{
 					Private: true,
 				}
-				opCtx := model.CreateContext(pref, nil, nil, nil, nil, nil)
 				serviceContext.MockContextConnector.CachedContext = opCtx
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(ctx.Value(RequestContext), ShouldBeNil)
@@ -126,8 +118,8 @@ func TestPrefetchProject(t *testing.T) {
 				So(err, ShouldResemble, errToResemble)
 			})
 			Convey("should error if patch exists and no user is set", func() {
-				ptch := &patch.Patch{}
-				opCtx := model.CreateContext(nil, nil, ptch, nil, nil, nil)
+				opCtx := model.Context{}
+				opCtx.Patch = &patch.Patch{}
 				serviceContext.MockContextConnector.CachedContext = opCtx
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(ctx.Value(RequestContext), ShouldBeNil)
@@ -139,17 +131,16 @@ func TestPrefetchProject(t *testing.T) {
 				So(err, ShouldResemble, errToResemble)
 			})
 			Convey("should succeed if project ref exists and user is set", func() {
-				pref := &model.ProjectRef{
+				opCtx := model.Context{}
+				opCtx.ProjectRef = &model.ProjectRef{
 					Private: true,
 				}
-				opCtx := model.CreateContext(pref, nil, nil, nil, nil, nil)
 				ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "test_user"})
-				ctx = context.WithValue(ctx, RequestContext, opCtx)
 				serviceContext.MockContextConnector.CachedContext = opCtx
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(err, ShouldBeNil)
 
-				So(ctx.Value(RequestContext), ShouldResemble, opCtx)
+				So(ctx.Value(RequestContext), ShouldResemble, &opCtx)
 			})
 		})
 	})

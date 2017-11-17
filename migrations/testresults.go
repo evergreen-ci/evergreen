@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	evg "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
@@ -37,12 +36,36 @@ type testResult struct {
 	Execution int    `bson:"task_execution"`
 }
 
-func makeTaskMigrationFunction(collection string) db.MigrationOperation {
+func makeLegacyTaskMigrationFunction(database, collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
+
+		var id string
+		for _, raw := range rawD {
+			switch raw.Name {
+			case "_id":
+				if err := raw.Value.Unmarshal(&id); err != nil {
+					return errors.Wrap(err, "error unmarshaling task id")
+				}
+			case "execution":
+				// sanity check
+				return nil
+			}
+		}
+
+		return session.DB(database).C(collection).Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"execution": 0}})
+	}
+}
+
+func makeTaskMigrationFunction(database, collection string) db.MigrationOperation {
+	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
+
 		testresults := []testResult{}
 		var id string
 		var oldTaskID string
 		var execution int
+		var hasExecution bool
 		for _, raw := range rawD {
 			switch raw.Name {
 			case "test_results":
@@ -64,7 +87,13 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 				if err := raw.Value.Unmarshal(&execution); err != nil {
 					return errors.Wrap(err, "error unmarshaling task execution")
 				}
+				hasExecution = true
 			}
+		}
+
+		// Very old tasks may not have an execution field. We should ignore those tasks, as they also have odd shapes.
+		if !hasExecution {
+			return nil
 		}
 
 		for _, test := range testresults {
@@ -74,24 +103,42 @@ func makeTaskMigrationFunction(collection string) db.MigrationOperation {
 				test.TaskID = oldTaskID
 			}
 			test.Execution = execution
-			if err := evg.Insert(testResultsCollection, test); err != nil {
+
+			if err := session.DB(database).C(testResultsCollection).Insert(test); err != nil {
 				return errors.Wrap(err, "error saving testresult")
 			}
 		}
 
-		return evg.Update(collection, bson.M{"_id": id, "execution": execution}, bson.M{"$unset": bson.M{"test_results": 0}})
+		return session.DB(database).C(collection).Update(bson.M{"_id": id, "execution": execution}, bson.M{"$unset": bson.M{"test_results": 0}})
 	}
 }
 
 // testResultsGeneratorFactory returns generators for the tasks and old_tasks collections.
-func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Generator {
+func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []anser.Generator {
+	noExecutionOpts := model.GeneratorOptions{
+		NS: model.Namespace{
+			DB:         db,
+			Collection: tasksCollection,
+		},
+		Limit: limit,
+		Query: bson.M{
+			"execution": bson.M{"$exists": false},
+		},
+		JobID: "migration-testresults-legacy-no-execution",
+	}
+
 	tasksOpts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
 			Collection: tasksCollection,
 		},
-		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
-		JobID: "migration-testresults-tasks",
+		Limit: limit,
+		Query: bson.M{
+			"test_results.0": bson.M{"$exists": true},
+			"execution":      bson.M{"$exists": true},
+		},
+		JobID:     "migration-testresults-tasks",
+		DependsOn: []string{"migration-testresults-legacy-no-execution"},
 	}
 
 	oldTasksopts := model.GeneratorOptions{
@@ -99,21 +146,30 @@ func testResultsGeneratorFactory(env anser.Environment, db string) []anser.Gener
 			DB:         db,
 			Collection: oldTasksCollection,
 		},
-		Query: bson.M{"test_results.0": bson.M{"$exists": true}},
-		JobID: "migration-testresults-oldtasks",
+		Limit: limit,
+		Query: bson.M{
+			"test_results.0": bson.M{"$exists": true},
+			"execution":      bson.M{"$exists": true},
+		},
+		JobID:     "migration-testresults-oldtasks",
+		DependsOn: []string{"migration-testresults-legacy-no-execution"},
 	}
 
 	return []anser.Generator{
+		anser.NewManualMigrationGenerator(env, noExecutionOpts, "tasks_testresults_noexecution"),
 		anser.NewManualMigrationGenerator(env, tasksOpts, "tasks_testresults"),
 		anser.NewManualMigrationGenerator(env, oldTasksopts, "old_tasks_testresults"),
 	}
 }
 
-func registerTestResultsMigrationOperations(env anser.Environment) error {
-	if err := env.RegisterManualMigrationOperation("tasks_testresults", makeTaskMigrationFunction(tasksCollection)); err != nil {
+func registerTestResultsMigrationOperations(env anser.Environment, db string) error {
+	if err := env.RegisterManualMigrationOperation("tasks_testresults_noexecution", makeLegacyTaskMigrationFunction(db, tasksCollection)); err != nil {
 		return err
 	}
-	if err := env.RegisterManualMigrationOperation("old_tasks_testresults", makeTaskMigrationFunction(oldTasksCollection)); err != nil {
+	if err := env.RegisterManualMigrationOperation("tasks_testresults", makeTaskMigrationFunction(db, tasksCollection)); err != nil {
+		return err
+	}
+	if err := env.RegisterManualMigrationOperation("old_tasks_testresults", makeTaskMigrationFunction(db, oldTasksCollection)); err != nil {
 		return err
 	}
 	return nil

@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 )
 
 type InternalSuite struct {
-	driver  *Internal
+	driver  *driverInternal
 	require *require.Assertions
 	suite.Suite
 }
@@ -23,7 +23,7 @@ func (s *InternalSuite) SetupSuite() {
 }
 
 func (s *InternalSuite) SetupTest() {
-	s.driver = NewInternal()
+	s.driver = NewInternalDriver().(*driverInternal)
 }
 
 func (s *InternalSuite) TestInternalImplementsDriverInterface() {

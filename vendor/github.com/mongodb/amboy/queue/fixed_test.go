@@ -16,7 +16,7 @@ import (
 // storage object *or* exercised by the general queue functionality
 // tests, which test all implementations.
 type LimitedSizeQueueSuite struct {
-	queue       *LocalLimitedSize
+	queue       *limitedSizeLocal
 	numWorkers  int
 	numCapacity int
 	require     *require.Assertions
@@ -34,7 +34,7 @@ func (s *LimitedSizeQueueSuite) SetupSuite() {
 }
 
 func (s *LimitedSizeQueueSuite) SetupTest() {
-	s.queue = NewLocalLimitedSize(s.numWorkers, s.numCapacity)
+	s.queue = NewLocalLimitedSize(s.numWorkers, s.numCapacity).(*limitedSizeLocal)
 }
 
 func (s *LimitedSizeQueueSuite) TestBufferForPendingWorkEqualToCapacityForResults() {

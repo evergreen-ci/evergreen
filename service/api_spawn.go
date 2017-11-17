@@ -111,7 +111,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		// send notification to the Evergreen team about this provisioning failure
 		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, h.Distro.Id)
 		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", h.Distro.Id, h.Host, h.StartedBy)
-		if err = notify.NotifyAdmins(subject, message, as.Settings); err != nil {
+		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			grip.Errorln("issue sending email:", err)
 		}
 
@@ -206,7 +206,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cloudHost, err := providers.GetCloudHost(h, as.Settings)
+		cloudHost, err := providers.GetCloudHost(h, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

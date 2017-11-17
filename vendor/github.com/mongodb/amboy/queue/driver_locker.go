@@ -1,4 +1,4 @@
-package driver
+package queue
 
 import (
 	"context"
@@ -11,13 +11,18 @@ import (
 
 type lockPings map[string]time.Time
 
-// LockManager provides an implementation of the Lock and Unlock
-// methods to be composed by amboy/queue/driver.Driver implementations.
+type LockManager interface {
+	Lock(amboy.Job) error
+	Unlock(amboy.Job) error
+}
+
+// lockManager provides an implementation of the Lock and Unlock
+// methods to be composed by amboy/queue.Driver implementations.
 //
-// LockManagers open a single background process that updates all
+// lockManagers open a single background process that updates all
 // tracked locks at an interval, less than the configured lockTimeout
 // to avoid locks growing stale.
-type LockManager struct {
+type lockManager struct {
 	name string
 	d    Driver
 	ops  chan func(lockPings)
@@ -27,24 +32,18 @@ type LockManager struct {
 // implementations. This operation does *not* start the background
 // thread. The name *must* be unique per driver/queue combination, to
 // ensure that each driver/queue can have exclusive locks over jobs.
-func NewLockManager(name string, d Driver) *LockManager {
-	return &LockManager{
+func NewLockManager(ctx context.Context, name string, d Driver) LockManager {
+	l := &lockManager{
 		name: name,
 		d:    d,
+		ops:  make(chan func(lockPings)),
 	}
+	go l.lockPinger(ctx)
+
+	return l
 }
 
-// Open starts the background thread for the Lock manager if it does
-// not already exist.
-func (l *LockManager) Open(ctx context.Context) {
-	if l.ops == nil {
-		l.ops = make(chan func(lockPings))
-
-		go l.lockPinger(ctx)
-	}
-}
-
-func (l *LockManager) lockPinger(ctx context.Context) {
+func (l *lockManager) lockPinger(ctx context.Context) {
 	activeLocks := lockPings{}
 
 	timer := time.NewTimer(0)
@@ -102,7 +101,7 @@ func (l *LockManager) lockPinger(ctx context.Context) {
 	}
 }
 
-func (l *LockManager) addPing(name string) {
+func (l *lockManager) addPing(name string) {
 	wait := make(chan struct{})
 	l.ops <- func(pings lockPings) {
 		pings[name] = time.Now().Add(lockTimeout)
@@ -112,7 +111,7 @@ func (l *LockManager) addPing(name string) {
 	<-wait
 }
 
-func (l *LockManager) removePing(name string) {
+func (l *lockManager) removePing(name string) {
 	wait := make(chan struct{})
 	l.ops <- func(pings lockPings) {
 		delete(pings, name)
@@ -126,7 +125,7 @@ func (l *LockManager) removePing(name string) {
 //
 // Returns an error if the Lock is already locked or if there's a
 // problem updating the document.
-func (l *LockManager) Lock(j amboy.Job) error {
+func (l *lockManager) Lock(j amboy.Job) error {
 	if j == nil {
 		return errors.New("cannot unlock nil job")
 	}
@@ -166,7 +165,7 @@ func (l *LockManager) Lock(j amboy.Job) error {
 // and instructs the background job to begin updating the lock
 // regularly. Returns an error if no lock exists or if there was a
 // problem updating the lock in the persistence layer.
-func (l *LockManager) Unlock(j amboy.Job) error {
+func (l *lockManager) Unlock(j amboy.Job) error {
 	if j == nil {
 		return errors.New("cannot unlock nil job")
 	}

@@ -194,8 +194,8 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 // specified in the request.
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	srcVersion, err := projCtx.GetVersion()
-	if err != nil || srcVersion == nil {
+	srcVersion := projCtx.Version
+	if srcVersion == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding version"})
 		return
 	}
@@ -204,7 +204,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	copyVersion(srcVersion, destVersion)
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Errorln("adding BuildVariant", buildStatus.BuildVariant)
+		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
@@ -214,14 +214,14 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 // specified in the request.
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
-	srcVersion, _ := projCtx.GetVersion()
+	srcVersion := projCtx.Version
 	if srcVersion == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "version not found"})
 		return
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(srcVersion.Config))
+	_, err := w.Write([]byte(projCtx.Version.Config))
 	grip.Warning(errors.Wrap(err, "problem writing response"))
 }
 
@@ -251,7 +251,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		grip.Errorln("adding BuildVariant", buildStatus.BuildVariant)
+		grip.Infof("adding BuildVariant %s", buildStatus.BuildVariant)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
@@ -262,7 +262,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	user := MustHaveUser(r)
-	v, _ := projCtx.GetVersion()
+	v := projCtx.Version
 	if v == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding version"})
 		return

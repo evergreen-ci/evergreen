@@ -22,25 +22,29 @@ import (
 )
 
 // Key used for storing variables in request context with type safety.
-type RequestCtxKey int
+type (
+	RequestCtxKey int
+)
 
-// projectContext defines the set of common fields required across most UI requests.
-type projectContext struct {
-	*model.Context
+type (
+	// projectContext defines the set of common fields required across most UI requests.
+	projectContext struct {
+		model.Context
 
-	// AllProjects is a list of all available projects, limited to only the set of fields
-	// necessary for display. If user is logged in, this will include private projects.
-	AllProjects []UIProjectFields
+		// AllProjects is a list of all available projects, limited to only the set of fields
+		// necessary for display. If user is logged in, this will include private projects.
+		AllProjects []UIProjectFields
 
-	// AuthRedirect indicates whether or not redirecting during authentication is necessary.
-	AuthRedirect bool
+		// AuthRedirect indicates whether or not redirecting during authentication is necessary.
+		AuthRedirect bool
 
-	// IsAdmin indicates if the user is an admin for at least one of the projects
-	// listed in AllProjects.
-	IsAdmin bool
+		// IsAdmin indicates if the user is an admin for at least one of the projects
+		// listed in AllProjects.
+		IsAdmin bool
 
-	PluginNames []string
-}
+		PluginNames []string
+	}
+)
 
 type (
 	// custom types used to attach specific values to request contexts, to prevent collisions.
@@ -76,16 +80,20 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 }
 
 // ToPluginContext creates a UIContext from the projectContext data.
-func (pc projectContext) ToPluginContext(settings *evergreen.Settings, dbUser *user.DBUser) plugin.UIContext {
+func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *user.DBUser) plugin.UIContext {
 	return plugin.UIContext{
-		Settings: settings,
-		User:     dbUser,
-		Metadata: pc.Context,
+		Settings:   settings,
+		User:       dbUser,
+		Task:       pc.Task,
+		Build:      pc.Build,
+		Version:    pc.Version,
+		Patch:      pc.Patch,
+		ProjectRef: pc.ProjectRef,
 	}
 }
 
 // GetSettings returns the global evergreen settings.
-func (uis *UIServer) GetSettings() *evergreen.Settings {
+func (uis *UIServer) GetSettings() evergreen.Settings {
 	return uis.Settings
 }
 
@@ -105,14 +113,7 @@ func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		// get the project context
 		projCtx := MustHaveProjectContext(r)
 		if dbUser := GetUser(r); dbUser != nil {
-
-			if uis.isSuperUser(dbUser) {
-				next(w, r)
-				return
-			}
-
-			pref, err := projCtx.Context.GetProjectRef()
-			if err == nil && pref != nil && isAdmin(dbUser, pref) {
+			if uis.isSuperUser(dbUser) || isAdmin(dbUser, projCtx.ProjectRef) {
 				next(w, r)
 				return
 			}
@@ -218,15 +219,12 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 			return
 		}
-
-		pref, err := projCtx.Context.GetProjectRef()
-		if err != nil && pref != nil && pref.Private && GetUser(r) == nil {
+		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private && GetUser(r) == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
 
-		patchDoc, err := projCtx.Context.GetPatch()
-		if err != nil && patchDoc != nil && GetUser(r) == nil {
+		if projCtx.Patch != nil && GetUser(r) == nil {
 			uis.RedirectToLogin(w, r)
 			return
 		}
@@ -319,21 +317,17 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	}
 
 	// Build a model.Context using the data available.
-	pc.Context = model.LoadContext(taskId, buildId, versionId, patchId, projectId)
-	if err != nil {
-		return pc, err
-	}
-
-	pref, err := pc.Context.GetProjectRef()
+	ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
+	pc.Context = ctx
 	if err != nil {
 		return pc, err
 	}
 
 	// set the cookie for the next request if a project was found
-	if pref != nil {
+	if ctx.ProjectRef != nil {
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
-			Value:   pref.Identifier,
+			Value:   ctx.ProjectRef.Identifier,
 			Path:    "/",
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})
@@ -409,7 +403,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 // ForbiddenHandler logs a rejected request befure returning a 403 to the client
 func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	reason := csrf.FailureReason(r)
-	grip.Alert(message.Fields{
+	grip.Warning(message.Fields{
 		"action": "forbidden",
 		"method": r.Method,
 		"remote": r.RemoteAddr,
