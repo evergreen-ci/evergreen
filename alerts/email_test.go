@@ -93,7 +93,7 @@ func TestEmailSubject(t *testing.T) {
 			})
 		})
 		Convey("a task with two failed tests should return a subject", func() {
-			ctx.Task.LocalTestResults = []task.TestResult{
+			ctx.Task.TestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
@@ -119,7 +119,7 @@ func TestEmailSubject(t *testing.T) {
 			})
 		})
 		Convey("a task with five failed tests should return a subject", func() {
-			ctx.Task.LocalTestResults = []task.TestResult{
+			ctx.Task.TestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestFailedStatus},
@@ -141,7 +141,7 @@ func TestEmailSubject(t *testing.T) {
 			})
 		})
 		Convey("a failed task with passing tests should return a subject", func() {
-			ctx.Task.LocalTestResults = []task.TestResult{
+			ctx.Task.TestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},

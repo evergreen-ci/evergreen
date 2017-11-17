@@ -170,5 +170,5 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		tests[logIdxToTestIdx[i]].LineNum = 1
 	}
 
-	return sendJSONResults(ctx, conf, logger, comm, &task.LocalTestResults{tests})
+	return sendJSONResults(ctx, conf, logger, comm, &task.TestResults{tests})
 }

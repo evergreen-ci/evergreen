@@ -101,7 +101,7 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 			versionId = aCtx.Task.Version
 			projectId = aCtx.Task.Project
 			aCtx.FailedTests = []task.TestResult{}
-			for _, test := range aCtx.Task.LocalTestResults {
+			for _, test := range aCtx.Task.TestResults {
 				if test.Status == "fail" {
 					aCtx.FailedTests = append(aCtx.FailedTests, test)
 				}

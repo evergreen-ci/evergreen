@@ -55,7 +55,7 @@ type uiTaskData struct {
 	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	LocalTestResults      []task.TestResult       `json:"test_results"`
+	TestResults      []task.TestResult       `json:"test_results"`
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
 	DependsOn        []uiDep                 `json:"depends_on"`
@@ -196,7 +196,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PushTime:            projCtx.Task.PushTime,
 		TimeTaken:           projCtx.Task.TimeTaken,
 		Priority:            projCtx.Task.Priority,
-		LocalTestResults:         projCtx.Task.LocalTestResults,
+		TestResults:         projCtx.Task.TestResults,
 		Aborted:             projCtx.Task.Aborted,
 		CurrentTime:         time.Now().UnixNano(),
 		BuildVariantDisplay: projCtx.Build.DisplayName,

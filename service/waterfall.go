@@ -403,7 +403,7 @@ func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndSt
 	expectedDurationByTaskId := map[string]time.Duration{}
 	for _, t := range failedAndStartedTasks {
 		failedTests := []string{}
-		for _, r := range t.LocalTestResults {
+		for _, r := range t.TestResults {
 			if r.Status == evergreen.TestFailedStatus {
 				failedTests = append(failedTests, r.TestFile)
 			}

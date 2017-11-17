@@ -63,11 +63,11 @@ func TestAttachResults(t *testing.T) {
 					// attempt to open the file
 					reportFile, err := os.Open(resultsLoc)
 					testutil.HandleTestingErr(err, t, "Couldn't open report file: '%v'", err)
-					results := &task.LocalTestResults{}
+					results := &task.TestResults{}
 					err = util.ReadJSONInto(reportFile, results)
 					testutil.HandleTestingErr(err, t, "Couldn't read report file: '%v'", err)
 					testResults := *results
-					So(testTask.LocalTestResults, ShouldResemble, testResults.Results)
+					So(testTask.TestResults, ShouldResemble, testResults.Results)
 					testutil.HandleTestingErr(err, t, "Couldn't clean up test temp dir")
 				}
 			}
@@ -117,14 +117,14 @@ func TestAttachRawResults(t *testing.T) {
 
 							reportFile, err := os.Open(resultsLoc)
 							testutil.HandleTestingErr(err, t, "Couldn't open report file: '%v'", err)
-							results := &task.LocalTestResults{}
+							results := &task.TestResults{}
 							err = util.ReadJSONInto(reportFile, results)
 							testutil.HandleTestingErr(err, t, "Couldn't read report file: '%v'", err)
 
 							testResults := *results
 							So(len(testResults.Results), ShouldEqual, 3)
-							So(len(testTask.LocalTestResults), ShouldEqual, 3)
-							firstResult := testTask.LocalTestResults[0]
+							So(len(testTask.TestResults), ShouldEqual, 3)
+							firstResult := testTask.TestResults[0]
 							So(firstResult.LogRaw, ShouldEqual, "")
 							So(firstResult.LogId, ShouldNotEqual, "")
 
@@ -133,7 +133,7 @@ func TestAttachRawResults(t *testing.T) {
 							So(testLog.Lines[0], ShouldEqual, testResults.Results[0].LogRaw)
 
 							Convey("both URL and raw log should be stored appropriately if both exist", func() {
-								urlResult := testTask.LocalTestResults[2]
+								urlResult := testTask.TestResults[2]
 								So(urlResult.LogRaw, ShouldEqual, "")
 								So(urlResult.URL, ShouldNotEqual, "")
 								So(urlResult.LogId, ShouldNotEqual, "")

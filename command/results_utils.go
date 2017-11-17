@@ -13,7 +13,7 @@ import (
 // specified file to the API Server
 func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator,
-	results *task.LocalTestResults) error {
+	results *task.TestResults) error {
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 

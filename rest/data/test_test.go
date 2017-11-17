@@ -47,7 +47,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 					TestFile: testFileNames[j],
 				}
 			}
-			testTask.LocalTestResults = tests
+			testTask.TestResults = tests
 			So(testTask.Insert(), ShouldBeNil)
 		}
 

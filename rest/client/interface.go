@@ -76,7 +76,7 @@ type Communicator interface {
 
 	// The following operations use the legacy API server and are
 	// used by task commands.
-	SendTestResults(context.Context, TaskData, *task.LocalTestResults) error
+	SendTestResults(context.Context, TaskData, *task.TestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)

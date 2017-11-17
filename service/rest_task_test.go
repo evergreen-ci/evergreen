@@ -58,7 +58,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult task
 		Aborted:          false,
 		TimeTaken:        time.Duration(100 * time.Millisecond),
 		ExpectedDuration: time.Duration(99 * time.Millisecond),
-		LocalTestResults:      []task.TestResult{testResult},
+		TestResults:      []task.TestResult{testResult},
 	}
 
 	return task, task.Insert()
@@ -312,7 +312,7 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			LocalTestResults: []task.TestResult{testResult},
+			TestResults: []task.TestResult{testResult},
 		}
 		So(testTask.Insert(), ShouldBeNil)
 

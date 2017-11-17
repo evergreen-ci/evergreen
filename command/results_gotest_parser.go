@@ -58,9 +58,9 @@ type goTestResult struct {
 	LogId string
 }
 
-// ToModelTestResults converts the implementation of LocalTestResults native
+// ToModelTestResults converts the implementation of TestResults native
 // to the goTest plugin to the implementation used by MCI tasks
-func ToModelTestResults(results []*goTestResult) task.LocalTestResults {
+func ToModelTestResults(results []*goTestResult) task.TestResults {
 	var modelResults []task.TestResult
 	for _, res := range results {
 		// start and end are times that we don't know,
@@ -88,7 +88,7 @@ func ToModelTestResults(results []*goTestResult) task.LocalTestResults {
 		}
 		modelResults = append(modelResults, convertedResult)
 	}
-	return task.LocalTestResults{modelResults}
+	return task.TestResults{modelResults}
 }
 
 // goTestParser parses tests following go test output format.

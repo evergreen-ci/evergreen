@@ -285,7 +285,7 @@ func TestCLITestHistory(t *testing.T) {
 					Version:      fmt.Sprintf("version%v", i%3),
 					BuildVariant: "osx",
 					Status:       evergreen.TaskFailed,
-					LocalTestResults:  []task.TestResult{passingResult, failedResult},
+					TestResults:  []task.TestResult{passingResult, failedResult},
 				}
 				So(t.Insert(), ShouldBeNil)
 			}

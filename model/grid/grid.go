@@ -6,12 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
 )
-
-const testResultsKey = "test_results"
 
 // CellId represents a unique identifier for each cell on
 // the Grid page.
@@ -142,7 +139,7 @@ func FetchCells(current version.Version, depth int) (Grid, error) {
 // before the current version - looking back as far as depth versions.
 func FetchFailures(current version.Version, depth int) (Failures, error) {
 	pipeline := []bson.M{
-		// Get the most recent completed tasks - looking back as far as
+		// Stage 1: Get the most recent completed tasks - looking back as far as
 		// depth versions - on this project.
 		{"$match": bson.M{
 			task.RevisionOrderNumberKey: bson.M{
@@ -158,34 +155,18 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 				},
 			},
 		}},
-		// Sort the tasks by the most recently completed.
+		// Stage 2: Sort the tasks by the most recently completed.
 		{"$sort": bson.M{
 			task.RevisionOrderNumberKey: -1,
 		}},
-		// Join test results to this task
-		{"$lookup": bson.M{
-			"from":         testresult.Collection,
-			"localField":   task.IdKey,
-			"foreignField": testresult.TaskIDKey,
-			"as":           testResultsKey,
-		}},
-		// Project only relevant fields.
+		// Stage 3: Project only relevant fields.
 		{"$project": bson.M{
 			task.DisplayNameKey:  1,
 			task.BuildVariantKey: 1,
-			testResultsKey: bson.M{
-				"$filter": bson.M{
-					// Filter off non-matching executions. This should be replaced once
-					// multi-key $lookups are supported in 3.6
-					"input": "$" + testResultsKey,
-					"as":    "tr",
-					"cond": bson.M{
-						"$eq": []string{"$$tr.task_execution", "$execution"}},
-				},
-			},
-			task.IdKey: 1,
+			task.TestResultsKey:  1,
+			task.IdKey:           1,
 		}},
-		// Group these tasks by display name and buildvariant -
+		// Stage 4: Group these tasks by display name and buildvariant -
 		// this returns the most recently completed grouped by task display name
 		// and by variant. We take only the first test results (adding its task
 		// id) for each task/variant group.
@@ -195,18 +176,18 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 				"v": "$" + task.BuildVariantKey,
 			},
 			"l": bson.M{
-				"$first": "$" + testResultsKey,
+				"$first": "$" + task.TestResultsKey,
 			},
 			"tid": bson.M{
 				"$first": "$" + task.IdKey,
 			},
 		}},
-		// For each group, filter out those task/variant combinations
+		// Stage 5: For each group, filter out those task/variant combinations
 		// that don't have at least one test failure in them.
 		{"$match": bson.M{
 			"l." + task.TestResultStatusKey: evergreen.TestFailedStatus,
 		}},
-		// Rewrite each task/variant combination from the _id into the
+		// Stage 6: Rewrite each task/variant combination from the _id into the
 		// top-level. Project only the test name and status for all tests, and
 		// add a 'status' literal string to each group. This sets up the
 		// documents for redacting in next stage.
@@ -220,7 +201,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 				"$literal": evergreen.TestFailedStatus,
 			},
 		}},
-		// While each test result contains at least one failed test,
+		// Stage 7: While each test result contains at least one failed test,
 		// some other tests may have passed. Prune individual tests that did
 		// not fail.
 		{"$redact": bson.M{
@@ -234,7 +215,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 				"else": "$$PRUNE",
 			},
 		}},
-		// We no longer need the status fields so project only fields
+		// Stage 8: We no longer need the status fields so project only fields
 		// we want to return.
 		{"$project": bson.M{
 			"f":   "$l." + task.TestResultTestFileKey,
@@ -243,10 +224,10 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 			"t":   1,
 			"v":   1,
 		}},
-		// Flatten each failing test so we can group them by all the
+		// Stage 9: Flatten each failing test so we can group them by all the
 		// variants on which they are failing.
 		{"$unwind": "$f"},
-		// Group individual test failure. For each, add the variants
+		// Stage 10: Group individual test failure. For each, add the variants
 		// it's failing on (and the accompanying task id) and include task's
 		// display name.
 		{"$group": bson.M{
@@ -270,7 +251,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 // grouped by revision - looking as far back as depth revisions
 func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFailures, error) {
 	pipeline := []bson.M{
-		// Get the most recent completed tasks - looking back as far as
+		// Stage 1: Get the most recent completed tasks - looking back as far as
 		// depth versions - on this project.
 		{"$match": bson.M{
 			task.RevisionOrderNumberKey: bson.M{
@@ -280,37 +261,21 @@ func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFai
 			task.ProjectKey:   current.Identifier,
 			task.RequesterKey: evergreen.RepotrackerVersionRequester,
 		}},
-		// Join test results to this task
-		{"$lookup": bson.M{
-			"from":         testresult.Collection,
-			"localField":   task.IdKey,
-			"foreignField": testresult.TaskIDKey,
-			"as":           testResultsKey,
-		}},
-		// Project only relevant fields.
+		// Stage 2: Project only relevant fields.
 		{"$project": bson.M{
 			task.DisplayNameKey:  1,
 			task.RevisionKey:     1,
 			task.BuildVariantKey: 1,
 			task.IdKey:           1,
-			"l": bson.M{
-				"$filter": bson.M{
-					// Filter off non-matching executions. This should be replaced once
-					// multi-key $lookups are supported in 3.6
-					"input": "$" + testResultsKey,
-					"as":    "tr",
-					"cond": bson.M{
-						"$eq": []string{"$$tr.task_execution", "$execution"}},
-				},
-			},
+			"l":                  "$" + task.TestResultsKey,
 		}},
-		// Flatten out the test results
+		// Stage 3: Flatten out the test results
 		{"$unwind": "$l"},
-		// Take only failed test results
+		// Stage 4: Take only failed test results
 		{"$match": bson.M{
 			"l." + task.TestResultStatusKey: evergreen.TestFailedStatus,
 		}},
-		// Project only relevant fields including just the test file key
+		// Stage 5: Project only relevant fields including just the test file key
 		{"$project": bson.M{
 			task.RevisionKey:     1,
 			task.BuildVariantKey: 1,
@@ -318,7 +283,7 @@ func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFai
 			task.IdKey:           1,
 			"f":                  "$l." + task.TestResultTestFileKey,
 		}},
-		// Group by revision. For each one include the
+		// Stage 6: Group by revision. For each one include the
 		// variant name, task name, task id and test name
 		{"$group": bson.M{
 			"_id": "$" + task.RevisionKey,

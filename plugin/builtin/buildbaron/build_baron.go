@@ -229,7 +229,7 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 func taskToJQL(t *task.Task, searchProjects []string) string {
 	var jqlParts []string
 	var jqlClause string
-	for _, testResult := range t.LocalTestResults {
+	for _, testResult := range t.TestResults {
 		if testResult.Status == evergreen.TestFailedStatus {
 			fileParts := eitherSlash.Split(testResult.TestFile, -1)
 			jqlParts = append(jqlParts, fmt.Sprintf("text~\"%v\"", fileParts[len(fileParts)-1]))

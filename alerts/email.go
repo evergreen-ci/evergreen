@@ -158,7 +158,7 @@ func (es *EmailDeliverer) getBody(alertCtx AlertContext) (string, error) {
 func taskFailureSubject(ctx AlertContext) string {
 	subj := &bytes.Buffer{}
 	failed := []string{}
-	for _, test := range ctx.Task.LocalTestResults {
+	for _, test := range ctx.Task.TestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			failed = append(failed, cleanTestName(test.TestFile))
 		}
