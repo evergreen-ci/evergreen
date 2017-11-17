@@ -97,8 +97,13 @@ type Task struct {
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
 
-	// test results embedded from the testresults collection
+  // test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
+
+	// display task fields
+	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	displayTask    *Task    `bson:"-" json:"-"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -1071,4 +1076,25 @@ func FindRunnable() ([]Task, error) {
 	}
 
 	return runnableTasks, nil
+}
+
+func (t *Task) IsPartOfDisplay() bool {
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		grip.Error(err)
+		return false
+	}
+	return dt != nil
+}
+
+func (t *Task) GetDisplayTask() (*Task, error) {
+	if t.displayTask != nil {
+		return t, nil
+	}
+	dt, err := FindOne(ByExecutionTask(t.Id))
+	if err != nil {
+		return nil, err
+	}
+	t.displayTask = dt
+	return dt, nil
 }
