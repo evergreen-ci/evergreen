@@ -130,7 +130,7 @@ func (a *Agent) loop(ctx context.Context) error {
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
 
-	sender, err := GetSender(a.opts.LogPrefix, tc.task.ID)
+	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	if err != nil {
 		return errors.Wrap(err, "problem getting sender")
 	}

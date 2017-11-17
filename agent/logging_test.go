@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -9,17 +10,21 @@ import (
 )
 
 func TestGetSenderRemote(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	_ = os.Setenv("GRIP_SUMO_ENDPOINT", "http://www.example.com/")
 	_ = os.Setenv("GRIP_SPLUNK_SERVER_URL", "http://www.example.com/")
 	_ = os.Setenv("GRIP_SPLUNK_CLIENT_TOKEN", "token")
 	_ = os.Setenv("GRIP_SPLUNK_CHANNEL", "channel")
-	_, err := GetSender(evergreen.LocalLoggingOverride, "task_id")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := GetSender(ctx, evergreen.LocalLoggingOverride, "task_id")
 	assert.NoError(err)
 }
 
 func TestGetSenderLocal(t *testing.T) {
 	assert := assert.New(t) // nolint
-	_, err := GetSender(evergreen.LocalLoggingOverride, "task_id")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := GetSender(ctx, evergreen.LocalLoggingOverride, "task_id")
 	assert.NoError(err)
 }
