@@ -438,7 +438,7 @@ func translateProject(pp *parserProject) (*Project, []error) {
 	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
 	proj.Tasks, errs = evaluateTasks(tse, vse, pp.Tasks)
 	evalErrs = append(evalErrs, errs...)
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, vse, pp.BuildVariants)
+	proj.BuildVariants, errs = evaluateBuildVariants(tse, vse, pp.BuildVariants, pp.Tasks)
 	evalErrs = append(evalErrs, errs...)
 	return proj, evalErrs
 }
@@ -484,7 +484,7 @@ func evaluateTasks(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
 // evaluateBuildsVariants translates intermediate tasks into true BuildVariant types,
 // evaluating any selectors in the Tasks fields.
 func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbvs []parserBV) ([]BuildVariant, []error) {
+	pbvs []parserBV, tasks []parserTask) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
@@ -547,6 +547,21 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 				}
 			}
 		}
+
+		//resolve tags for display tasks
+		dtse := NewDisplayTaskSelectorEvaluator(bv, tasks)
+		for i, dt := range pbv.DisplayTasks {
+			tasks := []string{}
+			for _, et := range dt.ExecutionTasks {
+				results, err := dtse.evalSelector(ParseSelector(et))
+				if err != nil {
+					errs = append(errs, err)
+				}
+				tasks = append(tasks, results...)
+			}
+			pbv.DisplayTasks[i].ExecutionTasks = tasks
+		}
+
 		// check that display tasks contain real tasks that are not duplicated
 		bvTasks := make(map[string]string)          // map of all execution tasks
 		displayTaskContents := make(map[string]int) // map of execution tasks in a display task
@@ -557,7 +572,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 			projectDt := DisplayTask{Name: dt.Name}
 			for _, et := range dt.ExecutionTasks {
 				if _, exists := bvTasks[et]; !exists {
-					evalErrs = append(evalErrs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
+					errs = append(errs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))
 				} else {
 					projectDt.ExecutionTasks = append(projectDt.ExecutionTasks, et)
 					displayTaskContents[et]++
@@ -569,7 +584,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 		}
 		for taskId, count := range displayTaskContents {
 			if count > 1 {
-				evalErrs = append(evalErrs, fmt.Errorf("execution task %s is listed in more than 1 display task", taskId))
+				errs = append(errs, fmt.Errorf("execution task %s is listed in more than 1 display task", taskId))
 				bv.DisplayTasks = nil
 			}
 		}

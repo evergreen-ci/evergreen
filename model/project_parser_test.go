@@ -627,6 +627,7 @@ tasks:
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
 
+	// test that a display task listing a nonexistent task errors
 	nonexistentTaskYml := `
 buildvariants:
 - name: "bv1"
@@ -654,11 +655,12 @@ tasks:
 	proj, errs = projectFromYAML([]byte(nonexistentTaskYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
-	assert.EqualError(errs[0], "display task displayTask1 contains execution task notHere which does not exist in build variant")
+	assert.EqualError(errs[0], "evaluating display task selector: notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
 
+	// test that a display task with duplicate task errors
 	duplicateTaskYml := `
 buildvariants:
 - name: "bv1"
@@ -687,4 +689,71 @@ tasks:
 	assert.Len(errs, 1)
 	assert.EqualError(errs[0], "execution task execTask3 is listed in more than 1 display task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
+
+	// test that wildcard selectors are resolved correctly
+	wildcardYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - "*"
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(wildcardYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 3)
+
+	// test that tag selectors are resolved correctly
+	tagYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask2
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTaskOdd
+    execution_tasks:
+    - ".odd"
+  - name: displayTaskEven
+    execution_tasks:
+    - ".even"
+tasks:
+- name: execTask1
+  tags: [ "odd" ]
+- name: execTask2
+  tags: [ "even" ]
+- name: execTask3
+  tags: [ "odd" ]
+- name: execTask4
+  tags: [ "even" ]
+`
+
+	proj, errs = projectFromYAML([]byte(tagYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
+	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
+	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
 }
