@@ -1605,6 +1605,9 @@ textarea {
 #task-title {
   margin-bottom: 4px;
 }
+.execDropdown {
+  white-space: nowrap;
+}
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;
   padding-left: 58px;

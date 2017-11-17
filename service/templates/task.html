@@ -166,7 +166,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td class="icon"><i class="fa fa-hourglass"></i></td>
                 <td>[[baseTimeTaken | stringifyNanoseconds]] on base commit</td>
               </tr>
-              <tr ng-show="task.execution > 0 || task.archived">
+              <tr ng-show="task.execution > 0 || task.archived || task.display_only">
                 <td class="icon"><i class="fa fa-rotate-left"></i></td>
 
                 <td>
@@ -176,10 +176,15 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <button class="btn btn-default btn-dropdown btn-xs" data-toggle="dropdown" href="#" id="dLabel">
                       Executions: <span class="fa fa-caret-down"></span>
                     </button>
-                    <ul class="dropdown-menu">
-                      <li ng-repeat="i in otherExecutions">
+                    <ul class="dropdown-menu execDropdown">
+                      <li ng-show="!task.display_only" ng-repeat="i in otherExecutions">
                         <a href="/task/[[task.id]]/[[i]]">[[i+1|ordinalNum]] execution </a>
                       </li>
+                      <div ng-show="task.display_only" ng-repeat="i in otherExecutions">
+                        <li ng-repeat="et in i">
+                          <a href="/task/[[et.id]]/[[$parent.$index]]">[[$parent.$index+1|ordinalNum]] execution - [[et.display_name]]</a>
+                        </li>
+                      </div>
                     </ul>
                   </span>
                   <span ng-show="task.archived">
@@ -403,14 +408,19 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
   </h3>
     <div class="row">
       <div class="col-lg-12">
-        <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
-        {{if .User}}
-        <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
-        {{else}}
-        <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length"><span class="severity-ERROR">You are not authorized to view these logs.</span></pre>
-        {{end}}
-        <pre ng-show="(currentLogs == allLogs || currentLogs == taskLogs) && !logs.length">No logs found.</pre>
-        <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz"></taskevent></div>
+        <div ng-show="!task.display_only">
+          <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
+          {{if .User}}
+          <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
+          {{else}}
+          <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length"><span class="severity-ERROR">You are not authorized to view these logs.</span></pre>
+          {{end}}
+          <pre ng-show="(currentLogs == allLogs || currentLogs == taskLogs) && !logs.length">No logs found.</pre>
+          <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz"></taskevent></div>
+        </div>
+        <div ng-show="task.display_only">
+          <pre>This task is for display only. Logs must be viewed in its individual execution tasks.</pre>
+        </div>
       </div>
     </div>
   </div>

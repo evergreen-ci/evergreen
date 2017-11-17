@@ -88,6 +88,10 @@ type uiTaskData struct {
 	Archived bool `json:"archived"`
 
 	PatchInfo *uiPatch `json:"patch_info"`
+
+	// display task info
+	DisplayOnly    bool         `json:"display_only"`
+	ExecutionTasks []uiExecTask `json:"execution_tasks"`
 }
 
 type uiDep struct {
@@ -100,6 +104,11 @@ type uiDep struct {
 	Details        apimodels.TaskEndDetail `json:"task_end_details"`
 	Recursive      bool                    `json:"recursive"`
 	TaskWaiting    string                  `json:"task_waiting"`
+}
+
+type uiExecTask struct {
+	Id   string `json:"id"`
+	Name string `json:"display_name"`
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -175,8 +184,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 		totalExecutions = mostRecentExecution.Execution
 	}
+	if totalExecutions < 1 {
+		totalExecutions = 1
+	}
 
-	task := uiTaskData{
+	uiTask := uiTaskData{
 		Id:                  tId,
 		DisplayName:         projCtx.Task.DisplayName,
 		Revision:            projCtx.Task.Revision,
@@ -198,6 +210,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Priority:            projCtx.Task.Priority,
 		TestResults:         projCtx.Task.TestResults,
 		Aborted:             projCtx.Task.Aborted,
+		DisplayOnly:         projCtx.Task.DisplayOnly,
 		CurrentTime:         time.Now().UnixNano(),
 		BuildVariantDisplay: projCtx.Build.DisplayName,
 		Message:             projCtx.Version.Message,
@@ -217,21 +230,21 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task.DependsOn = deps
-	task.TaskWaiting = taskWaiting
-	task.MinQueuePos, err = model.FindMinimumQueuePositionForTask(task.Id)
+	uiTask.DependsOn = deps
+	uiTask.TaskWaiting = taskWaiting
+	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(uiTask.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if task.MinQueuePos < 0 {
-		task.MinQueuePos = 0
+	if uiTask.MinQueuePos < 0 {
+		uiTask.MinQueuePos = 0
 	}
 
 	var taskHost *host.Host
 	if projCtx.Task.HostId != "" {
-		task.HostDNS = projCtx.Task.HostId
-		task.HostId = projCtx.Task.HostId
+		uiTask.HostDNS = projCtx.Task.HostId
+		uiTask.HostId = projCtx.Task.HostId
 		var err error
 		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
 		if err != nil {
@@ -239,7 +252,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if taskHost != nil {
-			task.HostDNS = taskHost.Host
+			uiTask.HostDNS = taskHost.Host
 		}
 	}
 
@@ -255,7 +268,20 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			taskPatch.BaseTimeTaken = taskOnBaseCommit.TimeTaken
 		}
 		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, projCtx.Task).Tests
-		task.PatchInfo = taskPatch
+		uiTask.PatchInfo = taskPatch
+	}
+
+	if uiTask.DisplayOnly {
+		uiTask.TestResults = []task.TestResult{}
+		for _, t := range projCtx.Task.ExecutionTasks {
+			et, err := task.FindOne(task.ById(t))
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName})
+			uiTask.TestResults = append(uiTask.TestResults, et.TestResults...)
+		}
 	}
 
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
@@ -267,7 +293,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent pluginData
 		JiraHost      string
 		ViewData
-	}{task, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"task.html", "base_angular.html", "menu.html")
 }
 

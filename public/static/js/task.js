@@ -350,8 +350,16 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
       }
     }
 
-    if (task.execution > 0 || task.archived) {
-      $scope.otherExecutions = _.range(task.total_executions + 1)
+    if (task.execution > 0 || task.archived || task.display_only) {
+      $scope.otherExecutions = [];
+      for (var i = 0; i < task.total_executions; i++) {
+        if (task.display_only) {
+          $scope.otherExecutions[i] = task.execution_tasks;
+        }
+        else {
+          $scope.otherExecutions[i] = task.display_name;
+        }
+      }
     }
 
     $scope.sortBy = $scope.sortOrders[0];
