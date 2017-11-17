@@ -48,7 +48,10 @@ func (c *AgentCommand) Execute(_ []string) error {
 
 	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
 
-	sender, err := agent.GetSender(opts.LogPrefix, "init")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sender, err := agent.GetSender(ctx, opts.LogPrefix, "init")
 	if err != nil {
 		return errors.Wrap(err, "problem configuring logger")
 	}
@@ -65,8 +68,6 @@ func (c *AgentCommand) Execute(_ []string) error {
 
 	grip.SetName("evergreen.agent")
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	err = agt.Start(ctx)
 	grip.Emergency(err)
 
