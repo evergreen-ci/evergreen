@@ -162,7 +162,7 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 	}
 }
 
-func registerTestResultsMigrationOperations(env anser.Environment) error {
+func registerTestResultsMigrationOperations(env anser.Environment, db string) error {
 	if err := env.RegisterManualMigrationOperation("tasks_testresults_noexecution", makeLegacyTaskMigrationFunction(db, tasksCollection)); err != nil {
 		return err
 	}
