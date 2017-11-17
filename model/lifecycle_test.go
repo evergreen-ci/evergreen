@@ -716,7 +716,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("the build should contain task caches that correspond exactly"+
 			" to the tasks created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{})
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{})
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -728,28 +728,57 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// find the build from the db
 			b, err := build.FindOne(build.ById(buildId))
 			So(err, ShouldBeNil)
-			So(len(b.Tasks), ShouldEqual, 6)
+			So(len(b.Tasks), ShouldEqual, 4)
 
 			// make sure the task caches are correct.  they should also appear
 			// in the same order that they appear in the project file
+			So(b.Tasks[0].Id, ShouldNotEqual, "")
+			So(b.Tasks[0].DisplayName, ShouldEqual, "taskA")
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(b.Tasks[1].Id, ShouldNotEqual, "")
+			So(b.Tasks[1].DisplayName, ShouldEqual, "taskB")
+			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[2].Id, ShouldNotEqual, "")
-			So(b.Tasks[2].DisplayName, ShouldEqual, "taskA")
+			So(b.Tasks[2].DisplayName, ShouldEqual, "taskC")
 			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[3].Id, ShouldNotEqual, "")
-			So(b.Tasks[3].DisplayName, ShouldEqual, "taskB")
+			So(b.Tasks[3].DisplayName, ShouldEqual, "taskE")
 			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[4].Id, ShouldNotEqual, "")
-			So(b.Tasks[4].DisplayName, ShouldEqual, "taskC")
-			So(b.Tasks[4].Status, ShouldEqual, evergreen.TaskUndispatched)
-			So(b.Tasks[5].Id, ShouldNotEqual, "")
-			So(b.Tasks[5].DisplayName, ShouldEqual, "taskD")
-			So(b.Tasks[5].Status, ShouldEqual, evergreen.TaskUndispatched)
+		})
 
-			// display tasks should also be in the cache
+		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
+
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{})
+			So(err, ShouldBeNil)
+			So(buildId, ShouldNotEqual, "")
+
+			// find the execution tasks, make sure they were all created
+			tasks, err := task.Find(task.All)
+			So(err, ShouldBeNil)
+			So(len(tasks), ShouldEqual, 4)
+
+			// find the build from the db
+			b, err := build.FindOne(build.ById(buildId))
+			So(err, ShouldBeNil)
+			So(len(b.Tasks), ShouldEqual, 2)
+
+			// make sure the task caches are correct
 			So(b.Tasks[0].Id, ShouldNotEqual, "")
-			So(b.Tasks[0].DisplayName, ShouldEqual, "bv1DisplayTask1")
+			So(b.Tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[1].Id, ShouldNotEqual, "")
-			So(b.Tasks[1].DisplayName, ShouldEqual, "bv1DisplayTask2")
+			So(b.Tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
+			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+
+			// check the display tasks too
+			tasks, err = task.FindWithDisplayTasks(task.ByBuildId(buildId))
+			So(err, ShouldBeNil)
+			So(len(tasks), ShouldEqual, 6)
+			So(tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(tasks[0].DisplayOnly, ShouldBeTrue)
+			So(len(tasks[0].ExecutionTasks), ShouldEqual, 2)
+			So(tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
+			So(tasks[1].DisplayOnly, ShouldBeTrue)
 		})
 
 		Convey("all of the tasks created should have the dependencies"+
@@ -805,20 +834,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(len(tasks[8].DependsOn), ShouldEqual, 8)
 		})
 
-		Convey("display tasks should be stored correctly", func() {
-			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{})
-			So(err, ShouldBeNil)
-			So(buildId, ShouldNotEqual, "")
-
-			tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
-			So(err, ShouldBeNil)
-			So(tasks[4].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
-			So(tasks[4].DisplayOnly, ShouldBeTrue)
-			So(len(tasks[4].ExecutionTasks), ShouldEqual, 2)
-			So(tasks[5].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
-			So(tasks[5].DisplayOnly, ShouldBeTrue)
-		})
-
 		Convey("all of the build's essential fields should be set"+
 			" correctly", func() {
 
@@ -831,7 +846,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			// verify all the fields are set appropriately
-			So(len(b.Tasks), ShouldEqual, 6)
+			So(len(b.Tasks), ShouldEqual, 2)
 			So(b.CreateTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
 			So(b.PushTime.Truncate(time.Second), ShouldResemble,

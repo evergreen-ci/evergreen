@@ -313,6 +313,17 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.HostId, status)
 
+	displayTask, err := t.GetDisplayTask()
+	if err != nil {
+		return err
+	}
+	if displayTask != nil {
+		err = displayTask.UpdateDisplayTask()
+		if err != nil {
+			return err
+		}
+	}
+
 	// update the cached version of the task, in its build document
 	err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, t.TimeTaken)
 	if err != nil {
@@ -405,6 +416,18 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
 			finishedTasks++
+
+			displayTask, err := t.GetDisplayTask()
+			if err != nil {
+				return err
+			}
+			if displayTask != nil {
+				err = displayTask.UpdateDisplayTask()
+				if err != nil {
+					return err
+				}
+				t = *displayTask
+			}
 
 			// if it was a compile task, mark the build status accordingly
 			if t.DisplayName == evergreen.CompileStage {
