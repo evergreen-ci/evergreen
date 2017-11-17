@@ -20,20 +20,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type PatchIntentConnectorSuite struct {
+type GithubWebhookRouteSuite struct {
 	sc     *data.MockConnector
 	rm     *RouteManager
 	prBody []byte
 	suite.Suite
 }
 
-func (s *PatchIntentConnectorSuite) SetupSuite() {
+func (s *GithubWebhookRouteSuite) SetupSuite() {
 	ctx := context.Background()
 	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
 	s.NoError(err)
+	s.NotNil(evergreen.GetEnvironment().Settings())
+	s.NotNil(evergreen.GetEnvironment().Settings().Api)
 }
 
-func (s *PatchIntentConnectorSuite) SetupTest() {
+func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.rm = getGithubHooksRouteManager("", 2)
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
 		CachedIntents: map[string]patch.Intent{},
@@ -46,12 +48,12 @@ func (s *PatchIntentConnectorSuite) SetupTest() {
 	s.Len(s.prBody, 24743)
 }
 
-func TestPatchIntentConnectorSuite(t *testing.T) {
-	s := new(PatchIntentConnectorSuite)
+func TestGithubWebhookRouteSuite(t *testing.T) {
+	s := new(GithubWebhookRouteSuite)
 	suite.Run(t, s)
 }
 
-func (s *PatchIntentConnectorSuite) TestAddIntent() {
+func (s *GithubWebhookRouteSuite) TestAddIntent() {
 	event, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NotNil(event)
 	s.NoError(err)
@@ -67,7 +69,7 @@ func (s *PatchIntentConnectorSuite) TestAddIntent() {
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
 
-func (s *PatchIntentConnectorSuite) TestAddDuplicateIntentFails() {
+func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
 	s.TestAddIntent()
 
 	ctx := context.Background()
@@ -78,7 +80,7 @@ func (s *PatchIntentConnectorSuite) TestAddDuplicateIntentFails() {
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
 
-func (s *PatchIntentConnectorSuite) TestAddIntentWithClosedPRHasNoSideEffects() {
+func (s *GithubWebhookRouteSuite) TestAddIntentWithClosedPRHasNoSideEffects() {
 	event, err := github.ParseWebHook("pull_request", s.prBody)
 	s.NotNil(event)
 	s.NoError(err)
@@ -95,7 +97,7 @@ func (s *PatchIntentConnectorSuite) TestAddIntentWithClosedPRHasNoSideEffects() 
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 0)
 }
 
-func (s *PatchIntentConnectorSuite) TestParseAndValidateFailsWithoutSignature() {
+func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	ctx := context.Background()
 	req, err := makeRequest("1", s.prBody)
 	s.NoError(err)
@@ -105,7 +107,7 @@ func (s *PatchIntentConnectorSuite) TestParseAndValidateFailsWithoutSignature() 
 	s.Error(err)
 }
 
-func (s *PatchIntentConnectorSuite) TestParseAndValidate() {
+func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	ctx := context.Background()
 	req, err := makeRequest("1", s.prBody)
 	s.NoError(err)
@@ -121,7 +123,7 @@ func makeRequest(uid string, body []byte) (*http.Request, error) {
 	}
 
 	// from genMAC in google/go-github/github/messages.go
-	mac := hmac.New(sha256.New, []byte("test"))
+	mac := hmac.New(sha256.New, []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret))
 	n, err := mac.Write(body)
 	if n != len(body) {
 		return nil, errors.Errorf("Body length expected to be %d, but was %d", len(body), n)

@@ -194,7 +194,7 @@ functions:
 
         api_url: http://localhost:8080
         api:
-          github_webhook_secret: "${github_webhook_secret}"
+          github_webhook_secret: "test"
         ui:
           secret: "secret for UI"
           defaultproject: "mci"
@@ -331,8 +331,8 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-auth
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-rest-route
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
