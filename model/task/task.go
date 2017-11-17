@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -97,13 +98,13 @@ type Task struct {
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
 
-  // test results embedded from the testresults collection
+	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
 	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
 	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	displayTask    *Task    `bson:"-" json:"-"`
+	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -559,6 +560,92 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 			},
 		})
 
+}
+
+func (t *Task) UpdateDisplayTask() error {
+	if !t.DisplayOnly {
+		return fmt.Errorf("%s is not a display task", t.Id)
+	}
+
+	statuses := []string{}
+	catcher := grip.NewBasicCatcher()
+	var timeTaken time.Duration
+	for _, taskId := range t.ExecutionTasks {
+		execTask, err := FindOne(ById(taskId))
+		catcher.Add(err)
+
+		// if any of the execution tasks are scheduled, the display task is too
+		if execTask.Activated {
+			t.Activated = true
+		}
+
+		// the display task's status will be the highest priority of its exec tasks
+		if execTask != nil {
+			statuses = append(statuses, execTask.ResultStatus())
+		}
+
+		// add up the duration of the execution tasks
+		timeTaken += execTask.TimeTaken
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+	if len(statuses) > 0 {
+		sort.Sort(byPriority(statuses))
+		t.Status = statuses[0]
+	}
+
+	t.TimeTaken = timeTaken
+
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:    t.Status,
+				ActivatedKey: t.Activated,
+				TimeTakenKey: t.TimeTaken,
+			},
+		})
+}
+
+type byPriority []string
+
+func (p byPriority) Len() int {
+	return len(p)
+}
+
+func (p byPriority) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func (p byPriority) Less(i, j int) bool {
+	return displayTaskPriority(p[i]) < displayTaskPriority(p[j])
+}
+
+func displayTaskPriority(status string) int {
+	switch status {
+	case evergreen.TaskStarted:
+		return 10
+	case evergreen.TaskInactive:
+		return 20
+	case evergreen.TaskUnstarted:
+		return 30
+	case evergreen.TaskFailed:
+		return 40
+	case evergreen.TaskTestTimedOut:
+		return 50
+	case evergreen.TaskSystemFailed:
+		return 60
+	case evergreen.TaskSystemTimedOut:
+		return 70
+	case evergreen.TaskSystemUnresponse:
+		return 80
+	case evergreen.TaskSucceeded:
+		return 90
+	}
+	return 0
 }
 
 // Reset sets the task state to be activated, with a new secret,
@@ -1088,13 +1175,13 @@ func (t *Task) IsPartOfDisplay() bool {
 }
 
 func (t *Task) GetDisplayTask() (*Task, error) {
-	if t.displayTask != nil {
+	if t.DisplayTask != nil {
 		return t, nil
 	}
 	dt, err := FindOne(ByExecutionTask(t.Id))
 	if err != nil {
 		return nil, err
 	}
-	t.displayTask = dt
+	t.DisplayTask = dt
 	return dt, nil
 }

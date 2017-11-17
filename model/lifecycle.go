@@ -466,8 +466,11 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	// create task caches for all of the tasks, and place them into the build
-	tasks := make([]task.Task, 0, len(tasksForBuild))
+	tasks := make([]task.Task, 0)
 	for _, taskP := range tasksForBuild {
+		if taskP.DisplayTask != nil {
+			continue // don't add execution parts of display tasks to the UI cache
+		}
 		tasks = append(tasks, *taskP)
 	}
 	b.Tasks = CreateTasksCache(tasks)
@@ -525,6 +528,22 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 
 	// create and insert all of the actual tasks
 	tasks := make([]*task.Task, 0)
+	displayTasks := make(map[string]*task.Task)
+
+	// Create display tasks
+	for _, dt := range buildVariant.DisplayTasks {
+		id := displayTable.GetId(b.BuildVariant, dt.Name)
+		execTaskIds := []string{}
+		for _, et := range dt.ExecutionTasks {
+			execTaskIds = append(execTaskIds, execTable.GetId(b.BuildVariant, et))
+		}
+		t := createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project)
+		tasks = append(tasks, t)
+		for _, et := range dt.ExecutionTasks {
+			displayTasks[et] = t
+		}
+	}
+
 	for _, t := range tasksToCreate {
 		newTask := createOneTask(execTable.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
 
@@ -594,6 +613,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
 			}
 		}
+		newTask.DisplayTask = displayTasks[newTask.DisplayName]
 
 		// append the task to the list of the created tasks
 		tasks = append(tasks, newTask)
@@ -602,16 +622,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
 	setNumDeps(tasks)
-
-	// Create display tasks
-	for _, dt := range buildVariant.DisplayTasks {
-		id := displayTable.GetId(b.BuildVariant, dt.Name)
-		execTaskIds := []string{}
-		for _, et := range dt.ExecutionTasks {
-			execTaskIds = append(execTaskIds, execTable.GetId(b.BuildVariant, et))
-		}
-		tasks = append(tasks, createDisplayTask(id, dt.Name, execTaskIds, buildVariant, b, v, project))
-	}
 
 	// return all of the tasks created
 	return tasks, nil
