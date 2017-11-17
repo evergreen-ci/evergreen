@@ -361,6 +361,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		TaskId:          t.Id,
 		TaskDisplayName: t.DisplayName,
 		BuildId:         t.BuildId,
+		Execution:       t.Execution,
 	}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)

@@ -74,12 +74,24 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					if context.Task == nil {
 						return nil, nil
 					}
-					artifactEntry, err := artifact.FindOne(artifact.ByTaskId(context.Task.Id))
+					taskId := context.Task.Id
+					if context.Task.OldTaskId != "" {
+						taskId = context.Task.OldTaskId
+					}
+
+					artifactEntry, err := artifact.FindOne(artifact.ByTaskIdAndExecution(taskId, context.Task.Execution))
 					if err != nil {
 						return nil, errors.Wrap(err, "error finding artifact files for task")
 					}
 					if artifactEntry == nil {
-						return nil, nil
+
+						artifactEntry, err = artifact.FindOne(artifact.ByTaskIdWithoutExecution(taskId))
+						if err != nil {
+							return nil, errors.Wrap(err, "error finding artifact files for task without execution number")
+						}
+						if artifactEntry == nil {
+							return nil, nil
+						}
 					}
 					return stripHiddenFiles(artifactEntry.Files, context.User), nil
 				},
