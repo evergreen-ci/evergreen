@@ -104,7 +104,7 @@ func makeTaskMigrationFunction(database, collection string) db.MigrationOperatio
 			}
 			test.Execution = execution
 
-			if err := session.DB(database).C(collection).Insert(test); err != nil {
+			if err := session.DB(database).C(testResultsCollection).Insert(test); err != nil {
 				return errors.Wrap(err, "error saving testresult")
 			}
 		}
