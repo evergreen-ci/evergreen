@@ -58,7 +58,7 @@ func (opts Options) Application(env anser.Environment) (*anser.Application, erro
 		Limit: opts.Limit,
 	}
 
-	if err := registerTestResultsMigrationOperations(env); err != nil {
+	if err := registerTestResultsMigrationOperations(env, opts.Database); err != nil {
 		return nil, errors.Wrap(err, "error registering test results migration operations")
 	}
 

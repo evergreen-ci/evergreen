@@ -36,7 +36,7 @@ type testResult struct {
 	Execution int    `bson:"task_execution"`
 }
 
-func makeLegacyTaskMigrationFunction(db, collection string) db.MigrationOperation {
+func makeLegacyTaskMigrationFunction(database, collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
 
@@ -53,11 +53,11 @@ func makeLegacyTaskMigrationFunction(db, collection string) db.MigrationOperatio
 			}
 		}
 
-		return session.DB(db).C(collection).Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"execution": 0}})
+		return session.DB(database).C(collection).Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"execution": 0}})
 	}
 }
 
-func makeTaskMigrationFunction(db, collection string) db.MigrationOperation {
+func makeTaskMigrationFunction(database, collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
 
@@ -104,12 +104,12 @@ func makeTaskMigrationFunction(db, collection string) db.MigrationOperation {
 			}
 			test.Execution = execution
 
-			if err := session.DB(db).C(collection).Insert(test); err != nil {
+			if err := session.DB(database).C(collection).Insert(test); err != nil {
 				return errors.Wrap(err, "error saving testresult")
 			}
 		}
 
-		return session.DB(db).C(collection).Update(bson.M{"_id": id, "execution": execution}, bson.M{"$unset": bson.M{"test_results": 0}})
+		return session.DB(database).C(collection).Update(bson.M{"_id": id, "execution": execution}, bson.M{"$unset": bson.M{"test_results": 0}})
 	}
 }
 
