@@ -403,7 +403,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 // ForbiddenHandler logs a rejected request befure returning a 403 to the client
 func ForbiddenHandler(w http.ResponseWriter, r *http.Request) {
 	reason := csrf.FailureReason(r)
-	grip.Alert(message.Fields{
+	grip.Warning(message.Fields{
 		"action": "forbidden",
 		"method": r.Method,
 		"remote": r.RemoteAddr,
