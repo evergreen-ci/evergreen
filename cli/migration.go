@@ -38,6 +38,7 @@ func (c *MigrationCommand) Execute(_ []string) error {
 		Target:   c.Target,
 		Limit:    c.Limit,
 		URI:      c.MongoDBURI,
+		Workers:  c.Workers,
 		Database: settings.Database.DB,
 	}
 	if opts.URI == "" {
