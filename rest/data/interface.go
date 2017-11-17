@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/auth"
@@ -153,4 +154,14 @@ type Connector interface {
 	DeletePublicKey(*user.DBUser, string) error
 
 	AddPatchIntent(patch.Intent) error
+
+	SetHostStatus(*host.Host, string) error
+	ExtendHostExpiration(*host.Host, time.Duration) error
+
+	// SetHostPassword sshs into a host and changes it's RDP and SSH
+	// passwords
+	SetHostPassword(context.Context, *host.Host, string) error
+
+	// TerminateHost terminates the given host via the cloud provider's API
+	TerminateHost(*host.Host) error
 }
