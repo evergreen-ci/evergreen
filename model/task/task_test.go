@@ -794,3 +794,59 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[7]}).SystemUnresponsive)
 	assert.Equal(1, GetResultCounts([]Task{tasks[8]}).TestTimedOut)
 }
+
+func TestDisplayTaskUpdates(t *testing.T) {
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing task collection")
+	assert := assert.New(t) // nolint
+	dt := Task{
+		Id:          "dt",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task1",
+			"task2",
+			"task3",
+			"task4",
+		},
+	}
+	assert.NoError(dt.Insert())
+	task1 := Task{
+		Id:        "task1",
+		Status:    evergreen.TaskFailed,
+		TimeTaken: 3 * time.Minute,
+	}
+	assert.NoError(task1.Insert())
+	task2 := Task{
+		Id:        "task2",
+		Status:    evergreen.TaskInactive,
+		TimeTaken: 2 * time.Minute,
+	}
+	assert.NoError(task2.Insert())
+	task3 := Task{
+		Id:        "task3",
+		Activated: true,
+		Status:    evergreen.TaskSystemUnresponse,
+		TimeTaken: 5 * time.Minute,
+	}
+	assert.NoError(task3.Insert())
+	task4 := Task{
+		Id:        "task4",
+		Activated: true,
+		Status:    evergreen.TaskSystemUnresponse,
+		TimeTaken: 1 * time.Minute,
+	}
+	assert.NoError(task4.Insert())
+
+	// test that updating the status + activated from execution tasks works
+	assert.NoError(dt.UpdateDisplayTask())
+	dbTask, err := FindOne(ById(dt.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskInactive, dbTask.Status)
+	assert.True(dbTask.Activated)
+	assert.Equal(11*time.Minute, dbTask.TimeTaken)
+
+	// test that you can't update an execution task
+	assert.Error(task1.UpdateDisplayTask())
+}
