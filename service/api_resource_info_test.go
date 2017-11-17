@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -37,7 +36,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		hostId = "host_id"
 	)
 
-	_, err = insertTaskForTesting(taskId, "version", "project", testresult.TestResult{})
+	_, err = insertTaskForTesting(taskId, "version", "project", task.TestResult{})
 	testutil.HandleTestingErr(err, t, "problem creating task")
 
 	_, err = insertHostWithRunningTask(hostId, taskId)
