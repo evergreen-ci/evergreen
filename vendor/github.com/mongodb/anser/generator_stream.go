@@ -73,7 +73,11 @@ func (j *streamMigrationGenerator) Run() {
 	defer session.Close()
 
 	coll := session.DB(j.NS.DB).C(j.NS.Collection)
-	iter := coll.Find(j.Query).Select(bson.M{"_id": 1}).Iter()
+	query := coll.Find(j.Query).Select(bson.M{"_id": 1})
+	if j.Limit > 0 {
+		query = query.Limit(j.Limit)
+	}
+	iter := query.Iter()
 
 	network.AddGroup(j.ID(), j.generateJobs(env, iter))
 

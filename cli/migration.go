@@ -12,7 +12,6 @@ import (
 
 type MigrationCommand struct {
 	ConfigPath string `long:"conf" default:"/etc/mci_settings.yml" description:"path to the service configuration file"`
-	MongoDBURI string `long:"mongodburi" default:"" description:"alternate mongodb uri, override config file"`
 	DryRun     bool   `long:"dry-run" short:"n" description:"run migration in a dry-run mode"`
 	Limit      int    `long:"limit" short:"l" description:"run migration with a limit"`
 	Target     int    `long:"target" short:"t" default:"60" description:"target number of migrations to run in the specified period"`
@@ -37,12 +36,9 @@ func (c *MigrationCommand) Execute(_ []string) error {
 		Period:   period,
 		Target:   c.Target,
 		Limit:    c.Limit,
-		URI:      c.MongoDBURI,
+		Session:  env.Session(),
 		Workers:  c.Workers,
 		Database: settings.Database.DB,
-	}
-	if opts.URI == "" {
-		opts.URI = settings.Database.Url
 	}
 
 	anserEnv, err := opts.Setup(ctx)

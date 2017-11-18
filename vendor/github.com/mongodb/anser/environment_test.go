@@ -12,18 +12,19 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
 	grip.SetName("anser.test")
-	dialTimeout = 10 * time.Millisecond
 }
 
 type EnvImplSuite struct {
-	env    *envState
-	q      amboy.Queue
-	cancel context.CancelFunc
+	env     *envState
+	q       amboy.Queue
+	session db.Session
+	cancel  context.CancelFunc
 	suite.Suite
 }
 
@@ -37,6 +38,10 @@ func (s *EnvImplSuite) SetupSuite() {
 	s.q = queue.NewLocalUnordered(4)
 	s.cancel = cancel
 	s.NoError(s.q.Start(ctx))
+
+	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/", 10*time.Millisecond)
+	s.Require().NoError(err)
+	s.session = db.WrapSession(mgoses)
 
 	s.Require().Equal(globalEnv, GetEnvironment())
 }
@@ -53,7 +58,7 @@ func (s *EnvImplSuite) SetupTest() {
 
 	s.Nil(s.env.session)
 	s.False(s.env.isSetup)
-	s.NoError(s.env.Setup(s.q, "mongodb://localhost:27017/"))
+	s.NoError(s.env.Setup(s.q, s.session))
 	s.True(s.env.isSetup)
 	s.NotNil(s.env.session)
 	s.Equal(s.env.metadataNS.DB, defaultAnserDB)
@@ -62,14 +67,14 @@ func (s *EnvImplSuite) SetupTest() {
 }
 
 func (s *EnvImplSuite) TestCallingSetupMultipleTimesErrors() {
-	s.Error(s.env.Setup(s.q, "mongodb://localhost:27017/"))
+	s.Error(s.env.Setup(s.q, s.session))
 	s.True(s.env.isSetup)
 }
 
 func (s *EnvImplSuite) TestDialErrorCausesSetupError() {
 	s.env.isSetup = false
 	s.env.session = nil
-	s.Error(s.env.Setup(s.q, "mongodb://127.0.1.1:80/"))
+	s.Error(s.env.Setup(s.q, nil))
 	s.False(s.env.isSetup)
 	s.Nil(s.env.session)
 }
@@ -78,16 +83,21 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.env.isSetup = false
 	s.env.queue = nil
 
-	s.Error(s.env.Setup(queue.NewLocalUnordered(2), "mongodb://localhost:27017/"))
+	s.Error(s.env.Setup(queue.NewLocalUnordered(2), s.session))
 	s.Nil(s.env.queue)
 	s.False(s.env.isSetup)
 }
 
 func (s *EnvImplSuite) TestDatabaseNameOverrideFromURI() {
 	s.env.isSetup = false
-	s.NoError(s.env.Setup(s.q, "mongodb://127.0.0.1:27017/mci"))
+	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/mci", 10*time.Millisecond)
+	s.Require().NoError(err)
+	session := db.WrapSession(mgoses)
+	defer session.Close()
+
+	s.NoError(s.env.Setup(s.q, session))
 	s.True(s.env.isSetup)
-	s.Equal(s.env.metadataNS.DB, "mci")
+	s.Equal("mci", s.env.metadataNS.DB)
 }
 
 func (s *EnvImplSuite) TestSessionAccessor() {

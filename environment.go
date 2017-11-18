@@ -188,5 +188,5 @@ func (e *envState) Session() db.Session {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return db.WrapSession(e.session.Clone())
+	return db.WrapSession(e.session.Copy())
 }
