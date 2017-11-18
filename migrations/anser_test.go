@@ -13,17 +13,18 @@ import (
 )
 
 func TestAnserBasicPlaceholder(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	mgoSession, _, err := evg.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
-	defer mgoSession.Close()
+	session := db.WrapSession(mgoSession.Clone())
+	defer session.Close()
 
 	opts := Options{
 		Database: "mci_test",
 		Period:   time.Second,
-		Session:  db.WrapSession(mgoSession),
 		Target:   2,
 		Workers:  2,
+		Session:  session,
 	}
 
 	app, err := opts.Application(mock.NewEnvironment())
