@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/k0kubun/pp"
+	"github.com/pkg/errors"
 )
 
 func getSpawnHostsRouteManager(route string, version int) *RouteManager {
@@ -52,8 +53,7 @@ func (h *spawnHostModifyHandler) Handler() RequestHandler {
 
 func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	hostModify := model.APISpawnHostModify{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify)
-	if err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
 		return err
 	}
 
@@ -75,7 +75,7 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 
 	if h.action == HostPasswordUpdate {
 		h.rdpPassword = string(hostModify.RDPPwd)
-		// TODO validate password same way ui does it
+		// TODO validate password same way UI does it
 		if h.rdpPassword == "" {
 			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
@@ -84,8 +84,7 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 		}
 
 	} else if h.action == HostExpirationExtension {
-		var addHours int
-		addHours, err = strconv.Atoi(string(hostModify.AddHours))
+		addHours, err := strconv.Atoi(string(hostModify.AddHours))
 		if err != nil {
 			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
@@ -102,8 +101,8 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 	host, err := sc.FindHostById(h.hostId)
 	if err != nil {
 		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    err.Error(),
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
 		}
 	}
 	if host == nil {
@@ -158,21 +157,20 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 		msg = "Host RDP password successfully updated."
 
 	} else if h.action == HostExpirationExtension {
-		newExp := host.ExpirationTime.Add(h.addHours)
-		hoursUntilExpiration := newExp.Sub(time.Now()).Hours() // nolint
-		if hoursUntilExpiration > MaxExpirationDurationHours {
+		newExp, err := makeNewHostExpiration(host, h.addHours)
+		if err != nil {
 			return ResponseData{}, &rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    fmt.Sprintf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", h.hostId, int(hoursUntilExpiration), MaxExpirationDurationHours),
+				Message:    err.Error(),
 			}
+
 		}
 
-		if err := sc.ExtendHostExpiration(host, h.addHours); err != nil {
+		if err := sc.SetHostExpirationTime(host, newExp); err != nil {
 			return ResponseData{}, &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
 			}
-
 		}
 
 		// TODO
@@ -184,7 +182,16 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 		// TODO
 		msg = "Successfully extended host expiration time"
 	}
-	pp.Println(msg)
 
 	return ResponseData{}, nil
+}
+
+func makeNewHostExpiration(host *host.Host, addHours time.Duration) (time.Time, error) {
+	newExp := host.ExpirationTime.Add(addHours)
+	hoursUntilExpiration := newExp.Sub(time.Now()).Hours()
+	if hoursUntilExpiration > MaxExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, int(hoursUntilExpiration), MaxExpirationDurationHours)
+	}
+
+	return newExp, nil
 }

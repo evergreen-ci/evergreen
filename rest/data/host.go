@@ -147,8 +147,7 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	return remoteCommand, nil
 }
 
-func (hc *DBHostConnector) ExtendHostExpiration(host *host.Host, extendBy time.Duration) error {
-	newExp := host.ExpirationTime.Add(extendBy)
+func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
 	if err := host.SetExpirationTime(newExp); err != nil {
 		return errors.Wrap(err, "Error extending host expiration time")
 	}
@@ -308,10 +307,9 @@ func (hc *MockHostConnector) SetHostPassword(_ context.Context, host *host.Host,
 	return errors.New("can't find host")
 }
 
-func (hc *MockHostConnector) ExtendHostExpiration(host *host.Host, extendBy time.Duration) error {
+func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
 	for i, h := range hc.CachedHosts {
 		if h.Id == host.Id {
-			newExp := host.ExpirationTime.Add(extendBy)
 			hc.CachedHosts[i].ExpirationTime = newExp
 			host.ExpirationTime = newExp
 			return nil
@@ -322,6 +320,11 @@ func (hc *MockHostConnector) ExtendHostExpiration(host *host.Host, extendBy time
 }
 
 func (hc *MockHostConnector) TerminateHost(host *host.Host) error {
-	grip.Infof("Pretending to terminate %s", host.Id)
-	return nil
+	for _, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
 }
