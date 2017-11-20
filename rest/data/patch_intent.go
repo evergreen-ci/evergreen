@@ -13,7 +13,7 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent) error {
 
 type MockPatchIntentKey struct {
 	intentType string
-	msgId      string
+	msgID      string
 }
 
 type MockPatchIntentConnector struct {
@@ -21,7 +21,7 @@ type MockPatchIntentConnector struct {
 }
 
 func (p *MockPatchIntentConnector) AddPatchIntent(newIntent patch.Intent) error {
-	key := MockPatchIntentKey{newIntent.GetType(), newIntent.UniqueId()}
+	key := MockPatchIntentKey{newIntent.GetType(), newIntent.ID()}
 	if _, ok := p.CachedIntents[key]; ok {
 		return errors.New("intent with msg_id already exists")
 	}

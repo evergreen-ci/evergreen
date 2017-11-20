@@ -54,7 +54,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Implements((*Intent)(nil), intent)
 	githubIntent, ok := intent.(*githubIntent)
 	s.True(ok)
-	s.Equal("4", githubIntent.MsgId)
+	s.Equal("4", githubIntent.MsgID)
 	s.Equal(s.repo, githubIntent.RepoName)
 	s.Equal(s.pr, githubIntent.PRNumber)
 	s.Equal(s.user, githubIntent.User)

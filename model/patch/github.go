@@ -32,9 +32,9 @@ type Intent interface {
 	// GetType returns the patch intent, e.g., GithubType.
 	GetType() string
 
-	// UniqueId returns an identifier such that the tuple
-	// (intent type, UniqueId()) is unique in the collection.
-	UniqueId() string
+	// ID returns an identifier such that the tuple
+	// (intent type, ID()) is unique in the collection.
+	ID() string
 }
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -42,10 +42,10 @@ type Intent interface {
 // amboy queue.
 type githubIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
-	ID bson.ObjectId `bson:"_id"`
+	DocumentID bson.ObjectId `bson:"_id"`
 
 	// MsgId is the unique message id as provided by Github (X-Github-Delivery)
-	MsgId string `bson:"msg_id"`
+	MsgID string `bson:"msg_id"`
 
 	// CreatedAt is the time that this intent was stored in the database
 	CreatedAt time.Time `bson:"created_at"`
@@ -78,8 +78,8 @@ type githubIntent struct {
 // BSON fields for the patches
 // nolint
 var (
-	idKey          = bsonutil.MustHaveTag(githubIntent{}, "ID")
-	msgIdKey       = bsonutil.MustHaveTag(githubIntent{}, "MsgId")
+	documentIDKey  = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
+	msgIDKey       = bsonutil.MustHaveTag(githubIntent{}, "MsgID")
 	createdAtKey   = bsonutil.MustHaveTag(githubIntent{}, "CreatedAt")
 	repoNameKey    = bsonutil.MustHaveTag(githubIntent{}, "RepoName")
 	prNumberKey    = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
@@ -113,8 +113,8 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 	}
 
 	return &githubIntent{
-		ID:         bson.NewObjectId(),
-		MsgId:      msgDeliveryID,
+		DocumentID: bson.NewObjectId(),
+		MsgID:      msgDeliveryID,
 		RepoName:   repoName,
 		PRNumber:   prNumber,
 		User:       user,
@@ -128,7 +128,7 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
 	return updateOneIntent(
-		bson.M{idKey: g.ID},
+		bson.M{documentIDKey: g.DocumentID},
 		bson.M{"$set": bson.M{processedKey: g.Processed}},
 	)
 }
@@ -164,8 +164,8 @@ func (g *githubIntent) Insert() error {
 	return nil
 }
 
-func (g *githubIntent) UniqueId() string {
-	return g.MsgId
+func (g *githubIntent) ID() string {
+	return g.MsgID
 }
 
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
