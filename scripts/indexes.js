@@ -42,7 +42,7 @@ db.patches.ensureIndex({ "version" : 1 })
 db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
 
 //======patch_intents======//
-db.patch_intents.ensureIndex({ "msg_id" : 1 }, { "unique" : true })
+db.patch_intents.ensureIndex({ "msg_id" : 1, "intent_type": 1 }, { "unique" : true })
 
 //======project_ref======//
 db.project_ref.ensureIndex({ "identifier" : 1 })

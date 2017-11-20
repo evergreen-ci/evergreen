@@ -38,7 +38,7 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.rm = getGithubHooksRouteManager("", 2)
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
-		CachedIntents: map[string]patch.Intent{},
+		CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
 	}}
 
 	var err error

@@ -11,22 +11,21 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent) error {
 	return intent.Insert()
 }
 
+type MockPatchIntentKey struct {
+	intentType string
+	msgId      string
+}
+
 type MockPatchIntentConnector struct {
-	CachedIntents map[string]patch.Intent
+	CachedIntents map[MockPatchIntentKey]patch.Intent
 }
 
 func (p *MockPatchIntentConnector) AddPatchIntent(newIntent patch.Intent) error {
-	switch intent := newIntent.(type) {
-	case *patch.GithubIntent:
-		if _, ok := p.CachedIntents[intent.MsgId]; ok {
-			return errors.New("intent with msg_id already exists")
-		}
-
-		p.CachedIntents[intent.MsgId] = newIntent
-
-	default:
-		panic("unknown intent type")
-
+	key := MockPatchIntentKey{newIntent.GetType(), newIntent.UniqueId()}
+	if _, ok := p.CachedIntents[key]; ok {
+		return errors.New("intent with msg_id already exists")
 	}
+	p.CachedIntents[key] = newIntent
+
 	return nil
 }
