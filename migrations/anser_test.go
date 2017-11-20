@@ -5,17 +5,23 @@ import (
 	"testing"
 	"time"
 
+	evg "github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAnserBasicPlaceholder(t *testing.T) {
 	assert := assert.New(t)
+	mgoSession, _, err := evg.GetGlobalSessionFactory().GetSession()
+	assert.NoError(err)
+	defer mgoSession.Close()
+
 	opts := Options{
 		Database: "mci_test",
-		URI:      "mongodb://localhost:27017",
 		Period:   time.Second,
+		Session:  db.WrapSession(mgoSession),
 		Target:   2,
 		Workers:  2,
 	}
