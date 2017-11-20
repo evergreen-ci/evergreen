@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 // TODO: take out task queue finder and host finder once transition is complete
@@ -64,17 +63,17 @@ func (tr *TaskRunner) Run() error {
 	workers := runtime.NumCPU() * 2
 	wg.Add(workers)
 
-	catcher := grip.NewBasicCatcher()
 	// for each worker create a new goroutine
 	for i := 0; i < workers; i++ {
 		go func() {
 			defer wg.Done()
 			for input := range freeHostChan {
-				catcher.Add(errors.Wrapf(tr.StartAgentOnHost(input.Settings, input.Host),
-					"problem starting agent on host %s", input.Host.Id))
+				errorCollector.add(input.Host.Id, input.Host.Distro.Id, input.Host.Provider,
+					tr.StartAgentOnHost(input.Settings, input.Host))
 			}
 		}()
 	}
 	wg.Wait()
-	return catcher.Resolve()
+
+	return errorCollector.report()
 }
