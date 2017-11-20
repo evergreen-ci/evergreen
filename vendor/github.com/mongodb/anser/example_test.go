@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy/queue"
-	"github.com/mongodb/amboy/queue/driver"
+	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/stretchr/testify/assert"
+	mgo "gopkg.in/mgo.v2"
 )
 
 // proofOfConcept is a simple mock "main" to demonstrate how you could
@@ -18,22 +19,19 @@ func proofOfConcept() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	backend := driver.NewPriority()
-	if err := backend.Open(ctx); err != nil {
-		return err
-	}
-	defer backend.Close()
-
-	q := queue.NewSimpleRemoteOrdered(4)
-	if err := q.SetDriver(backend); err != nil {
-		return err
-	}
+	q := queue.NewAdaptiveOrderedLocalQueue(3)
 
 	if err := q.Start(ctx); err != nil {
 		return err
 	}
 
-	if err := env.Setup(q, "mongodb://localhost:27017"); err != nil {
+	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
+	if err != nil {
+		return err
+	}
+	session := db.WrapSession(ses)
+
+	if err := env.Setup(q, session); err != nil {
 		return err
 	}
 

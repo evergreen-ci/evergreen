@@ -12,6 +12,7 @@ import (
 type Environment struct {
 	Queue             amboy.Queue
 	Session           *Session
+	SetupSession      db.Session
 	Network           *DependencyNetwork
 	MetaNS            model.Namespace
 	MigrationRegistry map[string]db.MigrationOperation
@@ -35,10 +36,10 @@ func NewEnvironment() *Environment {
 	}
 }
 
-func (e *Environment) Setup(q amboy.Queue, uri string) error {
+func (e *Environment) Setup(q amboy.Queue, session db.Session) error {
 	e.Queue = q
-	e.Session.URI = uri
 	e.IsSetup = true
+	e.SetupSession = session
 
 	return e.SetupError
 }
