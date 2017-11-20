@@ -286,8 +286,8 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userD
 }
 
 func (hc *MockHostConnector) SetHostStatus(host *host.Host, status string) error {
-	for i, h := range hc.CachedHosts {
-		if h.Id == host.Id {
+	for i, _ := range hc.CachedHosts {
+		if hc.CachedHosts[i].Id == host.Id {
 			hc.CachedHosts[i].Status = status
 			host.Status = status
 			return nil

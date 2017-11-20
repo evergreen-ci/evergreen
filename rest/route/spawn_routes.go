@@ -43,8 +43,6 @@ type spawnHostModifyHandler struct {
 	hostId      string
 	rdpPassword string
 	addHours    time.Duration
-
-	host model.APIHost
 }
 
 func (h *spawnHostModifyHandler) Handler() RequestHandler {
@@ -57,8 +55,8 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 		return err
 	}
 
-	h.action = string(h.action)
-	if h.action != HostTerminate || h.action != HostExpirationExtension || h.action != HostPasswordUpdate {
+	h.action = string(hostModify.Action)
+	if h.action != HostTerminate && h.action != HostExpirationExtension && h.action != HostPasswordUpdate {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid action",
@@ -75,11 +73,11 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 
 	if h.action == HostPasswordUpdate {
 		h.rdpPassword = string(hostModify.RDPPwd)
-		// TODO validate password same way UI does it
-		if h.rdpPassword == "" {
+
+		if !validateRdpPassword(h.rdpPassword) {
 			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    "password must not be empty",
+				Message:    "invalid password",
 			}
 		}
 
@@ -91,7 +89,14 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 				Message:    "expiration not a number",
 			}
 		}
-		h.addHours = time.Duration(addHours) * time.Hour
+		extendBy := time.Duration(addHours) * time.Hour
+
+		if extendBy == time.Duration(0) {
+			return &rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "refusing to extend expiration by 0 hours",
+			}
+		}
 	}
 
 	return nil
@@ -182,16 +187,44 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 		// TODO
 		msg = "Successfully extended host expiration time"
 	}
+	msg = msg
 
 	return ResponseData{}, nil
 }
 
 func makeNewHostExpiration(host *host.Host, addHours time.Duration) (time.Time, error) {
 	newExp := host.ExpirationTime.Add(addHours)
-	hoursUntilExpiration := newExp.Sub(time.Now()).Hours()
+	hoursUntilExpiration := time.Until(newExp).Hours()
 	if hoursUntilExpiration > MaxExpirationDurationHours {
 		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, int(hoursUntilExpiration), MaxExpirationDurationHours)
 	}
 
 	return newExp, nil
+}
+
+func validateRdpPassword(password string) bool {
+	// Golang regex doesn't support regex lookarounds, so we can't use
+	// the regex as found in public/static/js/directives/directives.spawn.js
+	// 6..255 chars inclusive
+	if len(password) < 6 || len(password) > 255 {
+		return false
+	}
+
+	// TODO
+	//matches := 0
+
+	//// need to match 3 of 5 of these groups
+	//regexes := []string{"[A-Z]", "[a-z]", "[0-9]", "[~!@#$%^&*_-+=`|\\(){}[]:;\"'<>,.?/]"}
+
+	//for _, regex := range regexes {
+	//	matched, err := regex.MatchString(regexes, password)
+	//	if err != nil {
+	//		return false
+	//	}
+	//	if matched {
+	//		matches++
+	//	}
+	//}
+
+	return true
 }
