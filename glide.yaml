@@ -51,3 +51,5 @@ import:
   - package: github.com/mongodb/anser
   - package: github.com/mongodb/amboy
   - package: github.com/tychoish/tarjan
+  - package: github.com/google/go-github
+  - package: github.com/google/go-querystring

@@ -2,6 +2,7 @@ package patch
 
 import (
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -13,7 +14,7 @@ const (
 	// IntentCollection is the database collection that stores patch intents.
 	IntentCollection = "patch_intents"
 
-	// GithubIntentType represents patch intents created for GitHub.
+	// githubIntentType represents patch intents created for GitHub.
 	GithubIntentType = "github"
 )
 
@@ -30,6 +31,10 @@ type Intent interface {
 
 	// GetType returns the patch intent, e.g., GithubType.
 	GetType() string
+
+	// ID returns an identifier such that the tuple
+	// (intent type, ID()) is unique in the collection.
+	ID() string
 }
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -37,13 +42,25 @@ type Intent interface {
 // amboy queue.
 type githubIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
-	ID bson.ObjectId `bson:"_id"`
+	DocumentID bson.ObjectId `bson:"_id"`
 
-	// PRNumber is the PR number for the project in GitHub.
+	// MsgId is the unique message id as provided by Github (X-Github-Delivery)
+	MsgID string `bson:"msg_id"`
+
+	// CreatedAt is the time that this intent was stored in the database
+	CreatedAt time.Time `bson:"created_at"`
+
+	// RepoName is the full repository name, ex: mongodb/mongo
+	RepoName string `bson:"repo_name"`
+
+	// PRNumber is the pull request number in GitHub.
 	PRNumber int `bson:"pr_number"`
 
-	// HeadHash is the base SHA of the patch.
-	HeadHash string `bson:"head_hash"`
+	// User is the login username of the Github user that created the pull request
+	User string `bson:"user"`
+
+	// BaseHash is the base hash of the patch.
+	BaseHash string `bson:"base_hash"`
 
 	// URL is the URL of the patch in GitHub.
 	URL string `bson:"url"`
@@ -51,48 +68,67 @@ type githubIntent struct {
 	// Processed indicates whether a patch intent has been processed by the amboy queue.
 	Processed bool `bson:"processed"`
 
-	// IntentType indicates the type of the patch intent, i.e., GithubIntentType
+	// ProcessedAt is the time that this intent was processed
+	ProcessedAt time.Time `bson:"processed_at"`
+
+	// IntentType indicates the type of the patch intent, i.e., githubIntentType
 	IntentType string `bson:"intent_type"`
 }
 
 // BSON fields for the patches
 // nolint
 var (
-	idKey         = bsonutil.MustHaveTag(githubIntent{}, "ID")
-	prNumberKey   = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
-	headHashKey   = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
-	urlKey        = bsonutil.MustHaveTag(githubIntent{}, "URL")
-	processedKey  = bsonutil.MustHaveTag(githubIntent{}, "Processed")
-	intentTypeKey = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
+	documentIDKey  = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
+	msgIDKey       = bsonutil.MustHaveTag(githubIntent{}, "MsgID")
+	createdAtKey   = bsonutil.MustHaveTag(githubIntent{}, "CreatedAt")
+	repoNameKey    = bsonutil.MustHaveTag(githubIntent{}, "RepoName")
+	prNumberKey    = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
+	userKey        = bsonutil.MustHaveTag(githubIntent{}, "User")
+	baseHashKey    = bsonutil.MustHaveTag(githubIntent{}, "BaseHash")
+	urlKey         = bsonutil.MustHaveTag(githubIntent{}, "URL")
+	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
+	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
+	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
-// NewGithubIntent return a new github patch intent.
-func NewGithubIntent(pr int, sha string, url string) (Intent, error) {
-	g := &githubIntent{}
-	if pr == 0 {
+// NewgithubIntent return a new github patch intent.
+func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHash, url string) (Intent, error) {
+	if msgDeliveryID == "" {
+		return nil, errors.New("Unique msg id cannot be empty")
+	}
+	if repoName == "" || len(strings.Split(repoName, "/")) != 2 {
+		return nil, errors.New("Repo name is invalid")
+	}
+	if prNumber == 0 {
 		return nil, errors.New("PR number must not be 0")
 	}
-	if len(sha) == 0 {
+	if user == "" {
+		return nil, errors.New("Github user name must not be empty string")
+	}
+	if len(baseHash) == 0 {
 		return nil, errors.New("Base hash must not be empty")
 	}
 	if !strings.HasPrefix(url, "http") {
-		return nil, errors.Errorf("URL does not appear valid (%s)", g.URL)
+		return nil, errors.Errorf("URL does not appear valid (%s)", url)
 	}
 
-	g.PRNumber = pr
-	g.HeadHash = sha
-	g.URL = url
-	g.IntentType = GithubIntentType
-	g.ID = bson.NewObjectId()
-
-	return g, nil
+	return &githubIntent{
+		DocumentID: bson.NewObjectId(),
+		MsgID:      msgDeliveryID,
+		RepoName:   repoName,
+		PRNumber:   prNumber,
+		User:       user,
+		BaseHash:   baseHash,
+		URL:        url,
+		IntentType: GithubIntentType,
+	}, nil
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
 func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
 	return updateOneIntent(
-		bson.M{idKey: g.ID},
+		bson.M{documentIDKey: g.DocumentID},
 		bson.M{"$set": bson.M{processedKey: g.Processed}},
 	)
 }
@@ -111,14 +147,25 @@ func (g *githubIntent) IsProcessed() bool {
 	return g.Processed
 }
 
-// GetType returns the patch intent, e.g., GithubIntentType.
+// GetType returns the patch intent, e.g., githubIntentType.
 func (g *githubIntent) GetType() string {
 	return g.IntentType
 }
 
 // Insert inserts a patch intent in the database.
 func (g *githubIntent) Insert() error {
-	return db.Insert(IntentCollection, g)
+	g.CreatedAt = time.Now()
+	err := db.Insert(IntentCollection, g)
+	if err != nil {
+		g.CreatedAt = time.Time{}
+		return err
+	}
+
+	return nil
+}
+
+func (g *githubIntent) ID() string {
+	return g.MsgID
 }
 
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.

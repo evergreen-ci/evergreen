@@ -19,6 +19,7 @@ type DBConnector struct {
 	DBBuildConnector
 	DBVersionConnector
 	DBPatchConnector
+	DBPatchIntentConnector
 	DBProjectConnector
 	DBAdminConnector
 	DBStatusConnector
@@ -46,6 +47,7 @@ type MockConnector struct {
 	MockBuildConnector
 	MockVersionConnector
 	MockPatchConnector
+	MockPatchIntentConnector
 	MockProjectConnector
 	MockAdminConnector
 	MockStatusConnector

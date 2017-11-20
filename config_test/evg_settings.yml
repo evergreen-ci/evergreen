@@ -33,6 +33,7 @@ repotracker:
     logfile: "/tmp/repotracker_test.log"
 
 api:
+    github_webhook_secret: "test"
     logfile: "/tmp/api_test.log"
     httplistenaddr: ":8080"
     httpslistenaddr: ":8443"
