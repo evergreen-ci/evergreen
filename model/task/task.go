@@ -103,7 +103,7 @@ type Task struct {
 	// display task fields
 	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
 	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	displayTask    *Task    `bson:"-" json:"-"`
+	displayTask    *Task
 }
 
 // Dependency represents a task that must be completed before the owning
