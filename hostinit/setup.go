@@ -67,6 +67,8 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		startQueue[i] = hostsToStart[r]
 	}
 
+	catcher := grip.NewBasicCatcher()
+
 	var started int
 	for _, h := range startQueue {
 		if ctx.Err() != nil {
@@ -84,7 +86,6 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 			continue
 		}
-		started++
 
 		hostStartTime := time.Now()
 		grip.Info(message.Fields{
@@ -95,17 +96,27 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 		cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
 		if err != nil {
-			return errors.Wrapf(err, "error getting cloud provider for host %s", h.Id)
+			grip.Warning(errors.Wrapf(err, "error getting cloud provider for host %s", h.Id))
+			continue
 		}
 
 		err = h.Remove()
 		if err != nil {
-			return errors.Wrapf(err, "error removing intent host %s", h.Id)
+			grip.Notice(errors.Wrapf(err, "error removing intent host %s", h.Id))
+			continue
 		}
 
 		_, err = cloudManager.SpawnHost(&h)
 		if err != nil {
-			return errors.Wrapf(err, "error spawning host %s", h.Id)
+			// we should maybe try and continue-on-error
+			// here, if we get many errors, but the chance
+			// is that if one fails, the chances of others
+			// failing is quite high (at least while all
+			// cloud providers are typically the same
+			// service provider.)
+			err = errors.Wrapf(err, "error spawning host %s", h.Id)
+			catcher.Add(err)
+			break
 		}
 
 		h.Status = evergreen.HostStarting
@@ -113,8 +124,11 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 		_, err = h.Upsert()
 		if err != nil {
-			return errors.Wrapf(err, "error updating host %v", h.Id)
+			catcher.Add(errors.Wrapf(err, "error updating host %v", h.Id))
+			continue
 		}
+
+		started++
 
 		grip.Info(message.Fields{
 			"GUID":    init.GUID,
@@ -125,15 +139,25 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		})
 	}
 
-	grip.Info(message.Fields{
-		"GUID":      init.GUID,
-		"runner":    RunnerName,
-		"method":    "startHosts",
-		"num_hosts": started,
-		"runtime":   time.Since(startTime),
-	})
+	m := message.Fields{
+		"GUID":       init.GUID,
+		"runner":     RunnerName,
+		"method":     "startHosts",
+		"num_hosts":  started,
+		"total":      len(hostsToStart),
+		"runtime":    time.Since(startTime),
+		"had_errors": false,
+	}
 
-	return nil
+	if catcher.HasErrors() {
+		m["errors"] = catcher.Resolve()
+		m["had_errors"] = true
+	}
+
+	grip.CriticalWhen(catcher.HasErrors(), m)
+	grip.InfoWhen(!catcher.HasErrors(), m)
+
+	return catcher.Resolve()
 }
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
