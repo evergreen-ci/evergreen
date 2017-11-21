@@ -16,7 +16,7 @@ import (
 var globalEnvState *envState
 
 func init() {
-	globalEnvState = &envState{}
+	ResetEnvironment()
 }
 
 // GetEnvironment returns the global application level
@@ -30,6 +30,8 @@ func init() {
 // necessary to access the global environment. There is a mock
 // implementation for use in testing.
 func GetEnvironment() Environment { return globalEnvState }
+
+func ResetEnvironment() { globalEnvState = &envState{} }
 
 // Environment provides application-level services (e.g. databases,
 // configuration, queues.

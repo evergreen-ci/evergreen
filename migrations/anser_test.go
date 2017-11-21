@@ -19,6 +19,8 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	session := db.WrapSession(mgoSession.Clone())
 	defer session.Close()
 
+	anser.ResetEnvironment()
+
 	opts := Options{
 		Database: "mci_test",
 		Period:   time.Second,

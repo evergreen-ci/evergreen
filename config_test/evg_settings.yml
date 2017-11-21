@@ -7,6 +7,13 @@ credentials:  {
         github: "token xxx",
 }
 
+amboy:
+  name: test_queue
+  database: amboy_test
+  pool_size_local: 2
+  pool_size_remote: 2
+  local_storage_size: 2048
+
 agentexecutablesdir: "agent/testdata/executables"
 
 api_url: "https://localhost:8443"

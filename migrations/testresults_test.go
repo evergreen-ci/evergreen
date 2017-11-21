@@ -274,7 +274,7 @@ func TestAddExecutionMigration(t *testing.T) {
 	require.NoError(err)
 
 	q := queue.NewAdaptiveOrderedLocalQueue(2)
-	q.Start(ctx)
+	assert.NoError(q.Start(ctx))
 	require.NoError(env.Setup(q, session))
 
 	info, err := session.DB(dbName).C(tasksCollection).RemoveAll(db.Document{})
