@@ -16,13 +16,12 @@ const (
 type Lock struct {
 	Id       string    `bson:"_id"`
 	Locked   bool      `bson:"locked"`
-	LockedBy string    `bson:"locked_by"`
 	LockedAt time.Time `bson:"locked_at"`
 }
 
 // WaitTillAcquireLock "spins" on acquiring the given database lock,
-// for the process id, until timeoutMS. Returns whether or not the lock was
-// acquired.
+// for the process id, until the lock times out. Returns whether or
+// not the lock was acquired.
 func WaitTillAcquireLock(id string) (bool, error) {
 	startTime := time.Now()
 	for {
