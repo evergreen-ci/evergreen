@@ -81,6 +81,33 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string,
 	return &spawnHostResp, nil
 }
 
+func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
+	terminateRequest := &model.APISpawnHostModify{
+		Action: "terminate",
+		HostID: model.APIString(hostID),
+	}
+	info := requestInfo{
+		method:  post,
+		path:    "spawn",
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, terminateRequest)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to terminate host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := rest.APIError{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem terminating host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem terminating host")
+	}
+
+	return nil
+}
+
 // GetHosts gathers all active hosts and invokes a function on them
 func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	info := requestInfo{
