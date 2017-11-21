@@ -35,6 +35,7 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	s.NoError(err)
 	s.NotNil(evergreen.GetEnvironment().Settings())
 	s.NotNil(evergreen.GetEnvironment().Settings().Api)
+	s.NotEmpty(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
 }
 
 func (s *GithubWebhookRouteSuite) TearDownSuite() {
