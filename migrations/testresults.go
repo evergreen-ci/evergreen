@@ -36,27 +36,6 @@ type testResult struct {
 	Execution int    `bson:"task_execution"`
 }
 
-func makeLegacyTaskMigrationFunction(database, collection string) db.MigrationOperation {
-	return func(session db.Session, rawD bson.RawD) error {
-		defer session.Close()
-
-		var id string
-		for _, raw := range rawD {
-			switch raw.Name {
-			case "_id":
-				if err := raw.Value.Unmarshal(&id); err != nil {
-					return errors.Wrap(err, "error unmarshaling task id")
-				}
-			case "execution":
-				// sanity check
-				return nil
-			}
-		}
-
-		return session.DB(database).C(collection).Update(bson.M{"_id": id}, bson.M{"$set": bson.M{"execution": 0}})
-	}
-}
-
 func makeTaskMigrationFunction(database, collection string) db.MigrationOperation {
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
@@ -113,9 +92,8 @@ func makeTaskMigrationFunction(database, collection string) db.MigrationOperatio
 	}
 }
 
-// testResultsGeneratorFactory returns generators for the tasks and old_tasks collections.
-func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []anser.Generator {
-	noExecutionOpts := model.GeneratorOptions{
+func addExecutionToTasksGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	opts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
 			Collection: tasksCollection,
@@ -127,7 +105,17 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 		JobID: "migration-testresults-legacy-no-execution",
 	}
 
-	tasksOpts := model.GeneratorOptions{
+	return anser.NewSimpleMigrationGenerator(env, opts, bson.M{"$set": bson.M{"execution": 0}}), nil
+}
+
+func testResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	const migrationName = "tasks_testresults"
+
+	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(db, tasksCollection)); err != nil {
+		return nil, err
+	}
+
+	opts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
 			Collection: tasksCollection,
@@ -141,7 +129,17 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 		DependsOn: []string{"migration-testresults-legacy-no-execution"},
 	}
 
-	oldTasksopts := model.GeneratorOptions{
+	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
+}
+
+func oldTestResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	const migrationName = "old_tasks_testresults"
+
+	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(db, oldTasksCollection)); err != nil {
+		return nil, err
+	}
+
+	opts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
 			Collection: oldTasksCollection,
@@ -155,22 +153,5 @@ func testResultsGeneratorFactory(env anser.Environment, db string, limit int) []
 		DependsOn: []string{"migration-testresults-legacy-no-execution"},
 	}
 
-	return []anser.Generator{
-		anser.NewManualMigrationGenerator(env, noExecutionOpts, "tasks_testresults_noexecution"),
-		anser.NewManualMigrationGenerator(env, tasksOpts, "tasks_testresults"),
-		anser.NewManualMigrationGenerator(env, oldTasksopts, "old_tasks_testresults"),
-	}
-}
-
-func registerTestResultsMigrationOperations(env anser.Environment, db string) error {
-	if err := env.RegisterManualMigrationOperation("tasks_testresults_noexecution", makeLegacyTaskMigrationFunction(db, tasksCollection)); err != nil {
-		return err
-	}
-	if err := env.RegisterManualMigrationOperation("tasks_testresults", makeTaskMigrationFunction(db, tasksCollection)); err != nil {
-		return err
-	}
-	if err := env.RegisterManualMigrationOperation("old_tasks_testresults", makeTaskMigrationFunction(db, oldTasksCollection)); err != nil {
-		return err
-	}
-	return nil
+	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }

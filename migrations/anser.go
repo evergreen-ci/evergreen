@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -50,6 +51,8 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 	return env, nil
 }
 
+type migrationGeneratorFactory func(anser.Environment, string, int) (anser.Generator, error)
+
 // Application is where the migrations are registered and defined,
 // before being handed off to another calling environment for
 // execution. See the anser documentation and the
@@ -59,11 +62,24 @@ func (opts Options) Application(env anser.Environment) (*anser.Application, erro
 		Limit: opts.Limit,
 	}
 
-	if err := registerTestResultsMigrationOperations(env, opts.Database); err != nil {
-		return nil, errors.Wrap(err, "error registering test results migration operations")
+	generatorFactories := []migrationGeneratorFactory{
+		addExecutionToTasksGenerator,
+		oldTestResultsGenerator,
+		testResultsGenerator,
 	}
 
-	app.Generators = append(app.Generators, testResultsGeneratorFactory(env, opts.Database, opts.Limit)...)
+	catcher := grip.NewBasicCatcher()
+	for _, factory := range generatorFactories {
+		generator, err := factory(env, opts.Database, opts.Limit)
+		catcher.Add(err)
+		if generator != nil {
+			app.Generators = append(app.Generators, generator)
+		}
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
 
 	if err := app.Setup(env); err != nil {
 		return nil, errors.WithStack(err)

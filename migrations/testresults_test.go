@@ -1,11 +1,14 @@
 package migrations
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	evg "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/amboy/queue"
+	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -125,7 +128,7 @@ func (s *TestResultsMigrationSuite) SetupSuite() {
 }
 
 func (s *TestResultsMigrationSuite) SetupTest() {
-	session := db.WrapSession(s.session.Clone())
+	session := db.WrapSession(s.session.Copy())
 	defer session.Close()
 
 	info, err := session.DB(s.dbName).C(testResultsCollection).RemoveAll(bson.M{})
@@ -139,13 +142,13 @@ func (s *TestResultsMigrationSuite) SetupTest() {
 }
 
 func (s *TestResultsMigrationSuite) TestNoTestResults() {
-	session := db.WrapSession(s.session.Clone())
+	session := db.WrapSession(s.session.Copy())
 	s.Require().NoError(session.DB(s.dbName).C(s.collection).Insert(s.task))
 
 	var doc bson.RawD
 	coll := session.DB(s.dbName).C(s.collection)
 	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
-	s.Assert().NoError(s.migration(session.Clone(), doc))
+	s.Assert().NoError(s.migration(session.Copy(), doc))
 
 	count, err := session.DB(s.dbName).C(s.collection).Count()
 	s.NoError(err)
@@ -163,7 +166,7 @@ func (s *TestResultsMigrationSuite) TestNoTestResults() {
 func (s *TestResultsMigrationSuite) TestWithTestResults() {
 	s.task["test_results"] = s.testResults
 
-	session := db.WrapSession(s.session.Clone())
+	session := db.WrapSession(s.session.Copy())
 	s.Require().NoError(session.DB(s.dbName).C(s.collection).Insert(s.task))
 
 	// the task has test_results
@@ -175,7 +178,7 @@ func (s *TestResultsMigrationSuite) TestWithTestResults() {
 	var doc bson.RawD
 	coll := session.DB(s.dbName).C(s.collection)
 	s.Require().NoError(coll.FindId(s.taskID).One(&doc))
-	s.Assert().NoError(s.migration(session.Clone(), doc))
+	s.Assert().NoError(s.migration(session.Copy(), doc))
 
 	// there are still 2 tasks
 	count, err := session.DB(s.dbName).C(s.collection).Count()
@@ -222,7 +225,7 @@ func TestTestResultsLegacyTask(t *testing.T) {
 	mgoSession, database, err := evg.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
 	dbName := database.Name
-	session := db.WrapSession(mgoSession.Clone())
+	session := db.WrapSession(mgoSession.Copy())
 	defer session.Close()
 
 	require.NoError(evg.Clear(tasksCollection))
@@ -252,16 +255,92 @@ func TestTestResultsLegacyTask(t *testing.T) {
 	assert.NoError(session.DB(dbName).C(tasksCollection).Find(bson.M{"_id": "taskid-1"}).One(&task))
 	assert.Contains(task, "test_results")
 	assert.NotContains(task, "execution")
+}
 
-	// run the migration
-	var doc bson.RawD
-	coll := session.DB(dbName).C(tasksCollection)
-	assert.NoError(coll.FindId("taskid-1").One(&doc))
-	assert.NoError(makeLegacyTaskMigrationFunction(dbName, tasksCollection)(session.Clone(), doc))
+func TestAddExecutionMigration(t *testing.T) {
+	assert := assert.New(t)   // nolint
+	require := require.New(t) // nolint
 
-	// the task still contains test results, and now contains an execution field
-	assert.NoError(session.DB(dbName).C(tasksCollection).Find(bson.M{"_id": "taskid-1"}).One(&task))
-	assert.Contains(task, "test_results")
-	assert.Contains(task, "execution")
-	assert.Equal(0, task["execution"].(int))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// setup the migration environment and get a database session
+	env := anser.GetEnvironment()
+	mgoSession, database, err := evg.GetGlobalSessionFactory().GetSession()
+	require.NoError(err)
+	dbName := database.Name
+	session := db.WrapSession(mgoSession.Copy())
+	defer session.Close()
+	require.NoError(err)
+
+	q := queue.NewAdaptiveOrderedLocalQueue(2)
+	q.Start(ctx)
+	require.NoError(env.Setup(q, session))
+
+	info, err := session.DB(dbName).C(tasksCollection).RemoveAll(db.Document{})
+	require.NoError(err, "%+v", info)
+
+	// run a noop migration
+	gen, err := addExecutionToTasksGenerator(env, dbName, 0)
+	assert.NoError(err)
+	assert.NotNil(gen)
+
+	gen.Run()
+	assert.NoError(gen.Error())
+
+	// the noop migration should find nothing to migrate
+	count := 0
+	for range gen.Jobs() {
+		count++
+	}
+	assert.Equal(0, count)
+
+	// now add 10 documents without the required field and let's see if we generate migrations:
+	for i := 0; i < 10; i++ {
+		err = session.DB(dbName).C(tasksCollection).Insert(db.Document{"_id": i})
+		assert.NoError(err)
+
+		// just to make things interesting, we'll also add some documents that don't need to be migrated
+		err = session.DB(dbName).C(tasksCollection).Insert(db.Document{
+			"_id":        fmt.Sprintf("%d-fine", i),
+			"skip_later": true,
+			"execution":  42,
+		})
+		assert.NoError(err)
+	}
+
+	gen, err = addExecutionToTasksGenerator(env, dbName, 0)
+	assert.NoError(err)
+	assert.NotNil(gen)
+
+	gen.Run()
+	assert.NoError(gen.Error())
+
+	count = 0
+	for job := range gen.Jobs() {
+		count++
+		// let's run the migrations just to avoid a double loop
+		job.Run()
+		assert.NoError(job.Error())
+	}
+	assert.Equal(10, count)
+
+	// now let's look at the results and make sure they look like we think they should
+	count = 0
+	out := db.Document{}
+	iter := session.DB(dbName).C(tasksCollection).Find(db.Document{}).Iter()
+	for iter.Next(out) {
+		exec, ok := out["execution"]
+		assert.True(ok)
+
+		if _, ok = out["skip_later"]; ok {
+			continue
+		}
+
+		val, ok := exec.(int)
+		assert.True(ok)
+		assert.Equal(0, val)
+		count++
+	}
+	assert.Equal(10, count)
 }
