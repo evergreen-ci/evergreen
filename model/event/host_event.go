@@ -51,6 +51,22 @@ type HostEventData struct {
 	Duration      time.Duration `bson:"duration,omitempty" json:"duration"`
 }
 
+func GetHostEvent(events []Event) ([]HostEventData, error) {
+	out := []HostEventData{}
+	errCount := 0
+
+	for _, e := range events {
+		hostEvent, ok := e.Data.(HostEventData)
+		if !ok {
+			errCount++
+			continue
+		}
+		out = append(out, hostEvent)
+	}
+
+	grip
+}
+
 func (self HostEventData) IsValid() bool {
 	return self.ResourceType == ResourceTypeHost
 }
