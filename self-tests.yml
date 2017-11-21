@@ -468,8 +468,8 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["race", "db"]
     name: race-units
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
     name: race-rest-route
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
