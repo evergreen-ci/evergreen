@@ -111,7 +111,7 @@ func runRepoTracker(config *evergreen.Settings) error {
 		"num":     remaining,
 	})
 
-	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
+	lockAcquired, err := db.WaitTillAcquireLock(RunnerName)
 	if err != nil {
 		return errors.Wrap(err, "Error acquiring global lock")
 	}
@@ -121,7 +121,7 @@ func runRepoTracker(config *evergreen.Settings) error {
 	}
 
 	defer func() {
-		if err = db.ReleaseGlobalLock(RunnerName); err != nil {
+		if err = db.ReleaseLock(RunnerName); err != nil {
 			grip.Error(message.Fields{
 				"runner":  RunnerName,
 				"message": "Error releasing global lock",
