@@ -37,6 +37,7 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/distros":                                             getDistroRouteManager,
 		"/hosts":                                               getHostRouteManager,
 		"/hosts/{host_id}":                                     getHostIDRouteManager,
+		"/hosts/terminate/{host_id}":                           getHostTerminateRouteManager,
 		"/patches/{patch_id}":                                  getPatchByIdManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
 		"/users/{user_id}/hosts":                               getHostsByUserManager,

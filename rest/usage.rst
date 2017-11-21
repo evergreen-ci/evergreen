@@ -395,7 +395,7 @@ Get Tests From A Task
 Host
 ----
 
- The hosts resource defines the a running machine instance in Evergreen.
+ The hosts resource defines a running machine instance in Evergreen.
 
 Objects
 ~~~~~~~
@@ -503,7 +503,29 @@ Fetch Host By ID
 
  GET /hosts/<host_id>
 
- Fetches a single host using its ID   
+ Fetches a single host using its ID
+
+Terminate Host with Given Host ID
+`````````````````````````````````
+
+::
+
+ POST /hosts/terminate/<host_id>
+
+ Immediately terminate a single host using its ID. Users may only terminate hosts which
+ were created by them.
+
+ Hosts which have not been initialised yet will be marked as Terminated.
+
+ Hosts which have already been termianted will result in an error.
+
+ All other host statuses will result in an attempt to terminate using the provider's
+ API
+
+ A response code of 200 OK indicates that the host was successfully terminated
+
+ All other response codes indicate errors; the response body can be parsed as
+ a rest.APIError
 
 Patch
 -----

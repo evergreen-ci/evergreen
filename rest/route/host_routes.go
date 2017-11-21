@@ -2,8 +2,11 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -74,6 +77,21 @@ func getHostsByUserManager(route string, version int) *RouteManager {
 				MethodType:        http.MethodGet,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    h.Handler(),
+			},
+		},
+	}
+}
+
+func getHostTerminateRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostTerminateHandler{},
 			},
 		},
 	}
@@ -327,4 +345,67 @@ func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	return ResponseData{
 		Result: []model.Model{hostModel},
 	}, nil
+}
+
+type hostTerminateHandler struct {
+	hostID string
+}
+
+func (h *hostTerminateHandler) Handler() RequestHandler {
+	return &hostTerminateHandler{}
+}
+
+func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	h.hostID = vars["host_id"]
+
+	if strings.TrimSpace(h.hostID) == "" {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "missing host id",
+		}
+	}
+
+	return nil
+}
+
+func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	host, err := sc.FindHostById(h.hostID)
+	if err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "unknown host id",
+		}
+	}
+
+	if host.Status == evergreen.HostTerminated {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Host %s is already terminated", host.Id),
+		}
+
+	} else if host.Status == evergreen.HostUninitialized {
+		if err := sc.SetHostStatus(host, evergreen.HostTerminated); err != nil {
+			return ResponseData{}, &rest.APIError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+		}
+
+	} else {
+		if err := sc.TerminateHost(host); err != nil {
+			return ResponseData{}, &rest.APIError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+		}
+	}
+
+	return ResponseData{}, nil
 }
