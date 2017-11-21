@@ -21,18 +21,25 @@ import (
 )
 
 type GithubWebhookRouteSuite struct {
-	sc     *data.MockConnector
-	rm     *RouteManager
-	prBody []byte
+	sc       *data.MockConnector
+	rm       *RouteManager
+	canceler context.CancelFunc
+	prBody   []byte
 	suite.Suite
 }
 
 func (s *GithubWebhookRouteSuite) SetupSuite() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.canceler = cancel
 	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
 	s.NoError(err)
 	s.NotNil(evergreen.GetEnvironment().Settings())
 	s.NotNil(evergreen.GetEnvironment().Settings().Api)
+}
+
+func (s *GithubWebhookRouteSuite) TearDownSuite() {
+	s.canceler()
+	evergreen.ResetEnvironment()
 }
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
