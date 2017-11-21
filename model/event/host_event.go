@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -64,7 +65,10 @@ func GetHostEvent(events []Event) ([]HostEventData, error) {
 		out = append(out, hostEvent)
 	}
 
-	grip
+	if errCount > 0 {
+		return nil, errors.Errorf("")
+
+	}
 }
 
 func (self HostEventData) IsValid() bool {
