@@ -40,7 +40,7 @@ const (
 
 type spawnHostModifyHandler struct {
 	action      string
-	hostId      string
+	hostID      string
 	rdpPassword string
 	addHours    time.Duration
 }
@@ -63,8 +63,8 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 		}
 	}
 
-	h.hostId = string(hostModify.HostId)
-	if h.hostId == "" {
+	h.hostID = string(hostModify.HostID)
+	if h.hostID == "" {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid host id",
@@ -91,10 +91,10 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 		}
 		extendBy := time.Duration(addHours) * time.Hour
 
-		if extendBy == time.Duration(0) {
+		if extendBy <= time.Duration(0) {
 			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    "refusing to extend expiration by 0 hours",
+				Message:    "expiration must be greater than 0",
 			}
 		}
 	}
@@ -103,7 +103,7 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 }
 
 func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	host, err := sc.FindHostById(h.hostId)
+	host, err := sc.FindHostById(h.hostID)
 	if err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
@@ -117,7 +117,6 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 		}
 	}
 
-	msg := ""
 	if h.action == HostTerminate {
 		if host.Status == evergreen.HostTerminated {
 			return ResponseData{}, &rest.APIError{
@@ -133,8 +132,6 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 				}
 			}
 
-			msg = "host terminated"
-
 		} else {
 			if err := sc.TerminateHost(host); err != nil {
 				return ResponseData{}, &rest.APIError{
@@ -142,9 +139,6 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 					Message:    err.Error(),
 				}
 			}
-
-			// TODO
-			msg = "host terminated"
 		}
 
 	} else if h.action == HostPasswordUpdate {
@@ -154,12 +148,6 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 				Message:    err.Error(),
 			}
 		}
-
-		// TODO flash
-		//PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host RDP password successfully updated."))
-
-		// TODO
-		msg = "Host RDP password successfully updated."
 
 	} else if h.action == HostExpirationExtension {
 		newExp, err := makeNewHostExpiration(host, h.addHours)
@@ -177,17 +165,7 @@ func (h *spawnHostModifyHandler) Execute(ctx context.Context, sc data.Connector)
 				Message:    err.Error(),
 			}
 		}
-
-		// TODO
-		//PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration "+
-		//	"extension successful; %v will expire on %v", hostId,
-		//	futureExpiration.Format(time.RFC850))))
-		//fmt.Sprintf("Host expiration extension successful; %s will expire on %s", hostId, futureExpiration.Format(time.RFC850))
-
-		// TODO
-		msg = "Successfully extended host expiration time"
 	}
-	msg = msg
 
 	return ResponseData{}, nil
 }

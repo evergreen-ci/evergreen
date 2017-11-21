@@ -7,16 +7,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/spawn"
-	"github.com/evergreen-ci/evergreen/subprocess"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -92,59 +86,7 @@ func (hc *DBHostConnector) SetHostStatus(host *host.Host, status string) error {
 }
 
 func (hc *DBHostConnector) SetHostPassword(ctx context.Context, host *host.Host, password string) error {
-	pwdUpdateCmd, err := constructPwdUpdateCommand(evergreen.GetEnvironment().Settings(), host, password)
-	if err != nil {
-		return errors.Wrap(err, "Error constructing host RDP password")
-	}
-
-	// update RDP and sshd password
-	if err = pwdUpdateCmd.Run(ctx); err != nil {
-		return errors.Wrap(err, "Error updating host RDP password")
-	}
-	return nil
-}
-
-// constructPwdUpdateCommand returns a RemoteCommand struct used to
-// set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
-	password string) (*subprocess.RemoteCommand, error) {
-
-	cloudHost, err := providers.GetCloudHost(hostObj, settings)
-	if err != nil {
-		return nil, err
-	}
-
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
-	if err != nil {
-		return nil, err
-	}
-
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return nil, err
-	}
-
-	stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-	defer stderr.Close()
-	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-	defer stdout.Close()
-
-	updatePwdCmd := fmt.Sprintf("net user %v %v && sc config "+
-		"sshd obj= '.\\%v' password= \"%v\"", hostObj.User, password,
-		hostObj.User, password)
-
-	// construct the required termination command
-	remoteCommand := &subprocess.RemoteCommand{
-		CmdString:       updatePwdCmd,
-		Stdout:          stdout,
-		Stderr:          stderr,
-		LoggingDisabled: true,
-		RemoteHostName:  hostInfo.Hostname,
-		User:            hostObj.User,
-		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:      false,
-	}
-	return remoteCommand, nil
+	return spawn.SetHostRDPPassword(ctx, host, password)
 }
 
 func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
@@ -156,15 +98,7 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 }
 
 func (hc *DBHostConnector) TerminateHost(host *host.Host) error {
-	cloudHost, err := providers.GetCloudHost(host, evergreen.GetEnvironment().Settings())
-	if err != nil {
-		return err
-	}
-	if err = cloudHost.TerminateInstance(); err != nil {
-		return err
-	}
-
-	return nil
+	return spawn.TerminateHost(host, evergreen.GetEnvironment().Settings())
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -300,7 +234,6 @@ func (hc *MockHostConnector) SetHostStatus(host *host.Host, status string) error
 func (hc *MockHostConnector) SetHostPassword(_ context.Context, host *host.Host, _ string) error {
 	for _, h := range hc.CachedHosts {
 		if h.Id == host.Id {
-			time.Sleep(2 * time.Second)
 			return nil
 		}
 	}

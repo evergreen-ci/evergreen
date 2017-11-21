@@ -1,25 +1,35 @@
 package spawn
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
 const (
-	MaxPerUser        = 3
-	DefaultExpiration = time.Duration(24 * time.Hour)
+	MaxPerUser                 = 3
+	DefaultExpiration          = time.Duration(24 * time.Hour)
+	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
 // Options holds the required parameters for spawning a host.
@@ -159,4 +169,93 @@ func CreateHost(so Options) (*host.Host, error) {
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
 	return intentHost, errors.WithStack(err)
+}
+
+func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) error {
+	pwdUpdateCmd, err := constructPwdUpdateCommand(evergreen.GetEnvironment().Settings(), host, password)
+	if err != nil {
+		return errors.Wrap(err, "Error constructing host RDP password")
+	}
+
+	// update RDP and sshd password
+	if err = pwdUpdateCmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "Error updating host RDP password")
+	}
+	return nil
+}
+
+// constructPwdUpdateCommand returns a RemoteCommand struct used to
+// set the RDP password on a remote windows machine.
+func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
+	password string) (*subprocess.RemoteCommand, error) {
+
+	cloudHost, err := providers.GetCloudHost(hostObj, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
+	defer stderr.Close()
+	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
+	defer stdout.Close()
+
+	updatePwdCmd := fmt.Sprintf("net user %v %v && sc config "+
+		"sshd obj= '.\\%v' password= \"%v\"", hostObj.User, password,
+		hostObj.User, password)
+
+	// construct the required termination command
+	remoteCommand := &subprocess.RemoteCommand{
+		CmdString:       updatePwdCmd,
+		Stdout:          stdout,
+		Stderr:          stderr,
+		LoggingDisabled: true,
+		RemoteHostName:  hostInfo.Hostname,
+		User:            hostObj.User,
+		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
+		Background:      false,
+	}
+	return remoteCommand, nil
+}
+
+func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
+	if host.Status == evergreen.HostUninitialized {
+		if err := host.SetTerminated(); err != nil {
+			return err
+		}
+		return nil
+	}
+	cloudHost, err := providers.GetCloudHost(host, settings)
+	if err != nil {
+		return err
+	}
+	if err = cloudHost.TerminateInstance(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ExtendHostExpiration(host *host.Host, numHoursToAdd int) (time.Time, error) {
+	addtHourDuration := time.Duration(numHoursToAdd) * time.Hour
+	futureExpiration := host.ExpirationTime.Add(addtHourDuration)
+	expirationExtensionDuration := time.Until(futureExpiration).Hours()
+	if expirationExtensionDuration > MaxExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend %s expiration by %d hours. "+
+			"Maximum extension is limited to %d hours", host.Id,
+			int(expirationExtensionDuration), MaxExpirationDurationHours, http.StatusBadRequest)
+	}
+	if err := host.SetExpirationTime(futureExpiration); err != nil {
+		return time.Time{}, errors.Wrap(err, "Error extending host expiration time")
+	}
+
+	return futureExpiration, nil
 }
