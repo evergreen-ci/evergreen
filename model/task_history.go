@@ -352,12 +352,17 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 
 	// create the mapping of the task id to the list of failed tasks
 	for _, task := range tasks {
+		if err := task.MergeNewTestResults(); err != nil {
+			return nil, err
+		}
+
 		for _, test := range task.TestResults {
 			if test.Status == evergreen.TestFailedStatus {
 				failedTestsMap[task.Id] = append(failedTestsMap[task.Id], test)
 			}
 		}
 	}
+
 	return failedTestsMap, nil
 }
 
