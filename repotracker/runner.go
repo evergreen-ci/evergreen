@@ -79,65 +79,67 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 func runRepoTracker(config *evergreen.Settings) error {
 	status, err := thirdparty.GetGithubAPIStatus()
 	if err != nil {
-		errM := errors.Wrap(err, "contacting github")
-		grip.Error(errM)
-		return errM
+		return errors.Wrap(err, "contacting github")
 	}
 	if status != thirdparty.GithubAPIStatusGood {
-		errM := errors.Errorf("bad github api status: %v", status)
+		err = errors.Errorf("bad github api status: %v", status)
 		if status == thirdparty.GithubAPIStatusMajor {
-			grip.Error(errM)
-			return errM
+			return err
 		}
-		grip.Warning(errM)
+		grip.Warning(message.Fields{
+			"error":   err,
+			"message": "github api status degraded",
+			"status":  status,
+			"runner":  RunnerName,
+		})
 	}
 
 	token, ok := config.Credentials[githubCredentialsKey]
 	if !ok {
-		err = errors.New("Github credentials not specified in Evergreen credentials file")
-		grip.Error(err)
-		return err
+		return errors.New("Github credentials not specified in Evergreen credentials file")
 	}
 	remaining, err := thirdparty.CheckGithubAPILimit(token)
 	if err != nil {
-		err = errors.Wrap(err, "Error checking Github API limit")
-		grip.Error(err)
-		return err
+		return errors.Wrap(err, "Error checking Github API limit")
 	}
 	if remaining < githubAPILimitCeiling {
-		err = errors.Errorf("Too few Github API requests remaining: %d < %d", remaining, githubAPILimitCeiling)
-		grip.Alert(err)
-		return err
+		return errors.Errorf("Too few Github API requests remaining: %d < %d", remaining, githubAPILimitCeiling)
 	}
-	grip.Debugf("%d Github API requests remaining", remaining)
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "github api requests remaining",
+		"num":     remaining,
+	})
 
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
-		err = errors.Wrap(err, "Error acquiring global lock")
-		grip.Error(err)
-		return err
+		return errors.Wrap(err, "Error acquiring global lock")
 	}
 
 	if !lockAcquired {
-		err = errors.New("Timed out acquiring global lock")
-		grip.Error(err)
-		return err
+		return errors.New("Timed out acquiring global lock")
 	}
 
 	defer func() {
 		if err = db.ReleaseGlobalLock(RunnerName); err != nil {
-			grip.Error(errors.Wrap(err, "Error releasing global lock"))
+			grip.Error(message.Fields{
+				"runner":  RunnerName,
+				"message": "Error releasing global lock",
+				"error":   err.Error(),
+			})
 		}
 	}()
 
 	startTime := time.Now()
-	grip.Infoln("Running repository tracker with db:", config.Database.DB)
+	grip.Info(message.Fields{
+		"runner":   RunnerName,
+		"message":  "running repository tracker",
+		"database": config.Database.DB,
+	})
 
 	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
-		err = errors.Wrap(err, "Error finding tracked projects")
-		grip.Error(err)
-		return err
+		return errors.Wrap(err, "Error finding tracked projects")
 	}
 
 	numNewRepoRevisionsToFetch := config.RepoTracker.NumNewRepoRevisionsToFetch
@@ -155,7 +157,11 @@ func runRepoTracker(config *evergreen.Settings) error {
 		jobs <- p
 	}
 	close(jobs)
-	grip.Debugf("sent %d jobs to the repotracker", len(allProjects))
+	grip.Debug(message.Fields{
+		"message": "dispatched jobs",
+		"number":  len(allProjects),
+		"runner":  RunnerName,
+	})
 
 	wg := &sync.WaitGroup{}
 
@@ -164,21 +170,33 @@ func runRepoTracker(config *evergreen.Settings) error {
 		go repoTrackerWorker(config, numNewRepoRevisionsToFetch, jobs, i, wg)
 	}
 
-	grip.Debugf("waiting for repotracker %d jobs to complete on %d workers", len(allProjects), numRequests)
+	grip.Debug(message.Fields{
+		"message": "waiting for jobs to complete jobs",
+		"number":  len(allProjects),
+		"workers": numRequests,
+		"runner":  RunnerName,
+	})
 	wg.Wait()
 
 	runtime := time.Since(startTime)
 	if err = model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		err = errors.Wrap(err, "Error updating process status")
-		grip.Error(err)
-		return err
+		return errors.Wrap(err, "Error updating process status")
 	}
-	grip.Infof("Repository tracker took %s to run", runtime)
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"runtime": runtime,
+		"span":    runtime.String(),
+		"message": "repostory tracker completed without errors",
+	})
 	return nil
 }
 
 func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.ProjectRef, id int, wg *sync.WaitGroup) {
-	grip.Debugln("starting repotracker worker number:", id)
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "starting repotracker worker",
+		"worker":  id,
+	})
 	defer wg.Done()
 
 	var (
@@ -205,7 +223,7 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 				"project": project.Identifier,
 				"error":   err,
 				"message": "problem fetching revisions",
-				"runner":  "repotracker",
+				"runner":  RunnerName,
 				"worker":  id,
 			})
 
@@ -218,7 +236,7 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
 		"operation": "repotracker runner complete",
-		"worker_id": id,
+		"worker":    id,
 		"disabled":  disabled,
 		"errored":   errored,
 		"completed": completed,
