@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -127,7 +128,7 @@ func (s *TestSpawnHostHandlerSuite) TestExecuteTerminateWithRunningHost() {
 // Tests for change password action
 
 func (s *TestSpawnHostHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
-	invalidPasswords := []model.APIString{"", "weak"} // "stilltooweak1","火a11111" }
+	invalidPasswords := []model.APIString{"", "weak", "stilltooweak1", "火a11"}
 	for _, password := range invalidPasswords {
 		mod := model.APISpawnHostModify{
 			Action:   HostPasswordUpdate,
@@ -217,4 +218,19 @@ func (s *TestSpawnHostHandlerSuite) tryParseAndValidate(mod model.APISpawnHostMo
 	h := s.rm.Methods[0].Handler().(*spawnHostModifyHandler)
 
 	return h.ParseAndValidate(context.TODO(), r)
+}
+
+func TestRDPPasswordValidation(t *testing.T) {
+	assert := assert.New(t)
+
+	goodPasswords := []string{"地火風水心1!", "V3ryStr0ng!", "Aaaaa\\"}
+	badPasswords := []string{"", "weak", "stilltooweak1", "火火火1"}
+
+	for _, password := range goodPasswords {
+		assert.True(validateRDPPassword(password))
+	}
+
+	for _, password := range badPasswords {
+		assert.False(validateRDPPassword(password))
+	}
 }

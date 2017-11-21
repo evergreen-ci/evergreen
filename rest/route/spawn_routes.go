@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -29,6 +30,16 @@ func getSpawnHostsRouteManager(route string, version int) *RouteManager {
 		},
 		Version: version,
 	}
+}
+
+// each regex matches one of the 5 categories listed here:
+// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+var passwordRegexps = []*regexp.Regexp{
+	regexp.MustCompile("[\\p{Ll}]"), // lowercase letter
+	regexp.MustCompile("[\\p{Lu}]"), // uppercase letter
+	regexp.MustCompile("[0-9]"),
+	regexp.MustCompile("[~!@#$%^&*_\\-+=`|\\\\\\(\\){}\\[\\]:;\"'<>,.?/]"),
+	regexp.MustCompile("[\\p{Lo}]"), // letters without upper/lower variants (ex: Japanese)
 }
 
 const (
@@ -74,7 +85,7 @@ func (h *spawnHostModifyHandler) ParseAndValidate(ctx context.Context, r *http.R
 	if h.action == HostPasswordUpdate {
 		h.rdpPassword = string(hostModify.RDPPwd)
 
-		if !validateRdpPassword(h.rdpPassword) {
+		if !validateRDPPassword(h.rdpPassword) {
 			return &rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "invalid password",
@@ -180,29 +191,21 @@ func makeNewHostExpiration(host *host.Host, addHours time.Duration) (time.Time, 
 	return newExp, nil
 }
 
-func validateRdpPassword(password string) bool {
-	// Golang regex doesn't support regex lookarounds, so we can't use
+func validateRDPPassword(password string) bool {
+	// Golang regex doesn't support lookarounds, so we can't use
 	// the regex as found in public/static/js/directives/directives.spawn.js
-	// 6..255 chars inclusive
 	if len(password) < 6 || len(password) > 255 {
 		return false
 	}
 
-	// TODO
-	//matches := 0
+	// need to match 3 of 5 categories listed on:
+	// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+	matchedCategories := 0
+	for _, regex := range passwordRegexps {
+		if regex.MatchString(password) {
+			matchedCategories++
+		}
+	}
 
-	//// need to match 3 of 5 of these groups
-	//regexes := []string{"[A-Z]", "[a-z]", "[0-9]", "[~!@#$%^&*_-+=`|\\(){}[]:;\"'<>,.?/]"}
-
-	//for _, regex := range regexes {
-	//	matched, err := regex.MatchString(regexes, password)
-	//	if err != nil {
-	//		return false
-	//	}
-	//	if matched {
-	//		matches++
-	//	}
-	//}
-
-	return true
+	return matchedCategories >= 3
 }
