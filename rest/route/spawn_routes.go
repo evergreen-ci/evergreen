@@ -35,11 +35,11 @@ func getSpawnHostsRouteManager(route string, version int) *RouteManager {
 // each regex matches one of the 5 categories listed here:
 // https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
 var passwordRegexps = []*regexp.Regexp{
-	regexp.MustCompile("[\\p{Ll}]"), // lowercase letter
-	regexp.MustCompile("[\\p{Lu}]"), // uppercase letter
-	regexp.MustCompile("[0-9]"),
-	regexp.MustCompile("[~!@#$%^&*_\\-+=`|\\\\\\(\\){}\\[\\]:;\"'<>,.?/]"),
-	regexp.MustCompile("[\\p{Lo}]"), // letters without upper/lower variants (ex: Japanese)
+	regexp.MustCompile(`[\p{Ll}]`), // lowercase letter
+	regexp.MustCompile(`[\p{Lu}]`), // uppercase letter
+	regexp.MustCompile(`[0-9]`),
+	regexp.MustCompile(`[~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?/` + "`]"),
+	regexp.MustCompile(`[\p{Lo}]`), // letters without upper/lower variants (ex: Japanese)
 }
 
 const (
@@ -194,7 +194,7 @@ func makeNewHostExpiration(host *host.Host, addHours time.Duration) (time.Time, 
 func validateRDPPassword(password string) bool {
 	// Golang regex doesn't support lookarounds, so we can't use
 	// the regex as found in public/static/js/directives/directives.spawn.js
-	if len(password) < 6 || len(password) > 255 {
+	if len([]rune(password)) < 6 || len([]rune(password)) > 255 {
 		return false
 	}
 

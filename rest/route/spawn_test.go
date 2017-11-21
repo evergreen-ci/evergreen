@@ -223,14 +223,24 @@ func (s *TestSpawnHostHandlerSuite) tryParseAndValidate(mod model.APISpawnHostMo
 func TestRDPPasswordValidation(t *testing.T) {
 	assert := assert.New(t)
 
-	goodPasswords := []string{"地火風水心1!", "V3ryStr0ng!", "Aaaaa\\"}
+	goodPasswords := []string{
+		"地火風水心1!",
+		"V3ryStr0ng!",
+		"Aaaaa-",
+		`Aaaaa\`,
+		"Aaaaa(",
+		"Aaaaa)",
+		"Aaaaa[",
+		"Aaaaa]",
+		"Aaaaa`",
+	}
 	badPasswords := []string{"", "weak", "stilltooweak1", "火火火1"}
 
 	for _, password := range goodPasswords {
-		assert.True(validateRDPPassword(password))
+		assert.True(validateRDPPassword(password), password)
 	}
 
 	for _, password := range badPasswords {
-		assert.False(validateRDPPassword(password))
+		assert.False(validateRDPPassword(password), password)
 	}
 }

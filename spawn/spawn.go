@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -28,7 +27,7 @@ import (
 
 const (
 	MaxPerUser                 = 3
-	DefaultExpiration          = time.Duration(24 * time.Hour)
+	DefaultExpiration          = 24 * time.Hour
 	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
@@ -229,10 +228,7 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 
 func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
 	if host.Status == evergreen.HostUninitialized {
-		if err := host.SetTerminated(); err != nil {
-			return err
-		}
-		return nil
+		return host.SetTerminated()
 	}
 	cloudHost, err := providers.GetCloudHost(host, settings)
 	if err != nil {
@@ -251,7 +247,7 @@ func ExtendHostExpiration(host *host.Host, numHoursToAdd int) (time.Time, error)
 	if expirationExtensionDuration > MaxExpirationDurationHours {
 		return time.Time{}, errors.Errorf("Can not extend %s expiration by %d hours. "+
 			"Maximum extension is limited to %d hours", host.Id,
-			int(expirationExtensionDuration), MaxExpirationDurationHours, http.StatusBadRequest)
+			int(expirationExtensionDuration), MaxExpirationDurationHours)
 	}
 	if err := host.SetExpirationTime(futureExpiration); err != nil {
 		return time.Time{}, errors.Wrap(err, "Error extending host expiration time")
