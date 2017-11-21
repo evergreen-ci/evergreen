@@ -18,6 +18,9 @@ import (
 const (
 	edgesKey = "edges"
 	taskKey  = "task"
+
+	// tasks should be unscheduled after ~2 weeks
+	unschedulableThreshold = 2 * 7 * 24 * time.Hour
 )
 
 var (
@@ -460,6 +463,28 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	}
 	return nil
 
+}
+
+// Removes tasks older than the unscheduable threshold (e.g. two
+// weeks) from the scheduler queue.
+func UnscheduleStaleUnderwaterTasks() (int, error) {
+	query := scheduleableTasksQuery()
+	query[PriorityKey] = bson.M{"$in": []int{0, 1}}
+	query[CreateTimeKey] = bson.M{"$gte": time.Now().Add(-unschedulableThreshold)}
+
+	update := bson.M{
+		"$set": bson.M{
+			PriorityKey:  -1,
+			ActivatedKey: false,
+		},
+	}
+
+	info, err := UpdateAll(query, update)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
+	}
+
+	return info.Updated, nil
 }
 
 // MarkFailed changes the state of the task to failed.
@@ -980,16 +1005,15 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
+func FindSchedulable() ([]Task, error) {
+	return Find(db.Query(scheduleableTasksQuery()))
+}
+
 func FindRunnable() ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
 	matchActivatedUndispatchedTasks := bson.M{
-		"$match": bson.M{
-			ActivatedKey: true,
-			StatusKey:    evergreen.TaskUndispatched,
-			//Filter out blacklisted tasks
-			PriorityKey: bson.M{"$gte": 0},
-		},
+		"$match": scheduleableTasksQuery(),
 	}
 
 	graphLookupTaskDeps := bson.M{

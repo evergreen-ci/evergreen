@@ -43,15 +43,20 @@ type versionBuildVariant struct {
 // the per-distro queues.  Then determines the number of new hosts to spin up
 // for each distro, and spins them up.
 func (s *Scheduler) Schedule(ctx context.Context) error {
-	// make sure the correct static hosts are in the database
-	grip.Info("Updating static hosts...")
-
 	if err := model.UpdateStaticHosts(); err != nil {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 
-	// find all tasks ready to be run
-	grip.Info("Finding runnable tasks...")
+	num, err := task.UnscheduleStaleUnderwaterTasks()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	grip.InfoWhen(num > 0, message.Fields{
+		"message": "unscheduled stale tasks",
+		"runner":  RunnerName,
+		"count":   num,
+	})
 
 	startAt := time.Now()
 	runnableTasks, err := s.FindRunnableTasks()
@@ -61,6 +66,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	grip.Info(message.Fields{
 		"message":  "found runnable tasks",
+		"runner":   RunnerName,
 		"count":    len(runnableTasks),
 		"duration": time.Since(startAt),
 		"span":     time.Since(startAt).String(),
