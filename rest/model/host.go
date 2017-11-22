@@ -107,3 +107,10 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 	}
 	return interface{}(h), nil
 }
+
+type APISpawnHostModify struct {
+	Action   APIString `json:"action"`
+	HostID   APIString `json:"host_id"`
+	RDPPwd   APIString `json:"rdp_pwd"`
+	AddHours APIString `json:"add_hours"`
+}

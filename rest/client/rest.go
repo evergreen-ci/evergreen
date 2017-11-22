@@ -84,10 +84,13 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string,
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	info := requestInfo{
 		method:  post,
-		path:    fmt.Sprintf("hosts/terminate/%s", hostID),
+		path:    "hosts/terminate",
 		version: apiVersion2,
 	}
-	resp, err := c.request(ctx, info, nil)
+	body := model.APISpawnHostModify{
+		HostID: model.APIString(hostID),
+	}
+	resp, err := c.request(ctx, info, body)
 	if err != nil {
 		return errors.Wrapf(err, "error sending request to terminate host")
 	}

@@ -358,14 +358,15 @@ func (h *hostTerminateHandler) Handler() RequestHandler {
 }
 
 func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	h.hostID = vars["host_id"]
+	hostModify := model.APISpawnHostModify{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
+	}
 
-	if strings.TrimSpace(h.hostID) == "" {
-		return &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "missing host id",
-		}
+	var err error
+	h.hostID, err = validateHostID(hostModify.HostID)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -437,19 +438,14 @@ func (h *hostChangeRDPPasswordHandler) Handler() RequestHandler {
 }
 
 func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	h.hostID = vars["host_id"]
-
-	if strings.TrimSpace(h.hostID) == "" {
-		return &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "missing host id",
-		}
+	hostModify := model.APISpawnHostModify{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
 	}
 
-	hostModify := model.APISpawnHostModify{}
-
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+	var err error
+	h.hostID, err = validateHostID(hostModify.HostID)
+	if err != nil {
 		return err
 	}
 
@@ -514,19 +510,14 @@ func (h *hostExtendExpirationHandler) Handler() RequestHandler {
 }
 
 func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	h.hostID = vars["host_id"]
-
-	if strings.TrimSpace(h.hostID) == "" {
-		return &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "missing host id",
-		}
+	hostModify := model.APISpawnHostModify{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
 	}
 
-	hostModify := model.APISpawnHostModify{}
-
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+	var err error
+	h.hostID, err = validateHostID(hostModify.HostID)
+	if err != nil {
 		return err
 	}
 
@@ -586,4 +577,16 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	}
 
 	return ResponseData{}, nil
+}
+
+func validateHostID(hostIDAPI model.APIString) (string, error) {
+	hostID := string(hostIDAPI)
+	if strings.TrimSpace(hostID) == "" {
+		return "", &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "missing/empty host id",
+		}
+	}
+
+	return hostID, nil
 }
