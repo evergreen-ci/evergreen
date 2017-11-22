@@ -6,12 +6,18 @@ import (
 )
 
 func panicString(p interface{}) string {
-	panicMsg, ok := p.(string)
-	if !ok {
-		panicMsg = fmt.Sprintf("%+v", panicMsg)
+	switch panicMesg := p.(type) {
+	case string:
+		return panicMesg
+	case error:
+		return panicMesg.Error()
+	case fmt.Stringer:
+		return panicMesg.String()
+	case nil:
+		return ""
+	default:
+		return fmt.Sprintf("%+v", panicMesg)
 	}
-
-	return panicMsg
 }
 
 func panicError(p interface{}) error {

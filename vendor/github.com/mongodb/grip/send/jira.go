@@ -123,8 +123,9 @@ func getFields(m message.Composer) *jira.IssueFields {
 	switch msg := m.Raw().(type) {
 	case message.JiraIssue:
 		issueFields = &jira.IssueFields{
-			Project: jira.Project{Key: msg.Project},
-			Summary: msg.Summary,
+			Project:     jira.Project{Key: msg.Project},
+			Summary:     msg.Summary,
+			Description: msg.Description,
 		}
 		if len(msg.Fields) != 0 {
 			unknownsMap := tcontainer.NewMarshalMap()

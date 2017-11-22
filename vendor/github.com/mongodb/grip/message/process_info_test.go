@@ -16,7 +16,7 @@ func TestChildren(t *testing.T) {
 	assert.NotNil(p)
 	assert.NoError(err)
 	cmd := exec.Command("sleep", "1")
-	cmd.Start()
+	assert.NoError(cmd.Start())
 
 	c, err := p.Children()
 	assert.NotNil(c)

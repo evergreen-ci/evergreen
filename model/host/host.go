@@ -638,6 +638,13 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
+func (h *Host) DisablePosionedHost() error {
+	if h.Provider == evergreen.ProviderNameStatic {
+		return errors.WithStack(h.SetQuarantined())
+	}
+	return errors.WithStack(h.SetDecommissioned())
+}
+
 // GetStatsByDistro returns counts of up hosts broken down by distro
 func GetStatsByDistro() ([]StatsByDistro, error) {
 	stats := []StatsByDistro{}

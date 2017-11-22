@@ -300,7 +300,7 @@ func (s *SlackSuite) TestSendMethodDoesIncorrectlyAllowTooLowMessages() {
 	s.True(ok)
 	s.Equal(mock.numSent, 0)
 
-	sender.SetLevel(LevelInfo{Default: level.Critical, Threshold: level.Alert})
+	s.NoError(sender.SetLevel(LevelInfo{Default: level.Critical, Threshold: level.Alert}))
 	s.Equal(mock.numSent, 0)
 	sender.Send(message.NewDefaultMessage(level.Info, "hello"))
 	s.Equal(mock.numSent, 0)

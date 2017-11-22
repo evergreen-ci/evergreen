@@ -13,15 +13,20 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskrunner"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
+
+// if a host encounters more than this number of system failures, then it should be disabled.
+const consecutiveSystemFailureThreshuld = 3
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -192,6 +197,26 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
 		}
+		endTaskResp.ShouldExit = true
+		endTaskResp.Message = message
+	}
+
+	// we should disable hosts and prevent them from performing
+	// more work if they appear to be in a bad state
+	// (e.g. encountered 5 consecutive system failures)
+	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshuld, evergreen.TaskSystemFailed) {
+		env := evergreen.GetEnvironment()
+		queue := env.LocalQueue()
+		message := "host encountered consecutive system failures"
+		err := currentHost.DisablePosionedHost()
+		job := units.NewDecoHostNotifyJob(env, currentHost, err, message)
+		grip.Critical(queue.Put(job))
+
+		if err != nil {
+			as.WriteJSON(w, http.StatusInternalServerError, err)
+			return
+		}
+
 		endTaskResp.ShouldExit = true
 		endTaskResp.Message = message
 	}
