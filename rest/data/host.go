@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -89,8 +88,8 @@ func (hc *DBHostConnector) SetHostPassword(ctx context.Context, host *host.Host,
 	return spawn.SetHostRDPPassword(ctx, host, password)
 }
 
-func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
-	if err := host.SetExpirationTime(newExp); err != nil {
+func (hc *DBHostConnector) ExtendHostExpiration(host *host.Host, numHours int) error {
+	if _, err := spawn.ExtendHostExpiration(host, numHours); err != nil {
 		return errors.Wrap(err, "Error extending host expiration time")
 	}
 
@@ -240,9 +239,13 @@ func (hc *MockHostConnector) SetHostPassword(_ context.Context, host *host.Host,
 	return errors.New("can't find host")
 }
 
-func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
+func (hc *MockHostConnector) ExtendHostExpiration(host *host.Host, numHours int) error {
 	for i, h := range hc.CachedHosts {
 		if h.Id == host.Id {
+			newExp, err := spawn.MakeExtendedHostExpiration(host, numHours)
+			if err != nil {
+				return err
+			}
 			hc.CachedHosts[i].ExpirationTime = newExp
 			host.ExpirationTime = newExp
 			return nil

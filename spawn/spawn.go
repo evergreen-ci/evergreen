@@ -238,6 +238,9 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 }
 
 func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
+	if host.Status == evergreen.HostTerminated {
+		return errors.New("Host is already terminated")
+	}
 	if host.Status == evergreen.HostUninitialized {
 		return host.SetTerminated()
 	}
@@ -252,19 +255,27 @@ func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
 }
 
 func ExtendHostExpiration(host *host.Host, numHoursToAdd int) (time.Time, error) {
-	addtHourDuration := time.Duration(numHoursToAdd) * time.Hour
-	futureExpiration := host.ExpirationTime.Add(addtHourDuration)
-	expirationExtensionDuration := time.Until(futureExpiration).Hours()
-	if expirationExtensionDuration > MaxExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend %s expiration by %d hours. "+
-			"Maximum extension is limited to %d hours", host.Id,
-			int(expirationExtensionDuration), MaxExpirationDurationHours)
+	newExp, err := MakeExtendedHostExpiration(host, numHoursToAdd)
+	if err != nil {
+		return time.Time{}, err
 	}
-	if err := host.SetExpirationTime(futureExpiration); err != nil {
+
+	if err := host.SetExpirationTime(newExp); err != nil {
 		return time.Time{}, errors.Wrap(err, "Error extending host expiration time")
 	}
 
-	return futureExpiration, nil
+	return newExp, nil
+}
+
+func MakeExtendedHostExpiration(host *host.Host, addHours int) (time.Time, error) {
+	addHoursDuration := time.Duration(addHours) * time.Hour
+	newExp := host.ExpirationTime.Add(addHoursDuration)
+	hoursToExtendBy := time.Until(newExp).Hours()
+	if hoursToExtendBy > MaxExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, addHours, MaxExpirationDurationHours)
+	}
+
+	return newExp, nil
 }
 
 func ValidateRDPPassword(password string) bool {

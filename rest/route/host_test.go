@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -284,30 +283,6 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	}
 
 	return r, nil
-}
-
-func TestMakeNewHostExpiration(t *testing.T) {
-	assert := assert.New(t)
-
-	host := host.Host{
-		ExpirationTime: time.Now().Add(12 * time.Hour),
-	}
-
-	expTime, err := makeNewHostExpiration(&host, 1)
-	assert.NotZero(expTime)
-	assert.NoError(err, expTime.Format(time.RFC3339))
-}
-
-func TestMakeNewHostExpirationFailsBeyondOneWeek(t *testing.T) {
-	assert := assert.New(t)
-
-	host := host.Host{
-		ExpirationTime: time.Now().Add(12 * time.Hour),
-	}
-
-	expTime, err := makeNewHostExpiration(&host, 24*7)
-	assert.Zero(expTime)
-	assert.Error(err, expTime.Format(time.RFC3339))
 }
 
 func getMockHostsConnector() *data.MockConnector {

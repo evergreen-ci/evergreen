@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -545,6 +544,12 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
+	if addHours > MaxExpirationDurationHours {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot add more than %d hours", MaxExpirationDurationHours),
+		}
+	}
 	h.addHours = addHours
 
 	return nil
@@ -565,7 +570,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 		}
 	}
 
-	newExp, err := makeNewHostExpiration(host, h.addHours)
+	_, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
 	if err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -573,7 +578,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 		}
 	}
 
-	if err := sc.SetHostExpirationTime(host, newExp); err != nil {
+	if err := sc.ExtendHostExpiration(host, h.addHours); err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -581,15 +586,4 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	}
 
 	return ResponseData{}, nil
-}
-
-func makeNewHostExpiration(host *host.Host, addHours int) (time.Time, error) {
-	addtHourDuration := time.Duration(addHours) * time.Hour
-	futureExpiration := host.ExpirationTime.Add(addtHourDuration)
-	expirationExtensionDuration := futureExpiration.Sub(time.Now()).Hours() // nolint
-	if expirationExtensionDuration > MaxExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, int(expirationExtensionDuration), MaxExpirationDurationHours)
-	}
-
-	return futureExpiration, nil
 }

@@ -1,7 +1,9 @@
 package data
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -28,24 +30,28 @@ func TestHostConnectorSuite(t *testing.T) {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	host1 := &host.Host{
-		Id:        "host1",
-		StartedBy: testUser,
-		Status:    evergreen.HostRunning,
+		Id:             "host1",
+		StartedBy:      testUser,
+		Status:         evergreen.HostRunning,
+		ExpirationTime: time.Now().Add(time.Hour),
 	}
 	host2 := &host.Host{
-		Id:        "host2",
-		StartedBy: "user2",
-		Status:    evergreen.HostTerminated,
+		Id:             "host2",
+		StartedBy:      "user2",
+		Status:         evergreen.HostTerminated,
+		ExpirationTime: time.Now().Add(time.Hour),
 	}
 	host3 := &host.Host{
-		Id:        "host3",
-		StartedBy: "user3",
-		Status:    evergreen.HostTerminated,
+		Id:             "host3",
+		StartedBy:      "user3",
+		Status:         evergreen.HostTerminated,
+		ExpirationTime: time.Now().Add(time.Hour),
 	}
 	host4 := &host.Host{
-		Id:        "host4",
-		StartedBy: "user4",
-		Status:    evergreen.HostTerminated,
+		Id:             "host4",
+		StartedBy:      "user4",
+		Status:         evergreen.HostTerminated,
+		ExpirationTime: time.Now().Add(time.Hour),
 	}
 
 	assert.NoError(t, host1.Insert())
@@ -59,10 +65,10 @@ func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
 		CachedHosts: []host.Host{
-			{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning},
-			{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated},
-			{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated},
-			{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated}},
+			{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
+			{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+			{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+			{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
 	}}
 	suite.Run(t, s)
 }
@@ -170,4 +176,28 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	s.NoError(err)
 	s.True(foundHost.UserHost)
 	s.Equal(testUserID, foundHost.StartedBy)
+}
+
+func (s *HostConnectorSuite) TestSetHostStatus() {
+	h, err := s.ctx.FindHostById("host1")
+	s.NoError(err)
+	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostTerminated))
+
+	for i := 1; i < 5; i++ {
+		h, err := s.ctx.FindHostById(fmt.Sprintf("host%d", i))
+		s.NoError(err)
+		s.Equal(evergreen.HostTerminated, h.Status)
+	}
+
+	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostRunning))
+}
+
+func (s *HostConnectorSuite) TestExtendHostExpiration() {
+	h, err := s.ctx.FindHostById("host1")
+	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
+	s.NoError(err)
+	s.NoError(s.ctx.ExtendHostExpiration(h, 5))
+
+	hCheck, err := s.ctx.FindHostById("host1")
+	s.Equal(expectedTime, hCheck.ExpirationTime)
 }
