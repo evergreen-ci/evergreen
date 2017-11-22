@@ -26,7 +26,7 @@ import (
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
-const consecutiveSystemFailureThreshuld = 3
+const consecutiveSystemFailureThreshold = 3
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -204,7 +204,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// we should disable hosts and prevent them from performing
 	// more work if they appear to be in a bad state
 	// (e.g. encountered 5 consecutive system failures)
-	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshuld, evergreen.TaskSystemFailed) {
+	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		env := evergreen.GetEnvironment()
 		queue := env.LocalQueue()
 		message := "host encountered consecutive system failures"
