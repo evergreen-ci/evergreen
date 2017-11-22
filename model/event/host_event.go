@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -52,24 +51,10 @@ type HostEventData struct {
 	Duration      time.Duration `bson:"duration,omitempty" json:"duration"`
 }
 
-func GetHostEvent(events []Event) ([]HostEventData, error) {
-	out := []HostEventData{}
-	errCount := 0
-
-	for _, e := range events {
-		hostEvent, ok := e.Data.(HostEventData)
-		if !ok {
-			errCount++
-			continue
-		}
-		out = append(out, hostEvent)
-	}
-
-	if errCount > 0 {
-		return nil, errors.Errorf("")
-
-	}
-}
+var (
+	hostDataResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
+	hostDataStatusKey       = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+)
 
 func (self HostEventData) IsValid() bool {
 	return self.ResourceType == ResourceTypeHost
