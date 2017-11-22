@@ -8,6 +8,10 @@ import (
 	"github.com/mongodb/amboy"
 )
 
+const (
+	MaxExpirationDurationHours = 24 * 7 // 7 days
+)
+
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a Connector then attaches each of the main functions for
 // the api to the router.
@@ -37,6 +41,8 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/distros":                                             getDistroRouteManager,
 		"/hosts":                                               getHostRouteManager,
 		"/hosts/{host_id}":                                     getHostIDRouteManager,
+		"/hosts/change_password/{host_id}":                     getHostChangeRDPPasswordRouteManager,
+		"/hosts/extend_expiration/{host_id}":                   getHostExtendExpirationRouteManager,
 		"/hosts/terminate/{host_id}":                           getHostTerminateRouteManager,
 		"/patches/{patch_id}":                                  getPatchByIdManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,

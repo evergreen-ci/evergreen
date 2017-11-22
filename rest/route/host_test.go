@@ -83,29 +83,7 @@ func TestTerminateHostHandler(t *testing.T) {
 func (s *TestTerminateHostHandlerSuite) SetupTest() {
 	s.rm = getHostTerminateRouteManager("", 2)
 
-	s.sc = &data.MockConnector{
-		MockHostConnector: data.MockHostConnector{
-			CachedHosts: []host.Host{
-				{
-					Id:             "host1",
-					Host:           "host1",
-					Status:         evergreen.HostTerminated,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-				{
-					Id:             "host2",
-					Host:           "host2",
-					Status:         evergreen.HostRunning,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-				{
-					Id:             "host3",
-					Host:           "host3",
-					Status:         evergreen.HostUninitialized,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-			},
-		}}
+	s.sc = getMockHostsConnector()
 }
 
 func (s *TestTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
@@ -156,9 +134,6 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 }
 
 type TestHostChangeRDPPasswordHandlerSuite struct {
-	hostID      string
-	rdpPassword string
-
 	rm *RouteManager
 	sc *data.MockConnector
 	suite.Suite
@@ -171,29 +146,7 @@ func TestHostChangeRDPPasswordHandler(t *testing.T) {
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.rm = getHostChangeRDPPasswordRouteManager("", 2)
-	s.sc = &data.MockConnector{
-		MockHostConnector: data.MockHostConnector{
-			CachedHosts: []host.Host{
-				{
-					Id:             "host1",
-					Host:           "host1",
-					Status:         evergreen.HostTerminated,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-				{
-					Id:             "host2",
-					Host:           "host2",
-					Status:         evergreen.HostRunning,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-				{
-					Id:             "host3",
-					Host:           "host3",
-					Status:         evergreen.HostUninitialized,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-			},
-		}}
+	s.sc = getMockHostsConnector()
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
@@ -232,14 +185,8 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteChangePassword() {
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
-	data, err := json.Marshal(mod)
+	r, err := makeMockHostRequest(mod)
 	s.NoError(err)
-	s.NotEmpty(data)
-
-	var r *http.Request
-	r, err = http.NewRequest("POST", "http://example.com/spawn", bytes.NewReader(data))
-	s.NoError(err)
-	s.NotNil(r)
 
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 
@@ -247,9 +194,6 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.AP
 }
 
 type TestHostExtendExpirationHandlerSuite struct {
-	hostID  string
-	addHour time.Duration
-
 	rm *RouteManager
 	sc *data.MockConnector
 	suite.Suite
@@ -262,29 +206,7 @@ func TestHostExtendExpirationHandler(t *testing.T) {
 
 func (s *TestHostExtendExpirationHandlerSuite) SetupTest() {
 	s.rm = getHostExtendExpirationRouteManager("", 2)
-	s.sc = &data.MockConnector{
-		MockHostConnector: data.MockHostConnector{
-			CachedHosts: []host.Host{
-				{
-					Id:             "host1",
-					Host:           "host1",
-					Status:         evergreen.HostTerminated,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-				{
-					Id:             "host2",
-					Host:           "host2",
-					Status:         evergreen.HostRunning,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-				{
-					Id:             "host3",
-					Host:           "host3",
-					Status:         evergreen.HostUninitialized,
-					ExpirationTime: time.Now().Add(time.Hour),
-				},
-			},
-		}}
+	s.sc = getMockHostsConnector()
 }
 
 func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
@@ -300,7 +222,6 @@ func (s *TestHostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvali
 	invalidExpirations := []model.APIString{"not a number", "0", "9223372036854775807"}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
-			Action:   HostExpirationExtension,
 			HostID:   "host1",
 			RDPPwd:   "",
 			AddHours: extendBy,
@@ -342,18 +263,27 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpiration() {
 }
 
 func (s *TestHostExtendExpirationHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
-	data, err := json.Marshal(mod)
+	r, err := makeMockHostRequest(mod)
 	s.NoError(err)
-	s.NotEmpty(data)
-
-	var r *http.Request
-	r, err = http.NewRequest("POST", "http://example.com/spawn", bytes.NewReader(data))
-	s.NoError(err)
-	s.NotNil(r)
 
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 
 	return h.ParseAndValidate(context.TODO(), r)
+}
+
+func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
+	data, err := json.Marshal(mod)
+	if err != nil {
+		return nil, err
+	}
+
+	var r *http.Request
+	r, err = http.NewRequest("POST", "", bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }
 
 func TestMakeNewHostExpiration(t *testing.T) {
@@ -378,4 +308,30 @@ func TestMakeNewHostExpirationFailsBeyondOneWeek(t *testing.T) {
 	expTime, err := makeNewHostExpiration(&host, 24*7)
 	assert.Zero(expTime)
 	assert.Error(err, expTime.Format(time.RFC3339))
+}
+
+func getMockHostsConnector() *data.MockConnector {
+	return &data.MockConnector{
+		MockHostConnector: data.MockHostConnector{
+			CachedHosts: []host.Host{
+				{
+					Id:             "host1",
+					Host:           "host1",
+					Status:         evergreen.HostTerminated,
+					ExpirationTime: time.Now().Add(time.Hour),
+				},
+				{
+					Id:             "host2",
+					Host:           "host2",
+					Status:         evergreen.HostRunning,
+					ExpirationTime: time.Now().Add(time.Hour),
+				},
+				{
+					Id:             "host3",
+					Host:           "host3",
+					Status:         evergreen.HostUninitialized,
+					ExpirationTime: time.Now().Add(time.Hour),
+				},
+			},
+		}}
 }
