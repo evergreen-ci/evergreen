@@ -270,7 +270,7 @@ func ExtendHostExpiration(host *host.Host, numHoursToAdd int) (time.Time, error)
 func MakeExtendedHostExpiration(host *host.Host, addHours int) (time.Time, error) {
 	addHoursDuration := time.Duration(addHours) * time.Hour
 	newExp := host.ExpirationTime.Add(addHoursDuration)
-	hoursToExtendBy := time.Until(newExp).Hours()
+	hoursToExtendBy := newExp.Sub(time.Now()).Hours() //nolint
 	if hoursToExtendBy > MaxExpirationDurationHours {
 		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, addHours, MaxExpirationDurationHours)
 	}
