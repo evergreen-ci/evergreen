@@ -73,12 +73,12 @@ func (s *TaskFinderSuite) TearDownSuite() {
 }
 
 func (s *TaskFinderSuite) SetupTest() {
-	taskIds := []string{"t1", "t2", "t3", "t4"}
+	taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
 	s.tasks = []task.Task{
-		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists"},
-		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists"},
-		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists"},
-		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists"},
+		{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true, Project: "exists", CreateTime: time.Now()},
+		{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1, Project: "exists", CreateTime: time.Now()},
 	}
 
 	depTaskIds := []string{"td1", "td2"}

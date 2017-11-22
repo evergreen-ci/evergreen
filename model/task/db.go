@@ -389,11 +389,19 @@ func ByExecutionTask(taskId string) db.Q {
 }
 
 var (
-	IsUndispatched        = ByStatusAndActivation(evergreen.TaskUndispatched, true)
 	IsDispatchedOrStarted = db.Query(bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 	})
 )
+
+func scheduleableTasksQuery() bson.M {
+	return bson.M{
+		ActivatedKey: true,
+		StatusKey:    evergreen.TaskUndispatched,
+		//Filter out blacklisted tasks
+		PriorityKey: bson.M{"$gte": 0},
+	}
+}
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
@@ -698,14 +706,19 @@ func Find(query db.Q) ([]Task, error) {
 		return nil, nil
 	}
 
+	filtered := []Task{}
+
 	// remove display tasks from results
-	for i := len(tasks) - 1; i >= 0; i-- {
-		t := tasks[i]
+	for idx := range tasks {
+		t := tasks[idx]
 		if t.DisplayOnly {
-			tasks = append(tasks[:i], tasks[i+1:]...)
+			continue
 		}
+		filtered = append(filtered, t)
+
 	}
-	return tasks, err
+
+	return filtered, err
 }
 
 func FindWithDisplayTasks(query db.Q) ([]Task, error) {
