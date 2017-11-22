@@ -17,7 +17,8 @@ import (
 )
 
 type HostConnectorSuite struct {
-	ctx Connector
+	ctx   Connector
+	setup func(*HostConnectorSuite)
 	suite.Suite
 }
 
@@ -29,48 +30,60 @@ func TestHostConnectorSuite(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
-	host1 := &host.Host{
-		Id:             "host1",
-		StartedBy:      testUser,
-		Status:         evergreen.HostRunning,
-		ExpirationTime: time.Now().Add(time.Hour),
-	}
-	host2 := &host.Host{
-		Id:             "host2",
-		StartedBy:      "user2",
-		Status:         evergreen.HostTerminated,
-		ExpirationTime: time.Now().Add(time.Hour),
-	}
-	host3 := &host.Host{
-		Id:             "host3",
-		StartedBy:      "user3",
-		Status:         evergreen.HostTerminated,
-		ExpirationTime: time.Now().Add(time.Hour),
-	}
-	host4 := &host.Host{
-		Id:             "host4",
-		StartedBy:      "user4",
-		Status:         evergreen.HostTerminated,
-		ExpirationTime: time.Now().Add(time.Hour),
+	s.setup = func(s *HostConnectorSuite) {
+		s.NoError(db.ClearCollections(host.Collection))
+		host1 := &host.Host{
+			Id:             "host1",
+			StartedBy:      testUser,
+			Status:         evergreen.HostRunning,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+		host2 := &host.Host{
+			Id:             "host2",
+			StartedBy:      "user2",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+		host3 := &host.Host{
+			Id:             "host3",
+			StartedBy:      "user3",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+		host4 := &host.Host{
+			Id:             "host4",
+			StartedBy:      "user4",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+
+		assert.NoError(t, host1.Insert())
+		assert.NoError(t, host2.Insert())
+		assert.NoError(t, host3.Insert())
+		assert.NoError(t, host4.Insert())
 	}
 
-	assert.NoError(t, host1.Insert())
-	assert.NoError(t, host2.Insert())
-	assert.NoError(t, host3.Insert())
-	assert.NoError(t, host4.Insert())
 	suite.Run(t, s)
 }
 
 func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
-	s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
-		CachedHosts: []host.Host{
-			{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
-			{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-			{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-			{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
-	}}
+	s.setup = func(s *HostConnectorSuite) {
+		s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
+			CachedHosts: []host.Host{
+				{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
+				{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+				{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+				{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
+		}}
+
+	}
 	suite.Run(t, s)
+}
+
+func (s *HostConnectorSuite) SetupTest() {
+	s.NotNil(s.setup)
+	s.setup(s)
 }
 
 func (s *HostConnectorSuite) TearDownSuite() {
@@ -188,8 +201,6 @@ func (s *HostConnectorSuite) TestSetHostStatus() {
 		s.NoError(err)
 		s.Equal(evergreen.HostTerminated, h.Status)
 	}
-
-	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostRunning))
 }
 
 func (s *HostConnectorSuite) TestExtendHostExpiration() {
