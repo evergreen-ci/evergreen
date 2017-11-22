@@ -365,11 +365,8 @@ func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Req
 
 	var err error
 	h.hostID, err = validateHostID(hostModify.HostID)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
