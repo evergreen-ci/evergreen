@@ -113,7 +113,6 @@ func RunSpawnWarningTriggers(host *host.Host) error {
 		shouldExec, err := trigger.ShouldExecute(ctx)
 		if err != nil {
 			return err
-
 		}
 		if shouldExec {
 			err := alert.EnqueueAlertRequest(&alert.AlertRequest{
