@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -159,7 +158,7 @@ func (s *TestSpawnHostHandlerSuite) TestExecuteChangePassword() {
 // Tests for extend expiration action
 
 func (s *TestSpawnHostHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
-	invalidExpirations := []model.APIString{"not a number", "0", "9223372036854775807"}
+	invalidExpirations := []model.APIString{"not a number", "0"}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
 			Action:   HostExpirationExtension,
@@ -180,7 +179,7 @@ func (s *TestSpawnHostHandlerSuite) TestExecuteExtendExpirationWithLargeExpirati
 	h := s.rm.Methods[0].Handler().(*spawnHostModifyHandler)
 	h.action = HostExpirationExtension
 	h.hostID = "host2"
-	h.addHours = time.Duration(9001 * time.Hour)
+	h.addHours = 9001
 
 	data, err := h.Execute(context.TODO(), s.sc)
 	s.Empty(data.Result)
@@ -191,13 +190,12 @@ func (s *TestSpawnHostHandlerSuite) TestExecuteExtendExpirationWithLargeExpirati
 }
 
 func (s *TestSpawnHostHandlerSuite) TestExecuteExtendExpiration() {
-	dur := time.Duration(8 * time.Hour)
-	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(dur)
+	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
 	h := s.rm.Methods[0].Handler().(*spawnHostModifyHandler)
 	h.action = HostExpirationExtension
 	h.hostID = "host2"
-	h.addHours = dur
+	h.addHours = 8
 
 	data, err := h.Execute(context.TODO(), s.sc)
 	s.Empty(data.Result)
@@ -218,29 +216,4 @@ func (s *TestSpawnHostHandlerSuite) tryParseAndValidate(mod model.APISpawnHostMo
 	h := s.rm.Methods[0].Handler().(*spawnHostModifyHandler)
 
 	return h.ParseAndValidate(context.TODO(), r)
-}
-
-func TestRDPPasswordValidation(t *testing.T) {
-	assert := assert.New(t)
-
-	goodPasswords := []string{
-		"地火風水心1!",
-		"V3ryStr0ng!",
-		"Aaaaa-",
-		`Aaaaa\`,
-		"Aaaaa(",
-		"Aaaaa)",
-		"Aaaaa[",
-		"Aaaaa]",
-		"Aaaaa`",
-	}
-	badPasswords := []string{"", "weak", "stilltooweak1", "火火火1"}
-
-	for _, password := range goodPasswords {
-		assert.True(validateRDPPassword(password), password)
-	}
-
-	for _, password := range badPasswords {
-		assert.False(validateRDPPassword(password), password)
-	}
 }

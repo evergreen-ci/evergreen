@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -12,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -77,21 +80,6 @@ func getHostsByUserManager(route string, version int) *RouteManager {
 				MethodType:        http.MethodGet,
 				Authenticator:     &RequireUserAuthenticator{},
 				RequestHandler:    h.Handler(),
-			},
-		},
-	}
-}
-
-func getHostTerminateRouteManager(route string, version int) *RouteManager {
-	return &RouteManager{
-		Route:   route,
-		Version: version,
-		Methods: []MethodHandler{
-			{
-				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				MethodType:        http.MethodPost,
-				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &hostTerminateHandler{},
 			},
 		},
 	}
@@ -347,6 +335,21 @@ func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	}, nil
 }
 
+func getHostTerminateRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostTerminateHandler{},
+			},
+		},
+	}
+}
+
 type hostTerminateHandler struct {
 	hostID string
 }
@@ -408,4 +411,185 @@ func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (
 	}
 
 	return ResponseData{}, nil
+}
+
+func getHostChangeRDPPasswordRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostChangeRDPPasswordHandler{},
+			},
+		},
+	}
+}
+
+type hostChangeRDPPasswordHandler struct {
+	hostID      string
+	rdpPassword string
+}
+
+func (h *hostChangeRDPPasswordHandler) Handler() RequestHandler {
+	return &hostChangeRDPPasswordHandler{}
+}
+
+func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	h.hostID = vars["host_id"]
+
+	if strings.TrimSpace(h.hostID) == "" {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "missing host id",
+		}
+	}
+
+	hostModify := model.APISpawnHostModify{}
+
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
+	}
+
+	h.rdpPassword = string(hostModify.RDPPwd)
+	if !spawn.ValidateRDPPassword(h.rdpPassword) {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "invalid password",
+		}
+	}
+
+	return nil
+}
+
+func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	host, err := sc.FindHostById(h.hostID)
+	if err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "unknown host id",
+		}
+	}
+
+	if err := sc.SetHostPassword(ctx, host, h.rdpPassword); err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}
+	}
+
+	return ResponseData{}, nil
+}
+
+func getHostExtendExpirationRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostExtendExpirationHandler{},
+			},
+		},
+	}
+}
+
+type hostExtendExpirationHandler struct {
+	hostID   string
+	addHours int
+}
+
+func (h *hostExtendExpirationHandler) Handler() RequestHandler {
+	return &hostExtendExpirationHandler{}
+}
+
+func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	h.hostID = vars["host_id"]
+
+	if strings.TrimSpace(h.hostID) == "" {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "missing host id",
+		}
+	}
+
+	hostModify := model.APISpawnHostModify{}
+
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
+	}
+
+	addHours, err := strconv.Atoi(string(hostModify.AddHours))
+	if err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "expiration not a number",
+		}
+	}
+
+	if addHours <= 0 {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must add more than 0 hours to expiration",
+		}
+	}
+	h.addHours = addHours
+
+	return nil
+}
+
+func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	host, err := sc.FindHostById(h.hostID)
+	if err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "unknown host id",
+		}
+	}
+
+	newExp, err := makeNewHostExpiration(host, h.addHours)
+	if err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
+	}
+
+	if err := sc.SetHostExpirationTime(host, newExp); err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}
+	}
+
+	return ResponseData{}, nil
+}
+
+func makeNewHostExpiration(host *host.Host, addHours int) (time.Time, error) {
+	addtHourDuration := time.Duration(addHours) * time.Hour
+	futureExpiration := host.ExpirationTime.Add(addtHourDuration)
+	expirationExtensionDuration := futureExpiration.Sub(time.Now()).Hours() // nolint
+	if expirationExtensionDuration > MaxExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, int(expirationExtensionDuration), MaxExpirationDurationHours)
+	}
+
+	return futureExpiration, nil
 }
