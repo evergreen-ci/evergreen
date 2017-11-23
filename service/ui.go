@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -54,6 +55,8 @@ type UIServer struct {
 	PluginTemplates map[string]*htmlTemplate.Template
 	clientConfig    *evergreen.ClientConfig
 	plugin.PanelManager
+
+	queue amboy.Queue
 }
 
 // ViewData contains common data that is provided to all Evergreen pages
@@ -68,7 +71,7 @@ type ViewData struct {
 	JiraHost    string
 }
 
-func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
+func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (*UIServer, error) {
 	uis := &UIServer{}
 	db.SetGlobalSessionProvider(settings.SessionFactory())
 
@@ -78,6 +81,7 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 
 	uis.Settings = *settings
 	uis.Home = home
+	uis.queue = queue
 
 	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
@@ -251,7 +255,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	AttachRESTHandler(r, uis)
 
 	// attaches /rest/v2 routes
-	route.AttachHandler(r, uis.Settings.SuperUsers, uis.Settings.Ui.Url, evergreen.RestRoutePrefix)
+	route.AttachHandler(r, uis.queue, uis.Settings.Ui.Url, evergreen.RestRoutePrefix, uis.Settings.SuperUsers, []byte(uis.Settings.Api.GithubWebhookSecret))
 
 	// Static Path handlers
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))

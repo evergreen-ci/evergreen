@@ -128,7 +128,10 @@ func TestRestartRoute(t *testing.T) {
 	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
 	const route = "/admin/restart"
 	const version = 2
-	routeManager := getRestartRouteManager(route, version)
+
+	queue := evergreen.GetEnvironment().LocalQueue()
+
+	routeManager := getRestartRouteManager(queue)(route, version)
 	assert.NotNil(routeManager)
 	assert.Equal(route, routeManager.Route)
 	assert.Equal(version, routeManager.Version)

@@ -245,6 +245,9 @@ func TestAssignNextAvailableTask(t *testing.T) {
 }
 
 func TestNextTask(t *testing.T) {
+	conf := testutil.TestConfig()
+	queue := evergreen.GetEnvironment().LocalQueue()
+
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, admin.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
@@ -256,7 +259,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
-		as, err := NewAPIServer(testutil.TestConfig())
+		as, err := NewAPIServer(conf, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -510,12 +513,15 @@ func TestCheckHostHealth(t *testing.T) {
 }
 
 func TestEndTaskEndpoint(t *testing.T) {
+	conf := testutil.TestConfig()
+	queue := evergreen.GetEnvironment().LocalQueue()
+
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
 			build.Collection, model.ProjectRefCollection, version.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		as, err := NewAPIServer(testutil.TestConfig())
+		as, err := NewAPIServer(conf, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -54,10 +55,11 @@ type APIServer struct {
 	UserManager  auth.UserManager
 	Settings     evergreen.Settings
 	clientConfig *evergreen.ClientConfig
+	queue        amboy.Queue
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
+func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -77,6 +79,7 @@ func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
 		UserManager:  authManager,
 		Settings:     *settings,
 		clientConfig: clientConfig,
+		queue:        queue,
 	}
 
 	return as, nil
@@ -695,7 +698,7 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	AttachRESTHandler(root, as)
 	// attaches /rest/v2 routes
 	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
-	route.AttachHandler(root, as.Settings.SuperUsers, as.Settings.ApiUrl, APIV2Prefix)
+	route.AttachHandler(root, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
 	r := root.PathPrefix("/api/2/").Subrouter()
 	r.HandleFunc("/", home)

@@ -610,9 +610,12 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 }
 
 type RestartTaskOptions struct {
-	DryRun     bool
-	OnlyRed    bool
-	OnlyPurple bool
+	DryRun     bool      `bson:"dry_run" json:"dry_run" yaml:"dry_run"`
+	OnlyRed    bool      `bson:"only_red" json:"only_red" yaml:"only_red"`
+	OnlyPurple bool      `bson:"only_purple" json:"only_purple" yaml:"only_purple"`
+	StartTime  time.Time `bson:"start_time" json:"start_time" yaml:"start_time"`
+	EndTime    time.Time `bson:"end_time" json:"end_time" yaml:"end_time"`
+	User       string    `bson:"user" json:"user" yaml:"user"`
 }
 
 type RestartTaskResults struct {
@@ -626,13 +629,13 @@ type RestartTaskResults struct {
 // opts.dryRun will return the tasks that will be restarted if sent true
 // opts.red and opts.purple will only restart tasks that were failed due to the test
 // or due to the system, respectively
-func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartTaskOptions) (RestartTaskResults, error) {
+func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
 	results := RestartTaskResults{}
 	if opts.OnlyRed && opts.OnlyPurple {
 		opts.OnlyRed = false
 		opts.OnlyPurple = false
 	}
-	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(startTime, endTime))
+	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime))
 	if err != nil {
 		return results, err
 	}
@@ -654,7 +657,7 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartT
 		return results, nil
 	}
 
-	return doRestartFailedTasks(tasksToRestart, user, results), nil
+	return doRestartFailedTasks(tasksToRestart, opts.User, results), nil
 }
 
 func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskResults) RestartTaskResults {
