@@ -19,8 +19,10 @@ const (
 	EventHostCreated              = "HOST_CREATED"
 	EventHostStarted              = "HOST_STARTED"
 	EventHostAgentDeployed        = "HOST_AGENT_DEPLOYED"
+	EventHostAgentDeployFailed    = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostStatusChanged        = "HOST_STATUS_CHANGED"
 	EventHostDNSNameSet           = "HOST_DNS_NAME_SET"
+	EventHostProvisionError       = "HOST_PROVISION_ERROR"
 	EventHostProvisionFailed      = "HOST_PROVISION_FAILED"
 	EventHostProvisioned          = "HOST_PROVISIONED"
 	EventHostRunningTaskSet       = "HOST_RUNNING_TASK_SET"
@@ -80,6 +82,14 @@ func LogHostCreated(hostId string) {
 
 func LogHostAgentDeployed(hostId string) {
 	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
+}
+
+func LogHostAgentDeployFailed(hostId string) {
+	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{})
+}
+
+func LogHostProvisionError(hostId string) {
+	LogHostEvent(hostId, EventHostProvisionError, HostEventData{})
 }
 
 func LogHostTerminatedExternally(hostId string) {

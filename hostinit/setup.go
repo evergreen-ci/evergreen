@@ -248,7 +248,14 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					})
 
 					if err := init.ProvisionHost(ctx, &h); err != nil {
-						grip.Errorf("Error provisioning host %s: %+v", h.Id, err)
+						event.LogHostProvisionError(h.Id)
+
+						grip.Error(message.Fields{
+							"GUID":    init.GUID,
+							"message": "provisioning host encountered error",
+							"error":   err.Error(),
+							"hostid":  h.Id,
+						})
 
 						// notify the admins of the failure
 						subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",

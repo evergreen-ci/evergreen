@@ -99,6 +99,8 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	grip.Info(message.Fields{"message": "prepping host for agent", "host": hostObj.Id})
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions, settings)
 	if err != nil {
+		event.LogHostProvisionError(hostObj.Id)
+
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 	grip.Info(message.Fields{"message": "prepping host finished successfully", "host": hostObj.Id})
@@ -117,6 +119,9 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Errorf("unprovisioning host %s failed: %+v", hostObj.Id, err)
 		}
+
+		event.LogHostAgentDeployFailed(hostObj.Id)
+
 		return errors.WithStack(err)
 	}
 	grip.Info(message.Fields{"message": "agent successfully started for host", "host": hostObj.Id})
