@@ -117,7 +117,6 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	apiErr := err.(*rest.APIError)
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[0].Status)
-
 }
 
 func (s *TestTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
@@ -132,7 +131,6 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	s.Empty(data.Result)
 	s.Nil(err)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
-
 }
 
 func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
@@ -147,7 +145,20 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	s.Empty(data.Result)
 	s.Nil(err)
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+}
 
+func (s *TestTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
+	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h.hostID = "host3"
+
+	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
+
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Nil(err)
+	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
 type TestHostChangeRDPPasswordHandlerSuite struct {
@@ -207,6 +218,19 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteChangePassword() {
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Nil(err)
+}
+
+func (s *TestHostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
+	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h.hostID = "host2"
+	h.rdpPassword = "Hunter2!"
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
@@ -300,7 +324,21 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpiration() {
 	s.Empty(data.Result)
 	s.NoError(err)
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
+}
 
+func (s *TestHostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
+	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
+
+	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h.hostID = "host2"
+	h.addHours = 8
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.NoError(err)
+	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
 func (s *TestHostExtendExpirationHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
