@@ -8,10 +8,6 @@ import (
 	"github.com/mongodb/amboy"
 )
 
-const (
-	MaxExpirationDurationHours = 24 * 7 // 7 days
-)
-
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a Connector then attaches each of the main functions for
 // the api to the router.

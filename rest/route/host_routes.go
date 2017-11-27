@@ -528,10 +528,10 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
-	if addHours > MaxExpirationDurationHours {
+	if addHours > spawn.MaxExpirationDurationHours {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot add more than %d hours", MaxExpirationDurationHours),
+			Message:    fmt.Sprintf("cannot add more than %d hours", spawn.MaxExpirationDurationHours),
 		}
 	}
 	h.addHours = addHours
