@@ -244,7 +244,11 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   // Returns true if 'testResult' represents a test failure, and returns false otherwise.
   $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
     var failureStatuses = ['fail', 'silentfail'];
-    return failureStatuses.indexOf(testResult.status) >= 0;
+    return failureStatuses.indexOf(testResult.test_result.status) >= 0;
+  };
+
+  $scope.isSuccessful = function(testResult) {
+    return testResult.test_result.status === 'pass';
   };
 
   $scope.getURL = function(testResult, isRaw) {
@@ -263,6 +267,10 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     }
 
     return url;
+  };
+
+  $scope.execTaskUrl = function(taskId) {
+    return '/task/' + taskId;
   };
 
   $scope.hideURL = function(testResult, isRaw) {
@@ -336,7 +344,8 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     }];
 
     var totalTestTime = 0;
-    (task.test_results || []).forEach(function(testResult) {
+    (task.test_results || []).forEach(function(t) {
+      var testResult = t.test_result;
       testResult.time_taken = testResult.end - testResult.start;
       totalTestTime += testResult.time_taken;
       testResult.display_name = $filter('endOfPath')(testResult.test_file);
@@ -350,16 +359,8 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
       }
     }
 
-    if (task.execution > 0 || task.archived || task.display_only) {
-      $scope.otherExecutions = [];
-      for (var i = 0; i < task.total_executions; i++) {
-        if (task.display_only) {
-          $scope.otherExecutions[i] = task.execution_tasks;
-        }
-        else {
-          $scope.otherExecutions[i] = task.display_name;
-        }
-      }
+    if (task.execution > 0 || task.archived) {
+      $scope.otherExecutions = _.range(task.total_executions + 1)
     }
 
     $scope.sortBy = $scope.sortOrders[0];
@@ -498,7 +499,7 @@ mciModule.directive('testResults', function() {
       scope.$watch(attrs.testResults, function(testResults) {
         if (testResults) {
           for (var i = 0; i < testResults.length; i++) {
-            var timeTaken = testResults[i].end - testResults[i].start;
+            var timeTaken = testResults[i].test_result.end - testResults[i].test_result.start;
             if (scope.maxTestTime < timeTaken) {
               scope.maxTestTime = timeTaken;
             }

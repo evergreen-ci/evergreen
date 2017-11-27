@@ -1579,7 +1579,6 @@ textarea {
   color: white;
 }
 .url-link {
-  width: 40%;
   display: inline-block;
 }
 #html-link {
@@ -1607,6 +1606,9 @@ textarea {
 }
 .execDropdown {
   white-space: nowrap;
+}
+.fullWidth {
+  width: 100%;
 }
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;

@@ -166,7 +166,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td class="icon"><i class="fa fa-hourglass"></i></td>
                 <td>[[baseTimeTaken | stringifyNanoseconds]] on base commit</td>
               </tr>
-              <tr ng-show="task.execution > 0 || task.archived || task.display_only">
+              <tr ng-show="task.execution > 0 || task.archived">
                 <td class="icon"><i class="fa fa-rotate-left"></i></td>
 
                 <td>
@@ -176,15 +176,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <button class="btn btn-default btn-dropdown btn-xs" data-toggle="dropdown" href="#" id="dLabel">
                       Executions: <span class="fa fa-caret-down"></span>
                     </button>
-                    <ul class="dropdown-menu execDropdown">
-                      <li ng-show="!task.display_only" ng-repeat="i in otherExecutions">
+                    <ul class="dropdown-menu">
+                      <li ng-repeat="i in otherExecutions">
                         <a href="/task/[[task.id]]/[[i]]">[[i+1|ordinalNum]] execution </a>
                       </li>
-                      <div ng-show="task.display_only" ng-repeat="i in otherExecutions">
-                        <li ng-repeat="et in i">
-                          <a href="/task/[[et.id]]/[[$parent.$index]]">[[$parent.$index+1|ordinalNum]] execution - [[et.display_name]]</a>
-                        </li>
-                      </div>
                     </ul>
                   </span>
                   <span ng-show="task.archived">
@@ -267,7 +262,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       {{.}}
       {{end}}
     </div>
-    <div class="col-lg-5">
+    <div class="col-lg-5" ng-class="{fullWidth: task.display_only}">
       <div class="row">
         <div class="col-md-4">
           <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
@@ -307,7 +302,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         <div class=row>
           <div class="col-md-12">
             <span class="label success pull-left" style="margin-right: 5px">
-              [[(task.test_results | filter:{'status' : 'pass'}).length]] Succeeded
+              [[(task.test_results | filter:isSuccessful).length]] Succeeded
             </span>
             <span class="label failed pull-left">
               [[(task.test_results | filter:hasTestFailureStatus).length]] Failed
@@ -323,34 +318,35 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               <tr>
                 <th class="col-lg-6">Test</th>
                 <th class="col-lg-3">Time</th>
-                <th class="col-lg-3">Logs</th>
+                <th class="col-lg-3">Test Logs</th>
+                <th ng-if="task.display_only" class="col-lg-3">Other Logs</th>
               </tr>
             </thead>
             <tbody data-test-results="task.test_results">
               <tr ng-repeat="test in task.test_results | orderBy:sortBy.by:sortBy.reverse"
-                  ng-show="test.status != 'skip'"
+                  ng-show="test.test_result.status != 'skip'"
                   class="test-result-row"
-                  ng-class="test.display_name == hash.test | conditional:'highlight-bg':''">
+                  ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">
                 <td class="col-lg-6">
                   <div class="test-result-link-wrapper">
                     <i  class="icon fa fa-link"
                         style="cursor: pointer;"
-                        ng-click="linkToTest(test.display_name)">
+                        ng-click="linkToTest(test.test_result.display_name)">
                     </i>
                   </div>
                   <div class="test-result-name one-liner">
-                    <a ng-href="[[getTestHistoryUrl(project, task, test)]]">
-                      [[test.display_name]]
+                    <a ng-href="[[getTestHistoryUrl(project, task, test.test_result)]]">
+                      [[test.test_result.display_name]]
                     </a>
                   </div>
                   <div style="clear: both"></div>
                 </td>
                 <td class="col-lg-3">
-                  <div class="progress [[progressBarClass]]" test-result-bar="test" style="width: [[barWidth]]%"></div>
+                  <div class="progress [[progressBarClass]]" test-result-bar="test.test_result" style="width: [[barWidth]]%"></div>
                 </td>
                 <td class="col-lg-3">
                   <div class="url-link nowrap" id="html-link">
-                    <a ng-href="[[getURL(test, false)]]" ng-hide="[[hideURL(test, false)]]">
+                    <a ng-href="[[getURL(test.test_result, false)]]" ng-hide="[[hideURL(test.test_result, false)]]">
                       HTML
                     </a>
                   </div>
@@ -358,10 +354,13 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <b ng-show="[[hasBothURL(test)]]">&middot;</b>
                   </div>
                   <div class="url-link nowrap" id="raw-link">
-                    <a ng-href="[[getURL(test, true)]]" ng-hide="[[hideURL(test, true)]]">
+                    <a ng-href="[[getURL(test.test_result, true)]]" ng-hide="[[hideURL(test.test_result, true)]]">
                       Raw
                     </a>
                   </div>
+                </td>
+                <td ng-if="task.display_only" class="col-lg-3">
+                  <a ng-href="[[execTaskUrl(test.task_id)]]">[[test.task_name]]</a>
                 </td>
               </tr>
             </tbody>
@@ -383,7 +382,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
   </div>
 </div>
 
-<div class="row" ng-controller="TaskLogCtrl">
+<div class="row" ng-controller="TaskLogCtrl" ng-hide="task.display_only">
 <div class="col-lg-12">
   <h3 class="section-heading">
     <i class="fa fa-folder-open"></i>
@@ -408,19 +407,14 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
   </h3>
     <div class="row">
       <div class="col-lg-12">
-        <div ng-show="!task.display_only">
-          <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
-          {{if .User}}
-          <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
-          {{else}}
-          <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length"><span class="severity-ERROR">You are not authorized to view these logs.</span></pre>
-          {{end}}
-          <pre ng-show="(currentLogs == allLogs || currentLogs == taskLogs) && !logs.length">No logs found.</pre>
-          <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz"></taskevent></div>
-        </div>
-        <div ng-show="task.display_only">
-          <pre>This task is for display only. Logs must be viewed in its individual execution tasks.</pre>
-        </div>
+        <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi"></span></pre>
+        {{if .User}}
+        <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
+        {{else}}
+        <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length"><span class="severity-ERROR">You are not authorized to view these logs.</span></pre>
+        {{end}}
+        <pre ng-show="(currentLogs == allLogs || currentLogs == taskLogs) && !logs.length">No logs found.</pre>
+        <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz"></taskevent></div>
       </div>
     </div>
   </div>

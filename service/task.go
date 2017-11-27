@@ -55,7 +55,7 @@ type uiTaskData struct {
 	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	TestResults      []task.TestResult       `json:"test_results"`
+	TestResults      []uiTestResult          `json:"test_results"`
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
 	DependsOn        []uiDep                 `json:"depends_on"`
@@ -109,6 +109,12 @@ type uiDep struct {
 type uiExecTask struct {
 	Id   string `json:"id"`
 	Name string `json:"display_name"`
+}
+
+type uiTestResult struct {
+	TestResult task.TestResult `json:"test_result"`
+	TaskId     *string         `json:"task_id"`
+	TaskName   *string         `json:"task_name"`
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +214,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PushTime:            projCtx.Task.PushTime,
 		TimeTaken:           projCtx.Task.TimeTaken,
 		Priority:            projCtx.Task.Priority,
-		TestResults:         projCtx.Task.TestResults,
 		Aborted:             projCtx.Task.Aborted,
 		DisplayOnly:         projCtx.Task.DisplayOnly,
 		CurrentTime:         time.Now().UnixNano(),
@@ -272,7 +277,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if uiTask.DisplayOnly {
-		uiTask.TestResults = []task.TestResult{}
+		uiTask.TestResults = []uiTestResult{}
 		for _, t := range projCtx.Task.ExecutionTasks {
 			et, err := task.FindOne(task.ById(t))
 			if err != nil {
@@ -280,7 +285,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName})
-			uiTask.TestResults = append(uiTask.TestResults, et.TestResults...)
+			for _, tr := range et.TestResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: &et.Id, TaskName: &et.DisplayName})
+			}
+		}
+	} else {
+		for _, tr := range projCtx.Context.Task.TestResults {
+			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
 		}
 	}
 
