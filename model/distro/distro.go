@@ -3,6 +3,7 @@ package distro
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -55,4 +56,10 @@ func init() {
 // GenerateName generates a unique instance name for a distro.
 func (d *Distro) GenerateName() string {
 	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(NameTimeFormat), rand.Int())
+}
+
+func (d *Distro) IsWindows() bool {
+	// XXX: if this is-windows check is updated, make sure to also update
+	// public/static/js/spawned_hosts.js as well
+	return strings.Contains(d.Id, "win")
 }

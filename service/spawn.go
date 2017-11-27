@@ -168,7 +168,16 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostPasswordUpdate:
-		if err := spawn.SetHostRDPPassword(context.TODO(), h, string(updateParams.RDPPwd)); err != nil {
+		pwd := string(updateParams.RDPPwd)
+		if !h.Distro.IsWindows() {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
+			return
+		}
+		if !spawn.ValidateRDPPassword(pwd) {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
+			return
+		}
+		if err := spawn.SetHostRDPPassword(context.TODO(), h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
