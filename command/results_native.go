@@ -74,7 +74,7 @@ func (c *attachResults) Execute(ctx context.Context,
 			return
 		}
 
-		results := &task.TestResults{}
+		results := &task.LocalTestResults{}
 		if err = util.ReadJSONInto(reportFile, results); err != nil {
 			errChan <- errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
 			return

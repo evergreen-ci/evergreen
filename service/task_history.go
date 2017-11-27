@@ -566,7 +566,7 @@ func createSiblingTaskGroups(tasks []task.Task, versions []version.Version) []ta
 			Details: task.Details,
 		}
 
-		for _, result := range task.TestResults {
+		for _, result := range task.LocalTestResults {
 			if result.Status == evergreen.TestFailedStatus {
 				blurb.Failures = append(blurb.Failures, result.TestFile)
 			}

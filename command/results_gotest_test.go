@@ -60,12 +60,12 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 				updatedTask, err := task.FindOne(task.ById(modelData.Task.Id))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
-				So(len(updatedTask.TestResults), ShouldEqual, 5)
-				So(updatedTask.TestResults[0].Status, ShouldEqual, "fail")
-				So(updatedTask.TestResults[1].Status, ShouldEqual, "fail")
-				So(updatedTask.TestResults[2].Status, ShouldEqual, "skip")
-				So(updatedTask.TestResults[3].Status, ShouldEqual, "pass")
-				So(updatedTask.TestResults[4].Status, ShouldEqual, "fail")
+				So(len(updatedTask.LocalTestResults), ShouldEqual, 5)
+				So(updatedTask.LocalTestResults[0].Status, ShouldEqual, "fail")
+				So(updatedTask.LocalTestResults[1].Status, ShouldEqual, "fail")
+				So(updatedTask.LocalTestResults[2].Status, ShouldEqual, "skip")
+				So(updatedTask.LocalTestResults[3].Status, ShouldEqual, "pass")
+				So(updatedTask.LocalTestResults[4].Status, ShouldEqual, "fail")
 
 				Convey("with relevant logs present in the DB as well", func() {
 					log, err := model.FindOneTestLog("0_badpkg", "testTaskId", 0)
@@ -121,15 +121,15 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 				updatedTask, err := task.FindOne(task.ById(modelData.Task.Id))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
-				So(len(updatedTask.TestResults), ShouldEqual, 2)
-				So(updatedTask.TestResults[0].Status, ShouldEqual, "pass")
-				So(updatedTask.TestResults[1].Status, ShouldEqual, "pass")
-				So(updatedTask.TestResults[0].TestFile, ShouldEqual, "TestPass01")
-				So(updatedTask.TestResults[1].TestFile, ShouldEqual, "TestPass02")
-				So(updatedTask.TestResults[0].StartTime, ShouldBeLessThan,
-					updatedTask.TestResults[0].EndTime)
-				So(updatedTask.TestResults[1].StartTime, ShouldBeLessThan,
-					updatedTask.TestResults[1].EndTime)
+				So(len(updatedTask.LocalTestResults), ShouldEqual, 2)
+				So(updatedTask.LocalTestResults[0].Status, ShouldEqual, "pass")
+				So(updatedTask.LocalTestResults[1].Status, ShouldEqual, "pass")
+				So(updatedTask.LocalTestResults[0].TestFile, ShouldEqual, "TestPass01")
+				So(updatedTask.LocalTestResults[1].TestFile, ShouldEqual, "TestPass02")
+				So(updatedTask.LocalTestResults[0].StartTime, ShouldBeLessThan,
+					updatedTask.LocalTestResults[0].EndTime)
+				So(updatedTask.LocalTestResults[1].StartTime, ShouldBeLessThan,
+					updatedTask.LocalTestResults[1].EndTime)
 
 				Convey("with relevant logs present in the DB as well", func() {
 					log, err := model.FindOneTestLog("0_goodpkg", "testTaskId", 0)
