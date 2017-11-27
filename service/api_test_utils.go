@@ -36,7 +36,9 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 		return nil, err
 	}
 
-	as, err := NewAPIServer(settings)
+	env := evergreen.GetEnvironment()
+
+	as, err := NewAPIServer(settings, env.LocalQueue())
 	if err != nil {
 		return nil, err
 	}

@@ -46,6 +46,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	sender, err := settings.GetSender(env)
 	grip.CatchEmergencyFatal(err)
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
+	queue := env.LocalQueue()
 
 	defer sender.Close()
 	defer recovery.LogStackTraceAndExit("evergreen service")
@@ -60,12 +61,12 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	router := mux.NewRouter()
 
-	apiHandler, err := getHandlerAPI(settings, router)
+	apiHandler, err := getHandlerAPI(settings, queue, router)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	uiHandler, err := getHandlerUI(settings, router)
+	uiHandler, err := getHandlerUI(settings, queue, router)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -104,8 +105,8 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	return catcher.Resolve()
 }
 
-func getHandlerAPI(settings *evergreen.Settings, router *mux.Router) (http.Handler, error) {
-	as, err := service.NewAPIServer(settings)
+func getHandlerAPI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
+	as, err := service.NewAPIServer(settings, queue)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create API server")
 		return nil, err
@@ -120,13 +121,13 @@ func getHandlerAPI(settings *evergreen.Settings, router *mux.Router) (http.Handl
 	return n, nil
 }
 
-func getHandlerUI(settings *evergreen.Settings, router *mux.Router) (http.Handler, error) {
+func getHandlerUI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		return nil, errors.New("EVGHOME environment variable must be set to run UI server")
 	}
 
-	uis, err := service.NewUIServer(settings, home)
+	uis, err := service.NewUIServer(settings, queue, home)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create UI server")
 	}

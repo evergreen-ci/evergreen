@@ -1026,22 +1026,35 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(p.Insert())
 
 	// test a dry run getting only red or purple tasks
-	startTime := time.Date(2017, time.June, 11, 11, 0, 0, 0, time.Local)
-	endTime := time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local)
-	results, err := RestartFailedTasks(startTime, endTime, userName, RestartTaskOptions{DryRun: true, OnlyRed: true, OnlyPurple: false})
+	opts := RestartTaskOptions{
+		DryRun:     true,
+		OnlyRed:    true,
+		OnlyPurple: false,
+		StartTime:  time.Date(2017, time.June, 11, 11, 0, 0, 0, time.Local),
+		EndTime:    time.Date(2017, time.June, 12, 13, 0, 0, 0, time.Local),
+		User:       userName,
+	}
+
+	results, err := RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Nil(results.TasksErrored)
 	assert.Equal(1, len(results.TasksRestarted))
 	assert.Equal("taskOutsideOfTimeRange", results.TasksRestarted[0])
-	results, err = RestartFailedTasks(startTime, endTime, userName, RestartTaskOptions{DryRun: true, OnlyRed: false, OnlyPurple: true})
+
+	opts.OnlyRed = false
+	opts.OnlyPurple = true
+	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Nil(results.TasksErrored)
 	assert.Equal(1, len(results.TasksRestarted))
 	assert.Equal("taskToRestart", results.TasksRestarted[0])
 
 	// test restarting all tasks
-	startTime = time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
-	results, err = RestartFailedTasks(startTime, endTime, userName, RestartTaskOptions{DryRun: false, OnlyRed: false, OnlyPurple: false})
+	opts.StartTime = time.Date(2017, time.June, 12, 11, 0, 0, 0, time.Local)
+	opts.DryRun = false
+	opts.OnlyRed = false
+	opts.OnlyPurple = false
+	results, err = RestartFailedTasks(opts)
 	assert.NoError(err)
 	assert.Equal(0, len(results.TasksErrored))
 	assert.Equal(1, len(results.TasksRestarted))

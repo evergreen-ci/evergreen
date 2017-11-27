@@ -2,15 +2,14 @@ package data
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
@@ -83,17 +82,17 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DB
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times
-func (ac *DBAdminConnector) RestartFailedTasks(env evergreen.Environment, startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
+func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
 	var results model.RestartTaskResults
 	var err error
+
 	if opts.DryRun {
-		results, err = model.RestartFailedTasks(startTime, endTime, user, opts)
+		results, err = model.RestartFailedTasks(opts)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		job := units.NewTasksRestartJob(startTime, endTime, user, opts)
-		if err = env.LocalQueue().Put(job); err != nil {
+		if err = queue.Put(units.NewTasksRestartJob(opts)); err != nil {
 			return nil, errors.Wrap(err, "error starting background job for task restart")
 		}
 	}
@@ -150,7 +149,7 @@ func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.
 }
 
 // RestartFailedTasks mocks a response to restarting failed tasks
-func (ac *MockAdminConnector) RestartFailedTasks(env evergreen.Environment, startTime, endTime time.Time, user string, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
+func (ac *MockAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.RestartTaskOptions) (*restModel.RestartTasksResponse, error) {
 	return &restModel.RestartTasksResponse{
 		TasksRestarted: []string{"task1", "task2", "task3"},
 		TasksErrored:   nil,

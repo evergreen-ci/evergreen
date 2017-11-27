@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
@@ -24,6 +25,7 @@ type GithubWebhookRouteSuite struct {
 	sc       *data.MockConnector
 	rm       *RouteManager
 	canceler context.CancelFunc
+	conf     *evergreen.Settings
 	prBody   []byte
 	suite.Suite
 }
@@ -36,15 +38,20 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	s.NotNil(evergreen.GetEnvironment().Settings())
 	s.NotNil(evergreen.GetEnvironment().Settings().Api)
 	s.NotEmpty(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
+
+	evergreen.ResetEnvironment()
+	s.conf = testutil.TestConfig()
+	s.NotNil(s.conf)
 }
 
 func (s *GithubWebhookRouteSuite) TearDownSuite() {
 	s.canceler()
-	evergreen.ResetEnvironment()
 }
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
-	s.rm = getGithubHooksRouteManager("", 2)
+	grip.Critical(s.conf.Api)
+
+	s.rm = getGithubHooksRouteManager([]byte(s.conf.Api.GithubWebhookSecret))("", 2)
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
 		CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
 	}}
@@ -107,7 +114,8 @@ func (s *GithubWebhookRouteSuite) TestAddIntentWithClosedPRHasNoSideEffects() {
 
 func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	ctx := context.Background()
-	req, err := makeRequest("1", s.prBody)
+	secret := []byte(s.conf.Api.GithubWebhookSecret)
+	req, err := makeRequest("1", s.prBody, secret)
 	s.NoError(err)
 	req.Header.Del("X-Hub-Signature")
 
@@ -117,21 +125,22 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 
 func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	ctx := context.Background()
-	req, err := makeRequest("1", s.prBody)
+	secret := []byte(s.conf.Api.GithubWebhookSecret)
+	req, err := makeRequest("1", s.prBody, secret)
 	s.NoError(err)
 
 	err = s.rm.Methods[0].RequestHandler.ParseAndValidate(ctx, req)
 	s.NoError(err)
 }
 
-func makeRequest(uid string, body []byte) (*http.Request, error) {
+func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
 	req, err := http.NewRequest("POST", "http://example.com/rest/v2/hooks/github", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 
 	// from genMAC in google/go-github/github/messages.go
-	mac := hmac.New(sha256.New, []byte(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret))
+	mac := hmac.New(sha256.New, secret)
 	n, err := mac.Write(body)
 	if n != len(body) {
 		return nil, errors.Errorf("Body length expected to be %d, but was %d", len(body), n)

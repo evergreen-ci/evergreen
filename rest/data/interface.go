@@ -3,7 +3,6 @@ package data
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
@@ -15,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
 )
 
@@ -140,7 +140,7 @@ type Connector interface {
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
-	RestartFailedTasks(evergreen.Environment, time.Time, time.Time, string, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
+	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 

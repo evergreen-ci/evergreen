@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -19,41 +18,34 @@ type githubHookApi struct {
 	msgId string
 }
 
-func getGithubHooksRouteManager(route string, version int) *RouteManager {
-	methods := []MethodHandler{}
-	if secret := getWebhookSecret(); len(secret) > 0 {
-		methods = append(methods, MethodHandler{
-			Authenticator: &NoAuthAuthenticator{},
-			RequestHandler: &githubHookApi{
-				secret: secret,
-			},
-			MethodType: http.MethodPost,
-		})
+func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
+	return func(route string, version int) *RouteManager {
+		methods := []MethodHandler{}
+		if len(secret) > 0 {
+			methods = append(methods, MethodHandler{
+				Authenticator: &NoAuthAuthenticator{},
+				RequestHandler: &githubHookApi{
+					secret: secret,
+				},
+				MethodType: http.MethodPost,
+			})
 
-	} else {
-		grip.Warning("Github webhook secret is empty! Github webhooks have been disabled!")
-	}
+		} else {
+			grip.Warning("Github webhook secret is empty! Github webhooks have been disabled!")
+		}
 
-	return &RouteManager{
-		Route:   route,
-		Methods: methods,
-		Version: version,
+		return &RouteManager{
+			Route:   route,
+			Methods: methods,
+			Version: version,
+		}
 	}
 }
 
 func (gh *githubHookApi) Handler() RequestHandler {
 	return &githubHookApi{
-		secret: getWebhookSecret(),
+		secret: gh.secret,
 	}
-}
-
-func getWebhookSecret() []byte {
-	secret := ""
-	if settings := evergreen.GetEnvironment().Settings(); settings != nil {
-		secret = settings.Api.GithubWebhookSecret
-	}
-
-	return []byte(secret)
 }
 
 func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) error {
