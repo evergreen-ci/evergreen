@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -366,6 +367,9 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 }
 
 func getMockHostsConnector() *data.MockConnector {
+	windowsDistro := distro.Distro{
+		Id: "windows",
+	}
 	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
 			CachedHosts: []host.Host{
@@ -375,6 +379,7 @@ func getMockHostsConnector() *data.MockConnector {
 					Host:           "host1",
 					Status:         evergreen.HostTerminated,
 					ExpirationTime: time.Now().Add(time.Hour),
+					Distro:         windowsDistro,
 				},
 				{
 					Id:             "host2",
@@ -382,6 +387,7 @@ func getMockHostsConnector() *data.MockConnector {
 					Host:           "host2",
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),
+					Distro:         windowsDistro,
 				},
 				{
 					Id:             "host3",
@@ -389,6 +395,17 @@ func getMockHostsConnector() *data.MockConnector {
 					Host:           "host3",
 					Status:         evergreen.HostUninitialized,
 					ExpirationTime: time.Now().Add(time.Hour),
+					Distro:         windowsDistro,
+				},
+				{
+					Id:             "host4",
+					User:           "user0",
+					Host:           "host4",
+					Status:         evergreen.HostRunning,
+					ExpirationTime: time.Now().Add(time.Hour),
+					Distro: distro.Distro{
+						Id: "linux",
+					},
 				},
 			},
 		},

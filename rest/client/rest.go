@@ -84,13 +84,10 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string,
 func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
 	info := requestInfo{
 		method:  post,
-		path:    "hosts/terminate",
+		path:    fmt.Sprintf("hosts/%s/terminate", hostID),
 		version: apiVersion2,
 	}
-	body := model.APISpawnHostModify{
-		HostID: model.APIString(hostID),
-	}
-	resp, err := c.request(ctx, info, body)
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
 		return errors.Wrapf(err, "error sending request to terminate host")
 	}
@@ -110,11 +107,10 @@ func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string
 func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, rdpPassword string) error {
 	info := requestInfo{
 		method:  post,
-		path:    "hosts/change_password",
+		path:    fmt.Sprintf("hosts/%s/change_password", hostID),
 		version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
-		HostID: model.APIString(hostID),
 		RDPPwd: model.APIString(rdpPassword),
 	}
 	resp, err := c.request(ctx, info, body)
@@ -136,11 +132,10 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID string, addHours int) error {
 	info := requestInfo{
 		method:  post,
-		path:    "hosts/extend_expiration",
+		path:    fmt.Sprintf("hosts/%s/extend_expiration", hostID),
 		version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
-		HostID:   model.APIString(hostID),
 		AddHours: model.APIString(fmt.Sprintf("%d", addHours)),
 	}
 	resp, err := c.request(ctx, info, body)

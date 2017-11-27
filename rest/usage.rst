@@ -534,12 +534,15 @@ Change RDP Password of Host with Given Host ID
 
  POST /hosts/<host_id>/change_password
 
- Immediately changes the RDP password of a host with a given ID. Users may only
- change passwords for hosts which were created by them, unless the user is a
- super-user
+ Immediately changes the RDP password of a Windows host with a given ID. Users
+ may only change passwords for hosts which were created by them, unless the
+ user is a super-user.
 
  A response code of 200 OK indicates that the host's password was successfully
  terminated
+
+ Attempting to set the RDP password of a host that is not a Windows host or
+ host that is not running will result in an error.
 
  All other response codes indicate errors; the response body can be parsed as
  a rest.APIError
@@ -555,6 +558,7 @@ Change RDP Password of Host with Given Host ID
      - string
      - New RDP password; must meet RDP password criteria as provided by
        Microsoft at: https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+       and be between 6 and 255 characters long
 
 Extend the Expiration of Host with Given Host ID
 ````````````````````````````````````````````````

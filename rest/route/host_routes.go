@@ -358,11 +358,6 @@ func (h *hostTerminateHandler) Handler() RequestHandler {
 }
 
 func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	hostModify := model.APISpawnHostModify{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
-		return err
-	}
-
 	var err error
 	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
 
@@ -456,6 +451,21 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
 	if err != nil {
 		return ResponseData{}, err
+	}
+
+	// XXX: if this is-windows check is updated, make sure to also update
+	// public/static/js/spawned_hosts.js as well
+	if !strings.Contains(host.Distro, "win") {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "RDP passwords can only be set on Windows hosts",
+		}
+	}
+	if host.Status != evergreen.HostRunning {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "RDP passwords can only be set on running hosts",
+		}
 	}
 
 	if err := sc.SetHostPassword(ctx, host, h.rdpPassword); err != nil {

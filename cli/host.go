@@ -57,6 +57,10 @@ type HostListCommand struct {
 }
 
 func (cmd *HostListCommand) Execute(_ []string) error {
+	sender := send.MakeJSONConsoleLogger()
+	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
+	grip.CatchWarning(grip.SetSender(sender))
+
 	if cmd.All == cmd.Mine {
 		return errors.New("Must specify exactly one of --all or --mine")
 	}
