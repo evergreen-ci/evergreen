@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -455,7 +456,7 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
-	if !strings.Contains(host.Distro, "win") {
+	if !strings.Contains(host.Distro.Id, "win") {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "RDP passwords can only be set on Windows hosts",
@@ -547,7 +548,8 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 		return ResponseData{}, err
 	}
 
-	_, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
+	var newExp time.Time
+	newExp, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
 	if err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -555,7 +557,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 		}
 	}
 
-	if err := sc.ExtendHostExpiration(host, h.addHours); err != nil {
+	if err := sc.SetHostExpirationTime(host, newExp); err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),

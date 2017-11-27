@@ -183,8 +183,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var futureExpiration time.Time
-		if futureExpiration, err = spawn.ExtendHostExpiration(h, addtHours); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, addtHours)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
+		}
+		if err := h.SetExpirationTime(futureExpiration); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration "+

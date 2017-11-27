@@ -254,19 +254,6 @@ func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
 	return nil
 }
 
-func ExtendHostExpiration(host *host.Host, numHoursToAdd int) (time.Time, error) {
-	newExp, err := MakeExtendedHostExpiration(host, numHoursToAdd)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	if err := host.SetExpirationTime(newExp); err != nil {
-		return time.Time{}, errors.Wrap(err, "Error extending host expiration time")
-	}
-
-	return newExp, nil
-}
-
 func MakeExtendedHostExpiration(host *host.Host, addHours int) (time.Time, error) {
 	addHoursDuration := time.Duration(addHours) * time.Hour
 	newExp := host.ExpirationTime.Add(addHoursDuration)

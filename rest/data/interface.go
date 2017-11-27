@@ -156,7 +156,7 @@ type Connector interface {
 	AddPatchIntent(patch.Intent) error
 
 	SetHostStatus(*host.Host, string) error
-	ExtendHostExpiration(*host.Host, int) error
+	SetHostExpirationTime(*host.Host, time.Time) error
 
 	// SetHostPassword SSHs into a host and changes its RDP and SSH
 	// passwords
