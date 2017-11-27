@@ -568,46 +568,47 @@ func (t *Task) UpdateDisplayTask() error {
 	}
 
 	statuses := []string{}
-	catcher := grip.NewBasicCatcher()
 	var timeTaken time.Duration
-	for _, taskId := range t.ExecutionTasks {
-		execTask, err := FindOne(ById(taskId))
-		catcher.Add(err)
-
+	var status string
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return err
+	}
+	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
 			t.Activated = true
 		}
 
 		// the display task's status will be the highest priority of its exec tasks
-		if execTask != nil {
-			statuses = append(statuses, execTask.ResultStatus())
-		}
+		statuses = append(statuses, execTask.ResultStatus())
 
 		// add up the duration of the execution tasks
 		timeTaken += execTask.TimeTaken
 	}
-	if catcher.HasErrors() {
-		return catcher.Resolve()
-	}
 	if len(statuses) > 0 {
 		sort.Sort(byPriority(statuses))
-		t.Status = statuses[0]
+		status = statuses[0]
 	}
 
-	t.TimeTaken = timeTaken
-
-	return UpdateOne(
+	err = UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:    t.Status,
+				StatusKey:    status,
 				ActivatedKey: t.Activated,
-				TimeTakenKey: t.TimeTaken,
+				TimeTakenKey: timeTaken,
 			},
 		})
+	if err != nil {
+		return err
+	}
+
+	t.Status = status
+	t.TimeTaken = timeTaken
+	return nil
 }
 
 type byPriority []string

@@ -466,7 +466,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	// create task caches for all of the tasks, and place them into the build
-	tasks := make([]task.Task, 0)
+	tasks := []task.Task{}
 	for _, taskP := range tasksForBuild {
 		if taskP.DisplayTask != nil {
 			continue // don't add execution parts of display tasks to the UI cache
