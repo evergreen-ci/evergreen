@@ -70,7 +70,6 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
 		"/hooks/github":                                        getGithubHooksRouteManager(githubSecret),
-		"/spawn":                                               getSpawnHostsRouteManager,
 	}
 
 	for path, getManager := range routes {
