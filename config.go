@@ -195,9 +195,10 @@ type VSphereConfig struct {
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
 type JiraConfig struct {
-	Host     string
-	Username string
-	Password string
+	Host           string `yaml:"host"`
+	Username       string `yaml:"username"`
+	Password       string `yaml:"password"`
+	DefaultProject string `yaml:"default_project"`
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

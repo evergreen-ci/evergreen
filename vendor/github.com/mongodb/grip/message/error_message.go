@@ -10,12 +10,13 @@ type errorComposerWrap struct {
 	Composer
 }
 
+// NewErrorWrappedComposer provvides a way to construct a log message
+// that annotates an error.
 func NewErrorWrappedComposer(err error, m Composer) Composer {
 	return &errorComposerWrap{
 		err:      err,
 		Composer: m,
 	}
-
 }
 
 func (m *errorComposerWrap) String() string {

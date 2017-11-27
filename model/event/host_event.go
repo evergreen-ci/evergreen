@@ -53,6 +53,11 @@ type HostEventData struct {
 	Duration      time.Duration `bson:"duration,omitempty" json:"duration"`
 }
 
+var (
+	hostDataResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
+	hostDataStatusKey       = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+)
+
 func (self HostEventData) IsValid() bool {
 	return self.ResourceType == ResourceTypeHost
 }

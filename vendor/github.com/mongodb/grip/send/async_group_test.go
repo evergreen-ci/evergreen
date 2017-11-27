@@ -14,7 +14,7 @@ func TestAsyncGroupSender(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cs := MakeErrorLogger()
-	cs.SetLevel(LevelInfo{Default: level.Debug, Threshold: level.Notice})
+	assert.NoError(cs.SetLevel(LevelInfo{Default: level.Debug, Threshold: level.Notice}))
 	assert.True(cs.Level().Valid())
 
 	s := NewAsyncGroupSender(ctx, 2, cs)
@@ -22,7 +22,7 @@ func TestAsyncGroupSender(t *testing.T) {
 	// if it's not valid to start with then we shouldn't make it
 	// valid by setting it to avoid constituents being overridden,
 	assert.False(s.Level().Valid())
-	s.SetLevel(LevelInfo{Default: level.Info, Threshold: level.Alert})
+	assert.NoError(s.SetLevel(LevelInfo{Default: level.Info, Threshold: level.Alert}))
 	assert.False(s.Level().Valid())
 	assert.True(cs.Level().Valid())
 
@@ -36,7 +36,7 @@ func TestAsyncGroupSender(t *testing.T) {
 
 	s.Send(message.NewDefaultMessage(level.Debug, "hello"))
 	newLevel = LevelInfo{Default: level.Debug, Threshold: level.Alert}
-	impl.SetLevel(newLevel)
+	assert.NoError(impl.SetLevel(newLevel))
 	assert.Equal(newLevel, s.Level())
 
 	assert.NoError(s.Close())

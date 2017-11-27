@@ -11,12 +11,13 @@ type jiraMessage struct {
 // To see whether you have the right permissions to create an issue with certain
 // fields, check your JIRA interface on the web.
 type JiraIssue struct {
-	Project  string
-	Summary  string
-	Reporter string
-	Assignee string
-	Type     string
-	Labels   []string
+	Project     string
+	Summary     string
+	Description string
+	Reporter    string
+	Assignee    string
+	Type        string
+	Labels      []string
 	// ... other fields
 	Fields map[string]string
 }
