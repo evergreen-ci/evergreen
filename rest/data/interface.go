@@ -158,7 +158,7 @@ type Connector interface {
 	SetHostStatus(*host.Host, string) error
 	ExtendHostExpiration(*host.Host, int) error
 
-	// SetHostPassword sshs into a host and changes it's RDP and SSH
+	// SetHostPassword SSHs into a host and changes its RDP and SSH
 	// passwords
 	SetHostPassword(context.Context, *host.Host, string) error
 

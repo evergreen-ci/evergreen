@@ -364,24 +364,17 @@ func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Req
 	}
 
 	var err error
-	h.hostID, err = validateHostID(hostModify.HostID)
+	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
 
 	return err
 }
 
 func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	host, err := sc.FindHostById(h.hostID)
+	u := MustHaveUser(ctx)
+
+	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
 	if err != nil {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "error fetching host information",
-		}
-	}
-	if host == nil {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "unknown host id",
-		}
+		return ResponseData{}, err
 	}
 
 	if host.Status == evergreen.HostTerminated {
@@ -441,7 +434,7 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 	}
 
 	var err error
-	h.hostID, err = validateHostID(hostModify.HostID)
+	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
 	if err != nil {
 		return err
 	}
@@ -458,18 +451,11 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 }
 
 func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	host, err := sc.FindHostById(h.hostID)
+	u := MustHaveUser(ctx)
+
+	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
 	if err != nil {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "error fetching host information",
-		}
-	}
-	if host == nil {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "unknown host id",
-		}
+		return ResponseData{}, err
 	}
 
 	if err := sc.SetHostPassword(ctx, host, h.rdpPassword); err != nil {
@@ -513,7 +499,7 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 	}
 
 	var err error
-	h.hostID, err = validateHostID(hostModify.HostID)
+	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
 	if err != nil {
 		return err
 	}
@@ -544,18 +530,11 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 }
 
 func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	host, err := sc.FindHostById(h.hostID)
+	u := MustHaveUser(ctx)
+
+	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
 	if err != nil {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "error fetching host information",
-		}
-	}
-	if host == nil {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "unknown host id",
-		}
+		return ResponseData{}, err
 	}
 
 	_, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
@@ -576,8 +555,7 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	return ResponseData{}, nil
 }
 
-func validateHostID(hostIDAPI model.APIString) (string, error) {
-	hostID := string(hostIDAPI)
+func validateHostID(hostID string) (string, error) {
 	if strings.TrimSpace(hostID) == "" {
 		return "", &rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -586,4 +564,40 @@ func validateHostID(hostIDAPI model.APIString) (string, error) {
 	}
 
 	return hostID, nil
+}
+
+func isSuperUser(sc data.Connector, userID string) bool {
+	for _, su := range sc.GetSuperUsers() {
+		if su == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func fetchHostAndAuthorize(sc data.Connector, hostID, userID string) (*host.Host, error) {
+	host, err := sc.FindHostById(hostID)
+	if err != nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "host does not exist",
+		}
+	}
+
+	if userID != host.User {
+		if !isSuperUser(sc, userID) {
+			return nil, &rest.APIError{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized to modify host",
+			}
+		}
+	}
+
+	return host, nil
 }

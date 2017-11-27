@@ -510,14 +510,14 @@ Terminate Host with Given Host ID
 
 ::
 
- POST /hosts/terminate/<host_id>
+ POST /hosts/<host_id>/terminate
 
- Immediately terminate a single host using its ID. Users may only terminate hosts which
- were created by them.
+ Immediately terminate a single host with given ID. Users may only terminate hosts which
+ were created by them, unless the user is a super-user.
 
  Hosts which have not been initialised yet will be marked as Terminated.
 
- Hosts which have already been termianted will result in an error.
+ Trying to terminate a host which has already been terminated will result in an error.
 
  All other host statuses will result in an attempt to terminate using the provider's
  API
@@ -526,6 +526,65 @@ Terminate Host with Given Host ID
 
  All other response codes indicate errors; the response body can be parsed as
  a rest.APIError
+
+Change RDP Password of Host with Given Host ID
+``````````````````````````````````````````````
+
+::
+
+ POST /hosts/<host_id>/change_password
+
+ Immediately changes the RDP password of a host with a given ID. Users may only
+ change passwords for hosts which were created by them, unless the user is a
+ super-user
+
+ A response code of 200 OK indicates that the host's password was successfully
+ terminated
+
+ All other response codes indicate errors; the response body can be parsed as
+ a rest.APIError
+
+.. list-table:: **Change Password**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - rdp_pwd
+     - string
+     - New RDP password; must meet RDP password criteria as provided by
+       Microsoft at: https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+
+Extend the Expiration of Host with Given Host ID
+````````````````````````````````````````````````
+
+::
+
+ POST /hosts/<host_id>/extend_expiration
+
+ Extend the expiration time of a host with a given ID. Users may only
+ extend expirations for hosts which were created by them, unless the user is a
+ super-user
+
+ The expiration date of a host may not be more than 1 week in the future
+
+ A response code of 200 OK indicates that the host's expiration was successfully
+ extended.
+
+ All other response codes indicate errors; the response body can be parsed as
+ a rest.APIError
+
+.. list-table:: **Extend Expiration**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - add_hours
+     - int
+     - Number of hours to extend expiration; not to exceed 168
 
 Patch
 -----

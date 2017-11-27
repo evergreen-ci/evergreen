@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -81,15 +83,22 @@ func TestTerminateHostHandler(t *testing.T) {
 
 func (s *TestTerminateHostHandlerSuite) SetupTest() {
 	s.rm = getHostTerminateRouteManager("", 2)
-
 	s.sc = getMockHostsConnector()
+}
+
+func (s *TestTerminateHostHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
+	s.PanicsWithValue("no user attached to request", func() {
+		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+	})
 }
 
 func (s *TestTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host-that-doesn't-exist"
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
 }
@@ -98,7 +107,10 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host1"
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.NotNil(err)
 	s.IsType(new(rest.APIError), err)
@@ -113,7 +125,10 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	h.hostID = "host3"
 
 	s.Equal(evergreen.HostUninitialized, s.sc.CachedHosts[2].Status)
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Nil(err)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
@@ -125,7 +140,10 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	h.hostID = "host2"
 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Nil(err)
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
@@ -148,11 +166,20 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.sc = getMockHostsConnector()
 }
 
+func (s *TestTerminateHostHandlerSuite) TestHostChangeRDPPasswordWithNoUserPanics() {
+	s.PanicsWithValue("no user attached to request", func() {
+		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+	})
+}
+
 func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host-that-doesn't-exist"
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
 }
@@ -178,7 +205,10 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteChangePassword() {
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Nil(err)
 }
@@ -208,11 +238,19 @@ func (s *TestHostExtendExpirationHandlerSuite) SetupTest() {
 	s.sc = getMockHostsConnector()
 }
 
+func (s *TestHostExtendExpirationHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
+	s.PanicsWithValue("no user attached to request", func() {
+		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
+	})
+}
+
 func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host-that-doesn't-exist"
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
 }
@@ -239,7 +277,9 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpirationWithLa
 	h.hostID = "host2"
 	h.addHours = 9001
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.Error(err)
 	s.IsType(new(rest.APIError), err)
@@ -254,7 +294,9 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpiration() {
 	h.hostID = "host2"
 	h.addHours = 8
 
-	data, err := h.Execute(context.TODO(), s.sc)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.NoError(err)
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
@@ -277,7 +319,7 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	}
 
 	var r *http.Request
-	r, err = http.NewRequest("POST", "", bytes.NewReader(data))
+	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", string(mod.HostID)), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -286,27 +328,45 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 }
 
 func getMockHostsConnector() *data.MockConnector {
-	return &data.MockConnector{
+	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
 			CachedHosts: []host.Host{
 				{
 					Id:             "host1",
+					User:           "user0",
 					Host:           "host1",
 					Status:         evergreen.HostTerminated,
 					ExpirationTime: time.Now().Add(time.Hour),
 				},
 				{
 					Id:             "host2",
+					User:           "user0",
 					Host:           "host2",
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),
 				},
 				{
 					Id:             "host3",
+					User:           "user0",
 					Host:           "host3",
 					Status:         evergreen.HostUninitialized,
 					ExpirationTime: time.Now().Add(time.Hour),
 				},
 			},
-		}}
+		},
+		MockUserConnector: data.MockUserConnector{
+			CachedUsers: map[string]*user.DBUser{
+				"user0": {
+					Id:     "user0",
+					APIKey: "user0-key",
+				},
+				"root": {
+					Id:     "root",
+					APIKey: "root-key",
+				},
+			},
+		},
+	}
+	connector.SetSuperUsers([]string{"root"})
+	return connector
 }
