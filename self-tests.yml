@@ -520,7 +520,7 @@ tasks:
     tags: ["db", "race"]
     name: race-service
   - <<: *run-go-test-suite
-    tags: ["db", "race"]
+    tags: ["nodb", "race"]
     name: race-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
