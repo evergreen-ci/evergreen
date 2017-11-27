@@ -381,7 +381,8 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 
 func getMockHostsConnector() *data.MockConnector {
 	windowsDistro := distro.Distro{
-		Id: "windows",
+		Id:   "windows",
+		Arch: "windows_amd64",
 	}
 	connector := &data.MockConnector{
 		MockHostConnector: data.MockHostConnector{
@@ -417,7 +418,8 @@ func getMockHostsConnector() *data.MockConnector {
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),
 					Distro: distro.Distro{
-						Id: "linux",
+						Id:   "linux",
+						Arch: "linux_amd64",
 					},
 				},
 			},
