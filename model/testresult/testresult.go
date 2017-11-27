@@ -71,7 +71,7 @@ func (t *TestResult) InsertByTaskIDAndExecution(taskID string, execution int) er
 	return errors.Wrap(t.Insert(), "error inserting test result")
 }
 
-// InsertManyByTaskIDAndExecution adds task metadata to many TestResults and writes them to the database.
+// InsertManyByTaskIDAndExecution adds task metadata to many LocalTestResults and writes them to the database.
 func InsertManyByTaskIDAndExecution(testResults []TestResult, taskID string, execution int) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, t := range testResults {

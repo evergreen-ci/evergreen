@@ -302,7 +302,7 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 }
 
 // SendTaskResults posts a task's results, used by the attach results operations.
-func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskData, r *task.TestResults) error {
+func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskData, r *task.LocalTestResults) error {
 	if r == nil || len(r.Results) == 0 {
 		return nil
 	}
@@ -400,7 +400,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
-func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskData, results *task.TestResults) error {
+func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskData, results *task.LocalTestResults) error {
 	if results == nil || len(results.Results) == 0 {
 		return nil
 	}
