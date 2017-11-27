@@ -549,7 +549,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 		}
 
 		//resolve tags for display tasks
-		dtse := NewDisplayTaskSelectorEvaluator(bv, tasks)
+		dtse := newDisplayTaskSelectorEvaluator(bv, tasks)
 		for i, dt := range pbv.DisplayTasks {
 			tasks := []string{}
 			for _, et := range dt.ExecutionTasks {

@@ -276,18 +276,13 @@ func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 }
 
 // Display task selector
-type displayTaskSelectorEvaluator struct {
-	tagEval *tagSelectorEvaluator
-}
-
-func NewDisplayTaskSelectorEvaluator(bv BuildVariant, tasks []parserTask) *displayTaskSelectorEvaluator {
+func newDisplayTaskSelectorEvaluator(bv BuildVariant, tasks []parserTask) *tagSelectorEvaluator {
 	var selectees []tagged
 	for _, t := range bv.Tasks {
 		selectees = append(selectees, &parserTask{Name: t.Name, Tags: getTags(tasks, t.Name)})
 	}
-	return &displayTaskSelectorEvaluator{
-		tagEval: newTagSelectorEvaluator(selectees),
-	}
+
+	return newTagSelectorEvaluator(selectees)
 }
 
 func getTags(tasks []parserTask, taskName string) parserStringSlice {
@@ -297,14 +292,6 @@ func getTags(tasks []parserTask, taskName string) parserStringSlice {
 		}
 	}
 	return nil
-}
-
-func (t *displayTaskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
-	results, err := t.tagEval.evalSelector(s)
-	if err != nil {
-		return nil, errors.Wrap(err, "evaluating display task selector")
-	}
-	return results, nil
 }
 
 // Axis selector logic

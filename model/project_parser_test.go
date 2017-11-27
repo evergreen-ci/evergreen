@@ -655,7 +655,7 @@ tasks:
 	proj, errs = projectFromYAML([]byte(nonexistentTaskYml))
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
-	assert.EqualError(errs[0], "evaluating display task selector: notHere: nothing named 'notHere'")
+	assert.EqualError(errs[0], "notHere: nothing named 'notHere'")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
