@@ -638,7 +638,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
-func (h *Host) DisablePosionedHost() error {
+func (h *Host) DisablePoisonedHost() error {
 	if h.Provider == evergreen.ProviderNameStatic {
 		return errors.WithStack(h.SetQuarantined())
 	}
