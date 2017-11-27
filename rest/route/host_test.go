@@ -375,7 +375,7 @@ func getMockHostsConnector() *data.MockConnector {
 			CachedHosts: []host.Host{
 				{
 					Id:             "host1",
-					User:           "user0",
+					StartedBy:      "user0",
 					Host:           "host1",
 					Status:         evergreen.HostTerminated,
 					ExpirationTime: time.Now().Add(time.Hour),
@@ -383,7 +383,7 @@ func getMockHostsConnector() *data.MockConnector {
 				},
 				{
 					Id:             "host2",
-					User:           "user0",
+					StartedBy:      "user0",
 					Host:           "host2",
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),
@@ -391,7 +391,7 @@ func getMockHostsConnector() *data.MockConnector {
 				},
 				{
 					Id:             "host3",
-					User:           "user0",
+					StartedBy:      "user0",
 					Host:           "host3",
 					Status:         evergreen.HostUninitialized,
 					ExpirationTime: time.Now().Add(time.Hour),
@@ -399,7 +399,7 @@ func getMockHostsConnector() *data.MockConnector {
 				},
 				{
 					Id:             "host4",
-					User:           "user0",
+					StartedBy:      "user0",
 					Host:           "host4",
 					Status:         evergreen.HostRunning,
 					ExpirationTime: time.Now().Add(time.Hour),

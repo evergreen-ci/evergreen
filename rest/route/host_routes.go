@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -368,7 +369,7 @@ func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Req
 func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
-	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
+	host, err := fetchHostAndAuthorize(sc, h.hostID, u)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -449,7 +450,7 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
-	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
+	host, err := fetchHostAndAuthorize(sc, h.hostID, u)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -543,7 +544,7 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
-	host, err := fetchHostAndAuthorize(sc, h.hostID, u.Id)
+	host, err := fetchHostAndAuthorize(sc, h.hostID, u)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -578,16 +579,7 @@ func validateHostID(hostID string) (string, error) {
 	return hostID, nil
 }
 
-func isSuperUser(sc data.Connector, userID string) bool {
-	for _, su := range sc.GetSuperUsers() {
-		if su == userID {
-			return true
-		}
-	}
-	return false
-}
-
-func fetchHostAndAuthorize(sc data.Connector, hostID, userID string) (*host.Host, error) {
+func fetchHostAndAuthorize(sc data.Connector, hostID string, user auth.User) (*host.Host, error) {
 	host, err := sc.FindHostById(hostID)
 	if err != nil {
 		return nil, &rest.APIError{
@@ -602,8 +594,8 @@ func fetchHostAndAuthorize(sc data.Connector, hostID, userID string) (*host.Host
 		}
 	}
 
-	if userID != host.User {
-		if !isSuperUser(sc, userID) {
+	if user.Username() != host.StartedBy {
+		if !auth.IsSuperUser(sc.GetSuperUsers(), user) {
 			return nil, &rest.APIError{
 				StatusCode: http.StatusUnauthorized,
 				Message:    "not authorized to modify host",

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -136,7 +137,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
-	_ = MustHaveUser(r)
+	u := MustHaveUser(r)
 	updateParams := restModel.APISpawnHostModify{}
 
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &updateParams); err != nil {
@@ -153,6 +154,14 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("No host with id %v found", hostId))
 		return
 	}
+
+	if u.Username() != h.StartedBy {
+		if !auth.IsSuperUser(uis.Settings.SuperUsers, u) {
+			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this host"))
+			return
+		}
+	}
+
 	// determine what action needs to be taken
 	switch updateParams.Action {
 	case HostTerminate:
@@ -195,6 +204,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, addtHours)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			return
 		}
 		if err := h.SetExpirationTime(futureExpiration); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
