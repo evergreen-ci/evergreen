@@ -294,7 +294,7 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 }
 
 func (s *TestHostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
-	invalidExpirations := []model.APIString{"not a number", "0", "9223372036854775807"}
+	invalidExpirations := []model.APIString{"not a number", "0", "9223372036854775807", ""}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
 			HostID:   "host1",
