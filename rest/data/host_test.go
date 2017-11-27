@@ -205,9 +205,9 @@ func (s *HostConnectorSuite) TestSetHostStatus() {
 
 func (s *HostConnectorSuite) TestExtendHostExpiration() {
 	h, err := s.ctx.FindHostById("host1")
-	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
 	s.NoError(err)
-	s.NoError(s.ctx.ExtendHostExpiration(h, 5))
+	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
+	s.NoError(s.ctx.SetHostExpirationTime(h, expectedTime))
 
 	hCheck, err := s.ctx.FindHostById("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)

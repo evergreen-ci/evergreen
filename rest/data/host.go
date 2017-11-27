@@ -240,7 +240,7 @@ func (hc *MockHostConnector) SetHostPassword(_ context.Context, host *host.Host,
 	return errors.New("can't find host")
 }
 
-func (hc *MockHostConnector) SetExpirationTime(host *host.Host, newExp time.Time) error {
+func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
 	for i, h := range hc.CachedHosts {
 		if h.Id == host.Id {
 			hc.CachedHosts[i].ExpirationTime = newExp
