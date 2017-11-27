@@ -87,7 +87,7 @@ func (s *TestTerminateHostHandlerSuite) SetupTest() {
 	s.sc = getMockHostsConnector()
 }
 
-func (s *TestTerminateHostHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
+func (s *TestTerminateHostHandlerSuite) TestExecuteWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
@@ -178,10 +178,36 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.sc = getMockHostsConnector()
 }
 
-func (s *TestTerminateHostHandlerSuite) TestHostChangeRDPPasswordWithNoUserPanics() {
+func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
+}
+
+func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecute() {
+	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h.hostID = "host2"
+	h.rdpPassword = "Hunter2!"
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Nil(err)
+}
+
+func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
+	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h.hostID = "host3"
+	h.rdpPassword = "Hunter2!"
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Error(err)
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
@@ -197,7 +223,7 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
-	invalidPasswords := []model.APIString{"", "weak", "stilltooweak1", "火a11"}
+	invalidPasswords := []model.APIString{"", "weak", "stilltooweak1", "火a111"}
 	for _, password := range invalidPasswords {
 		mod := model.APISpawnHostModify{
 			HostID: "host1",
@@ -210,19 +236,6 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInval
 		apiErr := err.(*rest.APIError)
 		s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 	}
-}
-
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteChangePassword() {
-	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
-	h.hostID = "host2"
-	h.rdpPassword = "Hunter2!"
-
-	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
-
-	data, err := h.Execute(ctx, s.sc)
-	s.Empty(data.Result)
-	s.Nil(err)
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
@@ -297,7 +310,7 @@ func (s *TestHostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvali
 	}
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpirationWithLargeExpirationFails() {
+func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails() {
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
 	h.addHours = 9001
@@ -312,7 +325,7 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpirationWithLa
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestExecuteExtendExpiration() {
+func (s *TestHostExtendExpirationHandlerSuite) TestExecute() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)

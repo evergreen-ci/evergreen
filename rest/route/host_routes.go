@@ -455,9 +455,7 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 		return ResponseData{}, err
 	}
 
-	// XXX: if this is-windows check is updated, make sure to also update
-	// public/static/js/spawned_hosts.js as well
-	if !strings.Contains(host.Distro.Id, "win") {
+	if !host.Distro.IsWindows() {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "RDP passwords can only be set on Windows hosts",
