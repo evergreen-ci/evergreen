@@ -350,7 +350,7 @@ func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) 
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
-func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.TestResults) error {
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.LocalTestResults) error {
 	return nil
 }
 
