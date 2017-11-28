@@ -455,7 +455,9 @@ func ebsCost(pf ebsPriceFetcher, region string, size int, duration time.Duration
 	}
 	// price = GB * % of month *
 	month := (time.Hour * 24 * 30)
+
 	return float64(size) * (float64(duration) / float64(month)) * price, nil
+
 }
 
 // onDemandPriceFetcher is an interface for fetching the hourly price of a given
@@ -591,5 +593,5 @@ func onDemandCost(pf onDemandPriceFetcher, os osType, instance, region string, d
 	if price == 0 {
 		return 0, errors.New("price not found in EC2 price listings")
 	}
-	return price * float64(dur) / float64(time.Hour), nil
+	return price * dur.Hours(), nil
 }
