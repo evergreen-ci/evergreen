@@ -127,20 +127,20 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string                    `json:"id"`
-		DisplayName        string                    `json:"display_name"`
-		RemotePath         string                    `json:"remote_path"`
-		BatchTime          int                       `json:"batch_time"`
-		DeactivatePrevious bool                      `json:"deactivate_previous"`
-		Branch             string                    `json:"branch_name"`
-		ProjVarsMap        map[string]string         `json:"project_vars"`
-		PatchVariants      []model.PatchVariantRegex `json:"patch_variants"`
-		PrivateVars        map[string]bool           `json:"private_vars"`
-		Enabled            bool                      `json:"enabled"`
-		Private            bool                      `json:"private"`
-		Owner              string                    `json:"owner_name"`
-		Repo               string                    `json:"repo_name"`
-		Admins             []string                  `json:"admins"`
+		Identifier         string               `json:"id"`
+		DisplayName        string               `json:"display_name"`
+		RemotePath         string               `json:"remote_path"`
+		BatchTime          int                  `json:"batch_time"`
+		DeactivatePrevious bool                 `json:"deactivate_previous"`
+		Branch             string               `json:"branch_name"`
+		ProjVarsMap        map[string]string    `json:"project_vars"`
+		PatchVariants      []model.PatchVariant `json:"patch_variants"`
+		PrivateVars        map[string]bool      `json:"private_vars"`
+		Enabled            bool                 `json:"enabled"`
+		Private            bool                 `json:"private"`
+		Owner              string               `json:"owner_name"`
+		Repo               string               `json:"repo_name"`
+		Admins             []string             `json:"admins"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`

@@ -36,10 +36,10 @@ type ProjectVars struct {
 
 	// PatchVariants contains regexes that are used to determine which
 	// combinations of variants and tasks should be run.
-	PatchVariants []PatchVariantRegex `bson:"patch_variants" json:"patch_variants"`
+	PatchVariants []PatchVariant `bson:"patch_variants" json:"patch_variants"`
 }
 
-type PatchVariantRegex struct {
+type PatchVariant struct {
 	Variant string `bson:"variant" json:"variant"`
 	Task    string `bson:"task" json:"task"`
 }

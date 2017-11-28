@@ -42,7 +42,7 @@ func TestProjectVarsInsert(t *testing.T) {
 	vars := &ProjectVars{
 		Id:   "mongodb",
 		Vars: map[string]string{"a": "1"},
-		PatchVariants: []PatchVariantRegex{
+		PatchVariants: []PatchVariant{
 			{
 				Variant: "test",
 				Task:    "test",
