@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"testing"
-
 	"strings"
+	"testing"
 
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +27,8 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		NewErrorWrapMessage(level.Error, errors.New(testMsg), ""):              testMsg,
 		NewFormatted(string(testMsg[0])+"%s", testMsg[1:]):                     testMsg,
 		NewFormattedMessage(level.Error, string(testMsg[0])+"%s", testMsg[1:]): testMsg,
+		WrapError(errors.New(testMsg), ""):                                     testMsg,
+		WrapErrorf(errors.New(testMsg), ""):                                    testMsg,
 		NewLine(testMsg, ""):                                                   testMsg,
 		NewLineMessage(level.Error, testMsg, ""):                               testMsg,
 		NewLine(testMsg):                                                       testMsg,
@@ -56,8 +57,8 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 
 		} else {
 			// run the string test to make sure it doesn't change:
-			assert.Equal(msg.String(), output)
-			assert.Equal(msg.String(), output)
+			assert.Equal(msg.String(), output, "%T", msg)
+			assert.Equal(msg.String(), output, "%T", msg)
 		}
 
 		if msg.Priority() != level.Invalid {

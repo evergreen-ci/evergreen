@@ -62,15 +62,21 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		return errors.Wrap(err, "problem running repotracker")
 	}
 
-	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
-		grip.Error(errors.Wrap(err, "problem updating process status"))
+	runnerRuntime := time.Since(startTime)
+	if err := model.SetProcessRuntimeCompleted(RunnerName, runnerRuntime); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "problem updating process status",
+			"duration": runnerRuntime,
+			"span":     runnerRuntime.String(),
+			"runner":   RunnerName,
+		}))
 	}
 
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
-		"runtime": time.Since(startTime),
+		"runtime": runnerRuntime,
 		"status":  "success",
-		"span":    time.Since(startTime).String(),
+		"span":    runnerRuntime.String(),
 	})
 
 	return nil
@@ -122,11 +128,10 @@ func runRepoTracker(config *evergreen.Settings) error {
 
 	defer func() {
 		if err = db.ReleaseLock(RunnerName); err != nil {
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  RunnerName,
 				"message": "Error releasing global lock",
-				"error":   err.Error(),
-			})
+			}))
 		}
 	}()
 

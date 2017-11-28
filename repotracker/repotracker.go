@@ -80,7 +80,11 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		// this is somewhat belt-and-suspenders, as the
 		// repotracker runner process doesn't run for disabled
 		// proejcts.
-		grip.Infoln("Skipping disabled project:", projectRef)
+		grip.Info(message.Fields{
+			"message": "skip disabled project",
+			"project": projectRef,
+			"runner":  RunnerName,
+		})
 		return nil
 	}
 
@@ -99,17 +103,29 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 	if lastRevision == "" {
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
-		grip.Debugln("No last recorded repository revision for", projectRef,
-			"Proceeding to fetch most recent", numNewRepoRevisionsToFetch, "revisions")
+		grip.Debug(message.Fields{
+			"runner":  RunnerName,
+			"project": projectRef,
+			"message": "no last recorded revision, using most recent revisions",
+			"number":  numNewRepoRevisionsToFetch,
+		})
 		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
 	} else {
-		grip.Debugf("Last recorded revision for %s is %s", projectRef, lastRevision)
+		grip.Debugf(message.Fields{
+			"message":  "found last recorded revision",
+			"project":  projectRef,
+			"runner":   RunnerName,
+			"revision": lastRevision,
+		})
 		// if the projectRef has a repotracker error then don't get the revisions
 		if projectRef.RepotrackerError != nil {
 			if projectRef.RepotrackerError.Exists {
-				grip.Warningf("repotracker error for base revision '%s' on project '%s/%s:%s'",
-					projectRef.RepotrackerError.InvalidRevision,
-					projectRef.Owner, projectRef.Repo, projectRef.Branch)
+				grip.Warningf(message.Fields{
+					"runner":  RunnerName,
+					"message": "repotracker error for base revision",
+					"project": projectRef,
+					"path":    fmt.Sprintf("%s/%s:%s", projectRef.Owner, projectRef.Repo, projectRef.Branch),
+				})
 				return nil
 			}
 		}
@@ -121,8 +137,11 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 	}
 
 	if err != nil {
-		grip.Errorf("error fetching revisions for repository %s: %+v", projectRef.Identifier, err)
-		repoTracker.sendFailureNotification(lastRevision, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem fetching revisions for repository",
+			"runner":  RunnerName,
+			"project": projectRef.Identifier,
+		}))
 		return nil
 	}
 
@@ -130,21 +149,33 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		var lastVersion *version.Version
 		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
-			grip.Errorf("error storing revisions for repository %s: %+v", projectRef, err)
-			return err
+			grip.Error(message.WrapErrror(err, message.Fields{
+				"message": "problem storting revisions for repository",
+				"runner":  RunnerName,
+				"project": projectRef,
+			}))
+			return errors.WithStack(err)
 		}
 		err = model.UpdateLastRevision(lastVersion.Identifier, lastVersion.Revision)
 		if err != nil {
-			grip.Errorf("error updating last revision for repository %s: %+v", projectRef, err)
-			return err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem updating last revision for repository",
+				"project": projectRef,
+				"runner":  RunnerName,
+			}))
+			return errors.WithStack(err)
 		}
 	}
 
 	// fetch the most recent, non-ignored version version to activate
 	activateVersion, err := version.FindOne(version.ByMostRecentNonignored(projectIdentifier))
 	if err != nil {
-		grip.Errorf("error getting most recent version for repository %s: %+v", projectRef, err)
-		return err
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem getting most recent revision for repository",
+			"project": projectRef,
+			"runner":  RunnerName,
+		}))
+		return errors.WithStack(err)
 	}
 	if activateVersion == nil {
 		grip.Warningf("no version to activate for repository %s", projectIdentifier)
@@ -153,8 +184,12 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 
 	err = repoTracker.activateElapsedBuilds(activateVersion)
 	if err != nil {
-		grip.Errorln("error activating variants:", err)
-		return err
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem activating variants",
+			"version": activateVersion,
+			"runner":  RunnerName,
+		}))
+		return errors.WithStack(err)
 	}
 
 	return nil
@@ -168,8 +203,13 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 	for i, status := range v.BuildVariants {
 		// last comparison is to check that ActivateAt is actually set
 		if !status.Activated && now.After(status.ActivateAt) && !status.ActivateAt.IsZero() {
-			grip.Infof("activating variant %s for project %s, revision %s",
-				status.BuildVariant, projectId, v.Revision)
+			grip.Info(message.Fields{
+				"message":  "activating revision",
+				"variant":  status.BuildVariant,
+				"project":  projectId,
+				"revision": v.Revision,
+				"runner":   RunnerName,
+			})
 
 			// Go copies the slice value, we want to modify the actual value
 			status.Activated = true
@@ -178,16 +218,33 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 
 			b, err := build.FindOne(build.ById(status.BuildId))
 			if err != nil {
-				grip.Errorf("error retrieving build for project %s, variant %s, build %s: %+v",
-					projectId, status.BuildVariant, status.BuildId, err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"message": "problem retrieving build",
+					"runner":  RunnerName,
+					"variant": status.BuildVariant,
+					"build":   status.BuildId,
+					"project": projectId,
+				}))
 				continue
 			}
-			grip.Infof("activating build %s for project %s, variant %s",
-				status.BuildId, projectId, status.BuildVariant)
+
+			grip.Info(message.Fields{
+				"message": "activating build",
+				"runner":  RunnerName,
+				"variant": status.BuildVariant,
+				"build":   status.BuildId,
+				"project": projectId,
+			})
+
 			// Don't need to set the version in here since we do it ourselves in a single update
 			if err = model.SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator); err != nil {
-				grip.Errorf("error activating build %s for project %s, variant %s: %+v",
-					b.Id, projectId, status.BuildVariant, err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"runner":  RunnerName,
+					"message": "problem activating build",
+					"variant": status.BuildVariant,
+					"build":   status.BuildId,
+					"project": projectId,
+				}))
 				continue
 			}
 			hasActivated = true
