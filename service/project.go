@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
@@ -126,19 +127,20 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string            `json:"id"`
-		DisplayName        string            `json:"display_name"`
-		RemotePath         string            `json:"remote_path"`
-		BatchTime          int               `json:"batch_time"`
-		DeactivatePrevious bool              `json:"deactivate_previous"`
-		Branch             string            `json:"branch_name"`
-		ProjVarsMap        map[string]string `json:"project_vars"`
-		PrivateVars        map[string]bool   `json:"private_vars"`
-		Enabled            bool              `json:"enabled"`
-		Private            bool              `json:"private"`
-		Owner              string            `json:"owner_name"`
-		Repo               string            `json:"repo_name"`
-		Admins             []string          `json:"admins"`
+		Identifier         string                    `json:"id"`
+		DisplayName        string                    `json:"display_name"`
+		RemotePath         string                    `json:"remote_path"`
+		BatchTime          int                       `json:"batch_time"`
+		DeactivatePrevious bool                      `json:"deactivate_previous"`
+		Branch             string                    `json:"branch_name"`
+		ProjVarsMap        map[string]string         `json:"project_vars"`
+		PatchVariants      []model.PatchVariantRegex `json:"patch_variants"`
+		PrivateVars        map[string]bool           `json:"private_vars"`
+		Enabled            bool                      `json:"enabled"`
+		Private            bool                      `json:"private"`
+		Owner              string                    `json:"owner_name"`
+		Repo               string                    `json:"repo_name"`
+		Admins             []string                  `json:"admins"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -148,6 +150,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
+	}
+
+	for _, pv := range responseRef.PatchVariants {
+		if _, err := regexp.Compile(pv.Variant); err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		if _, err := regexp.Compile(pv.Task); err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
 	}
 
 	projectRef.DisplayName = responseRef.DisplayName
@@ -181,7 +194,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars}
+	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars, responseRef.PatchVariants}
 	_, err = projectVars.Upsert()
 
 	if err != nil {
