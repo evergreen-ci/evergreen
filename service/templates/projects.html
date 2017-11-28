@@ -254,7 +254,7 @@ Evergreen Projects
           </div>
           <div id="projectVarsList" class="form-group" ng-repeat="(name, value) in settingsFormData.project_vars">
             <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>
-            <div class="col-lg-4" >
+            <div class="col-lg-4">
               <textarea class="form-control" style="font-family:monospace;" readonly>[[valueString(name, value)]]</textarea>
             </div>
             <div class="col-lg-2">
@@ -273,6 +273,7 @@ Evergreen Projects
             <div>
              <label class="control-label">
                <input type="checkbox" name="set_private" ng-model="proj_var.is_private" ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" /> <strong>Private Variable</strong>
+             </label>
             </div>
             <div class="col-lg-6">
               <button class="plus-button btn btn-primary " ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
@@ -282,7 +283,7 @@ Evergreen Projects
             </div>
           </div>
         </div>
-        <br>
+        <br/>
         <div class="row">
           <div class="col-lg-2">
             <label>[[saveMessage]]</label>
