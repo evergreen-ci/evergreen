@@ -233,6 +233,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
     if ($scope.patch_variant) {
       $scope.addPatchVariant();
+      if($scope.patch_variant.variant) {
+        $scope.invalidPatchVariantMessage = "Missing task regex"
+          return
+      }
+      if($scope.patch_variant.task) {
+        $scope.invalidPatchVariantMessage = "Missing variant regex"
+        return
+      }
     }
     if ($scope.admin_name) {
       $scope.addAdmin();
@@ -273,6 +281,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       $scope.settingsFormData.patch_variants = $scope.settingsFormData.patch_variants.concat([item]);
       $scope.patch_variant.variant = "";
       $scope.patch_variant.task = "";
+      $scope.invalidPatchVariantMessage = ""
     }
   }
 

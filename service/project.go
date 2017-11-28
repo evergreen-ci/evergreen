@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
@@ -152,13 +153,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, pv := range responseRef.PatchVariants {
+	for i, pv := range responseRef.PatchVariants {
+		if strings.TrimSpace(pv.Variant) == "" {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("variant regex #%d can't be empty string", i+1))
+			return
+		}
+		if strings.TrimSpace(pv.Task) == "" {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("task regex #%d can't be empty string", i+1))
+			return
+		}
+
 		if _, err := regexp.Compile(pv.Variant); err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "variant regex #%d is invalid", i+1))
 			return
 		}
 		if _, err := regexp.Compile(pv.Task); err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "task regex #%d is invalid", i+1))
 			return
 		}
 	}
