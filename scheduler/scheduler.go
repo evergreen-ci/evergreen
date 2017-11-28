@@ -32,6 +32,8 @@ type Scheduler struct {
 	FindRunnableTasks TaskFinder
 }
 
+const underwaterPruningEnabled = false
+
 // versionBuildVariant is used to keep track of the version/buildvariant fields
 // for tasks that are to be split by distro
 type versionBuildVariant struct {
@@ -47,11 +49,18 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 
-	grip.InfoWhen(num > 0, message.Fields{
-		"message": "unscheduled stale tasks",
-		"runner":  RunnerName,
-		"count":   num,
-	})
+	if underwaterPruningEnabled {
+		num, err := task.UnscheduleStaleUnderwaterTasks()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		grip.InfoWhen(num > 0, message.Fields{
+			"message": "unscheduled stale tasks",
+			"runner":  RunnerName,
+			"count":   num,
+		})
+	}
 
 	startAt := time.Now()
 	runnableTasks, err := s.FindRunnableTasks()
