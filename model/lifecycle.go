@@ -205,16 +205,20 @@ func SetVersionPriority(versionId string, priority int64) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
-	allTasks, err := task.Find(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
+	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
 
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
 
+	restartIds := make([]string, 0)
 	// archive all the tasks
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
+		}
+		if t.DisplayOnly {
+			restartIds = append(restartIds, t.ExecutionTasks...)
 		}
 	}
 
@@ -234,9 +238,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	restartIds := make([]string, 0)
 	if abortInProgress {
-		restartIds = taskIds
+		restartIds = append(restartIds, taskIds...)
 	} else {
 		for _, t := range allTasks {
 			restartIds = append(restartIds, t.Id)
@@ -289,7 +292,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the build
-	allTasks, err := task.Find(task.ByIdsBuildAndStatus(taskIds, buildId, task.CompletedStatuses))
+	allTasks, err := task.FindWithDisplayTasks(task.ByIdsBuildAndStatus(taskIds, buildId, task.CompletedStatuses))
 	if err != nil && err != mgo.ErrNotFound {
 		return errors.WithStack(err)
 	}
@@ -302,6 +305,9 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 					"Restarting build %v failed, could not task.reset on task",
 					buildId, t.Id)
 			}
+		}
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.ExecutionTasks...)
 		}
 	}
 
@@ -330,7 +336,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 
 // RestartBuildTasks restarts all the tasks associated with a given build.
 func RestartBuildTasks(buildId string, caller string) error {
-	allTasks, err := task.Find(task.ByBuildId(buildId))
+	allTasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
 	if err != nil && err != mgo.ErrNotFound {
 		return errors.WithStack(err)
 	}
@@ -352,7 +358,9 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
-		cache = append(cache, cacheFromTask(task))
+		if task.DisplayTask == nil {
+			cache = append(cache, cacheFromTask(task))
+		}
 	}
 	return cache
 }
@@ -360,7 +368,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.Find(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
+	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
 		task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, task.DependsOnKey))
 	if err != nil {
 		return errors.WithStack(err)

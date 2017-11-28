@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -681,6 +682,7 @@ func FindOld(query db.Q) ([]Task, error) {
 	return tasks, err
 }
 
+// FindOldWithDisplayTasks finds display and execution tasks in the old collection
 func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 	tasks := []Task{}
 	err := db.FindAllQ(OldCollection, query, &tasks)
@@ -695,6 +697,17 @@ func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
 	}
 
 	return tasks, err
+}
+
+// FindOneIdOldOrNew attempts to find a given task ID by first looking in the
+// old collection, then the tasks collection
+func FindOneIdOldOrNew(id string, execution string) (*Task, error) {
+	task, err := FindOneOld(ById(fmt.Sprintf("%s_%s", id, execution)))
+	if task == nil || err != nil {
+		return FindOne(ById(id))
+	}
+
+	return task, err
 }
 
 // Find returns all tasks that satisfy the query.
@@ -725,6 +738,13 @@ func FindWithDisplayTasks(query db.Q) ([]Task, error) {
 	err := db.FindAllQ(Collection, query, &tasks)
 	if err == mgo.ErrNotFound {
 		return nil, nil
+	}
+
+	for _, t := range tasks {
+		_, err = t.GetDisplayTask()
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to retrieve parent display task")
+		}
 	}
 
 	return tasks, err

@@ -64,6 +64,16 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	} else {
 		event.LogTaskDeactivated(taskId, caller)
 	}
+
+	// if this is part of a display task, update the display task's status
+	if t.IsPartOfDisplay() {
+		err := t.DisplayTask.UpdateDisplayTask()
+		if err != nil {
+			return err
+		}
+		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+	}
+
 	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskId, active))
 }
 
@@ -97,6 +107,9 @@ func resetTask(taskId string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	if t.IsPartOfDisplay() {
+		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
+	}
 	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
@@ -118,6 +131,9 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if t.IsPartOfDisplay() {
+		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
 	}
 	// if we've reached the max number of executions for this task, mark it as finished and failed
 	if t.Execution >= evergreen.MaxTaskExecution {
@@ -152,12 +168,17 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 		}
 	}
 
-	if err = resetTask(t.Id); err == nil {
-		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
-			event.LogTaskRestarted(t.Id, user)
-		} else {
-			event.LogTaskRestarted(t.Id, origin)
-		}
+	if err = resetTask(t.Id); err != nil {
+		return err
+	}
+	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
+		event.LogTaskRestarted(t.Id, user)
+	} else {
+		event.LogTaskRestarted(t.Id, origin)
+	}
+
+	if t.DisplayOnly {
+		return t.UpdateDisplayTask()
 	}
 	return errors.WithStack(err)
 }
@@ -304,21 +325,18 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.HostId, status)
 
-	displayTask, err := t.GetDisplayTask()
-	if err != nil {
-		return err
-	}
-	if displayTask != nil {
-		err = displayTask.UpdateDisplayTask()
-		if err != nil {
+	if t.IsPartOfDisplay() {
+		if err = t.DisplayTask.UpdateDisplayTask(); err != nil {
 			return err
 		}
-	}
-
-	// update the cached version of the task, in its build document
-	err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, t.TimeTaken)
-	if err != nil {
-		return errors.Wrap(err, "error updating build")
+		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
+			return err
+		}
+	} else {
+		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, detail.Status, t.TimeTaken)
+		if err != nil {
+			return errors.Wrap(err, "error updating build")
+		}
 	}
 
 	// no need to activate/deactivate other task if this is a patch request's task
@@ -404,6 +422,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
+			status := ""
 			finishedTasks++
 
 			displayTask, err := t.GetDisplayTask()
@@ -416,6 +435,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 					return err
 				}
 				t = *displayTask
+				status = t.Status
 			}
 
 			// if it was a compile task, mark the build status accordingly
@@ -456,11 +476,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				}
 
 				// update the cached version of the task, in its build document
-				err = build.SetCachedTaskFinished(t.BuildId, t.Id, &t.Details, t.TimeTaken)
+				if status == "" {
+					status = t.Details.Status
+				}
+				err = build.SetCachedTaskFinished(t.BuildId, t.Id, &t.Details, status, t.TimeTaken)
 				if err != nil {
 					return fmt.Errorf("error updating build: %v", err.Error())
 				}
-
 			}
 		}
 	}
@@ -597,6 +619,15 @@ func MarkStart(taskId string) error {
 		}
 	}
 
+	// if this is part of a display task, update the display task's status
+	if t.IsPartOfDisplay() {
+		err = t.DisplayTask.UpdateDisplayTask()
+		if err != nil {
+			return errors.Wrap(err, "error updating display task")
+		}
+		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+	}
+
 	// update the cached version of the task, in its build document
 	return build.SetCachedTaskStarted(t.BuildId, t.Id, startTime)
 }
@@ -608,6 +639,15 @@ func MarkTaskUndispatched(t *task.Task) error {
 	}
 	// the task was successfully dispatched, log the event
 	event.LogTaskUndispatched(t.Id, t.HostId)
+
+	// if this is part of a display task, update the display task's status
+	if t.IsPartOfDisplay() {
+		err := t.DisplayTask.UpdateDisplayTask()
+		if err != nil {
+			return err
+		}
+		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+	}
 
 	// update the cached version of the task in its related build document
 	if err := build.SetCachedTaskUndispatched(t.BuildId, t.Id); err != nil {
@@ -624,6 +664,15 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 	}
 	// the task was successfully dispatched, log the event
 	event.LogTaskDispatched(t.Id, hostId)
+
+	// if this is part of a display task, update the display task's status
+	if t.IsPartOfDisplay() {
+		err := t.DisplayTask.UpdateDisplayTask()
+		if err != nil {
+			return err
+		}
+		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+	}
 
 	// update the cached version of the task in its related build document
 	if err := build.SetCachedTaskDispatched(t.BuildId, t.Id); err != nil {

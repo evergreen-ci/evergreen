@@ -62,16 +62,21 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     return navigator.platform.toUpperCase().indexOf('MAC')>=0;
   }
 
-
-
   // Gets the list of tasks that are active across all the list of currently
   // selected variants, sorted by name. Used to populate the field of
   // checkboxes in the main panel.
   $scope.getActiveTasks = function(){
     var selectedVariants = $scope.selectedVariants();
+    var tasksInSelectedVariants = [];
 
     // return the union of the set of tasks shared by all of them, sorted by name
-    var tasksInSelectedVariants = _.uniq(_.flatten(_.map(_.pluck(selectedVariants, "tasks"), _.keys)));
+    selectedVariants.forEach(function(bv) {
+      for (var taskName in bv.tasks) {
+        if (!bv.execTasks.hasOwnProperty(taskName)) {
+          tasksInSelectedVariants.push(taskName);
+        }
+      }
+    });
     return tasksInSelectedVariants.sort();
   }
 
@@ -99,9 +104,20 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     var data = {
       "description": $scope.patch.Description,
       "variants_tasks": _.filter(_.map($scope.variants, function(v){
+        var tasks = [];
+        for (var name in v.tasks) {
+          if (v.tasks[name].checked) {
+            if (v.displayTasks[name]) {
+              tasks = tasks.concat(v.displayTasks[name]);
+            }
+            else {
+              tasks.push(name);
+            }
+          }
+        }
         return {
           variant: v.id,
-          tasks: _.keys(_.omit(v.tasks, function(v){return !v.checked})),
+          tasks: tasks,
         };
       }), function(v){return v.tasks.length > 0})
     }
@@ -123,10 +139,23 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       return v;
     })
     $scope.variants = _.sortBy(_.map(variantsFilteredTasks, function(v, variantId){
+      var displayTasks = {};
+      var execTasks = {};
+      if (v.DisplayTasks && v.DisplayTasks.length > 0) {
+        v.DisplayTasks.forEach(function(displayTask) {
+          displayTask.ExecutionTasks.forEach(function(execTask) {
+            execTasks[execTask] = displayTask.Name;
+          });
+          displayTasks[displayTask.Name] = displayTask.ExecutionTasks;
+          v.Tasks.push({"Name": displayTask.Name});
+        });
+      }
       return {
         id: variantId,
         checked:false,
         name: v.DisplayName,
+        displayTasks: displayTasks,
+        execTasks: execTasks,
         tasks : _.object(_.map(_.pluck(v.Tasks, "Name"), function(t){
           return [t, {checked:false}];
         }))
@@ -139,6 +168,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     }
 
     var allUniqueTaskNames = _.uniq(_.flatten(_.map(_.pluck($scope.variants, "tasks"), _.keys)));
+    allUniqueTaskNames = allUniqueTaskNames.concat(_.uniq(_.flatten(_.map(_.pluck($scope.variants, "displayTasks"), _.keys))));
 
     $scope.tasks = _.object(_.map(allUniqueTaskNames, function(taskName){
       // create a getter/setter for the state of the task

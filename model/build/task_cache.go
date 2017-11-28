@@ -1,6 +1,7 @@
 package build
 
 import (
+	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -71,11 +72,11 @@ func SetCachedTaskStarted(buildId, taskId string, startTime time.Time) error {
 
 // SetCachedTaskFinished sets the given task to "finished"
 // along with a time taken in the cache of the given build.
-func SetCachedTaskFinished(buildId, taskId string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
+func SetCachedTaskFinished(buildId, taskId string, detail *apimodels.TaskEndDetail, status string, timeTaken time.Duration) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
 		"$set": bson.M{
 			TasksKey + ".$." + TaskCacheTimeTakenKey:     timeTaken,
-			TasksKey + ".$." + TaskCacheStatusKey:        detail.Status,
+			TasksKey + ".$." + TaskCacheStatusKey:        status,
 			TasksKey + ".$." + TaskCacheStatusDetailsKey: detail,
 		},
 	})
@@ -99,6 +100,28 @@ func ResetCachedTask(buildId, taskId string) error {
 		},
 		"$unset": bson.M{
 			TasksKey + ".$." + TaskCacheStatusDetailsKey: "",
+		},
+	})
+}
+
+// UpdateCachedTask sets the status and increments the time taken for a task
+// in the build cache. It is intended for use with display tasks
+func UpdateCachedTask(buildId, taskId, status string, timeTaken time.Duration) error {
+	if buildId == "" {
+		return errors.New("unable to update a cached task with a blank build")
+	}
+	if taskId == "" {
+		return errors.New("unable to update a cached task with a blank task")
+	}
+	if status == "" {
+		return errors.New("unable to update a cached task with a blank status")
+	}
+	return updateOneTaskCache(buildId, taskId, bson.M{
+		"$set": bson.M{
+			TasksKey + ".$." + TaskCacheStatusKey: status,
+		},
+		"$inc": bson.M{
+			TasksKey + ".$." + TaskCacheTimeTakenKey: timeTaken,
 		},
 	})
 }

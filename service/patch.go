@@ -48,7 +48,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
 	project := &model.Project{}
-	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
+	if err := model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
 	}
 
