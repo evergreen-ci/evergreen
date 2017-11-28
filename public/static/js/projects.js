@@ -7,6 +7,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
 
 
   $scope.projectVars = {};
+  $scope.patchVariants = [];
   $scope.projectRef = {};
   $scope.displayName = "";
 
@@ -161,15 +162,18 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.loadProject = function(projectId) {
     $http.get('/project/' + projectId).then(
       function(resp){
+          console.log(resp.data)
         var data = resp.data;
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
-         $scope.projectVars = data.ProjectVars.vars || {};
-         $scope.privateVars = data.ProjectVars.private_vars || {};
+        $scope.projectVars = data.ProjectVars.vars || {};
+        $scope.patchVariants = data.ProjectVars.patch_variants || [];
+        $scope.privateVars = data.ProjectVars.private_vars || {};
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
+          patch_variants: $scope.patchVariants,
           private_vars: $scope.privateVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
@@ -228,6 +232,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if ($scope.proj_var) {
       $scope.addProjectVar();
     }
+    if ($scope.patch_variant) {
+      $scope.addPatchVariant();
+    }
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
@@ -257,9 +264,26 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
   };
 
+  $scope.addPatchVariant = function() {
+    if ($scope.patch_variant.variant && $scope.patch_variant.task) {
+        item = {
+            "variant": $scope.patch_variant.variant,
+            "task": $scope.patch_variant.task,
+        }
+      $scope.settingsFormData.patch_variants = $scope.settingsFormData.patch_variants.concat([item]);
+      $scope.patch_variant.variant = "";
+      $scope.patch_variant.task = "";
+    }
+  }
+
   $scope.removeProjectVar = function(name) {
     delete $scope.settingsFormData.project_vars[name];
     delete $scope.settingsFormData.private_vars[name];
+    $scope.isDirty = true;
+  };
+
+  $scope.removePatchVariant = function(i) {
+    $scope.settingsFormData.patch_variants.splice(i, 1)
     $scope.isDirty = true;
   };
 
@@ -324,6 +348,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       $scope.invalidKeyMessage = "";
       return false;
     }
+    return true;
+  }
+
+  $scope.validPatchVariant = function(variantRegex, taskRegex){
+    if (!variantRegex || !taskRegex){
+      return false;
+    }
+
     return true;
   }
 

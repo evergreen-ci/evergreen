@@ -283,6 +283,46 @@ Evergreen Projects
             </div>
           </div>
         </div>
+
+        <div class="variables">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> Patch Variants </h3>
+                <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
+            </div>
+          </div>
+          <div id="patch-variants-list-header" class="form-group">
+            <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"></div>
+          </div>
+
+          <div id="patch-variants-list" class="form-group" ng-repeat="pv in settingsFormData.patch_variants track by $index">
+            <div class="col-lg-3">
+              <input class="form-control" type="text" placeholder="variant regex" value="[[pv.variant]]">
+            </div>
+            <div class="col-lg-3">
+              <input class="form-control" type="text" placeholder="task regex" value="[[pv.task]]">
+            </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removePatchVariant($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-3">
+              <input ng-model="patch_variant.variant" class="form-control" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-3">
+              <input ng-model="patch_variant.task" class="form-control" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-6">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchVariant(patch_variant.variant, patch_variant.task)" id="variable-add" type="button" ng-click="addPatchVariant()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
         <br/>
         <div class="row">
           <div class="col-lg-2">
