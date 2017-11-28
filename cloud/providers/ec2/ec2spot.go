@@ -509,12 +509,12 @@ func spotCostForRange(start, end time.Time, rates []spotRate) float64 {
 		// we only want to calculate the cost between the billing start
 		// and task end, then exit; we also do this if we're in the last rate bucket.
 		if i+1 == len(rates) || end.Before(rates[i+1].Time) {
-			cost += float64(end.Sub(cur)) / float64(time.Hour) * rates[i].Price
+			cost += end.Sub(cur).Hours() * rates[i].Price
 			break
 		}
 		// in the default case, we get the duration between our current time
 		// and the next billing period, and multiply that duration by the current price.
-		cost += float64(rates[i+1].Time.Sub(cur)) / float64(time.Hour) * rates[i].Price
+		cost += rates[i+1].Time.Sub(cur).Hours() * rates[i].Price
 		cur = rates[i+1].Time
 	}
 	return cost
