@@ -111,7 +111,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
 	} else {
-		grip.Debugf(message.Fields{
+		grip.Debug(message.Fields{
 			"message":  "found last recorded revision",
 			"project":  projectRef,
 			"runner":   RunnerName,
@@ -120,7 +120,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		// if the projectRef has a repotracker error then don't get the revisions
 		if projectRef.RepotrackerError != nil {
 			if projectRef.RepotrackerError.Exists {
-				grip.Warningf(message.Fields{
+				grip.Warning(message.Fields{
 					"runner":  RunnerName,
 					"message": "repotracker error for base revision",
 					"project": projectRef,
@@ -261,8 +261,7 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 
 // sendFailureNotification sends a notification to the MCI Team when the
 // repotracker is unable to fetch revisions from a given project ref
-func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
-	err error) {
+func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err error) {
 	// Send a notification to the MCI team
 	settings := repoTracker.Settings
 	max := settings.RepoTracker.MaxRepoRevisionsToSearch
@@ -278,7 +277,13 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)
 	nErr := notify.NotifyAdmins(subject, message, settings)
 	if nErr != nil {
-		grip.Errorf("error sending email: %+v", nErr)
+		grip.Error(message.WrapError(nErr, message.Fields{
+			"message":  "error sending email",
+			"runner":   RunnerName,
+			"revision": lastRevision,
+			"content":  message,
+			"subject":  subject,
+		}))
 	}
 }
 
