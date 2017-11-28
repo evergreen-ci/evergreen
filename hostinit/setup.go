@@ -539,22 +539,37 @@ func (init *HostInit) expandScript(s string) (string, error) {
 
 // Provision the host, and update the database accordingly.
 func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
+	grip.Infoln(message.Fields{
+		"runner":  RunnerName,
+		"host":    h.Id,
+		"message": "setting up host",
+	})
 
-	grip.Infoln("Setting up host", h.Id)
 	output, err := init.setupHost(ctx, h)
-
 	if err != nil {
 		// another hostinit process beat us there
 		if err == ErrHostAlreadyInitializing {
-			grip.Debugln("Attempted to initialize already initializing host %s", h.Id)
+			grip.Debug(message.Fields{
+				"message": "attempted to initialize already initializing host",
+				"runner":  RunnerName,
+				"host":    h.Id,
+			})
 			return nil
 		}
 
-		grip.Warning(alerts.RunHostProvisionFailTriggers(h))
+		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
+			"operation": "running host provisioning alert trigger",
+			"runner":    RunnerName,
+			"host":      h.Id,
+		}))
 		event.LogProvisionFailed(h.Id, output)
 
 		// mark the host's provisioning as failed
-		grip.Error(h.SetUnprovisioned())
+		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+			"operation": "setting host unprovisioned",
+			"runner":    RunnerName,
+			"host":      h.Id,
+		}))
 
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
@@ -564,26 +579,47 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		grip.Infof("Uploading client binary to host %s", h.Id)
 		lcr, err := init.LoadClient(ctx, h)
 		if err != nil {
-			err = errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
-			grip.Errorf("Failed to load client binary onto host %s: %+v", h.Id, err)
-			grip.Error(h.SetUnprovisioned())
-			return err
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "failed to load client binary onto host",
+				"runner":  RunnerName,
+				"host":    h.Id,
+			}))
+
+			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"runner":    RunnerName,
+				"host":      h.Id,
+			}))
+			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 		}
 
 		cloudHost, err := providers.GetCloudHost(h, init.Settings)
 		if err != nil {
-			grip.Error(h.SetUnprovisioned())
+			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"runner":    RunnerName,
+				"host":      h.Id,
+			}))
+
 			return errors.Wrapf(err, "Failed to get cloud host for %s", h.Id)
 		}
 		sshOptions, err := cloudHost.GetSSHOptions()
 		if err != nil {
-			grip.Error(h.SetUnprovisioned())
+			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"runner":    RunnerName,
+				"host":      h.Id,
+			}))
 			return errors.Wrapf(err, "Error getting ssh options for host %s", h.Id)
 		}
 
 		d, err := distro.FindOne(distro.ById(h.Distro.Id))
 		if err != nil {
-			grip.Error(h.SetUnprovisioned())
+			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"runner":    RunnerName,
+				"host":      h.Id,
+			}))
 			return errors.Wrapf(err, "error finding distro %s", h.Distro.Id)
 		}
 		h.Distro = *d
@@ -591,27 +627,49 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
 		if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
-			grip.Error(h.SetUnprovisioned())
+			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
+				"operation": "setting host unprovisioned",
+				"runner":    RunnerName,
+				"host":      h.Id,
+			}))
 			event.LogProvisionFailed(h.Id, logs)
 			return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 		}
 
-		if h.ProvisionOptions.OwnerId != "" &&
-			len(h.ProvisionOptions.TaskId) > 0 {
-			grip.Infof("Fetching data for task %s onto host %s", h.ProvisionOptions.TaskId, h.Id)
-			err = init.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
-			grip.ErrorWhenf(err != nil, "Failed to fetch data onto host %s: %v", h.Id, err)
+		if h.ProvisionOptions.OwnerId != "" && len(h.ProvisionOptions.TaskId) > 0 {
+			grip.Info(message.Fields{
+				"message": "fetching data for task on host",
+				"task":    h.ProvisionOptions.TaskId,
+				"host":    h.Id,
+				"runner":  RunnerName,
+			})
+
+			grip.Error(message.WrapError(init.fetchRemoteTaskData(ctx, h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h),
+				message.Fields{
+					"message": "failed to fetch data onto host",
+					"task":    h.ProvisionOptions.TaskId,
+					"host":    h.Id,
+					"runner":  RunnerName,
+				}))
 		}
 	}
 
-	grip.Infof("Setup complete for host %s", h.Id)
+	grip.Info(message.Fields{
+		"message": "setup complete for host",
+		"host":    h.Id,
+		"runner":  RunnerName,
+	})
 
 	// the setup was successful. update the host accordingly in the database
 	if err := h.MarkAsProvisioned(); err != nil {
 		return errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
 	}
 
-	grip.Infof("Host %s successfully provisioned", h.Id)
+	grip.Info(message.Fields{
+		"host":    h.Id,
+		"runner":  RunnerName,
+		"message": "host successfully provisioned",
+	})
 
 	return nil
 }
@@ -803,13 +861,13 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	defer cancel()
 
 	if err := makeShellCmd.Run(ctx); err != nil {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
 			"host":    hostSSHInfo.Hostname,
 			"cmd":     makeShellCmd.CmdString,
-			"error":   err,
+			"runner":  RunnerName,
 			"output":  cmdOutput,
-		})
+		}))
 		return err
 	}
 	return nil
