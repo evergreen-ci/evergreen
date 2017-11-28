@@ -154,7 +154,9 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 		if err != nil || lastAlerted == nil {
 			errMessage := getShouldExecuteError(ctx)
 			errMessage[message.FieldsMsgName] = "could not find a record for the last alert"
-			errMessage["error"] = err.Error()
+			if err != nil {
+				errMessage["error"] = err.Error()
+			}
 			errMessage["lastAlert"] = lastAlerted
 			errMessage["outcome"] = "not sending alert"
 			grip.Error(errMessage)
