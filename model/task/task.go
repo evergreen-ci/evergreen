@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -565,6 +566,13 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		if timedOutStart.Before(t.CreateTime) {
 			t.StartTime = t.CreateTime
 		}
+		grip.Warning(message.Fields{
+			"message":      "Task is missing start time",
+			"task_id":      t.Id,
+			"execution":    t.Execution,
+			"requester":    t.Requester,
+			"activated_by": t.ActivatedBy,
+		})
 	}
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
