@@ -571,10 +571,13 @@ Extend the Expiration of Host with Given Host ID
  extend expirations for hosts which were created by them, unless the user is a
  super-user
 
- The expiration date of a host may not be more than 1 week in the future
+ The expiration date of a host may not be more than 1 week in the future.
 
  A response code of 200 OK indicates that the host's expiration was successfully
  extended.
+
+ Attempt to extend the expiration time of a terminated host will result in an
+ error
 
  All other response codes indicate errors; the response body can be parsed as
  a rest.APIError

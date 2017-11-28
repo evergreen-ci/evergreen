@@ -130,7 +130,7 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
@@ -144,7 +144,7 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
 
@@ -158,8 +158,22 @@ func (s *TestTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Nil(err)
+	s.NoError(err)
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
+}
+
+func (s *TestTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
+	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
+	h.hostID = "host2"
+
+	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Error(err)
+	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
 
 type TestHostChangeRDPPasswordHandlerSuite struct {
@@ -194,7 +208,7 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecute() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Nil(err)
+	s.NoError(err)
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
@@ -248,7 +262,19 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() 
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.Nil(err)
+	s.NoError(err)
+}
+func (s *TestHostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost() {
+	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
+	h.hostID = "host2"
+	h.rdpPassword = "Hunter2!"
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Error(err)
 }
 
 func (s *TestHostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
@@ -340,6 +366,21 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecute() {
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
+func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
+	expectedTime := s.sc.CachedHosts[0].ExpirationTime
+
+	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h.hostID = "host1"
+	h.addHours = 8
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Error(err)
+	s.Equal(expectedTime, s.sc.CachedHosts[0].ExpirationTime)
+}
+
 func (s *TestHostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
@@ -352,6 +393,21 @@ func (s *TestHostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
 	s.NoError(err)
+	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
+}
+
+func (s *TestHostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
+	expectedTime := s.sc.CachedHosts[1].ExpirationTime
+
+	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
+	h.hostID = "host2"
+	h.addHours = 8
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
+	data, err := h.Execute(ctx, s.sc)
+	s.Empty(data.Result)
+	s.Error(err)
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
@@ -429,6 +485,10 @@ func getMockHostsConnector() *data.MockConnector {
 				"user0": {
 					Id:     "user0",
 					APIKey: "user0-key",
+				},
+				"user1": {
+					Id:     "user1",
+					APIKey: "user1-key",
 				},
 				"root": {
 					Id:     "root",

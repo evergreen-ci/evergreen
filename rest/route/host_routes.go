@@ -546,6 +546,12 @@ func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Conne
 	if err != nil {
 		return ResponseData{}, err
 	}
+	if host.Status == evergreen.HostTerminated {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "cannot extend expiration of a terminated host",
+		}
+	}
 
 	var newExp time.Time
 	newExp, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
