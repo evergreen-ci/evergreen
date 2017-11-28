@@ -47,11 +47,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 
-	num, err := task.UnscheduleStaleUnderwaterTasks()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
 	grip.InfoWhen(num > 0, message.Fields{
 		"message": "unscheduled stale tasks",
 		"runner":  RunnerName,

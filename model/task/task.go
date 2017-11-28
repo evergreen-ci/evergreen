@@ -469,7 +469,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 // weeks) from the scheduler queue.
 func UnscheduleStaleUnderwaterTasks() (int, error) {
 	query := scheduleableTasksQuery()
-	query[PriorityKey] = bson.M{"$in": []int{0, 1}}
+	query[PriorityKey] = 0
 	query[CreateTimeKey] = bson.M{"$gte": time.Now().Add(-unschedulableThreshold)}
 
 	update := bson.M{
