@@ -11,6 +11,7 @@ var (
 	ProjectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
 	ProjectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 	PrivateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	PatchVariantsKey  = bsonutil.MustHaveTag(ProjectVars{}, "PatchVariants")
 )
 
 const (
@@ -32,6 +33,15 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
+
+	// PatchVariants contains regexes that are used to determine which
+	// combinations of variants and tasks should be run.
+	PatchVariants []PatchVariantRegex `bson:"patch_variants" json:"patch_variants"`
+}
+
+type PatchVariantRegex struct {
+	Variant string `bson:"variant" json:"variant"`
+	Task    string `bson:"task" json:"task"`
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
@@ -64,6 +74,7 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 			"$set": bson.M{
 				ProjectVarsMapKey: projectVars.Vars,
 				PrivateVarsMapKey: projectVars.PrivateVars,
+				PatchVariantsKey:  projectVars.PatchVariants,
 			},
 		},
 	)
