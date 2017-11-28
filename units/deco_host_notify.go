@@ -54,6 +54,8 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 		j.HasError = true
 	}
 
+	j.SetID(fmt.Sprintf("%s.%s.%d", decoHostNotifyJobName, h.Id, job.GetNumber()))
+
 	return j
 }
 
