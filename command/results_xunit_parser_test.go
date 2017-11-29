@@ -156,6 +156,25 @@ func TestXMLParsing(t *testing.T) {
 				})
 			})
 		})
+
+		Convey("with a result file with test suite errors", func() {
+			file, err := os.Open(filepath.Join(cwd, "testdata", "xunit", "junit_5.xml"))
+			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
+
+			Convey("the file should parse without error", func() {
+				res, err := parseXMLResults(file)
+				So(err, ShouldBeNil)
+				So(len(res), ShouldEqual, 1)
+
+				Convey("and have proper values decoded", func() {
+					So(res[0].Errors, ShouldEqual, 1)
+					So(len(res[0].TestCases), ShouldEqual, 0)
+					So(res[0].Error.Type, ShouldEqual, "java.lang.ExceptionInInitializerError")
+					So(res[0].Error.Content, ShouldStartWith, "java.lang.ExceptionInInitializerError")
+				})
+			})
+		})
 	})
 }
 
