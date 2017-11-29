@@ -578,7 +578,7 @@ tasks:
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash 
+    name: race-plugin-builtin-perfdash
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
@@ -615,6 +615,11 @@ buildvariants:
     tasks:
       - name: "dist"
       - name: ".test"
+    display_tasks:
+      - name: displayTask1
+      execution_tasks:
+        - test-auth
+        - test-cli
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
