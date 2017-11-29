@@ -62,7 +62,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 func (j *decoHostNotifyJob) Run() {
 	defer j.MarkComplete()
 
-	hostUptime := time.Now().Sub(j.Host.CreationTime)
+	hostUptime := time.Since(j.Host.CreationTime)
 
 	if j.Host.Provider != evergreen.HostTypeStatic {
 		// if this isn't a static host
@@ -121,7 +121,7 @@ func (j *decoHostNotifyJob) Run() {
 	descParts := []string{
 		fmt.Sprintln("Distro:", j.Host.Distro.Id),
 		fmt.Sprintln("Provider:", j.Host.Provider),
-		fmt.Sprintln("Uptime:", time.Now().Sub(j.Host.CreationTime).String()),
+		fmt.Sprintln("Uptime:", time.Since(j.Host.CreationTime).String()),
 		fmt.Sprintf("Target: %s@%s", j.Host.Distro.User, j.Host.Host),
 	}
 
@@ -137,7 +137,7 @@ func (j *decoHostNotifyJob) Run() {
 	}
 
 	msg := message.MakeJiraMessage(issue)
-	msg.SetPriority(level.Notice)
+	grip.CatchWarning(msg.SetPriority(level.Notice))
 
 	sender.Send(msg)
 }
