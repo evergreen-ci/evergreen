@@ -704,7 +704,7 @@ buildvariants:
       - name: ".test"
     display_tasks:
       - name: displayTask1
-      execution_tasks:
+        execution_tasks:
         - test-auth
         - test-cli
 
