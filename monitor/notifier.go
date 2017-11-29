@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +16,10 @@ type Notifier struct {
 
 // create and send any notifications that need to be sent
 func (self *Notifier) Notify(settings *evergreen.Settings) []error {
-	grip.Info("Building and sending necessary notifications...")
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "building and sending notifications",
+	})
 
 	// used to store any errors that occur
 	var errs []error
@@ -55,7 +59,11 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 // that occur
 func sendNotifications(notifications []notification, settings *evergreen.Settings) []error {
 
-	grip.Infof("Sending %d notifications...", len(notifications))
+	grip.Debug(message.Fields{
+		"runner":            RunnerName,
+		"message":           "sending notifications",
+		"num_notifications": len(notifications),
+	})
 
 	// used to store any errors that occur
 	var errs []error

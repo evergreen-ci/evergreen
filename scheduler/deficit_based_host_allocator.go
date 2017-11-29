@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -51,16 +52,23 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 
 	if err != nil {
-		grip.Errorf("Couldn't get cloud manager for distro %s with provider %s: %+v",
-			distro.Id, distro.Provider, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":  "could not get cloud provider for distro",
+			"distro":   distro.Id,
+			"provider": distro.Provider,
+			"runner":   RunnerName,
+		}))
 		return 0
 	}
 
 	can, err := cloudManager.CanSpawn()
 	if err != nil {
-		err = errors.Wrapf(err, "Couldn't check if cloud provider %s is spawnable",
-			distro.Provider)
-		grip.Error(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"distro":   distro.Id,
+			"provider": distro.Provider,
+			"runner":   RunnerName,
+			"message":  "could not check if provider is spawnable",
+		}))
 		return 0
 	}
 	if !can {

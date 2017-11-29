@@ -231,7 +231,13 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 		case task.Requester == evergreen.PatchVersionRequester:
 			patchTasks = append(patchTasks, task)
 		default:
-			grip.Errorf("Unrecognized requester '%s' for task %s", task.Requester, task.Id)
+			grip.Error(message.Fields{
+				"task":      task.Id,
+				"requester": task.Requester,
+				"runner":    RunnerName,
+				"message":   "unrecognized requester",
+				"priority":  task.Priority,
+			})
 		}
 	}
 

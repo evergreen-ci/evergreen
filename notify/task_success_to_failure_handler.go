@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Handler for notifications generated specifically when a task fails and the
@@ -37,15 +38,25 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 		// get previous task for this project/build variant
 		previousTask, err := currentTask.PreviousCompletedTask(key.Project, []string{})
 		if previousTask == nil {
-			grip.Debugf("No previous completed task found for %s in %s "+
-				"with %s notification", currentTask.Id, key.Project,
-				key.NotificationName)
-			continue
+			grip.Debug(message.Fields{
+				"runner":       RunnerName,
+				"notification": key.NotificationName,
+				"project":      key.Project,
+				"current":      currentTask.Id,
+				"message":      "no previous task completed",
+			})
 		} else if err != nil {
 			return nil, err
 		}
-		grip.Debugf("Previous completed task found for %s on %s %s notification is %s",
-			currentTask.Id, key.Project, key.NotificationName, previousTask.Id)
+
+		grip.Debug(message.Fields{
+			"runner":       RunnerName,
+			"notification": key.NotificationName,
+			"project":      key.Project,
+			"current":      currentTask.Id,
+			"previous":     previousTask.Id,
+			"message":      "previous completed task found",
+		})
 
 		if previousTask.Status == evergreen.TaskSucceeded &&
 			currentTask.Status == evergreen.TaskFailed {
@@ -58,22 +69,41 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 
 			// if there's an error log it and move on
 			if err != nil {
-				grip.Errorln("Error finding notification record:", err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"runner":       RunnerName,
+					"previous":     previousTask.Id,
+					"project":      key.Project,
+					"notification": key.NotificationName,
+					"message":      "error finding notification record",
+				}))
 				continue
 			}
 
 			// get the task's project to add to the notification subject line
 			branchName := UnknownProjectBranch
+
 			if projectRef, err := getProjectRef(currentTask.Project); err != nil {
-				grip.Warningf("Unable to find project ref for task '%s': %+v", currentTask.Id, err)
+				grip.Warning(message.WrapError(err, (message.Fields{
+					"runner":       RunnerName,
+					"notification": key.NotificationName,
+					"project":      key.Project,
+					"current":      currentTask.Id,
+					"message":      "previous completed task found",
+				})))
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
 			}
 
 			// if no notification for this handler has been registered, register it
 			if history == nil {
-				grip.Debugf("Adding '%s' on %s %s notification",
-					currentTask.Id, key.NotificationName, key.Project)
+				grip.Debug(message.Fields{
+					"runner":       RunnerName,
+					"notification": key.NotificationName,
+					"project":      key.Project,
+					"current":      currentTask.Id,
+					"message":      "adding task to notification",
+				})
+
 				notification := TriggeredTaskNotification{
 					Current:    &curr,
 					Previous:   previousTask,
@@ -84,8 +114,12 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 
 				email, err := self.TemplateNotification(ae, &notification)
 				if err != nil {
-					grip.Errorf("Error executing template for '%s: %s",
-						currentTask.Id, err)
+					grip.Error(message.WrapError(err, message.Fields{
+						"runner":  RunnerName,
+						"message": "error executing template",
+						"current": currentTask.Id,
+					}))
+
 					continue
 				}
 
@@ -95,12 +129,24 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 					key.NotificationName, getType(key.NotificationName), key.Project,
 					evergreen.RepotrackerVersionRequester)
 				if err != nil {
-					grip.Errorln("Error inserting notification record:", err)
+					grip.Error(message.WrapError(err, message.Fields{
+						"runner":       RunnerName,
+						"message":      "error inserting notification record",
+						"notification": key.NotificationName,
+						"project":      key.Project,
+						"current":      currentTask.Id,
+					}))
+
 					continue
 				}
 			} else {
-				grip.Debugf("Skipping intermediate %s handler trigger on '%s'",
-					key.NotificationName, currentTask.Id)
+				grip.Debug(message.Fields{
+					"runner":       RunnerName,
+					"project":      key.Project,
+					"notification": key.NotificationName,
+					"current":      currentTask.Id,
+					"message":      "skipping intermediate trigger",
+				})
 			}
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // TODO: take out task queue finder and host finder once transition is complete
@@ -46,7 +47,11 @@ func (tr *TaskRunner) Run() error {
 		return err
 	}
 
-	grip.Infof("Found %d hosts that need agents dispatched", len(freeHosts))
+	grip.Info(message.Fields{
+		"runner":     RunnerName,
+		"free_hosts": len(freeHosts),
+		"message":    "found hosts without agents",
+	})
 
 	freeHostChan := make(chan agentStartData, len(freeHosts))
 

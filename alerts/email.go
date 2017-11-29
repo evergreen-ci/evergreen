@@ -15,10 +15,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-const EmailSubjectPrologue = "[Evergreen]"
+const (
+	EmailSubjectPrologue = "[Evergreen]"
+)
 
 type SMTPSettings struct {
 	From     string
@@ -40,7 +43,12 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	if !ok {
 		return errors.New("missing email address")
 	}
-	grip.Infof("Sending email to %v", rcptRaw)
+
+	grip.Info(message.Fields{
+		"operation": "sending email",
+		"recipient": rcptRaw,
+		"runner":    RunnerName,
+	})
 
 	var rcpt string
 	if rcpt, ok = rcptRaw.(string); !ok {
@@ -87,13 +95,22 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	}
 	err = c.Mail(es.From)
 	if err != nil {
-		grip.Errorf("Error establishing mail sender (%s): %+v", es.From, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"message": "problem connecting to mail sender",
+			"from":    es.From,
+		}))
+
 		return errors.WithStack(err)
 	}
 
 	err = c.Rcpt(rcpt)
 	if err != nil {
-		grip.Errorf("Error establishing mail recipient (%s): %+v", rcpt, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"message":   "error establishing mail recipient",
+			"recipient": rcpt,
+		}))
 		return errors.WithStack(err)
 	}
 

@@ -120,7 +120,10 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	}
 
 	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
-		grip.Error(errors.Wrap(err, "problem updating process status"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"message": "problem updating process status",
+			"runner":  RunnerName,
+		}))
 	}
 
 	grip.Info(message.Fields{

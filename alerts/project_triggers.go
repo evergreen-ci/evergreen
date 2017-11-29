@@ -186,6 +186,7 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 
 func getShouldExecuteError(ctx triggerContext) message.Fields {
 	m := message.Fields{
+		"runner":  RunnerName,
 		"alert":   "transition to failure",
 		"outcome": "no alert",
 		"task_id": ctx.task.Id,

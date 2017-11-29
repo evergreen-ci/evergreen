@@ -73,6 +73,7 @@ func (c *errorCollectorImpl) add(id, distro, provider string, err error) {
 				"host":     id,
 				"distro":   distro,
 				"provider": provider,
+				"runner":   RunnerName,
 				"failures": doc.count,
 			})
 			delete(c.cache, rec)

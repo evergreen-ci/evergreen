@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Interface around an email that may be sent as a notification. Provides
@@ -52,8 +53,13 @@ type BuildEmail struct {
 func (self *BuildEmail) ShouldSkip(skipVariants []string) bool {
 	buildVariant := self.Trigger.Current.BuildVariant
 	if util.StringSliceContains(skipVariants, buildVariant) {
-		grip.Debugf("Skipping buildvariant %s '%s' notification: '%s'",
-			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
+		grip.Debug(message.Fields{
+			"subject":      self.Subject,
+			"variant":      buildVariant,
+			"message":      "skipping notification",
+			"runner":       RunnerName,
+			"notification": self.Trigger.Key.NotificationName,
+		})
 		return true
 	}
 	return false
@@ -78,8 +84,13 @@ func (self *TaskEmail) ShouldSkip(skipVariants []string) bool {
 	// skip the buildvariant notification if necessary
 	buildVariant := self.Trigger.Current.BuildVariant
 	if util.StringSliceContains(skipVariants, buildVariant) {
-		grip.Debugf("Skipping buildvariant %s '%s' notification: '%s'",
-			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
+		grip.Debug(message.Fields{
+			"subject":      self.Subject,
+			"variant":      buildVariant,
+			"message":      "skipping notification",
+			"runner":       RunnerName,
+			"notification": self.Trigger.Key.NotificationName,
+		})
 		return true
 	}
 	return false
