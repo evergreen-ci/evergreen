@@ -150,7 +150,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		var lastVersion *version.Version
 		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
-			grip.Error(message.WrapErrror(err, message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem storting revisions for repository",
 				"runner":  RunnerName,
 				"project": projectRef,
@@ -274,15 +274,15 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err
 		projectRef.Identifier, lastRevision)
 	url := fmt.Sprintf("%v/%v/%v/commits/%v", thirdparty.GithubBase,
 		projectRef.Owner, projectRef.Repo, projectRef.Branch)
-	message := fmt.Sprintf("Could not find last known revision '%v' "+
+	msg := fmt.Sprintf("Could not find last known revision '%v' "+
 		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)
-	nErr := notify.NotifyAdmins(subject, message, settings)
+	nErr := notify.NotifyAdmins(subject, msg, settings)
 	if nErr != nil {
 		grip.Error(message.WrapError(nErr, message.Fields{
 			"message":  "error sending email",
 			"runner":   RunnerName,
 			"revision": lastRevision,
-			"content":  message,
+			"content":  msg,
 			"subject":  subject,
 		}))
 	}
@@ -475,7 +475,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 		var lastRevision string
 		repository, fErr := model.FindRepository(projectRef.Identifier)
 		if fErr != nil || repository == nil {
-			grip.Errorf(message.WrapError(fErr, message.Fields{
+			grip.Error(message.WrapError(fErr, message.Fields{
 				"message": "problem finding repository",
 				"project": projectRef.Identifier,
 				"runner":  RunnerName,

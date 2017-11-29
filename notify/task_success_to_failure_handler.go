@@ -69,7 +69,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 
 			// if there's an error log it and move on
 			if err != nil {
-				grip.Errror(message.WrapError(err, message.Fields{
+				grip.Error(message.WrapError(err, message.Fields{
 					"runner":       RunnerName,
 					"previous":     previousTask.Id,
 					"project":      key.Project,

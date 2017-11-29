@@ -57,7 +57,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 
 	runspan := time.Since(startTime)
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runspan); err != nil {
-		grip.Error(message.WrapErrors(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"runner":   RunnerName,
 			"message":  "problem setting runner complete",
 			"duration": runspan,

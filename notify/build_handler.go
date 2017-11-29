@@ -30,7 +30,7 @@ type BuildNotificationForTemplate struct {
 type TriggeredBuildNotification struct {
 	Current    *build.Build
 	Previous   *build.Build
-	Info       []ChangeInfoe
+	Info       []ChangeInfo
 	Key        NotificationKey
 	Preface    string
 	Transition string

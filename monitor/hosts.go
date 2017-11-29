@@ -202,14 +202,14 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
 				notify.TeardownFailurePreface, h.Id)
 
-			grip.Error(message.WrapError(errors.Wrap(notify.NotifyAdmins(subj, err.Error(), settings),
+			grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
 				message.Fields{
 					"message": "problem sending email",
 					"host":    h.Id,
 					"subject": subj,
 					"error":   err.Error(),
 					"runner":  RunnerName,
-				})))
+				}))
 		}
 	}
 

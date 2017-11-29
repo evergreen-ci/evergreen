@@ -153,7 +153,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 				"message": "problem getting number of running hosts for distro",
 				"distro":  d.Id,
 			}))
-			return nil, errors.Withstack(err)
+			return nil, errors.WithStack(err)
 		}
 	}
 
@@ -576,8 +576,6 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		"queue_length":                 len(taskQueueItems),
 		"scheduled_tasks_runtime":      schTasksRuntime,
 		"scheduled_tasks_runtime_span": schTasksRuntime.String(),
-		"shared_tasks_runtime":         sharedTasksDuration,
-		"shared_tasks_runtime_span":    sharedTasksDuration.String(),
 	})
 
 	return numNewHosts, nil

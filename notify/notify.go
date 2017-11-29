@@ -833,16 +833,16 @@ func notificationsToStruct(mciNotification *MCINotification) (notifyOn []Notific
 }
 
 // NotifyAdmins is a helper method to send a notification to the MCI admin team
-func NotifyAdmins(subject, message string, settings *evergreen.Settings) error {
+func NotifyAdmins(subject, msg string, settings *evergreen.Settings) error {
 	if settings.Notify.SMTP != nil {
 		return TrySendNotification(settings.Notify.SMTP.AdminEmail,
-			subject, message, ConstructMailer(settings.Notify))
+			subject, msg, ConstructMailer(settings.Notify))
 	}
 	err := errors.New("Cannot notify admins: admin_email not set")
 
 	grip.Error(message.WrapError(err, message.Fields{
 		"runner":  RunnerName,
-		"message": message,
+		"message": msg,
 		"subject": subject,
 	}))
 

@@ -465,12 +465,12 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		return errors.Wrap(err, "error setting file permissions")
 	}
 	defer func() {
-		errCtx := message.Field{
+		errCtx := message.Fields{
 			"runner":    RunnerName,
 			"operation": "cleaning up after script copy",
 			"file":      file.Name(),
 			"distro":    target.Distro.Id,
-			"host":      target.Host.Id,
+			"host":      target.Host,
 			"name":      name,
 		}
 		grip.Error(message.WrapError(file.Close(), errCtx))
@@ -512,10 +512,10 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		if err == util.ErrTimedOut {
 			stopErr := scpCmd.Stop()
 			grip.Warning(message.WrapError(stopErr, message.Fields{
-				"runner":    runner.Name,
+				"runner":    RunnerName,
 				"command":   scpCmd,
 				"distro":    target.Distro.Id,
-				"host":      target.Host.Id,
+				"host":      target.Host,
 				"run_error": err.Error(),
 			}))
 			return errors.Wrap(err, "scp-ing script timed out")
