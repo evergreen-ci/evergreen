@@ -150,7 +150,10 @@ func AlternateTaskFinder() ([]task.Task, error) {
 		runnabletasks = append(runnabletasks, t)
 
 	}
-	grip.Info(catcher.Resolve())
+	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+		"runner":             RunnerName,
+		"scheduleable_tasks": len(undispatchedTasks),
+	}))
 
 	return runnabletasks, nil
 }
@@ -245,7 +248,10 @@ func ParallelTaskFinder() ([]task.Task, error) {
 
 		runnabletasks = append(runnabletasks, t)
 	}
-	grip.Info(catcher.Resolve())
+	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+		"runner":             RunnerName,
+		"scheduleable_tasks": len(undispatchedTasks),
+	}))
 
 	return runnabletasks, nil
 }

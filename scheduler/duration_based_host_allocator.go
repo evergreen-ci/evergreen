@@ -148,13 +148,21 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
 				distroScheduleData, settings)
 		if err != nil {
-			grip.Errorf("Error getting num hosts for distro: %+v", err)
-			return nil, err
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"message": "problem getting number of running hosts for distro",
+				"distro":  d.Id,
+			}))
+			return nil, errors.Withstack(err)
 		}
 	}
 
-	grip.InfoWhenf(len(newHostsNeeded) > 0, "Reporting hosts needed: %+v", newHostsNeeded)
-	grip.InfoWhen(len(newHostsNeeded) == 0, "no new hosts needed.")
+	grip.Info(message.Fields{
+		"runner":        RunnerName,
+		"num_new_hosts": newHostsNeeded,
+		"num_distros":   len(distros),
+		"message":       "requsting new hosts",
+	})
 
 	return newHostsNeeded, nil
 }
@@ -493,7 +501,11 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	if err != nil {
 		err = errors.Wrapf(err, "Couldn't get cloud manager for %s (%s)",
 			distro.Provider, distro.Id)
-		grip.Error(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":   RunnerName,
+			"distro":   distro.Id,
+			"provider": distro.Provider,
+		}))
 		return 0, err
 	}
 
@@ -501,11 +513,16 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	if err != nil {
 		err = errors.Wrapf(err, "Problem checking if '%v' provider can spawn hosts",
 			distro.Provider)
-		grip.Error(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":   RunnerName,
+			"distro":   distro.Id,
+			"provider": distro.Provider,
+		}))
 		return 0, nil
 	}
 
 	underWaterAlert := message.Fields{
+		"provider":  distro.Provider,
 		"distro":    distro.Id,
 		"runtime":   scheduledTasksDuration + runningTasksDuration,
 		"runner":    RunnerName,
@@ -539,17 +556,29 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	numNewHosts = orderedScheduleNumNewHosts(distroScheduleData, distro.Id,
 		MaxDurationPerDistroHost, SharedTasksAllocationProportion)
 
-	grip.Infof("Spawning %d additional hosts for %s - currently at %d existing hosts (%d free)",
-		numNewHosts, distro.Id, len(existingDistroHosts), numFreeHosts)
-	grip.Infof("Total estimated time to process all '%s' scheduled tasks is %s; %d running "+
-		"tasks at %s, %d pending tasks at %s (shared tasks duration map: %v)",
-		distro.Id,
-		time.Duration(scheduledTasksDuration+runningTasksDuration)*time.Second,
-		len(existingDistroHosts)-numFreeHosts,
-		time.Duration(runningTasksDuration)*time.Second,
-		len(taskQueueItems),
-		time.Duration(scheduledTasksDuration)*time.Second,
-		sharedTasksDuration)
+	estRuntime := time.Duration(scheduledTasksDuration+runningTasksDuration) * time.Second
+	curTasksRuntime := time.Duration(runningTasksDuration) * time.Second
+	schTasksRuntime := time.Duration(scheduledTasksDuration) * time.Second
+
+	grip.Info(message.Fields{
+		"message":                      "queue state report",
+		"runner":                       RunnerName,
+		"provider":                     distro.Provider,
+		"distro":                       distro.Id,
+		"new_hosts_needed":             numNewHosts,
+		"num_existing_hosts":           len(existingDistroHosts),
+		"num_free_hosts":               numFreeHosts,
+		"estimated_runtime":            estRuntime,
+		"estimated_runtime_span":       estRuntime.String(),
+		"pending_tasks":                len(existingDistroHosts) - numFreeHosts,
+		"current_tasks_runtime":        curTasksRuntime,
+		"current_tasks_runtime_span":   curTasksRuntime.String(),
+		"queue_length":                 len(taskQueueItems),
+		"scheduled_tasks_runtime":      schTasksRuntime,
+		"scheduled_tasks_runtime_span": schTasksRuntime.String(),
+		"shared_tasks_runtime":         sharedTasksDuration,
+		"shared_tasks_runtime_span":    sharedTasksDuration.String(),
+	})
 
 	return numNewHosts, nil
 }

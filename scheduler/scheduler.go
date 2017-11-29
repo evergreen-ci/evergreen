@@ -305,12 +305,11 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	for d, t := range schedulerEvents {
-		eventLog := event.SchedulerEventData{
+		event.LogSchedulerEvent(event.SchedulerEventData{
 			ResourceType:  event.ResourceTypeScheduler,
 			TaskQueueInfo: t,
 			DistroId:      d,
-		}
-		event.LogSchedulerEvent(eventLog)
+		})
 	}
 
 	grip.Info(message.Fields{
@@ -341,7 +340,11 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	res := distroSchedulerResult{
 		distroId: distroId,
 	}
-	grip.Infof("Prioritizing %d tasks for distro: %s", len(runnableTasksForDistro), distroId)
+	grip.Info(message.Fields{
+		"runner":    RunnerName,
+		"distro":    distroId,
+		"num_tasks": len(runnableTasksForDistro),
+	})
 
 	prioritizedTasks, err := s.PrioritizeTasks(distroId, s.Settings,
 		runnableTasksForDistro)
@@ -351,7 +354,12 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	}
 
 	// persist the queue of tasks
-	grip.Infoln("Saving task queue for distro", distroId)
+	grip.Debug(message.Fields{
+		"runner":    RunnerName,
+		"distro":    distroId,
+		"operation": "saving task queue for distro",
+	})
+
 	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks,
 		taskExpectedDuration)
 	if err != nil {
@@ -432,8 +440,12 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if _, exists := versionBuildVarMap[key]; !exists {
 			err := s.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
 			if err != nil {
-				grip.Infof("skipping %s after problem getting buildvariant map for task %s: %v",
-					task.Version, task.Id, err)
+				grip.Info(message.WrapError(err, message.Fields{
+					"runner":  RunnerName,
+					"version": task.Version,
+					"task":    task.Id,
+					"message": "skipping version after problem getting build variant map for task",
+				}))
 				continue
 			}
 		}
@@ -441,8 +453,13 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		// get the build variant for the task
 		buildVariant, ok := versionBuildVarMap[key]
 		if !ok {
-			grip.Infof("task %s has no buildvariant called '%s' on project %s",
-				task.Id, task.BuildVariant, task.Project)
+			grip.Info(message.Fields{
+				"runner":  RunnerName,
+				"variant": task.BuildVariant,
+				"project": task.Project,
+				"task":    task.Id,
+				"message": "buildvariant not defined",
+			})
 			continue
 		}
 
@@ -457,8 +474,13 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 
 		// if no matching spec was found log it and continue
 		if taskSpec.Name == "" {
-			grip.Infof("task %s has no matching spec for build variant %s on project %s",
-				task.Id, task.BuildVariant, task.Project)
+			grip.Info(message.Fields{
+				"runner":  RunnerName,
+				"variant": task.BuildVariant,
+				"project": task.Project,
+				"task":    task.Id,
+				"message": "task has no matching spec for buildvariant",
+			})
 			continue
 		}
 
@@ -509,29 +531,43 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 
 			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
-				err = errors.Wrapf(err, "Failed to find distro '%s'", distroId)
-				grip.Error(err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":  distroId,
+					"runner":  RunnerName,
+					"message": "failed to find distro",
+				}))
 				continue
 			}
 
 			allDistroHosts, err := host.Find(host.ByDistroId(distroId))
 			if err != nil {
-				err = errors.Wrapf(err, "Error getting hosts for distro %s", distroId)
-				grip.Error(err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":  distroId,
+					"runner":  RunnerName,
+					"message": "problem getting hosts for distro",
+				}))
+
 				continue
 			}
 
 			if len(allDistroHosts) >= d.PoolSize {
-				err = errors.Wrapf(err, "Already at max (%d) hosts for distro '%s'",
-					d.PoolSize, distroId)
-				grip.Error(err)
+				grip.Info(message.Fields{
+					"distro":    distroId,
+					"runner":    RunnerName,
+					"pool_size": d.PoolSize,
+					"message":   "max hosts running",
+				})
+
 				continue
 			}
 
 			cloudManager, err := providers.GetCloudManager(d.Provider, s.Settings)
 			if err != nil {
-				err = errors.Wrapf(err, "Error getting cloud manager for distro %s", distroId)
-				grip.Error(err)
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":  distroId,
+					"runner":  RunnerName,
+					"message": "problem getting cloud manager for distro",
+				}))
 				continue
 			}
 
@@ -543,7 +579,14 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 			intentHost := cloud.NewIntent(*d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
 			if err := intentHost.Insert(); err != nil {
 				err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-				grip.Error(err)
+
+				grip.Error(message.WrapError(err, message.Fields{
+					"distro":   distroId,
+					"runner":   RunnerName,
+					"host":     intentHost.Id,
+					"provider": d.Provider,
+				}))
+
 				return nil, err
 			}
 
