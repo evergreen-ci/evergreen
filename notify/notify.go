@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -154,14 +155,20 @@ func Run(settings *evergreen.Settings) error {
 	// get the notifications
 	mciNotification, err := ParseNotifications(settings.ConfigDir)
 	if err != nil {
-		grip.Errorf("parsing notifications: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "parsing notification",
+		}))
 		return err
 	}
 
 	// validate the notifications
 	err = ValidateNotifications(mciNotification)
 	if err != nil {
-		grip.Errorf("validating notifications: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "validating notification",
+		}))
 		return err
 	}
 
@@ -177,7 +184,10 @@ func Run(settings *evergreen.Settings) error {
 	// process the notifications
 	emails, err := ProcessNotifications(ae, mciNotification, true)
 	if err != nil {
-		grip.Errorf("processing notifications: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "processing notification",
+		}))
 		return err
 	}
 
@@ -191,14 +201,20 @@ func Run(settings *evergreen.Settings) error {
 	err = SendNotifications(settings, mciNotification, emails,
 		ConstructMailer(settings.Notify))
 	if err != nil {
-		grip.Errorln("Error sending notifications:", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "sending notification",
+		}))
 		return err
 	}
 
 	// update notification times
 	err = UpdateNotificationTimes()
 	if err != nil {
-		grip.Errorln("Error updating notification times:", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"message": "problem updating notification times",
+		}))
 		return err
 	}
 	return nil
@@ -206,7 +222,11 @@ func Run(settings *evergreen.Settings) error {
 
 // This function is responsible for reading the notifications file
 func ParseNotifications(configName string) (*MCINotification, error) {
-	grip.Info("Parsing notifications...")
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "parsing notifications",
+		"name":    configName,
+	})
 
 	evgHome := evergreen.FindEvergreenHome()
 	configs := []string{
@@ -241,7 +261,10 @@ func ParseNotifications(configName string) (*MCINotification, error) {
 
 // This function is responsible for validating the notifications file
 func ValidateNotifications(mciNotification *MCINotification) error {
-	grip.Info("Validating notifications...")
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "validating notifications",
+	})
 	allNotifications := []string{}
 
 	projectNameToBuildVariants, err := findProjectBuildVariants()
@@ -337,13 +360,23 @@ func ProcessNotifications(ae *web.App, mciNotification *MCINotification, updateT
 		}
 	}
 
-	grip.Info("Processing notifications...")
+	grip.Debug(message.Fields{
+		"runner":            RunnerName,
+		"message":           "processing notifications",
+		"num_notifications": len(allNotificationsSlice),
+	})
 
 	emails := make(map[NotificationKey][]Email)
 	for _, key := range allNotificationsSlice {
 		emailsForKey, err := Handlers[key.NotificationName].GetNotifications(ae, &key)
 		if err != nil {
-			grip.Infof("Error processing %s on %s: %+v", key.NotificationName, key.Project, err)
+			grip.Info(message.WrapError(err, message.Fields{
+				"runner":       RunnerName,
+				"operation":    "parsing notification",
+				"notification": key.NotificationName,
+				"project":      key.Project,
+			}))
+
 			continue
 		}
 		emails[key] = emailsForKey
@@ -356,7 +389,11 @@ func ProcessNotifications(ae *web.App, mciNotification *MCINotification, updateT
 func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotification,
 	emails map[NotificationKey][]Email, mailer Mailer) (err error) {
 
-	grip.Info("Sending notifications...")
+	grip.Debug(message.Fields{
+		"runner":            RunnerName,
+		"message":           "sending notifications",
+		"num_notifications": len(mciNotification.Notifications),
+	})
 
 	// parse all notifications, sending it to relevant recipients
 	for _, notification := range mciNotification.Notifications {
@@ -386,7 +423,11 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 				}
 				err = TrySendNotification(recipients, email.GetSubject(), email.GetBody(), mailer)
 				if err != nil {
-					grip.Errorf("Unable to send individual notification %#v: %+v", key, err)
+					grip.Error(message.WrapError(err, message.Fields{
+						"runner":  RunnerName,
+						"message": "unable to send individual notification",
+					}))
+
 					continue
 				}
 			}
@@ -414,7 +455,10 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 					teamEmail := fmt.Sprintf("%v <%v>", team.Name, team.Address)
 					err = TrySendNotification([]string{teamEmail}, email.GetSubject(), email.GetBody(), mailer)
 					if err != nil {
-						grip.Errorf("Unable to send notification %#v: %v", key, err)
+						grip.Error(message.WrapError(err, message.Fields{
+							"runner":  RunnerName,
+							"message": "unable to send team notification",
+						}))
 						continue
 					}
 				}
@@ -448,7 +492,11 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 					err = TrySendNotification([]string{patchRequester},
 						email.GetSubject(), email.GetBody(), mailer)
 					if err != nil {
-						grip.Errorf("Unable to send notification %#v: %+v", key, err)
+						grip.Error(message.WrapError(err, message.Fields{
+							"runner":  RunnerName,
+							"message": "unable to send patch notification",
+						}))
+
 						continue
 					}
 				}
@@ -461,15 +509,25 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 
 // This stores the last time threshold after which
 // we search for possible new notification events
-func UpdateNotificationTimes() (err error) {
-	grip.Info("Updating notification times...")
+func UpdateNotificationTimes() error {
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "updating notification times",
+		"num":     len(newProjectNotificationTime),
+	})
 	for project, time := range newProjectNotificationTime {
-		grip.Infof("Updating %s notification time...", project)
-		err = model.SetLastNotificationsEventTime(project, time)
-		if err != nil {
+		grip.Debug(message.Fields{
+			"runner":  RunnerName,
+			"message": "updating notification time",
+			"project": project,
+			"time":    time,
+		})
+
+		if err := model.SetLastNotificationsEventTime(project, time); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -541,22 +599,42 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 		// get the author and description from the patch request
 		patch, err := patch.FindOne(patch.ByVersion(v.Id))
 		if err != nil {
-			grip.Errorf("Error finding patch for version %s: %+v", v.Id, err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"message": "problem finding patch",
+				"version": v.Id,
+			}))
 			return
 		}
 
 		if patch == nil {
-			grip.Errorln(notification, "notification was unable to locate patch with version:", v.Id)
+			grip.Error(message.Fields{
+				"runner":       RunnerName,
+				"version":      v.Id,
+				"message":      "unable to locate patch with version",
+				"notification": notification,
+			})
+
 			return
 		}
 		// get the display name and email for this user
 		dbUser, err := user.FindOne(user.ById(patch.Author))
 		if err != nil {
-			grip.Errorf("Error finding user %s: %+v", patch.Author, err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"message": "problem finding user",
+				"user":    patch.Author,
+				"version": v.Id,
+			}))
 			changeInfo.Author = patch.Author
 			changeInfo.Email = patch.Author
 		} else if dbUser == nil {
-			grip.Errorf("User %s not found", patch.Author)
+			grip.Error(message.Fields{
+				"runner":  RunnerName,
+				"message": "problem finding user",
+				"version": v.Id,
+				"user":    patch.Author,
+			})
 			changeInfo.Author = patch.Author
 			changeInfo.Email = patch.Author
 		} else {
@@ -576,11 +654,17 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 func getDisplayName(buildVariant string) (displayName string) {
 	build, err := build.FindOne(build.ByVariant(buildVariant))
 	if err != nil || build == nil {
-		grip.Error(errors.Wrap(err, "Error fetching buildvariant name"))
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"message": "problems fetching build variant name",
+			"variant": buildVariant,
+		}))
+
 		displayName = buildVariant
 	} else {
 		displayName = build.DisplayName
 	}
+
 	return
 }
 
@@ -755,7 +839,13 @@ func NotifyAdmins(subject, message string, settings *evergreen.Settings) error {
 			subject, message, ConstructMailer(settings.Notify))
 	}
 	err := errors.New("Cannot notify admins: admin_email not set")
-	grip.Error(err)
+
+	grip.Error(message.WrapError(err, message.Fields{
+		"runner":  RunnerName,
+		"message": message,
+		"subject": subject,
+	}))
+
 	return err
 }
 
@@ -771,7 +861,10 @@ func TrySendNotification(recipients []string, subject, body string, mailer Maile
 	_, err = util.Retry(func() (bool, error) {
 		err = mailer.SendMail(recipients, subject, body)
 		if err != nil {
-			grip.Errorln("Error sending notification:", err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"message": "sending notification",
+			}))
 			return true, err
 		}
 		return false, nil

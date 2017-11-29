@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -77,7 +78,11 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	}
 
 	if err = c.Mail(self.From); err != nil {
-		grip.Errorf("Error establishing mail sender (%s): %+v", self.From, err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"from":    self.From,
+			"message": "error creating mail sender",
+		}))
 		return err
 	}
 
@@ -85,7 +90,11 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	for _, recipient := range recipients {
 		err = c.Rcpt(recipient)
 		if err != nil {
-			grip.Errorf("Error establishing mail recipient (%s): %+v", recipient, err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"to":      recipient,
+				"message": "error creating mail sender",
+			}))
 			return err
 		}
 	}

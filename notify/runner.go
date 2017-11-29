@@ -35,6 +35,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		})
 		return nil
 	}
+
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
@@ -54,8 +55,14 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		return errors.Wrap(err, "problem running notify")
 	}
 
-	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
-		grip.Error(errors.Wrap(err, "problem updating process status"))
+	runspan := time.Since(startTime)
+	if err := model.SetProcessRuntimeCompleted(RunnerName, runspan); err != nil {
+		grip.Error(message.WrapErrors(err, message.Fields{
+			"runner":   RunnerName,
+			"message":  "problem setting runner complete",
+			"duration": runspan,
+			"span":     runspan.String(),
+		}))
 	}
 
 	grip.Info(message.Fields{

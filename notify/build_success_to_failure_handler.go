@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Handler for notifications generated specifically when a build fails and the
@@ -35,24 +36,41 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, key *Not
 		previousBuild, err := currentBuild.PreviousActivated(key.Project,
 			evergreen.RepotrackerVersionRequester)
 		if previousBuild == nil {
-			grip.Debugf("No previous completed build found for '%v' on %v %v notification",
-				currentBuild.Id, key.Project, key.NotificationName)
+			grip.Debug(message.Fields{
+				"message":      "no previous build completed",
+				"notification": self.Name,
+				"runner":       RunnerName,
+				"id":           curr.Id,
+				"project":      curr.Project,
+				"key":          key.NotificationName,
+			})
 			continue
 		} else if err != nil {
 			return nil, err
 		}
 
 		if !previousBuild.IsFinished() {
-			grip.Debugf("Build before '%s' (on %s %s notification) isn't finished",
-				currentBuild.Id, key.Project, key.NotificationName)
+			grip.Debug(message.Fields{
+				"message":      "previous build is not complete",
+				"notification": self.Name,
+				"runner":       RunnerName,
+				"id":           curr.Id,
+				"project":      curr.Project,
+				"key":          key.NotificationName,
+			})
 			continue
 		}
 
 		// get the build's project to add to the notification subject line
 		branchName := UnknownProjectBranch
 		if projectRef, err := getProjectRef(currentBuild.Project); err != nil {
-			grip.Warningf("Unable to find project ref for build '%s': %+v",
-				currentBuild.Id, err)
+			grip.Warning(message.WrapError(err, message.Fields{
+				"notification": self.Name,
+				"runner":       RunnerName,
+				"id":           curr.Id,
+				"project":      curr.Project,
+				"message":      "unable to find project ref",
+			}))
 		} else if projectRef != nil {
 			branchName = projectRef.Branch
 		}
@@ -71,8 +89,12 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, key *Not
 			}
 			email, err := self.TemplateNotification(ae, &notification)
 			if err != nil {
-				grip.Noticef("template error for build success to failure notification with '%s': %s",
-					currentBuild.Id, err.Error())
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":      "template error",
+					"id":           currentBuild.Id,
+					"notification": self.Name,
+					"runner":       RunnerName,
+				}))
 				continue
 			}
 			emails = append(emails, email)

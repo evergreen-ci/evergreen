@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Handler for task completion notifications, i.e. send notifications whenever
@@ -30,8 +31,12 @@ func (self *TaskCompletionHandler) GetNotifications(ae *web.App, key *Notificati
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, &triggered)
 		if err != nil {
-			grip.Noticef("template error with task completion notification for '%s': %s",
-				triggered.Current.Id, err.Error())
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":      "template error",
+				"id":           triggered.Current.Id,
+				"notification": self.Name,
+				"runner":       RunnerName,
+			}))
 			continue
 		}
 
