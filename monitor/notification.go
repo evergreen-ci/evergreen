@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -49,7 +50,10 @@ type notification struct {
 func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 	error) {
 
-	grip.Info("Building spawned host expiration warnings...")
+	grip.Debug(message.Fields{
+		"runner":  RunnerName,
+		"message": "building spawned host expiration warnings",
+	})
 
 	// sanity check, since the thresholds are supplied in code
 	if len(spawnWarningThresholds) == 0 {
