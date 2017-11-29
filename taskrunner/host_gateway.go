@@ -96,14 +96,16 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	hostObj.Distro = *d
 
 	// prep the remote host
-	grip.Info(message.Fields{"message": "prepping host for agent", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": RunnerName,
+		"message": "prepping host for agent",
+		"host":    hostObj.Id})
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions, settings)
 	if err != nil {
 		event.LogHostProvisionError(hostObj.Id)
 
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
-	grip.Info(message.Fields{"message": "prepping host finished successfully", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": RunnerName, "message": "prepping host finished successfully", "host": hostObj.Id})
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
@@ -117,14 +119,18 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	if err = startAgentOnRemote(settings, &hostObj, sshOptions); err != nil {
 		// mark the host's provisioning as failed
 		if err = hostObj.SetUnprovisioned(); err != nil {
-			grip.Errorf("unprovisioning host %s failed: %+v", hostObj.Id, err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"host":    hostObj.Id,
+				"message": "unprovisioning host failed",
+			}))
 		}
 
 		event.LogHostAgentDeployFailed(hostObj.Id)
 
 		return errors.WithStack(err)
 	}
-	grip.Info(message.Fields{"message": "agent successfully started for host", "host": hostObj.Id})
+	grip.Info(message.Fields{"runner": RunnerName, "message": "agent successfully started for host", "host": hostObj.Id})
 
 	if err = hostObj.SetAgentRevision(agentRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
@@ -193,6 +199,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		"message": "starting agent on host",
 		"host":    hostObj.Id,
 		"command": remoteCmd,
+		"runner":  RunnerName,
 	})
 
 	// compute any info necessary to ssh into the host
@@ -235,7 +242,10 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 	err = startAgentCmd.Run(ctx)
 
 	// run cleanup regardless of what happens.
-	grip.Notice(startAgentCmd.Stop())
+	grip.Notice(message.WrapError(startAgentCmd.Stop(), message.Fields{
+		"runner":  RunnerName,
+		"message": "cleaning command failed",
+	}))
 
 	if err != nil {
 		if err == util.ErrTimedOut {
