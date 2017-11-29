@@ -702,6 +702,11 @@ buildvariants:
       - name: "dist"
       - name: ".smoke"
       - name: ".test"
+    display_tasks:
+      - name: displayTask1
+      execution_tasks:
+        - test-auth
+        - test-cli
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
