@@ -143,8 +143,9 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 		grip.Info(message.Fields{
 			"runner":    RunnerName,
 			"operation": "monitorReachability",
-			"message":   "Host terminated externally; updating db status to terminated",
+			"message":   "host terminated externally",
 			"host":      host.Id,
+			"distro":    host.Distro.Id,
 		})
 		event.LogHostTerminatedExternally(host.Id)
 
