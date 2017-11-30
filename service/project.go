@@ -153,24 +153,30 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	errs := []string{}
 	for i, pd := range responseRef.PatchDefinitions {
 		if strings.TrimSpace(pd.Variant) == "" {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("variant regex #%d can't be empty string", i+1))
-			return
+			errs = append(errs, fmt.Sprintf("variant regex #%d can't be empty string", i+1))
 		}
 		if strings.TrimSpace(pd.Task) == "" {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("task regex #%d can't be empty string", i+1))
-			return
+			errs = append(errs, fmt.Sprintf("task regex #%d can't be empty string", i+1))
 		}
 
 		if _, err := regexp.Compile(pd.Variant); err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "variant regex #%d is invalid", i+1))
-			return
+			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
 		}
 		if _, err := regexp.Compile(pd.Task); err != nil {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "task regex #%d is invalid", i+1))
-			return
+			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
 		}
+	}
+	if len(errs) > 0 {
+		errMsg := ""
+		for _, err := range errs {
+			errMsg += err + ", "
+		}
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(errMsg))
+
+		return
 	}
 
 	projectRef.DisplayName = responseRef.DisplayName
