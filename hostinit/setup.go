@@ -262,7 +262,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					setupStartTime := time.Now()
 					grip.Info(message.Fields{
 						"GUID":    init.GUID,
-						"message": "running setup script for host",
+						"message": "provisioning host",
 						"runner":  RunnerName,
 						"hostid":  h.Id,
 						"DNS":     h.Host,
@@ -293,7 +293,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					}
 					grip.Info(message.Fields{
 						"GUID":    init.GUID,
-						"message": "setup script successfully ran for host",
+						"message": "successfully finished provisioning host",
 						"hostid":  h.Id,
 						"DNS":     h.Host,
 						"runner":  RunnerName,
