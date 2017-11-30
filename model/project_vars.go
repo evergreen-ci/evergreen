@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	ProjectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	ProjectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	PrivateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	projectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	patchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
 )
 
 const (
@@ -32,6 +33,15 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
+
+	// PatchDefinitions contains regexes that are used to determine which
+	// combinations of variants and tasks should be run.
+	PatchDefinitions []PatchDefinition `bson:"patch_definitions" json:"patch_definitions"`
+}
+
+type PatchDefinition struct {
+	Variant string `bson:"variant" json:"variant"`
+	Task    string `bson:"task" json:"task"`
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
@@ -39,7 +49,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	err := db.FindOne(
 		ProjectVarsCollection,
 		bson.M{
-			ProjectVarIdKey: projectId,
+			projectVarIdKey: projectId,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -58,12 +68,13 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 	return db.Upsert(
 		ProjectVarsCollection,
 		bson.M{
-			ProjectVarIdKey: projectVars.Id,
+			projectVarIdKey: projectVars.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ProjectVarsMapKey: projectVars.Vars,
-				PrivateVarsMapKey: projectVars.PrivateVars,
+				projectVarsMapKey:   projectVars.Vars,
+				privateVarsMapKey:   projectVars.PrivateVars,
+				patchDefinitionsKey: projectVars.PatchDefinitions,
 			},
 		},
 	)

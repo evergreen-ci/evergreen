@@ -7,6 +7,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
 
 
   $scope.projectVars = {};
+  $scope.patchVariants = [];
   $scope.projectRef = {};
   $scope.displayName = "";
 
@@ -164,12 +165,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         var data = resp.data;
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
-         $scope.projectVars = data.ProjectVars.vars || {};
-         $scope.privateVars = data.ProjectVars.private_vars || {};
+        $scope.projectVars = data.ProjectVars.vars || {};
+        $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
+        $scope.privateVars = data.ProjectVars.private_vars || {};
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
+          patch_definitions: $scope.patchDefinitions,
           private_vars: $scope.privateVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
@@ -228,6 +231,17 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if ($scope.proj_var) {
       $scope.addProjectVar();
     }
+    if ($scope.patch_definition) {
+      $scope.addPatchDefinition();
+      if($scope.patch_definition.variant) {
+        $scope.invalidPatchDefinitionMessage = "Missing task regex"
+          return
+      }
+      if($scope.patch_definition.task) {
+        $scope.invalidPatchDefinitionMessage = "Missing variant regex"
+        return
+      }
+    }
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
@@ -240,6 +254,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.isDirty = false;
       },
       function(resp) {
+        $scope.saveMessage = "Couldn't save project: " + resp.data.error;
         console.log(resp.status);
       });
   };
@@ -257,9 +272,28 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
   };
 
+  $scope.addPatchDefinition = function() {
+    if ($scope.patch_definition.variant && $scope.patch_definition.task) {
+      item = {
+          "variant": $scope.patch_definition.variant,
+          "task": $scope.patch_definition.task,
+      }
+      $scope.settingsFormData.patch_definitions = $scope.settingsFormData.patch_definitions.concat([item]);
+      $scope.patch_definition.variant = "";
+      $scope.patch_definition.task = "";
+      $scope.invalidPatchDefinitionMessage = ""
+    }
+  }
+
   $scope.removeProjectVar = function(name) {
     delete $scope.settingsFormData.project_vars[name];
     delete $scope.settingsFormData.private_vars[name];
+    $scope.isDirty = true;
+  };
+
+  $scope.removePatchDefinition = function(i) {
+      console.log(i)
+    $scope.settingsFormData.patch_definitions.splice(i, 1)
     $scope.isDirty = true;
   };
 
@@ -324,6 +358,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       $scope.invalidKeyMessage = "";
       return false;
     }
+    return true;
+  }
+
+  $scope.validPatchDefinition = function(variantRegex, taskRegex){
+    if (!variantRegex || !taskRegex){
+      return false;
+    }
+
     return true;
   }
 

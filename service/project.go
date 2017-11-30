@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
@@ -126,19 +128,20 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string            `json:"id"`
-		DisplayName        string            `json:"display_name"`
-		RemotePath         string            `json:"remote_path"`
-		BatchTime          int               `json:"batch_time"`
-		DeactivatePrevious bool              `json:"deactivate_previous"`
-		Branch             string            `json:"branch_name"`
-		ProjVarsMap        map[string]string `json:"project_vars"`
-		PrivateVars        map[string]bool   `json:"private_vars"`
-		Enabled            bool              `json:"enabled"`
-		Private            bool              `json:"private"`
-		Owner              string            `json:"owner_name"`
-		Repo               string            `json:"repo_name"`
-		Admins             []string          `json:"admins"`
+		Identifier         string                  `json:"id"`
+		DisplayName        string                  `json:"display_name"`
+		RemotePath         string                  `json:"remote_path"`
+		BatchTime          int                     `json:"batch_time"`
+		DeactivatePrevious bool                    `json:"deactivate_previous"`
+		Branch             string                  `json:"branch_name"`
+		ProjVarsMap        map[string]string       `json:"project_vars"`
+		PatchDefinitions   []model.PatchDefinition `json:"patch_definitions"`
+		PrivateVars        map[string]bool         `json:"private_vars"`
+		Enabled            bool                    `json:"enabled"`
+		Private            bool                    `json:"private"`
+		Owner              string                  `json:"owner_name"`
+		Repo               string                  `json:"repo_name"`
+		Admins             []string                `json:"admins"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -147,6 +150,32 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	errs := []string{}
+	for i, pd := range responseRef.PatchDefinitions {
+		if strings.TrimSpace(pd.Variant) == "" {
+			errs = append(errs, fmt.Sprintf("variant regex #%d can't be empty string", i+1))
+		}
+		if strings.TrimSpace(pd.Task) == "" {
+			errs = append(errs, fmt.Sprintf("task regex #%d can't be empty string", i+1))
+		}
+
+		if _, err := regexp.Compile(pd.Variant); err != nil {
+			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
+		}
+		if _, err := regexp.Compile(pd.Task); err != nil {
+			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
+		}
+	}
+	if len(errs) > 0 {
+		errMsg := ""
+		for _, err := range errs {
+			errMsg += err + ", "
+		}
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(errMsg))
+
 		return
 	}
 
@@ -181,7 +210,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars}
+	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars, responseRef.PatchDefinitions}
 	_, err = projectVars.Upsert()
 
 	if err != nil {
