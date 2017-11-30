@@ -39,7 +39,7 @@ var passwordRegexps = []*regexp.Regexp{
 const (
 	MaxPerUser                 = 3
 	DefaultExpiration          = 24 * time.Hour
-	MaxExpirationDurationHours = 24 * 7 // 7 days
+	MaxExpirationDurationHours = 24 * time.Hour * 7 // 7 days
 )
 
 // Options holds the required parameters for spawning a host.
@@ -254,17 +254,18 @@ func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
 	return nil
 }
 
-func MakeExtendedHostExpiration(host *host.Host, addHours int) (time.Time, error) {
-	addHoursDuration := time.Duration(addHours) * time.Hour
-	newExp := host.ExpirationTime.Add(addHoursDuration)
-	hoursToExtendBy := newExp.Sub(time.Now()).Hours() //nolint
-	if hoursToExtendBy > MaxExpirationDurationHours {
-		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%d' hours. Maximum extension is limited to %d hours", host.Id, addHours, MaxExpirationDurationHours)
+func MakeExtendedHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
+	newExp := host.ExpirationTime.Add(extendBy)
+	remainingDuration := newExp.Sub(time.Now()) //nolint
+	if remainingDuration > MaxExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), MaxExpirationDurationHours.String())
 	}
 
 	return newExp, nil
 }
 
+// XXX: if modifying any of the password validation logic, you changes must
+// also be ported into public/static/js/directives/directives.spawn.js
 func ValidateRDPPassword(password string) bool {
 	// Golang regex doesn't support lookarounds, so we can't use
 	// the regex as found in public/static/js/directives/directives.spawn.js

@@ -201,7 +201,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var futureExpiration time.Time
-		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, addtHours)
+		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, time.Duration(addtHours)*time.Hour)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return

@@ -467,8 +467,7 @@ func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Conn
 			Message:    "RDP passwords can only be set on running hosts",
 		}
 	}
-
-	if err := sc.SetHostPassword(ctx, host, h.rdpPassword); err != nil {
+	if err := spawn.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
 		return ResponseData{}, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
@@ -495,7 +494,7 @@ func getHostExtendExpirationRouteManager(route string, version int) *RouteManage
 
 type hostExtendExpirationHandler struct {
 	hostID   string
-	addHours int
+	addHours time.Duration
 }
 
 func (h *hostExtendExpirationHandler) Handler() RequestHandler {
@@ -521,20 +520,20 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 			Message:    "expiration not a number",
 		}
 	}
+	h.addHours = time.Duration(addHours) * time.Hour
 
-	if addHours <= 0 {
+	if h.addHours <= 0 {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "must add more than 0 hours to expiration",
 		}
 	}
-	if addHours > spawn.MaxExpirationDurationHours {
+	if h.addHours > spawn.MaxExpirationDurationHours {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("cannot add more than %d hours", spawn.MaxExpirationDurationHours),
+			Message:    fmt.Sprintf("cannot add more than %s", spawn.MaxExpirationDurationHours.String()),
 		}
 	}
-	h.addHours = addHours
 
 	return nil
 }

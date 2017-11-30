@@ -1,7 +1,6 @@
 package data
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -85,10 +84,6 @@ func (hc *DBHostConnector) SetHostStatus(host *host.Host, status string) error {
 	return host.SetStatus(status)
 }
 
-func (hc *DBHostConnector) SetHostPassword(ctx context.Context, host *host.Host, password string) error {
-	return spawn.SetHostRDPPassword(ctx, host, password)
-}
-
 func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
 	if err := host.SetExpirationTime(newExp); err != nil {
 		return errors.Wrap(err, "Error extending host expiration time")
@@ -98,7 +93,7 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 }
 
 func (hc *DBHostConnector) TerminateHost(host *host.Host) error {
-	return spawn.TerminateHost(host, evergreen.GetEnvironment().Settings())
+	return errors.WithStack(spawn.TerminateHost(host, evergreen.GetEnvironment().Settings()))
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -228,15 +223,6 @@ func (hc *MockHostConnector) SetHostStatus(host *host.Host, status string) error
 		}
 	}
 
-	return errors.New("can't find host")
-}
-
-func (hc *MockHostConnector) SetHostPassword(_ context.Context, host *host.Host, _ string) error {
-	for _, h := range hc.CachedHosts {
-		if h.Id == host.Id {
-			return nil
-		}
-	}
 	return errors.New("can't find host")
 }
 

@@ -1,7 +1,6 @@
 package data
 
 import (
-	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/auth"
@@ -157,10 +156,6 @@ type Connector interface {
 
 	SetHostStatus(*host.Host, string) error
 	SetHostExpirationTime(*host.Host, time.Time) error
-
-	// SetHostPassword SSHs into a host and changes its RDP and SSH
-	// passwords
-	SetHostPassword(context.Context, *host.Host, string) error
 
 	// TerminateHost terminates the given host via the cloud provider's API
 	TerminateHost(*host.Host) error

@@ -70,7 +70,7 @@ func (s *HostSuite) TestFindByIdFail() {
 	s.Error(ok)
 }
 
-type TestTerminateHostHandlerSuite struct {
+type hostTerminateHostHandlerSuite struct {
 	rm *RouteManager
 	sc *data.MockConnector
 
@@ -78,22 +78,22 @@ type TestTerminateHostHandlerSuite struct {
 }
 
 func TestTerminateHostHandler(t *testing.T) {
-	s := &TestTerminateHostHandlerSuite{}
+	s := &hostTerminateHostHandlerSuite{}
 	suite.Run(t, s)
 }
 
-func (s *TestTerminateHostHandlerSuite) SetupTest() {
+func (s *hostTerminateHostHandlerSuite) SetupTest() {
 	s.rm = getHostTerminateRouteManager("", 2)
 	s.sc = getMockHostsConnector()
 }
 
-func (s *TestTerminateHostHandlerSuite) TestExecuteWithNoUserPanics() {
+func (s *hostTerminateHostHandlerSuite) TestExecuteWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
 }
 
-func (s *TestTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
+func (s *hostTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host-that-doesn't-exist"
 
@@ -104,7 +104,7 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithInvalidHost() {
 	s.Error(err)
 }
 
-func (s *TestTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
+func (s *hostTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host1"
 
@@ -120,7 +120,7 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithTerminatedHost() {
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[0].Status)
 }
 
-func (s *TestTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
+func (s *hostTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host3"
 
@@ -134,7 +134,7 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithUninitializedHost() {
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
-func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
+func (s *hostTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host2"
 
@@ -148,7 +148,7 @@ func (s *TestTerminateHostHandlerSuite) TestExecuteWithRunningHost() {
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
 
-func (s *TestTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
+func (s *hostTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host3"
 
@@ -162,7 +162,7 @@ func (s *TestTerminateHostHandlerSuite) TestSuperUserCanTerminateAnyHost() {
 	s.Equal(evergreen.HostTerminated, s.sc.CachedHosts[2].Status)
 }
 
-func (s *TestTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
+func (s *hostTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() {
 	h := s.rm.Methods[0].Handler().(*hostTerminateHandler)
 	h.hostID = "host2"
 
@@ -176,29 +176,29 @@ func (s *TestTerminateHostHandlerSuite) TestRegularUserCannotTerminateAnyHost() 
 	s.Equal(evergreen.HostRunning, s.sc.CachedHosts[1].Status)
 }
 
-type TestHostChangeRDPPasswordHandlerSuite struct {
+type hostChangeRDPPasswordHandlerSuite struct {
 	rm *RouteManager
 	sc *data.MockConnector
 	suite.Suite
 }
 
 func TestHostChangeRDPPasswordHandler(t *testing.T) {
-	s := &TestHostChangeRDPPasswordHandlerSuite{}
+	s := &hostChangeRDPPasswordHandlerSuite{}
 	suite.Run(t, s)
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) SetupTest() {
+func (s *hostChangeRDPPasswordHandlerSuite) SetupTest() {
 	s.rm = getHostChangeRDPPasswordRouteManager("", 2)
 	s.sc = getMockHostsConnector()
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecute() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestExecute() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
@@ -208,10 +208,10 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecute() {
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.NoError(err)
+	s.Equal("Error constructing host RDP password: No known provider for ''", err.Error())
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHostFails() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host3"
 	h.rdpPassword = "Hunter2!"
@@ -224,7 +224,7 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithUninitializedHost
 	s.Error(err)
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host-that-doesn't-exist"
 
@@ -236,7 +236,7 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 	s.Error(err)
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
 	invalidPasswords := []model.APIString{"", "weak", "stilltooweak1", "火a111"}
 	for _, password := range invalidPasswords {
 		mod := model.APISpawnHostModify{
@@ -252,7 +252,7 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInval
 	}
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
@@ -262,9 +262,9 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestSuperUserCanChangeAnyHost() 
 
 	data, err := h.Execute(ctx, s.sc)
 	s.Empty(data.Result)
-	s.NoError(err)
+	s.Equal("Error constructing host RDP password: No known provider for ''", err.Error())
 }
-func (s *TestHostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost() {
+func (s *hostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHost() {
 	h := s.rm.Methods[0].Handler().(*hostChangeRDPPasswordHandler)
 	h.hostID = "host2"
 	h.rdpPassword = "Hunter2!"
@@ -277,7 +277,7 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) TestRegularUserCannotChangeAnyHo
 	s.Error(err)
 }
 
-func (s *TestHostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
+func (s *hostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
 	r, err := makeMockHostRequest(mod)
 	s.NoError(err)
 
@@ -286,29 +286,29 @@ func (s *TestHostChangeRDPPasswordHandlerSuite) tryParseAndValidate(mod model.AP
 	return h.ParseAndValidate(context.TODO(), r)
 }
 
-type TestHostExtendExpirationHandlerSuite struct {
+type hostExtendExpirationHandlerSuite struct {
 	rm *RouteManager
 	sc *data.MockConnector
 	suite.Suite
 }
 
 func TestHostExtendExpirationHandler(t *testing.T) {
-	s := &TestHostExtendExpirationHandlerSuite{}
+	s := &hostExtendExpirationHandlerSuite{}
 	suite.Run(t, s)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) SetupTest() {
+func (s *hostExtendExpirationHandlerSuite) SetupTest() {
 	s.rm = getHostExtendExpirationRouteManager("", 2)
 	s.sc = getMockHostsConnector()
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
+func (s *hostExtendExpirationHandlerSuite) TestHostExtendExpirationWithNoUserPanics() {
 	s.PanicsWithValue("no user attached to request", func() {
 		_, _ = s.rm.Methods[0].Execute(context.TODO(), s.sc)
 	})
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
+func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host-that-doesn't-exist"
 
@@ -319,7 +319,7 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 	s.Error(err)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
+func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
 	invalidExpirations := []model.APIString{"not a number", "0", "9223372036854775807", ""}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
@@ -336,10 +336,10 @@ func (s *TestHostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvali
 	}
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails() {
+func (s *hostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFails() {
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 9001
+	h.addHours = 9001 * time.Hour
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
@@ -351,12 +351,12 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithLargeExpirationFai
 	s.Equal(http.StatusBadRequest, apiErr.StatusCode)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestExecute() {
+func (s *hostExtendExpirationHandlerSuite) TestExecute() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 8
+	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
@@ -366,12 +366,12 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecute() {
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
+func (s *hostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFails() {
 	expectedTime := s.sc.CachedHosts[0].ExpirationTime
 
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host1"
-	h.addHours = 8
+	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user0"])
@@ -381,12 +381,12 @@ func (s *TestHostExtendExpirationHandlerSuite) TestExecuteWithTerminatedHostFail
 	s.Equal(expectedTime, s.sc.CachedHosts[0].ExpirationTime)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
+func (s *hostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime.Add(8 * time.Hour)
 
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 8
+	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["root"])
@@ -396,12 +396,12 @@ func (s *TestHostExtendExpirationHandlerSuite) TestSuperUserCanExtendAnyHost() {
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
+func (s *hostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherUsersHosts() {
 	expectedTime := s.sc.CachedHosts[1].ExpirationTime
 
 	h := s.rm.Methods[0].Handler().(*hostExtendExpirationHandler)
 	h.hostID = "host2"
-	h.addHours = 8
+	h.addHours = 8 * time.Hour
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, s.sc.MockUserConnector.CachedUsers["user1"])
@@ -411,7 +411,7 @@ func (s *TestHostExtendExpirationHandlerSuite) TestRegularUserCannotExtendOtherU
 	s.Equal(expectedTime, s.sc.CachedHosts[1].ExpirationTime)
 }
 
-func (s *TestHostExtendExpirationHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
+func (s *hostExtendExpirationHandlerSuite) tryParseAndValidate(mod model.APISpawnHostModify) error {
 	r, err := makeMockHostRequest(mod)
 	s.NoError(err)
 

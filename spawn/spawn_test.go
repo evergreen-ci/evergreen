@@ -34,7 +34,7 @@ func TestMakeExtendedHostExpiration(t *testing.T) {
 		ExpirationTime: time.Now().Add(12 * time.Hour),
 	}
 
-	expTime, err := MakeExtendedHostExpiration(&host, 1)
+	expTime, err := MakeExtendedHostExpiration(&host, time.Hour)
 	assert.NotZero(expTime)
 	assert.NoError(err, expTime.Format(time.RFC3339))
 }
@@ -46,7 +46,7 @@ func TestMakeExtendedHostExpirationFailsBeyondOneWeek(t *testing.T) {
 		ExpirationTime: time.Now().Add(12 * time.Hour),
 	}
 
-	expTime, err := MakeExtendedHostExpiration(&host, 24*7)
+	expTime, err := MakeExtendedHostExpiration(&host, 24*7*time.Hour)
 	assert.Zero(expTime)
 	assert.Error(err, expTime.Format(time.RFC3339))
 }
