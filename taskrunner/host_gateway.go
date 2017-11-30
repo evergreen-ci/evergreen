@@ -163,7 +163,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	// run the setup script with the agent
 	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
-		grip.Errorf("error running setup script on %s", hostObj.Id)
+		grip.Error(message.Fields{
+			"host":    hostObj.Id,
+			"message": "error running setup script",
+			"runner":  RunnerName,
+		})
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
 		if err := hostObj.DisablePoisonedHost(); err != nil {
 			return "", errors.Wrapf(err, "error terminating host %s", hostObj.Id)
