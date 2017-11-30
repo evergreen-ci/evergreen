@@ -101,8 +101,6 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 		"host":    hostObj.Id})
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions, settings)
 	if err != nil {
-		event.LogHostProvisionError(hostObj.Id)
-
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 	grip.Info(message.Fields{"runner": RunnerName, "message": "prepping host finished successfully", "host": hostObj.Id})
@@ -156,9 +154,6 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 }
 
 // Prepare the remote machine to run a task.
-// 1. Create the directories on the remote host.
-// 2. Copy the binary to the remote host.
-// 3. Run the setup script with the binary.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
 	if logs, err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
@@ -168,6 +163,12 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	// run the setup script with the agent
 	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
+		grip.Errorf("error running setup script on %s", hostObj.Id)
+		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
+		if err := hostObj.Terminate(); err != nil {
+			return "", errors.Wrapf(err, "error terminating host %s", hostObj.Id)
+		}
+
 		return "", errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 	}
 
