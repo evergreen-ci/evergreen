@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	ProjectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	ProjectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	PrivateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	PatchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
+	projectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	patchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
 )
 
 const (
@@ -49,7 +49,7 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	err := db.FindOne(
 		ProjectVarsCollection,
 		bson.M{
-			ProjectVarIdKey: projectId,
+			projectVarIdKey: projectId,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -68,13 +68,13 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 	return db.Upsert(
 		ProjectVarsCollection,
 		bson.M{
-			ProjectVarIdKey: projectVars.Id,
+			projectVarIdKey: projectVars.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				ProjectVarsMapKey:   projectVars.Vars,
-				PrivateVarsMapKey:   projectVars.PrivateVars,
-				PatchDefinitionsKey: projectVars.PatchDefinitions,
+				projectVarsMapKey:   projectVars.Vars,
+				privateVarsMapKey:   projectVars.PrivateVars,
+				patchDefinitionsKey: projectVars.PatchDefinitions,
 			},
 		},
 	)
