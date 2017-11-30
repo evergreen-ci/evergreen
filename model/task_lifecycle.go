@@ -288,6 +288,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
+		detail.Type = TestCommandType
 	}
 
 	t.Details = *detail
