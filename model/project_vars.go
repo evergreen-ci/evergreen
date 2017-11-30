@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	ProjectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	ProjectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	PrivateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	PatchVariantsKey  = bsonutil.MustHaveTag(ProjectVars{}, "PatchVariants")
+	ProjectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	ProjectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	PrivateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	PatchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
 )
 
 const (
@@ -34,12 +34,12 @@ type ProjectVars struct {
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
 
-	// PatchVariants contains regexes that are used to determine which
+	// PatchDefinitions contains regexes that are used to determine which
 	// combinations of variants and tasks should be run.
-	PatchVariants []PatchVariant `bson:"patch_variants" json:"patch_variants"`
+	PatchDefinitions []PatchDefinition `bson:"patch_definitions" json:"patch_definitions"`
 }
 
-type PatchVariant struct {
+type PatchDefinition struct {
 	Variant string `bson:"variant" json:"variant"`
 	Task    string `bson:"task" json:"task"`
 }
@@ -72,9 +72,9 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				ProjectVarsMapKey: projectVars.Vars,
-				PrivateVarsMapKey: projectVars.PrivateVars,
-				PatchVariantsKey:  projectVars.PatchVariants,
+				ProjectVarsMapKey:   projectVars.Vars,
+				PrivateVarsMapKey:   projectVars.PrivateVars,
+				PatchDefinitionsKey: projectVars.PatchDefinitions,
 			},
 		},
 	)

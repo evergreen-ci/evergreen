@@ -128,20 +128,20 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string               `json:"id"`
-		DisplayName        string               `json:"display_name"`
-		RemotePath         string               `json:"remote_path"`
-		BatchTime          int                  `json:"batch_time"`
-		DeactivatePrevious bool                 `json:"deactivate_previous"`
-		Branch             string               `json:"branch_name"`
-		ProjVarsMap        map[string]string    `json:"project_vars"`
-		PatchVariants      []model.PatchVariant `json:"patch_variants"`
-		PrivateVars        map[string]bool      `json:"private_vars"`
-		Enabled            bool                 `json:"enabled"`
-		Private            bool                 `json:"private"`
-		Owner              string               `json:"owner_name"`
-		Repo               string               `json:"repo_name"`
-		Admins             []string             `json:"admins"`
+		Identifier         string                  `json:"id"`
+		DisplayName        string                  `json:"display_name"`
+		RemotePath         string                  `json:"remote_path"`
+		BatchTime          int                     `json:"batch_time"`
+		DeactivatePrevious bool                    `json:"deactivate_previous"`
+		Branch             string                  `json:"branch_name"`
+		ProjVarsMap        map[string]string       `json:"project_vars"`
+		PatchDefinitions   []model.PatchDefinition `json:"patch_definitions"`
+		PrivateVars        map[string]bool         `json:"private_vars"`
+		Enabled            bool                    `json:"enabled"`
+		Private            bool                    `json:"private"`
+		Owner              string                  `json:"owner_name"`
+		Repo               string                  `json:"repo_name"`
+		Admins             []string                `json:"admins"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -153,21 +153,21 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i, pv := range responseRef.PatchVariants {
-		if strings.TrimSpace(pv.Variant) == "" {
+	for i, pd := range responseRef.PatchDefinitions {
+		if strings.TrimSpace(pd.Variant) == "" {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("variant regex #%d can't be empty string", i+1))
 			return
 		}
-		if strings.TrimSpace(pv.Task) == "" {
+		if strings.TrimSpace(pd.Task) == "" {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("task regex #%d can't be empty string", i+1))
 			return
 		}
 
-		if _, err := regexp.Compile(pv.Variant); err != nil {
+		if _, err := regexp.Compile(pd.Variant); err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "variant regex #%d is invalid", i+1))
 			return
 		}
-		if _, err := regexp.Compile(pv.Task); err != nil {
+		if _, err := regexp.Compile(pd.Task); err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "task regex #%d is invalid", i+1))
 			return
 		}
@@ -204,7 +204,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars, responseRef.PatchVariants}
+	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars, responseRef.PatchDefinitions}
 	_, err = projectVars.Upsert()
 
 	if err != nil {

@@ -42,7 +42,7 @@ func TestProjectVarsInsert(t *testing.T) {
 	vars := &ProjectVars{
 		Id:   "mongodb",
 		Vars: map[string]string{"a": "1"},
-		PatchVariants: []PatchVariant{
+		PatchDefinitions: []PatchDefinition{
 			{
 				Variant: "test",
 				Task:    "test",
@@ -56,9 +56,9 @@ func TestProjectVarsInsert(t *testing.T) {
 	assert.Equal("mongodb", projectVarsFromDB.Id)
 	assert.NotEmpty(projectVarsFromDB.Vars)
 	assert.Equal("1", projectVarsFromDB.Vars["a"])
-	assert.NotEmpty(projectVarsFromDB.PatchVariants)
-	assert.Equal("test", projectVarsFromDB.PatchVariants[0].Variant)
-	assert.Equal("test", projectVarsFromDB.PatchVariants[0].Task)
+	assert.NotEmpty(projectVarsFromDB.PatchDefinitions)
+	assert.Equal("test", projectVarsFromDB.PatchDefinitions[0].Variant)
+	assert.Equal("test", projectVarsFromDB.PatchDefinitions[0].Task)
 }
 
 func TestRedactPrivateVars(t *testing.T) {
