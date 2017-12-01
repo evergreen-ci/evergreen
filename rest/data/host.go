@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -46,6 +47,10 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 		}
 	}
 	return h, nil
+}
+
+func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user auth.User) (*host.Host, error) {
+	return findHostByIdWithOwner(dbc, hostID, user)
 }
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
@@ -246,4 +251,35 @@ func (hc *MockHostConnector) TerminateHost(host *host.Host) error {
 	}
 
 	return errors.New("can't find host")
+}
+
+func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user auth.User) (*host.Host, error) {
+	return findHostByIdWithOwner(dbc, hostID, user)
+}
+
+func findHostByIdWithOwner(c Connector, hostID string, user auth.User) (*host.Host, error) {
+	host, err := c.FindHostById(hostID)
+	if err != nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "host does not exist",
+		}
+	}
+
+	if user.Username() != host.StartedBy {
+		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
+			return nil, &rest.APIError{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized to modify host",
+			}
+		}
+	}
+
+	return host, nil
 }

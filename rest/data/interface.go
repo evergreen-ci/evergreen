@@ -86,6 +86,12 @@ type Connector interface {
 	FindHostsById(string, string, string, int, int) ([]host.Host, error)
 	FindHostById(string) (*host.Host, error)
 
+	// FindHostByIdWithOwner finds a host with given host ID that was
+	// started by the given user. If the given user is a super-user,
+	// the host will also be returned regardless of who the host was
+	// started by
+	FindHostByIdWithOwner(string, auth.User) (*host.Host, error)
+
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(string, string, string, string, *user.DBUser) (*host.Host, error)
 

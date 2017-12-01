@@ -69,14 +69,35 @@ func TestHostConnectorSuite(t *testing.T) {
 func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.setup = func(s *HostConnectorSuite) {
-		s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
-			CachedHosts: []host.Host{
-				{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
-				{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-				{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
-				{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
-		}}
-
+		s.ctx = &MockConnector{
+			MockHostConnector: MockHostConnector{
+				CachedHosts: []host.Host{
+					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
+			},
+			MockUserConnector: MockUserConnector{
+				CachedUsers: map[string]*user.DBUser{
+					testUser: {
+						Id: testUser,
+					},
+					"user2": {
+						Id: "user2",
+					},
+					"user3": {
+						Id: "user3",
+					},
+					"user4": {
+						Id: "user4",
+					},
+					"root": {
+						Id: "root",
+					},
+				},
+			},
+		}
+		s.ctx.SetSuperUsers([]string{"root"})
 	}
 	suite.Run(t, s)
 }
@@ -212,4 +233,31 @@ func (s *HostConnectorSuite) TestExtendHostExpiration() {
 	hCheck, err := s.ctx.FindHostById("host1")
 	s.Equal(expectedTime, hCheck.ExpirationTime)
 	s.NoError(err)
+}
+
+func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
+	u, err := s.ctx.FindUserById(testUser)
+	s.NoError(err)
+
+	h, err := s.ctx.FindHostByIdWithOwner("host1", u)
+	s.NoError(err)
+	s.NotNil(h)
+}
+
+func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
+	u, err := s.ctx.FindUserById(testUser)
+	s.NoError(err)
+
+	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
+	s.Error(err)
+	s.Nil(h)
+}
+
+func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
+	u, err := s.ctx.FindUserById("root")
+	s.NoError(err)
+
+	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
+	s.NoError(err)
+	s.NotNil(h)
 }

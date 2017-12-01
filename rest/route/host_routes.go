@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -369,7 +368,7 @@ func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Req
 func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
-	host, err := fetchHostAndAuthorize(sc, h.hostID, u)
+	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -450,7 +449,7 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
-	host, err := fetchHostAndAuthorize(sc, h.hostID, u)
+	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -541,7 +540,7 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
 
-	host, err := fetchHostAndAuthorize(sc, h.hostID, u)
+	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -580,31 +579,4 @@ func validateHostID(hostID string) (string, error) {
 	}
 
 	return hostID, nil
-}
-
-func fetchHostAndAuthorize(sc data.Connector, hostID string, user auth.User) (*host.Host, error) {
-	host, err := sc.FindHostById(hostID)
-	if err != nil {
-		return nil, &rest.APIError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "error fetching host information",
-		}
-	}
-	if host == nil {
-		return nil, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "host does not exist",
-		}
-	}
-
-	if user.Username() != host.StartedBy {
-		if !auth.IsSuperUser(sc.GetSuperUsers(), user) {
-			return nil, &rest.APIError{
-				StatusCode: http.StatusUnauthorized,
-				Message:    "not authorized to modify host",
-			}
-		}
-	}
-
-	return host, nil
 }
