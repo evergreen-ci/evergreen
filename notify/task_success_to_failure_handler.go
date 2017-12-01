@@ -45,6 +45,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 				"current":      currentTask.Id,
 				"message":      "no previous task completed",
 			})
+			continue
 		} else if err != nil {
 			return nil, err
 		}
@@ -53,13 +54,12 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *Noti
 			"runner":       RunnerName,
 			"notification": key.NotificationName,
 			"project":      key.Project,
-			"current":      currentTask.Id,
 			"previous":     previousTask.Id,
+			"current":      currentTask.Id,
 			"message":      "previous completed task found",
 		})
 
-		if previousTask.Status == evergreen.TaskSucceeded &&
-			currentTask.Status == evergreen.TaskFailed {
+		if previousTask.Status == evergreen.TaskSucceeded && currentTask.Status == evergreen.TaskFailed {
 
 			// this is now a potential candidate but we must
 			// ensure that no other more recent build has

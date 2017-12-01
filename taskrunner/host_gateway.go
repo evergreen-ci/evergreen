@@ -169,7 +169,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 			"runner":  RunnerName,
 		})
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
-		if err := hostObj.DisablePoisonedHost(); err != nil {
+		if err = hostObj.DisablePoisonedHost(); err != nil {
 			return "", errors.Wrapf(err, "error terminating host %s", hostObj.Id)
 		}
 

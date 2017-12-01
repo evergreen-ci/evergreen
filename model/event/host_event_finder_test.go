@@ -24,17 +24,19 @@ func TestRecentHostStatusFinder(t *testing.T) {
 
 	// make sure that we have the expected outcome for a trivial example
 	assert.True(AllRecentHostEventsMatchStatus(hostID, 3, "one"))
+	assert.True(AllRecentHostEventsMatchStatus(hostID, 2, "one"))
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 3, "two"))
 
 	// log a different type so so that we can see
+	LogHostEvent(hostID, EventTaskFinished, HostEventData{TaskStatus: "two", TaskId: "task"})
 	LogHostEvent(hostID, EventTaskFinished, HostEventData{TaskStatus: "two", TaskId: "task"})
 
 	// ensure that the outcome of the predicate matches our
 	// current understanding of the state of the database
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 3, "one"))
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 3, "two"))
-	assert.False(AllRecentHostEventsMatchStatus(hostID, 2, "two"))
-	assert.True(AllRecentHostEventsMatchStatus(hostID, 1, "two"))
+	assert.False(AllRecentHostEventsMatchStatus(hostID, 2, "one"))
+	assert.True(AllRecentHostEventsMatchStatus(hostID, 2, "two"))
 
 	// zero events should always be false.
 	assert.False(AllRecentHostEventsMatchStatus(hostID, 0, "two"))
