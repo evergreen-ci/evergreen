@@ -8,32 +8,34 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )
 
 const (
-	// DefaultBinaryName is the default path to the Evergreen binary.
-	DefaultBinaryName = "evergreen"
+	// defaultBinaryName is the default path to the Evergreen binary.
+	defaultBinaryName = "evergreen"
 
-	// DefaultConfigFile is the default configuration file for the web service and runner.
-	DefaultConfigFile = "smoke_config.yml"
+	// defaultConfigFile is the default configuration file for the web service and runner.
+	defaultConfigFile = "smoke_config.yml"
 
-	// DefaultTestFile contains definitions of endpoints to check.
-	DefaultTestFile = "smoke_test.yml"
+	// defaultTestFile contains definitions of endpoints to check.
+	defaultTestFile = "smoke_test.yml"
 
-	// UIPort is the local port the UI will listen on.
-	UIPort = "9090"
+	// uiPort is the local port the UI will listen on.
+	uiPort = "9090"
 
-	// APIPort is the local port the API will listen on.
-	APIPort = "9090"
+	// apiPort is the local port the API will listen on.
+	apiPort = "9090"
 
-	// URLPrefix is the localhost prefix for accessing local Evergreen.
-	URLPrefix = "http://localhost:"
+	// urlPrefix is the localhost prefix for accessing local Evergreen.
+	urlPrefix = "http://localhost:"
 )
 
 // StartEvergreenCommand starts the Evergreen web service and runner.
@@ -61,20 +63,26 @@ func (c *StartEvergreenCommand) Execute(_ []string) error {
 		return errors.Wrap(err, "error getting current directory")
 	}
 	if c.Binary == "" {
-		c.Binary = filepath.Join(wd, "scripts", DefaultBinaryName)
+		c.Binary = filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, defaultBinaryName)
 	}
 	if c.Conf == "" {
-		c.Conf = filepath.Join(wd, "scripts", DefaultConfigFile)
+		c.Conf = filepath.Join(wd, "scripts", defaultConfigFile)
 	}
 	web := exec.Command(c.Binary, "service", "web", "--conf", c.Conf)
 	web.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
-	web.Stdout = os.Stdout
-	web.Stderr = os.Stderr
+	webSender := send.NewWriterSender(send.MakeNative())
+	defer webSender.Close()
+	webSender.SetName("web.service")
+	web.Stdout = webSender
+	web.Stderr = webSender
 
 	runner := exec.Command(c.Binary, "service", "runner", "--conf", c.Conf)
 	runner.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
-	runner.Stdout = os.Stdout
-	runner.Stderr = os.Stderr
+	runnerSender := send.NewWriterSender(send.MakeNative())
+	defer runnerSender.Close()
+	runnerSender.SetName("runner")
+	runner.Stdout = runnerSender
+	runner.Stderr = runnerSender
 
 	if err := web.Start(); err != nil {
 		return errors.Wrap(err, "error starting web service")
@@ -97,8 +105,9 @@ func (c *StartEvergreenCommand) Execute(_ []string) error {
 
 	select {
 	case <-exit:
-		grip.Error("problem running Evergreen")
-		os.Exit(1)
+		err = errors.New("problem running Evergreen")
+		grip.Error(err)
+		return err
 	case <-interrupt:
 		grip.Info("received SIGINT, killing Evergreen")
 		if err := web.Process.Kill(); err != nil {
@@ -121,7 +130,7 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 	}
 
 	if c.TestFile == "" {
-		c.TestFile = filepath.Join(wd, "scripts", DefaultTestFile)
+		c.TestFile = filepath.Join(wd, "scripts", defaultTestFile)
 	}
 
 	defs, err := ioutil.ReadFile(c.TestFile)
@@ -141,7 +150,7 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 	attempts := 10
 	for i := 1; i <= attempts; i++ {
 		grip.Infof("checking if Evergreen is up (attempt %d of %d)", i, attempts)
-		_, err = client.Get(URLPrefix + UIPort)
+		_, err = client.Get(urlPrefix + uiPort)
 		if err != nil {
 			if i == attempts {
 				err = errors.Wrapf(err, "could not connect to Evergreen after %d attempts", attempts)
@@ -161,7 +170,7 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 	catcher := grip.NewSimpleCatcher()
 	for url, expected := range tests.UI {
 		grip.Infof("Getting endpoint '%s'", url)
-		resp, err := client.Get(URLPrefix + UIPort + url)
+		resp, err := client.Get(urlPrefix + uiPort + url)
 		if err != nil {
 			catcher.Add(errors.Errorf("error getting UI endpoint '%s'", url))
 		}
@@ -179,18 +188,16 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 	}
 	if catcher.HasErrors() {
 		grip.Error(catcher.String())
-		grip.Errorf("failed to get %d endpoints", catcher.Len())
-		os.Exit(1)
-	} else {
-		grip.Info("success: all endpoints accessible")
+		grip.ErrorWhenf(catcher.HasErrors(), "failed to get %d endpoints", catcher.Len())
+		return catcher.Resolve()
 	}
-
+	grip.Info("success: all endpoints accessible")
 	return nil
 }
 
 func setSenderNameToSmoke() {
 	sender := grip.GetSender()
-	sender.SetName("smoke test")
+	sender.SetName("evergreen.smoke")
 	if err := grip.SetSender(sender); err != nil {
 		grip.Error(errors.Wrap(err, "error setting sender"))
 	}
