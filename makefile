@@ -68,9 +68,9 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 
 # start rules for building services and clients
 ifeq ($(OS),Windows_NT)
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe $(clientBuildDir)/version
 else
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
+cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen $(clientBuildDir)/version
 endif
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)

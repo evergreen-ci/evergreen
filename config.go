@@ -262,6 +262,8 @@ type Settings struct {
 	ConfigDir           string                    `yaml:"configdir"`
 	ApiUrl              string                    `yaml:"api_url"`
 	AgentExecutablesDir string                    `yaml:"agentexecutablesdir"`
+	AgentStatusPort     int                       `yaml:"agent_status_port"`
+	AgentSmokeTest      bool                      `yaml:"agent_smoke_test"`
 	ClientBinariesDir   string                    `yaml:"client_binaries_dir"`
 	SuperUsers          []string                  `yaml:"superusers"`
 	Jira                JiraConfig                `yaml:"jira"`

@@ -156,8 +156,10 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 // Prepare the remote machine to run a task.
 func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
-	if logs, err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
-		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
+	if !settings.AgentSmokeTest {
+		if logs, err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
+			return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
+		}
 	}
 
 	// return early if we do not need to run the setup script
@@ -201,6 +203,11 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
 	}
+
+	if settings.AgentStatusPort > 0 {
+		agentCmdParts = append(agentCmdParts, fmt.Sprintf("--status_port='%d'", settings.AgentStatusPort))
+	}
+
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
 	cmdId := fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int())
