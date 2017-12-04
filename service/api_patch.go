@@ -137,6 +137,12 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, githubOauthToken string,
 		}
 	}
 
+	// write the patch content into a GridFS file under a new ObjectId after validating.
+	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(pr.PatchContent))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to write patch file to db")
+	}
+
 	// add the project config
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
@@ -186,12 +192,6 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, githubOauthToken string,
 	pairs = model.IncludePatchDependencies(project, pairs)
 
 	patchDoc.SyncVariantsTasks(model.TVPairsToVariantTasks(pairs))
-
-	// write the patch content into a GridFS file under a new ObjectId after validating.
-	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(pr.PatchContent))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to write patch file to db")
-	}
 
 	return patchDoc, nil
 }
