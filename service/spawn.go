@@ -8,17 +8,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/spawn"
-	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -140,19 +137,14 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
-	_ = MustHaveUser(r)
-	updateParams := struct {
-		Action   string `json:"action"`
-		HostId   string `json:"host_id"`
-		RDPPwd   string `json:"rdp_pwd"`
-		AddHours string `json:"add_hours"`
-	}{}
+	u := MustHaveUser(r)
+	updateParams := restModel.APISpawnHostModify{}
 
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	hostId := updateParams.HostId
+	hostId := string(updateParams.HostID)
 	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
@@ -162,6 +154,14 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("No host with id %v found", hostId))
 		return
 	}
+
+	if u.Username() != h.StartedBy {
+		if !auth.IsSuperUser(uis.Settings.SuperUsers, u) {
+			uis.LoggedError(w, r, http.StatusUnauthorized, errors.New("not authorized to modify this host"))
+			return
+		}
+	}
+
 	// determine what action needs to be taken
 	switch updateParams.Action {
 	case HostTerminate:
@@ -169,57 +169,44 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
 			return
 		}
-		if h.Status == evergreen.HostUninitialized {
-			if err := h.SetTerminated(); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
-			uis.WriteJSON(w, http.StatusOK, "host terminated")
-			return
-		}
-		cloudHost, err := providers.GetCloudHost(h, &uis.Settings)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		if err = cloudHost.TerminateInstance(); err != nil {
+		if err := spawn.TerminateHost(h, evergreen.GetEnvironment().Settings()); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		uis.WriteJSON(w, http.StatusOK, "host terminated")
 		return
+
 	case HostPasswordUpdate:
-		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.Settings, h, updateParams.RDPPwd)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error constructing host RDP password"))
+		pwd := string(updateParams.RDPPwd)
+		if !h.Distro.IsWindows() {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
 		}
-
-		// update RDP and sshd password
-		if err = pwdUpdateCmd.Run(context.TODO()); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host RDP password"))
+		if !spawn.ValidateRDPPassword(pwd) {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
+			return
+		}
+		if err := spawn.SetHostRDPPassword(context.TODO(), h, pwd); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host RDP password successfully updated."))
 		uis.WriteJSON(w, http.StatusOK, "Successfully updated host password")
+		return
+
 	case HostExpirationExtension:
-		addtHours, err := strconv.Atoi(updateParams.AddHours)
+		addtHours, err := strconv.Atoi(string(updateParams.AddHours))
 		if err != nil {
 			http.Error(w, "bad hours param", http.StatusBadRequest)
 			return
 		}
-		// ensure this request is valid
-		addtHourDuration := time.Duration(addtHours) * time.Hour
-		futureExpiration := h.ExpirationTime.Add(addtHourDuration)
-		expirationExtensionDuration := futureExpiration.Sub(time.Now()).Hours() // nolint
-		if expirationExtensionDuration > MaxExpirationDurationHours {
-			http.Error(w, fmt.Sprintf("Can not extend %v expiration by %v hours. "+
-				"Maximum extension is limited to %v hours", hostId,
-				int(expirationExtensionDuration), MaxExpirationDurationHours), http.StatusBadRequest)
+		var futureExpiration time.Time
+		futureExpiration, err = spawn.MakeExtendedHostExpiration(h, time.Duration(addtHours)*time.Hour)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
-
 		}
-		if err = h.SetExpirationTime(futureExpiration); err != nil {
+		if err := h.SetExpirationTime(futureExpiration); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
@@ -228,51 +215,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			futureExpiration.Format(time.RFC850))))
 		uis.WriteJSON(w, http.StatusOK, "Successfully extended host expiration time")
 		return
+
 	default:
 		http.Error(w, fmt.Sprintf("Unrecognized action: %v", updateParams.Action), http.StatusBadRequest)
 		return
 	}
-}
-
-// constructPwdUpdateCommand returns a RemoteCommand struct used to
-// set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
-	password string) (*subprocess.RemoteCommand, error) {
-
-	cloudHost, err := providers.GetCloudHost(hostObj, settings)
-	if err != nil {
-		return nil, err
-	}
-
-	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
-	if err != nil {
-		return nil, err
-	}
-
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return nil, err
-	}
-
-	stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-	defer stderr.Close()
-	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-	defer stdout.Close()
-
-	updatePwdCmd := fmt.Sprintf("net user %v %v && sc config "+
-		"sshd obj= '.\\%v' password= \"%v\"", hostObj.User, password,
-		hostObj.User, password)
-
-	// construct the required termination command
-	remoteCommand := &subprocess.RemoteCommand{
-		CmdString:       updatePwdCmd,
-		Stdout:          stdout,
-		Stderr:          stderr,
-		LoggingDisabled: true,
-		RemoteHostName:  hostInfo.Hostname,
-		User:            hostObj.User,
-		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:      false,
-	}
-	return remoteCommand, nil
 }

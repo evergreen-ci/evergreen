@@ -1,9 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
-	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"time"
@@ -13,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -59,6 +57,10 @@ type HostListCommand struct {
 }
 
 func (cmd *HostListCommand) Execute(_ []string) error {
+	sender := send.MakeJSONConsoleLogger()
+	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
+	grip.CatchWarning(grip.SetSender(sender))
+
 	if cmd.All == cmd.Mine {
 		return errors.New("Must specify exactly one of --all or --mine")
 	}
@@ -121,38 +123,29 @@ type HostTerminateCommand struct {
 
 // Execute terminates a given host
 func (cmd *HostTerminateCommand) Execute(_ []string) error {
+	sender := send.MakeJSONConsoleLogger()
+	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
+	grip.CatchWarning(grip.SetSender(sender))
+
 	if cmd.HostID == "" {
 		return errors.New("host ID cannot be blank")
 	}
 
 	ctx := context.Background()
-	client, _, _, err := getAPIClients(ctx, cmd.GlobalOpts)
+	client, settings, err := getAPIV2Client(ctx, cmd.GlobalOpts)
 	if err != nil {
 		return err
 	}
 
-	data := struct {
-		HostID string `json:"host_id"`
-		Action string `json:"action"`
-	}{cmd.HostID, "terminate"}
+	client.SetAPIUser(settings.User)
+	client.SetAPIKey(settings.APIKey)
 
-	rPipe, wPipe := io.Pipe()
-	encoder := json.NewEncoder(wPipe)
-	go func() {
-		grip.Warning(encoder.Encode(data))
-		grip.Warning(wPipe.Close())
-	}()
-	defer rPipe.Close()
-
-	resp, err := client.doReq("POST", "spawn", -1, rPipe)
+	err = client.TerminateSpawnHost(ctx, cmd.HostID)
 	if err != nil {
 		return err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	grip.Info(body)
+
+	grip.Infof("Terminated host '%s'", cmd.HostID)
 
 	return nil
 }

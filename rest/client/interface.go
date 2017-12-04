@@ -119,6 +119,9 @@ type Communicator interface {
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, string, string) (*restmodel.APIHost, error)
+	TerminateSpawnHost(context.Context, string) error
+	ChangeSpawnHostPassword(context.Context, string, string) error
+	ExtendSpawnHostExpiration(context.Context, string, int) error
 	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
 
 	// Fetch list of distributions evergreen can spawn

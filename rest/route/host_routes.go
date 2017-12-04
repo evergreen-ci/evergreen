@@ -2,13 +2,19 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -327,4 +333,250 @@ func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	return ResponseData{
 		Result: []model.Model{hostModel},
 	}, nil
+}
+
+func getHostTerminateRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostTerminateHandler{},
+			},
+		},
+	}
+}
+
+type hostTerminateHandler struct {
+	hostID string
+}
+
+func (h *hostTerminateHandler) Handler() RequestHandler {
+	return &hostTerminateHandler{}
+}
+
+func (h *hostTerminateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	var err error
+	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
+
+	return err
+}
+
+func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+
+	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
+	if err != nil {
+		return ResponseData{}, err
+	}
+
+	if host.Status == evergreen.HostTerminated {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("Host %s is already terminated", host.Id),
+		}
+
+	} else if host.Status == evergreen.HostUninitialized {
+		if err := sc.SetHostStatus(host, evergreen.HostTerminated); err != nil {
+			return ResponseData{}, &rest.APIError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+		}
+
+	} else {
+		if err := sc.TerminateHost(host); err != nil {
+			return ResponseData{}, &rest.APIError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+		}
+	}
+
+	return ResponseData{}, nil
+}
+
+func getHostChangeRDPPasswordRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostChangeRDPPasswordHandler{},
+			},
+		},
+	}
+}
+
+type hostChangeRDPPasswordHandler struct {
+	hostID      string
+	rdpPassword string
+}
+
+func (h *hostChangeRDPPasswordHandler) Handler() RequestHandler {
+	return &hostChangeRDPPasswordHandler{}
+}
+
+func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	hostModify := model.APISpawnHostModify{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
+	}
+
+	var err error
+	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
+	if err != nil {
+		return err
+	}
+
+	h.rdpPassword = string(hostModify.RDPPwd)
+	if !spawn.ValidateRDPPassword(h.rdpPassword) {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "invalid password",
+		}
+	}
+
+	return nil
+}
+
+func (h *hostChangeRDPPasswordHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+
+	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
+	if err != nil {
+		return ResponseData{}, err
+	}
+
+	if !host.Distro.IsWindows() {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "RDP passwords can only be set on Windows hosts",
+		}
+	}
+	if host.Status != evergreen.HostRunning {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "RDP passwords can only be set on running hosts",
+		}
+	}
+	if err := spawn.SetHostRDPPassword(ctx, host, h.rdpPassword); err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}
+	}
+
+	return ResponseData{}, nil
+}
+
+func getHostExtendExpirationRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        http.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &hostExtendExpirationHandler{},
+			},
+		},
+	}
+}
+
+type hostExtendExpirationHandler struct {
+	hostID   string
+	addHours time.Duration
+}
+
+func (h *hostExtendExpirationHandler) Handler() RequestHandler {
+	return &hostExtendExpirationHandler{}
+}
+
+func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	hostModify := model.APISpawnHostModify{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &hostModify); err != nil {
+		return err
+	}
+
+	var err error
+	h.hostID, err = validateHostID(mux.Vars(r)["host_id"])
+	if err != nil {
+		return err
+	}
+
+	addHours, err := strconv.Atoi(string(hostModify.AddHours))
+	if err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "expiration not a number",
+		}
+	}
+	h.addHours = time.Duration(addHours) * time.Hour
+
+	if h.addHours <= 0 {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "must add more than 0 hours to expiration",
+		}
+	}
+	if h.addHours > spawn.MaxExpirationDurationHours {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("cannot add more than %s", spawn.MaxExpirationDurationHours.String()),
+		}
+	}
+
+	return nil
+}
+
+func (h *hostExtendExpirationHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+
+	host, err := sc.FindHostByIdWithOwner(h.hostID, u)
+	if err != nil {
+		return ResponseData{}, err
+	}
+	if host.Status == evergreen.HostTerminated {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "cannot extend expiration of a terminated host",
+		}
+	}
+
+	var newExp time.Time
+	newExp, err = spawn.MakeExtendedHostExpiration(host, h.addHours)
+	if err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    err.Error(),
+		}
+	}
+
+	if err := sc.SetHostExpirationTime(host, newExp); err != nil {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    err.Error(),
+		}
+	}
+
+	return ResponseData{}, nil
+}
+
+func validateHostID(hostID string) (string, error) {
+	if strings.TrimSpace(hostID) == "" {
+		return "", &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "missing/empty host id",
+		}
+	}
+
+	return hostID, nil
 }

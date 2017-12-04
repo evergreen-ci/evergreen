@@ -1,16 +1,17 @@
 package data
 
 import (
-	"errors"
-	"net/http"
-
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/spawn"
+	"github.com/pkg/errors"
 )
 
 // DBHostConnector is a struct that implements the Host related methods
@@ -48,6 +49,10 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 	return h, nil
 }
 
+func (dbc *DBConnector) FindHostByIdWithOwner(hostID string, user auth.User) (*host.Host, error) {
+	return findHostByIdWithOwner(dbc, hostID, user)
+}
+
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
 func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, user *user.DBUser) (*host.Host, error) {
@@ -78,6 +83,22 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userDat
 	}
 
 	return intentHost, nil
+}
+
+func (hc *DBHostConnector) SetHostStatus(host *host.Host, status string) error {
+	return host.SetStatus(status)
+}
+
+func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
+	if err := host.SetExpirationTime(newExp); err != nil {
+		return errors.Wrap(err, "Error extending host expiration time")
+	}
+
+	return nil
+}
+
+func (hc *DBHostConnector) TerminateHost(host *host.Host) error {
+	return errors.WithStack(spawn.TerminateHost(host, evergreen.GetEnvironment().Settings()))
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -196,4 +217,69 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userD
 	hc.CachedHosts = append(hc.CachedHosts, *intentHost)
 
 	return intentHost, nil
+}
+
+func (hc *MockHostConnector) SetHostStatus(host *host.Host, status string) error {
+	for i, _ := range hc.CachedHosts {
+		if hc.CachedHosts[i].Id == host.Id {
+			hc.CachedHosts[i].Status = status
+			host.Status = status
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
+func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
+	for i, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			hc.CachedHosts[i].ExpirationTime = newExp
+			host.ExpirationTime = newExp
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
+func (hc *MockHostConnector) TerminateHost(host *host.Host) error {
+	for _, h := range hc.CachedHosts {
+		if h.Id == host.Id {
+			return nil
+		}
+	}
+
+	return errors.New("can't find host")
+}
+
+func (dbc *MockConnector) FindHostByIdWithOwner(hostID string, user auth.User) (*host.Host, error) {
+	return findHostByIdWithOwner(dbc, hostID, user)
+}
+
+func findHostByIdWithOwner(c Connector, hostID string, user auth.User) (*host.Host, error) {
+	host, err := c.FindHostById(hostID)
+	if err != nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error fetching host information",
+		}
+	}
+	if host == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "host does not exist",
+		}
+	}
+
+	if user.Username() != host.StartedBy {
+		if !auth.IsSuperUser(c.GetSuperUsers(), user) {
+			return nil, &rest.APIError{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "not authorized to modify host",
+			}
+		}
+	}
+
+	return host, nil
 }

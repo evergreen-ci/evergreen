@@ -319,6 +319,18 @@ func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName strin
 	return mockHost, nil
 }
 
+func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
+	return errors.New("(*Mock) TerminateSpawnHost is not implemented")
+}
+
+func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
+	return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
+}
+
+func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
+	return errors.New("(*Mock) ExtendSpawnHostExpiration is not implemented")
+}
+
 // GetHosts will return an array with a single mock host
 func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
 	hosts := make([]*model.APIHost, 1)
