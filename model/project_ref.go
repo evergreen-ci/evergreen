@@ -162,6 +162,26 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+func FindOneProjectRefByRepo(owner, repoName string) (*ProjectRef, error) {
+	projectRef := ProjectRef{}
+
+	err := db.FindOne(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefOwnerKey: owner,
+			ProjectRefRepoKey:  repoName,
+		},
+		db.NoProjection,
+		db.NoSort,
+		&projectRef,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &projectRef, err
+}
+
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
 func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
