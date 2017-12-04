@@ -111,3 +111,22 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 	}
 	return summaries, nil
 }
+
+func GetPatchSummaries(patchContent string) ([]patch.Summary, error) {
+	summaries := []patch.Summary{}
+	if patchContent != "" {
+		gitOutput, err := GitApplyNumstat(patchContent)
+		if err != nil {
+			return nil, errors.Wrap(err, "couldn't validate patch")
+		}
+		if gitOutput == nil {
+			return nil, errors.New("couldn't validate patch: git apply --numstat returned empty")
+		}
+
+		summaries, err = ParseGitSummary(gitOutput)
+		if err != nil {
+			return nil, errors.Wrap(err, "couldn't validate patch")
+		}
+	}
+	return summaries, nil
+}

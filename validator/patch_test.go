@@ -162,14 +162,14 @@ func TestGetPatchedProject(t *testing.T) {
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
 				configPatch := resetPatchSetup(t, configFilePath)
-				project, err := GetPatchedProject(configPatch, patchTestConfig)
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(t)
-				project, err := GetPatchedProject(configPatch, patchTestConfig)
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
@@ -187,12 +187,12 @@ func TestFinalizePatch(t *testing.T) {
 		t, func() {
 			configPatch := resetPatchSetup(t, configFilePath)
 			Convey("a patched config should drive version creation", func() {
-				project, err := GetPatchedProject(configPatch, patchTestConfig)
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, patchTestConfig)
+				version, err := model.FinalizePatch(configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				// ensure the relevant builds/tasks were created
@@ -209,12 +209,12 @@ func TestFinalizePatch(t *testing.T) {
 				"drive version creation", func() {
 				patchedConfigFile := "fakeInPatchSoNotPatched"
 				configPatch := resetPatchSetup(t, patchedConfigFile)
-				project, err := GetPatchedProject(configPatch, patchTestConfig)
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, patchTestConfig)
+				version, err := model.FinalizePatch(configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(err, ShouldBeNil)

@@ -179,7 +179,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ver, err := model.FinalizePatch(projCtx.Patch, &uis.Settings)
+		ver, err := model.FinalizePatch(projCtx.Patch, uis.Settings.Credentials["github"])
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))

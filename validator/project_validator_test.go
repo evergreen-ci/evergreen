@@ -9,9 +9,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/model/version"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1236,35 +1238,29 @@ func TestValidatePluginCommands(t *testing.T) {
 }
 
 func TestCheckProjectSyntax(t *testing.T) {
-	Convey("When validating a project's syntax", t, func() {
-		Convey("if the project passes all of the validation funcs, no errors"+
-			" should be returned", func() {
-			distros := []distro.Distro{
-				{Id: "test-distro-one"},
-				{Id: "test-distro-two"},
-			}
+	assert := assert.New(t) //nolint
+	assert.NoError(db.Clear(version.Collection))
 
-			err := testutil.CreateTestLocalConfig(projectValidatorConf, "project_test", "")
-			So(err, ShouldBeNil)
+	distros := []distro.Distro{
+		{Id: "test-distro-one"},
+		{Id: "test-distro-two"},
+	}
+	for _, d := range distros {
+		assert.NoError(d.Insert())
+	}
 
-			projectRef, err := model.FindOneProjectRef("project_test")
-			So(err, ShouldBeNil)
+	assert.NoError(testutil.CreateTestLocalConfig(projectValidatorConf, "project_test", ""))
+	projectRef, err := model.FindOneProjectRef("project_test")
+	assert.NoError(err)
 
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
+	project, err := model.FindProject("", projectRef)
+	assert.NoError(err)
 
-			project, err := model.FindProject("", projectRef)
-			So(err, ShouldBeNil)
-			verrs, err := CheckProjectSyntax(project)
-			So(err, ShouldBeNil)
-			So(verrs, ShouldResemble, []ValidationError{})
-		})
+	verrs, err := CheckProjectSyntax(project)
+	assert.NoError(err)
+	assert.Equal([]ValidationError{}, verrs)
 
-		Reset(func() {
-			So(db.Clear(distro.Collection), ShouldBeNil)
-		})
-	})
+	assert.NoError(db.Clear(distro.Collection))
 }
 
 func TestCheckProjectSemantics(t *testing.T) {
