@@ -15,8 +15,14 @@ const SizeLimit = 1024 * 1024 * 100
 
 // VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
 type VariantTasks struct {
-	Variant string
-	Tasks   []string
+	Variant      string
+	Tasks        []string
+	DisplayTasks []DisplayTask
+}
+
+type DisplayTask struct {
+	Name      string
+	ExecTasks []string
 }
 
 // Patch stores all details related to a patch request

@@ -65,13 +65,8 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		event.LogTaskDeactivated(taskId, caller)
 	}
 
-	// if this is part of a display task, update the display task's status
 	if t.IsPartOfDisplay() {
-		err := t.DisplayTask.UpdateDisplayTask()
-		if err != nil {
-			return err
-		}
-		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+		return updateDisplayTask(t)
 	}
 
 	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskId, active))
@@ -619,13 +614,8 @@ func MarkStart(taskId string) error {
 		}
 	}
 
-	// if this is part of a display task, update the display task's status
 	if t.IsPartOfDisplay() {
-		err = t.DisplayTask.UpdateDisplayTask()
-		if err != nil {
-			return errors.Wrap(err, "error updating display task")
-		}
-		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+		return updateDisplayTask(t)
 	}
 
 	// update the cached version of the task, in its build document
@@ -640,13 +630,8 @@ func MarkTaskUndispatched(t *task.Task) error {
 	// the task was successfully dispatched, log the event
 	event.LogTaskUndispatched(t.Id, t.HostId)
 
-	// if this is part of a display task, update the display task's status
 	if t.IsPartOfDisplay() {
-		err := t.DisplayTask.UpdateDisplayTask()
-		if err != nil {
-			return err
-		}
-		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+		return updateDisplayTask(t)
 	}
 
 	// update the cached version of the task in its related build document
@@ -665,13 +650,8 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 	// the task was successfully dispatched, log the event
 	event.LogTaskDispatched(t.Id, hostId)
 
-	// if this is part of a display task, update the display task's status
 	if t.IsPartOfDisplay() {
-		err := t.DisplayTask.UpdateDisplayTask()
-		if err != nil {
-			return err
-		}
-		return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+		return updateDisplayTask(t)
 	}
 
 	// update the cached version of the task in its related build document
@@ -679,6 +659,14 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 		return errors.Wrapf(err, "error updating task cache in build %s", t.BuildId)
 	}
 	return nil
+}
+
+func updateDisplayTask(t *task.Task) error {
+	err := t.DisplayTask.UpdateDisplayTask()
+	if err != nil {
+		return errors.Wrap(err, "error updating display task")
+	}
+	return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
 }
 
 type RestartTaskOptions struct {

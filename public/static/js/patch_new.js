@@ -67,16 +67,9 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   // checkboxes in the main panel.
   $scope.getActiveTasks = function(){
     var selectedVariants = $scope.selectedVariants();
-    var tasksInSelectedVariants = [];
 
     // return the union of the set of tasks shared by all of them, sorted by name
-    selectedVariants.forEach(function(bv) {
-      for (var taskName in bv.tasks) {
-        if (!bv.execTasks.hasOwnProperty(taskName)) {
-          tasksInSelectedVariants.push(taskName);
-        }
-      }
-    });
+    var tasksInSelectedVariants = _.uniq(_.flatten(_.map(_.pluck(selectedVariants, "tasks"), _.keys)));
     return tasksInSelectedVariants.sort();
   }
 
@@ -105,10 +98,11 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       "description": $scope.patch.Description,
       "variants_tasks": _.filter(_.map($scope.variants, function(v){
         var tasks = [];
+        var displayTasks = [];
         for (var name in v.tasks) {
           if (v.tasks[name].checked) {
-            if (v.displayTasks[name]) {
-              tasks = tasks.concat(v.displayTasks[name]);
+            if (v.tasks[name].displayOnly) {
+              displayTasks.push({ "name": name, "execTasks": v.tasks[name].execTasks});
             }
             else {
               tasks.push(name);
@@ -118,6 +112,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
         return {
           variant: v.id,
           tasks: tasks,
+          displayTasks: displayTasks
         };
       }), function(v){return v.tasks.length > 0})
     }
@@ -139,26 +134,27 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       return v;
     })
     $scope.variants = _.sortBy(_.map(variantsFilteredTasks, function(v, variantId){
-      var displayTasks = {};
+      var tasks = {};
       var execTasks = {};
       if (v.DisplayTasks && v.DisplayTasks.length > 0) {
-        v.DisplayTasks.forEach(function(displayTask) {
-          displayTask.ExecutionTasks.forEach(function(execTask) {
-            execTasks[execTask] = displayTask.Name;
+        v.DisplayTasks.forEach(function(task) {
+          tasks[task.Name] = {checked: false, displayOnly: true, execTasks: []};
+          task.ExecutionTasks.forEach(function(execTask) {
+            execTasks[execTask] = "";
+            tasks[task.Name].execTasks.push(execTask);
           });
-          displayTasks[displayTask.Name] = displayTask.ExecutionTasks;
-          v.Tasks.push({"Name": displayTask.Name});
         });
       }
+      v.Tasks.forEach(function(task) {
+        if (!execTasks.hasOwnProperty(task.Name)) {
+          tasks[task.Name] = {checked: false, displayOnly: false};
+        }
+      });
       return {
         id: variantId,
         checked:false,
         name: v.DisplayName,
-        displayTasks: displayTasks,
-        execTasks: execTasks,
-        tasks : _.object(_.map(_.pluck(v.Tasks, "Name"), function(t){
-          return [t, {checked:false}];
-        }))
+        tasks: tasks
       };
     }), "name");
 
@@ -168,7 +164,6 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     }
 
     var allUniqueTaskNames = _.uniq(_.flatten(_.map(_.pluck($scope.variants, "tasks"), _.keys)));
-    allUniqueTaskNames = allUniqueTaskNames.concat(_.uniq(_.flatten(_.map(_.pluck($scope.variants, "displayTasks"), _.keys))));
 
     $scope.tasks = _.object(_.map(allUniqueTaskNames, function(taskName){
       // create a getter/setter for the state of the task
@@ -216,6 +211,16 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
 
   $scope.setPatchInfo();
 
+  var updateExistingTasks = function(task) {
+    if (task) {
+      task.checked = true;
+      if(!!patch.Version){
+        // if the task was already created, we can't uncheck the box
+        task.disabled = true;
+      }
+    }
+  }
+
   // Populate the checkboxes in the UI according to the variants and tasks that
   // were specified on the command line, or that may have already been created
   // if the patch was finalized already.
@@ -225,11 +230,12 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       var variantIndex = _.findIndex($scope.variants, function(x){return x.id == patch.VariantsTasks[i].Variant});
       if(variantIndex >= 0 ){
         _.each(vt.Tasks, function(x){
-          $scope.variants[variantIndex].tasks[x] = {checked:true};
-          if(!!patch.Version){
-            // if the task was already created, we can't uncheck the box
-            $scope.variants[variantIndex].tasks[x].disabled = true;
-          }
+          var task = $scope.variants[variantIndex].tasks[x];
+          updateExistingTasks(task);
+        })
+        _.each(vt.DisplayTasks, function(x){
+          var dt = $scope.variants[variantIndex].tasks[x.Name];
+          updateExistingTasks(dt);
         })
       }
     }

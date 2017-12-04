@@ -267,11 +267,12 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	pairs, displayTasks := extractDisplayTasks(pairs, apiRequest.Tasks, apiRequest.BuildVariants, project)
 
 	// update variant and tasks to include dependencies
 	pairs = model.IncludePatchDependencies(project, pairs)
 
-	patchDoc.SyncVariantsTasks(model.TVPairsToVariantTasks(pairs))
+	patchDoc.SyncVariantsTasks(model.TVPairsToVariantTasks(pairs, displayTasks))
 
 	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error inserting patch"))
@@ -286,6 +287,23 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
+}
+
+func extractDisplayTasks(pairs []model.TVPair, tasks []string, variants []string,
+	p *model.Project) ([]model.TVPair, []model.TVPair) {
+	displayTasks := []model.TVPair{}
+	for _, bv := range p.BuildVariants {
+		if !util.StringSliceContains(variants, bv.Name) {
+			continue
+		}
+		for _, dt := range bv.DisplayTasks {
+			if util.StringSliceContains(tasks, dt.Name) {
+				displayTasks = append(displayTasks, model.TVPair{Variant: bv.Name, TaskName: dt.Name})
+			}
+		}
+	}
+
+	return pairs, displayTasks
 }
 
 // Get the patch with the specified request it
