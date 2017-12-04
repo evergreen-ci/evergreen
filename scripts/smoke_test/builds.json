@@ -14,7 +14,7 @@
 	"activated" : true,
 	"activated_by" : "",
 	"activated_time" : ISODate("2017-12-05T17:26:36.283Z"),
-	"order" : 9243,
+	"order" : 1,
 	"tasks" : [
 		{
 			"id" : "sys_perf_linux_3_node_replSet_initialsync_initialsync_MMAPv1_40dc86136f85f88e1782a1c65b49bfba02757009_17_12_05_17_20_27",

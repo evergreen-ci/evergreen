@@ -6,9 +6,6 @@ database:
 
 configdir: "config_test"
 client_binaries_dir: "clients"
-credentials: {
-  github: "github_token",
-}
 
 api_url: http://localhost:8080
 api:

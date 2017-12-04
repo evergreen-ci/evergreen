@@ -1,0 +1,16 @@
+{
+        "_id" : "global",
+        "banner" : "",
+        "service_flags" : {
+                "task_dispatch_disabled" : false,
+                "hostinit_disabled" : true,
+                "monitor_disabled" : true,
+                "notifications_disabled" : true,
+                "alerts_disabled" : true,
+                "taskrunner_disabled" : true,
+                "repotracker_disabled" : false,
+                "scheduler_disabled" : false,
+                "github_pr_testing_disabled" : true
+        },
+        "banner_theme" : "information"
+}
