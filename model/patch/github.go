@@ -35,8 +35,6 @@ type Intent interface {
 	// ID returns an identifier such that the tuple
 	// (intent type, ID()) is unique in the collection.
 	ID() string
-
-	NewPatch() (*Patch, error)
 }
 
 // GithubIntent represents an intent to create a patch build as a result of a
