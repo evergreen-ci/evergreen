@@ -1,9 +1,11 @@
 package patch
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -35,12 +37,15 @@ type Intent interface {
 	// ID returns an identifier such that the tuple
 	// (intent type, ID()) is unique in the collection.
 	ID() string
+
+	// NewPatch creates a patch from the intent
+	NewPatch() *Patch
 }
 
-// GithubIntent represents an intent to create a patch build as a result of a
+// githubIntent represents an intent to create a patch build as a result of a
 // PullRequestEvent webhook. These intents are processed asynchronously by an
 // amboy queue.
-type GithubIntent struct {
+type githubIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
 	DocumentID bson.ObjectId `bson:"_id"`
 
@@ -78,17 +83,17 @@ type GithubIntent struct {
 // BSON fields for the patches
 // nolint
 var (
-	documentIDKey  = bsonutil.MustHaveTag(GithubIntent{}, "DocumentID")
-	msgIDKey       = bsonutil.MustHaveTag(GithubIntent{}, "MsgID")
-	createdAtKey   = bsonutil.MustHaveTag(GithubIntent{}, "CreatedAt")
-	repoNameKey    = bsonutil.MustHaveTag(GithubIntent{}, "RepoName")
-	prNumberKey    = bsonutil.MustHaveTag(GithubIntent{}, "PRNumber")
-	userKey        = bsonutil.MustHaveTag(GithubIntent{}, "User")
-	baseHashKey    = bsonutil.MustHaveTag(GithubIntent{}, "BaseHash")
-	urlKey         = bsonutil.MustHaveTag(GithubIntent{}, "URL")
-	processedKey   = bsonutil.MustHaveTag(GithubIntent{}, "Processed")
-	processedAtKey = bsonutil.MustHaveTag(GithubIntent{}, "ProcessedAt")
-	intentTypeKey  = bsonutil.MustHaveTag(GithubIntent{}, "IntentType")
+	documentIDKey  = bsonutil.MustHaveTag(githubIntent{}, "DocumentID")
+	msgIDKey       = bsonutil.MustHaveTag(githubIntent{}, "MsgID")
+	createdAtKey   = bsonutil.MustHaveTag(githubIntent{}, "CreatedAt")
+	repoNameKey    = bsonutil.MustHaveTag(githubIntent{}, "RepoName")
+	prNumberKey    = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
+	userKey        = bsonutil.MustHaveTag(githubIntent{}, "User")
+	baseHashKey    = bsonutil.MustHaveTag(githubIntent{}, "BaseHash")
+	urlKey         = bsonutil.MustHaveTag(githubIntent{}, "URL")
+	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
+	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
+	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
 // NewGithubIntent return a new github patch intent.
@@ -112,7 +117,7 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 		return nil, errors.Errorf("URL does not appear valid (%s)", url)
 	}
 
-	return &GithubIntent{
+	return &githubIntent{
 		DocumentID: bson.NewObjectId(),
 		MsgID:      msgDeliveryID,
 		RepoName:   repoName,
@@ -125,11 +130,15 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 }
 
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
-func (g *GithubIntent) SetProcessed() error {
+func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
+	g.ProcessedAt = time.Now()
 	return updateOneIntent(
 		bson.M{documentIDKey: g.DocumentID},
-		bson.M{"$set": bson.M{processedKey: g.Processed}},
+		bson.M{"$set": bson.M{
+			processedKey:   g.Processed,
+			processedAtKey: g.ProcessedAt,
+		}},
 	)
 }
 
@@ -143,17 +152,17 @@ func updateOneIntent(query interface{}, update interface{}) error {
 }
 
 // IsProcessed returns whether a patch exists for this intent.
-func (g *GithubIntent) IsProcessed() bool {
+func (g *githubIntent) IsProcessed() bool {
 	return g.Processed
 }
 
 // GetType returns the patch intent, e.g., GithubIntentType.
-func (g *GithubIntent) GetType() string {
+func (g *githubIntent) GetType() string {
 	return g.IntentType
 }
 
 // Insert inserts a patch intent in the database.
-func (g *GithubIntent) Insert() error {
+func (g *githubIntent) Insert() error {
 	g.CreatedAt = time.Now()
 	err := db.Insert(IntentCollection, g)
 	if err != nil {
@@ -164,16 +173,34 @@ func (g *GithubIntent) Insert() error {
 	return nil
 }
 
-func (g *GithubIntent) ID() string {
+func (g *githubIntent) ID() string {
 	return g.MsgID
 }
 
-// FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
-func FindUnprocessedGithubIntents() ([]*GithubIntent, error) {
-	var intents []*GithubIntent
+// FindUnprocessedgithubIntents finds all patch intents that have not yet been processed.
+func FindUnprocessedgithubIntents() ([]*githubIntent, error) {
+	var intents []*githubIntent
 	err := db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: false, intentTypeKey: GithubIntentType}), &intents)
 	if err != nil {
-		return []*GithubIntent{}, err
+		return []*githubIntent{}, err
 	}
 	return intents, nil
+}
+
+func (g *githubIntent) NewPatch() *Patch {
+	repo := strings.Split(g.RepoName, "/")
+	patchDoc := &Patch{
+		Id:          bson.NewObjectId(),
+		Description: fmt.Sprintf("%s pull request #%d", g.RepoName, g.PRNumber),
+		//Author:      "",
+		Githash: g.BaseHash,
+		Status:  evergreen.PatchCreated,
+		GithubPatchData: GithubPatch{
+			PRNumber:   g.PRNumber,
+			Owner:      repo[0],
+			Repository: repo[1],
+			Author:     g.User,
+		},
+	}
+	return patchDoc
 }

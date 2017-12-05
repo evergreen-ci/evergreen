@@ -52,17 +52,17 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
-	GithubIntent, ok := intent.(*GithubIntent)
+	githubIntent, ok := intent.(*githubIntent)
 	s.True(ok)
-	s.Equal("4", GithubIntent.MsgID)
-	s.Equal(s.repo, GithubIntent.RepoName)
-	s.Equal(s.pr, GithubIntent.PRNumber)
-	s.Equal(s.user, GithubIntent.User)
-	s.Equal(s.hash, GithubIntent.BaseHash)
-	s.Equal(s.url, GithubIntent.URL)
-	s.Zero(GithubIntent.ProcessedAt)
+	s.Equal("4", githubIntent.MsgID)
+	s.Equal(s.repo, githubIntent.RepoName)
+	s.Equal(s.pr, githubIntent.PRNumber)
+	s.Equal(s.user, githubIntent.User)
+	s.Equal(s.hash, githubIntent.BaseHash)
+	s.Equal(s.url, githubIntent.URL)
+	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
-	s.Equal(GithubIntentType, intent.GetType())
+	s.Equal(githubIntentType, intent.GetType())
 }
 
 func (s *GithubSuite) TestInsert() {
@@ -71,7 +71,7 @@ func (s *GithubSuite) TestInsert() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	intents, err := FindUnprocessedGithubIntents()
+	intents, err := FindUnprocessedgithubIntents()
 	s.NoError(err)
 	s.Len(intents, 1)
 
@@ -80,7 +80,7 @@ func (s *GithubSuite) TestInsert() {
 	s.Equal(s.hash, found.BaseHash)
 	s.Equal(s.url, found.URL)
 	s.False(found.IsProcessed())
-	s.Equal(GithubIntentType, found.GetType())
+	s.Equal(githubIntentType, found.GetType())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
@@ -90,44 +90,44 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(intent.Insert())
 	s.NoError(intent.SetProcessed())
 
-	found, err := FindUnprocessedGithubIntents()
+	found, err := FindUnprocessedgithubIntents()
 	s.NoError(err)
 	s.Len(found, 0)
 
-	var intents []GithubIntent
+	var intents []githubIntent
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.hash, intents[0].BaseHash)
 	s.Equal(s.url, intents[0].URL)
 	s.True(intents[0].IsProcessed())
-	s.Equal(GithubIntentType, intents[0].GetType())
+	s.Equal(githubIntentType, intents[0].GetType())
 }
 
 func (s *GithubSuite) FindUnprocessedGithubIntents() {
-	intents := []GithubIntent{
-		GithubIntent{
+	intents := []githubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{
+		githubIntent{
 			Processed: true,
 		},
-		GithubIntent{},
-		GithubIntent{},
-		GithubIntent{},
+		githubIntent{},
+		githubIntent{},
+		githubIntent{},
 	}
 
 	for _, intent := range intents {
 		s.NoError(intent.Insert())
 	}
 
-	found, err := FindUnprocessedGithubIntents()
+	found, err := FindUnprocessedgithubIntents()
 	s.NoError(err)
 	s.Len(found, 3)
 }

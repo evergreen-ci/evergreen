@@ -43,10 +43,11 @@ type Patch struct {
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
-	PRNumber     int    `bson:"pr_number"`
-	Organization string `bson:"organization"`
-	Repository   string `bson:"repository"`
-	Author       string `bson:"author"`
+	PRNumber   int    `bson:"pr_number"`
+	Owner      string `bson:"owner"`
+	Repository string `bson:"repository"`
+	Author     string `bson:"author"`
+	PatchURL   string `bson:"patch_url"`
 }
 
 // ModulePatch stores request details for a patch
