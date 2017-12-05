@@ -40,6 +40,10 @@ type Intent interface {
 
 	// NewPatch creates a patch from the intent
 	NewPatch() *Patch
+
+	// Finalize indicates whether or not the patch created from this
+	// intent should be finalized
+	ShouldFinalizePatch() bool
 }
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -177,8 +181,12 @@ func (g *githubIntent) ID() string {
 	return g.MsgID
 }
 
-// FindUnprocessedgithubIntents finds all patch intents that have not yet been processed.
-func FindUnprocessedgithubIntents() ([]*githubIntent, error) {
+func (g *githubIntent) ShouldFinalizePatch() bool {
+	return true
+}
+
+// FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
+func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 	var intents []*githubIntent
 	err := db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: false, intentTypeKey: GithubIntentType}), &intents)
 	if err != nil {

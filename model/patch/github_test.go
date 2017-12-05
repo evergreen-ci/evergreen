@@ -62,7 +62,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(s.url, githubIntent.URL)
 	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
-	s.Equal(githubIntentType, intent.GetType())
+	s.Equal(GithubIntentType, intent.GetType())
 }
 
 func (s *GithubSuite) TestInsert() {
@@ -71,7 +71,7 @@ func (s *GithubSuite) TestInsert() {
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	intents, err := FindUnprocessedgithubIntents()
+	intents, err := FindUnprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(intents, 1)
 
@@ -80,7 +80,7 @@ func (s *GithubSuite) TestInsert() {
 	s.Equal(s.hash, found.BaseHash)
 	s.Equal(s.url, found.URL)
 	s.False(found.IsProcessed())
-	s.Equal(githubIntentType, found.GetType())
+	s.Equal(GithubIntentType, found.GetType())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
@@ -90,7 +90,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(intent.Insert())
 	s.NoError(intent.SetProcessed())
 
-	found, err := FindUnprocessedgithubIntents()
+	found, err := FindUnprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(found, 0)
 
@@ -101,7 +101,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Equal(s.hash, intents[0].BaseHash)
 	s.Equal(s.url, intents[0].URL)
 	s.True(intents[0].IsProcessed())
-	s.Equal(githubIntentType, intents[0].GetType())
+	s.Equal(GithubIntentType, intents[0].GetType())
 }
 
 func (s *GithubSuite) FindUnprocessedGithubIntents() {
@@ -127,7 +127,7 @@ func (s *GithubSuite) FindUnprocessedGithubIntents() {
 		s.NoError(intent.Insert())
 	}
 
-	found, err := FindUnprocessedgithubIntents()
+	found, err := FindUnprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(found, 3)
 }
