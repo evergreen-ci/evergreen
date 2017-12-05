@@ -99,6 +99,8 @@ const (
 
 	SetupScriptName    = "setup.sh"
 	TeardownScriptName = "teardown.sh"
+
+	RoutePaginatorNextPageHeaderKey = "Link"
 )
 
 // evergreen package names

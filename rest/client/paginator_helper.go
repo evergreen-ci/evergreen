@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/rest/route"
+	"github.com/evergreen-ci/evergreen"
 )
 
 // paginatorHelper is a struct to handle paginated GET requests
@@ -68,7 +68,7 @@ func (p *paginatorHelper) getNextPage(ctx context.Context) (*http.Response, erro
 		return nil, errors.New(resp.Status)
 	}
 
-	link := parseLink(resp.Header.Get(route.NextPageHeaderKey), string(p.routeInfo.version))
+	link := parseLink(resp.Header.Get(evergreen.RoutePaginatorNextPageHeaderKey), string(p.routeInfo.version))
 	if link != "" {
 		p.nextPagePath = link
 		p.more = true

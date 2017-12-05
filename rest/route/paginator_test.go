@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -51,7 +52,7 @@ func TestMakePaginationHeader(t *testing.T) {
 
 			err := pm.MakeHeader(w, testURL, testRoute)
 			So(err, ShouldBeNil)
-			linksHeader, ok := w.Header()["Link"]
+			linksHeader, ok := w.Header()[evergreen.RoutePaginatorNextPageHeaderKey]
 			So(ok, ShouldBeTrue)
 			So(len(linksHeader), ShouldEqual, 1)
 			pmRes, err := ParsePaginationHeader(linksHeader[0], testKeyQueryParam, testLimitQueryParam)
@@ -81,7 +82,7 @@ func TestMakePaginationHeader(t *testing.T) {
 
 			err := pm.MakeHeader(w, testURL, testRoute)
 			So(err, ShouldBeNil)
-			linksHeader, ok := w.Header()["Link"]
+			linksHeader, ok := w.Header()[evergreen.RoutePaginatorNextPageHeaderKey]
 			So(ok, ShouldBeTrue)
 			So(len(linksHeader), ShouldEqual, 1)
 			pmRes, err := ParsePaginationHeader(linksHeader[0], testKeyQueryParam, testLimitQueryParam)
@@ -108,7 +109,7 @@ func TestMakePaginationHeader(t *testing.T) {
 
 			err := pm.MakeHeader(w, testURL, testRoute)
 			So(err, ShouldBeNil)
-			linksHeader, ok := w.Header()["Link"]
+			linksHeader, ok := w.Header()[evergreen.RoutePaginatorNextPageHeaderKey]
 			So(ok, ShouldBeTrue)
 			So(len(linksHeader), ShouldEqual, 1)
 			pmRes, err := ParsePaginationHeader(linksHeader[0], testKeyQueryParam, testLimitQueryParam)
@@ -184,7 +185,7 @@ func TestPaginationExecutor(t *testing.T) {
 				expectedPages := PageResult{&nextPage, &prevPage}
 
 				hcf := func(header map[string][]string, t *testing.T) {
-					linkHeader := header["Link"]
+					linkHeader := header[evergreen.RoutePaginatorNextPageHeaderKey]
 					So(len(linkHeader), ShouldEqual, 1)
 					pmRes, err := ParsePaginationHeader(linkHeader[0], testKeyQueryParam, testLimitQueryParam)
 					So(err, ShouldBeNil)

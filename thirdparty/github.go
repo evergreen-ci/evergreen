@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -400,11 +401,11 @@ func GetGithubFileURL(owner, repo, remotePath, revision string) string {
 	)
 }
 
-// NextPageLink returns the link to the next page for a given header's "Link"
+// NextPageLink returns the link to the next page for a given header's evergreen.RoutePaginatorNextPageHeaderKey
 // key based on http://developer.github.com/v3/#pagination
 // For full details see http://tools.ietf.org/html/rfc5988
 func NextGithubPageLink(header http.Header) string {
-	hlink, ok := header["Link"]
+	hlink, ok := header[evergreen.RoutePaginatorNextPageHeaderKey]
 	if !ok {
 		return ""
 	}
