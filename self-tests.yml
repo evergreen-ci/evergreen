@@ -356,7 +356,7 @@ tasks:
 
             cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
-            $binary service deploy start-evergreen --binary $binary &
+            $binary service deploy start-evergreen --binary $binary
       - command: shell.exec
         params:
           shell: bash
