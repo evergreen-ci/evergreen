@@ -25,24 +25,28 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type TaskVariantPairs struct {
+	ExecTasks    TVPairSet
+	DisplayTasks TVPairSet
+}
+
 // VariantTasksToTVPairs takes a set of variants and tasks (from both the old and new
 // request formats) and builds a universal set of pairs
 // that can be used to expand the dependency tree.
-func VariantTasksToTVPairs(in []patch.VariantTasks) ([]TVPair, []TVPair) {
-	tasks := []TVPair{}
-	displayTasks := []TVPair{}
+func VariantTasksToTVPairs(in []patch.VariantTasks) TaskVariantPairs {
+	out := TaskVariantPairs{}
 	for _, vt := range in {
 		for _, t := range vt.Tasks {
-			tasks = append(tasks, TVPair{vt.Variant, t})
+			out.ExecTasks = append(out.ExecTasks, TVPair{vt.Variant, t})
 		}
 		for _, dt := range vt.DisplayTasks {
-			displayTasks = append(displayTasks, TVPair{vt.Variant, dt.Name})
+			out.DisplayTasks = append(out.DisplayTasks, TVPair{vt.Variant, dt.Name})
 			for _, et := range dt.ExecTasks {
-				tasks = append(tasks, TVPair{vt.Variant, et})
+				out.ExecTasks = append(out.ExecTasks, TVPair{vt.Variant, et})
 			}
 		}
 	}
-	return tasks, displayTasks
+	return out
 }
 
 // TVPairsToVariantTasks takes a list of TVPairs (task/variant pairs), groups the tasks
@@ -58,6 +62,7 @@ func TVPairsToVariantTasks(tasks []TVPair, displayTasks []TVPair) []patch.Varian
 	}
 	for _, dt := range displayTasks {
 		variant := vtMap[dt.Variant]
+		variant.Variant = dt.Variant
 		variant.DisplayTasks = append(variant.DisplayTasks, patch.DisplayTask{Name: dt.TaskName})
 		vtMap[dt.Variant] = variant
 	}
@@ -82,8 +87,8 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
-	taskIds := NewPatchTaskIdTable(project, patchVersion, pairs)
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, tasks TaskVariantPairs) error {
+	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks) // TODO: handle display tasks
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
@@ -97,13 +102,13 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 		variantsProcessed[b.BuildVariant] = true
 	}
 
-	for _, pair := range pairs {
+	for _, pair := range tasks.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
 			continue
 		}
 		variantsProcessed[pair.Variant] = true
 		// Extract the unique set of task names for the variant we're about to create
-		taskNames := pairs.TaskNames(pair.Variant)
+		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
 		if len(taskNames) == 0 {
 			continue
 		}
@@ -320,21 +325,20 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		RevisionOrderNumber: p.PatchNumber,
 	}
 
-	var tasks []TVPair
-	var displayTasks []TVPair
+	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {
-		tasks, displayTasks = VariantTasksToTVPairs(p.VariantsTasks)
+		tasks = VariantTasksToTVPairs(p.VariantsTasks)
 	} else {
 		// handle case where the patch is being finalized but only has the old schema tasks/variants
 		// instead of the new one.
 		for _, v := range p.BuildVariants {
 			for _, t := range p.Tasks {
 				if project.FindTaskForVariant(t, v) != nil {
-					tasks = append(tasks, TVPair{v, t})
+					tasks.ExecTasks = append(tasks.ExecTasks, TVPair{v, t})
 				}
 			}
 		}
-		p.VariantsTasks = TVPairsToVariantTasks(tasks, displayTasks)
+		p.VariantsTasks = TVPairsToVariantTasks(tasks.ExecTasks, tasks.DisplayTasks)
 	}
 
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)

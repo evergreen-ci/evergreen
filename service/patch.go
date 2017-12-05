@@ -108,23 +108,22 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var tasks []model.TVPair
-	var displayTasks []model.TVPair
+	tasks := model.TaskVariantPairs{}
 	if len(patchUpdateReq.VariantsTasks) > 0 {
-		tasks, displayTasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
+		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
 	} else {
 		for _, v := range patchUpdateReq.Variants {
 			for _, t := range patchUpdateReq.Tasks {
 				if project.FindTaskForVariant(t, v) != nil {
-					tasks = append(tasks, model.TVPair{v, t})
+					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{v, t})
 				}
 			}
 		}
 	}
 
-	tasks = model.IncludePatchDependencies(project, tasks)
+	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
 
-	if err = model.ValidateTVPairs(project, tasks); err != nil {
+	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -137,7 +136,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(tasks, displayTasks)); err != nil {
+	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(tasks.ExecTasks, tasks.DisplayTasks)); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "Error setting description"))
 		return
@@ -153,7 +152,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, tasks)
+		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, tasks.ExecTasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new tasks for version `%v`", projCtx.Version.Id))
@@ -173,7 +172,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}{projCtx.Version.Id})
 	} else {
 		projCtx.Patch.Activated = true
-		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(tasks, displayTasks))
+		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(tasks.ExecTasks, tasks.DisplayTasks))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error setting patch variants and tasks"))

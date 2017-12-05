@@ -299,6 +299,9 @@ func extractDisplayTasks(pairs []model.TVPair, tasks []string, variants []string
 		for _, dt := range bv.DisplayTasks {
 			if util.StringSliceContains(tasks, dt.Name) {
 				displayTasks = append(displayTasks, model.TVPair{Variant: bv.Name, TaskName: dt.Name})
+				for _, et := range dt.ExecutionTasks {
+					pairs = append(pairs, model.TVPair{Variant: bv.Name, TaskName: et})
+				}
 			}
 		}
 	}

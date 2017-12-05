@@ -541,6 +541,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	// Create display tasks
 	for _, dt := range buildVariant.DisplayTasks {
 		id := displayTable.GetId(b.BuildVariant, dt.Name)
+		if id == "" {
+			continue
+		}
 		execTaskIds := []string{}
 		for _, et := range dt.ExecutionTasks {
 			execTaskIds = append(execTaskIds, execTable.GetId(b.BuildVariant, et))

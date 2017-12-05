@@ -114,7 +114,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
           tasks: tasks,
           displayTasks: displayTasks
         };
-      }), function(v){return v.tasks.length > 0})
+      }), function(v){return (v.tasks.length > 0) || (v.displayTasks.length > 0)})
     }
     $http.post('/patch/' + $scope.patch.Id, data).then(
       function(resp) {

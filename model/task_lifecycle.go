@@ -328,7 +328,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 			return err
 		}
 	} else {
-		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, detail.Status, t.TimeTaken)
+		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
 		if err != nil {
 			return errors.Wrap(err, "error updating build")
 		}
@@ -474,7 +474,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				if status == "" {
 					status = t.Details.Status
 				}
-				err = build.SetCachedTaskFinished(t.BuildId, t.Id, &t.Details, status, t.TimeTaken)
+				err = build.SetCachedTaskFinished(t.BuildId, t.Id, status, &t.Details, t.TimeTaken)
 				if err != nil {
 					return fmt.Errorf("error updating build: %v", err.Error())
 				}
