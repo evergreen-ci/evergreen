@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -21,6 +22,8 @@ type update struct {
 	// in the form of
 	//   "expansion_key: expansions_value"
 	YamlFile string `mapstructure:"file"`
+
+	IgnoreMissingFile bool `mapstructure:"ignore_missing_file"`
 
 	base
 }
@@ -97,6 +100,14 @@ func (c *update) Execute(ctx context.Context,
 	}
 
 	if c.YamlFile != "" {
+		_, err = os.Stat(c.YamlFile)
+		if os.IsNotExist(err) {
+			if c.IgnoreMissingFile {
+				return nil
+			}
+			return errors.Errorf("file '%s' does not exist", c.YamlFile)
+		}
+
 		c.YamlFile, err = conf.Expansions.ExpandString(c.YamlFile)
 		if err != nil {
 			return errors.WithStack(err)
