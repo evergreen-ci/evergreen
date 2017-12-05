@@ -362,3 +362,28 @@ func CancelPatch(p *patch.Patch, caller string) error {
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
+
+// ExpandTasksAndVariants expands "all" to all possible tasks or variants in
+// the patch
+func ExpandTasksAndVariants(patchDoc *patch.Patch, project *Project) {
+	//expand tasks and build variants and include dependencies
+	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
+		patchDoc.BuildVariants = []string{}
+		for _, buildVariant := range project.BuildVariants {
+			if buildVariant.Disabled {
+				continue
+			}
+			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
+		}
+	}
+
+	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
+		patchDoc.Tasks = []string{}
+		for _, t := range project.Tasks {
+			if t.Patchable != nil && !(*t.Patchable) {
+				continue
+			}
+			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
+		}
+	}
+}

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
@@ -41,35 +40,6 @@ type PatchAPIRequest struct {
 	Description   string
 }
 
-func (pr *PatchAPIRequest) CreatePatchFromGithub(repoOwner, repoName, patchURL, githubOauthToken string, dbUser *user.DBUser) (*patch.Patch, error) {
-	projectRef, err := model.FindOneProjectRefByRepo(repoOwner, repoName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Could not find project ref by repo: %s/%s", repoOwner, repoName)
-	}
-	if projectRef == nil {
-		return nil, errors.Errorf("Could not find project ref by repo: %s/%s", repoOwner, repoName)
-	}
-	pr.ProjectId = projectRef.Identifier
-
-	resp, err := http.Get(patchURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("Expected 200 OK, got %s", http.StatusText(resp.StatusCode))
-	}
-	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
-		return nil, errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes", patch.SizeLimit, resp.ContentLength)
-	}
-
-	buf := &bytes.Buffer{}
-	buf.ReadFrom(resp.Body)
-	pr.PatchContent = buf.String()
-
-	return pr.createPatch(projectRef, true, githubOauthToken, dbUser)
-}
-
 // CreatePatch checks an API request to see if it is safe and sane.
 // Returns the relevant patch metadata, the patch document, and any errors that occur.
 func (pr *PatchAPIRequest) CreatePatch(finalize bool, githubOauthToken string, dbUser *user.DBUser) (*patch.Patch, error) {
@@ -81,10 +51,7 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, githubOauthToken string, d
 	if projectRef == nil {
 		return nil, errors.Errorf("Could not find project : %s", pr.ProjectId)
 	}
-	return pr.createPatch(projectRef, finalize, githubOauthToken, dbUser)
-}
 
-func (pr *PatchAPIRequest) createPatch(projectRef *model.ProjectRef, finalize bool, githubOauthToken string, dbUser *user.DBUser) (*patch.Patch, error) {
 	if !projectRef.Enabled {
 		return nil, errors.Errorf("project %v is disabled", projectRef.Identifier)
 	}
@@ -189,26 +156,7 @@ func (pr *PatchAPIRequest) createPatch(projectRef *model.ProjectRef, finalize bo
 
 	patchDoc.ClearPatchData()
 
-	//expand tasks and build variants and include dependencies
-	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-		patchDoc.BuildVariants = []string{}
-		for _, buildVariant := range project.BuildVariants {
-			if buildVariant.Disabled {
-				continue
-			}
-			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
-		}
-	}
-
-	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-		patchDoc.Tasks = []string{}
-		for _, t := range project.Tasks {
-			if t.Patchable != nil && !(*t.Patchable) {
-				continue
-			}
-			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
-		}
-	}
+	model.ExpandTasksAndVariants(patchDoc, project)
 
 	var pairs []model.TVPair
 	for _, v := range patchDoc.BuildVariants {
