@@ -131,6 +131,7 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 
 	if c.TestFile == "" {
 		c.TestFile = filepath.Join(wd, "scripts", defaultTestFile)
+		grip.Infof("Setting test file to %s", c.TestFile)
 	}
 
 	defs, err := ioutil.ReadFile(c.TestFile)
@@ -160,11 +161,9 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 			grip.Infof("could not connect to Evergreen (attempt %d of %d)", i, attempts)
 			time.Sleep(time.Second)
 			continue
-		} else {
-			grip.Info("Evergreen is up")
-			break
 		}
 	}
+	grip.Info("Evergreen is up")
 
 	// check endpoints
 	catcher := grip.NewSimpleCatcher()
@@ -176,6 +175,11 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "error reading response body")
+			grip.Error(err)
+			return err
+		}
 		page := string(body)
 		for _, text := range expected {
 			if strings.Contains(page, text) {
@@ -198,7 +202,4 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 func setSenderNameToSmoke() {
 	sender := grip.GetSender()
 	sender.SetName("evergreen.smoke")
-	if err := grip.SetSender(sender); err != nil {
-		grip.Error(errors.Wrap(err, "error setting sender"))
-	}
 }
