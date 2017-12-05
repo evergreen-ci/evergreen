@@ -2,12 +2,12 @@ package client
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
@@ -57,18 +57,8 @@ func NewCommunicator(serverURL string) Communicator {
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
 	}
-	evergreen.httpClient = &http.Client{
-		Transport: &http.Transport{
-			Proxy:             http.ProxyFromEnvironment,
-			DisableKeepAlives: true,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-		Timeout: heartbeatTimeout,
-	}
+	evergreen.httpClient = util.GetHttpClient()
+
 	return evergreen
 }
 
