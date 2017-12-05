@@ -86,7 +86,8 @@ func getAPIClients(ctx context.Context, o *Options) (*APIClient, *APIClient, *mo
 
 	// this operation is just to get the side effect of logging
 	// the degraded mode banner.
-	_ = getRestClientCommunicator(ctx, settings.APIServerHost)
+	comm := getRestClientCommunicator(ctx, settings.APIServerHost)
+	defer comm.Close()
 
 	return ac, rc, settings, nil
 }

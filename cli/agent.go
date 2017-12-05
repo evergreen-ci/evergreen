@@ -45,7 +45,10 @@ func (c *AgentCommand) Execute(_ []string) error {
 		"host":     c.HostID,
 	})
 
-	agt := agent.New(opts, client.NewCommunicator(c.ServiceURL))
+	comm := client.NewCommunicator(c.ServiceURL)
+	defer comm.Close()
+
+	agt := agent.New(opts, comm)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

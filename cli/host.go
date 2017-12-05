@@ -35,6 +35,7 @@ func (cmd *HostCreateCommand) Execute(_ []string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
@@ -68,6 +69,7 @@ func (cmd *HostListCommand) Execute(_ []string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	if cmd.Mine {
 		var hosts []*model.APIHost

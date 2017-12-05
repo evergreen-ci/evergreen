@@ -54,6 +54,7 @@ func (c *AdminRestartTasks) Execute(_ []string) error {
 	if err != nil {
 		return errors.Wrap(err, "problem configuring api client")
 	}
+	defer client.Close()
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
@@ -103,6 +104,7 @@ func (c *AdminBannerCommand) Execute(_ []string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
@@ -121,6 +123,7 @@ func (c *AdminDisableServiceCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)
@@ -147,6 +150,7 @@ func (c *AdminEnableServiceCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)

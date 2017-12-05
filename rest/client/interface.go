@@ -40,6 +40,9 @@ type Communicator interface {
 	// GetHostSecret returns the host secret.
 	GetHostSecret() string
 
+	// Method to release resources used by the communicator.
+	Close()
+
 	// Updates the clients local concept of it's last updated
 	// time; used by agents to determine timeouts.
 	UpdateLastMessageTime()
