@@ -22,9 +22,7 @@ type PublicKeyCommand struct {
 }
 
 func (c *PublicKeyCommand) Execute(args []string) error {
-	sender := send.MakeJSONConsoleLogger()
-	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
-	grip.CatchWarning(grip.SetSender(sender))
+	grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 
 	if err := c.validateFlags(args); err != nil {
 		return err
