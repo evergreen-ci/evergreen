@@ -11,8 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const ProviderName = "mock"
-
 // MockInstance mocks a running server that Evergreen knows about. It contains
 // fields that can be set to change the response the cloud manager returns
 // when this mock instance is queried for.

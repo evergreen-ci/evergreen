@@ -21,11 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// ProviderName is used to distinguish between different cloud providers.
-	ProviderName = "docker"
-)
-
 // Manager implements the CloudManager interface for Docker.
 type Manager struct {
 	client client
@@ -101,8 +96,9 @@ func (*Manager) GetInstanceName(_ *distro.Distro) string {
 
 // SpawnHost creates and starts a new Docker container
 func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != ProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s", ProviderName, h.Distro.Id, h.Distro.Provider)
+	if h.Distro.Provider != evergreen.ProviderNameDocker {
+		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
+			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
 	}
 
 	// Decode provider settings from distro settings

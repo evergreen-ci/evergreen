@@ -27,11 +27,9 @@ import (
 
 const (
 	// NameTimeFormat is the format in which to log times like instance start time.
-	NameTimeFormat       = "20060102150405"
-	OnDemandProviderName = "ec2"
-	SpotProviderName     = "ec2-spot"
-	SpawnHostExpireDays  = 30
-	MciHostExpireDays    = 10
+	NameTimeFormat      = "20060102150405"
+	SpawnHostExpireDays = 30
+	MciHostExpireDays   = 10
 )
 
 type MountPoint struct {

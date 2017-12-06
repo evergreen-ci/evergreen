@@ -127,6 +127,7 @@ const (
 	ProviderNameGce          = "gce"
 	ProviderNameStatic       = "static"
 	ProviderNameOpenstack    = "openstack"
+	ProviderNameVsphere      = "vsphere"
 )
 
 const (

@@ -18,11 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// ProviderName is used to distinguish between different cloud providers.
-	ProviderName = "vsphere"
-)
-
 // Manager implements the CloudManager interface for vSphere.
 type Manager struct {
 	client client
@@ -99,9 +94,9 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 // Optional fields use the default values of the template vm if not specified.
 //     -
 func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != ProviderName {
+	if h.Distro.Provider != evergreen.ProviderNameVsphere {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			ProviderName, h.Distro.Id, h.Distro.Provider)
+			evergreen.ProviderNameVsphere, h.Distro.Id, h.Distro.Provider)
 	}
 
 	s := &ProviderSettings{}

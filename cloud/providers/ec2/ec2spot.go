@@ -254,8 +254,9 @@ func (*EC2SpotManager) GetInstanceName(d *distro.Distro) string {
 }
 
 func (cloudManager *EC2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != SpotProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, h.Distro.Id, h.Distro.Provider)
+	if h.Distro.Provider != evergreen.ProviderNameEc2Spot {
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
+			evergreen.ProviderNameEc2Spot, h.Distro.Id, h.Distro.Provider)
 	}
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)

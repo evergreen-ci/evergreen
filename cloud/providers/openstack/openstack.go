@@ -18,11 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	// ProviderName is used to distinguish between different cloud providers.
-	ProviderName = "openstack"
-)
-
 // Manager implements the CloudManager interface for OpenStack.
 type Manager struct {
 	authOptions  *gophercloud.AuthOptions
@@ -107,9 +102,9 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //     - KeyName:       (optional) keypair name associated with the account
 //     - SecurityGroup: (optional) security group name
 func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != ProviderName {
+	if h.Distro.Provider != evergreen.ProviderNameOpenstack {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			ProviderName, h.Distro.Id, h.Distro.Provider)
+			evergreen.ProviderNameOpenstack, h.Distro.Id, h.Distro.Provider)
 	}
 
 	settings := &ProviderSettings{}

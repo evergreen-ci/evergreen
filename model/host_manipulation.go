@@ -37,7 +37,7 @@ func NextTaskForHost(h *host.Host) (*task.Task, error) {
 }
 
 func UpdateStaticHosts() error {
-	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
+	distros, err := distro.Find(distro.ByProvider(evergreen.ProviderNameStatic))
 	if err != nil {
 		return err
 	}

@@ -13,10 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
-const (
-	ProviderName = "gce"
-)
-
 type Manager struct{}
 
 type ProviderSettings struct{}

@@ -14,8 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const ProviderName = "static"
-
 type StaticManager struct{}
 
 type Settings struct {

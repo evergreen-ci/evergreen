@@ -124,8 +124,9 @@ func (*EC2Manager) GetInstanceName(d *distro.Distro) string {
 
 //SpawnHost will spawn an on-demand EC2 host
 func (cloudManager *EC2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != OnDemandProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, h.Distro.Id, h.Distro.Provider)
+	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand {
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
+			evergreen.ProviderNameEc2OnDemand, h.Distro.Id, h.Distro.Provider)
 	}
 
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
