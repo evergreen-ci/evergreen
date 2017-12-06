@@ -23,7 +23,7 @@ type TestServer struct {
 }
 
 func (s *TestServer) Close() {
-	grip.Alertln("closing test server:", s.URL)
+	grip.Noticeln("closing test server:", s.URL)
 
 	grip.CatchError(s.Listener.Close())
 	s.ts.CloseClientConnections()
