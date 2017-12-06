@@ -136,7 +136,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(tasks.ExecTasks, tasks.DisplayTasks)); err != nil {
+	if err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "Error setting description"))
 		return
@@ -172,7 +172,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}{projCtx.Version.Id})
 	} else {
 		projCtx.Patch.Activated = true
-		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(tasks.ExecTasks, tasks.DisplayTasks))
+		err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error setting patch variants and tasks"))
