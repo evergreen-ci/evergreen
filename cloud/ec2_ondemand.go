@@ -1,4 +1,4 @@
-package ec2
+package cloud
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -20,8 +19,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// EC2Manager implements the CloudManager interface for Amazon EC2
-type EC2Manager struct {
+// ec2OnDemandManager implements the CloudManager interface for Amazon EC2
+type ec2OnDemandManager struct {
 	awsCredentials *aws.Auth
 }
 
@@ -75,7 +74,7 @@ func (self *EC2ProviderSettings) Validate() error {
 
 //Configure loads necessary credentials or other settings from the global config
 //object.
-func (cloudManager *EC2Manager) Configure(settings *evergreen.Settings) error {
+func (cloudManager *ec2OnDemandManager) Configure(settings *evergreen.Settings) error {
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return errors.New("AWS ID/Secret must not be blank")
 	}
@@ -87,11 +86,11 @@ func (cloudManager *EC2Manager) Configure(settings *evergreen.Settings) error {
 	return nil
 }
 
-func (cloudManager *EC2Manager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
+func (cloudManager *ec2OnDemandManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
 	return getEC2KeyOptions(h, keyPath)
 }
 
-func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (cloudManager *ec2OnDemandManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, err
@@ -99,31 +98,31 @@ func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, keyPath string) 
 	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 }
 
-func (cloudManager *EC2Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
+func (cloudManager *ec2OnDemandManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, err
+		return StatusUnknown, err
 	}
 	return ec2StatusToEvergreenStatus(instanceInfo.State.Name), nil
 }
 
-func (cloudManager *EC2Manager) CanSpawn() (bool, error) {
+func (cloudManager *ec2OnDemandManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (*EC2Manager) GetSettings() cloud.ProviderSettings {
+func (*ec2OnDemandManager) GetSettings() ProviderSettings {
 	return &EC2ProviderSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*EC2Manager) GetInstanceName(d *distro.Distro) string {
+func (*ec2OnDemandManager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
 //SpawnHost will spawn an on-demand EC2 host
-func (cloudManager *EC2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (cloudManager *ec2OnDemandManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand {
 		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
 			evergreen.ProviderNameEc2OnDemand, h.Distro.Id, h.Distro.Provider)
@@ -215,7 +214,7 @@ func (cloudManager *EC2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	return newHost, nil
 }
 
-func (cloudManager *EC2Manager) IsUp(host *host.Host) (bool, error) {
+func (cloudManager *ec2OnDemandManager) IsUp(host *host.Host) (bool, error) {
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
@@ -229,12 +228,12 @@ func (cloudManager *EC2Manager) IsUp(host *host.Host) (bool, error) {
 	return false, nil
 }
 
-func (cloudManager *EC2Manager) OnUp(host *host.Host) error {
+func (cloudManager *ec2OnDemandManager) OnUp(host *host.Host) error {
 	//Not currently needed since we can set the tags immediately
 	return nil
 }
 
-func (cloudManager *EC2Manager) GetDNSName(host *host.Host) (string, error) {
+func (cloudManager *ec2OnDemandManager) GetDNSName(host *host.Host) (string, error) {
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
@@ -245,7 +244,7 @@ func (cloudManager *EC2Manager) GetDNSName(host *host.Host) (string, error) {
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2Manager) TerminateInstance(host *host.Host) error {
+func (cloudManager *ec2OnDemandManager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %v - already marked as "+
@@ -271,7 +270,7 @@ func (cloudManager *EC2Manager) TerminateInstance(host *host.Host) error {
 }
 
 // determine how long until a payment is due for the host
-func (cloudManager *EC2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
+func (cloudManager *ec2OnDemandManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
@@ -343,7 +342,7 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 }
 
 // CostForDuration returns the cost of running a host between the given start and end times
-func (cloudManager *EC2Manager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+func (cloudManager *ec2OnDemandManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// sanity check
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")

@@ -1,4 +1,4 @@
-package ec2
+package cloud
 
 import (
 	"encoding/json"
@@ -15,7 +15,6 @@ import (
 	"time"
 
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
@@ -185,20 +184,20 @@ func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, erro
 
 //ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
 //provider-specific status codes.
-func ec2StatusToEvergreenStatus(ec2Status string) cloud.CloudStatus {
+func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
 	switch ec2Status {
 	case EC2StatusPending:
-		return cloud.StatusInitializing
+		return StatusInitializing
 	case EC2StatusRunning:
-		return cloud.StatusRunning
+		return StatusRunning
 	case EC2StatusShuttingdown:
-		return cloud.StatusTerminated
+		return StatusTerminated
 	case EC2StatusTerminated:
-		return cloud.StatusTerminated
+		return StatusTerminated
 	case EC2StatusStopped:
-		return cloud.StatusStopped
+		return StatusStopped
 	default:
-		return cloud.StatusUnknown
+		return StatusUnknown
 	}
 }
 

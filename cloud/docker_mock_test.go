@@ -1,6 +1,6 @@
 // +build go1.7
 
-package docker
+package cloud
 
 import (
 	"fmt"
@@ -39,7 +39,7 @@ func (c *clientMock) Init(_ string) error {
 	return nil
 }
 
-func (c *clientMock) CreateContainer(_ string, _ *distro.Distro, _ *ProviderSettings) error {
+func (c *clientMock) CreateContainer(_ string, _ *distro.Distro, _ *cloudProviderSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}

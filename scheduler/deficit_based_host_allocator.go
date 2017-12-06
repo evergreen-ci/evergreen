@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -49,7 +49,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 	hostAllocatorData *HostAllocatorData, distro distro.Distro, settings *evergreen.Settings) int {
 
-	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
+	cloudManager, err := cloud.GetCloudManager(distro.Provider, settings)
 
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

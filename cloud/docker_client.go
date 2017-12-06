@@ -1,6 +1,6 @@
 // +build go1.7
 
-package docker
+package cloud
 
 import (
 	"context"
@@ -21,27 +21,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-// The client interface wraps the Docker client interaction.
-type client interface {
+// The dockerClient interface wraps the Docker dockerClient interaction.
+type dockerClient interface {
 	Init(string) error
-	CreateContainer(string, *distro.Distro, *ProviderSettings) error
+	CreateContainer(string, *distro.Distro, *dockerProviderSettings) error
 	GetContainer(*host.Host) (*types.ContainerJSON, error)
 	ListContainers(*distro.Distro) ([]types.Container, error)
 	RemoveContainer(*host.Host) error
 	StartContainer(*host.Host) error
 }
 
-type clientImpl struct {
+type dockerClientImpl struct {
 	// apiVersion specifies the version of the Docker API.
 	apiVersion string
-	// httpClient for making HTTP requests within the Docker client wrapper.
+	// httpDockerClient for making HTTP requests within the Docker dockerClient wrapper.
 	httpClient *http.Client
 }
 
 // generateClient generates a Docker client that can talk to the host machine
 // specified in the distro. The Docker client must be exposed and available for
 // requests at the distro-specified client port on the host machine.
-func (c *clientImpl) generateClient(d *distro.Distro) (*docker.Client, error) {
+func (c *clientImpl) generateClient(d *distro.Distro) (*dockerClient, error) {
 	// Populate and validate settings
 	settings := &ProviderSettings{} // Instantiate global settings
 	if err := mapstructure.Decode(d.ProviderSettings, settings); err != nil {
@@ -91,7 +91,7 @@ func (c *clientImpl) Init(apiVersion string) error {
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *clientImpl) CreateContainer(id string, d *distro.Distro, s *ProviderSettings) error {
+func (c *clientImpl) CreateContainer(id string, d *distro.Distro, s *dockerProviderSettings) error {
 	dockerClient, err := c.generateClient(d)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")

@@ -1,4 +1,4 @@
-package ec2
+package cloud
 
 import (
 	"testing"

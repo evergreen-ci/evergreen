@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -565,7 +564,7 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 				continue
 			}
 
-			cloudManager, err := providers.GetCloudManager(d.Provider, s.Settings)
+			cloudManager, err := cloud.GetCloudManager(d.Provider, s.Settings)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"distro":  distroId,

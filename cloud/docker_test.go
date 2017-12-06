@@ -1,6 +1,6 @@
 // +build go1.7
 
-package docker
+package cloud
 
 import (
 	"testing"
@@ -9,12 +9,10 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/stretchr/testify/suite"
 )
 
@@ -22,7 +20,7 @@ type DockerSuite struct {
 	client   client
 	manager  *Manager
 	distro   *distro.Distro
-	hostOpts cloud.HostOptions
+	hostOpts HostOptions
 	suite.Suite
 }
 
@@ -53,7 +51,7 @@ func (s *DockerSuite) SetupTest() {
 			},
 		},
 	}
-	s.hostOpts = cloud.HostOptions{}
+	s.hostOpts = HostOptions{}
 }
 
 func (s *DockerSuite) TestValidateSettings() {
@@ -147,7 +145,7 @@ func (s *DockerSuite) TestIsUpStatuses() {
 
 	status, err := s.manager.GetInstanceStatus(host)
 	s.NoError(err)
-	s.Equal(cloud.StatusRunning, status)
+	s.Equal(StatusRunning, status)
 
 	active, err := s.manager.IsUp(host)
 	s.NoError(err)
@@ -155,14 +153,14 @@ func (s *DockerSuite) TestIsUpStatuses() {
 }
 
 func (s *DockerSuite) TestTerminateInstanceAPICall() {
-	hostA := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostA, err := s.manager.SpawnHost(hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostB, err = s.manager.SpawnHost(hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -181,7 +179,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 
 func (s *DockerSuite) TestTerminateInstanceDB() {
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	myHost, err := s.manager.SpawnHost(myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -229,13 +227,13 @@ func (s *DockerSuite) TestGetSSHOptions() {
 
 func (s *DockerSuite) TestSpawnInvalidSettings() {
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	host := NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "docker"}
-	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	host = NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
@@ -244,7 +242,7 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 		Provider:         "docker",
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
-	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host = NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
@@ -253,12 +251,12 @@ func (s *DockerSuite) TestSpawnInvalidSettings() {
 func (s *DockerSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostOne, err := s.manager.SpawnHost(hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -269,13 +267,13 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
-	host = cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host = NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
@@ -286,7 +284,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	h, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(h)
@@ -307,13 +305,13 @@ func (s *DockerSuite) TestSpawnFailOpenPortBinding() {
 	s.True(ok)
 	s.True(mock.hasOpenPorts)
 
-	host := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.hasOpenPorts = false
-	host = cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host = NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
@@ -324,20 +322,20 @@ func (s *DockerSuite) TestSpawnGetAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failGet = true
-	host = cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host = NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
 }
 
 func (s *DockerSuite) TestGetDNSName() {
-	host := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	dns, err := s.manager.GetDNSName(host)
 	s.Error(err)
 	s.Empty(dns)
@@ -382,12 +380,12 @@ func (s *DockerSuite) TestMakeHostConfig() {
 }
 
 func (s *DockerSuite) TestUtilToEvgStatus() {
-	s.Equal(cloud.StatusRunning, toEvgStatus(&types.ContainerState{Running: true}))
-	s.Equal(cloud.StatusStopped, toEvgStatus(&types.ContainerState{Paused: true}))
-	s.Equal(cloud.StatusInitializing, toEvgStatus(&types.ContainerState{Restarting: true}))
-	s.Equal(cloud.StatusTerminated, toEvgStatus(&types.ContainerState{OOMKilled: true}))
-	s.Equal(cloud.StatusTerminated, toEvgStatus(&types.ContainerState{Dead: true}))
-	s.Equal(cloud.StatusUnknown, toEvgStatus(&types.ContainerState{}))
+	s.Equal(StatusRunning, toEvgStatus(&types.ContainerState{Running: true}))
+	s.Equal(StatusStopped, toEvgStatus(&types.ContainerState{Paused: true}))
+	s.Equal(StatusInitializing, toEvgStatus(&types.ContainerState{Restarting: true}))
+	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{OOMKilled: true}))
+	s.Equal(StatusTerminated, toEvgStatus(&types.ContainerState{Dead: true}))
+	s.Equal(StatusUnknown, toEvgStatus(&types.ContainerState{}))
 }
 
 func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {

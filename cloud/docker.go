@@ -1,6 +1,6 @@
 // +build go1.7
 
-package docker
+package cloud
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -21,8 +20,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Manager implements the CloudManager interface for Docker.
-type Manager struct {
+// dockerManager implements the CloudManager interface for Docker.
+type dockerManager struct {
 	client client
 }
 
@@ -32,7 +31,7 @@ type portRange struct {
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.
-type ProviderSettings struct {
+type dockerProviderSettings struct {
 	// HostIP is the IP address of the machine on which to start Docker containers. This
 	// host machine must already have Docker installed and the Docker API exposed at the
 	// client port, and preloaded Docker images.
@@ -85,17 +84,17 @@ func (settings *ProviderSettings) Validate() error {
 }
 
 // GetSettings returns an empty ProviderSettings struct.
-func (*Manager) GetSettings() cloud.ProviderSettings {
+func (*dockerManager) GetSettings() ProviderSettings {
 	return &ProviderSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*Manager) GetInstanceName(_ *distro.Distro) string {
+func (*dockerManager) GetInstanceName(_ *distro.Distro) string {
 	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
 // SpawnHost creates and starts a new Docker container
-func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameDocker {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
@@ -173,10 +172,10 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
-func (m *Manager) GetInstanceStatus(h *host.Host) (cloud.CloudStatus, error) {
+func (m *dockerManager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 	container, err := m.client.GetContainer(h)
 	if err != nil {
-		return cloud.StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
+		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
 
 	return toEvgStatus(container.State), nil
@@ -184,7 +183,7 @@ func (m *Manager) GetInstanceStatus(h *host.Host) (cloud.CloudStatus, error) {
 
 //GetDNSName gets the DNS hostname of a container by reading it directly from
 //the Docker API
-func (m *Manager) GetDNSName(h *host.Host) (string, error) {
+func (m *dockerManager) GetDNSName(h *host.Host) (string, error) {
 	if h.Host == "" {
 		return "", errors.New("DNS name is empty")
 	}
@@ -193,12 +192,12 @@ func (m *Manager) GetDNSName(h *host.Host) (string, error) {
 
 //CanSpawn returns if a given cloud provider supports spawning a new host
 //dynamically. Always returns true for Docker.
-func (m *Manager) CanSpawn() (bool, error) {
+func (m *dockerManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
 //TerminateInstance destroys a container.
-func (m *Manager) TerminateInstance(h *host.Host) error {
+func (m *dockerManager) TerminateInstance(h *host.Host) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
@@ -218,9 +217,9 @@ func (m *Manager) TerminateInstance(h *host.Host) error {
 	return h.Terminate()
 }
 
-//Configure populates a Manager by reading relevant settings from the
+//Configure populates a dockerManager by reading relevant settings from the
 //config object.
-func (m *Manager) Configure(s *evergreen.Settings) error {
+func (m *dockerManager) Configure(s *evergreen.Settings) error {
 	config := s.Providers.Docker
 
 	if m.client == nil {
@@ -236,7 +235,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 
 //IsSSHReachable checks if a container appears to be reachable via SSH by
 //attempting to contact the host directly.
-func (m *Manager) IsSSHReachable(h *host.Host, keyPath string) (bool, error) {
+func (m *dockerManager) IsSSHReachable(h *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := m.GetSSHOptions(h, keyPath)
 	if err != nil {
 		return false, err
@@ -246,22 +245,22 @@ func (m *Manager) IsSSHReachable(h *host.Host, keyPath string) (bool, error) {
 
 //IsUp checks the container's state by querying the Docker API and
 //returns true if the host should be available to connect with SSH.
-func (m *Manager) IsUp(h *host.Host) (bool, error) {
+func (m *dockerManager) IsUp(h *host.Host) (bool, error) {
 	cloudStatus, err := m.GetInstanceStatus(h)
 	if err != nil {
 		return false, err
 	}
-	return cloudStatus == cloud.StatusRunning, nil
+	return cloudStatus == StatusRunning, nil
 }
 
 // OnUp does nothing.
-func (m *Manager) OnUp(_ *host.Host) error {
+func (m *dockerManager) OnUp(_ *host.Host) error {
 	return nil
 }
 
 //GetSSHOptions returns an array of default SSH options for connecting to a
 //container.
-func (m *Manager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
+func (m *dockerManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, errors.New("No key specified for Docker host")
 	}
@@ -275,6 +274,6 @@ func (m *Manager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) 
 
 // TimeTilNextPayment returns the amount of time until the next payment is due
 // for the host. For Docker this is not relevant.
-func (m *Manager) TimeTilNextPayment(_ *host.Host) time.Duration {
+func (m *dockerManager) TimeTilNextPayment(_ *host.Host) time.Duration {
 	return time.Duration(0)
 }

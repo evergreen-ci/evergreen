@@ -1,4 +1,4 @@
-package ec2
+package cloud
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	ec2sdk "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -35,8 +34,8 @@ const (
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 )
 
-// EC2SpotManager implements the CloudManager interface for Amazon EC2 Spot
-type EC2SpotManager struct {
+// ec2SpotManager implements the CloudManager interface for Amazon EC2 Spot
+type ec2SpotManager struct {
 	awsCredentials *aws.Auth
 }
 
@@ -82,7 +81,7 @@ func (self *EC2SpotSettings) Validate() error {
 
 //Configure loads necessary credentials or other settings from the global config
 //object.
-func (cloudManager *EC2SpotManager) Configure(settings *evergreen.Settings) error {
+func (cloudManager *ec2SpotManager) Configure(settings *evergreen.Settings) error {
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return errors.New("AWS ID/Secret must not be blank")
 	}
@@ -93,20 +92,20 @@ func (cloudManager *EC2SpotManager) Configure(settings *evergreen.Settings) erro
 	return nil
 }
 
-func (*EC2SpotManager) GetSettings() cloud.ProviderSettings {
+func (*ec2SpotManager) GetSettings() ProviderSettings {
 	return &EC2SpotSettings{}
 }
 
 // determine how long until a payment is due for the host
-func (cloudManager *EC2SpotManager) TimeTilNextPayment(host *host.Host) time.Duration {
+func (cloudManager *ec2SpotManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
-func (cloudManager *EC2SpotManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
+func (cloudManager *ec2SpotManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
 	return getEC2KeyOptions(h, keyPath)
 }
 
-func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
+func (cloudManager *ec2SpotManager) IsUp(host *host.Host) (bool, error) {
 	instanceStatus, err := cloudManager.GetInstanceStatus(host)
 	if err != nil {
 		err = errors.Wrapf(err, "Failed to check if host %v is up", host.Id)
@@ -114,14 +113,14 @@ func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
 		return false, err
 	}
 
-	if instanceStatus == cloud.StatusRunning {
+	if instanceStatus == StatusRunning {
 		return true, nil
 	} else {
 		return false, nil
 	}
 }
 
-func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
+func (cloudManager *ec2SpotManager) OnUp(host *host.Host) error {
 	tags := makeTags(host)
 	tags["spot"] = "true" // mark this as a spot instance
 	spotReq, err := cloudManager.describeSpotRequest(host.Id)
@@ -160,7 +159,7 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	return attachTagsToResources(ec2handle, tags, resources)
 }
 
-func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (cloudManager *ec2SpotManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, err
@@ -181,12 +180,12 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 // For a *fulfilled* spot request (the spot request has an instance ID)
 // the status returned will be the status of the instance that fulfilled it,
 // matching the behavior used in cloud/providers/ec2/ec2.go
-func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
+func (cloudManager *ec2SpotManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get spot request info for %v", host.Id)
 		grip.Error(err)
-		return cloud.StatusUnknown, err
+		return StatusUnknown, err
 	}
 
 	//Spot request has been fulfilled, so get status of the instance itself
@@ -197,7 +196,7 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 		if err != nil {
 			err = errors.Wrap(err, "Got an error checking spot details")
 			grip.Error(err)
-			return cloud.StatusUnknown, err
+			return StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(instanceInfo.State.Name), nil
 	}
@@ -206,26 +205,26 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 	//or still pending evaluation
 	switch spotDetails.State {
 	case SpotStatusOpen:
-		return cloud.StatusPending, nil
+		return StatusPending, nil
 	case SpotStatusActive:
-		return cloud.StatusPending, nil
+		return StatusPending, nil
 	case SpotStatusClosed:
-		return cloud.StatusTerminated, nil
+		return StatusTerminated, nil
 	case SpotStatusCanceled:
-		return cloud.StatusTerminated, nil
+		return StatusTerminated, nil
 	case SpotStatusFailed:
-		return cloud.StatusFailed, nil
+		return StatusFailed, nil
 	default:
 		grip.Errorf("Unexpected status code in spot req: %v", spotDetails.State)
-		return cloud.StatusUnknown, nil
+		return StatusUnknown, nil
 	}
 }
 
-func (cloudManager *EC2SpotManager) CanSpawn() (bool, error) {
+func (cloudManager *ec2SpotManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) {
+func (cloudManager *ec2SpotManager) GetDNSName(host *host.Host) (string, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
 		err = errors.Errorf("failed to get spot request info for %v: %+v", host.Id, err)
@@ -249,11 +248,11 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*EC2SpotManager) GetInstanceName(d *distro.Distro) string {
+func (*ec2SpotManager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
-func (cloudManager *EC2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (cloudManager *ec2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2Spot {
 		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
 			evergreen.ProviderNameEc2Spot, h.Distro.Id, h.Distro.Provider)
@@ -332,7 +331,7 @@ func (cloudManager *EC2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) 
 	return h, nil
 }
 
-func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
+func (cloudManager *ec2SpotManager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s; already marked as terminated", host.Id)
@@ -396,7 +395,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 // describeSpotRequest gets infomration about a spot request
 // Note that if the SpotRequestResult object returned has a non-blank InstanceId
 // field, this indicates that the spot request has been fulfilled.
-func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.SpotRequestResult, error) {
+func (cloudManager *ec2SpotManager) describeSpotRequest(spotReqId string) (*ec2.SpotRequestResult, error) {
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
@@ -434,7 +433,7 @@ func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.
 // of cents will add up over time.
 //
 // CostForDuration returns the total cost and any errors that occur.
-func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+func (cloudManager *ec2SpotManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// sanity check
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
@@ -469,7 +468,7 @@ func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end tim
 
 // calculateSpotCost is a helper for fetching spot price history and computing the
 // cost of a task across a host's billing cycles.
-func (cloudManager *EC2SpotManager) calculateSpotCost(
+func (cloudManager *ec2SpotManager) calculateSpotCost(
 	i *ec2.Instance, os osType, start, end time.Time) (float64, error) {
 	launchTime, err := time.Parse(time.RFC3339, i.LaunchTime)
 	if err != nil {
@@ -524,7 +523,7 @@ func spotCostForRange(start, end time.Time, rates []spotRate) float64 {
 // describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
 // simplifies that history into hourly billing rates starting from the supplied
 // start time. Returns a slice of hour-separated spot prices or any errors that occur.
-func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
+func (cloudManager *ec2SpotManager) describeHourlySpotPriceHistory(
 	iType string, zone string, os osType, start, end time.Time) ([]spotRate, error) {
 	ses, err := session.NewSession()
 	if err != nil {

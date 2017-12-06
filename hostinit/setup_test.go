@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -227,7 +226,7 @@ func spawnMockHost() (*host.Host, error) {
 		UserHost: false,
 	}
 
-	cloudManager, err := providers.GetCloudManager(mock.ProviderName, testutil.TestConfig())
+	cloudManager, err := cloud.GetCloudManager(mock.ProviderName, testutil.TestConfig())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

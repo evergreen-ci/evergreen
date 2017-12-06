@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -102,7 +102,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 		return errs
 	}
 
-	mgr, err := providers.GetCloudManager(d.Provider, s)
+	mgr, err := cloud.GetCloudManager(d.Provider, s)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),

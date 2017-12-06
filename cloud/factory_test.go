@@ -1,4 +1,4 @@
-package providers
+package cloud
 
 import (
 	"testing"

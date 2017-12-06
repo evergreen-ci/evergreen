@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -497,7 +496,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	}
 	distroScheduleData[distro.Id] = distroData
 
-	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
+	cloudManager, err := cloud.GetCloudManager(distro.Provider, settings)
 	if err != nil {
 		err = errors.Wrapf(err, "Couldn't get cloud manager for %s (%s)",
 			distro.Provider, distro.Id)
@@ -608,8 +607,8 @@ func (sd *sortableDistroByNumStaticHost) Less(i, j int) bool {
 		return false
 	}
 
-	h1 := &static.Settings{}
-	h2 := &static.Settings{}
+	h1 := &StaticSettings{}
+	h2 := &StaticSettings{}
 
 	err := mapstructure.Decode(sd.distros[i].ProviderSettings, h1)
 	if err != nil {

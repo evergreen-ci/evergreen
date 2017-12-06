@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -80,7 +80,7 @@ func getHostMessage(h host.Host) message.Fields {
 func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
-	cloudHost, err := providers.GetCloudHost(&hostObj, settings)
+	cloudHost, err := cloud.GetCloudHost(&hostObj, settings)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
 	}

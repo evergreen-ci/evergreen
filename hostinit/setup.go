@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -95,7 +94,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			"runner":  RunnerName,
 		})
 
-		cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
+		cloudManager, err := cloud.GetCloudManager(h.Provider, init.Settings)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "problem getting cloud provider for host",
@@ -315,7 +314,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := providers.GetCloudManager(host.Distro.Provider, init.Settings)
+	cloudMgr, err := cloud.GetCloudManager(host.Distro.Provider, init.Settings)
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get cloud manager for provider %s",
 			host.Distro.Provider)
@@ -373,7 +372,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	}
 
 	// check if the host is reachable via SSH
-	cloudHost, err := providers.GetCloudHost(host, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(host, init.Settings)
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get cloud host for %s", host.Id)
 	}
@@ -391,7 +390,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
 func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (string, error) {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := providers.GetCloudManager(targetHost.Provider, init.Settings)
+	cloudMgr, err := cloud.GetCloudManager(targetHost.Provider, init.Settings)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
@@ -485,7 +484,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	cloudHost, err := providers.GetCloudHost(target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(target, init.Settings)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
 	}
@@ -593,7 +592,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 		}
 
-		cloudHost, err := providers.GetCloudHost(h, init.Settings)
+		cloudHost, err := cloud.GetCloudHost(h, init.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
@@ -734,7 +733,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := providers.GetCloudHost(target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(target, init.Settings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get cloud host for %s", target.Id)
 	}
@@ -834,7 +833,7 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := providers.GetCloudHost(target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(target, init.Settings)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %v", target.Id)
 	}

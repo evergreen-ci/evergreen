@@ -1,6 +1,6 @@
 // +build go1.7
 
-package docker
+package cloud
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -77,15 +76,15 @@ func retrieveOpenPortBinding(containerPtr *types.ContainerJSON) (string, error) 
 }
 
 // toEvgStatus converts a container state to an Evergreen cloud provider status.
-func toEvgStatus(s *types.ContainerState) cloud.CloudStatus {
+func toEvgStatus(s *types.ContainerState) CloudStatus {
 	if s.Running {
-		return cloud.StatusRunning
+		return StatusRunning
 	} else if s.Paused {
-		return cloud.StatusStopped
+		return StatusStopped
 	} else if s.Restarting {
-		return cloud.StatusInitializing
+		return StatusInitializing
 	} else if s.OOMKilled || s.Dead {
-		return cloud.StatusTerminated
+		return StatusTerminated
 	}
-	return cloud.StatusUnknown
+	return StatusUnknown
 }

@@ -12,7 +12,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -198,7 +197,7 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	password string) (*subprocess.RemoteCommand, error) {
 
-	cloudHost, err := providers.GetCloudHost(hostObj, settings)
+	cloudHost, err := cloud.GetCloudHost(hostObj, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +242,7 @@ func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
 	if host.Status == evergreen.HostUninitialized {
 		return host.SetTerminated()
 	}
-	cloudHost, err := providers.GetCloudHost(host, settings)
+	cloudHost, err := cloud.GetCloudHost(host, settings)
 	if err != nil {
 		return err
 	}

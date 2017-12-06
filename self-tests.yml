@@ -363,7 +363,7 @@ tasks:
     name: test-db
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-cloud-providers
+    name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-cloud-providers-docker
@@ -494,7 +494,7 @@ tasks:
     name: race-db
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-cloud-providers
+    name: race-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-cloud-providers-ec2

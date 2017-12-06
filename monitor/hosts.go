@@ -9,8 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -133,7 +131,7 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 					defer cancel()
 
 					if err := terminateHost(ctx, hostToTerminate, settings); err != nil {
-						if strings.Contains(err.Error(), ec2.EC2ErrorNotFound) {
+						if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
 							err = hostToTerminate.Terminate()
 							if err != nil {
 								catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
@@ -179,7 +177,7 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 		}
 	}
 	// convert the host to a cloud host
-	cloudHost, err := providers.GetCloudHost(h, settings)
+	cloudHost, err := cloud.GetCloudHost(h, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
 	}

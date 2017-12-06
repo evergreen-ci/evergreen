@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -554,7 +554,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cloudManager, err := providers.GetCloudManager(hostObj.Provider, &as.Settings)
+	cloudManager, err := cloud.GetCloudManager(hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",

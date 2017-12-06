@@ -1,11 +1,10 @@
-package mock
+package cloud
 
 import (
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
@@ -17,18 +16,18 @@ import (
 type MockInstance struct {
 	IsUp               bool
 	IsSSHReachable     bool
-	Status             cloud.CloudStatus
+	Status             CloudStatus
 	SSHOptions         []string
 	TimeTilNextPayment time.Duration
 	DNSName            string
 	OnUpRan            bool
 }
 
-var MockInstances map[string]MockInstance = map[string]MockInstance{}
+var mockInstances map[string]MockInstance = map[string]MockInstance{}
 var lock = sync.RWMutex{}
 
 func Clear() {
-	MockInstances = map[string]MockInstance{}
+	mockInstances = map[string]MockInstance{}
 	lock = sync.RWMutex{}
 }
 
@@ -44,7 +43,7 @@ type MockCloudManager struct {
 
 func FetchMockProvider() *MockCloudManager {
 	return &MockCloudManager{
-		Instances: MockInstances,
+		Instances: mockInstances,
 		mutex:     &lock,
 	}
 }
@@ -56,7 +55,7 @@ func (mockMgr *MockCloudManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	mockMgr.Instances[h.Id] = MockInstance{
 		IsUp:               false,
 		IsSSHReachable:     false,
-		Status:             cloud.StatusInitializing,
+		Status:             StatusInitializing,
 		SSHOptions:         []string{},
 		TimeTilNextPayment: time.Duration(0),
 		DNSName:            "",
@@ -65,13 +64,13 @@ func (mockMgr *MockCloudManager) SpawnHost(h *host.Host) (*host.Host, error) {
 }
 
 // get the status of an instance
-func (mockMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
+func (mockMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
-		return cloud.StatusUnknown, errors.Errorf("unable to fetch host: %s", host.Id)
+		return StatusUnknown, errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 
 	return instance.Status, nil
@@ -89,7 +88,7 @@ func (mockMgr *MockCloudManager) GetDNSName(host *host.Host) (string, error) {
 	return instance.DNSName, nil
 }
 
-func (_ *MockCloudManager) GetSettings() cloud.ProviderSettings {
+func (_ *MockCloudManager) GetSettings() ProviderSettings {
 	return &MockCloudManager{}
 }
 
@@ -118,7 +117,7 @@ func (mockMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
 		return errors.Errorf("Cannot terminate %s; already marked as terminated!", host.Id)
 	}
 
-	instance.Status = cloud.StatusTerminated
+	instance.Status = StatusTerminated
 	mockMgr.Instances[host.Id] = instance
 
 	return errors.WithStack(host.Terminate())

@@ -1,4 +1,4 @@
-package digitalocean
+package cloud
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 
 	digo "github.com/dynport/gocloud/digitalocean"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -28,11 +27,11 @@ const (
 	DigitalOceanStatusArchive = "archive"
 )
 
-type DigitalOceanManager struct {
+type doManager struct {
 	account *digo.Account
 }
 
-type Settings struct {
+type doSettings struct {
 	ImageId  int `mapstructure:"image_id" json:"image_id" bson:"image_id"`
 	SizeId   int `mapstructure:"size_id" json:"size_id" bson:"size_id"`
 	RegionId int `mapstructure:"region_id" json:"region_id" bson:"region_id"`
@@ -40,15 +39,15 @@ type Settings struct {
 }
 
 var (
-	// bson fields for the Settings struct
-	ImageIdKey  = bsonutil.MustHaveTag(Settings{}, "ImageId")
-	SizeIdKey   = bsonutil.MustHaveTag(Settings{}, "SizeId")
-	RegionIdKey = bsonutil.MustHaveTag(Settings{}, "RegionId")
-	SSHKeyIdKey = bsonutil.MustHaveTag(Settings{}, "SSHKeyId")
+	// bson fields for the doSettings struct
+	ImageIdKey  = bsonutil.MustHaveTag(doSettings{}, "ImageId")
+	SizeIdKey   = bsonutil.MustHaveTag(doSettings{}, "SizeId")
+	RegionIdKey = bsonutil.MustHaveTag(doSettings{}, "RegionId")
+	SSHKeyIdKey = bsonutil.MustHaveTag(doSettings{}, "SSHKeyId")
 )
 
 //Validate checks that the settings from the config file are sane.
-func (self *Settings) Validate() error {
+func (self *doSettings) Validate() error {
 	if self.ImageId == 0 {
 		return errors.New("ImageId must not be blank")
 	}
@@ -68,23 +67,23 @@ func (self *Settings) Validate() error {
 	return nil
 }
 
-func (_ *DigitalOceanManager) GetSettings() cloud.ProviderSettings {
-	return &Settings{}
+func (_ *doManager) GetdoSettings() ProviderSettings {
+	return &doSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*DigitalOceanManager) GetInstanceName(_d *distro.Distro) string {
+func (*doManager) GetInstanceName(_d *distro.Distro) string {
 	return fmt.Sprintf("droplet-%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
 //SpawnHost creates a new droplet for the given distro.
-func (digoMgr *DigitalOceanManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (digoMgr *doManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameDigitalOcean {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDigitalOcean, h.Distro.Id, h.Distro.Provider)
 	}
 
-	digoSettings := &Settings{}
+	digoSettings := &doSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, digoSettings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro %v", h.Distro.Id)
 	}
@@ -128,7 +127,7 @@ func (digoMgr *DigitalOceanManager) SpawnHost(h *host.Host) (*host.Host, error) 
 
 //getDropletInfo is a helper function to retrieve metadata about a droplet by
 //querying DigitalOcean's API directly.
-func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet, error) {
+func (digoMgr *doManager) getDropletInfo(dropletId int) (*digo.Droplet, error) {
 	droplet := digo.Droplet{Id: dropletId}
 	droplet.Account = digoMgr.account
 	if err := droplet.Reload(); err != nil {
@@ -139,37 +138,37 @@ func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet
 
 //GetInstanceStatus returns a universal status code representing the state
 //of a droplet.
-func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
+func (digoMgr *doManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Can't get status of '%v': DigitalOcean host id's "+
 			"must be integers", host.Id)
 		grip.Error(err)
-		return cloud.StatusUnknown, err
+		return StatusUnknown, err
 
 	}
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
 	if err != nil {
-		return cloud.StatusUnknown, errors.Wrap(err, "Failed to get droplet info")
+		return StatusUnknown, errors.Wrap(err, "Failed to get droplet info")
 	}
 
 	switch droplet.Status {
 	case DigitalOceanStatusNew:
-		return cloud.StatusInitializing, nil
+		return StatusInitializing, nil
 	case DigitalOceanStatusActive:
-		return cloud.StatusRunning, nil
+		return StatusRunning, nil
 	case DigitalOceanStatusArchive:
-		return cloud.StatusStopped, nil
+		return StatusStopped, nil
 	case DigitalOceanStatusOff:
-		return cloud.StatusTerminated, nil
+		return StatusTerminated, nil
 	default:
-		return cloud.StatusUnknown, nil
+		return StatusUnknown, nil
 	}
 }
 
 //GetDNSName gets the DNS hostname of a droplet by reading it directly from
 //the DigitalOcean API
-func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) {
+func (digoMgr *doManager) GetDNSName(host *host.Host) (string, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Can't get DNS name of '%v': DigitalOcean host id's must be integers",
@@ -188,12 +187,12 @@ func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) 
 
 //CanSpawn returns if a given cloud provider supports spawning a new host
 //dynamically. Always returns true for DigitalOcean.
-func (digoMgr *DigitalOceanManager) CanSpawn() (bool, error) {
+func (digoMgr *doManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
 //TerminateInstance destroys a droplet.
-func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
+func (digoMgr *doManager) TerminateInstance(host *host.Host) error {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
@@ -217,9 +216,9 @@ func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 	return errors.WithStack(host.Terminate())
 }
 
-//Configure populates a DigitalOceanManager by reading relevant settings from the
+//Configure populates a doManager by reading relevant settings from the
 //config object.
-func (digoMgr *DigitalOceanManager) Configure(settings *evergreen.Settings) error {
+func (digoMgr *doManager) Configure(settings *evergreen.Settings) error {
 	digoMgr.account = digo.NewAccount(settings.Providers.DigitalOcean.ClientId,
 		settings.Providers.DigitalOcean.Key)
 	return nil
@@ -227,7 +226,7 @@ func (digoMgr *DigitalOceanManager) Configure(settings *evergreen.Settings) erro
 
 //IsSSHReachable checks if a droplet appears to be reachable via SSH by
 //attempting to contact the host directly.
-func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (digoMgr *doManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := digoMgr.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, errors.WithStack(err)
@@ -239,25 +238,25 @@ func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath stri
 
 //IsUp checks the droplet's state by querying the DigitalOcean API and
 //returns true if the host should be available to connect with SSH.
-func (digoMgr *DigitalOceanManager) IsUp(host *host.Host) (bool, error) {
+func (digoMgr *doManager) IsUp(host *host.Host) (bool, error) {
 	cloudStatus, err := digoMgr.GetInstanceStatus(host)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
-	if cloudStatus == cloud.StatusRunning {
+	if cloudStatus == StatusRunning {
 		return true, nil
 	}
 	return false, nil
 }
 
-func (digoMgr *DigitalOceanManager) OnUp(host *host.Host) error {
+func (digoMgr *doManager) OnUp(host *host.Host) error {
 	//Currently a no-op as DigitalOcean doesn't support tags.
 	return nil
 }
 
 //GetSSHOptions returns an array of default SSH options for connecting to a
 //droplet.
-func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
+func (digoMgr *doManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, errors.New("No key specified for DigitalOcean host")
 	}
@@ -270,7 +269,7 @@ func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host, keyPath strin
 
 // TimeTilNextPayment returns the amount of time until the next payment is due
 // for the host
-func (digoMgr *DigitalOceanManager) TimeTilNextPayment(host *host.Host) time.Duration {
+func (digoMgr *doManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	now := time.Now()
 
 	// the time since the host was created

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
@@ -95,7 +95,7 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 		communicationTime := freeHost.GetElapsedCommunicationTime()
 
 		// get a cloud manager for the host
-		cloudManager, err := providers.GetCloudManager(freeHost.Provider, s)
+		cloudManager, err := cloud.GetCloudManager(freeHost.Provider, s)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error getting cloud manager for host %v", freeHost.Id)
 		}
@@ -230,7 +230,7 @@ func flagExpiredHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, er
 // helper to check if a host can be terminated
 func hostCanBeTerminated(h host.Host, s *evergreen.Settings) (bool, error) {
 	// get a cloud manager for the host
-	cloudManager, err := providers.GetCloudManager(h.Provider, s)
+	cloudManager, err := cloud.GetCloudManager(h.Provider, s)
 	if err != nil {
 		return false, errors.Wrapf(err, "error getting cloud manager for host %s", h.Id)
 	}
