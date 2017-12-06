@@ -1,6 +1,7 @@
 package units
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -33,19 +34,21 @@ func init() {
 
 type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	Intent   patch.Intent `bson:"intent" json:"intent"`
 	logger   grip.Journaler
 
+	intent     patch.Intent  `bson:"intent" json:"intent"`
+	patchID    bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
 	user       *user.DBUser
 	projectRef *model.ProjectRef
 }
 
-// NewHostStatsCollector logs statistics about host utilization per
-// distro to the default grip logger.
-func NewPatchIntentProcessor(id string, intent patch.Intent) amboy.Job {
+// NewPatchIntentProcessor creates an amboy job to create a patch from the
+// given patch intent with the given object ID for the patch
+func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
-	j.SetID(id)
-	j.Intent = intent
+	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, intent.GetType(), intent.ID()))
+	j.intent = intent
+	j.patchID = patchID
 	return j
 }
 
@@ -66,15 +69,15 @@ func (j *patchIntentProcessor) Run() {
 	githubOauthToken := evergreen.GetEnvironment().Settings().Credentials["github"]
 
 	defer j.MarkComplete()
-	if j.Intent == nil {
+	if j.intent == nil {
 		j.AddError(errors.New("nil intent"))
 		return
 	}
-	defer j.Intent.SetProcessed()
+	defer j.intent.SetProcessed()
 
-	patchDoc := j.Intent.NewPatch()
+	patchDoc := j.intent.NewPatch()
 
-	switch j.Intent.GetType() {
+	switch j.intent.GetType() {
 	case patch.GithubIntentType:
 		j.AddError(j.buildGithubPatchDoc(patchDoc))
 
@@ -82,7 +85,10 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
 	default:
-		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType()))
+		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.intent.GetType()))
+	}
+	if j.HasErrors() {
+		return
 	}
 
 	var err error
@@ -149,7 +155,26 @@ func (j *patchIntentProcessor) Run() {
 
 	patchDoc.ClearPatchData()
 
-	model.ExpandTasksAndVariants(patchDoc, project)
+	//expand tasks and build variants and include dependencies
+	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
+		patchDoc.BuildVariants = []string{}
+		for _, buildVariant := range project.BuildVariants {
+			if buildVariant.Disabled {
+				continue
+			}
+			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
+		}
+	}
+
+	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
+		patchDoc.Tasks = []string{}
+		for _, t := range project.Tasks {
+			if t.Patchable != nil && !(*t.Patchable) {
+				continue
+			}
+			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
+		}
+	}
 
 	var pairs []model.TVPair
 	for _, v := range patchDoc.BuildVariants {
@@ -171,7 +196,9 @@ func (j *patchIntentProcessor) Run() {
 		return
 	}
 
-	if j.Intent.ShouldFinalizePatch() {
+	j.patchID = patchDoc.Id
+
+	if j.intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, githubOauthToken); err != nil {
 			j.AddError(err)
 			return

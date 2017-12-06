@@ -130,7 +130,6 @@ func (c *cliIntent) ShouldFinalizePatch() bool {
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	return &Patch{
-		Id:            bson.NewObjectId(),
 		Description:   c.Description,
 		Author:        c.User,
 		Project:       c.ProjectID,
