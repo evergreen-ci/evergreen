@@ -100,17 +100,17 @@ func (c *update) Execute(ctx context.Context,
 	}
 
 	if c.YamlFile != "" {
+		c.YamlFile, err = conf.Expansions.ExpandString(c.YamlFile)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
 		_, err = os.Stat(c.YamlFile)
 		if os.IsNotExist(err) {
 			if c.IgnoreMissingFile {
 				return nil
 			}
 			return errors.Errorf("file '%s' does not exist", c.YamlFile)
-		}
-
-		c.YamlFile, err = conf.Expansions.ExpandString(c.YamlFile)
-		if err != nil {
-			return errors.WithStack(err)
 		}
 
 		logger.Task().Infof("Updating expansions with keys from file: %s", c.YamlFile)
