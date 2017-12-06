@@ -160,6 +160,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
+	// exit early if we do not need to run the setup script
+	if hostObj.Distro.Setup == "" {
+		return agbh.GetAgentRevision()
+	}
+
 	// run the setup script with the agent
 	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
