@@ -26,8 +26,6 @@ const (
 	DigitalOceanStatusNew     = "new"
 	DigitalOceanStatusActive  = "active"
 	DigitalOceanStatusArchive = "archive"
-
-	ProviderName = "digitalocean"
 )
 
 type DigitalOceanManager struct {
@@ -76,15 +74,14 @@ func (_ *DigitalOceanManager) GetSettings() cloud.ProviderSettings {
 
 //GetInstanceName returns a name to be used for an instance
 func (*DigitalOceanManager) GetInstanceName(_d *distro.Distro) string {
-	return "droplet-" +
-		fmt.Sprintf("%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+	return fmt.Sprintf("droplet-%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
 //SpawnHost creates a new droplet for the given distro.
 func (digoMgr *DigitalOceanManager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != ProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
-			ProviderName, h.Distro.Id, h.Distro.Provider)
+	if h.Distro.Provider != evergreen.ProviderNameDigitalOcean {
+		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
+			evergreen.ProviderNameDigitalOcean, h.Distro.Id, h.Distro.Provider)
 	}
 
 	digoSettings := &Settings{}
