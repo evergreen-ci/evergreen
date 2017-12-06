@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -204,6 +205,9 @@ func (c *shellExec) Execute(ctx context.Context,
 		logger.Execution().Info("Script execution complete.")
 	case <-ctx.Done():
 		logger.Execution().Info("Got kill signal")
+
+		logger.System().Debug("dumping running processes before canceling work")
+		logger.System().Debug(message.CollectAllProcesses())
 
 		// need to check command has started
 		if pid := localCmd.GetPid(); pid > 0 {
