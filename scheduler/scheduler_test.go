@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -168,7 +167,7 @@ func TestSpawnHosts(t *testing.T) {
 			}
 
 			for _, id := range distroIds {
-				d := distro.Distro{Id: id, PoolSize: 3, Provider: mock.ProviderName}
+				d := distro.Distro{Id: id, PoolSize: 3, Provider: evergreen.ProviderNameMock}
 				So(d.Insert(), ShouldBeNil)
 			}
 

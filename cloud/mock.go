@@ -10,6 +10,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+var globalMockState *mockState
+
+func init() {
+	globalMockState = &mockState{
+		instances: map[string]MockInstance{},
+	}
+}
+
 // MockInstance mocks a running server that Evergreen knows about. It contains
 // fields that can be set to change the response the cloud manager returns
 // when this mock instance is queried for.
@@ -23,14 +31,76 @@ type MockInstance struct {
 	OnUpRan            bool
 }
 
-var mockInstances map[string]MockInstance
-
-func init() {
-	ResetMock()
+type MockProvider interface {
+	Len() int
+	Reset()
+	Get(string) MockInstance
+	Set(string, MockInstance)
+	IterIDs() <-chan string
+	IterInstances() <-chan MockInstance
 }
 
-func ResetMock() {
-	mockInstances = map[string]MockInstance{}
+func GetMockProvider() MockProvider {
+	return globalMockState
+}
+
+type mockState struct {
+	instances map[string]MockInstance
+	mutex     sync.RWMutex
+}
+
+func (m *mockState) Reset() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.instances = map[string]MockInstance{}
+}
+
+func (m *mockState) Len() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	return len(m.instances)
+}
+
+func (m *mockState) IterIDs() <-chan string {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	out := make(chan string, len(m.instances))
+
+	for id := range m.instances {
+		out <- id
+	}
+
+	close(out)
+	return out
+}
+
+func (m *mockState) Get(id string) MockInstance {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	return m.instances[id]
+}
+
+func (m *mockState) Set(id string, instance MockInstance) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.instances[id] = instance
+}
+
+func (m *mockState) IterInstances() <-chan MockInstance {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	out := make(chan MockInstance, len(m.instances))
+
+	for _, node := range m.instances {
+		out <- node
+	}
+
+	close(out)
+	return out
 }
 
 // mockManager implements the CloudManager interface for testing
@@ -45,8 +115,8 @@ type mockManager struct {
 
 func makeMockManager() CloudManager {
 	return &mockManager{
-		Instances: mockInstances,
-		mutex:     &lock,
+		Instances: globalMockState.instances,
+		mutex:     &globalMockState.mutex,
 	}
 }
 
