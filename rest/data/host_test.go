@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,13 +24,13 @@ type HostConnectorSuite struct {
 const testUser = "user1"
 
 func TestHostConnectorSuite(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	s := new(HostConnectorSuite)
 	s.ctx = &DBConnector{}
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	s.setup = func(s *HostConnectorSuite) {
-		s.NoError(db.ClearCollections(host.Collection))
+		s.NoError(db.ClearCollections(user.Collection, host.Collection))
 		host1 := &host.Host{
 			Id:             "host1",
 			StartedBy:      testUser,
@@ -57,10 +56,21 @@ func TestHostConnectorSuite(t *testing.T) {
 			ExpirationTime: time.Now().Add(time.Hour),
 		}
 
-		assert.NoError(t, host1.Insert())
-		assert.NoError(t, host2.Insert())
-		assert.NoError(t, host3.Insert())
-		assert.NoError(t, host4.Insert())
+		s.NoError(host1.Insert())
+		s.NoError(host2.Insert())
+		s.NoError(host3.Insert())
+		s.NoError(host4.Insert())
+
+		users := []string{testUser, "user2", "user3", "user4", "root"}
+
+		for _, id := range users {
+			user := &user.DBUser{
+				Id: id,
+			}
+			s.NoError(user.Insert())
+		}
+
+		s.ctx.SetSuperUsers([]string{"root"})
 	}
 
 	suite.Run(t, s)
@@ -247,6 +257,7 @@ func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
 func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
 	u, err := s.ctx.FindUserById(testUser)
 	s.NoError(err)
+	s.NotNil(u)
 
 	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
 	s.Error(err)
