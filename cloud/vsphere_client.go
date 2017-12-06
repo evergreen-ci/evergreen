@@ -32,7 +32,7 @@ type vsphereClient interface {
 	Init(*authOptions) error
 	GetIP(*host.Host) (string, error)
 	GetPowerState(*host.Host) (types.VirtualMachinePowerState, error)
-	CreateInstance(*host.Host, *ProviderSettings) (string, error)
+	CreateInstance(*host.Host, *vsphereSettings) (string, error)
 	DeleteInstance(*host.Host) error
 }
 
@@ -114,7 +114,7 @@ func (c *vsphereClientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePow
 	return state, nil
 }
 
-func (c *vsphereClientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
+func (c *vsphereClientImpl) CreateInstance(h *host.Host, s *vsphereSettings) (string, error) {
 	ctx := context.TODO()
 
 	// Locate and organize resources for creating a virtual machine.

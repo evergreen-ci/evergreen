@@ -19,7 +19,7 @@ import (
 
 // vsphereManager implements the CloudManager interface for vSphere.
 type vsphereManager struct {
-	client client
+	client vsphereClient
 }
 
 // vsphereSettings specifies the settings used to configure a host instance.
@@ -70,7 +70,7 @@ func (m *vsphereManager) Configure(s *evergreen.Settings) error {
 	ao := authOptions(s.Providers.VSphere)
 
 	if m.client == nil {
-		m.client = &clientImpl{}
+		m.client = &vsphereClientImpl{}
 	}
 
 	if err := m.client.Init(&ao); err != nil {
@@ -141,7 +141,7 @@ func (m *vsphereManager) GetInstanceStatus(host *host.Host) (CloudStatus, error)
 			"client failed to get power state for host %s", host.Id)
 	}
 
-	return toEvgStatus(state), nil
+	return vsphereToEvgStatus(state), nil
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.

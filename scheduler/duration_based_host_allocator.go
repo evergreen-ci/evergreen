@@ -607,8 +607,8 @@ func (sd *sortableDistroByNumStaticHost) Less(i, j int) bool {
 		return false
 	}
 
-	h1 := &StaticSettings{}
-	h2 := &StaticSettings{}
+	h1 := &cloud.StaticSettings{}
+	h2 := &cloud.StaticSettings{}
 
 	err := mapstructure.Decode(sd.distros[i].ProviderSettings, h1)
 	if err != nil {

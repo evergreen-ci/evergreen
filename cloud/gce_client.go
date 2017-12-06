@@ -21,7 +21,7 @@ const (
 // The gceClient interface wraps the Google Compute gceClient interaction.
 type gceClient interface {
 	Init(*jwt.Config) error
-	CreateInstance(*host.Host, *ProviderSettings) (string, error)
+	CreateInstance(*host.Host, *GCESettings) (string, error)
 	GetInstance(*host.Host) (*compute.Instance, error)
 	DeleteInstance(*host.Host) error
 }
@@ -56,7 +56,7 @@ func (c *gceClientImpl) Init(config *jwt.Config) error {
 //
 // API calls to an instance refer to the instance by the user-provided name (which must be unique)
 // and not the ID. If successful, CreateInstance returns the name of the provisioned instance.
-func (c *gceClientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
+func (c *gceClientImpl) CreateInstance(h *host.Host, s *GCESettings) (string, error) {
 	// Create instance options to spawn an instance
 	machineType := makeMachineType(h.Zone, s.MachineName, s.NumCPUs, s.MemoryMB)
 	instance := &compute.Instance{

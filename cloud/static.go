@@ -16,7 +16,7 @@ import (
 type staticManager struct{}
 
 type StaticSettings struct {
-	Hosts []Host `mapstructure:"hosts" json:"hosts" bson:"hosts"`
+	Hosts []staticHost `mapstructure:"hosts" json:"hosts" bson:"hosts"`
 }
 
 type staticHost struct {
@@ -77,7 +77,7 @@ func (staticMgr *staticManager) TerminateInstance(host *host.Host) error {
 	return nil
 }
 
-func (_ *staticManager) GetStaticSettings() ProviderSettings {
+func (_ *staticManager) GetSettings() ProviderSettings {
 	return &StaticSettings{}
 }
 

@@ -30,7 +30,7 @@ func vsphereToEvgStatus(state types.VirtualMachinePowerState) CloudStatus {
 
 // getInstance gets a reference to this instance from the vCenter.
 // If this method errors, it is possible the instance does not exist.
-func (c *clientImpl) getInstance(ctx context.Context, name string) (*object.VirtualMachine, error) {
+func (c *vsphereClientImpl) getInstance(ctx context.Context, name string) (*object.VirtualMachine, error) {
 	vm, err := c.Finder.VirtualMachine(ctx, name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not find vm for host %s", name)
@@ -40,7 +40,7 @@ func (c *clientImpl) getInstance(ctx context.Context, name string) (*object.Virt
 }
 
 // relocateSpec creates a spec for where the new machine will be located.
-func (c *clientImpl) relocateSpec(s *ProviderSettings) (types.VirtualMachineRelocateSpec, error) {
+func (c *vsphereClientImpl) relocateSpec(s *vsphereSettings) (types.VirtualMachineRelocateSpec, error) {
 	ctx := context.TODO()
 	var spec types.VirtualMachineRelocateSpec
 	var morRP types.ManagedObjectReference
@@ -77,7 +77,7 @@ func (c *clientImpl) relocateSpec(s *ProviderSettings) (types.VirtualMachineRelo
 }
 
 // configSpec creates a spec for hardware configuration of the new machine.
-func (c *clientImpl) configSpec(s *ProviderSettings) types.VirtualMachineConfigSpec {
+func (c *vsphereClientImpl) configSpec(s *vsphereSettings) types.VirtualMachineConfigSpec {
 	spec := types.VirtualMachineConfigSpec{
 		NumCPUs:  s.NumCPUs,
 		MemoryMB: s.MemoryMB,
@@ -95,7 +95,7 @@ func (c *clientImpl) configSpec(s *ProviderSettings) types.VirtualMachineConfigS
 
 // cloneSpec creates a spec for a new virtual machine, specifying
 // where it will start up and its hardware configurations.
-func (c *clientImpl) cloneSpec(s *ProviderSettings) (types.VirtualMachineCloneSpec, error) {
+func (c *vsphereClientImpl) cloneSpec(s *vsphereSettings) (types.VirtualMachineCloneSpec, error) {
 	var spec types.VirtualMachineCloneSpec
 
 	cs := c.configSpec(s)

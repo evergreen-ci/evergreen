@@ -20,11 +20,11 @@ import (
 type openStackManager struct {
 	authOptions  *gophercloud.AuthOptions
 	endpointOpts *gophercloud.EndpointOpts
-	client       client
+	client       openStackClient
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.
-type openStackProviderSettings struct {
+type openStackSettings struct {
 	ImageName     string `mapstructure:"image_name"`
 	FlavorName    string `mapstructure:"flavor_name"`
 	KeyName       string `mapstructure:"key_name"`
@@ -32,7 +32,7 @@ type openStackProviderSettings struct {
 }
 
 // Validate verifies a set of ProviderSettings.
-func (opts *openStackProviderSettings) Validate() error {
+func (opts *openStackSettings) Validate() error {
 	if opts.ImageName == "" {
 		return errors.New("Image name must not be blank")
 	}
@@ -55,7 +55,7 @@ func (opts *openStackProviderSettings) Validate() error {
 // GetSettings returns an empty ProviderSettings struct since settings are configured on
 // instance creation.
 func (m *openStackManager) GetSettings() ProviderSettings {
-	return &openStackProviderSettings{}
+	return &openStackSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
@@ -81,7 +81,7 @@ func (m *openStackManager) Configure(s *evergreen.Settings) error {
 	}
 
 	if m.client == nil {
-		m.client = &clientImpl{}
+		m.client = &openStackClientImpl{}
 	}
 
 	if err := m.client.Init(*m.authOptions, *m.endpointOpts); err != nil {
@@ -105,7 +105,7 @@ func (m *openStackManager) SpawnHost(h *host.Host) (*host.Host, error) {
 			evergreen.ProviderNameOpenstack, h.Distro.Id, h.Distro.Provider)
 	}
 
-	settings := &ProviderSettings{}
+	settings := &openStackSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}

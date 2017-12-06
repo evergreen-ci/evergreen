@@ -67,7 +67,7 @@ func (self *doSettings) Validate() error {
 	return nil
 }
 
-func (_ *doManager) GetdoSettings() ProviderSettings {
+func (_ *doManager) GetSettings() ProviderSettings {
 	return &doSettings{}
 }
 

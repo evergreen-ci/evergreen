@@ -10,7 +10,7 @@ import (
 
 const (
 	// NameTimeFormat is the format in which to log times like instance start time.
-	NameTimeFormat = "20060102150405"
+	OSNameTimeFormat = "20060102150405"
 	// OSStatusActive means the instance is currently running.
 	OSStatusActive = "ACTIVE"
 	// OSStatusInProgress means the instance is currently running and processing a request.
@@ -38,7 +38,7 @@ func osStatusToEvgStatus(status string) CloudStatus {
 	}
 }
 
-func getSpawnOptions(h *host.Host, s *ProviderSettings) servers.CreateOpts {
+func getSpawnOptions(h *host.Host, s *openStackSettings) servers.CreateOpts {
 	return servers.CreateOpts{
 		Name:           h.Id,
 		ImageName:      s.ImageName,
@@ -48,7 +48,7 @@ func getSpawnOptions(h *host.Host, s *ProviderSettings) servers.CreateOpts {
 	}
 }
 
-func makeTags(intent *host.Host) map[string]string {
+func osMakeTags(intent *host.Host) map[string]string {
 	// Get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {

@@ -24,7 +24,7 @@ const (
 
 // gceManager implements the CloudManager interface for Google Compute Engine.
 type gceManager struct {
-	client client
+	client gceClient
 }
 
 // GCESettings specifies the settings used to configure a host instance.
@@ -95,7 +95,7 @@ func (m *gceManager) Configure(s *evergreen.Settings) error {
 	}
 
 	if m.client == nil {
-		m.client = &clientImpl{}
+		m.client = &gceClientImpl{}
 	}
 
 	if err := m.client.Init(jwtConfig); err != nil {
@@ -132,7 +132,7 @@ func (m *gceManager) SpawnHost(h *host.Host) (*host.Host, error) {
 			ProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 
-	s := &ProviderSettings{}
+	s := &GCESettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
@@ -175,7 +175,7 @@ func (m *gceManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 		return StatusUnknown, err
 	}
 
-	return toEvgStatus(instance.Status), nil
+	return gceToEvgStatus(instance.Status), nil
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.

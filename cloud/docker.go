@@ -22,7 +22,7 @@ import (
 
 // dockerManager implements the CloudManager interface for Docker.
 type dockerManager struct {
-	client client
+	client dockerClient
 }
 
 type portRange struct {
@@ -47,10 +47,10 @@ type dockerProviderSettings struct {
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
-	hostIPKey     = bsonutil.MustHaveTag(ProviderSettings{}, "HostIP")
-	imageIDKey    = bsonutil.MustHaveTag(ProviderSettings{}, "ImageID")
-	clientPortKey = bsonutil.MustHaveTag(ProviderSettings{}, "ClientPort")
-	portRangeKey  = bsonutil.MustHaveTag(ProviderSettings{}, "PortRange")
+	hostIPKey     = bsonutil.MustHaveTag(dockerProviderSettings{}, "HostIP")
+	imageIDKey    = bsonutil.MustHaveTag(dockerProviderSettings{}, "ImageID")
+	clientPortKey = bsonutil.MustHaveTag(dockerProviderSettings{}, "ClientPort")
+	portRangeKey  = bsonutil.MustHaveTag(dockerProviderSettings{}, "PortRange")
 
 	// bson fields for the portRange struct
 	minPortKey = bsonutil.MustHaveTag(portRange{}, "MinPort")
@@ -58,7 +58,7 @@ var (
 )
 
 //Validate checks that the settings from the config file are sane.
-func (settings *ProviderSettings) Validate() error {
+func (settings *dockerProviderSettings) Validate() error {
 	if settings.HostIP == "" {
 		return errors.New("HostIP must not be blank")
 	}
@@ -85,7 +85,7 @@ func (settings *ProviderSettings) Validate() error {
 
 // GetSettings returns an empty ProviderSettings struct.
 func (*dockerManager) GetSettings() ProviderSettings {
-	return &ProviderSettings{}
+	return &dockerProviderSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
@@ -101,7 +101,7 @@ func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	}
 
 	// Decode provider settings from distro settings
-	settings := &ProviderSettings{}
+	settings := &dockerProviderSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
 	}
@@ -223,7 +223,7 @@ func (m *dockerManager) Configure(s *evergreen.Settings) error {
 	config := s.Providers.Docker
 
 	if m.client == nil {
-		m.client = &clientImpl{}
+		m.client = &dockerClientImpl{}
 	}
 
 	if err := m.client.Init(config.APIVersion); err != nil {

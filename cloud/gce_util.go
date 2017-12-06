@@ -60,7 +60,7 @@ func (keys sshKeyGroup) String() string {
 	return strings.Join(arr, "\n")
 }
 
-func toEvgStatus(status string) CloudStatus {
+func gceToEvgStatus(status string) CloudStatus {
 	switch status {
 	case statusProvisioning, statusStaging:
 		return StatusInitializing

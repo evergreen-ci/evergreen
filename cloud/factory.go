@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/vsphere"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -30,7 +29,7 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudMa
 	case evergreen.ProviderNameGce:
 		provider = &gceManager{}
 	case evergreen.ProviderNameVsphere:
-		provider = &vsphere.Manager{}
+		provider = &vsphereManager{}
 	default:
 		return nil, errors.Errorf("No known provider for '%v'", providerName)
 	}

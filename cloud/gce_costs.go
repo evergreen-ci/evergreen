@@ -62,7 +62,7 @@ type computePrices struct {
 // In general, TimeTilNextPayment aims to run hosts for a minimum of MinUptime, but
 // leaves a buffer time of at least BufferTime after a task has completed before
 // shutting a host down. We assume the host is currently free (not running a task).
-func (m *Manager) TimeTilNextPayment(h *host.Host) time.Duration {
+func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 	now := time.Now()
 
 	// potential end times given certain milestones in the host lifespan
@@ -94,7 +94,7 @@ func (m *Manager) TimeTilNextPayment(h *host.Host) time.Duration {
 // platforms (e.g. Skylake VMs), premium images (e.g. SUSE), networks, etc.
 //
 // Source: https://cloud.google.com/compute/pricing
-func (m *Manager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// Sanity check.
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
