@@ -45,7 +45,12 @@ func MakeFileLogger(filePath string) (Sender, error) {
 	s.level = LevelInfo{level.Trace, level.Trace}
 
 	s.reset = func() {
-		s.logger = log.New(f, fmt.Sprintf("[%s] ", s.Name()), log.LstdFlags)
+		prefix := fmt.Sprintf("[%s] ", s.Name())
+
+		s.logger = log.New(f, prefix, log.LstdFlags)
+
+		fallback := log.New(os.Stderr, prefix, log.LstdFlags)
+		_ = s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
 	}
 
 	s.closer = func() error {
@@ -120,6 +125,6 @@ func (s *nativeLogger) Send(m message.Composer) {
 			return
 		}
 
-		s.logger.Printf(out)
+		s.logger.Print(out)
 	}
 }

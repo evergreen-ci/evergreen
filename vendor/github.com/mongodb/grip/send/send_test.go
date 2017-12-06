@@ -59,6 +59,19 @@ func (s *SenderSuite) SetupTest() {
 
 	s.senders["writer"] = NewWriterSender(native)
 
+	var plain, plainerr, plainfile Sender
+	plain, err = NewPlainLogger("plain", l)
+	s.Require().NoError(err)
+	s.senders["plain"] = plain
+
+	plainerr, err = NewPlainErrorLogger("plain.err", l)
+	s.Require().NoError(err)
+	s.senders["plain.err"] = plainerr
+
+	plainfile, err = NewPlainFileLogger("plain.file", filepath.Join(s.tempDir, "plain.file"), l)
+	s.Require().NoError(err)
+	s.senders["plain.file"] = plainfile
+
 	var asyncOne, asyncTwo Sender
 	asyncOne, err = NewNativeLogger("async-one", l)
 	s.Require().NoError(err)

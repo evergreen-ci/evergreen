@@ -38,7 +38,7 @@ func NewJiraCommentLogger(id string, opts *JiraOptions, l LevelInfo) (Sender, er
 		return nil, err
 	}
 
-	if _, err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
+	if err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 
