@@ -1,13 +1,12 @@
 // +build go1.7
 
-package vsphere
+package cloud
 
 import (
 	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -18,13 +17,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Manager implements the CloudManager interface for vSphere.
-type Manager struct {
+// vsphereManager implements the CloudManager interface for vSphere.
+type vsphereManager struct {
 	client client
 }
 
-// ProviderSettings specifies the settings used to configure a host instance.
-type ProviderSettings struct {
+// vsphereSettings specifies the settings used to configure a host instance.
+type vsphereSettings struct {
 	Template string `mapstructure:"template"`
 
 	Datastore    string `mapstructure:"datastore"`
@@ -35,7 +34,7 @@ type ProviderSettings struct {
 }
 
 // Validate verifies a set of ProviderSettings.
-func (opts *ProviderSettings) Validate() error {
+func (opts *vsphereSettings) Validate() error {
 	if opts.Template == "" {
 		return errors.New("template must not be blank")
 	}
@@ -56,18 +55,18 @@ func (opts *ProviderSettings) Validate() error {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*Manager) GetInstanceName(d *distro.Distro) string {
+func (*vsphereManager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
-// GetSettings returns an empty ProviderSettings struct
+// GetSettings returns an empty vsphereSettings struct
 // since settings are configured on instance creation.
-func (m *Manager) GetSettings() cloud.ProviderSettings {
-	return &ProviderSettings{}
+func (m *vsphereManager) GetSettings() ProviderSettings {
+	return &vsphereSettings{}
 }
 
 // Configure loads the necessary credentials from the global config object.
-func (m *Manager) Configure(s *evergreen.Settings) error {
+func (m *vsphereManager) Configure(s *evergreen.Settings) error {
 	ao := authOptions(s.Providers.VSphere)
 
 	if m.client == nil {
@@ -84,7 +83,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 // SpawnHost attempts to create a new host by requesting one from the vSphere API.
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
-// ProviderSettings in the distro should have the following settings:
+// vsphereSettings in the distro should have the following settings:
 //     - Template     (string): name of the template VM
 //     - Datastore    (string): (optional) name/path of the datastore to attach to e.g. 1TB_SSD
 //     - ResourcePool (string): (optional) name/path of a resource pool e.g. Resources
@@ -93,13 +92,13 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //
 // Optional fields use the default values of the template vm if not specified.
 //     -
-func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *vsphereManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameVsphere {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameVsphere, h.Distro.Id, h.Distro.Provider)
 	}
 
-	s := &ProviderSettings{}
+	s := &vsphereSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
@@ -130,15 +129,15 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 }
 
 // CanSpawn always returns true.
-func (m *Manager) CanSpawn() (bool, error) {
+func (m *vsphereManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
-func (m *Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
+func (m *vsphereManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	state, err := m.client.GetPowerState(host)
 	if err != nil {
-		return cloud.StatusUnknown, errors.Wrapf(err,
+		return StatusUnknown, errors.Wrapf(err,
 			"client failed to get power state for host %s", host.Id)
 	}
 
@@ -146,7 +145,7 @@ func (m *Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) 
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *Manager) TerminateInstance(host *host.Host) error {
+func (m *vsphereManager) TerminateInstance(host *host.Host) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -166,23 +165,23 @@ func (m *Manager) TerminateInstance(host *host.Host) error {
 }
 
 // IsUp checks whether the provisioned host is running.
-func (m *Manager) IsUp(host *host.Host) (bool, error) {
+func (m *vsphereManager) IsUp(host *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(host)
 	if err != nil {
 		return false, errors.Wrapf(err,
 			"manager failed to get instance status for host %s", host.Id)
 	}
 
-	return status == cloud.StatusRunning, nil
+	return status == StatusRunning, nil
 }
 
 // OnUp does nothing since tags are attached in SpawnInstance.
-func (m *Manager) OnUp(host *host.Host) error {
+func (m *vsphereManager) OnUp(host *host.Host) error {
 	return nil //TODO
 }
 
 // IsSSHReachable returns true if the host can successfully accept and run an SSH command.
-func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (m *vsphereManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	opts, err := m.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get SSH options for host %s", host.Id)
@@ -192,7 +191,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 }
 
 // GetDNSName returns the IPv4 address of the host.
-func (m *Manager) GetDNSName(host *host.Host) (string, error) {
+func (m *vsphereManager) GetDNSName(host *host.Host) (string, error) {
 	ip, err := m.client.GetIP(host)
 	if err != nil {
 		return "", errors.Wrapf(err, "client failed to get IP for host %s", host.Id)
@@ -203,7 +202,7 @@ func (m *Manager) GetDNSName(host *host.Host) (string, error) {
 
 // GetSSHOptions generates the command line args to be
 // passed to SSH to allow connection to the machine.
-func (m *Manager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
+func (m *vsphereManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, errors.Errorf("No key specified for host %s", host.Id)
 	}
@@ -218,6 +217,6 @@ func (m *Manager) GetSSHOptions(host *host.Host, keyPath string) ([]string, erro
 
 // TimeTilNextPayment ...
 // TODO: implement payment information for vSphere
-func (m *Manager) TimeTilNextPayment(host *host.Host) time.Duration {
+func (m *vsphereManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }

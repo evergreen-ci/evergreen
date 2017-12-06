@@ -1,11 +1,10 @@
 // +build go1.7
 
-package vsphere
+package cloud
 
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -16,16 +15,16 @@ import (
 // Powered on means the instance is powered on and running.
 // Powered off means the instance is completely powered off.
 // Suspended means the instance is in a hibernated/sleep state.
-func toEvgStatus(state types.VirtualMachinePowerState) cloud.CloudStatus {
+func vsphereToEvgStatus(state types.VirtualMachinePowerState) CloudStatus {
 	switch state {
 	case types.VirtualMachinePowerStatePoweredOn:
-		return cloud.StatusRunning
+		return StatusRunning
 	case types.VirtualMachinePowerStatePoweredOff:
-		return cloud.StatusStopped
+		return StatusStopped
 	case types.VirtualMachinePowerStateSuspended:
-		return cloud.StatusStopped
+		return StatusStopped
 	default:
-		return cloud.StatusUnknown
+		return StatusUnknown
 	}
 }
 

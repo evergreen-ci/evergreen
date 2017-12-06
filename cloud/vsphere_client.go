@@ -1,6 +1,6 @@
 // +build go1.7
 
-package vsphere
+package cloud
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -29,7 +28,7 @@ type authOptions struct {
 }
 
 // The client interface wraps interaction with the vCenter server.
-type client interface {
+type vsphereClient interface {
 	Init(*authOptions) error
 	GetIP(*host.Host) (string, error)
 	GetPowerState(*host.Host) (types.VirtualMachinePowerState, error)
@@ -37,13 +36,13 @@ type client interface {
 	DeleteInstance(*host.Host) error
 }
 
-type clientImpl struct {
+type vsphereClientImpl struct {
 	Client     *govmomi.Client
 	Datacenter *object.Datacenter
 	Finder     *find.Finder
 }
 
-func (c *clientImpl) Init(ao *authOptions) error {
+func (c *vsphereClientImpl) Init(ao *authOptions) error {
 	ctx := context.TODO()
 	u := &url.URL{
 		Scheme: "https",
@@ -80,7 +79,7 @@ func (c *clientImpl) Init(ao *authOptions) error {
 	return nil
 }
 
-func (c *clientImpl) GetIP(h *host.Host) (string, error) {
+func (c *vsphereClientImpl) GetIP(h *host.Host) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -97,7 +96,7 @@ func (c *clientImpl) GetIP(h *host.Host) (string, error) {
 	return ip, nil
 }
 
-func (c *clientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePowerState, error) {
+func (c *vsphereClientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePowerState, error) {
 	ctx := context.TODO()
 
 	vm, err := c.getInstance(ctx, h.Id)
@@ -115,7 +114,7 @@ func (c *clientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePowerState
 	return state, nil
 }
 
-func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
+func (c *vsphereClientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
 	ctx := context.TODO()
 
 	// Locate and organize resources for creating a virtual machine.
@@ -162,7 +161,7 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	return h.Id, nil
 }
 
-func (c *clientImpl) DeleteInstance(h *host.Host) error {
+func (c *vsphereClientImpl) DeleteInstance(h *host.Host) error {
 	ctx := context.TODO()
 
 	vm, err := c.getInstance(ctx, h.Id)

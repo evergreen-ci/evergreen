@@ -1,6 +1,6 @@
 // +build go1.7
 
-package vsphere
+package cloud
 
 import (
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -8,7 +8,7 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 )
 
-type clientMock struct {
+type vsphereClientMock struct {
 	// API call options
 	failInit       bool
 	failIP         bool
@@ -20,7 +20,7 @@ type clientMock struct {
 	isActive bool
 }
 
-func (c *clientMock) Init(_ *authOptions) error {
+func (c *vsphereClientMock) Init(_ *authOptions) error {
 	if c.failInit {
 		return errors.New("failed to initialize instance")
 	}
@@ -28,7 +28,7 @@ func (c *clientMock) Init(_ *authOptions) error {
 	return nil
 }
 
-func (c *clientMock) GetIP(_ *host.Host) (string, error) {
+func (c *vsphereClientMock) GetIP(_ *host.Host) (string, error) {
 	if c.failIP {
 		return "", errors.New("failed to get IP")
 	}
@@ -36,7 +36,7 @@ func (c *clientMock) GetIP(_ *host.Host) (string, error) {
 	return "0.0.0.0", nil
 }
 
-func (c *clientMock) GetPowerState(_ *host.Host) (types.VirtualMachinePowerState, error) {
+func (c *vsphereClientMock) GetPowerState(_ *host.Host) (types.VirtualMachinePowerState, error) {
 	if c.failPowerState {
 		err := errors.New("failed to read power state")
 		return types.VirtualMachinePowerState(""), err
@@ -49,7 +49,7 @@ func (c *clientMock) GetPowerState(_ *host.Host) (types.VirtualMachinePowerState
 	return types.VirtualMachinePowerStatePoweredOn, nil
 }
 
-func (c *clientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
+func (c *vsphereClientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
 	if c.failCreate {
 		return "", errors.New("failed to create instance")
 	}
@@ -57,7 +57,7 @@ func (c *clientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, 
 	return h.Id, nil
 }
 
-func (c *clientMock) DeleteInstance(_ *host.Host) error {
+func (c *vsphereClientMock) DeleteInstance(_ *host.Host) error {
 	if c.failDelete {
 		return errors.New("failed to delete instance")
 	}
