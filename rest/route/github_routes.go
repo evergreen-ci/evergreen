@@ -7,18 +7,22 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type githubHookApi struct {
 	secret []byte
+	queue  amboy.Queue
 
 	event interface{}
 	msgId string
 }
 
-func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
+func getGithubHooksRouteManager(secret []byte, queue amboy.Queue) routeManagerFactory {
 	return func(route string, version int) *RouteManager {
 		methods := []MethodHandler{}
 		if len(secret) > 0 {
@@ -26,6 +30,7 @@ func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
 				Authenticator: &NoAuthAuthenticator{},
 				RequestHandler: &githubHookApi{
 					secret: secret,
+					queue:  queue,
 				},
 				MethodType: http.MethodPost,
 			})
@@ -45,6 +50,7 @@ func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
 func (gh *githubHookApi) Handler() RequestHandler {
 	return &githubHookApi{
 		secret: gh.secret,
+		queue:  gh.queue,
 	}
 }
 
@@ -111,6 +117,13 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusInternalServerError,
 					Message:    "failed to created patch intent",
+				}
+			}
+
+			if err := gh.queue.Put(units.NewPatchIntentProcessor(bson.NewObjectId(), ghi)); err != nil {
+				return ResponseData{}, rest.APIError{
+					StatusCode: http.StatusInternalServerError,
+					Message:    "failed to queue patch intent for processing",
 				}
 			}
 		}

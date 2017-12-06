@@ -78,7 +78,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	patchID := bson.NewObjectId()
 	job := units.NewPatchIntentProcessor(patchID, intent)
-	as.queue.Put(job)
+	if err := as.queue.Put(job); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 	if !amboy.WaitJobInterval(job, as.queue, 10*time.Second) {
 		as.WriteJSON(w, http.StatusInternalServerError, errors.New("patch creation timed out"))
 		return

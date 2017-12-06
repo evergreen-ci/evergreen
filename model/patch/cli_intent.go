@@ -20,7 +20,6 @@ type cliIntent struct {
 	// PatchFileID is the object id of the patch file created in gridfs
 	PatchFileID bson.ObjectId `bson:"patch_file_id"`
 
-	// TODO: will this be skipped by mgo?
 	// PatchContent is the patch as supplied by the client. It is saved
 	// separately from the patch intent
 	PatchContent string
@@ -88,6 +87,7 @@ func (c *cliIntent) Insert() error {
 		return err
 	}
 
+	c.PatchContent = ""
 	c.PatchFileID = patchFileID
 	c.CreatedAt = time.Now()
 
