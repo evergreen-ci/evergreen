@@ -160,7 +160,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
-	// exit early if we do not need to run the setup script
+	// return early if we do not need to run the setup script
 	if hostObj.Distro.Setup == "" {
 		return agbh.GetAgentRevision()
 	}
