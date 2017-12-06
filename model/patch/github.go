@@ -1,11 +1,9 @@
 package patch
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -196,20 +194,5 @@ func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 }
 
 func (g *githubIntent) NewPatch() *Patch {
-	repo := strings.Split(g.RepoName, "/")
-	patchDoc := &Patch{
-		Id:          bson.NewObjectId(),
-		Description: fmt.Sprintf("%s pull request #%d", g.RepoName, g.PRNumber),
-		Author:      "github_patch_user",
-		Githash:     g.BaseHash,
-		Status:      evergreen.PatchCreated,
-		GithubPatchData: GithubPatch{
-			PRNumber:   g.PRNumber,
-			Owner:      repo[0],
-			Repository: repo[1],
-			Author:     g.User,
-			PatchURL:   g.PatchURL,
-		},
-	}
-	return patchDoc
+	return nil
 }

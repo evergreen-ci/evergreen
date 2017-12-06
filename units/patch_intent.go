@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -80,9 +79,6 @@ func (j *patchIntentProcessor) Run() {
 	patchDoc := j.Intent.NewPatch()
 
 	switch j.Intent.GetType() {
-	case patch.GithubIntentType:
-		j.AddError(j.buildGithubPatchDoc(patchDoc))
-
 	case patch.CliIntentType:
 		j.AddError(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
@@ -262,47 +258,6 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 	}
 	patchDoc.Patches[0].ModuleName = ""
 	patchDoc.Patches[0].PatchSet.Summary = summaries
-
-	return nil
-}
-
-func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error {
-	var err error
-	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.Owner, patchDoc.GithubPatchData.Repository)
-	if err != nil {
-		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'", patchDoc.GithubPatchData.Owner, patchDoc.GithubPatchData.Repository)
-	}
-	if j.projectRef == nil {
-		return errors.Errorf("Could not find project ref for repo '%s/%s'", patchDoc.GithubPatchData.Owner, patchDoc.GithubPatchData.Repository)
-
-	}
-
-	// TODO: confirm membership with acceptable organizations
-	// TODO: build variants and tasks
-	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.PatchURL)
-	if err != nil {
-		return err
-	}
-
-	summaries, err := thirdparty.GetPatchSummaries(patchContent)
-	if err != nil {
-		return err
-	}
-
-	patchFileId := bson.NewObjectId().Hex()
-	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
-		ModuleName: "",
-		Githash:    patchDoc.Githash,
-		PatchSet: patch.PatchSet{
-			PatchFileId: patchFileId,
-			Summary:     summaries,
-		},
-	})
-	patchDoc.Project = j.projectRef.Identifier
-
-	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent)); err != nil {
-		return errors.Wrap(err, "failed to write patch file to db")
-	}
 
 	return nil
 }

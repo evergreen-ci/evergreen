@@ -8,19 +8,17 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/google/go-github/github"
-	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 )
 
 type githubHookApi struct {
 	secret []byte
-	queue  amboy.Queue
 
 	event interface{}
 	msgId string
 }
 
-func getGithubHooksRouteManager(secret []byte, queue amboy.Queue) routeManagerFactory {
+func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
 	return func(route string, version int) *RouteManager {
 		methods := []MethodHandler{}
 		if len(secret) > 0 {
@@ -28,7 +26,6 @@ func getGithubHooksRouteManager(secret []byte, queue amboy.Queue) routeManagerFa
 				Authenticator: &NoAuthAuthenticator{},
 				RequestHandler: &githubHookApi{
 					secret: secret,
-					queue:  queue,
 				},
 				MethodType: http.MethodPost,
 			})
@@ -48,7 +45,6 @@ func getGithubHooksRouteManager(secret []byte, queue amboy.Queue) routeManagerFa
 func (gh *githubHookApi) Handler() RequestHandler {
 	return &githubHookApi{
 		secret: gh.secret,
-		queue:  gh.queue,
 	}
 }
 
@@ -56,7 +52,7 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 	eventType := r.Header.Get("X-Github-Event")
 	gh.msgId = r.Header.Get("X-Github-Delivery")
 
-	if len(gh.secret) == 0 || gh.queue == nil {
+	if len(gh.secret) == 0 {
 		return rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 		}
@@ -111,7 +107,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				}
 			}
 
-			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
+			if err := sc.AddPatchIntent(ghi); err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
