@@ -31,7 +31,7 @@ type portRange struct {
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.
-type dockerProviderSettings struct {
+type dockerSettings struct {
 	// HostIP is the IP address of the machine on which to start Docker containers. This
 	// host machine must already have Docker installed and the Docker API exposed at the
 	// client port, and preloaded Docker images.
@@ -47,10 +47,10 @@ type dockerProviderSettings struct {
 // nolint
 var (
 	// bson fields for the ProviderSettings struct
-	hostIPKey     = bsonutil.MustHaveTag(dockerProviderSettings{}, "HostIP")
-	imageIDKey    = bsonutil.MustHaveTag(dockerProviderSettings{}, "ImageID")
-	clientPortKey = bsonutil.MustHaveTag(dockerProviderSettings{}, "ClientPort")
-	portRangeKey  = bsonutil.MustHaveTag(dockerProviderSettings{}, "PortRange")
+	hostIPKey     = bsonutil.MustHaveTag(dockerSettings{}, "HostIP")
+	imageIDKey    = bsonutil.MustHaveTag(dockerSettings{}, "ImageID")
+	clientPortKey = bsonutil.MustHaveTag(dockerSettings{}, "ClientPort")
+	portRangeKey  = bsonutil.MustHaveTag(dockerSettings{}, "PortRange")
 
 	// bson fields for the portRange struct
 	minPortKey = bsonutil.MustHaveTag(portRange{}, "MinPort")
@@ -58,7 +58,7 @@ var (
 )
 
 //Validate checks that the settings from the config file are sane.
-func (settings *dockerProviderSettings) Validate() error {
+func (settings *dockerSettings) Validate() error {
 	if settings.HostIP == "" {
 		return errors.New("HostIP must not be blank")
 	}
@@ -85,7 +85,7 @@ func (settings *dockerProviderSettings) Validate() error {
 
 // GetSettings returns an empty ProviderSettings struct.
 func (*dockerManager) GetSettings() ProviderSettings {
-	return &dockerProviderSettings{}
+	return &dockerSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
@@ -101,7 +101,7 @@ func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	}
 
 	// Decode provider settings from distro settings
-	settings := &dockerProviderSettings{}
+	settings := &dockerSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
 	}

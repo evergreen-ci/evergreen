@@ -12,9 +12,9 @@ import (
 )
 
 type OpenStackSuite struct {
-	client   client
+	client   openStackClient
 	keyname  string
-	manager  *Manager
+	manager  *openStackManager
 	distro   *distro.Distro
 	hostOpts HostOptions
 	suite.Suite
@@ -29,10 +29,10 @@ func (s *OpenStackSuite) SetupSuite() {
 }
 
 func (s *OpenStackSuite) SetupTest() {
-	s.client = &clientMock{isServerActive: true}
+	s.client = &openStackClientMock{isServerActive: true}
 	s.keyname = "key"
 
-	s.manager = &Manager{
+	s.manager = &openStackManager{
 		client: s.client,
 	}
 
@@ -51,7 +51,7 @@ func (s *OpenStackSuite) SetupTest() {
 
 func (s *OpenStackSuite) TestValidateSettings() {
 	// all required settings are provided
-	settingsOk := &ProviderSettings{
+	settingsOk := &openStackSettings{
 		ImageName:     "image",
 		FlavorName:    "flavor",
 		KeyName:       "key",
@@ -60,7 +60,7 @@ func (s *OpenStackSuite) TestValidateSettings() {
 	s.NoError(settingsOk.Validate())
 
 	// error when missing image name
-	settingsNoImage := &ProviderSettings{
+	settingsNoImage := &openStackSettings{
 		FlavorName:    "flavor",
 		KeyName:       "key",
 		SecurityGroup: "sec",
@@ -68,7 +68,7 @@ func (s *OpenStackSuite) TestValidateSettings() {
 	s.Error(settingsNoImage.Validate())
 
 	// error when missing flavor name
-	settingsNoFlavor := &ProviderSettings{
+	settingsNoFlavor := &openStackSettings{
 		ImageName:     "image",
 		KeyName:       "key",
 		SecurityGroup: "sec",
@@ -76,7 +76,7 @@ func (s *OpenStackSuite) TestValidateSettings() {
 	s.Error(settingsNoFlavor.Validate())
 
 	// error when missing key name
-	settingsNoKey := &ProviderSettings{
+	settingsNoKey := &openStackSettings{
 		ImageName:     "image",
 		FlavorName:    "flavor",
 		SecurityGroup: "sec",
@@ -84,7 +84,7 @@ func (s *OpenStackSuite) TestValidateSettings() {
 	s.Error(settingsNoKey.Validate())
 
 	// error when missing security group
-	settingsNoSecGroup := &ProviderSettings{
+	settingsNoSecGroup := &openStackSettings{
 		ImageName:  "image",
 		FlavorName: "flavor",
 		KeyName:    "key",
@@ -93,7 +93,7 @@ func (s *OpenStackSuite) TestValidateSettings() {
 }
 
 func (s *OpenStackSuite) TestConfigureAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*openStackClientMock)
 	s.True(ok)
 	s.False(mock.failInit)
 
@@ -105,7 +105,7 @@ func (s *OpenStackSuite) TestConfigureAPICall() {
 }
 
 func (s *OpenStackSuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*openStackClientMock)
 	s.True(ok)
 
 	host := &host.Host{}
@@ -120,7 +120,7 @@ func (s *OpenStackSuite) TestIsUpFailAPICall() {
 }
 
 func (s *OpenStackSuite) TestIsUpStatuses() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*openStackClientMock)
 	s.True(ok)
 	s.True(mock.isServerActive)
 
@@ -159,7 +159,7 @@ func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 	_, err = hostB.Upsert()
 	s.NoError(err)
 
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*openStackClientMock)
 	s.True(ok)
 	s.False(mock.failDelete)
 
@@ -197,7 +197,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 }
 
 func (s *OpenStackSuite) TestGetDNSNameAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*openStackClientMock)
 	s.True(ok)
 	s.False(mock.failGet)
 
@@ -289,7 +289,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 		},
 	}
 
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*openStackClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 

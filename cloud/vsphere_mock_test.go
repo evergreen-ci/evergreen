@@ -49,7 +49,7 @@ func (c *vsphereClientMock) GetPowerState(_ *host.Host) (types.VirtualMachinePow
 	return types.VirtualMachinePowerStatePoweredOn, nil
 }
 
-func (c *vsphereClientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
+func (c *vsphereClientMock) CreateInstance(h *host.Host, _ *vsphereSettings) (string, error) {
 	if c.failCreate {
 		return "", errors.New("failed to create instance")
 	}

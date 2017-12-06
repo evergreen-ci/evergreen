@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type clientMock struct {
+type dockerClientMock struct {
 	// API call options
 	failInit   bool
 	failCreate bool
@@ -28,25 +28,25 @@ type clientMock struct {
 	hasOpenPorts bool
 }
 
-func (c *clientMock) generateContainerID() string {
+func (c *dockerClientMock) generateContainerID() string {
 	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
-func (c *clientMock) Init(_ string) error {
+func (c *dockerClientMock) Init(_ string) error {
 	if c.failInit {
 		return errors.New("failed to initialize client")
 	}
 	return nil
 }
 
-func (c *clientMock) CreateContainer(_ string, _ *distro.Distro, _ *cloudProviderSettings) error {
+func (c *dockerClientMock) CreateContainer(_ string, _ *distro.Distro, _ *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
 	return nil
 }
 
-func (c *clientMock) GetContainer(_ *host.Host) (*types.ContainerJSON, error) {
+func (c *dockerClientMock) GetContainer(_ *host.Host) (*types.ContainerJSON, error) {
 	if c.failGet {
 		return nil, errors.New("failed to inspect container")
 	}
@@ -77,7 +77,7 @@ func (c *clientMock) GetContainer(_ *host.Host) (*types.ContainerJSON, error) {
 	return container, nil
 }
 
-func (c *clientMock) ListContainers(_ *distro.Distro) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(_ *distro.Distro) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
@@ -90,14 +90,14 @@ func (c *clientMock) ListContainers(_ *distro.Distro) ([]types.Container, error)
 	return []types.Container{container}, nil
 }
 
-func (c *clientMock) RemoveContainer(_ *host.Host) error {
+func (c *dockerClientMock) RemoveContainer(_ *host.Host) error {
 	if c.failRemove {
 		return errors.New("failed to remove container")
 	}
 	return nil
 }
 
-func (c *clientMock) StartContainer(_ *host.Host) error {
+func (c *dockerClientMock) StartContainer(_ *host.Host) error {
 	if c.failStart {
 		return errors.New("failed to start container")
 	}

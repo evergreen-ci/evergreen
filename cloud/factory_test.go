@@ -4,10 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/digitalocean"
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
-	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -20,35 +16,35 @@ func TestGetCloudManager(t *testing.T) {
 			cloudMgr, err := GetCloudManager("ec2", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &ec2.EC2Manager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &ec2OnDemandManager{})
 		})
 
 		Convey("EC2Spot should be returned for ec2-spot provider name", func() {
 			cloudMgr, err := GetCloudManager("ec2-spot", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &ec2.EC2SpotManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &ec2SpotManager{})
 		})
 
 		Convey("Static should be returned for static provider name", func() {
 			cloudMgr, err := GetCloudManager("static", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &static.StaticManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &staticManager{})
 		})
 
 		Convey("Mock should be returned for mock provider name", func() {
 			cloudMgr, err := GetCloudManager("mock", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &mock.MockCloudManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &MockCloudManager{})
 		})
 
 		Convey("DigitalOcean should be returned for digitalocean provider name", func() {
 			cloudMgr, err := GetCloudManager("digitalocean", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &digitalocean.DigitalOceanManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &doManager{})
 		})
 
 		Convey("Invalid provider names should return nil with err", func() {

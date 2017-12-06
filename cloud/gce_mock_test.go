@@ -31,7 +31,7 @@ func (c *gceClientMock) Init(_ *jwt.Config) error {
 }
 
 // CreateInstance returns a unique identifier for the mock instance.
-func (c *gceClientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
+func (c *gceClientMock) CreateInstance(h *host.Host, _ *GCESettings) (string, error) {
 	if c.failCreate {
 		return "", errors.New("failed to create instance")
 	}

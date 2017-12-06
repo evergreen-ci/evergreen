@@ -18,8 +18,8 @@ import (
 )
 
 type GCESuite struct {
-	client   client
-	manager  *Manager
+	client   gceClient
+	manager  *gceManager
 	distro   *distro.Distro
 	hostOpts HostOptions
 	suite.Suite
@@ -34,11 +34,11 @@ func (s *GCESuite) SetupSuite() {
 }
 
 func (s *GCESuite) SetupTest() {
-	s.client = &clientMock{
+	s.client = &gceClientMock{
 		isActive:        true,
 		hasAccessConfig: true,
 	}
-	s.manager = &Manager{
+	s.manager = &gceManager{
 		client: s.client,
 	}
 	s.distro = &distro.Distro{
@@ -57,7 +57,7 @@ func (s *GCESuite) SetupTest() {
 
 func (s *GCESuite) TestValidateSettings() {
 	// all required settings are provided
-	settingsOk := &ProviderSettings{
+	settingsOk := &GCESettings{
 		MachineName: "machine",
 		ImageName:   "image",
 		DiskType:    "pd-standard",
@@ -66,7 +66,7 @@ func (s *GCESuite) TestValidateSettings() {
 	s.NoError(settingsOk.Validate())
 
 	// error when missing machine type
-	settingsNoMachine := &ProviderSettings{
+	settingsNoMachine := &GCESettings{
 		ImageName:  "image",
 		DiskType:   "pd-standard",
 		DiskSizeGB: 10,
@@ -74,7 +74,7 @@ func (s *GCESuite) TestValidateSettings() {
 	s.Error(settingsNoMachine.Validate())
 
 	// error when missing disk type
-	settingsNoDiskType := &ProviderSettings{
+	settingsNoDiskType := &GCESettings{
 		MachineName: "machine",
 		ImageName:   "image",
 		DiskSizeGB:  10,
@@ -83,7 +83,7 @@ func (s *GCESuite) TestValidateSettings() {
 }
 
 func (s *GCESuite) TestValidateImageSettings() {
-	settingsImageName := &ProviderSettings{
+	settingsImageName := &GCESettings{
 		MachineName: "machine",
 		ImageName:   "image",
 		DiskType:    "pd-standard",
@@ -91,7 +91,7 @@ func (s *GCESuite) TestValidateImageSettings() {
 	}
 	s.NoError(settingsImageName.Validate())
 
-	settingsImageFamily := &ProviderSettings{
+	settingsImageFamily := &GCESettings{
 		MachineName: "machine",
 		ImageFamily: "image",
 		DiskType:    "pd-standard",
@@ -99,7 +99,7 @@ func (s *GCESuite) TestValidateImageSettings() {
 	}
 	s.NoError(settingsImageFamily.Validate())
 
-	settingsOverSpecified := &ProviderSettings{
+	settingsOverSpecified := &GCESettings{
 		MachineName: "machine",
 		ImageName:   "image",
 		ImageFamily: "image",
@@ -108,7 +108,7 @@ func (s *GCESuite) TestValidateImageSettings() {
 	}
 	s.Error(settingsOverSpecified.Validate())
 
-	settingsUnderSpecified := &ProviderSettings{
+	settingsUnderSpecified := &GCESettings{
 		MachineName: "machine",
 		DiskType:    "pd-standard",
 		DiskSizeGB:  10,
@@ -117,7 +117,7 @@ func (s *GCESuite) TestValidateImageSettings() {
 }
 
 func (s *GCESuite) TestValidateMachineSettings() {
-	settingsMachineName := &ProviderSettings{
+	settingsMachineName := &GCESettings{
 		MachineName: "machine",
 		ImageName:   "image",
 		DiskType:    "pd-standard",
@@ -125,7 +125,7 @@ func (s *GCESuite) TestValidateMachineSettings() {
 	}
 	s.NoError(settingsMachineName.Validate())
 
-	settingsCustomMachine := &ProviderSettings{
+	settingsCustomMachine := &GCESettings{
 		NumCPUs:    2,
 		MemoryMB:   1024,
 		ImageName:  "image",
@@ -134,7 +134,7 @@ func (s *GCESuite) TestValidateMachineSettings() {
 	}
 	s.NoError(settingsCustomMachine.Validate())
 
-	settingsOverSpecified := &ProviderSettings{
+	settingsOverSpecified := &GCESettings{
 		MachineName: "machine",
 		NumCPUs:     2,
 		MemoryMB:    1024,
@@ -144,7 +144,7 @@ func (s *GCESuite) TestValidateMachineSettings() {
 	}
 	s.Error(settingsOverSpecified.Validate())
 
-	settingsUnderSpecified := &ProviderSettings{
+	settingsUnderSpecified := &GCESettings{
 		ImageName:  "image",
 		DiskType:   "pd-standard",
 		DiskSizeGB: 10,
@@ -153,7 +153,7 @@ func (s *GCESuite) TestValidateMachineSettings() {
 }
 
 func (s *GCESuite) TestConfigureAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 	s.False(mock.failInit)
 
@@ -165,7 +165,7 @@ func (s *GCESuite) TestConfigureAPICall() {
 }
 
 func (s *GCESuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 
 	host := &host.Host{}
@@ -180,7 +180,7 @@ func (s *GCESuite) TestIsUpFailAPICall() {
 }
 
 func (s *GCESuite) TestIsUpStatuses() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 	s.True(mock.isActive)
 
@@ -219,7 +219,7 @@ func (s *GCESuite) TestTerminateInstanceAPICall() {
 	_, err = hostB.Upsert()
 	s.NoError(err)
 
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 	s.False(mock.failDelete)
 
@@ -256,7 +256,7 @@ func (s *GCESuite) TestTerminateInstanceDB() {
 }
 
 func (s *GCESuite) TestGetDNSNameAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 	s.False(mock.failGet)
 
@@ -271,7 +271,7 @@ func (s *GCESuite) TestGetDNSNameAPICall() {
 }
 
 func (s *GCESuite) TestGetDNSNameNetwork() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 	s.False(mock.failGet)
 
@@ -361,7 +361,7 @@ func (s *GCESuite) TestSpawnAPICall() {
 	}
 	opts := HostOptions{}
 
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*gceClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
@@ -379,12 +379,12 @@ func (s *GCESuite) TestSpawnAPICall() {
 }
 
 func (s *GCESuite) TestUtilToEvgStatus() {
-	s.Equal(StatusInitializing, toEvgStatus("PROVISIONING"))
-	s.Equal(StatusInitializing, toEvgStatus("STAGING"))
-	s.Equal(StatusRunning, toEvgStatus("RUNNING"))
-	s.Equal(StatusStopped, toEvgStatus("STOPPING"))
-	s.Equal(StatusTerminated, toEvgStatus("TERMINATED"))
-	s.Equal(StatusUnknown, toEvgStatus("???"))
+	s.Equal(StatusInitializing, gceToEvgStatus("PROVISIONING"))
+	s.Equal(StatusInitializing, gceToEvgStatus("STAGING"))
+	s.Equal(StatusRunning, gceToEvgStatus("RUNNING"))
+	s.Equal(StatusStopped, gceToEvgStatus("STOPPING"))
+	s.Equal(StatusTerminated, gceToEvgStatus("TERMINATED"))
+	s.Equal(StatusUnknown, gceToEvgStatus("???"))
 }
 
 func (s *GCESuite) TestUtilSourceURLGenerators() {

@@ -24,7 +24,7 @@ import (
 // The dockerClient interface wraps the Docker dockerClient interaction.
 type dockerClient interface {
 	Init(string) error
-	CreateContainer(string, *distro.Distro, *dockerProviderSettings) error
+	CreateContainer(string, *distro.Distro, *dockerSettings) error
 	GetContainer(*host.Host) (*types.ContainerJSON, error)
 	ListContainers(*distro.Distro) ([]types.Container, error)
 	RemoveContainer(*host.Host) error
@@ -43,7 +43,7 @@ type dockerClientImpl struct {
 // requests at the distro-specified client port on the host machine.
 func (c *dockerClientImpl) generateClient(d *distro.Distro) (*docker.Client, error) {
 	// Populate and validate settings
-	settings := &dockerProviderSettings{} // Instantiate global settings
+	settings := &dockerSettings{} // Instantiate global settings
 	if err := mapstructure.Decode(d.ProviderSettings, settings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", d.Id)
 	}
@@ -91,7 +91,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 //     3. The image must have the same ~/.ssh/authorized_keys file as the host machine
 //        in order to allow users with SSH access to the host machine to have SSH access
 //        to the container.
-func (c *dockerClientImpl) CreateContainer(id string, d *distro.Distro, s *dockerProviderSettings) error {
+func (c *dockerClientImpl) CreateContainer(id string, d *distro.Distro, s *dockerSettings) error {
 	dockerClient, err := c.generateClient(d)
 	if err != nil {
 		return errors.Wrap(err, "Failed to generate docker client")

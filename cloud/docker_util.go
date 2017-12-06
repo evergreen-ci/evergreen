@@ -24,7 +24,7 @@ const (
 // to an open port on the host machine. An open port must be in the port range specified
 // by the provider settings, but must not a port already being used by existing containers.
 // If no ports are available on the host machine, makeHostConfig errors.
-func makeHostConfig(d *distro.Distro, s *dockerProviderSettings, containers []types.Container) (*container.HostConfig, error) {
+func makeHostConfig(d *distro.Distro, s *dockerSettings, containers []types.Container) (*container.HostConfig, error) {
 	hostConfig := &container.HostConfig{}
 	minPort := s.PortRange.MinPort
 	maxPort := s.PortRange.MaxPort

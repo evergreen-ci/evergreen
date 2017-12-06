@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -20,7 +19,7 @@ func TestSpawnSpotInstance(t *testing.T) {
 	testConfig = testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 
-	provider := &EC2SpotManager{}
+	provider := &ec2SpotManager{}
 	testutil.HandleTestingErr(provider.Configure(testConfig), t, "error configuring provider")
 
 	Convey("When spawning many hosts", t, func() {
@@ -30,13 +29,13 @@ func TestSpawnSpotInstance(t *testing.T) {
 
 		hosts := make([]*host.Host, 1)
 
-		hostOptions := cloud.HostOptions{
+		hostOptions := HostOptions{
 			UserName: evergreen.User,
 			UserHost: false,
 		}
 		d := fetchTestDistro()
 		for i := range hosts {
-			h := cloud.NewIntent(*d, provider.GetInstanceName(d), d.Provider, hostOptions)
+			h := NewIntent(*d, provider.GetInstanceName(d), d.Provider, hostOptions)
 			h, err := provider.SpawnHost(h)
 			hosts[i] = h
 			So(err, ShouldBeNil)
@@ -65,7 +64,7 @@ func fetchTestDistro() *distro.Distro {
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
 		PoolSize: 10,
-		Provider: SpotProviderName,
+		Provider: evergreen.ProviderNameEc2Spot,
 		ProviderSettings: &map[string]interface{}{
 			"ami":            "ami-c7e7f2d0",
 			"instance_type":  "t1.micro",

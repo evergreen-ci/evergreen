@@ -17,8 +17,8 @@ import (
 )
 
 type DockerSuite struct {
-	client   client
-	manager  *Manager
+	client   dockerClient
+	manager  *dockerManager
 	distro   *distro.Distro
 	hostOpts HostOptions
 	suite.Suite
@@ -33,10 +33,10 @@ func (s *DockerSuite) SetupSuite() {
 }
 
 func (s *DockerSuite) SetupTest() {
-	s.client = &clientMock{
+	s.client = &dockerClientMock{
 		hasOpenPorts: true,
 	}
-	s.manager = &Manager{
+	s.manager = &dockerManager{
 		client: s.client,
 	}
 	s.distro = &distro.Distro{
@@ -56,7 +56,7 @@ func (s *DockerSuite) SetupTest() {
 
 func (s *DockerSuite) TestValidateSettings() {
 	// all required settings are provided
-	settingsOk := &ProviderSettings{
+	settingsOk := &dockerSettings{
 		HostIP:     "127.0.0.1",
 		ImageID:    "docker_image",
 		ClientPort: 4243,
@@ -68,7 +68,7 @@ func (s *DockerSuite) TestValidateSettings() {
 	s.NoError(settingsOk.Validate())
 
 	// error when missing host ip
-	settingsNoHostIP := &ProviderSettings{
+	settingsNoHostIP := &dockerSettings{
 		ImageID:    "docker_image",
 		ClientPort: 4243,
 		PortRange: &portRange{
@@ -79,7 +79,7 @@ func (s *DockerSuite) TestValidateSettings() {
 	s.Error(settingsNoHostIP.Validate())
 
 	// error when missing image id
-	settingsNoImageID := &ProviderSettings{
+	settingsNoImageID := &dockerSettings{
 		HostIP:     "127.0.0.1",
 		ClientPort: 4243,
 		PortRange: &portRange{
@@ -90,7 +90,7 @@ func (s *DockerSuite) TestValidateSettings() {
 	s.Error(settingsNoImageID.Validate())
 
 	// error when missing client port
-	settingsNoClientPort := &ProviderSettings{
+	settingsNoClientPort := &dockerSettings{
 		HostIP:  "127.0.0.1",
 		ImageID: "docker_image",
 		PortRange: &portRange{
@@ -101,7 +101,7 @@ func (s *DockerSuite) TestValidateSettings() {
 	s.Error(settingsNoClientPort.Validate())
 
 	// error when invalid port range
-	settingsInvalidPorts := &ProviderSettings{
+	settingsInvalidPorts := &dockerSettings{
 		HostIP:     "127.0.0.1",
 		ImageID:    "docker_image",
 		ClientPort: 4243,
@@ -114,7 +114,7 @@ func (s *DockerSuite) TestValidateSettings() {
 }
 
 func (s *DockerSuite) TestConfigureAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failInit)
 
@@ -126,7 +126,7 @@ func (s *DockerSuite) TestConfigureAPICall() {
 }
 
 func (s *DockerSuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 
 	host := &host.Host{}
@@ -167,7 +167,7 @@ func (s *DockerSuite) TestTerminateInstanceAPICall() {
 	_, err = hostB.Upsert()
 	s.NoError(err)
 
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failRemove)
 
@@ -263,7 +263,7 @@ func (s *DockerSuite) TestSpawnDuplicateHostID() {
 }
 
 func (s *DockerSuite) TestSpawnCreateAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
@@ -280,7 +280,7 @@ func (s *DockerSuite) TestSpawnCreateAPICall() {
 }
 
 func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
@@ -301,7 +301,7 @@ func (s *DockerSuite) TestSpawnStartRemoveAPICall() {
 }
 
 func (s *DockerSuite) TestSpawnFailOpenPortBinding() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.True(mock.hasOpenPorts)
 
@@ -318,7 +318,7 @@ func (s *DockerSuite) TestSpawnFailOpenPortBinding() {
 }
 
 func (s *DockerSuite) TestSpawnGetAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
@@ -358,7 +358,7 @@ func (s *DockerSuite) TestMakeHostConfig() {
 	}
 	containers := []types.Container{container}
 
-	settingsNoOpenPorts := &ProviderSettings{
+	settingsNoOpenPorts := &dockerSettings{
 		PortRange: &portRange{
 			MinPort: 5000,
 			MaxPort: 5001,
@@ -368,7 +368,7 @@ func (s *DockerSuite) TestMakeHostConfig() {
 	s.Error(err)
 	s.Nil(conf)
 
-	settingsOpenPorts := &ProviderSettings{
+	settingsOpenPorts := &dockerSettings{
 		PortRange: &portRange{
 			MinPort: 5000,
 			MaxPort: 5010,
@@ -389,7 +389,7 @@ func (s *DockerSuite) TestUtilToEvgStatus() {
 }
 
 func (s *DockerSuite) TestUtilRetrieveOpenPortBinding() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*dockerClientMock)
 	s.True(ok)
 
 	containerNoPortBindings := &types.ContainerJSON{

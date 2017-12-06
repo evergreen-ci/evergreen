@@ -49,7 +49,7 @@ func (s *VSphereSuite) SetupTest() {
 
 func (s *VSphereSuite) TestValidateSettings() {
 	// all settings are provided
-	settingsOk := &ProviderSettings{
+	settingsOk := &vsphereSettings{
 		Template:     "macos-1012",
 		Datastore:    "1TB_SSD",
 		ResourcePool: "XSERVE_Cluster",
@@ -59,20 +59,20 @@ func (s *VSphereSuite) TestValidateSettings() {
 	s.NoError(settingsOk.Validate())
 
 	// only required settings are provided
-	settingsMinimal := &ProviderSettings{
+	settingsMinimal := &vsphereSettings{
 		Template: "macos-1012",
 	}
 	s.NoError(settingsMinimal.Validate())
 
 	// error when invalid NumCPUs setting
-	settingsInvalidNumCPUs := &ProviderSettings{
+	settingsInvalidNumCPUs := &vsphereSettings{
 		Template: "macos-1012",
 		NumCPUs:  -1,
 	}
 	s.Error(settingsInvalidNumCPUs.Validate())
 
 	// error when invalid MemoryMB setting
-	settingsInvalidMemoryMB := &ProviderSettings{
+	settingsInvalidMemoryMB := &vsphereSettings{
 		Template: "macos-1012",
 		MemoryMB: -1,
 	}
@@ -80,7 +80,7 @@ func (s *VSphereSuite) TestValidateSettings() {
 }
 
 func (s *VSphereSuite) TestConfigureAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.False(mock.failInit)
 
@@ -92,7 +92,7 @@ func (s *VSphereSuite) TestConfigureAPICall() {
 }
 
 func (s *VSphereSuite) TestIsUpFailAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 
 	host := &host.Host{}
@@ -107,7 +107,7 @@ func (s *VSphereSuite) TestIsUpFailAPICall() {
 }
 
 func (s *VSphereSuite) TestIsUpStatuses() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.True(mock.isActive)
 
@@ -146,7 +146,7 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 	err = hostB.Insert()
 	s.NoError(err)
 
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.False(mock.failDelete)
 
@@ -183,7 +183,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 }
 
 func (s *VSphereSuite) TestGetDNSNameAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.False(mock.failIP)
 
@@ -258,7 +258,7 @@ func (s *VSphereSuite) TestSpawnDuplicateHostID() {
 }
 
 func (s *VSphereSuite) TestSpawnAPICall() {
-	mock, ok := s.client.(*clientMock)
+	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
@@ -274,15 +274,15 @@ func (s *VSphereSuite) TestSpawnAPICall() {
 }
 
 func (s *VSphereSuite) TestUtilToEvgStatus() {
-	poweredOn := toEvgStatus(types.VirtualMachinePowerStatePoweredOn)
+	poweredOn := vsphereToEvgStatus(types.VirtualMachinePowerStatePoweredOn)
 	s.Equal(StatusRunning, poweredOn)
 
-	poweredOff := toEvgStatus(types.VirtualMachinePowerStatePoweredOff)
+	poweredOff := vsphereToEvgStatus(types.VirtualMachinePowerStatePoweredOff)
 	s.Equal(StatusStopped, poweredOff)
 
-	suspended := toEvgStatus(types.VirtualMachinePowerStateSuspended)
+	suspended := vsphereToEvgStatus(types.VirtualMachinePowerStateSuspended)
 	s.Equal(StatusStopped, suspended)
 
-	unknown := toEvgStatus(types.VirtualMachinePowerState("???"))
+	unknown := vsphereToEvgStatus(types.VirtualMachinePowerState("???"))
 	s.Equal(StatusUnknown, unknown)
 }
