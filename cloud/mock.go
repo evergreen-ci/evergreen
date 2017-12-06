@@ -23,32 +23,34 @@ type MockInstance struct {
 	OnUpRan            bool
 }
 
-var mockInstances map[string]MockInstance = map[string]MockInstance{}
-var lock = sync.RWMutex{}
+var mockInstances map[string]MockInstance
 
-func Clear() {
-	mockInstances = map[string]MockInstance{}
-	lock = sync.RWMutex{}
+func init() {
+	ResetMock()
 }
 
-// MockCloudManager implements the CloudManager interface for testing
+func ResetMock() {
+	mockInstances = map[string]MockInstance{}
+}
+
+// mockManager implements the CloudManager interface for testing
 // purposes. It contains a map of MockInstances that it knows about
 // which its various functions return information about. Once set before
 // testing, this map should only be touched either through the associated
 // cloud manager functions, or in association with the mutex.
-type MockCloudManager struct {
+type mockManager struct {
 	Instances map[string]MockInstance
 	mutex     *sync.RWMutex
 }
 
-func FetchMockProvider() *MockCloudManager {
-	return &MockCloudManager{
+func makeMockManager() CloudManager {
+	return &mockManager{
 		Instances: mockInstances,
 		mutex:     &lock,
 	}
 }
 
-func (mockMgr *MockCloudManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (mockMgr *mockManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -64,7 +66,7 @@ func (mockMgr *MockCloudManager) SpawnHost(h *host.Host) (*host.Host, error) {
 }
 
 // get the status of an instance
-func (mockMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
+func (mockMgr *mockManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -77,7 +79,7 @@ func (mockMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (CloudStatus
 }
 
 // get instance DNS
-func (mockMgr *MockCloudManager) GetDNSName(host *host.Host) (string, error) {
+func (mockMgr *mockManager) GetDNSName(host *host.Host) (string, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -88,24 +90,24 @@ func (mockMgr *MockCloudManager) GetDNSName(host *host.Host) (string, error) {
 	return instance.DNSName, nil
 }
 
-func (_ *MockCloudManager) GetSettings() ProviderSettings {
-	return &MockCloudManager{}
+func (_ *mockManager) GetSettings() ProviderSettings {
+	return &mockManager{}
 }
 
-func (_ *MockCloudManager) Validate() error {
+func (_ *mockManager) Validate() error {
 	return nil
 }
 
-func (mockMgr *MockCloudManager) CanSpawn() (bool, error) {
+func (mockMgr *mockManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (*MockCloudManager) GetInstanceName(d *distro.Distro) string {
+func (*mockManager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
 // terminate an instance
-func (mockMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
+func (mockMgr *mockManager) TerminateInstance(host *host.Host) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -123,12 +125,12 @@ func (mockMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
 	return errors.WithStack(host.Terminate())
 }
 
-func (mockMgr *MockCloudManager) Configure(settings *evergreen.Settings) error {
+func (mockMgr *mockManager) Configure(settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil
 }
 
-func (mockMgr *MockCloudManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (mockMgr *mockManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -139,7 +141,7 @@ func (mockMgr *MockCloudManager) IsSSHReachable(host *host.Host, keyPath string)
 	return instance.IsSSHReachable, nil
 }
 
-func (mockMgr *MockCloudManager) IsUp(host *host.Host) (bool, error) {
+func (mockMgr *mockManager) IsUp(host *host.Host) (bool, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -150,7 +152,7 @@ func (mockMgr *MockCloudManager) IsUp(host *host.Host) (bool, error) {
 	return instance.IsUp, nil
 }
 
-func (mockMgr *MockCloudManager) OnUp(host *host.Host) error {
+func (mockMgr *mockManager) OnUp(host *host.Host) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -164,7 +166,7 @@ func (mockMgr *MockCloudManager) OnUp(host *host.Host) error {
 	return nil
 }
 
-func (mockMgr *MockCloudManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
+func (mockMgr *mockManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -175,7 +177,7 @@ func (mockMgr *MockCloudManager) GetSSHOptions(host *host.Host, keyPath string) 
 	return instance.SSHOptions, nil
 }
 
-func (mockMgr *MockCloudManager) TimeTilNextPayment(host *host.Host) time.Duration {
+func (mockMgr *mockManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]

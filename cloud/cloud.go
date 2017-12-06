@@ -6,52 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
-
-type CloudStatus int
-
-const (
-	//Catch-all for unrecognized status codes
-	StatusUnknown = CloudStatus(iota)
-
-	//StatusPending indicates that it is not yet clear if the instance
-	//has been successfully started or not (e.g., pending spot request)
-	StatusPending
-
-	//StatusInitializing means the instance request has been successfully
-	//fulfilled, but it's not yet done booting up
-	StatusInitializing
-
-	//StatusFailed indicates that an attempt to start the instance has failed;
-	//Could be due to billing, lack of capacity, etc.
-	StatusFailed
-
-	//StatusRunning means the machine is done booting, and active
-	StatusRunning
-
-	StatusStopped
-	StatusTerminated
-)
-
-func (stat CloudStatus) String() string {
-	switch stat {
-	case StatusPending:
-		return "pending"
-	case StatusFailed:
-		return "failed"
-	case StatusInitializing:
-		return "initializing"
-	case StatusRunning:
-		return "running"
-	case StatusStopped:
-		return "stopped"
-	case StatusTerminated:
-		return "terminated"
-	default:
-		return "unknown"
-	}
-}
 
 // ProviderSettings exposes provider-specific configuration settings for a CloudManager.
 type ProviderSettings interface {
@@ -117,84 +73,37 @@ type CloudCostCalculator interface {
 	CostForDuration(host *host.Host, start time.Time, end time.Time) (float64, error)
 }
 
-// HostOptions is a struct of options that are commonly passed around when creating a
-// new cloud host.
-type HostOptions struct {
-	ProvisionOptions   *host.ProvisionOptions
-	ExpirationDuration *time.Duration
-	UserName           string
-	UserData           string
-	UserHost           bool
-}
+// GetCloudManager returns an implementation of CloudManager for the given provider name.
+// It returns an error if the provider name doesn't have a known implementation.
+func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudManager, error) {
+	var provider CloudManager
 
-// NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
-// does not exist yet but is intended to be picked up by the hostinit package and started. This
-// function takes distro information, the name of the instance, the provider of the instance and
-// a HostOptions and returns an IntentHost.
-func NewIntent(d distro.Distro, instanceName, provider string, options HostOptions) *host.Host {
-
-	creationTime := time.Now()
-	// proactively write all possible information pertaining
-	// to the host we want to create. this way, if we are unable
-	// to start it or record its instance id, we have a way of knowing
-	// something went wrong - and what
-	intentHost := &host.Host{
-		Id:               instanceName,
-		User:             d.User,
-		Distro:           d,
-		Tag:              instanceName,
-		CreationTime:     creationTime,
-		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
-		Provider:         provider,
-		StartedBy:        options.UserName,
-		UserHost:         options.UserHost,
+	switch providerName {
+	case evergreen.ProviderNameStatic:
+		provider = &staticManager{}
+	case evergreen.ProviderNameMock:
+		provider = makeMockManager()
+	case evergreen.ProviderNameDigitalOcean:
+		provider = &doManager{}
+	case evergreen.ProviderNameEc2OnDemand:
+		provider = &ec2OnDemandManager{}
+	case evergreen.ProviderNameEc2Spot:
+		provider = &ec2SpotManager{}
+	case evergreen.ProviderNameDocker:
+		provider = &dockerManager{}
+	case evergreen.ProviderNameOpenstack:
+		provider = &openStackManager{}
+	case evergreen.ProviderNameGce:
+		provider = &gceManager{}
+	case evergreen.ProviderNameVsphere:
+		provider = &vsphereManager{}
+	default:
+		return nil, errors.Errorf("No known provider for '%v'", providerName)
 	}
 
-	if options.ExpirationDuration != nil {
-		intentHost.ExpirationTime = creationTime.Add(*options.ExpirationDuration)
-	}
-	if options.ProvisionOptions != nil {
-		intentHost.ProvisionOptions = options.ProvisionOptions
-	}
-	if options.UserData != "" {
-		intentHost.UserData = options.UserData
+	if err := provider.Configure(settings); err != nil {
+		return nil, errors.Wrap(err, "Failed to configure cloud provider")
 	}
 
-	return intentHost
-
-}
-
-//CloudHost is a provider-agnostic host object that delegates methods
-//like status checks, ssh options, DNS name checks, termination, etc. to the
-//underlying provider's implementation.
-type CloudHost struct {
-	Host     *host.Host
-	KeyPath  string
-	CloudMgr CloudManager
-}
-
-func (cloudHost *CloudHost) IsSSHReachable() (bool, error) {
-	return cloudHost.CloudMgr.IsSSHReachable(cloudHost.Host, cloudHost.KeyPath)
-}
-
-func (cloudHost *CloudHost) IsUp() (bool, error) {
-	return cloudHost.CloudMgr.IsUp(cloudHost.Host)
-}
-
-func (cloudHost *CloudHost) TerminateInstance() error {
-	return cloudHost.CloudMgr.TerminateInstance(cloudHost.Host)
-}
-
-func (cloudHost *CloudHost) GetInstanceStatus() (CloudStatus, error) {
-	return cloudHost.CloudMgr.GetInstanceStatus(cloudHost.Host)
-}
-
-func (cloudHost *CloudHost) GetDNSName() (string, error) {
-	return cloudHost.CloudMgr.GetDNSName(cloudHost.Host)
-}
-
-func (cloudHost *CloudHost) GetSSHOptions() ([]string, error) {
-	return cloudHost.CloudMgr.GetSSHOptions(cloudHost.Host, cloudHost.KeyPath)
+	return provider, nil
 }
