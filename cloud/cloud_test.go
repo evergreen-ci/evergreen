@@ -37,7 +37,7 @@ func TestGetCloudManager(t *testing.T) {
 			cloudMgr, err := GetCloudManager("mock", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &MockCloudManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &mockManager{})
 		})
 
 		Convey("DigitalOcean should be returned for digitalocean provider name", func() {
