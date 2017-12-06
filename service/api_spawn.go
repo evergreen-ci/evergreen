@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -206,7 +206,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cloudHost, err := providers.GetCloudHost(h, &as.Settings)
+		cloudHost, err := cloud.GetCloudHost(h, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

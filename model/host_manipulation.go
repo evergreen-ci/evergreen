@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -37,12 +37,12 @@ func NextTaskForHost(h *host.Host) (*task.Task, error) {
 }
 
 func UpdateStaticHosts() error {
-	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
+	distros, err := distro.Find(distro.ByProvider(evergreen.ProviderNameStatic))
 	if err != nil {
 		return err
 	}
 	activeStaticHosts := make([]string, 0)
-	settings := &static.Settings{}
+	settings := &cloud.StaticSettings{}
 
 	for _, d := range distros {
 		err = mapstructure.Decode(d.ProviderSettings, settings)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -310,7 +309,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName strin
 		HostURL: model.APIString("mock_url"),
 		Distro: model.DistroInfo{
 			Id:       model.APIString(distroID),
-			Provider: mock.ProviderName,
+			Provider: evergreen.ProviderNameMock,
 		},
 		Type:        model.APIString("mock_type"),
 		Status:      model.APIString(evergreen.HostUninitialized),

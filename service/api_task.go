@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/bookkeeping"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -231,7 +230,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 // are logged but not returned, since any number of API failures could happen and
 // we shouldn't sacrifice a task's status for them.
 func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.Time) {
-	manager, err := providers.GetCloudManager(h.Provider, &as.Settings)
+	manager, err := cloud.GetCloudManager(h.Provider, &as.Settings)
 	if err != nil {
 		grip.Errorf("Error loading provider for host %s cost calculation: %+v", t.HostId, err)
 		return

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -126,7 +125,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if h.Provider == static.ProviderName && newStatus == evergreen.HostDecommissioned {
+		if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
 			http.Error(w, "cannot decommission static hosts", http.StatusBadRequest)
 			return
 		}

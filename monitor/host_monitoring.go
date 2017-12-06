@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
@@ -98,7 +97,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 	})
 
 	// get a cloud version of the host
-	cloudHost, err := providers.GetCloudHost(&host, settings)
+	cloudHost, err := cloud.GetCloudHost(&host, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud host for host %v: %v", host.Id)
 	}
