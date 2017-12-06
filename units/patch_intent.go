@@ -91,7 +91,7 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(err)
 	}
 	if j.user == nil {
-		j.AddError(errors.New("Can't find user"))
+		j.AddError(errors.New("Can't find patch author"))
 	}
 
 	if j.HasErrors() {
@@ -110,10 +110,10 @@ func (j *patchIntentProcessor) Run() {
 		var module *model.Module
 		module, err = project.GetModuleByName(patchDoc.Patches[0].ModuleName)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "could not find module %v", patchDoc.Patches[0].ModuleName))
+			j.AddError(errors.Wrapf(err, "could not find module '%s'", patchDoc.Patches[0].ModuleName))
 		}
 		if module == nil {
-			j.AddError(errors.Errorf("no module named %s", patchDoc.Patches[0].ModuleName))
+			j.AddError(errors.Errorf("no module named '%s'", patchDoc.Patches[0].ModuleName))
 		}
 	}
 
@@ -124,7 +124,7 @@ func (j *patchIntentProcessor) Run() {
 		}
 		bv := project.FindBuildVariant(buildVariant)
 		if bv == nil {
-			j.AddError(errors.Errorf("No such buildvariant: %v", buildVariant))
+			j.AddError(errors.Errorf("No such buildvariant: '%s'", buildVariant))
 		}
 	}
 
@@ -197,21 +197,19 @@ func fetchPatchByURL(URL string) (string, error) {
 	return string(bytes), nil
 }
 
-func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) error {
-	var err error
+func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
 	j.projectRef, err = model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
-		return errors.Wrapf(err, "Could not find project ref %v", patchDoc.Project)
+		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
 	}
 	if j.projectRef == nil {
-		return errors.Errorf("Could not find project : %s", patchDoc.Project)
+		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
 	}
 
 	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, j.projectRef.Owner, j.projectRef.Repo, patchDoc.Githash)
 	if err != nil {
-		return errors.Wrapf(err, "could not find base revision %s for project %s",
+		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
 			patchDoc.Githash, j.projectRef.Identifier)
-
 	}
 	if gitCommit == nil {
 		return errors.Errorf("commit hash %s doesn't seem to exist", patchDoc.Githash)
@@ -242,13 +240,13 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error 
 	var err error
 	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.Owner, patchDoc.GithubPatchData.Repository)
 	if err != nil {
-		return errors.Wrapf(err, "Could not find project ref %v", patchDoc.Project)
+		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'", patchDoc.GithubPatchData.Owner, patchDoc.GithubPatchData.Repository)
 	}
 	if j.projectRef == nil {
-		return errors.Errorf("Could not find project : %s", patchDoc.Project)
+		return errors.Errorf("Could not find project ref for repo '%s/%s'", patchDoc.GithubPatchData.Owner, patchDoc.GithubPatchData.Repository)
+
 	}
 
-	// TODO: dbuser
 	// TODO: build variants and tasks
 	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.PatchURL)
 	if err != nil {
