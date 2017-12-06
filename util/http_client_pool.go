@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"sync"
@@ -17,6 +18,7 @@ func init() {
 			return &http.Client{
 				Timeout: httpClientTimeout,
 				Transport: &http.Transport{
+					TLSClientConfig:     &tls.Config{},
 					Proxy:               http.ProxyFromEnvironment,
 					DisableCompression:  false,
 					DisableKeepAlives:   true,
@@ -36,6 +38,7 @@ func init() {
 
 func GetHttpClient() *http.Client { return httpClientPool.Get().(*http.Client) }
 func PutHttpClient(c *http.Client) {
+	c.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = false
 	c.Timeout = httpClientTimeout
 	httpClientPool.Put(c)
 }
