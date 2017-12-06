@@ -21,23 +21,23 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.C
 
 	var provider cloud.CloudManager
 	switch providerName {
-	case static.ProviderName:
+	case evergreen.ProviderNameStatic:
 		provider = &static.StaticManager{}
-	case mock.ProviderName:
+	case evergreen.ProviderNameMock:
 		provider = mock.FetchMockProvider()
-	case digitalocean.ProviderName:
+	case evergreen.ProviderNameDigitalOcean:
 		provider = &digitalocean.DigitalOceanManager{}
-	case ec2.OnDemandProviderName:
+	case evergreen.ProviderNameEc2OnDemand:
 		provider = &ec2.EC2Manager{}
-	case ec2.SpotProviderName:
+	case evergreen.ProviderNameEc2Spot:
 		provider = &ec2.EC2SpotManager{}
-	case docker.ProviderName:
+	case evergreen.ProviderNameDocker:
 		provider = &docker.Manager{}
-	case openstack.ProviderName:
+	case evergreen.ProviderNameOpenstack:
 		provider = &openstack.Manager{}
-	case gce.ProviderName:
+	case evergreen.ProviderNameGce:
 		provider = &gce.Manager{}
-	case vsphere.ProviderName:
+	case evergreen.ProviderNameVsphere:
 		provider = &vsphere.Manager{}
 	default:
 		return nil, errors.Errorf("No known provider for '%v'", providerName)

@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -155,8 +154,8 @@ func CreateHost(so Options) (*host.Host, error) {
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
 	// fake out replacing spot instances with on-demand equivalents
-	if d.Provider == ec2.SpotProviderName {
-		d.Provider = ec2.OnDemandProviderName
+	if d.Provider == evergreen.ProviderNameEc2Spot {
+		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
 
 	// spawn the host

@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -44,7 +43,7 @@ func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]Val
 
 // ensureStaticHostsAreNotSpawnable makes sure that any static distro cannot also be spawnable.
 func ensureStaticHostsAreNotSpawnable(d *distro.Distro, s *evergreen.Settings) []ValidationError {
-	if d.SpawnAllowed && d.Provider == static.ProviderName {
+	if d.SpawnAllowed && d.Provider == evergreen.ProviderNameStatic {
 		return []ValidationError{
 			{
 				Message: fmt.Sprintf("static distro %s cannot be spawnable", d.Id),
@@ -88,7 +87,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 		})
 	}
 
-	if d.SSHKey == "" && d.Provider != static.ProviderName {
+	if d.SSHKey == "" && d.Provider != evergreen.ProviderNameStatic {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.SSHKeyKey),
 			Level:   Error,

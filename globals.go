@@ -128,6 +128,7 @@ const (
 	ProviderNameStatic       = "static"
 	ProviderNameOpenstack    = "openstack"
 	ProviderNameVsphere      = "vsphere"
+	ProviderNameMock         = "mock"
 )
 
 const (
