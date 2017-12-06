@@ -323,6 +323,50 @@ tasks:
           content_type: application/x-gzip
           permissions: public-read
           display_name: dist-test-${distro_id}.tar.gz
+  - name: smoke-test
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-mongodb
+      - func: run-make
+        vars:
+          target: "build"
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cp mongodb/mongoimport gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
+            cd gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
+            for fn in *.json; do
+              collection=$(echo $fn | cut -f 1 -d '.')
+              ./mongoimport --db mci --collection $collection --file $fn
+            done
+      - command: shell.exec
+        params:
+          shell: bash
+          background: true
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            binary=./clients/linux_amd64/evergreen
+            $binary service deploy start-evergreen --binary $binary
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            binary=./clients/linux_amd64/evergreen
+            $binary service deploy test-endpoints
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -620,6 +664,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
     tasks:
       - name: "dist"
+      - name: "smoke-test"
       - name: ".test"
 
   - name: ubuntu1604-debug

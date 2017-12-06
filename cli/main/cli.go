@@ -59,6 +59,8 @@ func main() {
 
 	deploy, _ := service.AddCommand("deploy", "deployment helper (e.g. migration tools)", "", &struct{}{})
 	deploy.AddCommand("anser", "migration helper", "", &cli.MigrationCommand{})
+	deploy.AddCommand("start-evergreen", "start evergreen web service and runner", "", &cli.StartEvergreenCommand{})
+	deploy.AddCommand("test-endpoints", "run tests against UI and API endpoints", "", &cli.SmokeTestEndpointCommand{})
 
 	// run commands
 	_, err := parser.Parse()
