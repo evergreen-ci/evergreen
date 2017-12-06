@@ -62,10 +62,7 @@ func NewCommunicator(serverURL string) Communicator {
 	return c
 }
 
-func (c *communicatorImpl) Close() {
-	c.httpClient.Timeout = time.Duration()
-	util.PutHttpClient(c.httpClient)
-}
+func (c *communicatorImpl) Close() { util.PutHttpClient(c.httpClient) }
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {

@@ -9,11 +9,13 @@ import (
 
 var httpClientPool *sync.Pool
 
+const httpClientTimeout = 5 * time.Minute
+
 func init() {
 	httpClientPool = &sync.Pool{
 		New: func() interface{} {
 			return &http.Client{
-				Timeout: 5 * time.Minute,
+				Timeout: httpClientTimeout,
 				Transport: &http.Transport{
 					Proxy:               http.ProxyFromEnvironment,
 					DisableCompression:  false,
@@ -32,5 +34,8 @@ func init() {
 	}
 }
 
-func GetHttpClient() *http.Client  { return httpClientPool.Get().(*http.Client) }
-func PutHttpClient(c *http.Client) { httpClientPool.Put(c) }
+func GetHttpClient() *http.Client { return httpClientPool.Get().(*http.Client) }
+func PutHttpClient(c *http.Client) {
+	c.Timeout = httpClientTimeout
+	httpClientPool.Put(c)
+}
