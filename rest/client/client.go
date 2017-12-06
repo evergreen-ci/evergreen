@@ -51,16 +51,21 @@ type TaskData struct {
 // the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
 // and SetMaxAttempts methods.
 func NewCommunicator(serverURL string) Communicator {
-	return &communicatorImpl{
+	c := &communicatorImpl{
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
 		httpClient:   util.GetHttpClient(),
 	}
+	c.httpClient.Timeout = heartbeatTimeout
+	return c
 }
 
-func (c *communicatorImpl) Close() { util.PutHttpClient(c.httpClient) }
+func (c *communicatorImpl) Close() {
+	c.httpClient.Timeout = time.Duration()
+	util.PutHttpClient(c.httpClient)
+}
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {
