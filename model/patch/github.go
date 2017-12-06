@@ -31,7 +31,7 @@ type Intent interface {
 	// IsProcessed returns whether a patch exists for this intent.
 	IsProcessed() bool
 
-	// GetType returns the patch intent, e.g., GithubType.
+	// GetType returns the patch intent, e.g., GithubIntentType.
 	GetType() string
 
 	// ID returns an identifier such that the tuple
@@ -80,7 +80,7 @@ type githubIntent struct {
 	// ProcessedAt is the time that this intent was processed
 	ProcessedAt time.Time `bson:"processed_at"`
 
-	// IntentType indicates the type of the patch intent, i.e., GithubIntentType
+	// IntentType indicates the type of the patch intent, e.g. GithubIntentType
 	IntentType string `bson:"intent_type"`
 }
 

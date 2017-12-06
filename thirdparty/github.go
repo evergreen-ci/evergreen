@@ -401,7 +401,7 @@ func GetGithubFileURL(owner, repo, remotePath, revision string) string {
 	)
 }
 
-// NextPageLink returns the link to the next page for a given header's evergreen.RoutePaginatorNextPageHeaderKey
+// NextPageLink returns the link to the next page for a given header's 'Link'
 // key based on http://developer.github.com/v3/#pagination
 // For full details see http://tools.ietf.org/html/rfc5988
 func NextGithubPageLink(header http.Header) string {
