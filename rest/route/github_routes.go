@@ -7,11 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type githubHookApi struct {
@@ -58,7 +56,7 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 	eventType := r.Header.Get("X-Github-Event")
 	gh.msgId = r.Header.Get("X-Github-Delivery")
 
-	if len(gh.secret) == 0 {
+	if len(gh.secret) == 0 || gh.queue == nil {
 		return rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 		}
@@ -113,17 +111,10 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				}
 			}
 
-			if err := sc.AddPatchIntent(ghi); err != nil {
+			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusInternalServerError,
-					Message:    "failed to created patch intent",
-				}
-			}
-
-			if err := gh.queue.Put(units.NewPatchIntentProcessor(bson.NewObjectId(), ghi)); err != nil {
-				return ResponseData{}, rest.APIError{
-					StatusCode: http.StatusInternalServerError,
-					Message:    "failed to queue patch intent for processing",
+					Message:    err.Error(),
 				}
 			}
 		}

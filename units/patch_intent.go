@@ -36,8 +36,8 @@ type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	logger   grip.Journaler
 
-	intent     patch.Intent  `bson:"intent" json:"intent"`
-	patchID    bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
+	Intent     patch.Intent  `bson:"intent" json:"intent"`
+	PatchID    bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
 	user       *user.DBUser
 	projectRef *model.ProjectRef
 }
@@ -47,8 +47,8 @@ type patchIntentProcessor struct {
 func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
 	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, intent.GetType(), intent.ID()))
-	j.intent = intent
-	j.patchID = patchID
+	j.Intent = intent
+	j.PatchID = patchID
 	return j
 }
 
@@ -69,15 +69,15 @@ func (j *patchIntentProcessor) Run() {
 	githubOauthToken := evergreen.GetEnvironment().Settings().Credentials["github"]
 
 	defer j.MarkComplete()
-	if j.intent == nil {
+	if j.Intent == nil {
 		j.AddError(errors.New("nil intent"))
 		return
 	}
-	defer j.intent.SetProcessed()
+	defer j.Intent.SetProcessed()
 
-	patchDoc := j.intent.NewPatch()
+	patchDoc := j.Intent.NewPatch()
 
-	switch j.intent.GetType() {
+	switch j.Intent.GetType() {
 	case patch.GithubIntentType:
 		j.AddError(j.buildGithubPatchDoc(patchDoc))
 
@@ -85,7 +85,7 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
 	default:
-		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.intent.GetType()))
+		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType()))
 	}
 	if j.HasErrors() {
 		return
@@ -196,9 +196,9 @@ func (j *patchIntentProcessor) Run() {
 		return
 	}
 
-	j.patchID = patchDoc.Id
+	j.PatchID = patchDoc.Id
 
-	if j.intent.ShouldFinalizePatch() {
+	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, githubOauthToken); err != nil {
 			j.AddError(err)
 			return
@@ -220,6 +220,9 @@ func fetchPatchByURL(URL string) (string, error) {
 	}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 
 	return string(bytes), nil
 }
