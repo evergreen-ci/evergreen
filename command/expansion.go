@@ -105,16 +105,17 @@ func (c *update) Execute(ctx context.Context,
 			return errors.WithStack(err)
 		}
 
-		_, err = os.Stat(c.YamlFile)
+		filename := filepath.Join(conf.WorkDir, c.YamlFile)
+
+		_, err = os.Stat(filename)
 		if os.IsNotExist(err) {
 			if c.IgnoreMissingFile {
 				return nil
 			}
-			return errors.Errorf("file '%s' does not exist", c.YamlFile)
+			return errors.Errorf("file '%s' does not exist", filename)
 		}
 
-		logger.Task().Infof("Updating expansions with keys from file: %s", c.YamlFile)
-		filename := filepath.Join(conf.WorkDir, c.YamlFile)
+		logger.Task().Infof("Updating expansions with keys from file: %s", filename)
 		err := conf.Expansions.UpdateFromYaml(filename)
 		if err != nil {
 			return errors.WithStack(err)
