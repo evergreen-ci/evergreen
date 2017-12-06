@@ -1,10 +1,9 @@
-package openstack
+package cloud
 
 import (
 	"os"
 	"os/user"
 
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 )
@@ -22,20 +21,20 @@ const (
 	OSStatusBuilding = "BUILD"
 )
 
-func osStatusToEvgStatus(status string) cloud.CloudStatus {
+func osStatusToEvgStatus(status string) CloudStatus {
 	// Note: There is no equivalent to the 'terminated' cloud status since instances are no
 	// longer detectable once they have been terminated.
 	switch status {
 	case OSStatusActive:
-		return cloud.StatusRunning
+		return StatusRunning
 	case OSStatusInProgress:
-		return cloud.StatusRunning
+		return StatusRunning
 	case OSStatusShutOff:
-		return cloud.StatusStopped
+		return StatusStopped
 	case OSStatusBuilding:
-		return cloud.StatusInitializing
+		return StatusInitializing
 	default:
-		return cloud.StatusUnknown
+		return StatusUnknown
 	}
 }
 

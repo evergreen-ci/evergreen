@@ -1,4 +1,4 @@
-package openstack
+package cloud
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 )
 
-type clientMock struct {
+type openStackClientMock struct {
 	// API call options
 	failInit   bool
 	failCreate bool
@@ -21,7 +21,7 @@ type clientMock struct {
 	isServerActive bool
 }
 
-func (c *clientMock) Init(_ gophercloud.AuthOptions, _ gophercloud.EndpointOpts) error {
+func (c *openStackClientMock) Init(_ gophercloud.AuthOptions, _ gophercloud.EndpointOpts) error {
 	if c.failInit {
 		return errors.New("failed to initialize client")
 	}
@@ -31,7 +31,7 @@ func (c *clientMock) Init(_ gophercloud.AuthOptions, _ gophercloud.EndpointOpts)
 
 // CreateInstance returns a mock server with an ID that is guaranteed to uniquely identify
 // this server amongst all other mock servers.
-func (c *clientMock) CreateInstance(_ servers.CreateOpts, _ string) (*servers.Server, error) {
+func (c *openStackClientMock) CreateInstance(_ servers.CreateOpts, _ string) (*servers.Server, error) {
 	if c.failCreate {
 		return nil, errors.New("failed to create instance")
 	}
@@ -42,7 +42,7 @@ func (c *clientMock) CreateInstance(_ servers.CreateOpts, _ string) (*servers.Se
 	return server, nil
 }
 
-func (c *clientMock) GetInstance(id string) (*servers.Server, error) {
+func (c *openStackClientMock) GetInstance(id string) (*servers.Server, error) {
 	if c.failGet {
 		return nil, errors.New("failed to get instance")
 	}
@@ -63,7 +63,7 @@ func (c *clientMock) GetInstance(id string) (*servers.Server, error) {
 	return server, nil
 }
 
-func (c *clientMock) DeleteInstance(id string) error {
+func (c *openStackClientMock) DeleteInstance(id string) error {
 	if c.failDelete {
 		return errors.New("failed to delete instance")
 	}

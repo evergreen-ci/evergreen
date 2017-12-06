@@ -1,15 +1,13 @@
-package openstack
+package cloud
 
 import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-
 	"github.com/stretchr/testify/suite"
 )
 
@@ -18,7 +16,7 @@ type OpenStackSuite struct {
 	keyname  string
 	manager  *Manager
 	distro   *distro.Distro
-	hostOpts cloud.HostOptions
+	hostOpts HostOptions
 	suite.Suite
 }
 
@@ -48,7 +46,7 @@ func (s *OpenStackSuite) SetupTest() {
 			"security_group": "group",
 		},
 	}
-	s.hostOpts = cloud.HostOptions{}
+	s.hostOpts = HostOptions{}
 }
 
 func (s *OpenStackSuite) TestValidateSettings() {
@@ -130,7 +128,7 @@ func (s *OpenStackSuite) TestIsUpStatuses() {
 
 	status, err := s.manager.GetInstanceStatus(host)
 	s.NoError(err)
-	s.Equal(cloud.StatusRunning, status)
+	s.Equal(StatusRunning, status)
 
 	active, err := s.manager.IsUp(host)
 	s.NoError(err)
@@ -139,7 +137,7 @@ func (s *OpenStackSuite) TestIsUpStatuses() {
 	mock.isServerActive = false
 	status, err = s.manager.GetInstanceStatus(host)
 	s.NoError(err)
-	s.NotEqual(cloud.StatusRunning, status)
+	s.NotEqual(StatusRunning, status)
 
 	active, err = s.manager.IsUp(host)
 	s.NoError(err)
@@ -147,14 +145,14 @@ func (s *OpenStackSuite) TestIsUpStatuses() {
 }
 
 func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
-	hostA := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostA, err := s.manager.SpawnHost(hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostB, err = s.manager.SpawnHost(hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -173,7 +171,7 @@ func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 
 func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	myHost, err := s.manager.SpawnHost(myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -237,14 +235,14 @@ func (s *OpenStackSuite) TestGetSSHOptions() {
 func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	var err error
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	host := NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
 	s.NotNil(host)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "openstack"}
-	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	host = NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
@@ -253,7 +251,7 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 		Provider:         "openstack",
 		ProviderSettings: &map[string]interface{}{"image_name": ""},
 	}
-	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host = NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
 	s.NotNil(host)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
@@ -263,7 +261,7 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 
 	hostOne, err := s.manager.SpawnHost(hostOne)
 	s.NoError(err)
@@ -271,7 +269,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 	_, err = hostOne.Upsert()
 	s.NoError(err)
 
-	hostTwo := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -295,7 +293,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host := cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
+	host := NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
@@ -303,7 +301,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	s.NoError(err)
 
 	mock.failCreate = true
-	host = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
+	host = NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
 
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
@@ -311,9 +309,9 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 }
 
 func (s *OpenStackSuite) TestUtilToEvgStatus() {
-	s.Equal(cloud.StatusRunning, osStatusToEvgStatus("ACTIVE"))
-	s.Equal(cloud.StatusRunning, osStatusToEvgStatus("IN_PROGRESS"))
-	s.Equal(cloud.StatusStopped, osStatusToEvgStatus("SHUTOFF"))
-	s.Equal(cloud.StatusInitializing, osStatusToEvgStatus("BUILD"))
-	s.Equal(cloud.StatusUnknown, osStatusToEvgStatus("???"))
+	s.Equal(StatusRunning, osStatusToEvgStatus("ACTIVE"))
+	s.Equal(StatusRunning, osStatusToEvgStatus("IN_PROGRESS"))
+	s.Equal(StatusStopped, osStatusToEvgStatus("SHUTOFF"))
+	s.Equal(StatusInitializing, osStatusToEvgStatus("BUILD"))
+	s.Equal(StatusUnknown, osStatusToEvgStatus("???"))
 }

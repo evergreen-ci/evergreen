@@ -1,4 +1,4 @@
-package openstack
+package cloud
 
 import (
 	"github.com/gophercloud/gophercloud"
@@ -8,21 +8,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-// The client interface wraps the OpenStack client interaction.
-type client interface {
+// The openStackClient interface wraps the OpenStack openStackClient interaction.
+type openStackClient interface {
 	Init(gophercloud.AuthOptions, gophercloud.EndpointOpts) error
 	CreateInstance(servers.CreateOpts, string) (*servers.Server, error)
 	GetInstance(string) (*servers.Server, error)
 	DeleteInstance(string) error
 }
 
-type clientImpl struct {
+type openStackClientImpl struct {
 	*gophercloud.ServiceClient
 }
 
-// Init establishes a connection to an Identity V3 endpoint and creates a client that
+// Init establishes a connection to an Identity V3 endpoint and creates a openStackClient that
 // can be used with the Compute V2 package.
-func (c *clientImpl) Init(ao gophercloud.AuthOptions, eo gophercloud.EndpointOpts) error {
+func (c *openStackClientImpl) Init(ao gophercloud.AuthOptions, eo gophercloud.EndpointOpts) error {
 	providerClient, err := openstack.AuthenticatedClient(ao)
 	if err != nil {
 		return errors.Wrap(err, "OpenStack AuthenticatedClient API call failed")
@@ -36,7 +36,7 @@ func (c *clientImpl) Init(ao gophercloud.AuthOptions, eo gophercloud.EndpointOpt
 }
 
 // CreateInstance requests a server to be provisioned to the user in the current tenant.
-func (c *clientImpl) CreateInstance(opts servers.CreateOpts, keyName string) (*servers.Server, error) {
+func (c *openStackClientImpl) CreateInstance(opts servers.CreateOpts, keyName string) (*servers.Server, error) {
 	opts.ServiceClient = c.ServiceClient
 	optsExt := keypairs.CreateOptsExt{
 		CreateOptsBuilder: opts,
@@ -47,13 +47,13 @@ func (c *clientImpl) CreateInstance(opts servers.CreateOpts, keyName string) (*s
 }
 
 // GetInstance requests details on a single server, by ID.
-func (c *clientImpl) GetInstance(id string) (*servers.Server, error) {
+func (c *openStackClientImpl) GetInstance(id string) (*servers.Server, error) {
 	server, err := servers.Get(c.ServiceClient, id).Extract()
 	return server, errors.Wrap(err, "OpenStack Get API call failed")
 }
 
 // DeleteInstance requests a server previously provisioned to be removed, by ID.
-func (c *clientImpl) DeleteInstance(id string) error {
+func (c *openStackClientImpl) DeleteInstance(id string) error {
 	err := servers.Delete(c.ServiceClient, id).ExtractErr()
 	return errors.Wrap(err, "OpenStack Delete API call failed")
 }

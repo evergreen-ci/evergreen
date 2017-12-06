@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/openstack"
 	"github.com/evergreen-ci/evergreen/cloud/providers/vsphere"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
@@ -27,7 +26,7 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudMa
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameOpenstack:
-		provider = &openstack.Manager{}
+		provider = &openStackManager{}
 	case evergreen.ProviderNameGce:
 		provider = &gceManager{}
 	case evergreen.ProviderNameVsphere:

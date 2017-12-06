@@ -1,16 +1,14 @@
-package openstack
+package cloud
 
 import (
 	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-
 	"github.com/gophercloud/gophercloud"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -18,15 +16,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Manager implements the CloudManager interface for OpenStack.
-type Manager struct {
+// openStackManager implements the CloudManager interface for OpenStack.
+type openStackManager struct {
 	authOptions  *gophercloud.AuthOptions
 	endpointOpts *gophercloud.EndpointOpts
 	client       client
 }
 
 // ProviderSettings specifies the settings used to configure a host instance.
-type ProviderSettings struct {
+type openStackProviderSettings struct {
 	ImageName     string `mapstructure:"image_name"`
 	FlavorName    string `mapstructure:"flavor_name"`
 	KeyName       string `mapstructure:"key_name"`
@@ -34,7 +32,7 @@ type ProviderSettings struct {
 }
 
 // Validate verifies a set of ProviderSettings.
-func (opts *ProviderSettings) Validate() error {
+func (opts *openStackProviderSettings) Validate() error {
 	if opts.ImageName == "" {
 		return errors.New("Image name must not be blank")
 	}
@@ -56,17 +54,17 @@ func (opts *ProviderSettings) Validate() error {
 
 // GetSettings returns an empty ProviderSettings struct since settings are configured on
 // instance creation.
-func (m *Manager) GetSettings() cloud.ProviderSettings {
-	return &ProviderSettings{}
+func (m *openStackManager) GetSettings() ProviderSettings {
+	return &openStackProviderSettings{}
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*Manager) GetInstanceName(d *distro.Distro) string {
+func (*openStackManager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
 // Configure loads the necessary credentials from the global config object.
-func (m *Manager) Configure(s *evergreen.Settings) error {
+func (m *openStackManager) Configure(s *evergreen.Settings) error {
 	config := s.Providers.OpenStack
 
 	m.authOptions = &gophercloud.AuthOptions{
@@ -101,7 +99,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //     - FlavorName:    like an AWS instance type i.e. m1.large
 //     - KeyName:       (optional) keypair name associated with the account
 //     - SecurityGroup: (optional) security group name
-func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *openStackManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameOpenstack {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameOpenstack, h.Distro.Id, h.Distro.Provider)
@@ -143,22 +141,22 @@ func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 //
 // The OpenStack provider is not always able to spawn new instances if, for example, it has
 // exceeded its number of instances, VCPUs, or RAM. Unfortunately, there is no way to know.
-func (m *Manager) CanSpawn() (bool, error) {
+func (m *openStackManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
-func (m *Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
+func (m *openStackManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	server, err := m.client.GetInstance(host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, err
+		return StatusUnknown, err
 	}
 
 	return osStatusToEvgStatus(server.Status), nil
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *Manager) TerminateInstance(host *host.Host) error {
+func (m *openStackManager) TerminateInstance(host *host.Host) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -174,22 +172,22 @@ func (m *Manager) TerminateInstance(host *host.Host) error {
 }
 
 // IsUp checks whether the provisioned host is running.
-func (m *Manager) IsUp(host *host.Host) (bool, error) {
+func (m *openStackManager) IsUp(host *host.Host) (bool, error) {
 	status, err := m.GetInstanceStatus(host)
 	if err != nil {
 		return false, err
 	}
 
-	return status == cloud.StatusRunning, nil
+	return status == StatusRunning, nil
 }
 
 // OnUp does nothing since tags are attached in SpawnInstance.
-func (m *Manager) OnUp(host *host.Host) error {
+func (m *openStackManager) OnUp(host *host.Host) error {
 	return nil
 }
 
 // IsSSHReachable returns true if the host can successfully accept and run an SSH command.
-func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (m *openStackManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	opts, err := m.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, err
@@ -199,7 +197,7 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 }
 
 // GetDNSName returns the private IP address of the host.
-func (m *Manager) GetDNSName(host *host.Host) (string, error) {
+func (m *openStackManager) GetDNSName(host *host.Host) (string, error) {
 	server, err := m.client.GetInstance(host.Id)
 	if err != nil {
 		return "", err
@@ -235,7 +233,7 @@ func (m *Manager) GetDNSName(host *host.Host) (string, error) {
 
 // GetSSHOptions generates the command line args to be passed to SSH to allow connection
 // to the machine.
-func (m *Manager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
+func (m *openStackManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, errors.New("No key specified for host")
 	}
@@ -250,6 +248,6 @@ func (m *Manager) GetSSHOptions(host *host.Host, keyPath string) ([]string, erro
 
 // TimeTilNextPayment always returns 0. The OpenStack dashboard requires third-party
 // plugins for billing, monitoring, and other management tools.
-func (m *Manager) TimeTilNextPayment(host *host.Host) time.Duration {
+func (m *openStackManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }
