@@ -83,7 +83,7 @@ var (
 
 func (c *cliIntent) Insert() error {
 	patchFileID := bson.NewObjectId()
-	if err := db.WriteGridFile(GridFSPrefix, patchFileID.String(), strings.NewReader(c.PatchContent)); err != nil {
+	if err := db.WriteGridFile(GridFSPrefix, patchFileID.Hex(), strings.NewReader(c.PatchContent)); err != nil {
 		return err
 	}
 
@@ -120,7 +120,7 @@ func (c *cliIntent) GetType() string {
 }
 
 func (c *cliIntent) ID() string {
-	return c.DocumentID.String()
+	return c.DocumentID.Hex()
 }
 
 func (c *cliIntent) ShouldFinalizePatch() bool {
@@ -142,7 +142,7 @@ func (c *cliIntent) NewPatch() *Patch {
 				ModuleName: c.Module,
 				Githash:    c.BaseHash,
 				PatchSet: PatchSet{
-					PatchFileId: c.PatchFileID.String(),
+					PatchFileId: c.PatchFileID.Hex(),
 				},
 			},
 		},

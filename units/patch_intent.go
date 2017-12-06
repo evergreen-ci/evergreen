@@ -35,6 +35,7 @@ func init() {
 type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	logger   grip.Journaler
+	env      evergreen.Environment
 
 	Intent     patch.Intent  `bson:"intent" json:"intent"`
 	PatchID    bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
@@ -54,6 +55,7 @@ func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.J
 
 func makePatchIntentProcessor() *patchIntentProcessor {
 	return &patchIntentProcessor{
+		env:    evergreen.GetEnvironment(),
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -66,7 +68,7 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 }
 
 func (j *patchIntentProcessor) Run() {
-	githubOauthToken := evergreen.GetEnvironment().Settings().Credentials["github"]
+	githubOauthToken := j.env.Settings().Credentials["github"]
 
 	defer j.MarkComplete()
 	if j.Intent == nil {
@@ -190,18 +192,16 @@ func (j *patchIntentProcessor) Run() {
 
 	patchDoc.SyncVariantsTasks(model.TVPairsToVariantTasks(pairs))
 	patchDoc.CreateTime = time.Now()
+	patchDoc.Id = j.PatchID
 
 	if err := patchDoc.Insert(); err != nil {
 		j.AddError(err)
 		return
 	}
 
-	j.PatchID = patchDoc.Id
-
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, githubOauthToken); err != nil {
 			j.AddError(err)
-			return
 		}
 	}
 }
@@ -277,6 +277,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error 
 
 	}
 
+	// TODO: confirm membership with acceptable organizations
 	// TODO: build variants and tasks
 	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.PatchURL)
 	if err != nil {
@@ -288,7 +289,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error 
 		return err
 	}
 
-	patchFileId := bson.NewObjectId().String()
+	patchFileId := bson.NewObjectId().Hex()
 	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 		ModuleName: "",
 		Githash:    patchDoc.Githash,
@@ -297,6 +298,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error 
 			Summary:     summaries,
 		},
 	})
+	patchDoc.Project = j.projectRef.Identifier
 
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")

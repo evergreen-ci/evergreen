@@ -71,8 +71,8 @@ type githubIntent struct {
 	// BaseHash is the base hash of the patch.
 	BaseHash string `bson:"base_hash"`
 
-	// URL is the URL of the patch in GitHub.
-	URL string `bson:"url"`
+	// URL is the URL of the url to the patch file for this pull request
+	PatchURL string `bson:"patch_url"`
 
 	// Processed indicates whether a patch intent has been processed by the amboy queue.
 	Processed bool `bson:"processed"`
@@ -94,7 +94,7 @@ var (
 	prNumberKey    = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
 	userKey        = bsonutil.MustHaveTag(githubIntent{}, "User")
 	baseHashKey    = bsonutil.MustHaveTag(githubIntent{}, "BaseHash")
-	urlKey         = bsonutil.MustHaveTag(githubIntent{}, "URL")
+	patchURLKey    = bsonutil.MustHaveTag(githubIntent{}, "PatchURL")
 	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
 	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
@@ -128,7 +128,7 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 		PRNumber:   prNumber,
 		User:       user,
 		BaseHash:   baseHash,
-		URL:        url,
+		PatchURL:   url,
 		IntentType: GithubIntentType,
 	}, nil
 }
@@ -200,14 +200,15 @@ func (g *githubIntent) NewPatch() *Patch {
 	patchDoc := &Patch{
 		Id:          bson.NewObjectId(),
 		Description: fmt.Sprintf("%s pull request #%d", g.RepoName, g.PRNumber),
-		//Author:      "",
-		Githash: g.BaseHash,
-		Status:  evergreen.PatchCreated,
+		Author:      "github_patch_user",
+		Githash:     g.BaseHash,
+		Status:      evergreen.PatchCreated,
 		GithubPatchData: GithubPatch{
 			PRNumber:   g.PRNumber,
 			Owner:      repo[0],
 			Repository: repo[1],
 			Author:     g.User,
+			PatchURL:   g.PatchURL,
 		},
 	}
 	return patchDoc
