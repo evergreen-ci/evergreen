@@ -1,11 +1,10 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent db cli subprocess taskrunner util plugin hostinit units command 
+packages := $(name) agent cloud command db cli subprocess taskrunner util plugin hostinit units 
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task
-packages += cloud cloud-providers-docker cloud-providers-ec2 cloud-providers-gce cloud-providers-openstack cloud-providers-vsphere
 packages += rest-client rest-data rest-route rest-model migrations
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)

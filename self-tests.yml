@@ -366,21 +366,6 @@ tasks:
     name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-cloud-providers-docker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-ec2
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-gce
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-openstack
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-vsphere
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-hostinit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -495,21 +480,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-cloud
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-ec2
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-docker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-gce
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-openstack
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-vsphere
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-repotracker
