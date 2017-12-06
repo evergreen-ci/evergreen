@@ -1,2 +1,11 @@
 {"_id":"logkeeper","vars":{}}
 {"_id":"evergreen","vars":{},"private_vars":{},"patch_definitions":[]}
+{
+	"_id" : "sys-perf",
+	"vars" : {
+
+	},
+	"private_vars" : {
+		
+	}
+}

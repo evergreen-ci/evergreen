@@ -40,6 +40,8 @@ auth:
           display_name: "Evergreen Admin"
 
 plugins:
+  perf:
+      projects: ["sys-perf"]
   buildbaron:
           host: "jira.example.com"
           username: "foo"
