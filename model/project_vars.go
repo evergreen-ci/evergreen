@@ -35,11 +35,12 @@ type ProjectVars struct {
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
 
 	// PatchDefinitions contains regexes that are used to determine which
-	// combinations of variants and tasks should be run.
+	// combinations of variants and tasks should be run in a patch build.
 	PatchDefinitions []PatchDefinition `bson:"patch_definitions" json:"patch_definitions"`
 }
 
 type PatchDefinition struct {
+	Alias   string `bson:"alias" json:"alias"`
 	Variant string `bson:"variant" json:"variant"`
 	Task    string `bson:"task" json:"task"`
 }
@@ -62,6 +63,44 @@ func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 		return nil, err
 	}
 	return projectVars, nil
+}
+
+func FindAllProjectAliases(projectId string) ([]PatchDefinition, error) {
+	vars, err := FindOneProjectVars(projectId)
+	if err != nil {
+		return nil, err
+	}
+	if vars == nil {
+		return nil, nil
+	}
+	aliases := vars.PatchDefinitions
+	if len(aliases) == 0 {
+		return nil, nil
+	}
+
+	return aliases, nil
+}
+
+func FindOneProjectAlias(projectId string, alias string) ([]PatchDefinition, error) {
+	vars, err := FindOneProjectVars(projectId)
+	if err != nil {
+		return nil, err
+	}
+	if vars == nil {
+		return nil, nil
+	}
+
+	aliases := []PatchDefinition{}
+	for _, d := range vars.PatchDefinitions {
+		if d.Alias == alias {
+			aliases = append(aliases, d)
+		}
+	}
+	if len(aliases) == 0 {
+		return nil, nil
+	}
+
+	return aliases, nil
 }
 
 func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {

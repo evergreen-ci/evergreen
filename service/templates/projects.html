@@ -286,8 +286,8 @@ Evergreen Projects
 
         <div class="variables">
           <div class="form-group">
-            <div class="col-header col-lg-6 form-control-static"> <h3> Patch Definitions </h3>
-                <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
+            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Patch Definitions </h3>
+              <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
             </div>
           </div>
           <div id="patch-variants-list-header" class="form-group">
@@ -296,35 +296,85 @@ Evergreen Projects
             <div class="col-lg-2"></div>
           </div>
 
-          <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.patch_definitions track by $index">
+          <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_patch_definitions track by $index">
             <div class="col-lg-3">
-              <input class="form-control" ng-model="settingsFormData.patch_definitions[$index].variant" type="text" placeholder="variant regex">
+              <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].variant" type="text" placeholder="variant regex">
             </div>
             <div class="col-lg-3">
-              <input class="form-control" ng-model="settingsFormData.patch_definitions[$index].task" type="text" placeholder="task regex">
+              <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removePatchDefinition($index)">
+              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeGithubPatchDefinition($index)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
           </div>
           <div class="form-group">
             <div class="col-lg-3">
-              <input ng-model="patch_definition.variant" class="form-control" type="text" placeholder="variant regex">
+              <input ng-model="github_patch_definition.variant" class="form-control" type="text" placeholder="variant regex">
             </div>
             <div class="col-lg-3">
-              <input ng-model="patch_definition.task" class="form-control" type="text" placeholder="task regex">
+              <input ng-model="github_patch_definition.task" class="form-control" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary " ng-disabled="!validPatchDefinition(patch_definition.variant, patch_definition.task)" id="variable-add" type="button" ng-click="addPatchDefinition()">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchDefinition(github_patch_definition.variant, github_patch_definition.task)" id="variable-add" type="button" ng-click="addGithubPatchDefinition()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
             </div>
           </div>
         </div>
+
+        <div class="variables">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> Patch Aliases </h3>
+              <div class="muted small">Specify aliases to use with the CLI. Aliases may be specified multiple times. The result will be their union. All regular expressions must be valid Golang regular expressions.</div>
+            </div>
+          </div>
+          <div id="patch-aliases-list-header" class="form-group">
+            <div class="col-lg-2"> <label class="control-label"> Alias </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"></div>
+          </div>
+
+          <div id="patch-aliases-list" class="form-group" ng-repeat="obj in settingsFormData.patch_aliases track by $index">
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].alias" type="text" placeholder="alias">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].variant" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].task" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removePatchAlias($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.alias" class="form-control" type="text" placeholder="alias">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.variant" class="form-control" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.task" class="form-control" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-6">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task)" id="variable-add" type="button" ng-click="addPatchAlias()">
+                <i class="fa fa-plus"></i>
+              </button>
+              <label class="distro-error">[[invalidPatchAliasMessage]]</label>
+            </div>
+          </div>
+        </div>
+
         <br/>
+
         <div class="row">
           <div class="col-lg-2">
             <label>[[saveMessage]]</label>

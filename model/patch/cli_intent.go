@@ -60,6 +60,9 @@ type cliIntent struct {
 
 	// IntentType indicates the type of the patch intent, i.e., GithubIntentType
 	IntentType string `bson:"intent_type"`
+
+	// alias defines the variants and tasks to run this patch on.
+	Alias string `bson:"alias"`
 }
 
 // BSON fields for the patches
@@ -146,10 +149,11 @@ func (c *cliIntent) NewPatch() *Patch {
 				},
 			},
 		},
+		Alias: c.Alias,
 	}
 }
 
-func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string) (Intent, error) {
+func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string) (Intent, error) {
 	if user == "" {
 		return nil, errors.New("no user provided")
 	}
@@ -183,5 +187,6 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 		BaseHash:      baseHash,
 		Finalize:      finalize,
 		Module:        module,
+		Alias:         alias,
 	}, nil
 }

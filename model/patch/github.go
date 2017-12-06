@@ -16,6 +16,9 @@ const (
 
 	// GithubIntentType represents patch intents created for GitHub.
 	GithubIntentType = "github"
+
+	// GithubAlias is a special alias to specify default variants and tasks for GitHub pull requests.
+	GithubAlias = "__github"
 )
 
 // Intent represents an intent to create a patch build and is processed by an amboy queue.
@@ -194,5 +197,8 @@ func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 }
 
 func (g *githubIntent) NewPatch() *Patch {
-	return nil
+	return &Patch{
+		Alias: GithubAlias,
+	}
+
 }
