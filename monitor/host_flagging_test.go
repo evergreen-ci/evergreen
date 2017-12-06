@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -98,7 +97,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			// creation time would otherwise indicate it has been idle a while
 			host1 := host.Host{
 				Id:           "h1",
-				Provider:     mock.ProviderName,
+				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				RunningTask:  "t1",
 				Status:       evergreen.HostRunning,
@@ -114,7 +113,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			Convey("even if they have a last communication time > 10 minutes", func() {
 				h2 := host.Host{
 					Id:                    "anotherhost",
-					Provider:              mock.ProviderName,
+					Provider:              evergreen.ProviderNameMock,
 					CreationTime:          time.Now().Add(-30 * time.Minute),
 					RunningTask:           "t3",
 					Status:                evergreen.HostRunning,
@@ -140,7 +139,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 			host1 := host.Host{
 				Id:                    "h2",
-				Provider:              mock.ProviderName,
+				Provider:              evergreen.ProviderNameMock,
 				LastTaskCompleted:     "t1",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
 				LastCommunicationTime: time.Now(),
@@ -151,7 +150,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 			host2 := host.Host{
 				Id:                    "h3",
-				Provider:              mock.ProviderName,
+				Provider:              evergreen.ProviderNameMock,
 				LastTaskCompleted:     "t2",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 5),
 				LastCommunicationTime: time.Now(),
@@ -171,7 +170,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			"than 10 mins should be marked as idle", func() {
 			anotherHost := host.Host{
 				Id:                    "h1",
-				Provider:              mock.ProviderName,
+				Provider:              evergreen.ProviderNameMock,
 				LastCommunicationTime: time.Now().Add(-time.Minute * 20),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
@@ -224,7 +223,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d1"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -233,7 +232,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -255,7 +254,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d1"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -264,7 +263,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -273,7 +272,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
@@ -282,7 +281,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
@@ -307,7 +306,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d1"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -316,7 +315,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d1"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -325,7 +324,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d1"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
@@ -334,7 +333,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
@@ -343,7 +342,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
@@ -352,7 +351,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Distro:    distro.Distro{Id: "d2"},
 					Status:    evergreen.HostRunning,
 					StartedBy: evergreen.User,
-					Provider:  mock.ProviderName,
+					Provider:  evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host6.Insert(), t, "error inserting host")
 
@@ -387,7 +386,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Status:      evergreen.HostRunning,
 					StartedBy:   evergreen.User,
 					RunningTask: "t1",
-					Provider:    mock.ProviderName,
+					Provider:    evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -397,7 +396,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Status:      evergreen.HostRunning,
 					StartedBy:   evergreen.User,
 					RunningTask: "t2",
-					Provider:    mock.ProviderName,
+					Provider:    evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -407,7 +406,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Status:      evergreen.HostRunning,
 					StartedBy:   evergreen.User,
 					RunningTask: "t3",
-					Provider:    mock.ProviderName,
+					Provider:    evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
@@ -417,7 +416,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					Status:      evergreen.HostRunning,
 					StartedBy:   evergreen.User,
 					RunningTask: "t4",
-					Provider:    mock.ProviderName,
+					Provider:    evergreen.ProviderNameMock,
 				}
 				testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 

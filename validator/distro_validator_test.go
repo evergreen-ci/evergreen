@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
@@ -22,7 +22,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if a new distro passes all of the validation tests, no errors should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
-				Provider: ec2.OnDemandProviderName,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "a",
 					"key_name":       "a",
@@ -38,7 +38,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
-				Provider: ec2.OnDemandProviderName,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "a",
 					"key_name":       "a",
@@ -57,7 +57,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
-				Provider: ec2.OnDemandProviderName,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "a",
 					"key_name":       "a",
@@ -73,7 +73,7 @@ func TestCheckDistro(t *testing.T) {
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
 			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
-				Provider: ec2.OnDemandProviderName,
+				Provider: evergreen.ProviderNameEc2OnDemand,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "",
 					"key_name":       "a",
@@ -121,32 +121,32 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a"},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a"},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand},
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"instance_type":  "a",
 				"security_group": "a",
 				"key_name":       "a",
 				"mount_points":   nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":            "a",
 				"security_group": "a",
 				"key_name":       "a",
 				"mount_points":   nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":           "a",
 				"instance_type": "a",
 				"key_name":      "a",
 				"mount_points":  nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":            "a",
 				"instance_type":  "a",
 				"security_group": "a",
 				"mount_points":   nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: evergreen.ProviderNameEc2OnDemand, ProviderSettings: &map[string]interface{}{
 				"ami":            "a",
 				"key_name":       "a",
 				"instance_type":  "a",

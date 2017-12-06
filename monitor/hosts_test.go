@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -25,7 +24,7 @@ func TestTerminateHosts(t *testing.T) {
 	h := host.Host{
 		Id:       "i-12345",
 		Status:   evergreen.HostRunning,
-		Provider: ec2.OnDemandProviderName,
+		Provider: evergreen.ProviderNameEc2OnDemand,
 	}
 	assert.NoError(h.Insert())
 

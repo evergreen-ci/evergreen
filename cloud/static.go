@@ -16,10 +16,10 @@ import (
 type staticManager struct{}
 
 type StaticSettings struct {
-	Hosts []staticHost `mapstructure:"hosts" json:"hosts" bson:"hosts"`
+	Hosts []StaticHost `mapstructure:"hosts" json:"hosts" bson:"hosts"`
 }
 
-type staticHost struct {
+type StaticHost struct {
 	Name string `mapstructure:"name" json:"name" bson:"name"`
 }
 
@@ -28,7 +28,7 @@ var (
 	HostsKey = bsonutil.MustHaveTag(StaticSettings{}, "Hosts")
 
 	// bson fields for the Host struct
-	NameKey = bsonutil.MustHaveTag(staticHost{}, "Name")
+	NameKey = bsonutil.MustHaveTag(StaticHost{}, "Name")
 )
 
 // Validate checks that the settings from the configuration are valid.
