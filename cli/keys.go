@@ -32,6 +32,7 @@ func (c *PublicKeyCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	client.SetAPIUser(settings.User)
 	client.SetAPIKey(settings.APIKey)

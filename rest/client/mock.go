@@ -86,6 +86,8 @@ func NewMock(serverURL string) *Mock {
 	}
 }
 
+func (c *Mock) Close() {}
+
 func (c *Mock) LastMessageAt() time.Time {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

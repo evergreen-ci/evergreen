@@ -8,6 +8,8 @@ import (
 
 func TestEvergreenCommunicatorConstructor(t *testing.T) {
 	client := NewCommunicator("url")
+	defer client.Close()
+
 	c, ok := client.(*communicatorImpl)
 	assert.True(t, ok, true)
 	assert.Empty(t, c.hostID)
