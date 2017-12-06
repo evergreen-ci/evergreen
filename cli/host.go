@@ -57,9 +57,7 @@ type HostListCommand struct {
 }
 
 func (cmd *HostListCommand) Execute(_ []string) error {
-	sender := send.MakeJSONConsoleLogger()
-	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
-	grip.CatchWarning(grip.SetSender(sender))
+	grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 
 	if cmd.All == cmd.Mine {
 		return errors.New("Must specify exactly one of --all or --mine")
@@ -123,9 +121,7 @@ type HostTerminateCommand struct {
 
 // Execute terminates a given host
 func (cmd *HostTerminateCommand) Execute(_ []string) error {
-	sender := send.MakeJSONConsoleLogger()
-	grip.CatchWarning(sender.SetFormatter(send.MakePlainFormatter()))
-	grip.CatchWarning(grip.SetSender(sender))
+	grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 
 	if cmd.HostID == "" {
 		return errors.New("host ID cannot be blank")
