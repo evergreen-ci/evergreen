@@ -1,6 +1,6 @@
 // +build go1.7
 
-package gce
+package cloud
 
 import (
 	"context"
@@ -9,10 +9,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/jwt"
-
 	compute "google.golang.org/api/compute/v1"
 )
 
@@ -20,21 +18,21 @@ const (
 	computeScope = compute.ComputeScope
 )
 
-// The client interface wraps the Google Compute client interaction.
-type client interface {
+// The gceClient interface wraps the Google Compute gceClient interaction.
+type gceClient interface {
 	Init(*jwt.Config) error
 	CreateInstance(*host.Host, *ProviderSettings) (string, error)
 	GetInstance(*host.Host) (*compute.Instance, error)
 	DeleteInstance(*host.Host) error
 }
 
-type clientImpl struct {
+type gceClientImpl struct {
 	InstancesService *compute.InstancesService
 }
 
-// Init establishes a connection to a Google Compute endpoint and creates a client that
+// Init establishes a connection to a Google Compute endpoint and creates a gceClient that
 // can be used to manage instances.
-func (c *clientImpl) Init(config *jwt.Config) error {
+func (c *gceClientImpl) Init(config *jwt.Config) error {
 	ctx := context.TODO()
 	ts := config.TokenSource(ctx)
 
@@ -58,7 +56,7 @@ func (c *clientImpl) Init(config *jwt.Config) error {
 //
 // API calls to an instance refer to the instance by the user-provided name (which must be unique)
 // and not the ID. If successful, CreateInstance returns the name of the provisioned instance.
-func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
+func (c *gceClientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
 	// Create instance options to spawn an instance
 	machineType := makeMachineType(h.Zone, s.MachineName, s.NumCPUs, s.MemoryMB)
 	instance := &compute.Instance{
@@ -130,7 +128,7 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 }
 
 // GetInstance requests details on a single instance.
-func (c *clientImpl) GetInstance(h *host.Host) (*compute.Instance, error) {
+func (c *gceClientImpl) GetInstance(h *host.Host) (*compute.Instance, error) {
 	instance, err := c.InstancesService.Get(h.Project, h.Zone, h.Id).Do()
 	if err != nil {
 		return nil, errors.Wrap(err, "API call to get instance failed")
@@ -140,7 +138,7 @@ func (c *clientImpl) GetInstance(h *host.Host) (*compute.Instance, error) {
 }
 
 // DeleteInstance requests an instance previously provisioned to be removed.
-func (c *clientImpl) DeleteInstance(h *host.Host) error {
+func (c *gceClientImpl) DeleteInstance(h *host.Host) error {
 	if _, err := c.InstancesService.Delete(h.Project, h.Zone, h.Id).Do(); err != nil {
 		return errors.Wrap(err, "API call to delete instance failed")
 	}

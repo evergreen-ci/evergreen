@@ -1,6 +1,6 @@
 // +build go1.7
 
-package gce
+package cloud
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	compute "google.golang.org/api/compute/v1"
 )
 
-type clientMock struct {
+type gceClientMock struct {
 	// API call options
 	failInit   bool
 	failCreate bool
@@ -22,16 +22,16 @@ type clientMock struct {
 	hasAccessConfig bool
 }
 
-func (c *clientMock) Init(_ *jwt.Config) error {
+func (c *gceClientMock) Init(_ *jwt.Config) error {
 	if c.failInit {
-		return errors.New("failed to initialize client")
+		return errors.New("failed to initialize Client")
 	}
 
 	return nil
 }
 
 // CreateInstance returns a unique identifier for the mock instance.
-func (c *clientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
+func (c *gceClientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
 	if c.failCreate {
 		return "", errors.New("failed to create instance")
 	}
@@ -39,7 +39,7 @@ func (c *clientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, 
 	return h.Id, nil
 }
 
-func (c *clientMock) GetInstance(_ *host.Host) (*compute.Instance, error) {
+func (c *gceClientMock) GetInstance(_ *host.Host) (*compute.Instance, error) {
 	if c.failGet {
 		return nil, errors.New("failed to get instance")
 	}
@@ -65,7 +65,7 @@ func (c *clientMock) GetInstance(_ *host.Host) (*compute.Instance, error) {
 	return instance, nil
 }
 
-func (c *clientMock) DeleteInstance(_ *host.Host) error {
+func (c *gceClientMock) DeleteInstance(_ *host.Host) error {
 	if c.failDelete {
 		return errors.New("failed to delete instance")
 	}

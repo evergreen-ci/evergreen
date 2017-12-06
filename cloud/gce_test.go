@@ -1,6 +1,6 @@
 // +build go1.7
 
-package gce
+package cloud
 
 import (
 	"regexp"
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -22,7 +21,7 @@ type GCESuite struct {
 	client   client
 	manager  *Manager
 	distro   *distro.Distro
-	hostOpts cloud.HostOptions
+	hostOpts HostOptions
 	suite.Suite
 }
 
@@ -53,7 +52,7 @@ func (s *GCESuite) SetupTest() {
 			"network_tags":  []string{"abc", "def", "ghi"},
 		},
 	}
-	s.hostOpts = cloud.HostOptions{}
+	s.hostOpts = HostOptions{}
 }
 
 func (s *GCESuite) TestValidateSettings() {
@@ -189,7 +188,7 @@ func (s *GCESuite) TestIsUpStatuses() {
 
 	status, err := s.manager.GetInstanceStatus(host)
 	s.NoError(err)
-	s.Equal(cloud.StatusRunning, status)
+	s.Equal(StatusRunning, status)
 
 	active, err := s.manager.IsUp(host)
 	s.NoError(err)
@@ -198,7 +197,7 @@ func (s *GCESuite) TestIsUpStatuses() {
 	mock.isActive = false
 	status, err = s.manager.GetInstanceStatus(host)
 	s.NoError(err)
-	s.NotEqual(cloud.StatusRunning, status)
+	s.NotEqual(StatusRunning, status)
 
 	active, err = s.manager.IsUp(host)
 	s.NoError(err)
@@ -206,14 +205,14 @@ func (s *GCESuite) TestIsUpStatuses() {
 }
 
 func (s *GCESuite) TestTerminateInstanceAPICall() {
-	hostA := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostA, err := s.manager.SpawnHost(hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostB, err = s.manager.SpawnHost(hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -232,7 +231,7 @@ func (s *GCESuite) TestTerminateInstanceAPICall() {
 
 func (s *GCESuite) TestTerminateInstanceDB() {
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	myHost, err := s.manager.SpawnHost(myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -311,14 +310,14 @@ func (s *GCESuite) TestGetSSHOptions() {
 func (s *GCESuite) TestSpawnInvalidSettings() {
 	var err error
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	h := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	h := NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(h)
 	s.Error(err)
 	s.Nil(h)
 
 	dSettingsNone := &distro.Distro{Provider: "gce"}
-	h = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	h = NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(h)
 	s.Nil(h)
@@ -328,7 +327,7 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 		Provider:         "gce",
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
-	h = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	h = NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(h)
 	s.Error(err)
@@ -338,12 +337,12 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 func (s *GCESuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostOne, err := s.manager.SpawnHost(hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -360,19 +359,19 @@ func (s *GCESuite) TestSpawnAPICall() {
 			"disk_size_gb":  10,
 		},
 	}
-	opts := cloud.HostOptions{}
+	opts := HostOptions{}
 
 	mock, ok := s.client.(*clientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	h := cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	h := NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
 	h, err := s.manager.SpawnHost(h)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failCreate = true
-	h = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	h = NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(h)
 	s.Error(err)
@@ -380,12 +379,12 @@ func (s *GCESuite) TestSpawnAPICall() {
 }
 
 func (s *GCESuite) TestUtilToEvgStatus() {
-	s.Equal(cloud.StatusInitializing, toEvgStatus("PROVISIONING"))
-	s.Equal(cloud.StatusInitializing, toEvgStatus("STAGING"))
-	s.Equal(cloud.StatusRunning, toEvgStatus("RUNNING"))
-	s.Equal(cloud.StatusStopped, toEvgStatus("STOPPING"))
-	s.Equal(cloud.StatusTerminated, toEvgStatus("TERMINATED"))
-	s.Equal(cloud.StatusUnknown, toEvgStatus("???"))
+	s.Equal(StatusInitializing, toEvgStatus("PROVISIONING"))
+	s.Equal(StatusInitializing, toEvgStatus("STAGING"))
+	s.Equal(StatusRunning, toEvgStatus("RUNNING"))
+	s.Equal(StatusStopped, toEvgStatus("STOPPING"))
+	s.Equal(StatusTerminated, toEvgStatus("TERMINATED"))
+	s.Equal(StatusUnknown, toEvgStatus("???"))
 }
 
 func (s *GCESuite) TestUtilSourceURLGenerators() {

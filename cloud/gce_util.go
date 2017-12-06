@@ -1,6 +1,6 @@
 // +build go1.7
 
-package gce
+package cloud
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
@@ -61,18 +60,18 @@ func (keys sshKeyGroup) String() string {
 	return strings.Join(arr, "\n")
 }
 
-func toEvgStatus(status string) cloud.CloudStatus {
+func toEvgStatus(status string) CloudStatus {
 	switch status {
 	case statusProvisioning, statusStaging:
-		return cloud.StatusInitializing
+		return StatusInitializing
 	case statusRunning:
-		return cloud.StatusRunning
+		return StatusRunning
 	case statusStopping:
-		return cloud.StatusStopped
+		return StatusStopped
 	case statusTerminated:
-		return cloud.StatusTerminated
+		return StatusTerminated
 	default:
-		return cloud.StatusUnknown
+		return StatusUnknown
 	}
 }
 

@@ -1,6 +1,6 @@
 // +build go1.7
 
-package gce
+package cloud
 
 import (
 	"encoding/json"
