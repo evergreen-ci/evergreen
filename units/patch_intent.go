@@ -144,14 +144,14 @@ func (j *patchIntentProcessor) Run() {
 	}
 	patchDoc.PatchedConfig = string(projectYamlBytes)
 
+	project.BuildProjectTVPairs(patchDoc)
+
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error computing patch num"))
 		return
 	}
-
-	project.BuildProjectTVPairs(patchDoc)
 
 	patchDoc.CreateTime = time.Now()
 	patchDoc.Id = j.PatchID
