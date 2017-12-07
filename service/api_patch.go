@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -60,17 +59,19 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		finalize := data.Finalize
 		variants := strings.Split(data.Variants, ",")
 
 		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, finalize, variants, data.Tasks)
+		intent, err = patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
 	}
-
+	if intent == nil {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("intent could not be created from supplied data"))
+		return
+	}
 	if err := intent.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -78,12 +79,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	patchID := bson.NewObjectId()
 	job := units.NewPatchIntentProcessor(patchID, intent)
-	if err := as.queue.Put(job); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if !amboy.WaitJobInterval(job, as.queue, 10*time.Second) {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.New("patch creation timed out"))
+	job.Run()
+	if err := job.Error(); err != nil {
+		as.WriteJSON(w, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return
 	}
 
@@ -131,6 +129,12 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+	if err != nil {
+		as.WriteJSON(w, http.StatusBadRequest, err)
+		return
+	}
+
 	var moduleName, patchContent, githash string
 
 	if r.Header.Get("Content-Type") == formMimeType {
@@ -175,7 +179,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials["github"], repoOwner, repo, githash)
+	commitInfo, err := thirdparty.GetCommitEvent(githubOauthToken, repoOwner, repo, githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -267,11 +271,17 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		as.WriteJSON(w, http.StatusOK, "patch updated")
 	case "finalize":
+		githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+		if err != nil {
+			as.WriteJSON(w, http.StatusBadRequest, err)
+			return
+		}
+
 		if p.Activated {
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		patchedProject, err := validator.GetPatchedProject(p, as.Settings.Credentials["github"])
+		patchedProject, err := validator.GetPatchedProject(p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -282,7 +292,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 		p.PatchedConfig = string(projectYamlBytes)
-		_, err = model.FinalizePatch(p, as.Settings.Credentials["github"])
+		_, err = model.FinalizePatch(p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

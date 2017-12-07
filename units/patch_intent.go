@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
@@ -67,16 +68,24 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 }
 
 func (j *patchIntentProcessor) Run() {
-	githubOauthToken := j.env.Settings().Credentials["github"]
-
 	defer j.MarkComplete()
+	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
+	if err != nil {
+		j.AddError(err)
+	}
 	if j.Intent == nil {
 		j.AddError(errors.New("nil intent"))
+	}
+	if j.HasErrors() {
 		return
 	}
 	defer j.Intent.SetProcessed()
 
 	patchDoc := j.Intent.NewPatch()
+	if len := len(patchDoc.Patches); len != 1 {
+		j.AddError(errors.Errorf("patch document should have 1 patch, found %d", len))
+		return
+	}
 
 	switch j.Intent.GetType() {
 	case patch.CliIntentType:
@@ -86,10 +95,13 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType()))
 	}
 	if j.HasErrors() {
+		j.logger.Error(message.Fields{
+			"message": "Failed to build patch document",
+			"errors":  j.Error(),
+		})
 		return
 	}
 
-	var err error
 	j.user, err = user.FindOne(user.ById(patchDoc.Author))
 	if err != nil {
 		j.AddError(err)
