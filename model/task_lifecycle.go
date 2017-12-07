@@ -389,6 +389,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	failedTask := false
 	pushSuccess := true
 	pushCompleted := false
+	buildComplete := false
 	finishedTasks := 0
 
 	// update the build's status based on tasks for this build
@@ -401,6 +402,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				if t.Status != evergreen.TaskSucceeded {
 					failedTask = true
 					finishedTasks = -1
+					buildComplete = true
 					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
 						err = errors.Wrap(err, "Error marking build as finished")
@@ -452,13 +454,16 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 		}
 	}
 
+	if finishedTasks >= len(buildTasks) {
+		buildComplete = true
+	}
+
 	// if a compile task didn't fail, then the
 	// build is only finished when both the compile
 	// and test tasks are completed or when those are
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
-	if finishedTasks >= len(buildTasks)-1 {
-
+	if buildComplete {
 		if !failedTask {
 			if pushTaskExists { // this build has a push task associated with it.
 				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.
