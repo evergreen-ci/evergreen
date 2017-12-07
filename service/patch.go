@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
@@ -172,7 +171,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			VersionId string `json:"version"`
 		}{projCtx.Version.Id})
 	} else {
-		githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
 		if err != nil {
 			uis.WriteJSON(w, http.StatusBadRequest, err)
 			return

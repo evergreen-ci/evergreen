@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -129,7 +128,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+	githubOauthToken, err := as.Settings.GetGithubOauthToken()
 	if err != nil {
 		as.WriteJSON(w, http.StatusBadRequest, err)
 		return
@@ -271,9 +270,9 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		as.WriteJSON(w, http.StatusOK, "patch updated")
 	case "finalize":
-		githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+		githubOauthToken, err := as.Settings.GetGithubOauthToken()
 		if err != nil {
-			as.WriteJSON(w, http.StatusBadRequest, err)
+			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
 		}
 

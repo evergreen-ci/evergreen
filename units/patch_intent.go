@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -181,7 +182,10 @@ func (j *patchIntentProcessor) Run() {
 }
 
 func fetchPatchByURL(URL string) (string, error) {
-	resp, err := http.Get(URL)
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
+	resp, err := client.Get(URL)
 	if err != nil {
 		return "", err
 	}
