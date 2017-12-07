@@ -698,16 +698,16 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.DetailsKey:             1,
 		}},
 		bson.M{"$unwind": "$test_results"},
-		bson.M{"$match": testMatchQuery})
-	if testHistoryParameters.Limit > 0 {
-		pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
-	}
-	pipeline = append(pipeline,
+		bson.M{"$match": testMatchQuery},
 		bson.M{"$sort": bson.D{
 			{Name: task.RevisionOrderNumberKey, Value: testHistoryParameters.Sort},
 			{Name: testResultsKey + "." + testresult.TaskIDKey, Value: testHistoryParameters.Sort},
 			{Name: testResultsKey + "." + testresult.TestFileKey, Value: testHistoryParameters.Sort},
-		}},
+		}})
+	if testHistoryParameters.Limit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
+	}
+	pipeline = append(pipeline,
 		bson.M{"$project": bson.M{
 			TestFileKey:        "$" + testResultsKey + "." + task.TestResultTestFileKey,
 			TaskIdKey:          "$" + task.IdKey,
