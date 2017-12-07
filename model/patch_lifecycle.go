@@ -88,7 +88,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, tasks TaskVariantPairs) error {
-	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks) // TODO: handle display tasks
+	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
@@ -109,10 +109,8 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 		variantsProcessed[pair.Variant] = true
 		// Extract the unique set of task names for the variant we're about to create
 		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
-		if len(taskNames) == 0 {
-			continue
-		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, taskIds, pair.Variant, p.Activated, taskNames)
+		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, taskIds, pair.Variant, p.Activated, taskNames, displayNames)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			patchVersion.Id, pair.Variant, p.Activated)
 		if err != nil {
@@ -141,7 +139,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
+func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TaskVariantPairs) error {
 	builds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey))
 	if err != nil {
 		return err
@@ -164,17 +162,24 @@ func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project 
 		// build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
-		for _, taskname := range pairs.TaskNames(b.BuildVariant) {
+		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
 			if _, ok := existingTasksIndex[taskname]; ok {
 				continue
 			}
 			tasksToAdd = append(tasksToAdd, taskname)
 		}
+		displayTasksToAdd := []string{}
+		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
+			if _, ok := existingTasksIndex[taskname]; ok {
+				continue
+			}
+			displayTasksToAdd = append(displayTasksToAdd, taskname)
+		}
 		if len(tasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
 		}
 		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, project, patchVersion, tasksToAdd); err != nil {
+		if _, err = AddTasksToBuild(&b, project, patchVersion, tasksToAdd, displayTasksToAdd); err != nil {
 			return err
 		}
 	}
@@ -349,7 +354,11 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		}
 
 		var buildId string
-		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks)
+		var displayNames []string
+		for _, dt := range vt.DisplayTasks {
+			displayNames = append(displayNames, dt.Name)
+		}
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks, displayNames)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
