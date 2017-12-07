@@ -77,6 +77,10 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Empty(cIntent.Tasks)
 	s.Empty(cIntent.Description)
 	s.Empty(cIntent.Module)
+
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks)
+	s.NotNil(intent)
+	s.NoError(err)
 }
 
 func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
@@ -89,10 +93,6 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 	s.Error(err)
 
 	intent, err = NewCliIntent(s.user, s.projectID, "", s.module, s.patchContent, s.description, true, s.variants, s.tasks)
-	s.Nil(intent)
-	s.Error(err)
-
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks)
 	s.Nil(intent)
 	s.Error(err)
 
