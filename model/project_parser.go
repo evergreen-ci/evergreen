@@ -570,6 +570,10 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 		}
 		for _, dt := range pbv.DisplayTasks {
 			projectDt := DisplayTask{Name: dt.Name}
+			if _, exists := bvTasks[dt.Name]; exists {
+				errs = append(errs, fmt.Errorf("display task %s cannot have the same name as an execution task", dt.Name))
+				continue
+			}
 			for _, et := range dt.ExecutionTasks {
 				if _, exists := bvTasks[et]; !exists {
 					errs = append(errs, fmt.Errorf("display task %s contains execution task %s which does not exist in build variant", dt.Name, et))

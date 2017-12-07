@@ -279,7 +279,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if uiTask.DisplayOnly {
 		uiTask.TestResults = []uiTestResult{}
 		for _, t := range projCtx.Task.ExecutionTasks {
-			et, err := task.FindOne(task.ById(t))
+			et, err := task.FindOneIdOldOrNew(t, executionStr)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return

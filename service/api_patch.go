@@ -94,10 +94,18 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return
 	}
+	tasks := extractDisplayTasks(pairs, apiRequest.Tasks, apiRequest.BuildVariants, project)
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't fetch patch data"))
+	// update variant and tasks to include dependencies
+	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
+
+	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+
+	if err = patchDoc.Insert(); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error inserting patch"))
 		return
 	}
 	if patchDoc == nil {
@@ -106,6 +114,26 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
+}
+
+func extractDisplayTasks(pairs []model.TVPair, tasks []string, variants []string,
+	p *model.Project) model.TaskVariantPairs {
+	displayTasks := []model.TVPair{}
+	for _, bv := range p.BuildVariants {
+		if !util.StringSliceContains(variants, bv.Name) {
+			continue
+		}
+		for _, dt := range bv.DisplayTasks {
+			if util.StringSliceContains(tasks, dt.Name) {
+				displayTasks = append(displayTasks, model.TVPair{Variant: bv.Name, TaskName: dt.Name})
+				for _, et := range dt.ExecutionTasks {
+					pairs = append(pairs, model.TVPair{Variant: bv.Name, TaskName: et})
+				}
+			}
+		}
+	}
+
+	return model.TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
 }
 
 // Get the patch with the specified request it

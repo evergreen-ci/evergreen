@@ -158,7 +158,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <span ng-show="timeTaken>0"> [[timeTaken | stringifyNanoseconds]] </span>
                     <span ng-show="timeTaken==0"> Not Started </span>
                   </span>
-                  <span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
+                  <span ng-show="(task.status == 'started' || task.status == 'dispatched') && !task.display_only"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
                  <span ng-show="task.status == 'undispatched' && task.expected_duration > 0"> Estimated Runtime: [[timeToCompletion | stringifyNanoseconds]]</span>
                 </td>
               </tr>
