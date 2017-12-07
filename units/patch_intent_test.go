@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
@@ -103,7 +102,6 @@ func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProce
 	s.False(j.Status().Completed)
 	s.NotPanics(func() { j.Run() })
 	s.True(j.Status().Completed)
-	pp.Println(j.Error())
 	s.Require().False(j.HasErrors())
 
 	return j
@@ -183,8 +181,6 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 	s.Empty(versionDoc.Owner)
 	s.Empty(versionDoc.Repo)
 	s.Equal(versionDoc.Id, patchDoc.Version)
-	versionDoc.Config = ""
-	pp.Println(versionDoc)
 }
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
