@@ -65,7 +65,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Equal(s.tasks, cIntent.Tasks)
 	s.Zero(cIntent.ProcessedAt)
 	s.Zero(cIntent.CreatedAt)
-	s.Equal(cIntent.DocumentID.String(), intent.ID())
+	s.Equal(cIntent.DocumentID.Hex(), intent.ID())
 
 	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{})
 	s.NotNil(intent)
@@ -116,7 +116,7 @@ func (s *CliIntentSuite) TestInsert() {
 	intents, err = findCliIntents(false)
 	s.NoError(err)
 	s.Len(intents, 1)
-	s.Equal(intent.ID(), intents[0].DocumentID.String())
+	s.Equal(intent.ID(), intents[0].DocumentID.Hex())
 }
 
 func (s *CliIntentSuite) TestSetProcessed() {

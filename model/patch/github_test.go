@@ -59,7 +59,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(s.pr, githubIntent.PRNumber)
 	s.Equal(s.user, githubIntent.User)
 	s.Equal(s.hash, githubIntent.BaseHash)
-	s.Equal(s.url, githubIntent.URL)
+	s.Equal(s.url, githubIntent.PatchURL)
 	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
@@ -78,7 +78,7 @@ func (s *GithubSuite) TestInsert() {
 	found := intents[0]
 	s.Equal(s.pr, found.PRNumber)
 	s.Equal(s.hash, found.BaseHash)
-	s.Equal(s.url, found.URL)
+	s.Equal(s.url, found.PatchURL)
 	s.False(found.IsProcessed())
 	s.Equal(GithubIntentType, found.GetType())
 }
@@ -99,7 +99,7 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.hash, intents[0].BaseHash)
-	s.Equal(s.url, intents[0].URL)
+	s.Equal(s.url, intents[0].PatchURL)
 	s.True(intents[0].IsProcessed())
 	s.Equal(GithubIntentType, intents[0].GetType())
 }
