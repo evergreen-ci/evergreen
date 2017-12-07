@@ -399,7 +399,7 @@ func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []strin
 
 // TaskIdTable builds a TaskIdTable for the given version and project
 func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
-	// init the variant mapw
+	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
 	for _, bv := range p.BuildVariants {

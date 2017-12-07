@@ -52,7 +52,7 @@ func VariantTasksToTVPairs(in []patch.VariantTasks) TaskVariantPairs {
 // TVPairsToVariantTasks takes a list of TVPairs (task/variant pairs), groups the tasks
 // for the same variant together under a single list, and return all the variant groups
 // as a set of patch.VariantTasks.
-func (tvp TaskVariantPairs) TVPairsToVariantTasks() []patch.VariantTasks {
+func (tvp *TaskVariantPairs) TVPairsToVariantTasks() []patch.VariantTasks {
 	vtMap := map[string]patch.VariantTasks{}
 	for _, pair := range tvp.ExecTasks {
 		vt := vtMap[pair.Variant]
@@ -343,7 +343,10 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 				}
 			}
 		}
-		p.VariantsTasks = TaskVariantPairs{ExecTasks: tasks.ExecTasks, DisplayTasks: tasks.DisplayTasks}.TVPairsToVariantTasks()
+		p.VariantsTasks = (&TaskVariantPairs{
+			ExecTasks:    tasks.ExecTasks,
+			DisplayTasks: tasks.DisplayTasks,
+		}).TVPairsToVariantTasks()
 	}
 
 	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
