@@ -105,7 +105,7 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
   $scope.tablemode = "maxthroughput";
 
   // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend, 3=trend-table
-  $scope.perftab = $scope.task.patch_info ? 1 : 2;
+  $scope.perftab = 2;
   $scope.project = $window.project;
   $scope.compareHash = "ss";
   $scope.comparePerfSamples = [];
