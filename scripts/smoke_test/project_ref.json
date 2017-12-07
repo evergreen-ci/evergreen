@@ -7,7 +7,7 @@
 	"branch_name" : "master",
 	"repo_kind" : "github",
 	"enabled" : true,
-	"private" : true,
+	"private" : false,
 	"batch_time" : 1440,
 	"remote_path" : "etc/system_perf.yml",
 	"identifier" : "sys-perf",
