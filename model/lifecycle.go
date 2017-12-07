@@ -205,16 +205,20 @@ func SetVersionPriority(versionId string, priority int64) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
-	allTasks, err := task.Find(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
+	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
 
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
 
+	restartIds := make([]string, 0)
 	// archive all the tasks
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
+		}
+		if t.DisplayOnly {
+			restartIds = append(restartIds, t.ExecutionTasks...)
 		}
 	}
 
@@ -234,9 +238,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		}
 	}
 
-	restartIds := make([]string, 0)
 	if abortInProgress {
-		restartIds = taskIds
+		restartIds = append(restartIds, taskIds...)
 	} else {
 		for _, t := range allTasks {
 			restartIds = append(restartIds, t.Id)
@@ -289,7 +292,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the build
-	allTasks, err := task.Find(task.ByIdsBuildAndStatus(taskIds, buildId, task.CompletedStatuses))
+	allTasks, err := task.FindWithDisplayTasks(task.ByIdsBuildAndStatus(taskIds, buildId, task.CompletedStatuses))
 	if err != nil && err != mgo.ErrNotFound {
 		return errors.WithStack(err)
 	}
@@ -302,6 +305,9 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 					"Restarting build %v failed, could not task.reset on task",
 					buildId, t.Id)
 			}
+		}
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.ExecutionTasks...)
 		}
 	}
 
@@ -330,7 +336,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 
 // RestartBuildTasks restarts all the tasks associated with a given build.
 func RestartBuildTasks(buildId string, caller string) error {
-	allTasks, err := task.Find(task.ByBuildId(buildId))
+	allTasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
 	if err != nil && err != mgo.ErrNotFound {
 		return errors.WithStack(err)
 	}
@@ -352,7 +358,9 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
-		cache = append(cache, cacheFromTask(task))
+		if task.DisplayTask == nil {
+			cache = append(cache, cacheFromTask(task))
+		}
 	}
 	return cache
 }
@@ -360,7 +368,7 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.Find(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
+	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
 		task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, task.DependsOnKey))
 	if err != nil {
 		return errors.WithStack(err)
@@ -371,7 +379,7 @@ func RefreshTasksCache(buildId string) error {
 
 //AddTasksToBuild creates the tasks for the given build of a project
 func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
-	taskNames []string) (*build.Build, error) {
+	taskNames []string, displayNames []string) (*build.Build, error) {
 
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
@@ -382,7 +390,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// create the new tasks for the build
 	taskIds := NewTaskIdTable(project, v)
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames)
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -406,7 +414,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
 func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskIdConfig,
-	buildName string, activated bool, taskNames []string) (string, error) {
+	buildName string, activated bool, taskNames []string, displayNames []string) (string, error) {
 
 	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
@@ -453,7 +461,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames)
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskIds, taskNames, displayNames)
 	if err != nil {
 		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
@@ -488,8 +496,8 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
-func createTasksForBuild(project *Project, buildVariant *BuildVariant,
-	b *build.Build, v *version.Version, taskIds TaskIdConfig, taskNames []string) ([]*task.Task, error) {
+func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.Build,
+	v *version.Version, taskIds TaskIdConfig, taskNames []string, displayNames []string) ([]*task.Task, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -533,6 +541,12 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	// Create display tasks
 	for _, dt := range buildVariant.DisplayTasks {
 		id := displayTable.GetId(b.BuildVariant, dt.Name)
+		if id == "" {
+			continue
+		}
+		if !createAll && !util.StringSliceContains(displayNames, dt.Name) {
+			continue
+		}
 		execTaskIds := []string{}
 		for _, et := range dt.ExecutionTasks {
 			execTaskIds = append(execTaskIds, execTable.GetId(b.BuildVariant, et))

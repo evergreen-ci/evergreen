@@ -563,7 +563,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		if buildvariant.Disabled {
 			continue
 		}
-		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil)
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil)
 		if err != nil {
 			return errors.WithStack(err)
 		}

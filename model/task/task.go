@@ -201,7 +201,11 @@ func IsAbortable(t Task) bool {
 func IsFinished(t Task) bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
-		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime)
+		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime) ||
+		t.Status == evergreen.TaskSystemFailed ||
+		t.Status == evergreen.TaskSystemTimedOut ||
+		t.Status == evergreen.TaskSystemUnresponse ||
+		t.Status == evergreen.TaskTestTimedOut
 }
 
 // IsDispatchable return true if the task should be dispatched
@@ -607,10 +611,18 @@ func (t *Task) UpdateDisplayTask() error {
 	if err != nil {
 		return errors.Wrap(err, "error retrieving execution tasks")
 	}
+	hasFinishedTasks := false
+	hasUnfinishedTasks := false
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
 			t.Activated = true
+		}
+
+		if IsFinished(*t) {
+			hasFinishedTasks = true
+		} else {
+			hasUnfinishedTasks = true
 		}
 
 		// the display task's status will be the highest priority of its exec tasks
@@ -619,7 +631,14 @@ func (t *Task) UpdateDisplayTask() error {
 		// add up the duration of the execution tasks
 		timeTaken += execTask.TimeTaken
 	}
-	if len(statuses) > 0 {
+
+	if hasFinishedTasks && hasUnfinishedTasks {
+		// if the display task has a mix of finished and unfinished tasks, the status
+		// will be "started"
+		status = evergreen.TaskStarted
+	} else if len(statuses) > 0 {
+		// the status of the display task will be the status of its constituent task
+		// that is logically the most exclusive
 		sort.Sort(byPriority(statuses))
 		status = statuses[0]
 	}
@@ -685,6 +704,19 @@ func displayTaskPriority(status string) int {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
+
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = execTask.Reset(); err != nil {
+				return errors.Wrap(err, "error resetting execution task")
+			}
+		}
+	}
+
 	t.Activated = true
 	t.Secret = util.RandomString()
 	t.DispatchTime = util.ZeroTime
@@ -717,6 +749,16 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
+	tasks, err := Find(ByIds(taskIds))
+	if err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.Id)
+		}
+	}
+
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -732,7 +774,7 @@ func ResetTasks(taskIds []string) error {
 		},
 	}
 
-	_, err := UpdateAll(
+	_, err = UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
@@ -919,6 +961,18 @@ func (t *Task) Insert() error {
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
 	var update bson.M
+
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = execTask.Archive(); err != nil {
+				return errors.Wrap(err, "error archiving execution task")
+			}
+		}
+	}
 
 	// only increment restarts if have a current restarts
 	// this way restarts will never be set for new tasks but will be

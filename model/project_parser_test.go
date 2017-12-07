@@ -690,6 +690,31 @@ tasks:
 	assert.EqualError(errs[0], "execution task execTask3 is listed in more than 1 display task")
 	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
 
+	// test that a display task can't share a name with an execution task
+	conflictYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: execTask1
+    execution_tasks:
+    - execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(conflictYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.EqualError(errs[0], "display task execTask1 cannot have the same name as an execution task")
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
+
 	// test that wildcard selectors are resolved correctly
 	wildcardYml := `
 buildvariants:

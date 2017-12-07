@@ -8,7 +8,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
         $scope.task = task;
         $scope.taskId = task.id;
         $scope.isAborted = ($scope.task.status == 'undispatched' && !$scope.task.activated && $scope.task.dispatch_time > 0)
-        $scope.canRestart = ($scope.task.status == "success" || $scope.task.status == "failed" || $scope.isAborted);
+        $scope.canRestart = (($scope.task.status !== "started" && $scope.task.status !== "unstarted" && $scope.task.status !== "undispatched"
+        && $scope.task.status !== "dispatched" && $scope.task.status !== "inactive") || $scope.isAborted);
         $scope.canAbort = ($scope.task.status == "dispatched" || $scope.task.status == "started");
         $scope.canSchedule = !$scope.task.activated && !$scope.canRestart && !$scope.isAborted;
         $scope.canUnschedule = $scope.task.activated && ($scope.task.status == "undispatched") ;
@@ -48,7 +49,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
                     doModalSuccess("Task scheduled to restart.", resp.data);
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error restarting: ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error restarting: ' + resp.data,'errorModal');
                 }
             }
         );

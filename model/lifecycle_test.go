@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -1332,6 +1331,65 @@ func TestVersionRestart(t *testing.T) {
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
 }
 
+func TestDisplayTaskRestart(t *testing.T) {
+	assert := assert.New(t)
+	displayTasks := []string{"displayTask"}
+	allTasks := []string{"displayTask", "task5", "task6"}
+
+	// test restarting a version
+	assert.NoError(resetTaskData())
+	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
+	tasks, err := task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
+
+	// test restarting a build
+	assert.NoError(resetTaskData())
+	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
+	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
+
+	// test that restarting a task correctly resets the task and archives it
+	assert.NoError(resetTaskData())
+	assert.NoError(resetTask("displayTask"))
+	archivedTasks, err := task.FindOldWithDisplayTasks(task.All)
+	assert.NoError(err)
+	assert.Len(archivedTasks, 3)
+	foundDisplayTask := false
+	for _, ot := range archivedTasks {
+		if ot.OldTaskId == "displayTask" {
+			foundDisplayTask = true
+		}
+	}
+	assert.True(foundDisplayTask)
+	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
+	b, err := build.FindOne(build.ById("build3"))
+	assert.NoError(err)
+	assert.NotNil(b)
+	for _, dbTask := range b.Tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	}
+
+	// test that execution tasks cannot be restarted
+	assert.NoError(resetTaskData())
+	assert.Error(TryResetTask("task5", "", "", nil, nil))
+}
+
 func resetTaskData() error {
 	if err := db.ClearCollections(build.Collection, task.Collection, version.Collection, task.OldCollection); err != nil {
 		return err
@@ -1374,10 +1432,24 @@ func resetTaskData() error {
 			},
 		},
 	}
+	build3 := &build.Build{
+		Id:      "build3",
+		Version: v.Id,
+		Tasks: []build.TaskCache{
+			{
+				Id:        "displayTask",
+				Status:    evergreen.TaskFailed,
+				Activated: true,
+			},
+		},
+	}
 	if err := build1.Insert(); err != nil {
 		return err
 	}
 	if err := build2.Insert(); err != nil {
+		return err
+	}
+	if err := build3.Insert(); err != nil {
 		return err
 	}
 	task1 := &task.Task{
@@ -1417,11 +1489,43 @@ func resetTaskData() error {
 		Version:     v.Id,
 		Status:      evergreen.TaskFailed,
 	}
-
 	if err := task4.Insert(); err != nil {
 		return err
 	}
-
-	grip.Info("reset task data")
+	task5 := &task.Task{
+		Id:          "task5",
+		DisplayName: "task5",
+		BuildId:     build3.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskSucceeded,
+	}
+	if err := task5.Insert(); err != nil {
+		return err
+	}
+	task6 := &task.Task{
+		Id:          "task6",
+		DisplayName: "task6",
+		BuildId:     build3.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskFailed,
+	}
+	if err := task6.Insert(); err != nil {
+		return err
+	}
+	displayTask := &task.Task{
+		Id:             "displayTask",
+		DisplayName:    "displayTask",
+		BuildId:        build3.Id,
+		Version:        v.Id,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{task5.Id, task6.Id},
+		Status:         evergreen.TaskFailed,
+	}
+	if err := displayTask.Insert(); err != nil {
+		return err
+	}
+	if err := displayTask.UpdateDisplayTask(); err != nil {
+		return err
+	}
 	return nil
 }
