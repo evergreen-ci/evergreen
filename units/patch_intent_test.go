@@ -129,7 +129,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
 
-	// Gridfs file
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }
 

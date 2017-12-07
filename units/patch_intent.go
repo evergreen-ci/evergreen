@@ -142,6 +142,7 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(errors.Wrap(err, "error marshaling patched config"))
 		return
 	}
+	patchDoc.PatchedConfig = string(projectYamlBytes)
 
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
@@ -149,44 +150,9 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(errors.Wrap(err, "error computing patch num"))
 		return
 	}
-	patchDoc.PatchedConfig = string(projectYamlBytes)
 
-	patchDoc.ClearPatchData()
+	project.BuildProjectTVPairs(patchDoc)
 
-	//expand tasks and build variants and include dependencies
-	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-		patchDoc.BuildVariants = []string{}
-		for _, buildVariant := range project.BuildVariants {
-			if buildVariant.Disabled {
-				continue
-			}
-			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
-		}
-	}
-
-	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-		patchDoc.Tasks = []string{}
-		for _, t := range project.Tasks {
-			if t.Patchable != nil && !(*t.Patchable) {
-				continue
-			}
-			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
-		}
-	}
-
-	var pairs []model.TVPair
-	for _, v := range patchDoc.BuildVariants {
-		for _, t := range patchDoc.Tasks {
-			if project.FindTaskForVariant(t, v) != nil {
-				pairs = append(pairs, model.TVPair{v, t})
-			}
-		}
-	}
-
-	// update variant and tasks to include dependencies
-	pairs = model.IncludePatchDependencies(project, pairs)
-
-	patchDoc.SyncVariantsTasks(model.TVPairsToVariantTasks(pairs))
 	patchDoc.CreateTime = time.Now()
 	patchDoc.Id = j.PatchID
 
