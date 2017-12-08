@@ -405,7 +405,7 @@ func (ac *APIClient) ListVariants(project string) ([]model.BuildVariant, error) 
 }
 
 func (ac *APIClient) ListAliases(project string) ([]model.PatchDefinition, error) {
-	resp, err := ac.get2(fmt.Sprintf("aliases/%s", project))
+	resp, err := ac.get2(fmt.Sprintf("alias/%s", project))
 	if err != nil {
 		return nil, errors.Wrap(err, "problem querying api server")
 	}
@@ -414,7 +414,12 @@ func (ac *APIClient) ListAliases(project string) ([]model.PatchDefinition, error
 	}
 	patchAliases := []model.PatchDefinition{}
 	if err := util.ReadJSONInto(resp.Body, &patchAliases); err != nil {
-		return nil, errors.Wrap(err, "error reading json")
+		patchAlias := model.PatchDefinition{}
+		err := util.ReadJSONInto(resp.Body, &patchAlias)
+		if err != nil {
+			return nil, errors.Wrap(err, "error reading json")
+		}
+		patchAliases[0] = patchAlias
 	}
 	return patchAliases, nil
 }

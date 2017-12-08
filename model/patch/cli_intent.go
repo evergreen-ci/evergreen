@@ -164,11 +164,13 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 		return nil, errors.New("no base hash provided")
 	}
 	if finalize {
-		if len(variants) == 0 {
-			return nil, errors.New("no variants provided")
-		}
-		if len(tasks) == 0 {
-			return nil, errors.New("no tasks provided")
+		if alias == "" {
+			if len(variants) == 0 {
+				return nil, errors.New("no variants provided")
+			}
+			if len(tasks) == 0 {
+				return nil, errors.New("no tasks provided")
+			}
 		}
 	}
 	if len(patchContent) > SizeLimit {

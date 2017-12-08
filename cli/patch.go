@@ -714,14 +714,14 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	}
 
 	// update variants
-	if len(params.Variants) == 0 {
+	if len(params.Variants) == 0 && params.Alias == "" {
 		params.Variants = settings.FindDefaultVariants(params.Project)
 		if len(params.Variants) == 0 && params.Finalize {
 			err = errors.Errorf("Need to specify at least one buildvariant with -v when finalizing." +
 				" Run with `-v all` to finalize against all variants.")
 			return
 		}
-	} else {
+	} else if params.Alias == "" {
 		defaultVariants := settings.FindDefaultVariants(params.Project)
 		if len(defaultVariants) == 0 && !params.SkipConfirm &&
 			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?",
@@ -734,14 +734,14 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	}
 
 	// update tasks
-	if len(params.Tasks) == 0 {
+	if len(params.Tasks) == 0 && params.Alias == "" {
 		params.Tasks = settings.FindDefaultTasks(params.Project)
 		if len(params.Tasks) == 0 && params.Finalize {
 			err = errors.Errorf("Need to specify at least one task with -t when finalizing." +
 				" Run with `-t all` to finalize against all tasks.")
 			return
 		}
-	} else {
+	} else if params.Alias == "" {
 		defaultTasks := settings.FindDefaultTasks(params.Project)
 		if len(defaultTasks) == 0 && !params.SkipConfirm &&
 			confirm(fmt.Sprintf("Set %v as the default tasks for project '%v'?",
