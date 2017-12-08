@@ -157,7 +157,7 @@ func (j *patchIntentProcessor) Run() {
 	}
 	patchDoc.PatchedConfig = string(projectYamlBytes)
 
-	project.BuildProjectTVPairs(patchDoc)
+	project.BuildProjectTVPairs(patchDoc, j.Intent.GetAlias())
 
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()

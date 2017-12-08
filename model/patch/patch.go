@@ -39,7 +39,6 @@ type Patch struct {
 	Activated       bool           `bson:"activated"`
 	PatchedConfig   string         `bson:"patched_config"`
 	GithubPatchData GithubPatch    `bson:"github_patch_data,omitempty"`
-	Alias           string         `bson:"alias,omitempty"`
 }
 
 // GithubPatch stores patch data for patches create from GitHub pull requests

@@ -82,6 +82,7 @@ var (
 	cliProcessedKey     = bsonutil.MustHaveTag(cliIntent{}, "Processed")
 	cliProcessedAtKey   = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
 	cliIntentTypeKey    = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
+	cliAliasKey         = bsonutil.MustHaveTag(cliIntent{}, "Alias")
 )
 
 func (c *cliIntent) Insert() error {
@@ -149,7 +150,6 @@ func (c *cliIntent) NewPatch() *Patch {
 				},
 			},
 		},
-		Alias: c.Alias,
 	}
 }
 
@@ -189,4 +189,8 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 		Module:        module,
 		Alias:         alias,
 	}, nil
+}
+
+func (c *cliIntent) GetAlias() string {
+	return c.Alias
 }

@@ -38,7 +38,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		finalize := strings.ToLower(r.FormValue("finalize")) == "true"
 
 		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, nil)
+		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, nil, "")
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return

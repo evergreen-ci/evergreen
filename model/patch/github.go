@@ -45,6 +45,9 @@ type Intent interface {
 	// Finalize indicates whether or not the patch created from this
 	// intent should be finalized
 	ShouldFinalizePatch() bool
+
+	// GetAlias defines the variants and tasks this intent should run on.
+	GetAlias() string
 }
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -197,8 +200,9 @@ func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 }
 
 func (g *githubIntent) NewPatch() *Patch {
-	return &Patch{
-		Alias: GithubAlias,
-	}
+	return nil
+}
 
+func (g *githubIntent) GetAlias() string {
+	return GithubAlias
 }

@@ -789,7 +789,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 	return true
 }
 
-func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch) {
+func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	//expand tasks and build variants and include dependencies
 	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
 		patchDoc.BuildVariants = []string{}
@@ -820,8 +820,8 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch) {
 		}
 	}
 
-	if patchDoc.Alias != "" {
-		aliasPairs, err := p.BuildProjectTVPairsWithAlias(patchDoc.Alias)
+	if alias != "" {
+		aliasPairs, err := p.BuildProjectTVPairsWithAlias(alias)
 		if err != nil {
 			grip.Error(errors.Wrap(err, "failed to get task/variant pairs for alias"))
 		} else {
