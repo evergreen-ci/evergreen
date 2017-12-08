@@ -1,0 +1,97 @@
+package units
+
+import (
+	"fmt"
+
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
+)
+
+const (
+    githubStatusUpdateJobName = "github-status-update"
+    success = "success"
+    failed = "failed"
+)
+
+func init() {
+	registry.AddJobType(githubStatusUpdateJobName, func() amboy.Job { return makeGithubStatusUpdateJob() })
+}
+
+type githubStatusUpdateJob struct {
+	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
+	logger   grip.Journaler
+	githubOauthToken string
+
+	Project string `bson:"project" json:"project" yaml:"project"`
+	GitHash string `bson:"git_hash" json:"git_hash" yaml:"git_hash"`
+	Status  string `bson:"status" json:"status" yaml:"status"`
+	URL string `bson:"url" json:"url" yaml:"url"`
+	BuildID string `bson:"build_id" json:"build_id" yaml:"build_id"`
+}
+
+func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
+	return &githubStatusUpdateJob{
+		githubOauthToken: evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+		logger: logging.MakeGrip(grip.GetSender()),
+		Base: job.Base{
+			JobType: amboy.JobType{
+				Name:    githubStatusUpdateJobName,
+				Version: 0,
+				Format:  amboy.BSON,
+			},
+		},
+	}
+}
+
+// NewTasksRestartJob creates a job to restart failed tasks in a time range
+func NewTasksRestartJob(project, hash, status string) amboy.Job {
+	job := makeTaskRestartJob()
+	job.Project = project
+	job.GitHash = hash
+	job.Status = status
+	job.SetID(fmt.Sprintf("%s-%d-%d-%d", githubStatusUpdateJobName, project, hash, time.Now() ))
+	return job
+}
+
+func (j *restartTasksJob) Run() {
+	defer j.MarkComplete()
+
+	httpClient := util.GetHttpClient()
+	defer util.PutHttpClient(httpClient)
+
+	httpClient.AddHeader("Authorization", j.githubOauthToken)
+	github.NewClient(httpClient)
+
+	ctx := context.Background()
+
+	ref, err := model.FindProjectOneRefById(j.Project)
+	if err != nil {
+	j.AddError(err)
+	return
+	}
+	if ref == nil {
+	    j.AddError(errors.Errorf("cannot find project '%s'", j.Project))
+	    return
+	}
+
+	status := github.RepoStatus{
+	    URL: j.URL,
+	    Context: fmt.Sprintf("Evergreen: %s", j.BuildID),
+	    Description: "",
+	}
+
+	if j.Status == evergreen.BuildSucceeded {
+	    status.Status = "success"
+
+	}else {
+	    status.Status = "failed"
+	}
+
+	status, resp, err :=client.Repositories.CreateStatus(ctx, owner, repo, hash, &status)
+}

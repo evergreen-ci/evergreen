@@ -34,6 +34,7 @@ type PatchIntentUnitsSuite struct {
 	cancel context.CancelFunc
 
 	repo     string
+	headRepo string
 	prNumber int
 	user     string
 	hash     string
@@ -79,6 +80,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.repo = "evergreen-ci/evergreen"
+	s.headRepo = "tychoish/evergreen"
 	s.prNumber = 448
 	s.user = "github_patch_user"
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
@@ -135,7 +137,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
-	intent, err := patch.NewGithubIntent("1", s.repo, s.prNumber, s.user, s.hash, s.patchURL)
+	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, "tychoish/evergreen", "EVG-2387-use-plain-logger", s.hash, s.user, s.patchURL)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -155,8 +157,11 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal(s.user, patchDoc.GithubPatchData.Author)
 	s.Equal(s.patchURL, patchDoc.GithubPatchData.PatchURL)
 	repo := strings.Split(s.repo, "/")
-	s.Equal(repo[0], patchDoc.GithubPatchData.Owner)
-	s.Equal(repo[1], patchDoc.GithubPatchData.Repository)
+	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
+	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepository)
+	headRepo := strings.Split(s.headRepo, "/")
+	s.Equal(headRepo[0], patchDoc.GithubPatchData.HeadOwner)
+	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepository)
 	s.Equal(patchDoc.Patches[0].PatchSet.PatchFileId, patchDoc.Version)
 
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
