@@ -1,9 +1,6 @@
 package cloud
 
 import (
-	"os"
-	"os/user"
-
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 )
@@ -46,35 +43,4 @@ func getSpawnOptions(h *host.Host, s *openStackSettings) servers.CreateOpts {
 		SecurityGroups: []string{s.SecurityGroup},
 		Metadata:       makeTags(h),
 	}
-}
-
-func osMakeTags(intent *host.Host) map[string]string {
-	// Get requester host name
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
-	}
-
-	// Get requester user name
-	var username string
-	user, err := user.Current()
-	if err != nil {
-		username = "unknown"
-	} else {
-		username = user.Name
-	}
-
-	tags := map[string]string{
-		"distro":            intent.Distro.Id,
-		"evergreen-service": hostname,
-		"username":          username,
-		"owner":             intent.StartedBy,
-		"mode":              "production",
-		"start-time":        intent.CreationTime.Format(NameTimeFormat),
-	}
-
-	if intent.UserHost {
-		tags["mode"] = "testing"
-	}
-	return tags
 }

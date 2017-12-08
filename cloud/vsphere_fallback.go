@@ -14,6 +14,7 @@ const (
 	ProviderName = "vsphere"
 )
 
+// nolint
 type vsphereManager struct{}
 
 type vsphereSettings struct{}
