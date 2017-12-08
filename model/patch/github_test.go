@@ -27,7 +27,7 @@ func (s *GithubSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.pr = 5
 	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
-	s.url = "http://www.example.com"
+	s.url = "https://www.example.com/1.diff"
 	s.user = "octocat"
 	s.repo = "evergreen-ci/evergreen"
 }
@@ -46,6 +46,14 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Error(err)
 
 	intent, err = NewGithubIntent("3", s.repo, s.pr, s.user, s.hash, "foo")
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("3", s.repo, s.pr, s.user, s.hash, "https://example.com/1.patch")
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("3", s.repo, s.pr, s.user, s.hash, "http://example.com/1.diff")
 	s.Nil(intent)
 	s.Error(err)
 

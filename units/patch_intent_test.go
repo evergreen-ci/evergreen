@@ -82,7 +82,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.prNumber = 448
 	s.user = "github_patch_user"
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
-	s.patchURL = "https://github.com/evergreen-ci/evergreen/pull/448.patch"
+	s.patchURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
 	s.desc = "Test!"
 	s.project = "mci"
 	s.variants = []string{"ubuntu1604"}

@@ -103,7 +103,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 
 		}
 		if *event.Action == "opened" || *event.Action == "synchronize" {
-			ghi, err := patch.NewGithubIntent(gh.msgId, *event.Repo.FullName, *event.Number, *event.Sender.Login, *event.PullRequest.Base.SHA, *event.PullRequest.PatchURL)
+			ghi, err := patch.NewGithubIntent(gh.msgId, *event.Repo.FullName, *event.Number, *event.Sender.Login, *event.PullRequest.Base.SHA, *event.PullRequest.DiffURL)
 			if err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusBadRequest,
@@ -127,7 +127,7 @@ func validatePullRequestEvent(event *github.PullRequestEvent) bool {
 	if event.Action == nil || event.Number == nil ||
 		event.Repo == nil || event.Repo.FullName == nil ||
 		event.Sender == nil || event.Sender.Login == nil ||
-		event.PullRequest == nil || event.PullRequest.PatchURL == nil ||
+		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
 		event.PullRequest.Base == nil || event.PullRequest.Base.SHA == nil {
 		return false
 	}

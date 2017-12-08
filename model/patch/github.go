@@ -128,8 +128,11 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 	if len(baseHash) == 0 {
 		return nil, errors.New("Base hash must not be empty")
 	}
-	if !strings.HasPrefix(url, "http") {
+	if !strings.HasPrefix(url, "https://") {
 		return nil, errors.Errorf("URL does not appear valid (%s)", url)
+	}
+	if !strings.HasSuffix(url, ".diff") {
+		return nil, errors.New("github patch intents must be created from *.diff files")
 	}
 
 	return &githubIntent{
