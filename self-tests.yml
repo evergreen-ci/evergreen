@@ -594,118 +594,118 @@ tasks:
     name: race-migrations
 
   # lint tasks
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-agent
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-alerts
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-auth
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-cli
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-cloud
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-command
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-db
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-evergreen
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-hostinit
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-hostutil
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-migrations
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-artifact
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-build
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-event
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-host
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-patch
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-task
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-monitor
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-notify
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin-builtin-buildbaron
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin-builtin-manifest
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin-builtin-perfdash
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-repotracker
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-client
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-data
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-model
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-route
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-scheduler
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-service
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-spawn
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-subprocess
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-taskrunner
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-thirdparty
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-units
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-util
-  - <<: *run-go-test-suite-with-mongodb
+  - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-validator
 
@@ -742,12 +742,6 @@ buildvariants:
       - name: "dist"
       - name: "smoke-test"
       - name: ".test"
-      - name: ".lint"
-    display_tasks:
-      - name: displayTask1
-        execution_tasks:
-        - test-auth
-        - test-cli
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
@@ -774,6 +768,7 @@ buildvariants:
           - archlinux-build
       - name: ".race"
       - name: ".report"
+      - name: ".lint"
         distros:
           - archlinux-build
     display_tasks:
