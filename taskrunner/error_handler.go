@@ -125,11 +125,10 @@ func (c *errorCollectorImpl) report() error {
 	reports := []string{}
 
 	for rec, errors := range c.cache {
-		if errors.count < 5 {
-			continue
+		if reachedThreshold(rec.provider, errors.count) {
+			reports = append(reports, processErrorItem(rec, errors))
+			delete(c.cache, rec)
 		}
-		reports = append(reports, processErrorItem(rec, errors))
-		delete(c.cache, rec)
 	}
 
 	if len(reports) > 0 {
@@ -138,4 +137,12 @@ func (c *errorCollectorImpl) report() error {
 	}
 
 	return nil
+}
+
+func reachedThreshold(provider string, count int) bool {
+	if provider == evergreen.ProviderNameStatic {
+		return count >= 10
+	}
+
+	return count >= 5
 }
