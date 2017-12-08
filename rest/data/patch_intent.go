@@ -1,14 +1,24 @@
 package data
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/pkg/errors"
 )
 
 type DBPatchIntentConnector struct{}
 
 func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent) error {
-	return intent.Insert()
+	if err := intent.Insert(); err != nil {
+		return &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "couldn't insert patch intent",
+		}
+	}
+
+	return nil
 }
 
 type MockPatchIntentKey struct {

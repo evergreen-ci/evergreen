@@ -27,6 +27,7 @@ type GithubWebhookRouteSuite struct {
 	canceler context.CancelFunc
 	conf     *evergreen.Settings
 	prBody   []byte
+	h        *githubHookApi
 	suite.Suite
 }
 
@@ -39,13 +40,13 @@ func (s *GithubWebhookRouteSuite) SetupSuite() {
 	s.NotNil(evergreen.GetEnvironment().Settings().Api)
 	s.NotEmpty(evergreen.GetEnvironment().Settings().Api.GithubWebhookSecret)
 
-	evergreen.ResetEnvironment()
 	s.conf = testutil.TestConfig()
 	s.NotNil(s.conf)
 }
 
 func (s *GithubWebhookRouteSuite) TearDownSuite() {
 	s.canceler()
+	evergreen.ResetEnvironment()
 }
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
@@ -61,6 +62,10 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	s.NoError(err)
 	s.Len(s.prBody, 24743)
+
+	var ok bool
+	s.h, ok = s.rm.Methods[0].Handler().(*githubHookApi)
+	s.True(ok)
 }
 
 func TestGithubWebhookRouteSuite(t *testing.T) {
@@ -73,11 +78,11 @@ func (s *GithubWebhookRouteSuite) TestAddIntent() {
 	s.NotNil(event)
 	s.NoError(err)
 
-	s.rm.Methods[0].RequestHandler.(*githubHookApi).event = event
-	s.rm.Methods[0].RequestHandler.(*githubHookApi).msgId = "1"
+	s.h.event = event
+	s.h.msgId = "1"
 
 	ctx := context.Background()
-	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	resp, err := s.h.Execute(ctx, s.sc)
 	s.NoError(err)
 	s.Empty(resp.Result)
 
@@ -88,7 +93,7 @@ func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
 	s.TestAddIntent()
 
 	ctx := context.Background()
-	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	resp, err := s.h.Execute(ctx, s.sc)
 	s.Error(err)
 	s.Empty(resp.Result)
 
@@ -101,11 +106,11 @@ func (s *GithubWebhookRouteSuite) TestAddIntentWithClosedPRHasNoSideEffects() {
 	s.NoError(err)
 	*event.(*github.PullRequestEvent).Action = "closed"
 
-	s.rm.Methods[0].RequestHandler.(*githubHookApi).event = event
-	s.rm.Methods[0].RequestHandler.(*githubHookApi).msgId = "1"
+	s.h.event = event
+	s.h.msgId = "1"
 
 	ctx := context.Background()
-	resp, err := s.rm.Methods[0].Execute(ctx, s.sc)
+	resp, err := s.h.Execute(ctx, s.sc)
 	s.NoError(err)
 	s.Empty(resp.Result)
 

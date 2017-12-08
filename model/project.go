@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
@@ -784,4 +785,41 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 		}
 	}
 	return true
+}
+
+func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch) {
+	//expand tasks and build variants and include dependencies
+	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
+		patchDoc.BuildVariants = []string{}
+		for _, buildVariant := range p.BuildVariants {
+			if buildVariant.Disabled {
+				continue
+			}
+			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
+		}
+	}
+
+	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
+		patchDoc.Tasks = []string{}
+		for _, t := range p.Tasks {
+			if t.Patchable != nil && !(*t.Patchable) {
+				continue
+			}
+			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
+		}
+	}
+
+	var pairs []TVPair
+	for _, v := range patchDoc.BuildVariants {
+		for _, t := range patchDoc.Tasks {
+			if p.FindTaskForVariant(t, v) != nil {
+				pairs = append(pairs, TVPair{v, t})
+			}
+		}
+	}
+
+	// update variant and tasks to include dependencies
+	pairs = IncludePatchDependencies(p, pairs)
+
+	patchDoc.SyncVariantsTasks(TVPairsToVariantTasks(pairs))
 }

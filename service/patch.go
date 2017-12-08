@@ -171,6 +171,11 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			VersionId string `json:"version"`
 		}{projCtx.Version.Id})
 	} else {
+		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
+		if err != nil {
+			uis.WriteJSON(w, http.StatusBadRequest, err)
+			return
+		}
 		projCtx.Patch.Activated = true
 		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs))
 		if err != nil {
@@ -179,7 +184,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ver, err := model.FinalizePatch(projCtx.Patch, &uis.Settings)
+		ver, err := model.FinalizePatch(projCtx.Patch, githubOauthToken)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))

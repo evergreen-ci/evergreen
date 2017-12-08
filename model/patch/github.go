@@ -14,7 +14,7 @@ const (
 	// IntentCollection is the database collection that stores patch intents.
 	IntentCollection = "patch_intents"
 
-	// githubIntentType represents patch intents created for GitHub.
+	// GithubIntentType represents patch intents created for GitHub.
 	GithubIntentType = "github"
 )
 
@@ -29,12 +29,19 @@ type Intent interface {
 	// IsProcessed returns whether a patch exists for this intent.
 	IsProcessed() bool
 
-	// GetType returns the patch intent, e.g., GithubType.
+	// GetType returns the patch intent, e.g., GithubIntentType.
 	GetType() string
 
 	// ID returns an identifier such that the tuple
 	// (intent type, ID()) is unique in the collection.
 	ID() string
+
+	// NewPatch creates a patch from the intent
+	NewPatch() *Patch
+
+	// Finalize indicates whether or not the patch created from this
+	// intent should be finalized
+	ShouldFinalizePatch() bool
 }
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -62,8 +69,8 @@ type githubIntent struct {
 	// BaseHash is the base hash of the patch.
 	BaseHash string `bson:"base_hash"`
 
-	// URL is the URL of the patch in GitHub.
-	URL string `bson:"url"`
+	// URL is the URL of the url to the patch file for this pull request
+	PatchURL string `bson:"patch_url"`
 
 	// Processed indicates whether a patch intent has been processed by the amboy queue.
 	Processed bool `bson:"processed"`
@@ -71,7 +78,7 @@ type githubIntent struct {
 	// ProcessedAt is the time that this intent was processed
 	ProcessedAt time.Time `bson:"processed_at"`
 
-	// IntentType indicates the type of the patch intent, i.e., githubIntentType
+	// IntentType indicates the type of the patch intent, e.g. GithubIntentType
 	IntentType string `bson:"intent_type"`
 }
 
@@ -85,13 +92,13 @@ var (
 	prNumberKey    = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
 	userKey        = bsonutil.MustHaveTag(githubIntent{}, "User")
 	baseHashKey    = bsonutil.MustHaveTag(githubIntent{}, "BaseHash")
-	urlKey         = bsonutil.MustHaveTag(githubIntent{}, "URL")
+	patchURLKey    = bsonutil.MustHaveTag(githubIntent{}, "PatchURL")
 	processedKey   = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	processedAtKey = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
 	intentTypeKey  = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
-// NewgithubIntent return a new github patch intent.
+// NewGithubIntent return a new github patch intent.
 func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHash, url string) (Intent, error) {
 	if msgDeliveryID == "" {
 		return nil, errors.New("Unique msg id cannot be empty")
@@ -119,7 +126,7 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 		PRNumber:   prNumber,
 		User:       user,
 		BaseHash:   baseHash,
-		URL:        url,
+		PatchURL:   url,
 		IntentType: GithubIntentType,
 	}, nil
 }
@@ -127,9 +134,13 @@ func NewGithubIntent(msgDeliveryID, repoName string, prNumber int, user, baseHas
 // SetProcessed should be called by an amboy queue after creating a patch from an intent.
 func (g *githubIntent) SetProcessed() error {
 	g.Processed = true
+	g.ProcessedAt = time.Now()
 	return updateOneIntent(
 		bson.M{documentIDKey: g.DocumentID},
-		bson.M{"$set": bson.M{processedKey: g.Processed}},
+		bson.M{"$set": bson.M{
+			processedKey:   g.Processed,
+			processedAtKey: g.ProcessedAt,
+		}},
 	)
 }
 
@@ -147,7 +158,7 @@ func (g *githubIntent) IsProcessed() bool {
 	return g.Processed
 }
 
-// GetType returns the patch intent, e.g., githubIntentType.
+// GetType returns the patch intent, e.g., GithubIntentType.
 func (g *githubIntent) GetType() string {
 	return g.IntentType
 }
@@ -168,6 +179,10 @@ func (g *githubIntent) ID() string {
 	return g.MsgID
 }
 
+func (g *githubIntent) ShouldFinalizePatch() bool {
+	return true
+}
+
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
 func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 	var intents []*githubIntent
@@ -176,4 +191,8 @@ func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 		return []*githubIntent{}, err
 	}
 	return intents, nil
+}
+
+func (g *githubIntent) NewPatch() *Patch {
+	return nil
 }

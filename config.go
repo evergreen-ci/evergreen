@@ -415,6 +415,15 @@ func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
 	return legacyDB.NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultMgoDialTimeout)
 }
 
+func (s *Settings) GetGithubOauthToken() (string, error) {
+	token, ok := s.Credentials["github"]
+	if ok {
+		return token, nil
+	}
+
+	return "", errors.New("no github token in settings")
+}
+
 // ConfigValidator is a type of function that checks the settings
 // struct for any errors or missing required fields.
 type configValidator func(settings *Settings) error

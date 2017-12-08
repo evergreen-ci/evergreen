@@ -266,7 +266,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Version, error) {
+func FinalizePatch(p *patch.Patch, githubOauthToken string) (*version.Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
 	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
@@ -281,10 +281,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		return nil, errors.WithStack(err)
 	}
 
-	gitCommit, err := thirdparty.GetCommitEvent(
-		settings.Credentials["github"],
-		projectRef.Owner, projectRef.Repo, p.Githash,
-	)
+	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}

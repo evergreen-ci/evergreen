@@ -109,7 +109,13 @@ func setupCLITestHarness() cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
+
 	Convey("with a task containing patches and modules", t, func() {
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
@@ -163,7 +169,13 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
+	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
+
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()

@@ -110,7 +110,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			if err := sc.AddPatchIntent(ghi); err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusInternalServerError,
-					Message:    "failed to created patch intent",
+					Message:    err.Error(),
 				}
 			}
 		}

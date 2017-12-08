@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -13,7 +12,7 @@ import (
 
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
 // and applying the patch to the latest remote configuration. The error returned can be a validation error.
-func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Project, error) {
+func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project, error) {
 	if p.Version != "" {
 		return nil, errors.Errorf("Patch %v already finalized", p.Version)
 	}
@@ -30,7 +29,7 @@ func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Pro
 		projectRef.RemotePath,
 		p.Githash,
 	)
-	githubFile, err := thirdparty.GetGithubFile(settings.Credentials["github"], projectFileURL)
+	githubFile, err := thirdparty.GetGithubFile(githubOauthToken, projectFileURL)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
 		// we try to apply the diff and proceed.
