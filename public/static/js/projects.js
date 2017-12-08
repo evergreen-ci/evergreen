@@ -167,6 +167,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.projectRef = data.ProjectRef;
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
+        $scope.patchDefinitions = _.sortBy($scope.patchDefinitions, function(v) {
+          return v.alias + v.variant + v.task;
+        });
         $scope.privateVars = data.ProjectVars.private_vars || {};
 
         $scope.settingsFormData = {
