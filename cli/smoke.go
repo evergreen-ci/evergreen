@@ -31,9 +31,6 @@ const (
 	// uiPort is the local port the UI will listen on.
 	uiPort = "9090"
 
-	// apiPort is the local port the API will listen on.
-	apiPort = "9090"
-
 	// urlPrefix is the localhost prefix for accessing local Evergreen.
 	urlPrefix = "http://localhost:"
 )
@@ -84,15 +81,15 @@ func (c *StartEvergreenCommand) Execute(_ []string) error {
 	runner.Stdout = runnerSender
 	runner.Stderr = runnerSender
 
-	if err := web.Start(); err != nil {
+	if err = web.Start(); err != nil {
 		return errors.Wrap(err, "error starting web service")
 	}
-	if err := runner.Start(); err != nil {
+	if err = runner.Start(); err != nil {
 		return errors.Wrap(err, "error starting runner")
 	}
 
 	exit := make(chan error)
-	interrupt := make(chan os.Signal)
+	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 	go func() {
 		exit <- web.Wait()
