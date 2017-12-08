@@ -220,7 +220,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td>Blacklisted</td>
               </tr>
               <tr ng-show="task.display_only">
-                <div>This task contains:</div>
+                <div ng-show="task.display_only">This task contains:</div>
                 <li ng-repeat="et in task.execution_tasks">
                   <a ng-href="[[execTaskUrl(et.id)]]">[[et.display_name]]</a>
                 </li>
