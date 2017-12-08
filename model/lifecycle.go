@@ -368,11 +368,25 @@ func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
-		task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, task.DependsOnKey))
+	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(buildId))
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	// trim out tasks that are part of a display task
+	execTaskMap := map[string]bool{}
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			for _, et := range t.ExecutionTasks {
+				execTaskMap[et] = true
+			}
+		}
+	}
+	for i := len(tasks) - 1; i >= 0; i-- {
+		if _, exists := execTaskMap[tasks[i].Id]; exists {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+		}
+	}
+
 	cache := CreateTasksCache(tasks)
 	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
