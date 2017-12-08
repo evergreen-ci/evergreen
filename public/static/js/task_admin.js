@@ -83,7 +83,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
                     doModalSuccess("Task marked as " + (active ? "scheduled." : "unscheduled."), data);
                 },
                 error: function(resp) {
-                    notifier.pushNotification('Error setting active = ' + active + ': ' + resp.data.error,'errorModal');
+                    notifier.pushNotification('Error setting active = ' + active + ': ' + resp.data,'errorModal');
                 }
             }
         );

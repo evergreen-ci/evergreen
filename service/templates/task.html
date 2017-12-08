@@ -99,7 +99,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         {{if .User}}
           <div ng-show="!task.archived" class="pull-right page-actions">
             <div ng-controller="AdminOptionsCtrl" ng-init="setTask(task)">
-              <div id="admin-dropdown" class="dropdown pull-right">
+              <div id="admin-dropdown" class="dropdown pull-right" ng-show="!task.in_display">
                   <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
                     <i class="fa fa-gear"></i>
                     <i class="fa fa-caret-down"></i>

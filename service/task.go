@@ -92,6 +92,7 @@ type uiTaskData struct {
 	// display task info
 	DisplayOnly    bool         `json:"display_only"`
 	ExecutionTasks []uiExecTask `json:"execution_tasks"`
+	PartOfDisplay  bool         `json:"in_display"`
 }
 
 type uiDep struct {
@@ -227,6 +228,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Repo:                projCtx.ProjectRef.Repo,
 		Archived:            archived,
 		TotalExecutions:     totalExecutions,
+		PartOfDisplay:       projCtx.Task.IsPartOfDisplay(),
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
