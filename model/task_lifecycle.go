@@ -27,6 +27,9 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	if err != nil {
 		return err
 	}
+	if t.IsPartOfDisplay() {
+		return errors.New("cannot schedule or unschedule part of a display task")
+	}
 	if active {
 		// if the task is being activated, make sure to activate all of the task's
 		// dependencies as well

@@ -230,6 +230,8 @@ func TestSetActiveState(t *testing.T) {
 		dbBuild, err := build.FindOne(build.ById(b.Id))
 		So(err, ShouldBeNil)
 		So(dbBuild.Tasks[0].Activated, ShouldBeTrue)
+
+		So(SetActiveState(t1.Id, "test", false), ShouldNotBeNil)
 	})
 }
 
