@@ -46,6 +46,7 @@ db.patch_intents.ensureIndex({ "msg_id" : 1, "intent_type": 1 }, { "unique" : tr
 
 //======project_ref======//
 db.project_ref.ensureIndex({ "identifier" : 1 })
+-db.project_ref.ensureIndex({ "owner" : 1, "repo" : 1 })
 
 //======spawn_requests======//
 db.spawn_requests.ensureIndex({ "host" : 1 })

@@ -159,7 +159,7 @@ type Connector interface {
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
 
-	AddPatchIntent(patch.Intent) error
+	AddPatchIntent(patch.Intent, amboy.Queue) error
 
 	SetHostStatus(*host.Host, string) error
 	SetHostExpirationTime(*host.Host, time.Time) error

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -130,6 +131,37 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
 
+	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+}
+
+func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
+	intent, err := patch.NewGithubIntent("1", s.repo, s.prNumber, s.user, s.hash, s.patchURL)
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	j := s.verifyJob(intent)
+	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
+	s.NoError(err)
+	s.NotNil(patchDoc)
+
+	// patchdoc itself
+	s.verifyPatchDoc(patchDoc, j.PatchID)
+	// TODO
+	//s.NotEmpty(patchDoc.BuildVariants)
+	//s.NotEmpty(patchDoc.Tasks)
+
+	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
+	s.Equal(s.user, patchDoc.GithubPatchData.Author)
+	s.Equal(s.patchURL, patchDoc.GithubPatchData.PatchURL)
+	repo := strings.Split(s.repo, "/")
+	s.Equal(repo[0], patchDoc.GithubPatchData.Owner)
+	s.Equal(repo[1], patchDoc.GithubPatchData.Repository)
+	s.Equal(patchDoc.Patches[0].PatchSet.PatchFileId, patchDoc.Version)
+
+	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
+
+	// Gridfs file
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }
 
