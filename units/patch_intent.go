@@ -181,6 +181,7 @@ func (j *patchIntentProcessor) Run() {
 	}
 }
 
+//nolint
 func fetchPatchByURL(URL string) (string, error) {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)

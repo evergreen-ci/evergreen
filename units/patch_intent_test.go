@@ -60,7 +60,8 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection, patch.GridFSPrefix))
+	s.NoError(db.ClearCollections(version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
 		Owner:      "evergreen-ci",
@@ -184,7 +185,7 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 
 func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
 	reader, err := db.GetGridFile(patch.GridFSPrefix, patchFileID)
-	s.NoError(err)
+	s.Require().NoError(err)
 	s.Require().NotNil(reader)
 	defer reader.Close()
 	bytes, err := ioutil.ReadAll(reader)

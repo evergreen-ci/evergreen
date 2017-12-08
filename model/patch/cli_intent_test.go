@@ -39,7 +39,7 @@ func (s *CliIntentSuite) SetupSuite() {
 }
 
 func (s *CliIntentSuite) SetupTest() {
-	s.NoError(db.Clear(GridFSPrefix))
+	s.NoError(db.ClearGridCollections(GridFSPrefix))
 	s.NoError(db.Clear(IntentCollection))
 }
 
