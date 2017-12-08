@@ -110,6 +110,8 @@ func setupCLITestHarness() cliTestHarness {
 }
 
 func TestCLIFetchSource(t *testing.T) {
+	evergreen.ResetEnvironment()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
@@ -170,6 +172,8 @@ func TestCLIFetchSource(t *testing.T) {
 }
 
 func TestCLIFetchArtifacts(t *testing.T) {
+	evergreen.ResetEnvironment()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
