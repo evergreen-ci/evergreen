@@ -646,6 +646,9 @@ func (lc *ListCommand) listAliases() error {
 			return err
 		}
 		aliases, err = sc.ListAliases(project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "error returned from API")
+		}
 	} else {
 		return noProjectError
 	}
