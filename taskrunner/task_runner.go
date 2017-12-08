@@ -73,8 +73,7 @@ func (tr *TaskRunner) Run() error {
 		go func() {
 			defer wg.Done()
 			for input := range freeHostChan {
-				errorCollector.add(input.Host.Id, input.Host.Distro.Id, input.Host.Provider,
-					tr.StartAgentOnHost(input.Settings, input.Host))
+				errorCollector.add(&input.Host, tr.StartAgentOnHost(input.Settings, input.Host))
 			}
 		}()
 	}

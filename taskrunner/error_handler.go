@@ -22,6 +22,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
@@ -51,14 +54,15 @@ type hostRecord struct {
 
 type errorRecord struct {
 	count  int
+	host   *host.Host
 	errors []string
 }
 
-func (c *errorCollectorImpl) add(id, distro, provider string, err error) {
+func (c *errorCollectorImpl) add(h *host.Host, err error) {
 	rec := hostRecord{
-		id:       id,
-		distro:   distro,
-		provider: provider,
+		id:       h.Id,
+		distro:   h.Distro.Id,
+		provider: h.Distro.Provider,
 	}
 
 	c.mutex.Lock()
@@ -70,9 +74,9 @@ func (c *errorCollectorImpl) add(id, distro, provider string, err error) {
 		if ok {
 			grip.Info(message.Fields{
 				"message":  "host recovered after previous errors",
-				"host":     id,
-				"distro":   distro,
-				"provider": provider,
+				"host":     rec.id,
+				"distro":   rec.distro,
+				"provider": rec.provider,
 				"runner":   RunnerName,
 				"failures": doc.count,
 			})
@@ -82,20 +86,36 @@ func (c *errorCollectorImpl) add(id, distro, provider string, err error) {
 		return
 	}
 
+	doc.host = h
 	doc.errors = append(doc.errors, err.Error())
 	doc.count++
 	c.cache[rec] = doc
 }
 
-func errorItem(rec hostRecord, errors errorRecord) string {
-	errorLines := strings.Split(strings.Join(errors.errors, "\n"), "\n")
-	return strings.Join([]string{
+func processErrorItem(rec hostRecord, errors errorRecord) string {
+	lines := []string{"",
 		fmt.Sprintf("Host: '%s'", rec.id),
 		fmt.Sprintf("Provider: '%s'", rec.provider),
 		fmt.Sprintf("Distro: '%s'", rec.distro),
 		fmt.Sprintf("Consecutive Failures: %d", errors.count),
-		"\n\n\t" + strings.Join(errorLines, "\n\t"),
-	}, "\n")
+	}
+
+	if rec.provider == evergreen.ProviderNameStatic {
+		env := evergreen.GetEnvironment()
+		queue := env.LocalQueue()
+
+		lines = append(lines, "Action: Disabled Host")
+		err := errors.host.DisablePoisonedHost()
+
+		job := units.NewDecoHostNotifyJob(env, errors.host, err,
+			"host encountered consecutive set up failures")
+		grip.Critical(queue.Put(job))
+	}
+
+	errorLines := strings.Split(strings.Join(errors.errors, "\n"), "\n")
+	lines = append(lines, "\n\n\t"+strings.Join(errorLines, "\n\t"))
+
+	return strings.Join(lines, "\n")
 }
 
 func (c *errorCollectorImpl) report() error {
@@ -105,11 +125,10 @@ func (c *errorCollectorImpl) report() error {
 	reports := []string{}
 
 	for rec, errors := range c.cache {
-		if errors.count < 5 {
-			continue
+		if reachedThreshold(rec.provider, errors.count) {
+			reports = append(reports, processErrorItem(rec, errors))
+			delete(c.cache, rec)
 		}
-		reports = append(reports, errorItem(rec, errors))
-		delete(c.cache, rec)
 	}
 
 	if len(reports) > 0 {
@@ -118,4 +137,12 @@ func (c *errorCollectorImpl) report() error {
 	}
 
 	return nil
+}
+
+func reachedThreshold(provider string, count int) bool {
+	if provider == evergreen.ProviderNameStatic {
+		return count >= 10
+	}
+
+	return count >= 5
 }

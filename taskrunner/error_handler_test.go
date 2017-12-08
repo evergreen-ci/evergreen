@@ -5,11 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestErrorHandlerIntegration(t *testing.T) {
 	assert := assert.New(t) // nolint
+	h := &host.Host{}
 
 	// confirm the global error collector is initialized.
 	assert.NotNil(errorCollector)
@@ -20,17 +22,17 @@ func TestErrorHandlerIntegration(t *testing.T) {
 	assert.Len(ec.cache, 0)
 
 	// nil error should get ignored
-	ec.add("", "", "", nil)
+	ec.add(h, nil)
 	assert.Len(ec.cache, 0)
 
 	// non-nil error should be captured but not lead to an error.
-	ec.add("", "", "", errors.New("foo"))
+	ec.add(h, errors.New("foo"))
 	assert.Len(ec.cache, 1)
 	assert.NoError(ec.report())
 
 	// push the error count on this "host" and make sure it produces an error
 	for i := 0; i < 4; i++ {
-		ec.add("", "", "", errors.New("foo"))
+		ec.add(h, errors.New("foo"))
 		assert.Len(ec.cache, 1)
 	}
 	err := ec.report()
@@ -53,12 +55,12 @@ func TestErrorHandlerIntegration(t *testing.T) {
 	// rerun the test but pass a nil error at the end, which is
 	// like a host recovering, and therefore clearing the error
 	for i := 0; i < 4; i++ {
-		ec.add("", "", "", errors.New("foo"))
+		ec.add(h, errors.New("foo"))
 		assert.Len(ec.cache, 1)
 	}
 	assert.Len(ec.cache, 1)
 
-	ec.add("", "", "", nil)
+	ec.add(h, nil)
 	assert.Len(ec.cache, 0)
 
 }
