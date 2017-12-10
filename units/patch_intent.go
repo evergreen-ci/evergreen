@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -23,6 +25,7 @@ import (
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -84,20 +87,18 @@ func (j *patchIntentProcessor) Run() {
 	defer j.Intent.SetProcessed()
 
 	patchDoc := j.Intent.NewPatch()
-	if len := len(patchDoc.Patches); len != 1 {
-		j.AddError(errors.Errorf("patch document should have 1 patch, found %d", len))
-		return
-	}
-
 	switch j.Intent.GetType() {
 	case patch.GithubIntentType:
-		j.AddError(j.buildGithubPatchDoc(patchDoc))
+		j.AddError(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
 
 	case patch.CliIntentType:
 		j.AddError(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
 	default:
 		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType()))
+	}
+	if len := len(patchDoc.Patches); len != 1 {
+		j.AddError(errors.Errorf("patch document should have 1 patch, found %d", len))
 	}
 	if j.HasErrors() {
 		j.logger.Error(message.Fields{
@@ -249,18 +250,23 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 	return nil
 }
 
-func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error {
-	var err error
+func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
 	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
 	if err != nil {
 		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
 	}
 	if j.projectRef == nil {
 		return errors.Errorf("Could not find project ref for repo '%s/%s'", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
-
 	}
 
-	// TODO: confirm membership with acceptable organizations
+	isMember, err := checkOrgMembership(patchDoc, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.Author, githubOauthToken)
+	if err != nil {
+		return err
+	}
+	if !isMember {
+		return errors.Errorf("user is not member of %s", patchDoc.GithubPatchData.BaseOwner)
+	}
+
 	// TODO: build variants and tasks
 	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.PatchURL)
 	if err != nil {
@@ -288,4 +294,62 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch) error 
 	}
 
 	return nil
+}
+
+func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubOauthToken string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	token := strings.Split(githubOauthToken, " ")
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token[1]},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	// doesn't count against API limits
+	limits, _, err := client.RateLimits(ctx)
+	if err != nil {
+		return false, err
+	}
+	if limits == nil || limits.Core == nil {
+		return false, errors.New("rate limits response was empty")
+	}
+	if limits.Core.Remaining < 3 {
+		return false, errors.New("github rate limit would be exceeded")
+	}
+
+	isMember, _, err := client.Organizations.IsMember(context.Background(), organization, githubUser)
+	if !isMember || err != nil {
+		return false, err
+	}
+
+	commits, _, err := client.PullRequests.ListCommits(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository, patchDoc.GithubPatchData.PRNumber, nil)
+	if err != nil {
+		return isMember, err
+	}
+	if len(commits) == 0 {
+		return isMember, errors.New("No commits received from github")
+	}
+	if commits[0].SHA == nil {
+		return isMember, errors.New("hash is missing from pull request commit list")
+	}
+
+	commit, _, err := client.Repositories.GetCommit(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository, *commits[0].SHA)
+	if err != nil {
+		return isMember, err
+	}
+	if commit == nil {
+		return isMember, errors.New("couldn't find commit")
+	}
+	if len(commit.Parents) == 0 {
+		return isMember, errors.New("can't find pull request branch point")
+	}
+	if commit.Parents[0].SHA == nil {
+		return isMember, errors.New("hash is missing")
+	}
+
+	patchDoc.Githash = *commit.Parents[0].SHA
+
+	return true, nil
 }

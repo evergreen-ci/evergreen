@@ -96,6 +96,10 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NotNil(factory())
 	s.Equal(factory().Type().Name, patchIntentJobName)
 }
+func (s *PatchIntentUnitsSuite) TearDownTest() {
+	s.cancel()
+	evergreen.ResetEnvironment()
+}
 
 func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProcessor {
 	j := makePatchIntentProcessor()
@@ -106,6 +110,7 @@ func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProce
 	s.False(j.Status().Completed)
 	s.NotPanics(func() { j.Run() })
 	s.True(j.Status().Completed)
+	s.Require().NoError(j.Error())
 	s.Require().False(j.HasErrors())
 
 	return j
@@ -128,6 +133,8 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(patchDoc)
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
+	s.Equal(s.variants, patchDoc.BuildVariants)
+	s.Equal(s.tasks, patchDoc.Tasks)
 
 	s.Zero(patchDoc.GithubPatchData)
 
@@ -137,15 +144,15 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
-	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, "tychoish/evergreen", "EVG-2387-use-plain-logger", s.hash, s.user, s.patchURL)
+	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, "tychoish/evergreen", "EVG-2387-use-plain-logger", s.hash, "tychoish", s.patchURL)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
 	j := s.verifyJob(intent)
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
-	s.NoError(err)
-	s.NotNil(patchDoc)
+	s.Require().NoError(err)
+	s.Require().NotNil(patchDoc)
 
 	// patchdoc itself
 	s.verifyPatchDoc(patchDoc, j.PatchID)
@@ -154,7 +161,8 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	//s.NotEmpty(patchDoc.Tasks)
 
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
-	s.Equal(s.user, patchDoc.GithubPatchData.Author)
+	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
+	s.Equal(s.user, patchDoc.Author)
 	s.Equal(s.patchURL, patchDoc.GithubPatchData.PatchURL)
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
@@ -162,18 +170,15 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	headRepo := strings.Split(s.headRepo, "/")
 	s.Equal(headRepo[0], patchDoc.GithubPatchData.HeadOwner)
 	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepository)
-	s.Equal(patchDoc.Patches[0].PatchSet.PatchFileId, patchDoc.Version)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", patchDoc.Githash)
 
-	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
+	s.verifyVersionDoc(patchDoc, evergreen.GithubPullRequestRequester, j.user.Email())
 
-	// Gridfs file
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }
 
 func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID bson.ObjectId) {
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
-	s.Equal(s.variants, patchDoc.BuildVariants)
-	s.Equal(s.tasks, patchDoc.Tasks)
 	s.Equal(expectedPatchID, patchDoc.Id)
 	s.NotEmpty(patchDoc.Patches)
 	s.True(patchDoc.Activated)
