@@ -514,7 +514,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				updates.BuildNewStatus = evergreen.BuildSucceeded
 
 				if b.Requester == evergreen.PatchVersionRequester {
-					if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
+					if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
 						err = errors.Wrap(err, "Error marking patch as finished")
 						grip.Error(err)
 						return err
@@ -535,7 +535,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 			updates.BuildNewStatus = evergreen.BuildFailed
 			if b.Requester == evergreen.PatchVersionRequester {
-				if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
+				if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
 					err = errors.Wrap(err, "Error marking patch as finished")
 					grip.Error(err)
 					return err
