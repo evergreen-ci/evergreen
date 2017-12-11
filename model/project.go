@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 )
@@ -787,7 +789,7 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 	return true
 }
 
-func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch) {
+func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	//expand tasks and build variants and include dependencies
 	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
 		patchDoc.BuildVariants = []string{}
@@ -818,8 +820,47 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch) {
 		}
 	}
 
+	if alias != "" {
+		aliasPairs, err := p.BuildProjectTVPairsWithAlias(alias)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "failed to get task/variant pairs for alias"))
+		} else {
+			pairs = append(pairs, aliasPairs...)
+		}
+	}
+
 	// update variant and tasks to include dependencies
 	pairs = IncludePatchDependencies(p, pairs)
 
 	patchDoc.SyncVariantsTasks(TVPairsToVariantTasks(pairs))
+}
+
+// BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
+func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
+	var pairs []TVPair
+	vars, err := FindOneProjectAlias(p.Identifier, alias)
+	if err != nil || vars == nil {
+		return pairs, err
+	}
+	for _, v := range vars {
+		variantRegex, err := regexp.Compile(v.Variant)
+		if err != nil {
+			return pairs, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
+		}
+		taskRegex, err := regexp.Compile(v.Task)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error compiling regex: %s", v.Task)
+		}
+
+		for _, variant := range p.BuildVariants {
+			if variantRegex.MatchString(variant.Name) {
+				for _, task := range p.Tasks {
+					if taskRegex.MatchString(task.Name) && (p.FindTaskForVariant(task.Name, variant.Name) != nil) {
+						pairs = append(pairs, TVPair{variant.Name, task.Name})
+					}
+				}
+			}
+		}
+	}
+	return pairs, err
 }

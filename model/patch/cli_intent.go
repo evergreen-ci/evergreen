@@ -60,6 +60,9 @@ type cliIntent struct {
 
 	// IntentType indicates the type of the patch intent, i.e., GithubIntentType
 	IntentType string `bson:"intent_type"`
+
+	// alias defines the variants and tasks to run this patch on.
+	Alias string `bson:"alias"`
 }
 
 // BSON fields for the patches
@@ -79,6 +82,7 @@ var (
 	cliProcessedKey     = bsonutil.MustHaveTag(cliIntent{}, "Processed")
 	cliProcessedAtKey   = bsonutil.MustHaveTag(cliIntent{}, "ProcessedAt")
 	cliIntentTypeKey    = bsonutil.MustHaveTag(cliIntent{}, "IntentType")
+	cliAliasKey         = bsonutil.MustHaveTag(cliIntent{}, "Alias")
 )
 
 func (c *cliIntent) Insert() error {
@@ -149,7 +153,7 @@ func (c *cliIntent) NewPatch() *Patch {
 	}
 }
 
-func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string) (Intent, error) {
+func NewCliIntent(user, project, baseHash, module, patchContent, description string, finalize bool, variants, tasks []string, alias string) (Intent, error) {
 	if user == "" {
 		return nil, errors.New("no user provided")
 	}
@@ -160,11 +164,13 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 		return nil, errors.New("no base hash provided")
 	}
 	if finalize {
-		if len(variants) == 0 {
-			return nil, errors.New("no variants provided")
-		}
-		if len(tasks) == 0 {
-			return nil, errors.New("no tasks provided")
+		if alias == "" {
+			if len(variants) == 0 {
+				return nil, errors.New("no variants provided")
+			}
+			if len(tasks) == 0 {
+				return nil, errors.New("no tasks provided")
+			}
 		}
 	}
 	if len(patchContent) > SizeLimit {
@@ -183,5 +189,10 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 		BaseHash:      baseHash,
 		Finalize:      finalize,
 		Module:        module,
+		Alias:         alias,
 	}, nil
+}
+
+func (c *cliIntent) GetAlias() string {
+	return c.Alias
 }

@@ -457,3 +457,7 @@ func (c *Mock) AddPublicKey(ctx context.Context, keyName, keyValue string) error
 func (c *Mock) DeletePublicKey(ctx context.Context, keyName string) error {
 	return errors.New("(c *Mock) DeletePublicKey not implemented")
 }
+
+func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.PatchDefinition, error) {
+	return nil, errors.New("(c *Mock) ListAliases not implemented")
+}

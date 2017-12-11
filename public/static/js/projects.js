@@ -167,12 +167,20 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.projectRef = data.ProjectRef;
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
+        $scope.patchDefinitions = _.sortBy($scope.patchDefinitions, function(v) {
+          return v.alias + v.variant + v.task;
+        });
         $scope.privateVars = data.ProjectVars.private_vars || {};
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
-          patch_definitions: $scope.patchDefinitions,
+          github_patch_definitions: _.filter($scope.patchDefinitions, function(patch) {
+            return patch.alias == "__github";
+          }),
+          patch_aliases: _.filter($scope.patchDefinitions, function(patch) {
+            return patch.alias != "__github";
+          }),
           private_vars: $scope.privateVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
@@ -227,21 +235,37 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   }
 
   $scope.saveProject = function() {
-    $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time)
+    $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time);
     if ($scope.proj_var) {
       $scope.addProjectVar();
     }
-    if ($scope.patch_definition) {
-      $scope.addPatchDefinition();
-      if($scope.patch_definition.variant) {
-        $scope.invalidPatchDefinitionMessage = "Missing task regex"
-          return
+    if ($scope.github_patch_definition) {
+      $scope.addGithubPatchDefinition();
+      if($scope.github_patch_definition.variant) {
+        $scope.invalidPatchDefinitionMessage = "Missing task regex";
+        return;
       }
-      if($scope.patch_definition.task) {
-        $scope.invalidPatchDefinitionMessage = "Missing variant regex"
-        return
+      if($scope.github_patch_definition.task) {
+        $scope.invalidPatchDefinitionMessage = "Missing variant regex";
+        return;
       }
     }
+    if ($scope.patch_alias) {
+      $scope.addPatchAlias();
+      if($scope.patch_alias.alias) {
+        $scope.invalidPatchAliasMessage = "Missing alias";
+        return;
+      }
+      if($scope.patch_alias.variant) {
+        $scope.invalidPatchAliasMessage = "Missing task regex";
+        return;
+      }
+      if($scope.patch_alias.task) {
+        $scope.invalidPatchAliasMessage = "Missing variant regex";
+        return;
+      }
+    }
+    $scope.settingsFormData.patch_definitions = $scope.settingsFormData.github_patch_definitions.concat($scope.settingsFormData.patch_aliases);
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
@@ -272,18 +296,34 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
   };
 
-  $scope.addPatchDefinition = function() {
-    if ($scope.patch_definition.variant && $scope.patch_definition.task) {
+  $scope.addGithubPatchDefinition = function() {
+    if ($scope.github_patch_definition.variant && $scope.github_patch_definition.task) {
       item = {
-          "variant": $scope.patch_definition.variant,
-          "task": $scope.patch_definition.task,
-      }
-      $scope.settingsFormData.patch_definitions = $scope.settingsFormData.patch_definitions.concat([item]);
-      $scope.patch_definition.variant = "";
-      $scope.patch_definition.task = "";
-      $scope.invalidPatchDefinitionMessage = ""
+        "alias": "__github",
+        "variant": $scope.github_patch_definition.variant,
+        "task": $scope.github_patch_definition.task
+      };
+      $scope.settingsFormData.github_patch_definitions = $scope.settingsFormData.github_patch_definitions.concat([item]);
+      $scope.github_patch_definition.variant = "";
+      $scope.github_patch_definition.task = "";
+      $scope.invalidPatchDefinitionMessage = "";
     }
-  }
+  };
+
+  $scope.addPatchAlias = function() {
+    if ($scope.patch_alias.alias && $scope.patch_alias.variant && $scope.patch_alias.task) {
+      item = {
+        "alias": $scope.patch_alias.alias,
+        "variant": $scope.patch_alias.variant,
+        "task": $scope.patch_alias.task
+      };
+      $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
+      $scope.patch_alias.alias = "";
+      $scope.patch_alias.variant = "";
+      $scope.patch_alias.task = "";
+      $scope.invalidPatchAliasMessage = "";
+    }
+  };
 
   $scope.removeProjectVar = function(name) {
     delete $scope.settingsFormData.project_vars[name];
@@ -291,9 +331,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     $scope.isDirty = true;
   };
 
-  $scope.removePatchDefinition = function(i) {
-      console.log(i)
-    $scope.settingsFormData.patch_definitions.splice(i, 1)
+  $scope.removeGithubPatchDefinition = function(i) {
+    $scope.settingsFormData.github_patch_definitions.splice(i, 1);
+    $scope.isDirty = true;
+  };
+
+  $scope.removePatchAlias = function(i) {
+    $scope.settingsFormData.patch_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
@@ -367,7 +411,15 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
 
     return true;
-  }
+  };
+
+  $scope.validPatchAlias = function(alias, variantRegex, taskRegex){
+    if (!alias || !variantRegex || !taskRegex){
+      return false;
+    }
+
+    return true;
+  };
 
 });
 

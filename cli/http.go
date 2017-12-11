@@ -153,8 +153,8 @@ func (ac *APIClient) get(path string, body io.Reader) (*http.Response, error) {
 	return ac.doReq("GET", path, 1, body)
 }
 
-func (ac *APIClient) get2(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("GET", path, 2, body)
+func (ac *APIClient) get2(path string) (*http.Response, error) {
+	return ac.doReq("GET", path, 2, nil)
 }
 
 func (ac *APIClient) delete(path string, body io.Reader) (*http.Response, error) {
@@ -405,7 +405,7 @@ func (ac *APIClient) ListVariants(project string) ([]model.BuildVariant, error) 
 }
 
 func (ac *APIClient) ListDistros() ([]distro.Distro, error) {
-	resp, err := ac.get2("distros", nil)
+	resp, err := ac.get2("distros")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem querying api server")
 	}
@@ -430,6 +430,7 @@ func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, erro
 		Variants    string   `json:"buildvariants"` //TODO make this an array
 		Tasks       []string `json:"tasks"`
 		Finalize    bool     `json:"finalize"`
+		Alias       string   `json:"alias"`
 	}{
 		incomingPatch.description,
 		incomingPatch.projectId,
@@ -438,6 +439,7 @@ func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, erro
 		incomingPatch.variants,
 		incomingPatch.tasks,
 		incomingPatch.finalize,
+		incomingPatch.alias,
 	}
 
 	rPipe, wPipe := io.Pipe()

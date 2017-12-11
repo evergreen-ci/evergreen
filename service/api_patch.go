@@ -38,7 +38,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		finalize := strings.ToLower(r.FormValue("finalize")) == "true"
 
 		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, nil)
+		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, nil, "")
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
@@ -53,6 +53,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			Variants    string   `json:"buildvariants"`
 			Tasks       []string `json:"tasks"`
 			Finalize    bool     `json:"finalize"`
+			Alias       string   `json:"alias"`
 		}{}
 		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -61,7 +62,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		variants := strings.Split(data.Variants, ",")
 
 		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks)
+		intent, err = patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return

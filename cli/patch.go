@@ -67,6 +67,7 @@ type patchSubmission struct {
 	projectId   string
 	patchData   string
 	description string
+	alias       string
 	base        string
 	variants    string
 	tasks       []string
@@ -91,6 +92,7 @@ type ListCommand struct {
 	Tasks                bool     `long:"tasks" description:"list all tasks for a project"`
 	Distros              bool     `long:"distros" description:"list all distros for a project"`
 	UserSpawnableDistros bool     `long:"spawnable" description:"list all spawnable distros for a project"`
+	Aliases              bool     `short:"a" long:"aliases" description:"list all variant/task aliases"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -136,6 +138,7 @@ type PatchCommandParams struct {
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
 	Large       bool     `short:"l" long:"large" description:"enable submitting larger patches (>16MB)"`
 	ShowSummary bool     `long:"verbose" description:"hide patch summary"`
+	Alias       string   `short:"a" long:"alias" description:"patch alias (set by project admin)"`
 }
 
 // LastGreenCommand contains parameters for the finding a project's most recent passing version.
@@ -430,7 +433,7 @@ func (lgc *LastGreenCommand) Execute(_ []string) error {
 
 func (lc *ListCommand) Execute(_ []string) error {
 	// stop the user from using > 1 type flag
-	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros, lc.UserSpawnableDistros}
+	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros, lc.UserSpawnableDistros, lc.Aliases}
 	var numOpts int
 	for _, opt := range opts {
 		if opt {
@@ -438,7 +441,7 @@ func (lc *ListCommand) Execute(_ []string) error {
 		}
 	}
 	if numOpts != 1 {
-		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, --distros, or --spawnable")
+		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, --distros, --spawnable, or --aliases")
 	}
 
 	if lc.Projects {
@@ -452,6 +455,9 @@ func (lc *ListCommand) Execute(_ []string) error {
 	}
 	if lc.Distros || lc.UserSpawnableDistros {
 		return lc.listDistros(lc.UserSpawnableDistros)
+	}
+	if lc.Aliases {
+		return lc.listAliases()
 	}
 	return errors.Errorf("this code should not be reachable")
 }
@@ -621,10 +627,51 @@ func (lc *ListCommand) listVariants() error {
 	return w.Flush()
 }
 
+func (lc *ListCommand) listAliases() error {
+	var aliases []model.PatchDefinition
+	ctx := context.Background()
+	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
+	v2, _, err := getAPIV2Client(ctx, lc.GlobalOpts)
+	if err != nil {
+		return errors.Wrap(err, "error getting rest v2 client")
+	}
+	if lc.Project != "" {
+		if err != nil {
+			return err
+		}
+		notifyUserUpdate(ac)
+		aliases, err = v2.ListAliases(context.Background(), lc.Project)
+		if err != nil {
+			return err
+		}
+	} else if lc.File != "" {
+		project, err := loadLocalConfig(lc.File)
+		if err != nil {
+			return err
+		}
+		aliases, err = v2.ListAliases(context.Background(), project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "error returned from API")
+		}
+	} else {
+		return noProjectError
+	}
+
+	for _, alias := range aliases {
+		fmt.Printf("%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task)
+	}
+
+	return nil
+}
+
 // Performs validation for patch or patch-file
 func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *model.CLISettings, ref *model.ProjectRef, err error) {
 	ctx := context.Background()
 	ac, _, settings, err = getAPIClients(ctx, params.GlobalOpts)
+	v2, _, err := getAPIV2Client(ctx, params.GlobalOpts)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "error getting rest v2 client")
+	}
 	if err != nil {
 		return
 	}
@@ -647,6 +694,25 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 		return
 	}
 
+	if params.Alias != "" {
+		validAlias := false
+		var aliases []model.PatchDefinition
+		aliases, err = v2.ListAliases(context.Background(), params.Project)
+		if err != nil {
+			err = errors.Wrap(err, "error contacting API server")
+			return
+		}
+		for _, alias := range aliases {
+			if alias.Alias == params.Alias {
+				validAlias = true
+			}
+		}
+		if !validAlias {
+			err = errors.Errorf("%s is not a valid alias", params.Alias)
+			return
+		}
+	}
+
 	ref, err = ac.GetProjectRef(params.Project)
 	if err != nil {
 		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
@@ -656,14 +722,14 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	}
 
 	// update variants
-	if len(params.Variants) == 0 {
+	if len(params.Variants) == 0 && params.Alias == "" {
 		params.Variants = settings.FindDefaultVariants(params.Project)
 		if len(params.Variants) == 0 && params.Finalize {
 			err = errors.Errorf("Need to specify at least one buildvariant with -v when finalizing." +
 				" Run with `-v all` to finalize against all variants.")
 			return
 		}
-	} else {
+	} else if params.Alias == "" {
 		defaultVariants := settings.FindDefaultVariants(params.Project)
 		if len(defaultVariants) == 0 && !params.SkipConfirm &&
 			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?",
@@ -676,14 +742,14 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	}
 
 	// update tasks
-	if len(params.Tasks) == 0 {
+	if len(params.Tasks) == 0 && params.Alias == "" {
 		params.Tasks = settings.FindDefaultTasks(params.Project)
 		if len(params.Tasks) == 0 && params.Finalize {
 			err = errors.Errorf("Need to specify at least one task with -t when finalizing." +
 				" Run with `-t all` to finalize against all tasks.")
 			return
 		}
-	} else {
+	} else if params.Alias == "" {
 		defaultTasks := settings.FindDefaultTasks(params.Project)
 		if len(defaultTasks) == 0 && !params.SkipConfirm &&
 			confirm(fmt.Sprintf("Set %v as the default tasks for project '%v'?",
@@ -724,7 +790,7 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISe
 
 	variantsStr := strings.Join(params.Variants, ",")
 	patchSub := patchSubmission{
-		params.Project, diffData.fullPatch, params.Description,
+		params.Project, diffData.fullPatch, params.Description, params.Alias,
 		diffData.base, variantsStr, params.Tasks, params.Finalize,
 	}
 

@@ -113,7 +113,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 
-	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks)
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
 	s.NoError(err)
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
