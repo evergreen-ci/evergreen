@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -395,4 +396,30 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.PatchDefinition, error) {
+	path := fmt.Sprintf("alias/%s", project)
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    path,
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
+	}
+	patchAliases := []serviceModel.PatchDefinition{}
+	if err := util.ReadJSONInto(resp.Body, &patchAliases); err != nil {
+		patchAlias := serviceModel.PatchDefinition{}
+		err := util.ReadJSONInto(resp.Body, &patchAlias)
+		if err != nil {
+			return nil, errors.Wrap(err, "error reading json")
+		}
+		patchAliases[0] = patchAlias
+	}
+	return patchAliases, nil
 }

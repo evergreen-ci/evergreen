@@ -630,13 +630,17 @@ func (lc *ListCommand) listVariants() error {
 func (lc *ListCommand) listAliases() error {
 	var aliases []model.PatchDefinition
 	ctx := context.Background()
-	ac, sc, _, err := getAPIClients(ctx, lc.GlobalOpts)
+	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
+	v2, _, err := getAPIV2Client(ctx, lc.GlobalOpts)
+	if err != nil {
+		return errors.Wrap(err, "error getting rest v2 client")
+	}
 	if lc.Project != "" {
 		if err != nil {
 			return err
 		}
 		notifyUserUpdate(ac)
-		aliases, err = sc.ListAliases(lc.Project)
+		aliases, err = v2.ListAliases(context.Background(), lc.Project)
 		if err != nil {
 			return err
 		}
@@ -645,7 +649,7 @@ func (lc *ListCommand) listAliases() error {
 		if err != nil {
 			return err
 		}
-		aliases, err = sc.ListAliases(project.Identifier)
+		aliases, err = v2.ListAliases(context.Background(), project.Identifier)
 		if err != nil {
 			return errors.Wrap(err, "error returned from API")
 		}
@@ -663,7 +667,11 @@ func (lc *ListCommand) listAliases() error {
 // Performs validation for patch or patch-file
 func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *model.CLISettings, ref *model.ProjectRef, err error) {
 	ctx := context.Background()
-	ac, sc, settings, err := getAPIClients(ctx, params.GlobalOpts)
+	ac, _, settings, err = getAPIClients(ctx, params.GlobalOpts)
+	v2, _, err := getAPIV2Client(ctx, params.GlobalOpts)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "error getting rest v2 client")
+	}
 	if err != nil {
 		return
 	}
@@ -689,7 +697,7 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	if params.Alias != "" {
 		validAlias := false
 		var aliases []model.PatchDefinition
-		aliases, err = sc.ListAliases(params.Project)
+		aliases, err = v2.ListAliases(context.Background(), params.Project)
 		if err != nil {
 			err = errors.Wrap(err, "error contacting API server")
 			return

@@ -137,4 +137,7 @@ type Communicator interface {
 
 	// Delete a key with specified name from the current authenticated user
 	DeletePublicKey(context.Context, string) error
+
+	// List variant/task aliases
+	ListAliases(context.Context, string) ([]model.PatchDefinition, error)
 }
