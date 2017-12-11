@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -76,7 +77,7 @@ type Connector interface {
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testName to start from, test status to filter,
 	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, int, int) ([]task.TestResult, error)
+	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (auth.APIUser, error)

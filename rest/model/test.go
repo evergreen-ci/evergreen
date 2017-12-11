@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 )
 
@@ -31,7 +31,7 @@ type TestLogs struct {
 
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
-	case *task.TestResult:
+	case *testresult.TestResult:
 		at.Status = APIString(v.Status)
 		at.TestFile = APIString(v.TestFile)
 		at.ExitCode = v.ExitCode
@@ -45,7 +45,7 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.Logs = TestLogs{
 			URL:     APIString(v.URL),
 			URLRaw:  APIString(v.URLRaw),
-			LogId:   APIString(v.LogId),
+			LogId:   APIString(v.LogID),
 			LineNum: v.LineNum,
 		}
 	case string:
@@ -57,12 +57,12 @@ func (at *APITest) BuildFromService(st interface{}) error {
 }
 
 func (at *APITest) ToService() (interface{}, error) {
-	return &task.TestResult{
+	return &testresult.TestResult{
 		Status:    string(at.Status),
 		TestFile:  string(at.TestFile),
 		URL:       string(at.Logs.URL),
 		URLRaw:    string(at.Logs.URLRaw),
-		LogId:     string(at.Logs.LogId),
+		LogID:     string(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
 		StartTime: util.ToPythonTime(time.Time(at.StartTime)),

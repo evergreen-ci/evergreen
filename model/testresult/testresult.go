@@ -91,3 +91,61 @@ func find(query db.Q) ([]TestResult, error) {
 func (t *TestResult) Insert() error {
 	return db.Insert(Collection, t)
 }
+
+// Aggregate runs an aggregation against the testresults collection.
+func Aggregate(pipeline []bson.M, results interface{}) error {
+	return db.Aggregate(
+		Collection,
+		pipeline,
+		results)
+}
+
+// TestResultsPipeline is an aggregation pipeline for returning test results to the REST v2 API.
+func TestResultsPipeline(id, filename, status string, limit, sort, execution int) []bson.M {
+	// match test results
+	pipeline := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				TaskIDKey:    id,
+				ExecutionKey: execution,
+			},
+		},
+	}
+
+	// match status
+	if status != "" {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{StatusKey: status},
+		})
+	}
+
+	// sort
+	sortOperator := "$gte"
+	if sort < 0 {
+		sortOperator = "$lte"
+	}
+	pipeline = append(pipeline,
+		bson.M{
+			"$match": bson.M{TestFileKey: bson.M{sortOperator: filename}}},
+		bson.M{
+			"$sort": bson.M{TestFileKey: 1},
+		},
+	)
+
+	// limit
+	if limit > 0 {
+		pipeline = append(pipeline, bson.M{
+			"$limit": limit,
+		})
+	}
+
+	// project out task and execution
+	pipeline = append(pipeline, bson.M{
+		"$project": bson.M{
+			TaskIDKey:    0,
+			ExecutionKey: 0,
+		},
+	})
+
+	return pipeline
+}
