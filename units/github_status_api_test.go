@@ -193,5 +193,5 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.Equal(githubStatusFailure, *lastStatus.State)
 	s.Equal("finished in 10m0s", *lastStatus.Description)
 	s.Equal("evergreen", *lastStatus.Context)
-	s.Contains(*lastStatus.TargetURL, job.URLPath)
+	s.Equal(fmt.Sprintf("http://example.com%s", job.URLPatch), *lastStatus.TargetURL)
 }
