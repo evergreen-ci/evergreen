@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -33,8 +33,9 @@ func getTestRouteManager(route string, version int) *RouteManager {
 // testGetHandlerArgs are the additional arguments that are needed when fetching
 // paginated results for the tests.
 type testGetHandlerArgs struct {
-	taskId     string
-	testStatus string
+	taskId        string
+	testStatus    string
+	testExecution int
 }
 
 // testGetHandler is the MethodHandler for the GET /tasks/{task_id}/tests route.
@@ -79,7 +80,7 @@ func testPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	if !ok {
 		grip.EmergencyPanic("Test pagination args had wrong type")
 	}
-	tests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit*2, 1)
+	tests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit*2, 1, tghArgs.testExecution)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -88,7 +89,7 @@ func testPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	}
 
 	// Make the previous page
-	prevTests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit, -1)
+	prevTests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit, -1, tghArgs.testExecution)
 	if err != nil && tests == nil { // don't error if we already found valid results
 		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
@@ -128,7 +129,7 @@ func testPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	return models, pageResults, nil
 }
 
-func makeNextTestsPage(tests []task.TestResult, limit int) *Page {
+func makeNextTestsPage(tests []testresult.TestResult, limit int) *Page {
 	var nextPage *Page
 	if len(tests) > limit {
 		nextLimit := len(tests) - limit
@@ -141,7 +142,7 @@ func makeNextTestsPage(tests []task.TestResult, limit int) *Page {
 	return nextPage
 }
 
-func makePrevTestsPage(tests []task.TestResult) *Page {
+func makePrevTestsPage(tests []testresult.TestResult) *Page {
 	var prevPage *Page
 	if len(tests) > 1 {
 		prevPage = &Page{

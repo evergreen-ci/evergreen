@@ -15,6 +15,7 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -571,13 +572,13 @@ func TestTestPaginator(t *testing.T) {
 	Convey("When paginating with a Connector", t, func() {
 		serviceContext := data.MockConnector{}
 		Convey("and there are tasks with tests to be found", func() {
-			cachedTests := []task.TestResult{}
+			cachedTests := []testresult.TestResult{}
 			for i := 0; i < numTests; i++ {
 				status := "pass"
 				if i%2 == 0 {
 					status = "fail"
 				}
-				nextTest := task.TestResult{
+				nextTest := testresult.TestResult{
 					TestFile: fmt.Sprintf("test%d", i),
 					Status:   status,
 				}

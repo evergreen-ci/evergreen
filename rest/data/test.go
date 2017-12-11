@@ -1,9 +1,10 @@
 package data
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest"
 )
 
@@ -11,36 +12,51 @@ import (
 // from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
 
-// TODO Fix this after PM-810
-func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string, limit,
-	sortDir int) ([]task.TestResult, error) {
+func (tc *DBTestConnector) FindTestsByTaskId(taskId, filename, status string, limit,
+	sort, execution int) ([]testresult.TestResult, error) {
 
-	return []task.TestResult{}, &rest.APIError{
-		StatusCode: http.StatusNotFound,
-		Message:    "find tests by task id is not implemented pending PM-810",
+	pipeline := testresult.TestResultsPipeline(taskId, filename, status, limit, sort, execution)
+	res := []testresult.TestResult{}
+
+	err := testresult.Aggregate(pipeline, &res)
+	if err != nil {
+		return []testresult.TestResult{}, err
 	}
+	if len(res) == 0 {
+		var message string
+		if status != "" {
+			message = fmt.Sprintf("tests for task with taskId '%s' and status '%s' not found", taskId, status)
+		} else {
+			message = fmt.Sprintf("tests for task with taskId '%s' not found", taskId)
+		}
+		return []testresult.TestResult{}, &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    message,
+		}
+	}
+
+	return res, nil
 }
 
 // MockTaskConnector stores a cached set of tests that are queried against by the
 // implementations of the Connector interface's Test related functions.
 type MockTestConnector struct {
-	CachedTests []task.TestResult
+	CachedTests []testresult.TestResult
 	StoredError error
 }
 
-// FindTestsBytaskId
 func (mtc *MockTestConnector) FindTestsByTaskId(taskId, testFilename, status string, limit,
-	sortDir int) ([]task.TestResult, error) {
+	sort, execution int) ([]testresult.TestResult, error) {
 	if mtc.StoredError != nil {
-		return []task.TestResult{}, mtc.StoredError
+		return []testresult.TestResult{}, mtc.StoredError
 	}
 
 	// loop until the filename is found
 	for ix, t := range mtc.CachedTests {
 		if t.TestFile == testFilename {
 			// We've found the test
-			var testsToReturn []task.TestResult
-			if sortDir < 0 {
+			var testsToReturn []testresult.TestResult
+			if sort < 0 {
 				if ix-limit > 0 {
 					testsToReturn = mtc.CachedTests[ix-(limit) : ix]
 				} else {
