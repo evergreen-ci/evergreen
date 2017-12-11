@@ -259,6 +259,14 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("Could not find project ref for repo '%s/%s'", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
 	}
 
+	projectVars, err := model.FindOneProjectVars(j.projectRef.Identifier)
+	if err != nil {
+		return errors.Wrapf(err, "Could not find project vars for project '%s'", j.projectRef.Identifier)
+	}
+	if projectVars == nil {
+		return errors.Errorf("Could not find project vars for project '%s'", j.projectRef.Identifier)
+	}
+
 	isMember, err := checkOrgMembership(patchDoc, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		return err
@@ -267,7 +275,6 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("user is not member of %s", patchDoc.GithubPatchData.BaseOwner)
 	}
 
-	// TODO: build variants and tasks
 	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.PatchURL)
 	if err != nil {
 		return err
@@ -277,6 +284,8 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	if err != nil {
 		return err
 	}
+
+	// TODO: build variants and tasks
 
 	patchFileId := bson.NewObjectId().Hex()
 	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{

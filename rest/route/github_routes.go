@@ -103,7 +103,14 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 
 		}
 		if *event.Action == "opened" || *event.Action == "synchronize" {
-			ghi, err := patch.NewGithubIntent(gh.msgId, *event.Number, *event.Repo.FullName, *event.PullRequest.Head.Repo.FullName, *event.PullRequest.Head.Ref, *event.PullRequest.Head.SHA, *event.Sender.Login, *event.PullRequest.DiffURL)
+			ghi, err := patch.NewGithubIntent(gh.msgId,
+				*event.Number,
+				*event.Repo.FullName,
+				*event.PullRequest.Head.Repo.FullName,
+				*event.PullRequest.Head.Ref,
+				*event.PullRequest.Head.SHA,
+				*event.Sender.Login,
+				*event.PullRequest.DiffURL)
 			if err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusBadRequest,
