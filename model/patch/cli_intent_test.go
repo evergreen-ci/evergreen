@@ -100,11 +100,11 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, []string{}, s.tasks, s.alias)
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, []string{}, s.tasks, "")
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, []string{}, s.alias)
+	intent, err = NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, []string{}, "")
 	s.Nil(intent)
 	s.Error(err)
 }

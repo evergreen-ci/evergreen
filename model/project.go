@@ -838,16 +838,20 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
 	var pairs []TVPair
-	vars, err := FindOneProjectAlias(p.Identifier, alias)
+	var err error
+	var vars []PatchDefinition
+	vars, err = FindOneProjectAlias(p.Identifier, alias)
 	if err != nil || vars == nil {
 		return pairs, err
 	}
 	for _, v := range vars {
-		variantRegex, err := regexp.Compile(v.Variant)
+		var variantRegex *regexp.Regexp
+		variantRegex, err = regexp.Compile(v.Variant)
 		if err != nil {
 			return pairs, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
 		}
-		taskRegex, err := regexp.Compile(v.Task)
+		var taskRegex *regexp.Regexp
+		taskRegex, err = regexp.Compile(v.Task)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Error compiling regex: %s", v.Task)
 		}

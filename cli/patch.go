@@ -631,6 +631,9 @@ func (lc *ListCommand) listAliases() error {
 	var aliases []model.PatchDefinition
 	ctx := context.Background()
 	ac, _, _, err := getAPIClients(ctx, lc.GlobalOpts)
+	if err != nil {
+		return errors.Wrap(err, "error getting API client")
+	}
 	v2, _, err := getAPIV2Client(ctx, lc.GlobalOpts)
 	if err != nil {
 		return errors.Wrap(err, "error getting rest v2 client")
@@ -668,6 +671,9 @@ func (lc *ListCommand) listAliases() error {
 func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *model.CLISettings, ref *model.ProjectRef, err error) {
 	ctx := context.Background()
 	ac, _, settings, err = getAPIClients(ctx, params.GlobalOpts)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err, "error getting API client")
+	}
 	v2, _, err := getAPIV2Client(ctx, params.GlobalOpts)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "error getting rest v2 client")

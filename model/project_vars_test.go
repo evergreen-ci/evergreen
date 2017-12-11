@@ -85,7 +85,7 @@ func TestRedactPrivateVars(t *testing.T) {
 
 func TestFindProjectAliases(t *testing.T) {
 	require := require.New(t)
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	require.NoError(db.Clear(ProjectVarsCollection))
 
