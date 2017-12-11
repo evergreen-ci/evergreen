@@ -99,7 +99,7 @@ func fetchSource(ac, rc *APIClient, rootPath, taskId string, noPatch bool) error
 
 	cloneDir := util.CleanForPath(fmt.Sprintf("source-%v", task.Project))
 	var patch *service.RestPatch
-	if task.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(task.Requester) {
 		cloneDir = util.CleanForPath(fmt.Sprintf("source-patch-%v_%v", task.PatchNumber, task.Project))
 		patch, err = rc.GetPatch(task.PatchId)
 		if err != nil {
@@ -312,7 +312,7 @@ type artifactDownload struct {
 }
 
 func getArtifactFolderName(task *service.RestTask) string {
-	if task.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(task.Requester) {
 		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, task.BuildVariant, task.DisplayName)
 	}
 

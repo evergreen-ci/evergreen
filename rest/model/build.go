@@ -67,7 +67,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	var origin string
 	if v.Requester == evergreen.RepotrackerVersionRequester {
 		origin = commitOrigin
-	} else if v.Requester == evergreen.PatchVersionRequester {
+	} else if evergreen.IsPatchRequester(v.Requester) {
 		origin = patchOrigin
 	}
 	apiBuild.Origin = APIString(origin)

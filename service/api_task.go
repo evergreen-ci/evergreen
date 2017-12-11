@@ -208,7 +208,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// task cost calculations have no impact on task results, so do them in their own goroutine
 	go as.updateTaskCost(t, currentHost, finishTime)
 
-	if t.Requester != evergreen.PatchVersionRequester {
+	if !evergreen.IsPatchRequester(t.Requester) {
 		grip.Infoln("Processing alert triggers for task", t.Id)
 
 		grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),

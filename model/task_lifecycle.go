@@ -209,7 +209,7 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		return err
 	}
 	for _, t := range allTasks {
-		if t.Requester == evergreen.PatchVersionRequester {
+		if evergreen.IsPatchRequester(t.Requester) {
 			// EVG-948, the query depends on patches not
 			// having the revision order number, which they
 			// got as part of 948. as we expect to add more
@@ -513,7 +513,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				}
 				updates.BuildNewStatus = evergreen.BuildSucceeded
 
-				if b.Requester == evergreen.PatchVersionRequester {
+				if evergreen.IsPatchRequester(b.Requester) {
 					if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
 						err = errors.Wrap(err, "Error marking patch as finished")
 						grip.Error(err)
@@ -534,7 +534,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				return err
 			}
 			updates.BuildNewStatus = evergreen.BuildFailed
-			if b.Requester == evergreen.PatchVersionRequester {
+			if evergreen.IsPatchRequester(b.Requester) {
 				if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
 					err = errors.Wrap(err, "Error marking patch as finished")
 					grip.Error(err)
@@ -593,7 +593,7 @@ func MarkStart(taskId string, updates *StatusChanges) error {
 	}
 
 	// if it's a patch, mark the patch as started if necessary
-	if t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester {
+	if evergreen.IsPatchRequester(t.Requester) {
 		updated, err := patch.TryMarkStarted(t.Version, startTime)
 		if updated {
 			updates.PatchNewStatus = evergreen.PatchStarted

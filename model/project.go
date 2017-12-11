@@ -407,7 +407,8 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	displayTable := TaskIdTable{}
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
-		if v.Requester == evergreen.PatchVersionRequester {
+
+		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		}
 		for _, t := range bv.Tasks {
@@ -454,7 +455,7 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSe
 		taskNamesForVariant := patchConfig.TaskNames(vt.Variant)
 
 		rev := v.Revision
-		if v.Requester == evergreen.PatchVersionRequester {
+		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		}
 		for _, t := range projBV.Tasks {
@@ -536,7 +537,7 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 	expansions.Put("distro_id", d.Id)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
-	if t.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 	} else {

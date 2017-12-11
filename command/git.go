@@ -186,7 +186,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	}
 
 	//Apply patches if necessary
-	if conf.Task.Requester != evergreen.PatchVersionRequester {
+	if !evergreen.IsPatchRequester(conf.Task.Requester) {
 		return nil
 	}
 

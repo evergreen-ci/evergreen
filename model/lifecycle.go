@@ -417,7 +417,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	rev := v.Revision
-	if v.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
 
@@ -509,7 +509,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		task.Populate(taskSpec)
 
 		if ((task.Patchable != nil && !*task.Patchable) || task.Name == evergreen.PushStage) && //TODO remove PushStage
-			b.Requester == evergreen.PatchVersionRequester {
+			evergreen.IsPatchRequester(b.Requester) {
 			continue
 		}
 		if createAll || util.StringSliceContains(taskNames, task.Name) {
