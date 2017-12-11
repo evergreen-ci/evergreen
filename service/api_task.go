@@ -12,10 +12,8 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
@@ -52,7 +50,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
-		job := units.NewGithubStatusUpdateJobForPatchStart(t.Version)
+		job := units.NewGithubStatusUpdateJobForPatch(t.Version)
 		if err := as.queue.Put(job); err != nil {
 			errors.WithStack(err)
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
@@ -154,13 +152,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if t.Requester == evergreen.GithubPRRequester {
 		if updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded {
-			b, err := build.FindOne(build.ById(t.BuildId))
-			if err != nil || b == nil {
-				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't find build"))
-				return
-			}
-
-			job := units.NewGithubStatusUpdateJobForBuild(b)
+			job := units.NewGithubStatusUpdateJobForBuild(t.BuildId)
 			if err := as.queue.Put(job); err != nil {
 				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
 				return
@@ -168,13 +160,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if updates.PatchNewStatus == evergreen.PatchFailed || updates.PatchNewStatus == evergreen.PatchSucceeded {
-			p, err := patch.FindOne(patch.ByVersion(t.Version))
-			if err != nil || p == nil {
-				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't find patch"))
-				return
-			}
-
-			job := units.NewGithubStatusUpdateJobForPatch(p)
+			job := units.NewGithubStatusUpdateJobForPatch(t.Version)
 			if err := as.queue.Put(job); err != nil {
 				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
 				return

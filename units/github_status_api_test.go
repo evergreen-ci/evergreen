@@ -31,6 +31,8 @@ func TestGithubStatusUpdate(t *testing.T) {
 }
 
 func (s *githubStatusUpdateSuite) SetupSuite() {
+	evergreen.ResetEnvironment()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
@@ -38,11 +40,10 @@ func (s *githubStatusUpdateSuite) SetupSuite() {
 
 func (s *githubStatusUpdateSuite) TearDownSuite() {
 	s.cancel()
+	evergreen.ResetEnvironment()
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	evergreen.ResetEnvironment()
-
 	s.NoError(db.ClearCollections(patch.Collection))
 	startTime := time.Now()
 	s.patchDoc = &patch.Patch{
@@ -72,74 +73,100 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(s.buildDoc.Insert())
 }
 
-func (s *githubStatusUpdateSuite) TearDownTest() {
-	evergreen.ResetEnvironment()
-}
-
-func (s *githubStatusUpdateSuite) TestFetchRejectsBadStatuses() {
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc).(*githubStatusUpdateJob)
-	s.Require().NotNil(job)
-	s.Require().True(ok)
-	job.GHStatus = "cheese"
-
-	s.Error(job.fetch())
-
-	job.Run()
-	s.Error(job.Error())
-	s.True(job.Status().Completed)
-}
-
 func (s *githubStatusUpdateSuite) TestFetchForBuildPopulatesRepoInfo() {
-	job, ok := NewGithubStatusUpdateJobForBuild(s.buildDoc).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForBuild(s.buildDoc.Id).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	job.VersionID = s.patchDoc.Version
+	s.Require().Equal(githubUpdateTypeBuild, job.UpdateType)
 
 	s.NoError(job.fetch())
-	s.Equal("evergreen-ci", job.Owner)
-	s.Equal("evergreen", job.Repo)
-	s.Equal(448, job.PRNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.Ref)
+	s.Equal("evergreen-ci", job.owner)
+	s.Equal("evergreen", job.repo)
+	s.Equal(448, job.prNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.ref)
 }
 
 func (s *githubStatusUpdateSuite) TestForBuild() {
-	job, ok := NewGithubStatusUpdateJobForBuild(s.buildDoc).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForBuild(s.buildDoc.Id).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 
 	s.NoError(job.fetch())
 
-	s.Equal(s.patchDoc.Version, job.VersionID)
-	s.Equal("evergreen-ci", job.Owner)
-	s.Equal("evergreen", job.Repo)
-	s.Equal(448, job.PRNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.Ref)
+	s.Equal("evergreen-ci", job.owner)
+	s.Equal("evergreen", job.repo)
+	s.Equal(448, job.prNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.ref)
 
-	s.Equal(fmt.Sprintf("/build/%s", s.buildDoc.Id), job.URLPath)
-	s.Equal("no tasks were run", job.Description)
-	s.Equal("evergreen-testvariant", job.Context)
-	s.Equal("failure", job.GHStatus)
+	s.Equal(fmt.Sprintf("/build/%s", s.buildDoc.Id), job.urlPath)
+	s.Equal("no tasks were run", job.description)
+	s.Equal("evergreen-testvariant", job.context)
+	s.Equal("failure", job.ghStatus)
 }
 
 func (s *githubStatusUpdateSuite) TestForPatch() {
-	s.NoError(db.ClearCollections(patch.Collection))
-
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
 
 	s.NoError(job.fetch())
 
-	s.Empty(job.VersionID)
-	s.Equal("evergreen-ci", job.Owner)
-	s.Equal("evergreen", job.Repo)
-	s.Equal(448, job.PRNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.Ref)
+	s.Equal("evergreen-ci", job.owner)
+	s.Equal("evergreen", job.repo)
+	s.Equal(448, job.prNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.ref)
 
-	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), job.URLPath)
-	s.Equal("finished in 10m0s", job.Description)
-	s.Equal("evergreen", job.Context)
-	s.Equal("failure", job.GHStatus)
+	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), job.urlPath)
+	s.Equal("finished in 10m0s", job.description)
+	s.Equal("evergreen", job.context)
+	s.Equal("failure", job.ghStatus)
+}
+
+func (s *githubStatusUpdateSuite) TestForPendingPatchStarted() {
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.patchDoc.Status = evergreen.PatchStarted
+	s.NoError(s.patchDoc.Insert())
+
+	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+
+	s.NoError(job.fetch())
+
+	s.Equal("evergreen-ci", job.owner)
+	s.Equal("evergreen", job.repo)
+	s.Equal(448, job.prNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.ref)
+
+	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), job.urlPath)
+	s.Equal("tasks are running", job.description)
+	s.Equal("evergreen", job.context)
+	s.Equal("pending", job.ghStatus)
+}
+
+func (s *githubStatusUpdateSuite) TestForPatchCreated() {
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.patchDoc.Status = evergreen.PatchCreated
+	s.NoError(s.patchDoc.Insert())
+
+	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+
+	s.NoError(job.fetch())
+
+	s.Equal("evergreen-ci", job.owner)
+	s.Equal("evergreen", job.repo)
+	s.Equal(448, job.prNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.ref)
+
+	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), job.urlPath)
+	s.Equal("preparing to run tasks", job.description)
+	s.Equal("evergreen", job.context)
+	s.Equal("pending", job.ghStatus)
 }
 
 func (s *githubStatusUpdateSuite) TestWithGithub() {
@@ -153,12 +180,15 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	evergreen.GetEnvironment().Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"
-	s.patchDoc.GithubPatchData.HeadRepo = "sample"
 	s.patchDoc.GithubPatchData.HeadOwner = "richardsamuels"
+	s.patchDoc.GithubPatchData.HeadRepo = "sample"
 	s.patchDoc.GithubPatchData.PRNumber = 1
 	s.patchDoc.GithubPatchData.HeadHash = "de724e67df25f1d5fb22102df5ce55baf439209c"
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc).(*githubStatusUpdateJob)
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(s.patchDoc.Insert())
+
+	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	job.Run()
@@ -193,5 +223,5 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.Equal(githubStatusFailure, *lastStatus.State)
 	s.Equal("finished in 10m0s", *lastStatus.Description)
 	s.Equal("evergreen", *lastStatus.Context)
-	s.Equal(fmt.Sprintf("http://example.com%s", job.URLPatch), *lastStatus.TargetURL)
+	s.Equal(fmt.Sprintf("http://example.com/version/%s", s.patchDoc.Version), *lastStatus.TargetURL)
 }

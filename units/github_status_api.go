@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/google/go-github/github"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -28,6 +27,9 @@ const (
 	githubStatusFailure       = "failure"
 	githubStatusPending       = "pending"
 	githubStatusSuccess       = "success"
+
+	githubUpdateTypeBuild = "build"
+	githubUpdateTypePatch = "patch"
 )
 
 func init() {
@@ -39,16 +41,18 @@ type githubStatusUpdateJob struct {
 	logger   grip.Journaler
 	env      evergreen.Environment
 
-	VersionID string `bson:"build_id" json:"build_id" yaml:"build_id"`
-	Owner     string `bson:"owner" json:"owner" yaml:"owner"`
-	Repo      string `bson:"repo" json:"repo" yaml:"repo"`
-	PRNumber  int    `bson:"pr_number" json:"pr_number" yaml:"pr_number"`
-	Ref       string `bson:"ref" json:"ref" yaml:"ref"`
+	FetchID    string `bson:"fetch_id" json:"fetch_id" yaml:"fetch_id"`
+	UpdateType string `bson:"update_type" json:"update_type" yaml:"update_type"`
 
-	URLPath     string `bson:"url_path" json:"url_path" yaml:"url_path"`
-	Description string `bson:"description" json:"description" yaml:"description"`
-	Context     string `bson:"context" json:"context" yaml:"context"`
-	GHStatus    string `bson:"gh_status" json:"gh_status" yaml:"gh_status"`
+	owner    string
+	repo     string
+	prNumber int
+	ref      string
+
+	urlPath     string
+	description string
+	context     string
+	ghStatus    string
 }
 
 func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
@@ -67,25 +71,12 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 
 // NewGithubStatusUpdateJobForBuild creates a job to update github's API from a Build.
 // Status will be reported as 'evergreen-[build variant name]'
-func NewGithubStatusUpdateJobForBuild(b *build.Build) amboy.Job {
+func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.VersionID = b.Version
-	job.URLPath = fmt.Sprintf("/build/%s", b.Id)
-	job.Context = fmt.Sprintf("evergreen-%s", b.BuildVariant)
-	job.Description = taskStatusToDesc(b)
+	job.FetchID = buildID
+	job.UpdateType = githubUpdateTypeBuild
 
-	switch b.Status {
-	case evergreen.BuildSucceeded:
-		job.GHStatus = githubStatusSuccess
-
-	case evergreen.BuildFailed:
-		job.GHStatus = githubStatusFailure
-
-	default:
-		job.GHStatus = githubStatusPending
-	}
-
-	job.SetID(fmt.Sprintf("%s:build-%s-%s-%d", githubStatusUpdateJobName, b.Id, job.Context, time.Now()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d", githubStatusUpdateJobName, job.UpdateType, buildID, job.context, time.Now()))
 	return job
 }
 
@@ -95,43 +86,13 @@ func repoReference(owner, repo string, prNumber int, ref string) string {
 
 // NewGithubStatusUpdateForPatch creates a job to update github's API from a
 // Patch. Status will be reported as 'evergreen'
-func NewGithubStatusUpdateJobForPatch(patchDoc *patch.Patch) amboy.Job {
+func NewGithubStatusUpdateJobForPatch(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
-	job.Owner = patchDoc.GithubPatchData.BaseOwner
-	job.Repo = patchDoc.GithubPatchData.BaseRepo
-	job.PRNumber = patchDoc.GithubPatchData.PRNumber
-	job.Ref = patchDoc.GithubPatchData.HeadHash
+	job.FetchID = version
+	job.UpdateType = githubUpdateTypePatch
 
-	job.URLPath = fmt.Sprintf("/version/%s", patchDoc.Version)
-	job.Context = "evergreen"
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s-%d", githubStatusUpdateJobName, job.UpdateType, version, job.context, time.Now()))
 
-	switch patchDoc.Status {
-	case evergreen.PatchSucceeded:
-		job.GHStatus = githubStatusSuccess
-		job.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
-
-	case evergreen.PatchFailed:
-		job.GHStatus = githubStatusFailure
-		job.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
-
-	default:
-		job.GHStatus = githubStatusPending
-	}
-	job.SetID(fmt.Sprintf("%s:version-%s-%s-%d", githubStatusUpdateJobName, patchDoc.Id, job.Context, time.Now()))
-
-	return job
-}
-
-func NewGithubStatusUpdateJobForPatchStart(version string) amboy.Job {
-	job := makeGithubStatusUpdateJob()
-
-	job.VersionID = version
-	job.URLPath = fmt.Sprintf("/version/%s", version)
-	job.Context = "evergreen"
-	job.GHStatus = githubStatusPending
-	job.Description = "tasks are running"
-
-	job.SetID(fmt.Sprintf("%s:pending-%s-%s-%d", githubStatusUpdateJobName, version, job.Context, time.Now()))
 	return job
 }
 
@@ -160,19 +121,18 @@ func (j *githubStatusUpdateJob) sendStatusUpdate() error {
 	client := github.NewClient(tc)
 
 	newStatus := github.RepoStatus{
-		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, j.URLPath)),
-		Context:     github.String(j.Context),
-		Description: github.String(j.Description),
-		State:       github.String(j.GHStatus),
+		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, j.urlPath)),
+		Context:     github.String(j.context),
+		Description: github.String(j.description),
+		State:       github.String(j.ghStatus),
 	}
-	status, resp, err := client.Repositories.CreateStatus(ctx, j.Owner, j.Repo, j.Ref, &newStatus)
+	status, resp, err := client.Repositories.CreateStatus(ctx, j.owner, j.repo, j.ref, &newStatus)
 	if err != nil {
 		return err
 	}
-	pp.Println(status, resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		repo := repoReference(j.Owner, j.Repo, j.PRNumber, j.Ref)
+		repo := repoReference(j.owner, j.repo, j.prNumber, j.ref)
 		return errors.Errorf("Github status creation for %s: expected http Status code: 201 Created, got %s", repo, http.StatusText(http.StatusCreated))
 	}
 	if status == nil {
@@ -183,24 +143,71 @@ func (j *githubStatusUpdateJob) sendStatusUpdate() error {
 }
 
 func (j *githubStatusUpdateJob) fetch() error {
-	if j.GHStatus != githubStatusPending && j.GHStatus != githubStatusSuccess &&
-		j.GHStatus != githubStatusFailure && j.GHStatus != githubStatusError {
-		return errors.New("Invalid status")
-	}
-
-	if j.VersionID != "" {
-		patchDoc, err := patch.FindOne(patch.ByVersion(j.VersionID))
+	patchVersion := j.FetchID
+	if j.UpdateType == "build" {
+		b, err := build.FindOne(build.ById(j.FetchID))
 		if err != nil {
 			return err
 		}
-		if patchDoc == nil {
-			return errors.New("can't find patch")
+		if b == nil {
+			return errors.New("can't find build")
 		}
-		j.Owner = patchDoc.GithubPatchData.BaseOwner
-		j.Repo = patchDoc.GithubPatchData.BaseRepo
-		j.PRNumber = patchDoc.GithubPatchData.PRNumber
-		j.Ref = patchDoc.GithubPatchData.HeadHash
+
+		patchVersion = b.Version
+		j.context = fmt.Sprintf("evergreen-%s", b.BuildVariant)
+		j.description = taskStatusToDesc(b)
+		j.urlPath = fmt.Sprintf("/build/%s", b.Id)
+
+		switch b.Status {
+		case evergreen.BuildSucceeded:
+			j.ghStatus = githubStatusSuccess
+
+		case evergreen.BuildFailed:
+			j.ghStatus = githubStatusFailure
+
+		default:
+			return errors.New("build status is pending; refusing to update status")
+		}
 	}
+
+	patchDoc, err := patch.FindOne(patch.ByVersion(patchVersion))
+	if err != nil {
+		return err
+	}
+	if patchDoc == nil {
+		return errors.New("can't find patch")
+	}
+
+	if j.UpdateType == "patch" {
+		j.urlPath = fmt.Sprintf("/version/%s", patchVersion)
+		j.context = "evergreen"
+
+		switch patchDoc.Status {
+		case evergreen.PatchSucceeded:
+			j.ghStatus = githubStatusSuccess
+			j.description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+
+		case evergreen.PatchFailed:
+			j.ghStatus = githubStatusFailure
+			j.description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+
+		case evergreen.PatchCreated:
+			j.ghStatus = githubStatusPending
+			j.description = "preparing to run tasks"
+
+		case evergreen.PatchStarted:
+			j.ghStatus = githubStatusPending
+			j.description = "tasks are running"
+
+		default:
+			return errors.New("unknown patch status")
+		}
+	}
+
+	j.owner = patchDoc.GithubPatchData.BaseOwner
+	j.repo = patchDoc.GithubPatchData.BaseRepo
+	j.prNumber = patchDoc.GithubPatchData.PRNumber
+	j.ref = patchDoc.GithubPatchData.HeadHash
 
 	return nil
 }
