@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -208,7 +209,7 @@ func TestFinalizePatch(t *testing.T) {
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, patchTestConfig.Credentials["github"])
+				version, err := model.FinalizePatch(configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				// ensure the relevant builds/tasks were created
@@ -230,7 +231,7 @@ func TestFinalizePatch(t *testing.T) {
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, patchTestConfig.Credentials["github"])
+				version, err := model.FinalizePatch(configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(err, ShouldBeNil)

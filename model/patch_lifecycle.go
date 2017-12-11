@@ -288,7 +288,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, githubOauthToken string) (*version.Version, error) {
+func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
 	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
@@ -322,7 +322,7 @@ func FinalizePatch(p *patch.Patch, githubOauthToken string) (*version.Version, e
 		BuildVariants:       []version.BuildStatus{},
 		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
-		Requester:           evergreen.PatchVersionRequester,
+		Requester:           requester,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 	}

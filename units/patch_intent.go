@@ -175,10 +175,21 @@ func (j *patchIntentProcessor) Run() {
 	}
 
 	if j.Intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(patchDoc, githubOauthToken); err != nil {
+		if _, err := model.FinalizePatch(patchDoc, intentToRequester(j.Intent.GetType()), githubOauthToken); err != nil {
 			j.AddError(err)
 		}
 	}
+}
+
+func intentToRequester(r string) string {
+	if r == patch.CliIntentType {
+		return evergreen.PatchVersionRequester
+
+	} else if r == patch.GithubIntentType {
+		return evergreen.GithubPRRequester
+	}
+
+	return ""
 }
 
 //nolint
