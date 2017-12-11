@@ -251,7 +251,7 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     var url = (isRaw) ? testResult.url_raw : testResult.url;
 
     if (url != '') {
-      return url;
+      return url + '?lobster=1';
     }
 
     var logid = testResult.log_id;
