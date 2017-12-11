@@ -2,7 +2,9 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -405,18 +407,24 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 		version: apiVersion2,
 		path:    path,
 	}
-	resp, err := c.request(ctx, info, nil)
+	resp, err := c.request(ctx, info, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "problem querying api server")
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
 	}
 	patchAliases := []serviceModel.PatchDefinition{}
-	if err := util.ReadJSONInto(resp.Body, &patchAliases); err != nil {
+
+	// use io.ReadAll and json.Unmarshal instead of util.ReadJSONInto since we may read the results twice
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading JSON")
+	}
+	if err := json.Unmarshal(bytes, &patchAliases); err != nil {
 		patchAlias := serviceModel.PatchDefinition{}
-		err := util.ReadJSONInto(resp.Body, &patchAlias)
-		if err != nil {
+		if err := json.Unmarshal(bytes, &patchAlias); err != nil {
 			return nil, errors.Wrap(err, "error reading json")
 		}
 		patchAliases[0] = patchAlias

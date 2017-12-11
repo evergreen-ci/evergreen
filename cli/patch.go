@@ -658,7 +658,7 @@ func (lc *ListCommand) listAliases() error {
 	}
 
 	for _, alias := range aliases {
-		fmt.Printf("%s\t%s\t%s", alias.Alias, alias.Variant, alias.Task)
+		fmt.Printf("%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task)
 	}
 
 	return nil
