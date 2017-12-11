@@ -57,7 +57,7 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
   $scope.syncHash = function(tab){
     var hash = {}
     if($location.hash().length > 0){
-      hash = JSON.parse($location.hash())
+      hash = JSON.parse(decodeURIComponent($location.hash()))
     }
     if(Object.keys($scope.hiddenGraphs).length > 0){
       hash.hiddenGraphs = Object.keys($scope.hiddenGraphs)
