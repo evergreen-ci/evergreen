@@ -12,8 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
@@ -42,11 +44,20 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
 		return
 	}
-
-	if err := model.MarkStart(t.Id); err != nil {
+	updates := model.StatusChanges{}
+	if err := model.MarkStart(t.Id, &updates); err != nil {
 		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+
+	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
+		job := units.NewGithubStatusUpdateJobForPatchStart(t.Version)
+		if err := as.queue.Put(job); err != nil {
+			errors.WithStack(err)
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
+			return
+		}
 	}
 
 	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
@@ -133,12 +144,42 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
+	updates := model.StatusChanges{}
 	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details,
-		project, projectRef.DeactivatePrevious)
+		project, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+	if t.Requester == evergreen.GithubPRRequester {
+		if updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded {
+			b, err := build.FindOne(build.ById(t.BuildId))
+			if err != nil || b == nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't find build"))
+				return
+			}
+
+			job := units.NewGithubStatusUpdateJobForBuild(b)
+			if err := as.queue.Put(job); err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
+				return
+			}
+		}
+
+		if updates.PatchNewStatus == evergreen.PatchFailed || updates.PatchNewStatus == evergreen.PatchSucceeded {
+			p, err := patch.FindOne(patch.ByVersion(t.Version))
+			if err != nil || p == nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't find patch"))
+				return
+			}
+
+			job := units.NewGithubStatusUpdateJobForPatch(p)
+			if err := as.queue.Put(job); err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
+				return
+			}
+		}
 	}
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.

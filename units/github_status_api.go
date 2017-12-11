@@ -122,6 +122,19 @@ func NewGithubStatusUpdateJobForPatch(patchDoc *patch.Patch) amboy.Job {
 	return job
 }
 
+func NewGithubStatusUpdateJobForPatchStart(version string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+
+	job.VersionID = version
+	job.URLPath = fmt.Sprintf("/version/%s", version)
+	job.Context = "evergreen"
+	job.GHStatus = githubStatusPending
+	job.Description = "tasks are running"
+
+	job.SetID(fmt.Sprintf("%s:pending-%s-%s-%d", githubStatusUpdateJobName, version, job.Context, time.Now()))
+	return job
+}
+
 func (j *githubStatusUpdateJob) sendStatusUpdate() error {
 	if j.env.Settings() == nil || j.env.Settings().Ui.Url == "" {
 		return errors.New("ui not configured")

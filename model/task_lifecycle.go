@@ -16,6 +16,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+type StatusChanges struct {
+	PatchNewStatus string
+	BuildNewStatus string
+}
+
 func SetActiveState(taskId string, caller string, active bool) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
@@ -110,7 +115,8 @@ func resetTask(taskId string) error {
 		return errors.WithStack(err)
 	}
 
-	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t.Id))
+	updates := StatusChanges{}
+	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t.Id, &updates))
 }
 
 // TryResetTask resets a task
@@ -128,7 +134,8 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 		} else {
 			grip.Debugln(message, "marking as failed")
 			if detail != nil {
-				return errors.WithStack(MarkEnd(t.Id, origin, time.Now(), detail, p, false))
+				updates := StatusChanges{}
+				return errors.WithStack(MarkEnd(t.Id, origin, time.Now(), detail, p, false, &updates))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -276,7 +283,7 @@ func doStepback(t *task.Task) error {
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	p *Project, deactivatePrevious bool) error {
+	p *Project, deactivatePrevious bool, updates *StatusChanges) error {
 
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
@@ -312,8 +319,8 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	}
 
 	// no need to activate/deactivate other task if this is a patch request's task
-	if t.Requester == evergreen.PatchVersionRequester {
-		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id),
+	if evergreen.IsPatchRequester(t.Requester) {
+		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id, updates),
 			"Error updating build status (1)")
 	}
 	if detail.Status == evergreen.TaskFailed && detail.Type != "system" {
@@ -329,6 +336,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		} else {
 			grip.Debugln("Not stepping backwards on task failure:", t.Id)
 		}
+
 	} else if deactivatePrevious {
 		// if the task was successful, ignore running previous
 		// activated tasks for this buildvariant
@@ -339,7 +347,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	}
 
 	// update the build
-	if err := UpdateBuildAndVersionStatusForTask(t.Id); err != nil {
+	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
 		return errors.Wrap(err, "Error updating build status (2)")
 	}
 
@@ -360,7 +368,7 @@ func updateMakespans(b *build.Build) error {
 
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
 // status of the build based on the task's status.
-func UpdateBuildAndVersionStatusForTask(taskId string) error {
+func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
 	// retrieve the task by the task id
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
@@ -409,6 +417,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 					break
 				}
 			} else if t.DisplayName == evergreen.PushStage {
@@ -421,6 +430,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 					pushSuccess = false
 				}
 			} else {
@@ -432,6 +442,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 					failedTask = true
 				}
 
@@ -452,6 +463,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 			grip.Error(err)
 			return err
 		}
+		updates.BuildNewStatus = evergreen.BuildStarted
 	}
 
 	if finishedTasks >= len(buildTasks) {
@@ -473,6 +485,8 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildSucceeded
+
 				} else if pushCompleted && !pushSuccess { // the push failed, mark build failed.
 					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
@@ -480,6 +494,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 				}
 
 				// Otherwise, this build does have a "push" task, but it hasn't finished yet
@@ -496,6 +511,8 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 					grip.Error(err)
 					return err
 				}
+				updates.BuildNewStatus = evergreen.BuildSucceeded
+
 				if b.Requester == evergreen.PatchVersionRequester {
 					if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
 						err = errors.Wrap(err, "Error marking patch as finished")
@@ -516,6 +533,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				grip.Error(err)
 				return err
 			}
+			updates.BuildNewStatus = evergreen.BuildFailed
 			if b.Requester == evergreen.PatchVersionRequester {
 				if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
 					err = errors.Wrap(err, "Error marking patch as finished")
@@ -541,6 +559,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
 		err = b.UpdateStatus(evergreen.BuildCreated)
+		updates.BuildNewStatus = evergreen.BuildCreated
 		if err != nil {
 			err = errors.Wrap(err, "Error updating build status")
 			grip.Error(err)
@@ -552,7 +571,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 }
 
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
-func MarkStart(taskId string) error {
+func MarkStart(taskId string, updates *StatusChanges) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
@@ -574,10 +593,12 @@ func MarkStart(taskId string) error {
 	}
 
 	// if it's a patch, mark the patch as started if necessary
-	if t.Requester == evergreen.PatchVersionRequester {
-		if err = patch.TryMarkStarted(t.Version, startTime); err != nil {
-			return errors.WithStack(err)
+	if t.Requester == evergreen.PatchVersionRequester || t.Requester == evergreen.GithubPRRequester {
+		updated, err := patch.TryMarkStarted(t.Version, startTime)
+		if updated {
+			updates.PatchNewStatus = evergreen.PatchStarted
 		}
+		return errors.WithStack(err)
 	}
 
 	// update the cached version of the task, in its build document
