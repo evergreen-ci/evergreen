@@ -212,7 +212,7 @@ func TryMarkStarted(versionId string, startTime time.Time) (bool, error) {
 	if err == mgo.ErrNotFound {
 		return false, nil
 	}
-	return true, err
+	return err == nil, err
 }
 
 // TryMarkFinished attempts to mark a patch of a given version as finished.
