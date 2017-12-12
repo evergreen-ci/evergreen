@@ -22,14 +22,15 @@ type APIBanner struct {
 
 // APIServiceFlags is a public structure representing the admin service flags
 type APIServiceFlags struct {
-	TaskDispatchDisabled  bool `json:"task_dispatch_disabled"`
-	HostinitDisabled      bool `json:"hostinit_disabled"`
-	MonitorDisabled       bool `json:"monitor_disabled"`
-	NotificationsDisabled bool `json:"notifications_disabled"`
-	AlertsDisabled        bool `json:"alerts_disabled"`
-	TaskrunnerDisabled    bool `json:"taskrunner_disabled"`
-	RepotrackerDisabled   bool `json:"repotracker_disabled"`
-	SchedulerDisabled     bool `json:"scheduler_disabled"`
+	TaskDispatchDisabled    bool `json:"task_dispatch_disabled"`
+	HostinitDisabled        bool `json:"hostinit_disabled"`
+	MonitorDisabled         bool `json:"monitor_disabled"`
+	NotificationsDisabled   bool `json:"notifications_disabled"`
+	AlertsDisabled          bool `json:"alerts_disabled"`
+	TaskrunnerDisabled      bool `json:"taskrunner_disabled"`
+	RepotrackerDisabled     bool `json:"repotracker_disabled"`
+	SchedulerDisabled       bool `json:"scheduler_disabled"`
+	GithubPRTestingDisabled bool `json:"github_pr_testing_disabled"`
 }
 
 // RestartTasksResponse is the response model returned from the /admin/restart route
@@ -101,6 +102,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskrunnerDisabled = v.TaskrunnerDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
+		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -110,14 +112,15 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
 	serviceFlags := admin.ServiceFlags{
-		TaskDispatchDisabled:  as.TaskDispatchDisabled,
-		HostinitDisabled:      as.HostinitDisabled,
-		MonitorDisabled:       as.MonitorDisabled,
-		NotificationsDisabled: as.NotificationsDisabled,
-		AlertsDisabled:        as.AlertsDisabled,
-		TaskrunnerDisabled:    as.TaskrunnerDisabled,
-		RepotrackerDisabled:   as.RepotrackerDisabled,
-		SchedulerDisabled:     as.SchedulerDisabled,
+		TaskDispatchDisabled:    as.TaskDispatchDisabled,
+		HostinitDisabled:        as.HostinitDisabled,
+		MonitorDisabled:         as.MonitorDisabled,
+		NotificationsDisabled:   as.NotificationsDisabled,
+		AlertsDisabled:          as.AlertsDisabled,
+		TaskrunnerDisabled:      as.TaskrunnerDisabled,
+		RepotrackerDisabled:     as.RepotrackerDisabled,
+		SchedulerDisabled:       as.SchedulerDisabled,
+		GithubPRTestingDisabled: as.GithubPRTestingDisabled,
 	}
 	return serviceFlags, nil
 }
