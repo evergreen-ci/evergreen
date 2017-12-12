@@ -50,7 +50,16 @@ type githubStatus struct {
 }
 
 func (status *githubStatus) Valid() bool {
-	return status.owner == "" || status.repo == "" || status.prNumber == 0 || status.ref == "" || status.urlPath == "" || status.context == ""
+	if status.owner == "" || status.repo == "" || status.prNumber == 0 ||
+		status.ref == "" || status.urlPath == "" || status.context == "" {
+		return false
+	}
+	if status.ghStatus != githubStatusError && status.ghStatus != githubStatusFailure &&
+		status.ghStatus != githubStatusPending && status.ghStatus != githubStatusSuccess {
+		return false
+	}
+
+	return true
 }
 
 type githubStatusUpdateJob struct {

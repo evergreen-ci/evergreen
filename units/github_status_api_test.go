@@ -99,6 +99,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "github pr testing is disabled, not updating status")
+	s.NoError(db.Clear(admin.Collection))
 }
 
 func (s *githubStatusUpdateSuite) TestForBuild() {
