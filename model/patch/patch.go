@@ -197,7 +197,7 @@ func (p *Patch) AddTasks(tasks []string) error {
 
 // TryMarkStarted attempts to mark a patch as started if it
 // isn't already marked as such
-func TryMarkStarted(versionId string, startTime time.Time) (bool, error) {
+func TryMarkStarted(versionId string, startTime time.Time) error {
 	filter := bson.M{
 		VersionKey: versionId,
 		StatusKey:  evergreen.PatchCreated,
@@ -208,11 +208,7 @@ func TryMarkStarted(versionId string, startTime time.Time) (bool, error) {
 			StatusKey:    evergreen.PatchStarted,
 		},
 	}
-	err := UpdateOne(filter, update)
-	if err == mgo.ErrNotFound {
-		return false, nil
-	}
-	return err == nil, err
+	return UpdateOne(filter, update)
 }
 
 // TryMarkFinished attempts to mark a patch of a given version as finished.

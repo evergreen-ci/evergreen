@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
 
 type StatusChanges struct {
@@ -594,11 +595,13 @@ func MarkStart(taskId string, updates *StatusChanges) error {
 
 	// if it's a patch, mark the patch as started if necessary
 	if evergreen.IsPatchRequester(t.Requester) {
-		updated, err := patch.TryMarkStarted(t.Version, startTime)
-		if updated {
+		err := patch.TryMarkStarted(t.Version, startTime)
+		if err == nil {
 			updates.PatchNewStatus = evergreen.PatchStarted
+
+		} else if err != mgo.ErrNotFound {
+			return errors.WithStack(err)
 		}
-		return errors.WithStack(err)
 	}
 
 	// update the cached version of the task, in its build document
