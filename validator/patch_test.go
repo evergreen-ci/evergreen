@@ -189,18 +189,6 @@ func TestGetPatchedProject(t *testing.T) {
 				So(project, ShouldNotBeNil)
 			})
 
-			Convey("Calling GetPatchedProject on a patch with no patch content or gridfs patch gracefully fails", func() {
-				configPatch := resetProjectlessPatchSetup(t)
-
-				patchFileID := bson.NewObjectId()
-				configPatch.Patches[0].PatchSet.Patch = ""
-				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
-
-				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
-				So(err, ShouldNotBeNil)
-				So(project, ShouldBeNil)
-			})
-
 			Reset(func() {
 				So(db.Clear(distro.Collection), ShouldBeNil)
 				So(db.ClearGridCollections(patch.GridFSPrefix), ShouldBeNil)
