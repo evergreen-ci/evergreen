@@ -34,11 +34,16 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	var intent patch.Intent
 	if r.Header.Get("Content-Type") == formMimeType {
 		patchContent := r.FormValue("patch")
+		if patchContent == "" {
+			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Error: Patch must not be empty"))
+			return
+		}
+
 		variants := strings.Split(r.FormValue("buildvariants"), ",")
 		finalize := strings.ToLower(r.FormValue("finalize")) == "true"
 
 		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, nil, "")
+		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, []string{}, "")
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
@@ -57,6 +62,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}{}
 		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		if len(data.Patch) > patch.SizeLimit {
+			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large."))
 			return
 		}
 		variants := strings.Split(data.Variants, ",")
