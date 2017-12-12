@@ -427,7 +427,7 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 		if err := json.Unmarshal(bytes, &patchAlias); err != nil {
 			return nil, errors.Wrap(err, "error reading json")
 		}
-		patchAliases[0] = patchAlias
+		patchAliases = []serviceModel.PatchDefinition{patchAlias}
 	}
 	return patchAliases, nil
 }
