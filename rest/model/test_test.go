@@ -4,14 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 type testCompare struct {
 	at APITest
-	st task.TestResult
+	st testresult.TestResult
 }
 
 func TestTestBuildFromService(t *testing.T) {
@@ -34,13 +34,13 @@ func TestTestBuildFromService(t *testing.T) {
 					StartTime: NewTime(sTime),
 					EndTime:   NewTime(eTime),
 				},
-				st: task.TestResult{
+				st: testresult.TestResult{
 					Status:    "testStatus",
 					TestFile:  "testFile",
 					URL:       "testUrl",
 					URLRaw:    "testUrlRaw",
 					LineNum:   15,
-					LogId:     "",
+					LogID:     "",
 					ExitCode:  1,
 					StartTime: util.ToPythonTime(sTime),
 					EndTime:   util.ToPythonTime(eTime),
@@ -51,7 +51,7 @@ func TestTestBuildFromService(t *testing.T) {
 					StartTime: NewTime(time.Unix(0, 0)),
 					EndTime:   NewTime(time.Unix(0, 0)),
 				},
-				st: task.TestResult{},
+				st: testresult.TestResult{},
 			},
 		}
 
