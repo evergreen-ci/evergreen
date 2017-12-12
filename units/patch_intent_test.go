@@ -62,7 +62,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearCollections(model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -79,6 +79,22 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Id: "github_patch_user",
 	}).Insert())
 
+	s.NoError((&model.ProjectVars{
+		Id: "mci",
+		PatchDefinitions: []model.PatchDefinition{
+			{
+				Alias:   patch.GithubAlias,
+				Variant: "ubuntu.*",
+				Task:    "dist.*",
+			},
+			{
+				Alias:   patch.GithubAlias,
+				Variant: "race.*",
+				Task:    "dist.*",
+			},
+		},
+	}).Insert())
+
 	s.repo = "evergreen-ci/evergreen"
 	s.headRepo = "tychoish/evergreen"
 	s.prNumber = 448
@@ -87,8 +103,8 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.patchURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
 	s.desc = "Test!"
 	s.project = "mci"
-	s.variants = []string{"ubuntu1604"}
-	s.tasks = []string{"dist"}
+	s.variants = []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
+	s.tasks = []string{"dist", "dist-test"}
 
 	factory, err := registry.GetJobFactory(patchIntentJobName)
 	s.NoError(err)
@@ -133,7 +149,9 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(patchDoc)
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
-	s.Equal(s.variants, patchDoc.BuildVariants)
+	for _, variant := range patchDoc.BuildVariants {
+		s.Contains(s.variants, variant)
+	}
 	s.Equal(s.tasks, patchDoc.Tasks)
 
 	s.Zero(patchDoc.GithubPatchData)
@@ -156,9 +174,14 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	// patchdoc itself
 	s.verifyPatchDoc(patchDoc, j.PatchID)
-	// TODO
-	//s.NotEmpty(patchDoc.BuildVariants)
-	//s.NotEmpty(patchDoc.Tasks)
+	s.Len(patchDoc.BuildVariants, 4)
+	s.Contains(patchDoc.BuildVariants, "ubuntu1604")
+	s.Contains(patchDoc.BuildVariants, "ubuntu1604-arm64")
+	s.Contains(patchDoc.BuildVariants, "ubuntu1604-debug")
+	s.Contains(patchDoc.BuildVariants, "race-detector")
+	s.Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "dist")
+	s.Contains(patchDoc.Tasks, "dist-test")
 
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
@@ -172,7 +195,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepository)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", patchDoc.Githash)
 
-	s.verifyVersionDoc(patchDoc, evergreen.GithubPullRequestRequester, j.user.Email())
+	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }
@@ -210,13 +233,29 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 	s.Equal(patchDoc.Description, versionDoc.Message)
 	s.NotZero(versionDoc.Config)
 	s.Equal(s.user, versionDoc.Author)
-	s.Len(versionDoc.BuildIds, 1)
+	s.Len(versionDoc.BuildIds, 4)
 
-	s.Require().Len(versionDoc.BuildVariants, 1)
+	s.Require().Len(versionDoc.BuildVariants, 4)
 	s.True(versionDoc.BuildVariants[0].Activated)
 	s.Zero(versionDoc.BuildVariants[0].ActivateAt)
-	s.Equal(versionDoc.BuildVariants[0].BuildId, versionDoc.BuildIds[0])
-	s.Equal(versionDoc.BuildVariants[0].BuildVariant, s.variants[0])
+	s.NotEmpty(versionDoc.BuildVariants[0].BuildId)
+	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[0].BuildId)
+
+	s.True(versionDoc.BuildVariants[1].Activated)
+	s.Zero(versionDoc.BuildVariants[1].ActivateAt)
+	s.NotEmpty(versionDoc.BuildVariants[1].BuildId)
+	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[1].BuildId)
+
+	s.True(versionDoc.BuildVariants[2].Activated)
+	s.Zero(versionDoc.BuildVariants[2].ActivateAt)
+	s.NotEmpty(versionDoc.BuildVariants[2].BuildId)
+	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[2].BuildId)
+
+	s.True(versionDoc.BuildVariants[3].Activated)
+	s.Zero(versionDoc.BuildVariants[3].ActivateAt)
+	s.NotEmpty(versionDoc.BuildVariants[3].BuildId)
+	s.Contains(versionDoc.BuildIds, versionDoc.BuildVariants[3].BuildId)
+
 	s.Equal(expectedRequester, versionDoc.Requester)
 	s.Empty(versionDoc.Errors)
 	s.Empty(versionDoc.Warnings)

@@ -186,7 +186,6 @@ func (j *patchIntentProcessor) Run() {
 	}
 }
 
-//nolint
 func fetchPatchByURL(URL string) (string, error) {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)
@@ -200,7 +199,8 @@ func fetchPatchByURL(URL string) (string, error) {
 		return "", errors.Errorf("Expected 200 OK, got %s", http.StatusText(resp.StatusCode))
 	}
 	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
-		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes", patch.SizeLimit, resp.ContentLength)
+		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
+			patch.SizeLimit, resp.ContentLength)
 	}
 
 	bytes, err := ioutil.ReadAll(resp.Body)
@@ -253,10 +253,12 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
 	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
 	if err != nil {
-		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
+		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'",
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
 	}
 	if j.projectRef == nil {
-		return errors.Errorf("Could not find project ref for repo '%s/%s'", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
+		return errors.Errorf("Could not find project ref for repo '%s/%s'",
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
 	}
 
 	projectVars, err := model.FindOneProjectVars(j.projectRef.Identifier)
@@ -267,7 +269,8 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("Could not find project vars for project '%s'", j.projectRef.Identifier)
 	}
 
-	isMember, err := checkOrgMembership(patchDoc, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.Author, githubOauthToken)
+	isMember, err := checkOrgMembership(patchDoc, patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		return err
 	}
@@ -284,8 +287,6 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	if err != nil {
 		return err
 	}
-
-	// TODO: build variants and tasks
 
 	patchFileId := bson.NewObjectId().Hex()
 	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
@@ -333,7 +334,8 @@ func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubO
 		return false, err
 	}
 
-	commits, _, err := client.PullRequests.ListCommits(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository, patchDoc.GithubPatchData.PRNumber, nil)
+	commits, _, err := client.PullRequests.ListCommits(ctx, patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.BaseRepository, patchDoc.GithubPatchData.PRNumber, nil)
 	if err != nil {
 		return isMember, err
 	}
@@ -344,7 +346,8 @@ func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubO
 		return isMember, errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, _, err := client.Repositories.GetCommit(ctx, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository, *commits[0].SHA)
+	commit, _, err := client.Repositories.GetCommit(ctx,
+		patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository, *commits[0].SHA)
 	if err != nil {
 		return isMember, err
 	}
