@@ -90,17 +90,17 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	job := units.NewPatchIntentProcessor(patchID, intent)
 	job.Run()
 	if err := job.Error(); err != nil {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return
 	}
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	if err != nil {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.New("can't fetch patch data"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't fetch patch data"))
 		return
 	}
 	if patchDoc == nil {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.New("patch couldn't be found"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("patch couldn't be found"))
 		return
 	}
 
