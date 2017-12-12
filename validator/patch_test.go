@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -174,8 +176,34 @@ func TestGetPatchedProject(t *testing.T) {
 				So(project, ShouldNotBeNil)
 			})
 
+			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
+				configPatch := resetProjectlessPatchSetup(t)
+
+				patchFileID := bson.NewObjectId()
+				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
+				configPatch.Patches[0].PatchSet.Patch = ""
+				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
+
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				So(err, ShouldBeNil)
+				So(project, ShouldNotBeNil)
+			})
+
+			Convey("Calling GetPatchedProject on a patch with no patch content or gridfs patch gracefully fails", func() {
+				configPatch := resetProjectlessPatchSetup(t)
+
+				patchFileID := bson.NewObjectId()
+				configPatch.Patches[0].PatchSet.Patch = ""
+				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
+
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				So(err, ShouldNotBeNil)
+				So(project, ShouldBeNil)
+			})
+
 			Reset(func() {
 				So(db.Clear(distro.Collection), ShouldBeNil)
+				So(db.ClearGridCollections(patch.GridFSPrefix), ShouldBeNil)
 			})
 		})
 }
