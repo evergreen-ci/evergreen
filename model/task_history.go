@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -80,6 +81,7 @@ type TestHistoryResult struct {
 	TaskTimedOut    bool    `bson:"to"`
 	TaskDetailsType string  `bson:"tdt"`
 	LogId           string  `bson:"lid"`
+	Order           int     `bson:"order"`
 }
 
 // TestHistoryResult bson tags
@@ -106,19 +108,23 @@ var (
 // TestHistoryParameters are the parameters that are used
 // to retrieve Test Results.
 type TestHistoryParameters struct {
+	Sort  int `json:"sort"`
+	Limit int `json:"limit"`
+
+	// task parameters
 	Project         string    `json:"project"`
-	TestNames       []string  `json:"test_names"`
 	TaskNames       []string  `json:"task_names"`
 	BuildVariants   []string  `json:"variants"`
 	TaskStatuses    []string  `json:"task_statuses"`
-	TestStatuses    []string  `json:"test_statuses"`
 	BeforeRevision  string    `json:"before_revision"`
 	AfterRevision   string    `json:"after_revision"`
 	TaskRequestType string    `json:"task_request"`
 	BeforeDate      time.Time `json:"before_date"`
 	AfterDate       time.Time `json:"after_date"`
-	Sort            int       `json:"sort"`
-	Limit           int       `json:"limit"`
+
+	// test result parameters
+	TestNames    []string `json:"test_names"`
+	TestStatuses []string `json:"test_statuses"`
 }
 
 type TaskHistoryIterator interface {
@@ -431,6 +437,10 @@ func (t *TestHistoryParameters) validate() []string {
 	if t.Sort != -1 && t.Sort != 1 {
 		validationErrors = append(validationErrors, "sort parameter can only be -1 or 1")
 	}
+
+	if t.BeforeRevision == "" && t.AfterRevision == "" && t.Limit == 0 {
+		validationErrors = append(validationErrors, "must specify a range of revisions *or* a limit")
+	}
 	return validationErrors
 }
 
@@ -688,6 +698,206 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	return pipeline, nil
 }
 
+func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
+	if params == nil {
+		return nil, errors.New("unable to determine parameters for test history query")
+	}
+	// run just the part of the query on the tasks collection to form our starting result set
+	tasksQuery, err := formQueryFromTasks(params)
+	if err != nil {
+		return nil, err
+	}
+	projection := bson.M{
+		task.DisplayNameKey:         1,
+		task.BuildVariantKey:        1,
+		task.StatusKey:              1,
+		task.RevisionKey:            1,
+		task.IdKey:                  1,
+		task.ExecutionKey:           1,
+		task.RevisionOrderNumberKey: 1,
+		task.OldTaskIdKey:           1,
+		task.StartTimeKey:           1,
+		task.FinishTimeKey:          1,
+		task.ProjectKey:             1,
+		task.DetailsKey:             1,
+	}
+	tasks, err := task.Find(db.Query(tasksQuery).Project(projection))
+	if err != nil {
+		return nil, err
+	}
+	oldTasks, err := task.FindOld(db.Query(tasksQuery).Project(projection))
+	if err != nil {
+		return nil, err
+	}
+	tasks = append(tasks, oldTasks...)
+
+	// to join the test results, merge test results for all the tasks...
+	if len(params.TestNames) == 0 {
+		for i, t := range tasks {
+			err = t.MergeNewTestResults()
+			if err != nil {
+				return nil, err
+			}
+			for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
+				result := t.LocalTestResults[j]
+				if len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status) {
+					t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
+				}
+			}
+			tasks[i] = t
+		}
+	} else { //... or if test names are specified, do a query on testresults and match up executions
+		testsQuery := formQueryFromTests(params)
+		results, err := testresult.Find(db.Query(testsQuery))
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < len(results); i++ {
+			result := results[i]
+		taskLoop:
+			for j := 0; j < len(tasks); j++ {
+				t := tasks[j]
+				if result.TaskID == t.Id && result.Execution == t.Execution {
+					t.LocalTestResults = append(t.LocalTestResults, task.ConvertToOld(&result))
+					tasks[j] = t
+					break taskLoop
+				}
+			}
+		}
+	}
+
+	return tasks, nil
+}
+
+func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
+	query := bson.M{}
+	if len(params.TaskNames) > 0 {
+		query[task.DisplayNameKey] = bson.M{"$in": params.TaskNames}
+	}
+	if len(params.Project) > 0 {
+		query[task.ProjectKey] = params.Project
+	}
+	if len(params.TaskRequestType) > 0 {
+		query[task.RequesterKey] = params.TaskRequestType
+	}
+	if !util.IsZeroTime(params.BeforeDate) || !util.IsZeroTime(params.AfterDate) {
+		startTimeClause := bson.M{}
+		if !util.IsZeroTime(params.BeforeDate) {
+			startTimeClause["$lte"] = params.BeforeDate
+		}
+		if !util.IsZeroTime(params.AfterDate) {
+			startTimeClause["$gte"] = params.AfterDate
+		}
+		query[task.StartTimeKey] = startTimeClause
+	}
+	if len(params.BuildVariants) > 0 {
+		query[task.BuildVariantKey] = bson.M{"$in": params.BuildVariants}
+	}
+	statusQuery := formTaskStatusQuery(params)
+	if len(statusQuery) > 0 {
+		query["$or"] = statusQuery
+	}
+	revisionQuery, err := formRevisionQuery(params)
+	if err != nil {
+		return bson.M{}, err
+	}
+	if revisionQuery != nil {
+		query[task.RevisionOrderNumberKey] = *revisionQuery
+	}
+
+	return query, nil
+}
+
+func formQueryFromTests(params *TestHistoryParameters) bson.M {
+	query := bson.M{}
+	if len(params.TestNames) > 0 {
+		query[testresult.TestFileKey] = bson.M{"$in": params.TestNames}
+	}
+	if len(params.TestStatuses) > 0 {
+		query[testresult.StatusKey] = bson.M{"$in": params.TestStatuses}
+	}
+
+	return query
+}
+
+func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
+	// separate out pass/fail from timeouts and system failures
+	isTimeout := false
+	isSysFail := false
+	taskStatuses := []string{}
+	for _, status := range params.TaskStatuses {
+		switch status {
+		case TaskTimeout:
+			isTimeout = true
+		case TaskSystemFailure:
+			isSysFail = true
+		default:
+			taskStatuses = append(taskStatuses, status)
+		}
+	}
+	statusQuery := []bson.M{}
+
+	// if there are any pass/fail tasks create a query that isn't a timeout or a system failure.
+	if len(taskStatuses) > 0 {
+		statusQuery = append(statusQuery,
+			bson.M{
+				task.StatusKey: bson.M{"$in": taskStatuses},
+				task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
+					"$ne": true,
+				},
+				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+					"$ne": "system",
+				},
+			})
+	}
+
+	if isTimeout {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey:                                     evergreen.TaskFailed,
+			task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
+		})
+	}
+	if isSysFail {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey:                                 evergreen.TaskFailed,
+			task.DetailsKey + "." + task.TaskEndDetailType: "system",
+		})
+	}
+
+	return statusQuery
+}
+
+func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
+	if params.BeforeRevision == "" && params.AfterRevision == "" {
+		return nil, nil
+	}
+	revisionOrderNumberClause := bson.M{}
+	if params.BeforeRevision != "" {
+		v, err := version.FindOne(version.ByProjectIdAndRevision(params.Project,
+			params.BeforeRevision).WithFields(version.RevisionOrderNumberKey))
+		if err != nil {
+			return nil, err
+		}
+		if v == nil {
+			return nil, errors.Errorf("invalid revision : %v", params.BeforeRevision)
+		}
+		revisionOrderNumberClause["$lte"] = v.RevisionOrderNumber
+	}
+
+	if params.AfterRevision != "" {
+		v, err := version.FindOne(version.ByProjectIdAndRevision(params.Project,
+			params.AfterRevision).WithFields(version.RevisionOrderNumberKey))
+		if err != nil {
+			return nil, err
+		}
+		if v == nil {
+			return nil, errors.Errorf("invalid revision : %v", params.AfterRevision)
+		}
+		revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
+	}
+	return &revisionOrderNumberClause, nil
+}
+
 // GetTestHistory takes in test history parameters, validates them, and returns the test results according to those parameters.
 // It sets tasks failed and tests failed as default statuses if none are provided, and defaults to all tasks, tests,
 // and variants if those are not set.
@@ -707,4 +917,69 @@ func GetTestHistory(testHistoryParameters *TestHistoryParameters) ([]TestHistory
 		return nil, err
 	}
 	return mergeResults(aggTestResults, aggOldTestResults), nil
+}
+
+func GetTestHistoryV2(testHistoryParameters *TestHistoryParameters) ([]TestHistoryResult, error) {
+	var results []TestHistoryResult
+	tasks, err := testHistoryV2Results(testHistoryParameters)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tasks {
+		for _, result := range t.LocalTestResults {
+			results = append(results, TestHistoryResult{
+				TaskId:          t.Id,
+				TaskName:        t.DisplayName,
+				TaskStatus:      t.Status,
+				Revision:        t.Revision,
+				Order:           t.RevisionOrderNumber,
+				Project:         t.Project,
+				BuildVariant:    t.BuildVariant,
+				Execution:       t.Execution,
+				OldTaskId:       t.OldTaskId,
+				TaskTimedOut:    t.Details.TimedOut,
+				TaskDetailsType: t.Details.Type,
+				TestFile:        result.TestFile,
+				TestStatus:      result.Status,
+				Url:             result.URL,
+				UrlRaw:          result.URLRaw,
+				LogId:           result.LogId,
+				StartTime:       result.StartTime,
+				EndTime:         result.EndTime,
+			})
+		}
+	}
+
+	sort.Sort(historyResultSorter(results))
+	limit := testHistoryParameters.Limit
+	var out []TestHistoryResult
+	if limit == 0 {
+		limit = len(results)
+	}
+	for i := range results {
+		index := i
+		if testHistoryParameters.Sort < 0 {
+			index = len(results) - i - 1
+		}
+		out = append(out, results[index])
+		if i >= limit-1 {
+			break
+		}
+	}
+
+	return out, nil
+}
+
+type historyResultSorter []TestHistoryResult
+
+func (h historyResultSorter) Len() int      { return len(h) }
+func (h historyResultSorter) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h historyResultSorter) Less(i, j int) bool {
+	if h[i].Order == h[j].Order {
+		if h[i].TaskId == h[j].TaskId {
+			return h[i].TestFile < h[j].TestFile
+		}
+		return h[i].TaskId < h[j].TaskId
+	}
+	return h[i].Order < h[j].Order
 }
