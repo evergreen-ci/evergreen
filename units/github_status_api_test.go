@@ -86,10 +86,22 @@ func (s *githubStatusUpdateSuite) TestFetchForBuildPopulatesRepoInfo() {
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", job.ref)
 }
 
+func (s *githubStatusUpdateSuite) TestGithubAPIErrorWontCompleteJob() {
+	evergreen.GetEnvironment().Settings().Credentials["github"] = "token definitelynotavalidoauthtoken"
+
+	job := NewGithubStatusUpdateJobForBuild(s.buildDoc.Id)
+	s.Require().NotNil(job)
+
+	job.Run()
+	s.Error(job.Error())
+	s.False(job.Status().Completed)
+}
+
 func (s *githubStatusUpdateSuite) TestForBuild() {
 	job, ok := NewGithubStatusUpdateJobForBuild(s.buildDoc.Id).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypeBuild, job.UpdateType)
 
 	s.NoError(job.fetch())
 
