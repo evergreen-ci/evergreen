@@ -1,7 +1,7 @@
 package cli
 
 import (
-	//"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,8 +12,6 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
-
-	"context"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/kardianos/osext"

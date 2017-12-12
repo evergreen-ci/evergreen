@@ -37,8 +37,12 @@ func main() {
 	parser.AddCommand("fetch", "fetch data associated with a task", "", &cli.FetchCommand{GlobalOpts: opts})
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: opts})
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: opts})
-	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
 	parser.AddCommand("keys", "manage your public keys", "", &cli.PublicKeyCommand{GlobalOpts: opts})
+
+	admin, _ := parser.AddCommand("admin", "administer evergreen deployment", "", &struct{}{})
+	admin.AddCommand("banner", "modify content of site-wide display banner", "", &cli.AdminBannerCommand{GlobalOpts: opts})
+	admin.AddCommand("disable-service", "disable component services", "", &cli.AdminDisableServiceCommand{GlobalOpts: opts})
+	admin.AddCommand("enable-service", "enable component services", "", &cli.AdminEnableServiceCommand{GlobalOpts: opts})
 
 	host, _ := parser.AddCommand("host", "host-related commands", "", &struct{}{})
 	host.AddCommand("create", "spawn a host", "", &cli.HostCreateCommand{GlobalOpts: opts})
@@ -48,14 +52,11 @@ func main() {
 	host.AddCommand("setup", "run a setup script on a host", "", &cli.HostSetupCommand{})
 	host.AddCommand("teardown", "run a teardown script on a host", "", &cli.HostTeardownCommand{})
 
+	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
+
 	service, _ := parser.AddCommand("service", "run evergreen services", "", &struct{}{})
 	service.AddCommand("runner", "start background task processing", "", &cli.ServiceRunnerCommand{})
 	service.AddCommand("web", "start web tier services for API and UI", "", &cli.ServiceWebCommand{})
-
-	admin, _ := parser.AddCommand("admin", "administer evergreen deployment", "", &struct{}{})
-	admin.AddCommand("banner", "modify content of site-wide display banner", "", &cli.AdminBannerCommand{GlobalOpts: opts})
-	admin.AddCommand("disable-service", "disable component services", "", &cli.AdminDisableServiceCommand{GlobalOpts: opts})
-	admin.AddCommand("enable-service", "enable component services", "", &cli.AdminEnableServiceCommand{GlobalOpts: opts})
 
 	deploy, _ := service.AddCommand("deploy", "deployment helper (e.g. migration tools)", "", &struct{}{})
 	deploy.AddCommand("anser", "migration helper", "", &cli.MigrationCommand{})

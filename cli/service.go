@@ -24,12 +24,6 @@ import (
 	"github.com/urfave/negroni"
 )
 
-var (
-	// requestTimeout is the duration to wait until killing
-	// active requests and stopping the server.
-	requestTimeout = 10 * time.Second
-)
-
 type ServiceWebCommand struct {
 	ConfigPath string `long:"conf" default:"/etc/mci_settings.yml" description:"path to the service configuration file"`
 	APIService bool   `long:"api" description:"run the API service (default port: 8080)"`
@@ -76,7 +70,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	catcher := grip.NewBasicCatcher()
 	apiWait := make(chan struct{})
 	go func() {
-		catcher.Add(service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, apiHandler))
+		catcher.Add(service.RunGracefully(settings.Api.HttpListenAddr, apiHandler))
 		close(apiWait)
 	}()
 
@@ -86,14 +80,14 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 			errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
 			uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
 		}
-		catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler))
+		catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, uiHandler))
 		close(uiWait)
 	}()
 
 	pprofWait := make(chan struct{})
 	go func() {
 		if settings.PprofPort != "" {
-			catcher.Add(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
+			catcher.Add(service.RunGracefully(settings.PprofPort, pprofHandler))
 		}
 		close(pprofWait)
 	}()

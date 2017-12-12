@@ -1,6 +1,6 @@
 package model
 
-type ProjectConf struct {
+type ClientProjectConf struct {
 	Name     string   `json:"name" yaml:"name,omitempty"`
 	Default  bool     `json:"default" yaml:"default,omitempty"`
 	Variants []string `json:"variants" yaml:"variants,omitempty"`
@@ -9,13 +9,13 @@ type ProjectConf struct {
 
 // CLISettings represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
-type CLISettings struct {
-	APIServerHost string        `json:"api_server_host" yaml:"api_server_host,omitempty"`
-	UIServerHost  string        `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
-	APIKey        string        `json:"api_key" yaml:"api_key,omitempty"`
-	User          string        `json:"user" yaml:"user,omitempty"`
-	Projects      []ProjectConf `json:"projects" yaml:"projects,omitempty"`
-	LoadedFrom    string        `json:"-" yaml:"-"`
+type ClientSettings struct {
+	APIServerHost string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
+	UIServerHost  string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
+	APIKey        string              `json:"api_key" yaml:"api_key,omitempty"`
+	User          string              `json:"user" yaml:"user,omitempty"`
+	Projects      []ClientProjectConf `json:"projects" yaml:"projects,omitempty"`
+	LoadedFrom    string              `json:"-" yaml:"-"`
 }
 
 func (s *CLISettings) FindDefaultProject() string {

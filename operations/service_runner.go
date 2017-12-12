@@ -1,4 +1,4 @@
-package cli
+package operations
 
 import (
 	"context"
@@ -26,62 +26,102 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
+	"github.com/urfave/cli"
 )
 
-const (
-	frequentRunInterval   = 20 * time.Second
-	defaultRunInterval    = 60 * time.Second
-	infrequentRunInterval = 120 * time.Second
-)
+func setupRunner() cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		grip.SetName("evergreen.runner")
 
-type ServiceRunnerCommand struct {
-	ConfigPath string `long:"conf" default:"/etc/mci_settings.yml" description:"path to the service configuration file"`
-	Single     string `long:"single" default:"" description:"specify "`
+		if home := evergreen.FindEvergreenHome(); home == "" {
+			grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
+		}
+	}
 }
 
-func (c *ServiceRunnerCommand) Execute(_ []string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	env := evergreen.GetEnvironment()
-	grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, c.ConfigPath), "problem configuring application environment"))
+func handcrankRunner() cli.Command {
+	return cli.Command{
+		Name:    "handcrank",
+		Aliases: []string{"run-single", "single"},
+		Flags: configFlags(cli.StringFlag{
+			Name:    "runner",
+			Alaises: []string{"r", "n", "name", "single"},
+		}),
+		Before: setupRunner(),
+		Action: func(c *cli.Context) error {
+			confPath := c.String(confFlagName)
+			name := c.String("runner")
+			if name == "" {
+				return errors.New("must specify a runner")
+			}
 
-	settings := env.Settings()
-	sender, err := settings.GetSender(env)
-	grip.CatchEmergencyFatal(err)
-	grip.CatchEmergencyFatal(grip.SetSender(sender))
+			ctx, cancel := context.WithCancel(context.Background()) // nolint
+			env := evergreen.GetEnvironment()
+			defer recovery.LogStackTraceAndExit("evergreen runner")
+			defer cancel()
 
-	defer sender.Close()
-	defer recovery.LogStackTraceAndExit("evergreen runner")
-	defer cancel()
+			err := env.Configure(ctx, confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem configuring application environment")
+			}
 
-	grip.SetName("evergreen.runner")
-	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
+			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name(), "mode": "single"})
 
-	if home := evergreen.FindEvergreenHome(); home == "" {
-		grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
+			settings := env.Settings()
+
+			return runProcessByName(ctx, name, settings)
+		},
 	}
-
-	// just run a single runner if only one was passed in.
-	if c.Single != "" {
-		return runProcessByName(ctx, c.Single, settings)
-	}
-
-	startCollectorJobs(ctx, env)
-
-	pprofHandler := service.GetHandlerPprof(settings)
-	if settings.PprofPort != "" {
-		go func() {
-			defer recovery.LogStackTraceAndContinue("pprof threads")
-			grip.Alert(service.RunGracefully(settings.PprofPort, pprofHandler))
-		}()
-	}
-
-	// start and schedule runners
-	//
-	go listenForSIGTERM(cancel)
-	startRunners(ctx, settings)
-
-	return errors.WithStack(err)
 }
+
+func startRunnerService() cli.Command {
+	return cli.Command{
+		Name:   "runner",
+		Usage:  "run evergreen background worker",
+		Flags:  configFlags(),
+		Before: setupRunner(),
+		Action: func(c *cli.Context) error {
+			confPath := c.String(confFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			env := evergreen.GetEnvironment()
+			grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, confPath), "problem configuring application environment"))
+
+			settings := env.Settings()
+			sender, err := settings.GetSender(env)
+			grip.CatchEmergencyFatal(err)
+			grip.CatchEmergencyFatal(grip.SetSender(sender))
+
+			defer sender.Close()
+			defer recovery.LogStackTraceAndExit("evergreen runner")
+			defer cancel()
+
+			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
+
+			startCollectorJobs(ctx, env)
+
+			pprofHandler := service.GetHandlerPprof(settings)
+			if settings.PprofPort != "" {
+				go func() {
+					defer recovery.LogStackTraceAndContinue("pprof threads")
+					grip.Alert(service.RunGracefully(settings.PprofPort, pprofHandler))
+				}()
+			}
+
+			// start and schedule runners
+			//
+			go listenForSIGTERM(cancel)
+			startRunners(ctx, settings)
+
+			return errors.WithStack(err)
+
+		},
+	}
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Running and executing the offline operations processing.
 
 func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
@@ -99,10 +139,6 @@ func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
 }
-
-////////////////////////////////////////////////////////////////////////
-//
-// Running and executing the offline operations processing.
 
 type processRunner interface {
 	// Name returns the id of the process runner.

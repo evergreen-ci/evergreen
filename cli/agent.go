@@ -23,7 +23,7 @@ type AgentCommand struct {
 }
 
 func (c *AgentCommand) Execute(_ []string) error {
-	if c.ServiceURL == "" || c.HostID == "" || c.HostSecret == "" {
+	if c.ServiceURL == "" || c.HostID == "" || c.HostSecret == "" || c.WorkingDirectory == "" {
 		return errors.New("cannot start agent without a service url and host ID")
 	}
 
