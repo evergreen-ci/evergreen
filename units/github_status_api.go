@@ -38,24 +38,24 @@ func init() {
 }
 
 type githubStatus struct {
-	owner    string
-	repo     string
-	prNumber int
-	ref      string
+	Owner    string `json:"owner"`
+	Repo     string `json:"repo"`
+	PRNumber int    `json:"pr_number"`
+	Ref      string `json:"ref"`
+	URLPath  string `json:"url_path"`
 
-	urlPath     string
-	description string
-	context     string
-	ghStatus    string
+	Description string `json:"description"`
+	Context     string `json:"context"`
+	State       string `json:"state"`
 }
 
 func (status *githubStatus) Valid() bool {
-	if status.owner == "" || status.repo == "" || status.prNumber == 0 ||
-		status.ref == "" || status.urlPath == "" || status.context == "" {
+	if status.Owner == "" || status.Repo == "" || status.PRNumber == 0 ||
+		status.Ref == "" || status.URLPath == "" || status.Context == "" {
 		return false
 	}
 
-	switch status.ghStatus {
+	switch status.State {
 	case githubStatusError, githubStatusFailure, githubStatusPending, githubStatusSuccess:
 		return true
 
@@ -112,26 +112,28 @@ func NewGithubStatusUpdateJobForPatch(version string) amboy.Job {
 	return job
 }
 
-func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) {
+func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
+	c := grip.NewCatcher()
+
 	if !status.Valid() {
-		j.AddError(errors.New("status is invalid"))
+		c.Add(errors.New("status is invalid"))
 	}
 	if j.env.Settings() == nil || j.env.Settings().Ui.Url == "" {
-		j.AddError(errors.New("ui not configured"))
+		c.Add(errors.New("ui not configured"))
 	}
 	evergreenBaseURL := j.env.Settings().Ui.Url
 
 	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
-		j.AddError(err)
+		c.Add(err)
 	}
 
 	token := strings.Split(githubOauthToken, " ")
 	if len(token) != 2 || token[0] != "token" {
-		j.AddError(errors.New("github token format expected to be 'token [oauthtoken]'"))
+		c.Add(errors.New("github token format expected to be 'token [oauthtoken]'"))
 	}
-	if j.HasErrors() {
-		return
+	if c.HasErrors() {
+		return c.Resolve()
 	}
 
 	ts := oauth2.StaticTokenSource(
@@ -143,100 +145,94 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) {
 	client := github.NewClient(tc)
 
 	newStatus := github.RepoStatus{
-		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, status.urlPath)),
-		Context:     github.String(status.context),
-		Description: github.String(status.description),
-		State:       github.String(status.ghStatus),
+		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, status.URLPath)),
+		Context:     github.String(status.Context),
+		Description: github.String(status.Description),
+		State:       github.String(status.State),
 	}
-	respStatus, resp, err := client.Repositories.CreateStatus(ctx, status.owner, status.repo, status.ref, &newStatus)
+	respStatus, resp, err := client.Repositories.CreateStatus(ctx, status.Owner, status.Repo, status.Ref, &newStatus)
 	if err != nil {
-		j.AddError(err)
-		return
+		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		repo := repoReference(status.owner, status.repo, status.prNumber, status.ref)
-		j.AddError(errors.Errorf("Github status creation for %s: expected http Status code: 201 Created, got %s", repo, http.StatusText(http.StatusCreated)))
+		repo := repoReference(status.Owner, status.Repo, status.PRNumber, status.Ref)
+		return errors.Errorf("Github status creation for %s: expected http Status code: 201 Created, got %s", repo, http.StatusText(http.StatusCreated))
 	}
 	if respStatus == nil {
-		j.AddError(errors.New("nil response from github"))
+		return errors.New("nil response from github")
 	}
+
+	return c.Resolve()
 }
 
-func (j *githubStatusUpdateJob) fetch(status *githubStatus) {
+func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 	patchVersion := j.FetchID
 	if j.UpdateType == "build" {
 		b, err := build.FindOne(build.ById(j.FetchID))
 		if err != nil {
-			j.AddError(err)
+			return err
 		}
 		if b == nil {
-			j.AddError(errors.New("can't find build"))
-		}
-		if j.HasErrors() {
-			return
+			return errors.New("can't find build")
 		}
 
 		patchVersion = b.Version
-		status.context = fmt.Sprintf("evergreen-%s", b.BuildVariant)
-		status.description = taskStatusToDesc(b)
-		status.urlPath = fmt.Sprintf("/build/%s", b.Id)
+		status.Context = fmt.Sprintf("evergreen-%s", b.BuildVariant)
+		status.Description = taskStatusToDesc(b)
+		status.URLPath = fmt.Sprintf("/build/%s", b.Id)
 
 		switch b.Status {
 		case evergreen.BuildSucceeded:
-			status.ghStatus = githubStatusSuccess
+			status.State = githubStatusSuccess
 
 		case evergreen.BuildFailed:
-			status.ghStatus = githubStatusFailure
+			status.State = githubStatusFailure
 
 		default:
-			j.AddError(errors.New("build status is pending; refusing to update status"))
-			return
+			return errors.New("build status is pending; refusing to update status")
 		}
 	}
 
 	patchDoc, err := patch.FindOne(patch.ByVersion(patchVersion))
 	if err != nil {
-		j.AddError(err)
+		return err
 	}
 	if patchDoc == nil {
-		j.AddError(errors.New("can't find patch"))
-	}
-	if j.HasErrors() {
-		return
+		return errors.New("can't find patch")
 	}
 
 	if j.UpdateType == "patch" {
-		status.urlPath = fmt.Sprintf("/version/%s", patchVersion)
-		status.context = "evergreen"
+		status.URLPath = fmt.Sprintf("/version/%s", patchVersion)
+		status.Context = "evergreen"
 
 		switch patchDoc.Status {
 		case evergreen.PatchSucceeded:
-			status.ghStatus = githubStatusSuccess
-			status.description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+			status.State = githubStatusSuccess
+			status.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
 
 		case evergreen.PatchFailed:
-			status.ghStatus = githubStatusFailure
-			status.description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+			status.State = githubStatusFailure
+			status.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
 
 		case evergreen.PatchCreated:
-			status.ghStatus = githubStatusPending
-			status.description = "preparing to run tasks"
+			status.State = githubStatusPending
+			status.Description = "preparing to run tasks"
 
 		case evergreen.PatchStarted:
-			status.ghStatus = githubStatusPending
-			status.description = "tasks are running"
+			status.State = githubStatusPending
+			status.Description = "tasks are running"
 
 		default:
-			j.AddError(errors.New("unknown patch status"))
-			return
+			return errors.New("unknown patch status")
 		}
 	}
 
-	status.owner = patchDoc.GithubPatchData.BaseOwner
-	status.repo = patchDoc.GithubPatchData.BaseRepo
-	status.prNumber = patchDoc.GithubPatchData.PRNumber
-	status.ref = patchDoc.GithubPatchData.HeadHash
+	status.Owner = patchDoc.GithubPatchData.BaseOwner
+	status.Repo = patchDoc.GithubPatchData.BaseRepo
+	status.PRNumber = patchDoc.GithubPatchData.PRNumber
+	status.Ref = patchDoc.GithubPatchData.HeadHash
+	return nil
 }
 
 func (j *githubStatusUpdateJob) Run() {
@@ -256,20 +252,21 @@ func (j *githubStatusUpdateJob) Run() {
 	}
 
 	status := githubStatus{}
-	j.fetch(&status)
-	if j.HasErrors() {
+	if err := j.fetch(&status); err != nil {
+		j.AddError(err)
 		return
 	}
 
-	j.sendStatusUpdate(&status)
-	if j.HasErrors() {
+	if err := j.sendStatusUpdate(&status); err != nil {
 		grip.Alert(message.Fields{
-			"message": "github API failure",
-			"job":     j.ID(),
-			"status":  status,
-			"error":   j.Error(),
+			"message":     "github API failure",
+			"job":         j.ID(),
+			"status":      status,
+			"fetch_id":    j.FetchID,
+			"update_type": j.UpdateType,
+			"error":       j.Error().Error(),
 		})
-		return
+		j.AddError(err)
 	}
 }
 
@@ -297,7 +294,7 @@ func taskStatusToDesc(b *build.Build) string {
 	}
 
 	if success != 0 && failed == 0 && systemError == 0 {
-		return "all tasks succceeded!"
+		return "all tasks succeeded!"
 	}
 	if success == 0 && (failed != 0 || systemError != 0) {
 		return "all tasks failed!"

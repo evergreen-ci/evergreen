@@ -81,11 +81,11 @@ func (s *githubStatusUpdateSuite) TestFetchForBuildPopulatesRepoInfo() {
 	s.Require().Equal(githubUpdateTypeBuild, job.UpdateType)
 
 	status := githubStatus{}
-	job.fetch(&status)
-	s.Equal("evergreen-ci", status.owner)
-	s.Equal("evergreen", status.repo)
-	s.Equal(448, status.prNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.ref)
+	s.NoError(job.fetch(&status))
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 }
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
@@ -109,17 +109,17 @@ func (s *githubStatusUpdateSuite) TestForBuild() {
 	s.Require().Equal(githubUpdateTypeBuild, job.UpdateType)
 
 	status := githubStatus{}
-	job.fetch(&status)
+	s.NoError(job.fetch(&status))
 
-	s.Equal("evergreen-ci", status.owner)
-	s.Equal("evergreen", status.repo)
-	s.Equal(448, status.prNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.ref)
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("/build/%s", s.buildDoc.Id), status.urlPath)
-	s.Equal("no tasks were run", status.description)
-	s.Equal("evergreen-testvariant", status.context)
-	s.Equal("failure", status.ghStatus)
+	s.Equal(fmt.Sprintf("/build/%s", s.buildDoc.Id), status.URLPath)
+	s.Equal("no tasks were run", status.Description)
+	s.Equal("evergreen-testvariant", status.Context)
+	s.Equal("failure", status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestForPatch() {
@@ -129,17 +129,17 @@ func (s *githubStatusUpdateSuite) TestForPatch() {
 	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
 
 	status := githubStatus{}
-	job.fetch(&status)
+	s.NoError(job.fetch(&status))
 
-	s.Equal("evergreen-ci", status.owner)
-	s.Equal("evergreen", status.repo)
-	s.Equal(448, status.prNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.ref)
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.urlPath)
-	s.Equal("finished in 10m0s", status.description)
-	s.Equal("evergreen", status.context)
-	s.Equal("failure", status.ghStatus)
+	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal("finished in 10m0s", status.Description)
+	s.Equal("evergreen", status.Context)
+	s.Equal("failure", status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestForPendingPatchStarted() {
@@ -153,17 +153,17 @@ func (s *githubStatusUpdateSuite) TestForPendingPatchStarted() {
 	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
 
 	status := githubStatus{}
-	job.fetch(&status)
+	s.NoError(job.fetch(&status))
 
-	s.Equal("evergreen-ci", status.owner)
-	s.Equal("evergreen", status.repo)
-	s.Equal(448, status.prNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.ref)
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.urlPath)
-	s.Equal("tasks are running", status.description)
-	s.Equal("evergreen", status.context)
-	s.Equal("pending", status.ghStatus)
+	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal("tasks are running", status.Description)
+	s.Equal("evergreen", status.Context)
+	s.Equal("pending", status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestForPatchCreated() {
@@ -177,17 +177,17 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
 
 	status := githubStatus{}
-	job.fetch(&status)
+	s.NoError(job.fetch(&status))
 
-	s.Equal("evergreen-ci", status.owner)
-	s.Equal("evergreen", status.repo)
-	s.Equal(448, status.prNumber)
-	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.ref)
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
-	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.urlPath)
-	s.Equal("preparing to run tasks", status.description)
-	s.Equal("evergreen", status.context)
-	s.Equal("pending", status.ghStatus)
+	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal("preparing to run tasks", status.Description)
+	s.Equal("evergreen", status.Context)
+	s.Equal("pending", status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestWithGithub() {
