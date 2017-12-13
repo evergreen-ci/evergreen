@@ -2,8 +2,10 @@ package model
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -733,35 +735,61 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 
 	// to join the test results, merge test results for all the tasks...
 	if len(params.TestNames) == 0 {
-		for i, t := range tasks {
-			err = t.MergeNewTestResults()
-			if err != nil {
-				return nil, err
-			}
-			for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
-				result := t.LocalTestResults[j]
-				if len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status) {
-					t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-				}
-			}
-			tasks[i] = t
+		out := []task.Task{}
+		taskChan := make(chan task.Task, len(tasks))
+		for _, t := range tasks {
+			taskChan <- t
 		}
-	} else { //... or if test names are specified, do a query on testresults and match up executions
-		testsQuery := formQueryFromTests(params)
-		results, err := testresult.Find(db.Query(testsQuery))
-		if err != nil {
-			return nil, err
-		}
-		for i := 0; i < len(results); i++ {
-			result := results[i]
-		taskLoop:
-			for j := 0; j < len(tasks); j++ {
-				t := tasks[j]
-				if result.TaskID == t.Id && result.Execution == t.Execution {
-					t.LocalTestResults = append(t.LocalTestResults, task.ConvertToOld(&result))
-					tasks[j] = t
-					break taskLoop
+		close(taskChan)
+		wg := sync.WaitGroup{}
+		numWorkers := runtime.NumCPU()
+		wg.Add(numWorkers)
+		resultChan := make(chan task.Task)
+		for i := 0; i < numWorkers; i++ {
+			go func() {
+				defer wg.Done()
+				for t := range taskChan {
+					err = t.MergeNewTestResults()
+					if err != nil {
+						grip.Error(errors.Wrap(err, "error merging test results"))
+					}
+					for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
+						result := t.LocalTestResults[j]
+						if len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status) {
+							t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
+						}
+					}
+					resultChan <- t
 				}
+			}()
+		}
+		doneChan := make(chan bool)
+		go func() {
+			defer close(doneChan)
+			for t := range resultChan {
+				out = append(out, t)
+			}
+		}()
+		wg.Wait()
+		close(resultChan)
+		<-doneChan
+		return out, nil
+	}
+	//... or if test names are specified, do a query on testresults and match up executions
+	testsQuery := formQueryFromTests(params)
+	results, err := testresult.Find(db.Query(testsQuery))
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(results); i++ {
+		result := results[i]
+	taskLoop:
+		for j := 0; j < len(tasks); j++ {
+			t := tasks[j]
+			if result.TaskID == t.Id && result.Execution == t.Execution {
+				t.LocalTestResults = append(t.LocalTestResults, task.ConvertToOld(&result))
+				tasks[j] = t
+				break taskLoop
 			}
 		}
 	}

@@ -1124,6 +1124,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 		}
 		assert.NoError(testresult.InsertManyByTaskIDAndExecution(tests, t.Id, t.Execution))
 	}
+
 	// test querying on task names
 	tasksToFind := []string{}
 	for i := 0; i < numTasks; i++ {
@@ -1145,8 +1146,32 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	elapsedV2 := time.Since(startTime)
 	assert.NoError(err)
 	assert.Equal(len(resultsV1), len(resultsV2))
-	grip.Infof("elapsed time for aggregation test history query: %s", elapsedV1.String())
-	grip.Infof("elapsed time for non-aggregation test history query: %s", elapsedV2.String())
+	grip.Infof("elapsed time for aggregation test history query on task names: %s", elapsedV1.String())
+	grip.Infof("elapsed time for non-aggregation test history query on task names: %s", elapsedV2.String())
+
+	// test querying on test names
+	testsToFind := []string{}
+	for i := 0; i < maxNumTests; i++ {
+		testsToFind = append(tasksToFind, fmt.Sprintf("test_%d", i))
+	}
+	params = &TestHistoryParameters{
+		TestNames: testsToFind,
+		Project:   project,
+		Sort:      1,
+		Limit:     5000,
+	}
+	assert.NoError(params.SetDefaultsAndValidate())
+	startTime = time.Now()
+	resultsV1, err = GetTestHistory(params)
+	elapsedV1 = time.Since(startTime)
+	assert.NoError(err)
+	startTime = time.Now()
+	resultsV2, err = GetTestHistoryV2(params)
+	elapsedV2 = time.Since(startTime)
+	assert.NoError(err)
+	assert.Equal(len(resultsV1), len(resultsV2))
+	grip.Infof("elapsed time for aggregation test history query on test names: %s", elapsedV1.String())
+	grip.Infof("elapsed time for non-aggregation test history query on test names: %s", elapsedV2.String())
 
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
 		t, "Error clearing collections")
