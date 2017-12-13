@@ -173,9 +173,6 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 			}
 		}
 	}
-	if len(patchContent) > SizeLimit {
-		return nil, errors.Errorf("patch size cannot exceed %d bytes; was %d bytes", SizeLimit, len(patchContent))
-	}
 
 	return &cliIntent{
 		DocumentID:    bson.NewObjectId(),

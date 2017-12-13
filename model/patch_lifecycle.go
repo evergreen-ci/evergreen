@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -183,11 +184,32 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		if patchPart.ModuleName != "" {
 			continue
 		}
-		// write patch file
-		patchFilePath, err := util.WriteToTempFile(patchPart.PatchSet.Patch)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not write patch file")
+
+		var patchFilePath string
+		var err error
+		if patchPart.PatchSet.Patch == "" {
+			reader, err := db.GetGridFile(patch.GridFSPrefix, patchPart.PatchSet.PatchFileId)
+			if err != nil {
+				return nil, errors.Wrap(err, "Can't fetch patch file from gridfs")
+			}
+			defer reader.Close()
+			bytes, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return nil, errors.Wrap(err, "Can't read patch file contents from gridfs")
+			}
+
+			patchFilePath, err = util.WriteToTempFile(string(bytes))
+			if err != nil {
+				return nil, errors.Wrap(err, "could not write temporary patch file")
+			}
+
+		} else {
+			patchFilePath, err = util.WriteToTempFile(patchPart.PatchSet.Patch)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not write temporary patch file")
+			}
 		}
+
 		defer os.Remove(patchFilePath)
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
