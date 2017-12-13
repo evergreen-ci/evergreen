@@ -163,7 +163,7 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 		return errors.New("nil response from github")
 	}
 
-	return c.Resolve()
+	return nil
 }
 
 func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
