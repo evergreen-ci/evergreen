@@ -255,6 +255,10 @@ type SlackConfig struct {
 	Level   string             `yaml:"level"`
 }
 
+type GithubPRTesting struct {
+	MemberOf string `yaml:"member_of"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	Database            DBSettings                `yaml:"database"`
@@ -285,6 +289,7 @@ type Settings struct {
 	LoggerConfig        LoggerConfig              `yaml:"logger_config"`
 	LogPath             string                    `yaml:"log_path"`
 	PprofPort           string                    `yaml:"pprof_port"`
+	GithubPRTesting     GithubPRTesting           `yaml:"github_pr_testing"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.

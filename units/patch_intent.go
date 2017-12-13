@@ -103,7 +103,7 @@ func (j *patchIntentProcessor) Run() {
 	if j.HasErrors() {
 		j.logger.Error(message.Fields{
 			"message": "Failed to build patch document",
-			"errors":  j.Error(),
+			"errors":  j.Error().Error(),
 		})
 		return
 	}
@@ -111,12 +111,10 @@ func (j *patchIntentProcessor) Run() {
 	j.user, err = user.FindOne(user.ById(patchDoc.Author))
 	if err != nil {
 		j.AddError(err)
+		return
 	}
 	if j.user == nil {
 		j.AddError(errors.New("Can't find patch author"))
-	}
-
-	if j.HasErrors() {
 		return
 	}
 
@@ -182,6 +180,12 @@ func (j *patchIntentProcessor) Run() {
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
 			j.AddError(err)
+		}
+
+		// UGH!!!!
+		if j.Intent.GetType() == patch.GithubIntentType {
+			job := NewGithubStatusUpdateJobForPatch(patchDoc.Version)
+			job.Run()
 		}
 	}
 }
@@ -252,6 +256,12 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
+	mustBeMemberOfOrg := j.env.Settings().GithubPRTesting.MemberOf
+	if mustBeMemberOfOrg == "" {
+		err = errors.New("Github PR testing not configured correctly; requiring authenticating organization")
+		return
+	}
+
 	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo)
 	if err != nil {
@@ -271,7 +281,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("Could not find project vars for project '%s'", j.projectRef.Identifier)
 	}
 
-	isMember, err := checkOrgMembership(patchDoc, patchDoc.GithubPatchData.BaseOwner,
+	isMember, err := checkOrgMembership(patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		return err
@@ -308,7 +318,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	return nil
 }
 
-func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubOauthToken string) (bool, error) {
+func checkOrgMembership(patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -331,7 +341,7 @@ func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubO
 		return false, errors.New("github rate limit would be exceeded")
 	}
 
-	isMember, _, err := client.Organizations.IsMember(context.Background(), organization, githubUser)
+	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, githubUser)
 	if !isMember || err != nil {
 		return false, err
 	}
