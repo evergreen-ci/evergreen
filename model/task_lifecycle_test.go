@@ -971,7 +971,7 @@ func TestGetstepback(t *testing.T) {
 }
 
 func TestFailedTaskRestart(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) //nolint
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
 		"Error clearing task and build collections")
 	userName := "testUser"
