@@ -19,7 +19,7 @@ type BuildCompletionHandler struct {
 func (self *BuildCompletionHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciCompletionPreface
-	if key.NotificationRequester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(key.NotificationRequester) {
 		preface = patchCompletionPreface
 	}
 	triggeredNotifications, err :=

@@ -595,7 +595,7 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 		changeInfo.Revision = v.Revision
 		changeInfo.Email = v.AuthorEmail
 
-	case evergreen.PatchVersionRequester:
+	case evergreen.PatchVersionRequester, evergreen.GithubPRRequester:
 		// get the author and description from the patch request
 		patch, err := patch.FindOne(patch.ByVersion(v.Id))
 		if err != nil {

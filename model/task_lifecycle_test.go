@@ -347,7 +347,8 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		So(v.Insert(), ShouldBeNil)
 		Convey("updating the build for a task should update the build's status and the version's status", func() {
 			var err error
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+			updates := StatusChanges{}
+			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
@@ -405,7 +406,9 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should not fail if there are no failed test", func() {
 			reset()
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
+			updates := StatusChanges{}
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -421,6 +424,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		Convey("task should not fail if there are only passing or silently failing tests", func() {
 			reset()
+			updates := StatusChanges{}
 			err := testTask.SetResults([]task.TestResult{
 				{
 					Status: evergreen.TestSilentlyFailedStatus,
@@ -433,7 +437,8 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			})
 			So(err, ShouldBeNil)
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -453,10 +458,12 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 					Status: evergreen.TestFailedStatus,
 				},
 			})
+			updates := StatusChanges{}
 
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
@@ -473,11 +480,14 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 					Status: evergreen.TestFailedStatus,
 				},
 			})
+			updates := StatusChanges{}
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
@@ -494,49 +504,48 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 }
 
 func TestMarkEnd(t *testing.T) {
-	Convey("With a task and a build", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
-			"Error clearing task and build collections")
-		displayName := "testName"
-		userName := "testUser"
-		b := &build.Build{
-			Id:      "buildtest",
-			Status:  evergreen.BuildStarted,
-			Version: "abc",
-		}
-		p := &Project{
-			Identifier: "sample",
-		}
-		v := &version.Version{
-			Id:     b.Version,
-			Status: evergreen.VersionStarted,
-		}
-		testTask := task.Task{
-			Id:          "testone",
-			DisplayName: displayName,
-			Activated:   true,
-			BuildId:     b.Id,
-			Project:     "sample",
-			Status:      evergreen.TaskStarted,
-		}
+	assert := assert.New(t) //nolint
+	assert.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection),
+		"Error clearing task and build collections")
 
-		b.Tasks = []build.TaskCache{
-			{
-				Id:     testTask.Id,
-				Status: evergreen.TaskStarted,
-			},
-		}
-		So(b.Insert(), ShouldBeNil)
-		So(testTask.Insert(), ShouldBeNil)
-		So(v.Insert(), ShouldBeNil)
-		Convey("task, build and version status will be updated properly", func() {
-			details := apimodels.TaskEndDetail{
-				Status: evergreen.TaskFailed,
-			}
-			So(MarkEnd(testTask.Id, userName, time.Now(), &details, p, false), ShouldBeNil)
+	displayName := "testName"
+	userName := "testUser"
+	b := &build.Build{
+		Id:      "buildtest",
+		Status:  evergreen.BuildStarted,
+		Version: "abc",
+	}
+	p := &Project{
+		Identifier: "sample",
+	}
+	v := &version.Version{
+		Id:     b.Version,
+		Status: evergreen.VersionStarted,
+	}
+	testTask := task.Task{
+		Id:          "testone",
+		DisplayName: displayName,
+		Activated:   true,
+		BuildId:     b.Id,
+		Project:     "sample",
+		Status:      evergreen.TaskStarted,
+	}
 
-		})
-	})
+	b.Tasks = []build.TaskCache{
+		{
+			Id:     testTask.Id,
+			Status: evergreen.TaskStarted,
+		},
+	}
+	assert.NoError(b.Insert())
+	assert.NoError(testTask.Insert())
+	assert.NoError(v.Insert())
+	updates := StatusChanges{}
+	details := apimodels.TaskEndDetail{
+		Status: evergreen.TaskFailed,
+	}
+	assert.NoError(MarkEnd(testTask.Id, userName, time.Now(), &details, p, false, &updates))
+	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 }
 
 func TestTryResetTask(t *testing.T) {
@@ -755,14 +764,15 @@ func TestMarkStart(t *testing.T) {
 		So(testTask.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
 
-		var err error
-
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
-			So(MarkStart(testTask.Id), ShouldBeNil)
+			updates := StatusChanges{}
+			err := MarkStart(testTask.Id, &updates)
+			So(updates.BuildNewStatus, ShouldBeEmpty)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(err, ShouldBeNil)
 			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
-			var err error
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildStarted)

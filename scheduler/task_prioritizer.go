@@ -228,7 +228,7 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 			priorityTasks = append(priorityTasks, task)
 		case task.Requester == evergreen.RepotrackerVersionRequester:
 			repoTrackerTasks = append(repoTrackerTasks, task)
-		case task.Requester == evergreen.PatchVersionRequester:
+		case evergreen.IsPatchRequester(task.Requester):
 			patchTasks = append(patchTasks, task)
 		default:
 			grip.Error(message.Fields{

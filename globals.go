@@ -140,6 +140,7 @@ const (
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
+	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
 )
 
@@ -183,4 +184,8 @@ func FindEvergreenHome() string {
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
 	return caller == DefaultTaskActivator || caller == APIServerTaskActivator
+}
+
+func IsPatchRequester(requester string) bool {
+	return requester == PatchVersionRequester || requester == GithubPRRequester
 }

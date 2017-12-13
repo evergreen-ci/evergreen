@@ -131,6 +131,10 @@ func (c *cliIntent) ShouldFinalizePatch() bool {
 	return c.Finalize
 }
 
+func (g *cliIntent) RequesterIdentity() string {
+	return evergreen.PatchVersionRequester
+}
+
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	return &Patch{

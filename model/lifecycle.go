@@ -417,7 +417,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	}
 
 	rev := v.Revision
-	if v.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
 
@@ -509,7 +509,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		task.Populate(taskSpec)
 
 		if ((task.Patchable != nil && !*task.Patchable) || task.Name == evergreen.PushStage) && //TODO remove PushStage
-			b.Requester == evergreen.PatchVersionRequester {
+			evergreen.IsPatchRequester(b.Requester) {
 			continue
 		}
 		if createAll || util.StringSliceContains(taskNames, task.Name) {
@@ -649,7 +649,7 @@ func setNumDepsRec(task *task.Task, idToTasks map[string]*task.Task, seen map[st
 
 // TryMarkPatchBuildFinished attempts to mark a patch as finished if all
 // the builds for the patch are finished as well
-func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
+func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *StatusChanges) error {
 	v, err := version.FindOne(version.ById(b.Version))
 	if err != nil {
 		return errors.WithStack(err)
@@ -679,8 +679,12 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 	if !patchCompleted {
 		return nil
 	}
+	if err := patch.TryMarkFinished(v.Id, finishTime, status); err != nil {
+		return errors.WithStack(err)
+	}
+	updates.PatchNewStatus = status
 
-	return errors.WithStack(patch.TryMarkFinished(v.Id, finishTime, status))
+	return nil
 }
 
 // createOneTask is a helper to create a single task.

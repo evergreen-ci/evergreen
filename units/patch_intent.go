@@ -175,7 +175,7 @@ func (j *patchIntentProcessor) Run() {
 	}
 
 	if j.Intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(patchDoc, githubOauthToken); err != nil {
+		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
 			j.AddError(err)
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
@@ -23,6 +24,10 @@ const (
 
 // Intent represents an intent to create a patch build and is processed by an amboy queue.
 type Intent interface {
+	// ID returns an identifier such that the tuple
+	// (intent type, ID()) is unique in the collection.
+	ID() string
+
 	// Insert inserts a patch intent in the database.
 	Insert() error
 
@@ -35,10 +40,6 @@ type Intent interface {
 	// GetType returns the patch intent, e.g., GithubIntentType.
 	GetType() string
 
-	// ID returns an identifier such that the tuple
-	// (intent type, ID()) is unique in the collection.
-	ID() string
-
 	// NewPatch creates a patch from the intent
 	NewPatch() *Patch
 
@@ -48,6 +49,11 @@ type Intent interface {
 
 	// GetAlias defines the variants and tasks this intent should run on.
 	GetAlias() string
+
+	// RequesterIdentity supplies a valid requester type, that is recorded
+	// in patches, versions, builds, and tasks to denote the origin of the
+	// patch
+	RequesterIdentity() string
 }
 
 // githubIntent represents an intent to create a patch build as a result of a
@@ -187,6 +193,10 @@ func (g *githubIntent) ID() string {
 
 func (g *githubIntent) ShouldFinalizePatch() bool {
 	return true
+}
+
+func (g *githubIntent) RequesterIdentity() string {
+	return evergreen.GithubPRRequester
 }
 
 // FindUnprocessedGithubIntents finds all patch intents that have not yet been processed.
