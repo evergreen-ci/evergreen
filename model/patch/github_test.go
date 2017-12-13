@@ -3,6 +3,7 @@ package patch
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -63,6 +64,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
+	s.Equal(evergreen.GithubPRRequester, intent.RequesterIdentity())
 }
 
 func (s *GithubSuite) TestInsert() {

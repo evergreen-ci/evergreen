@@ -54,12 +54,14 @@ func (status *githubStatus) Valid() bool {
 		status.ref == "" || status.urlPath == "" || status.context == "" {
 		return false
 	}
-	if status.ghStatus != githubStatusError && status.ghStatus != githubStatusFailure &&
-		status.ghStatus != githubStatusPending && status.ghStatus != githubStatusSuccess {
-		return false
+
+	switch status.ghStatus {
+	case githubStatusError, githubStatusFailure, githubStatusPending, githubStatusSuccess:
+		return true
+
 	}
 
-	return true
+	return false
 }
 
 type githubStatusUpdateJob struct {
@@ -90,7 +92,7 @@ func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	job.FetchID = buildID
 	job.UpdateType = githubUpdateTypeBuild
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%d", githubStatusUpdateJobName, job.UpdateType, buildID, time.Now()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, buildID, time.Now().String()))
 	return job
 }
 
@@ -105,7 +107,7 @@ func NewGithubStatusUpdateJobForPatch(version string) amboy.Job {
 	job.FetchID = version
 	job.UpdateType = githubUpdateTypePatch
 
-	job.SetID(fmt.Sprintf("%s:%s-%s-%d", githubStatusUpdateJobName, job.UpdateType, version, time.Now()))
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
 
 	return job
 }
@@ -263,6 +265,8 @@ func (j *githubStatusUpdateJob) Run() {
 	if j.HasErrors() {
 		grip.Alert(message.Fields{
 			"message": "github API failure",
+			"job":     j.ID(),
+			"status":  status,
 			"error":   j.Error(),
 		})
 		return

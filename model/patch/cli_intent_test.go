@@ -3,6 +3,7 @@ package patch
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -53,6 +54,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.True(intent.ShouldFinalizePatch())
 	s.Equal(CliIntentType, intent.GetType())
 	s.False(intent.IsProcessed())
+	s.Equal(evergreen.PatchVersionRequester, intent.RequesterIdentity())
 
 	cIntent, ok := intent.(*cliIntent)
 	s.True(ok)
