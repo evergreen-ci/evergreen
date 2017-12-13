@@ -33,7 +33,6 @@ func (s *GithubSuite) SetupSuite() {
 	s.user = "octocat"
 	s.baseRepo = "evergreen-ci/evergreen"
 	s.headRepo = "octocat/evergreen"
-	s.ref = "blah"
 }
 
 func (s *GithubSuite) SetupTest() {
@@ -41,47 +40,43 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent("1", 0, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, s.url)
+	intent, err := NewGithubIntent("1", 0, s.baseRepo, s.headRepo, s.hash, s.user, s.url)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.pr, "", s.headRepo, s.ref, s.hash, s.user, s.url)
+	intent, err = NewGithubIntent("2", s.pr, "", s.headRepo, s.hash, s.user, s.url)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, "", s.ref, s.hash, s.user, s.url)
+	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, "", s.hash, s.user, s.url)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, "", s.hash, s.user, s.url)
+	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, "", s.user, s.url)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, s.ref, "", s.user, s.url)
+	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, s.hash, "", s.url)
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, "", s.url)
+	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "")
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, "")
+	intent, err = NewGithubIntent("3", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "foo")
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, "foo")
+	intent, err = NewGithubIntent("3", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "https://example.com/1.patch")
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, "https://example.com/1.patch")
+	intent, err = NewGithubIntent("3", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "http://example.com/1.diff")
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, "http://example.com/1.diff")
-	s.Nil(intent)
-	s.Error(err)
-
-	intent, err = NewGithubIntent("4", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, s.url)
+	intent, err = NewGithubIntent("4", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
@@ -91,7 +86,6 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(s.baseRepo, githubIntent.BaseRepoName)
 	s.Equal(s.headRepo, githubIntent.HeadRepoName)
 	s.Equal(s.pr, githubIntent.PRNumber)
-	s.Equal(s.ref, githubIntent.HeadRepoRef)
 	s.Equal(s.user, githubIntent.User)
 	s.Equal(s.hash, githubIntent.HeadHash)
 	s.Equal(s.url, githubIntent.DiffURL)
@@ -102,7 +96,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent("1", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, s.url)
+	intent, err := NewGithubIntent("1", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -115,7 +109,6 @@ func (s *GithubSuite) TestInsert() {
 	s.Equal(s.baseRepo, found.BaseRepoName)
 	s.Equal(s.headRepo, found.HeadRepoName)
 	s.Equal(s.pr, found.PRNumber)
-	s.Equal(s.ref, found.HeadRepoRef)
 	s.Equal(s.user, found.User)
 	s.Equal(s.hash, found.HeadHash)
 	s.Equal(s.url, found.DiffURL)
@@ -124,7 +117,7 @@ func (s *GithubSuite) TestInsert() {
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent("1", s.pr, s.baseRepo, s.headRepo, s.ref, s.hash, s.user, s.url)
+	intent, err := NewGithubIntent("1", s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -143,7 +136,6 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Equal(s.baseRepo, intents[0].BaseRepoName)
 	s.Equal(s.headRepo, intents[0].HeadRepoName)
 	s.Equal(s.pr, intents[0].PRNumber)
-	s.Equal(s.ref, intents[0].HeadRepoRef)
 	s.Equal(s.user, intents[0].User)
 	s.Equal(s.hash, intents[0].HeadHash)
 	s.Equal(s.url, intents[0].DiffURL)

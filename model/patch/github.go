@@ -75,9 +75,6 @@ type githubIntent struct {
 	// to be merged
 	HeadRepoName string `bson:"head_repo_name"`
 
-	// HeadRepoRef is the head git ref that will be merged for testing
-	HeadRepoRef string `bson:"head_repo_ref"`
-
 	// PRNumber is the pull request number in GitHub.
 	PRNumber int `bson:"pr_number"`
 
@@ -112,7 +109,6 @@ var (
 	createdAtKey    = bsonutil.MustHaveTag(githubIntent{}, "CreatedAt")
 	baseRepoNameKey = bsonutil.MustHaveTag(githubIntent{}, "BaseRepoName")
 	headRepoNameKey = bsonutil.MustHaveTag(githubIntent{}, "HeadRepoName")
-	headRepoRefKey  = bsonutil.MustHaveTag(githubIntent{}, "HeadRepoRef")
 	prNumberKey     = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
 	userKey         = bsonutil.MustHaveTag(githubIntent{}, "User")
 	headHashKey     = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
@@ -123,7 +119,7 @@ var (
 )
 
 // NewGithubIntent return a new github patch intent.
-func NewGithubIntent(msgDeliveryID string, prNumber int, baseRepoName, headRepoName, headRepoRef, headHash, user, url string) (Intent, error) {
+func NewGithubIntent(msgDeliveryID string, prNumber int, baseRepoName, headRepoName, headHash, user, url string) (Intent, error) {
 	if msgDeliveryID == "" {
 		return nil, errors.New("Unique msg id cannot be empty")
 	}
@@ -132,9 +128,6 @@ func NewGithubIntent(msgDeliveryID string, prNumber int, baseRepoName, headRepoN
 	}
 	if headRepoName == "" || len(strings.Split(headRepoName, "/")) != 2 {
 		return nil, errors.New("Head repo name is invalid")
-	}
-	if headRepoRef == "" {
-		return nil, errors.New("Head repo ref is invalid")
 	}
 	if prNumber == 0 {
 		return nil, errors.New("PR number must not be 0")
@@ -157,7 +150,6 @@ func NewGithubIntent(msgDeliveryID string, prNumber int, baseRepoName, headRepoN
 		MsgID:        msgDeliveryID,
 		BaseRepoName: baseRepoName,
 		HeadRepoName: headRepoName,
-		HeadRepoRef:  headRepoRef,
 		PRNumber:     prNumber,
 		User:         user,
 		HeadHash:     headHash,
