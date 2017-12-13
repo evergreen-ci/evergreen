@@ -241,14 +241,14 @@ func (g *githubIntent) NewPatch() *Patch {
 		Author:      "github_patch_user",
 		Status:      evergreen.PatchCreated,
 		GithubPatchData: GithubPatch{
-			PRNumber:       g.PRNumber,
-			BaseOwner:      baseRepo[0],
-			BaseRepository: baseRepo[1],
-			HeadOwner:      headRepo[0],
-			HeadRepository: headRepo[1],
-			HeadHash:       g.HeadHash,
-			Author:         g.User,
-			PatchURL:       g.DiffURL,
+			PRNumber:  g.PRNumber,
+			BaseOwner: baseRepo[0],
+			BaseRepo:  baseRepo[1],
+			HeadOwner: headRepo[0],
+			HeadRepo:  headRepo[1],
+			HeadHash:  g.HeadHash,
+			Author:    g.User,
+			DiffURL:   g.DiffURL,
 		},
 	}
 	return patchDoc

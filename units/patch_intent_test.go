@@ -172,7 +172,6 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NoError(err)
 	s.Require().NotNil(patchDoc)
 
-	// patchdoc itself
 	s.verifyPatchDoc(patchDoc, j.PatchID)
 	s.Len(patchDoc.BuildVariants, 4)
 	s.Contains(patchDoc.BuildVariants, "ubuntu1604")
@@ -186,16 +185,16 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
 	s.Equal(s.user, patchDoc.Author)
-	s.Equal(s.patchURL, patchDoc.GithubPatchData.PatchURL)
+	s.Equal(s.patchURL, patchDoc.GithubPatchData.DiffURL)
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
-	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepository)
+	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepo)
 	headRepo := strings.Split(s.headRepo, "/")
 	s.Equal(headRepo[0], patchDoc.GithubPatchData.HeadOwner)
-	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepository)
+	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", patchDoc.Githash)
 
-	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
+	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester, j.user.Email())
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }

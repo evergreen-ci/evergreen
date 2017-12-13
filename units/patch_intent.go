@@ -220,7 +220,8 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
 	}
 
-	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, j.projectRef.Owner, j.projectRef.Repo, patchDoc.Githash)
+	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, j.projectRef.Owner,
+		j.projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
 			patchDoc.Githash, j.projectRef.Identifier)
@@ -251,14 +252,15 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
-	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
+	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner,
+		patchDoc.GithubPatchData.BaseRepo)
 	if err != nil {
 		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'",
-			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo)
 	}
 	if j.projectRef == nil {
 		return errors.Errorf("Could not find project ref for repo '%s/%s'",
-			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository)
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo)
 	}
 
 	projectVars, err := model.FindOneProjectVars(j.projectRef.Identifier)
@@ -278,7 +280,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("user is not member of %s", patchDoc.GithubPatchData.BaseOwner)
 	}
 
-	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.PatchURL)
+	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.DiffURL)
 	if err != nil {
 		return err
 	}
@@ -335,7 +337,7 @@ func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubO
 	}
 
 	commits, _, err := client.PullRequests.ListCommits(ctx, patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepository, patchDoc.GithubPatchData.PRNumber, nil)
+		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber, nil)
 	if err != nil {
 		return isMember, err
 	}
@@ -347,7 +349,7 @@ func checkOrgMembership(patchDoc *patch.Patch, organization, githubUser, githubO
 	}
 
 	commit, _, err := client.Repositories.GetCommit(ctx,
-		patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepository, *commits[0].SHA)
+		patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, *commits[0].SHA)
 	if err != nil {
 		return isMember, err
 	}
