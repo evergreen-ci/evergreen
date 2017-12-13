@@ -85,7 +85,7 @@ func (s *shellExecuteCommandSuite) TestErrorIfWorkingDirectoryDoesntExist() {
 
 func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 	cmd := &shellExec{
-		Script:     "sleep 10",
+		Script:     "sleep 60",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
 	ctx, cancel := context.WithTimeout(s.ctx, time.Millisecond)
