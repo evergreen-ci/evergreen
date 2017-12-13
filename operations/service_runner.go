@@ -43,7 +43,7 @@ func handcrankRunner() cli.Command {
 	return cli.Command{
 		Name:    "handcrank",
 		Aliases: []string{"run-single", "single"},
-		Flags: configFlags(cli.StringFlag{
+		Flags: serviceConfigFlags(cli.StringFlag{
 			Name:    "runner",
 			Alaises: []string{"r", "n", "name", "single"},
 		}),
@@ -78,7 +78,7 @@ func startRunnerService() cli.Command {
 	return cli.Command{
 		Name:   "runner",
 		Usage:  "run evergreen background worker",
-		Flags:  configFlags(),
+		Flags:  serviceConfigFlags(),
 		Before: setupRunner(),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)

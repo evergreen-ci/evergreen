@@ -32,7 +32,7 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 		Name:    "banner",
 		Aliases: []string{"set-banner"},
 		Usage:   "modify the contents of the site-wide display banner",
-		Flags: []cli.Flag{
+		Flags: clientConfigFlags(
 			cli.StringFlag{
 				Name:    messageFlagName,
 				Aliases: []string{"m"},
@@ -46,8 +46,7 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 			cli.BoolFlag{
 				Name:  clearFlagName,
 				Usage: "clear the content of the banner",
-			},
-		},
+			}),
 		Before: requireConfig(
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) != "" && c.Bool(clearFlagName) {
@@ -65,24 +64,35 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 		Action: func(c *cli.Context) error {
 			themeName := c.String(themeFlagName)
 			msgContent := c.String(messageFlagName)
+			confPath := c.String(confFlagName)
 
 			var theme admin.BannerTheme
 			var ok bool
-			if c.Theme != "" {
+			if themeName != "" {
 				if ok, theme = admin.IsValidBannerTheme(themeName); !ok {
 					return fmt.Errorf("%s is not a valid banner theme", themeName)
 				}
 			}
 
-			if c.disableNetworkForTest {
+			var err error
+			confPath, err := findConfigFilePath(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem finding configuration file")
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSetttings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			if disableNetworkForTest {
 				return nil
 			}
 
-			ctx := context.Background()
-			client, settings, err := getAPIV2Client(ctx, c.GlobalOpts)
-			if err != nil {
-				return err
-			}
+			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
 
 			client.SetAPIUser(settings.User)
@@ -90,7 +100,14 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 
 			return errors.Wrap(client.SetBannerMessage(ctx, msgContent, theme),
 				"problem setting the site-wide banner message")
-
 		},
 	}
 }
+
+func adminDisableService() cli.Command {
+	return cli.Command{
+		Name:  "disable-service",
+		Usage: "disable a background service",
+	}
+}
+func adminEnableService() cli.Command {}

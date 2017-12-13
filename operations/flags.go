@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/urfave/cli"
 )
@@ -13,14 +12,22 @@ const (
 	confFlagName = "conf"
 )
 
-func configFlags(flags ...cli.Flag) []cli.Flag {
-	return append(flags, cli.Flag{
-		cli.StringFlag{
-			Name:    confFlagName,
-			Usage:   "path to the service configuration file",
-			Default: evergreen.DefaultServiceConfigurationFileName,
-		},
+func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:    confFlagName,
+		Aliases: []string{"c", "config"},
+		Usage:   "path to the service configuration file",
+		Default: evergreen.DefaultServiceConfigurationFileName,
 	})
+}
+
+func clientConfigFlags(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:    confFlagName,
+		Aliases: []string{"c", "config"},
+		Usage:   "path to the service configuration file, defaults to ~/.evergreen.yml",
+	})
+
 }
 
 func requireConfig(ops ...func(c *cli.Context) error) cli.BeforeFunc {
@@ -42,5 +49,3 @@ func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 		return catcher.Resolve()
 	}
 }
-
-func loadSettings(path string) *model.CLISettings

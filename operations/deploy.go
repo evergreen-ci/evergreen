@@ -39,7 +39,7 @@ func migration() cli.Command {
 		Name:    "anser",
 		Aliases: []string{"migrations", "migrate"},
 		Usage:   "database migration tool",
-		Flags: configFlags(
+		Flags: serviceConfigFlags(
 			cli.BoolFlag{
 				Name:    "dry-run",
 				Aliases: []string{"n"},

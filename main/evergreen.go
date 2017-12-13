@@ -36,6 +36,7 @@ func buildApp() *cli.App {
 		operations.Service(),
 		operations.Agent(),
 		operations.Admin(),
+		operations.Host(),
 	}
 
 	userHome, err := homedir.Dir()

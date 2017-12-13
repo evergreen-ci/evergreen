@@ -24,7 +24,7 @@ func startWebService() cli.Command {
 	return cli.Command{
 		Name:  "web",
 		Usage: "start web services for API and UI",
-		Flags: configFlags(),
+		Flags: serviceConfigFlags(),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 

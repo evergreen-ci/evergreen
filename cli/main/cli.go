@@ -39,11 +39,6 @@ func main() {
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: opts})
 	parser.AddCommand("keys", "manage your public keys", "", &cli.PublicKeyCommand{GlobalOpts: opts})
 
-	admin, _ := parser.AddCommand("admin", "administer evergreen deployment", "", &struct{}{})
-	admin.AddCommand("banner", "modify content of site-wide display banner", "", &cli.AdminBannerCommand{GlobalOpts: opts})
-	admin.AddCommand("disable-service", "disable component services", "", &cli.AdminDisableServiceCommand{GlobalOpts: opts})
-	admin.AddCommand("enable-service", "enable component services", "", &cli.AdminEnableServiceCommand{GlobalOpts: opts})
-
 	host, _ := parser.AddCommand("host", "host-related commands", "", &struct{}{})
 	host.AddCommand("create", "spawn a host", "", &cli.HostCreateCommand{GlobalOpts: opts})
 	host.AddCommand("list", "list hosts", "", &cli.HostListCommand{GlobalOpts: opts})
@@ -51,6 +46,11 @@ func main() {
 	host.AddCommand("status", "return the status of a host", "", &cli.HostStatusCommand{GlobalOpts: opts})
 	host.AddCommand("setup", "run a setup script on a host", "", &cli.HostSetupCommand{})
 	host.AddCommand("teardown", "run a teardown script on a host", "", &cli.HostTeardownCommand{})
+
+	admin, _ := parser.AddCommand("admin", "administer evergreen deployment", "", &struct{}{})
+	admin.AddCommand("banner", "modify content of site-wide display banner", "", &cli.AdminBannerCommand{GlobalOpts: opts})
+	admin.AddCommand("disable-service", "disable component services", "", &cli.AdminDisableServiceCommand{GlobalOpts: opts})
+	admin.AddCommand("enable-service", "enable component services", "", &cli.AdminEnableServiceCommand{GlobalOpts: opts})
 
 	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
 
