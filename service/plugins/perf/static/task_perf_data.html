@@ -81,8 +81,6 @@
       background-color: #eee;
     }
     .perf-trendchart svg{
-      padding-left:60px;
-      padding-top:10px;
     }
     .bar-highlighted {
       color: green;
@@ -236,7 +234,7 @@
           <div class="col-lg-1">
             <div>
               <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
-              <div>ops per sec: <b>[[hoverSamples[k].ops_per_sec | number:0]]</b> </div>
+              <div>ops per sec: <b>[[hoverSamples[k].ops_per_sec | number:0]]</b></div>
               <div ng-show="!comparePerfSample">
                 <button ng-click="addComparisonHash(hoverSamples[k].revision)">Compare</button>
               </div>
