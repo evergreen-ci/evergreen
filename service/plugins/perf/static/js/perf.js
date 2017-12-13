@@ -55,8 +55,6 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
 
   $scope.syncHash = function(tab){
     var hash = {}
-    if($location.hash().length > 0){
-      hash = JSON.parse(decodeURIComponent($location.hash()))
     var locationHash = decodeURIComponent($location.hash());
     if(locationHash.length > 0) {
       hash = JSON.parse(locationHash)
