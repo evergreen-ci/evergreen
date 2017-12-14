@@ -50,7 +50,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
-		job := units.NewGithubStatusUpdateJobForPatch(t.Version)
+		job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
 		if err := as.queue.Put(job); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
 			return
@@ -159,8 +159,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if updates.PatchNewStatus == evergreen.PatchFailed || updates.PatchNewStatus == evergreen.PatchSucceeded {
-			job := units.NewGithubStatusUpdateJobForPatch(t.Version)
-			if err = as.queue.Put(job); err != nil {
+			job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
+			if err := as.queue.Put(job); err != nil {
 				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
 				return
 			}

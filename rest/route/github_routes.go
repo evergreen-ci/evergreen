@@ -107,7 +107,6 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				*event.Number,
 				*event.Repo.FullName,
 				*event.PullRequest.Head.Repo.FullName,
-				*event.PullRequest.Head.Ref,
 				*event.PullRequest.Head.SHA,
 				*event.Sender.Login,
 				*event.PullRequest.DiffURL)
@@ -136,8 +135,7 @@ func validatePullRequestEvent(event *github.PullRequestEvent) bool {
 		event.Sender == nil || event.Sender.Login == nil ||
 		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
 		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
-		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil ||
-		event.PullRequest.Head.Ref == nil {
+		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil {
 		return false
 	}
 

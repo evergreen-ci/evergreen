@@ -24,13 +24,14 @@ import (
 
 const (
 	githubStatusUpdateJobName = "github-status-update"
-	githubStatusError         = "error"
-	githubStatusFailure       = "failure"
-	githubStatusPending       = "pending"
-	githubStatusSuccess       = "success"
 
-	githubUpdateTypeBuild = "build"
-	githubUpdateTypePatch = "patch"
+	githubStatusError   = "error"
+	githubStatusFailure = "failure"
+	githubStatusPending = "pending"
+	githubStatusSuccess = "success"
+
+	githubUpdateTypeBuild            = "build"
+	githubUpdateTypePatchWithVersion = "patch-with-version"
 )
 
 func init() {
@@ -96,16 +97,12 @@ func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	return job
 }
 
-func repoReference(owner, repo string, prNumber int, ref string) string {
-	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
-}
-
-// NewGithubStatusUpdateForPatch creates a job to update github's API from a
-// Patch. Status will be reported as 'evergreen'
-func NewGithubStatusUpdateJobForPatch(version string) amboy.Job {
+// NewGithubStatusUpdateForPatchWithVersion creates a job to update github's API
+// from a Patch with specified version. Status will be reported as 'evergreen'
+func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.FetchID = version
-	job.UpdateType = githubUpdateTypePatch
+	job.UpdateType = githubUpdateTypePatchWithVersion
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
 
@@ -168,7 +165,7 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 
 func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 	patchVersion := j.FetchID
-	if j.UpdateType == "build" {
+	if j.UpdateType == githubUpdateTypeBuild {
 		b, err := build.FindOne(build.ById(j.FetchID))
 		if err != nil {
 			return err
@@ -202,7 +199,7 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		return errors.New("can't find patch")
 	}
 
-	if j.UpdateType == "patch" {
+	if j.UpdateType == githubUpdateTypePatchWithVersion {
 		status.URLPath = fmt.Sprintf("/version/%s", patchVersion)
 		status.Context = "evergreen"
 
@@ -314,4 +311,8 @@ func taskStatusSubformat(n int, verb string) string {
 		return fmt.Sprintf("none %s", verb)
 	}
 	return fmt.Sprintf("%d %s, ", n, verb)
+}
+
+func repoReference(owner, repo string, prNumber int, ref string) string {
+	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
 }

@@ -123,10 +123,10 @@ func (s *githubStatusUpdateSuite) TestForBuild() {
 }
 
 func (s *githubStatusUpdateSuite) TestForPatch() {
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+	s.Require().Equal(githubUpdateTypePatchWithVersion, job.UpdateType)
 
 	status := githubStatus{}
 	s.NoError(job.fetch(&status))
@@ -147,10 +147,10 @@ func (s *githubStatusUpdateSuite) TestForPendingPatchStarted() {
 	s.patchDoc.Status = evergreen.PatchStarted
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+	s.Require().Equal(githubUpdateTypePatchWithVersion, job.UpdateType)
 
 	status := githubStatus{}
 	s.NoError(job.fetch(&status))
@@ -171,10 +171,10 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.patchDoc.Status = evergreen.PatchCreated
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+	s.Require().Equal(githubUpdateTypePatchWithVersion, job.UpdateType)
 
 	status := githubStatus{}
 	s.NoError(job.fetch(&status))
@@ -209,7 +209,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.NoError(db.ClearCollections(patch.Collection))
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	job.Run()

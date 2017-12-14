@@ -88,11 +88,11 @@ func (j *patchIntentProcessor) Run() {
 
 	patchDoc := j.Intent.NewPatch()
 	switch j.Intent.GetType() {
-	case patch.GithubIntentType:
-		j.AddError(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
-
 	case patch.CliIntentType:
 		j.AddError(j.buildCliPatchDoc(patchDoc, githubOauthToken))
+
+	case patch.GithubIntentType:
+		j.AddError(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
 
 	default:
 		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType()))
@@ -182,9 +182,9 @@ func (j *patchIntentProcessor) Run() {
 			j.AddError(err)
 		}
 
-		// UGH!!!!
+		// TODO ugly
 		if j.Intent.GetType() == patch.GithubIntentType {
-			job := NewGithubStatusUpdateJobForPatch(patchDoc.Version)
+			job := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 			job.Run()
 		}
 	}
@@ -258,7 +258,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
 	mustBeMemberOfOrg := j.env.Settings().GithubPRTesting.MemberOf
 	if mustBeMemberOfOrg == "" {
-		err = errors.New("Github PR testing not configured correctly; requiring authenticating organization")
+		err = errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
 		return
 	}
 
@@ -281,7 +281,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("Could not find project vars for project '%s'", j.projectRef.Identifier)
 	}
 
-	isMember, err := checkOrgMembership(patchDoc, mustBeMemberOfOrg,
+	isMember, err := authAndFetchPRMergeBase(patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		return err
@@ -318,7 +318,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	return nil
 }
 
-func checkOrgMembership(patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
+func authAndFetchPRMergeBase(patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -370,7 +370,7 @@ func checkOrgMembership(patchDoc *patch.Patch, requiredOrganization, githubUser,
 		return isMember, errors.New("can't find pull request branch point")
 	}
 	if commit.Parents[0].SHA == nil {
-		return isMember, errors.New("hash is missing")
+		return isMember, errors.New("parent hash is missing")
 	}
 
 	patchDoc.Githash = *commit.Parents[0].SHA

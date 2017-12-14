@@ -162,7 +162,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
-	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, "tychoish/evergreen", "EVG-2387-use-plain-logger", s.hash, "tychoish", s.patchURL)
+	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.patchURL)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
