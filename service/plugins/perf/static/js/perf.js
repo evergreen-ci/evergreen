@@ -102,13 +102,26 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
   $scope.Math = $window.Math;
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
-  $scope.tablemode = "maxthroughput";
+  $scope.tablemode = 'maxthroughput';
+  $scope.threadLevelsRadio = {
+    options: [
+      {key: 'maxonly', val: 'Max Only'},
+      {key: 'all', val: 'All'}
+    ],
+    value: 'maxonly'
+  }
 
   // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend, 3=trend-table
   $scope.perftab = 2;
   $scope.project = $window.project;
   $scope.compareHash = "ss";
   $scope.comparePerfSamples = [];
+
+  $scope.$watch('threadLevelsRadio.value', function(oldVal, newVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    $scope.redrawGraphs()
+  })
 
   $scope.$watch('currentHash', function(){
     $scope.hoverSamples = {}
@@ -383,7 +396,14 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
 
   $scope.redrawGraphs = function(){
       setTimeout(function(){
-        drawTrendGraph($scope.trendSamples, $scope.perfSample.testNames(), $scope, $scope.task.id, $scope.comparePerfSamples);
+        drawTrendGraph(
+          $scope.trendSamples,
+          $scope.perfSample.testNames(),
+          $scope,
+          $scope.task.id,
+          $scope.comparePerfSamples,
+          $scope.threadLevelsRadio.value
+        );
         drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
       }, 0)
   }
@@ -425,7 +445,16 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
           function(resp){
             var d = resp.data;
             $scope.trendSamples = new TrendSamples(d);
-            setTimeout(function(){drawTrendGraph($scope.trendSamples, $scope.perfSample.testNames(), $scope, $scope.task.id,  $scope.comparePerfSamples)},0);
+            setTimeout(function() {
+              drawTrendGraph(
+                $scope.trendSamples,
+                $scope.perfSample.testNames(),
+                $scope,
+                $scope.task.id,
+                $scope.comparePerfSamples,
+                $scope.threadLevelsRadio.value
+              )
+            }, 0);
           });
       });
 
@@ -551,8 +580,16 @@ function TestSample(sample){
   this._maxes = {};
 
   this.threads = function(){
-    if(this._threads == null){
-      this._threads = _.uniq(_.filter(_.flatten(_.map(this.sample.data.results, function(x){ return _.keys(x.results) }), true), numericFilter));
+    if (this._threads == null) {
+      this._threads = _.uniq(
+        _.filter(
+          _.flatten(
+            _.map(this.sample.data.results, function(x) {
+              return _.keys(x.results)
+            }), true
+          ), numericFilter
+        )
+      );
     }
     return this._threads;
   }
@@ -609,9 +646,13 @@ function TestSample(sample){
   }
 }
 
-var drawTrendGraph = function(trendSamples, tests, scope, taskId, compareSamples) {
-  scope.d3data = {}
+var drawTrendGraph = function(
+  trendSamples, tests, scope, taskId, compareSamples, threadLevel
+) {
   for (var i = 0; i < tests.length; i++) {
-    drawSingleTrendChart(trendSamples, tests, scope, taskId, compareSamples, i);
+    if (i >= 2) return;
+    drawSingleTrendChart(
+      trendSamples, tests, scope, taskId, compareSamples/*, threadLevel*/, i
+    );
   }
 }
