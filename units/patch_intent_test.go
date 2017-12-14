@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy/registry"
-	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -122,7 +121,7 @@ func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProce
 	j.Intent = intent
 	j.env = s.env
 	j.PatchID = bson.NewObjectId()
-	j.logger = logging.MakeGrip(s.sender)
+
 	s.False(j.Status().Completed)
 	s.NotPanics(func() { j.Run() })
 	s.True(j.Status().Completed)
@@ -162,6 +161,8 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestProcessGithubPatchIntent")
+
 	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.patchURL)
 	s.NoError(err)
 	s.NotNil(intent)

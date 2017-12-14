@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -38,7 +37,6 @@ func init() {
 
 type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	logger   grip.Journaler
 	env      evergreen.Environment
 
 	Intent     patch.Intent  `bson:"intent" json:"intent"`
@@ -59,8 +57,7 @@ func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.J
 
 func makePatchIntentProcessor() *patchIntentProcessor {
 	return &patchIntentProcessor{
-		env:    evergreen.GetEnvironment(),
-		logger: logging.MakeGrip(grip.GetSender()),
+		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    patchIntentJobName,
@@ -100,7 +97,7 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(errors.Errorf("patch document should have 1 patch, found %d", len))
 	}
 	if j.HasErrors() {
-		j.logger.Error(message.Fields{
+		grip.Error(message.Fields{
 			"message": "Failed to build patch document",
 			"errors":  j.Error().Error(),
 		})
