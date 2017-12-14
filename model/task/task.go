@@ -685,20 +685,22 @@ func displayTaskPriority(status string) int {
 		return 20
 	case evergreen.TaskUnstarted:
 		return 30
-	case evergreen.TaskFailed:
+	case evergreen.TaskUndispatched:
 		return 40
-	case evergreen.TaskTestTimedOut:
+	case evergreen.TaskFailed:
 		return 50
-	case evergreen.TaskSystemFailed:
+	case evergreen.TaskTestTimedOut:
 		return 60
-	case evergreen.TaskSystemTimedOut:
+	case evergreen.TaskSystemFailed:
 		return 70
-	case evergreen.TaskSystemUnresponse:
+	case evergreen.TaskSystemTimedOut:
 		return 80
-	case evergreen.TaskSucceeded:
+	case evergreen.TaskSystemUnresponse:
 		return 90
+	case evergreen.TaskSucceeded:
+		return 100
 	}
-	return 0
+	return 1000
 }
 
 // Reset sets the task state to be activated, with a new secret,
