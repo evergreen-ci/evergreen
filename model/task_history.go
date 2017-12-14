@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -26,6 +25,7 @@ const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
 	testResultsKey    = "test_results"
+	numQueryThreads   = 16
 )
 
 type taskHistoryIterator struct {
@@ -742,10 +742,9 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 		}
 		close(taskChan)
 		wg := sync.WaitGroup{}
-		numWorkers := runtime.NumCPU()
-		wg.Add(numWorkers)
+		wg.Add(numQueryThreads)
 		resultChan := make(chan task.Task)
-		for i := 0; i < numWorkers; i++ {
+		for i := 0; i < numQueryThreads; i++ {
 			go func() {
 				defer wg.Done()
 				for t := range taskChan {
