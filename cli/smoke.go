@@ -76,7 +76,7 @@ func (c *StartEvergreenCommand) Execute(_ []string) error {
 	exit := make(chan error, 2)
 	if c.Web {
 		web := exec.Command(c.Binary, "service", "web", "--conf", c.Conf)
-		web.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1), "EVR_TASK_ID=" + os.Getenv("EVR_TASK_ID"), "EVR_AGENT_PID" + os.Getenv("EVR_AGENT_PID")}
+		web.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
 		webSender := send.NewWriterSender(send.MakeNative())
 		defer webSender.Close()
 		webSender.SetName("web.service")
@@ -94,7 +94,7 @@ func (c *StartEvergreenCommand) Execute(_ []string) error {
 
 	if c.Runner {
 		runner := exec.Command(c.Binary, "service", "runner", "--conf", c.Conf)
-		runner.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1), "EVR_TASK_ID=" + os.Getenv("EVR_TASK_ID"), "EVR_AGENT_PID" + os.Getenv("EVR_AGENT_PID")}
+		runner.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
 		runnerSender := send.NewWriterSender(send.MakeNative())
 		defer runnerSender.Close()
 		runnerSender.SetName("runner")
