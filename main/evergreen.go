@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/operations"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -37,6 +38,8 @@ func buildApp() *cli.App {
 		operations.Agent(),
 		operations.Admin(),
 		operations.Host(),
+		operations.Version(),
+		operations.Update(),
 	}
 
 	userHome, err := homedir.Dir()
