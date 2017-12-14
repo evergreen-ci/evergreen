@@ -132,7 +132,7 @@ func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProce
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
-	patchContent, err := fetchPatchByURL(s.patchURL)
+	patchContent, err := fetchDiffByURL(s.patchURL)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 
@@ -161,7 +161,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestProcessGithubPatchIntent")
 
 	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.patchURL)
 	s.NoError(err)

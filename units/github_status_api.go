@@ -259,7 +259,7 @@ func (j *githubStatusUpdateJob) Run() {
 
 	if err := j.sendStatusUpdate(&status); err != nil {
 		grip.Alert(message.Fields{
-			"message":     "github API failure",
+			"message":     "github API failure: status updates",
 			"job":         j.ID(),
 			"status":      status,
 			"fetch_id":    j.FetchID,

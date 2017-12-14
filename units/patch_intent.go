@@ -39,10 +39,8 @@ type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 
-	Intent     patch.Intent  `bson:"intent" json:"intent"`
-	PatchID    bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
-	user       *user.DBUser
-	projectRef *model.ProjectRef
+	Intent  patch.Intent  `bson:"intent" json:"intent"`
+	PatchID bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
@@ -104,12 +102,12 @@ func (j *patchIntentProcessor) Run() {
 		return
 	}
 
-	j.user, err = user.FindOne(user.ById(patchDoc.Author))
+	user, err := user.FindOne(user.ById(patchDoc.Author))
 	if err != nil {
 		j.AddError(err)
 		return
 	}
-	if j.user == nil {
+	if user == nil {
 		j.AddError(errors.New("Can't find patch author"))
 		return
 	}
@@ -159,7 +157,7 @@ func (j *patchIntentProcessor) Run() {
 	project.BuildProjectTVPairs(patchDoc, j.Intent.GetAlias())
 
 	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
+	patchDoc.PatchNumber, err = user.IncPatchNumber()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error computing patch num"))
 		return
@@ -178,7 +176,7 @@ func (j *patchIntentProcessor) Run() {
 			j.AddError(err)
 		}
 
-		// TODO ugly
+		// TODO NO! Github Intents not testable!
 		if j.Intent.GetType() == patch.GithubIntentType {
 			job := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 			job.Run()
@@ -186,7 +184,7 @@ func (j *patchIntentProcessor) Run() {
 	}
 }
 
-func fetchPatchByURL(URL string) (string, error) {
+func fetchDiffByURL(URL string) (string, error) {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)
 
@@ -211,20 +209,20 @@ func fetchPatchByURL(URL string) (string, error) {
 	return string(bytes), nil
 }
 
-func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
-	j.projectRef, err = model.FindOneProjectRef(patchDoc.Project)
+func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) error {
+	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
 	}
-	if j.projectRef == nil {
+	if projectRef == nil {
 		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
 	}
 
-	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, j.projectRef.Owner,
-		j.projectRef.Repo, patchDoc.Githash)
+	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, projectRef.Owner,
+		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",
-			patchDoc.Githash, j.projectRef.Identifier)
+			patchDoc.Githash, projectRef.Identifier)
 	}
 	if gitCommit == nil {
 		return errors.Errorf("commit hash %s doesn't seem to exist", patchDoc.Githash)
@@ -252,41 +250,46 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
-	mustBeMemberOfOrg := j.env.Settings().GithubPRTesting.MemberOf
+	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {
-		err = errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
-		return
+		return errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
 	}
 
-	j.projectRef, err = model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner,
+	projectRef, err := model.FindOneProjectRefByRepo(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo)
 	if err != nil {
 		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'",
 			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo)
 	}
-	if j.projectRef == nil {
+	if projectRef == nil {
 		return errors.Errorf("Could not find project ref for repo '%s/%s'",
 			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo)
 	}
 
-	projectVars, err := model.FindOneProjectVars(j.projectRef.Identifier)
+	projectVars, err := model.FindOneProjectVars(projectRef.Identifier)
 	if err != nil {
-		return errors.Wrapf(err, "Could not find project vars for project '%s'", j.projectRef.Identifier)
+		return errors.Wrapf(err, "Could not find project vars for project '%s'", projectRef.Identifier)
 	}
 	if projectVars == nil {
-		return errors.Errorf("Could not find project vars for project '%s'", j.projectRef.Identifier)
+		return errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
 	}
 
 	isMember, err := authAndFetchPRMergeBase(patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
+		grip.Alert(message.Fields{
+			"message":  "github API failure: patch intents",
+			"job":      j.ID(),
+			"patch_id": j.PatchID,
+			"error":    err,
+		})
 		return err
 	}
 	if !isMember {
 		return errors.Errorf("user is not member of %s", patchDoc.GithubPatchData.BaseOwner)
 	}
 
-	patchContent, err := fetchPatchByURL(patchDoc.GithubPatchData.DiffURL)
+	patchContent, err := fetchDiffByURL(patchDoc.GithubPatchData.DiffURL)
 	if err != nil {
 		return err
 	}
@@ -305,7 +308,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 			Summary:     summaries,
 		},
 	})
-	patchDoc.Project = j.projectRef.Identifier
+	patchDoc.Project = projectRef.Identifier
 
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")
