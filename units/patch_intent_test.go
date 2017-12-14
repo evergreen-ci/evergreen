@@ -116,15 +116,15 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 	evergreen.ResetEnvironment()
 }
 
-func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProcessor {
-	j := makePatchIntentProcessor()
-	j.Intent = intent
-	j.env = s.env
-	j.PatchID = bson.NewObjectId()
+func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
 
-	s.False(j.Status().Completed)
-	s.NotPanics(func() { j.Run() })
-	s.True(j.Status().Completed)
+	j := NewPatchIntentProcessor(bson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	s.Require().NoError(j.finishPatch(patchDoc, githubOauthToken))
 	s.Require().NoError(j.Error())
 	s.Require().False(j.HasErrors())
 
@@ -141,7 +141,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := s.verifyJob(intent)
+	j := s.makeJobAndPatch(intent)
 
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.NoError(err)
@@ -158,12 +158,14 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
+
 	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
 
-	j := s.verifyJob(intent)
+	j := s.makeJobAndPatch(intent)
+
 	patchDoc, err := patch.FindOne(patch.ById(j.PatchID))
 	s.Require().NoError(err)
 	s.Require().NotNil(patchDoc)

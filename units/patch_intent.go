@@ -81,42 +81,54 @@ func (j *patchIntentProcessor) Run() {
 	defer j.Intent.SetProcessed()
 
 	patchDoc := j.Intent.NewPatch()
-	switch j.Intent.GetType() {
-	case patch.CliIntentType:
-		j.AddError(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
-	case patch.GithubIntentType:
-		j.AddError(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
-
-	default:
-		j.AddError(errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType()))
-	}
-	if len := len(patchDoc.Patches); len != 1 {
-		j.AddError(errors.Errorf("patch document should have 1 patch, found %d", len))
-	}
-	if j.HasErrors() {
-		grip.Error(message.Fields{
-			"message": "Failed to build patch document",
-			"errors":  j.Error().Error(),
-		})
-		return
-	}
-
-	user, err := user.FindOne(user.ById(patchDoc.Author))
-	if err != nil {
+	if err := j.finishPatch(patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
 		return
 	}
+
+	// TODO cleaner way to do this?
+	if j.Intent.GetType() == patch.GithubIntentType {
+		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+		j.AddError(j.env.LocalQueue().Put(update))
+	}
+}
+
+func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthToken string) error {
+	c := grip.NewCatcher()
+
+	switch j.Intent.GetType() {
+	case patch.CliIntentType:
+		c.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
+
+	case patch.GithubIntentType:
+		c.Add(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
+
+	default:
+		return errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType())
+	}
+	if len := len(patchDoc.Patches); len != 1 {
+		c.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
+	}
+	if c.HasErrors() {
+		grip.Error(message.Fields{
+			"message": "Failed to build patch document",
+			"errors":  c.Resolve().Error(),
+		})
+		return c.Resolve()
+	}
+	user, err := user.FindOne(user.ById(patchDoc.Author))
+	if err != nil {
+		return err
+	}
 	if user == nil {
-		j.AddError(errors.New("Can't find patch author"))
-		return
+		return errors.New("Can't find patch author")
 	}
 
 	// Get and validate patched config and add it to the patch document
 	project, err := validator.GetPatchedProject(patchDoc, githubOauthToken)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "invalid patched config"))
-		return
+		return errors.Wrap(err, "invalid patched config")
 	}
 
 	if patchDoc.Patches[0].ModuleName != "" {
@@ -124,10 +136,10 @@ func (j *patchIntentProcessor) Run() {
 		var module *model.Module
 		module, err = project.GetModuleByName(patchDoc.Patches[0].ModuleName)
 		if err != nil {
-			j.AddError(errors.Wrapf(err, "could not find module '%s'", patchDoc.Patches[0].ModuleName))
+			return errors.Wrapf(err, "could not find module '%s'", patchDoc.Patches[0].ModuleName)
 		}
 		if module == nil {
-			j.AddError(errors.Errorf("no module named '%s'", patchDoc.Patches[0].ModuleName))
+			return errors.Errorf("no module named '%s'", patchDoc.Patches[0].ModuleName)
 		}
 	}
 
@@ -138,19 +150,14 @@ func (j *patchIntentProcessor) Run() {
 		}
 		bv := project.FindBuildVariant(buildVariant)
 		if bv == nil {
-			j.AddError(errors.Errorf("No such buildvariant: '%s'", buildVariant))
+			return errors.Errorf("No such buildvariant: '%s'", buildVariant)
 		}
-	}
-
-	if j.HasErrors() {
-		return
 	}
 
 	// add the project config
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error marshaling patched config"))
-		return
+		return errors.Wrap(err, "error marshaling patched config")
 	}
 	patchDoc.PatchedConfig = string(projectYamlBytes)
 
@@ -159,30 +166,24 @@ func (j *patchIntentProcessor) Run() {
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = user.IncPatchNumber()
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error computing patch num"))
-		return
+		return errors.Wrap(err, "error computing patch num")
 	}
 
 	patchDoc.CreateTime = time.Now()
 	patchDoc.Id = j.PatchID
 
 	if err := patchDoc.Insert(); err != nil {
-		j.AddError(err)
-		return
+		return err
 	}
 
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
-			j.AddError(err)
+			return err
 		}
 
-		// TODO NO! Github Intents not testable!
-		//if j.Intent.GetType() == patch.GithubIntentType {
-		//	update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
-		//	update.Run()
-		//      j.AddError(update.Error())
-		//}
 	}
+
+	return nil
 }
 
 func fetchDiffByURL(URL string) (string, error) {
