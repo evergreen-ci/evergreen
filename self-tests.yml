@@ -124,6 +124,7 @@ functions:
   run-make:
     command: shell.exec
     params:
+       shell: bash
        script: |
          set -o xtrace
          set -o errexit
@@ -272,6 +273,32 @@ functions:
           cd mongodb
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
           echo "mongod is up."
+  set-up-smoke-test:
+    - command: shell.exec
+      type: system
+      params:
+        shell: bash
+        script: |
+          set -o xtrace
+          set -o errexit
+
+          cp mongodb/mongoimport gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
+          cd gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
+          for fn in *.json; do
+            collection=$(echo $fn | cut -f 1 -d '.')
+            ./mongoimport --db mci --collection $collection --file $fn
+          done
+    - command: shell.exec
+      params:
+        shell: bash
+        background: true
+        script: |
+          set -o xtrace
+          set -o errexit
+
+          cd gopath/src/github.com/evergreen-ci/evergreen
+          binary=./clients/linux_amd64/evergreen
+          $binary service deploy start-evergreen --web --runner --binary $binary
 
 #######################################
 #                Tasks                #
@@ -323,7 +350,8 @@ tasks:
           content_type: application/x-gzip
           permissions: public-read
           display_name: dist-test-${distro_id}.tar.gz
-  - name: smoke-test
+  - name: smoke-test-endpoints
+    tags: ["smoke"]
     commands:
       - command: git.get_project
         type: system
@@ -333,30 +361,7 @@ tasks:
       - func: run-make
         vars:
           target: "build"
-      - command: shell.exec
-        params:
-          shell: bash
-          script: |
-            set -o xtrace
-            set -o errexit
-
-            cp mongodb/mongoimport gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
-            cd gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
-            for fn in *.json; do
-              collection=$(echo $fn | cut -f 1 -d '.')
-              ./mongoimport --db mci --collection $collection --file $fn
-            done
-      - command: shell.exec
-        params:
-          shell: bash
-          background: true
-          script: |
-            set -o xtrace
-            set -o errexit
-
-            cd gopath/src/github.com/evergreen-ci/evergreen
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy start-evergreen --binary $binary
+      - func: set-up-smoke-test
       - command: shell.exec
         params:
           shell: bash
@@ -366,7 +371,7 @@ tasks:
 
             cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
-            $binary service deploy test-endpoints
+            $binary service deploy test-endpoints --test-file smoke_test.yml
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -628,19 +633,21 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     run_on:
+      - ubuntu1604-build
       - ubuntu1604-test
     expansions:
       build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
     tasks:
       - name: "dist"
-      - name: "smoke-test"
+      - name: ".smoke"
       - name: ".test"
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
     run_on:
       - ubuntu1604-build
+      - ubuntu1604-test
     expansions:
       build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go"
     tasks:

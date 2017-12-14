@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -25,11 +24,11 @@ const (
 	// defaultConfigFile is the default configuration file for the web service and runner.
 	defaultConfigFile = "smoke_config.yml"
 
-	// defaultTestFile contains definitions of endpoints to check.
-	defaultTestFile = "smoke_test.yml"
-
 	// uiPort is the local port the UI will listen on.
 	uiPort = "9090"
+
+	// apiPort is the local port the API will listen on.
+	apiPort = "8080"
 
 	// urlPrefix is the localhost prefix for accessing local Evergreen.
 	urlPrefix = "http://localhost:"
@@ -39,11 +38,16 @@ const (
 type StartEvergreenCommand struct {
 	Binary string `long:"binary" default:"" description:"path to Evergreen binary"`
 	Conf   string `long:"conf" default:"" description:"Evergreen configuration file"`
+	Runner bool   `long:"runner" description:"Run only the Evergreen runner"`
+	Web    bool   `long:"web" description:"Run only the Evergreen web service"`
 }
 
 // SmokeTestEndpointCommand runs tests against UI and API endpoints.
 type SmokeTestEndpointCommand struct {
-	TestFile string `long:"test-file" short:"t" description:"file with test endpoints definitions"`
+	TestFile string `long:"test-file" description:"file with test endpoints definitions"`
+
+	client http.Client
+	tests  EndpointTestDefinitions
 }
 
 // EndpointTestDefinitions describes the UI and API endpoints to verify are up.
@@ -65,90 +69,65 @@ func (c *StartEvergreenCommand) Execute(_ []string) error {
 	if c.Conf == "" {
 		c.Conf = filepath.Join(wd, "scripts", defaultConfigFile)
 	}
-	web := exec.Command(c.Binary, "service", "web", "--conf", c.Conf)
-	web.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
-	webSender := send.NewWriterSender(send.MakeNative())
-	defer webSender.Close()
-	webSender.SetName("web.service")
-	web.Stdout = webSender
-	web.Stderr = webSender
-
-	runner := exec.Command(c.Binary, "service", "runner", "--conf", c.Conf)
-	runner.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
-	runnerSender := send.NewWriterSender(send.MakeNative())
-	defer runnerSender.Close()
-	runnerSender.SetName("runner")
-	runner.Stdout = runnerSender
-	runner.Stderr = runnerSender
-
-	if err = web.Start(); err != nil {
-		return errors.Wrap(err, "error starting web service")
-	}
-	if err = runner.Start(); err != nil {
-		return errors.Wrap(err, "error starting runner")
+	if !c.Runner && !c.Web {
+		return errors.New("Must specify --web or --runner (or both)")
 	}
 
-	exit := make(chan error)
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-	go func() {
-		exit <- web.Wait()
-		grip.Errorf("web service exited: %s", err)
-	}()
-	go func() {
-		exit <- runner.Wait()
-		grip.Errorf("runner exited: %s", err)
-	}()
-
-	select {
-	case <-exit:
-		err = errors.New("problem running Evergreen")
-		grip.Error(err)
-		return err
-	case <-interrupt:
-		grip.Info("received SIGINT, killing Evergreen")
-		if err := web.Process.Kill(); err != nil {
-			grip.Errorf("error killing evergreen web service: %s", err)
+	exit := make(chan error, 2)
+	if c.Web {
+		web := exec.Command(c.Binary, "service", "web", "--conf", c.Conf)
+		web.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+		webSender := send.NewWriterSender(send.MakeNative())
+		defer webSender.Close()
+		webSender.SetName("web.service")
+		web.Stdout = webSender
+		web.Stderr = webSender
+		if err = web.Start(); err != nil {
+			return errors.Wrap(err, "error starting web service")
 		}
-		if err := runner.Process.Kill(); err != nil {
-			grip.Errorf("error killing evergreen runner: %s", err)
-		}
+		defer web.Process.Kill()
+		go func() {
+			exit <- web.Wait()
+			grip.Errorf("web service exited: %s", err)
+		}()
 	}
 
+	if c.Runner {
+		runner := exec.Command(c.Binary, "service", "runner", "--conf", c.Conf)
+		runner.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+		runnerSender := send.NewWriterSender(send.MakeNative())
+		defer runnerSender.Close()
+		runnerSender.SetName("runner")
+		runner.Stdout = runnerSender
+		runner.Stderr = runnerSender
+		if err = runner.Start(); err != nil {
+			return errors.Wrap(err, "error starting runner")
+		}
+		defer runner.Process.Kill()
+		go func() {
+			exit <- runner.Wait()
+			grip.Errorf("runner exited: %s", err)
+		}()
+	}
+
+	<-exit
 	return nil
 }
 
 // Execute runs tests against UI and API endpoints.
 func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 	setSenderNameToSmoke()
-	wd, err := os.Getwd()
-	if err != nil {
-		return errors.Wrap(err, "error getting current directory")
-	}
-
 	if c.TestFile == "" {
-		c.TestFile = filepath.Join(wd, "scripts", defaultTestFile)
-		grip.Infof("Setting test file to %s", c.TestFile)
-	}
+		return errors.New("must specify --test-file")
 
-	defs, err := ioutil.ReadFile(c.TestFile)
-	if err != nil {
-		return errors.Wrap(err, "error opening test file")
 	}
-	tests := EndpointTestDefinitions{}
-	err = yaml.Unmarshal(defs, &tests)
-	if err != nil {
-		return errors.Wrap(err, "error unmarshalling yaml")
-	}
-
-	client := http.Client{}
-	client.Timeout = time.Second
-
 	// wait for web service to start
+	c.client = http.Client{}
+	c.client.Timeout = time.Second
 	attempts := 10
 	for i := 1; i <= attempts; i++ {
 		grip.Infof("checking if Evergreen is up (attempt %d of %d)", i, attempts)
-		_, err = client.Get(urlPrefix + uiPort)
+		_, err := c.client.Get(urlPrefix + uiPort)
 		if err != nil {
 			if i == attempts {
 				err = errors.Wrapf(err, "could not connect to Evergreen after %d attempts", attempts)
@@ -159,14 +138,46 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 			time.Sleep(time.Second)
 			continue
 		}
+		break
 	}
 	grip.Info("Evergreen is up")
 
-	// check endpoints
+	if err := c.checkEndpointsFromFile(); err != nil {
+		return errors.Wrap(err, "test endpoints failed")
+	}
+	grip.Info("success: all endpoints accessible")
+	return nil
+}
+
+func setSenderNameToSmoke() {
+	sender := grip.GetSender()
+	sender.SetName("evergreen.smoke")
+}
+
+func (c *SmokeTestEndpointCommand) checkEndpointsFromFile() error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "error getting current directory")
+	}
+	c.TestFile = filepath.Join(wd, "scripts", c.TestFile)
+	defs, err := ioutil.ReadFile(c.TestFile)
+	if err != nil {
+		return errors.Wrap(err, "error opening test file")
+	}
+	c.tests = EndpointTestDefinitions{}
+	err = yaml.Unmarshal(defs, &c.tests)
+	if err != nil {
+		return errors.Wrap(err, "error unmarshalling yaml")
+	}
+
+	return c.checkEndpoints()
+}
+
+func (c *SmokeTestEndpointCommand) checkEndpoints() error {
 	catcher := grip.NewSimpleCatcher()
-	for url, expected := range tests.UI {
+	for url, expected := range c.tests.UI {
 		grip.Infof("Getting endpoint '%s'", url)
-		resp, err := client.Get(urlPrefix + uiPort + url)
+		resp, err := c.client.Get(urlPrefix + uiPort + url)
 		if err != nil {
 			catcher.Add(errors.Errorf("error getting UI endpoint '%s'", url))
 		}
@@ -187,16 +198,33 @@ func (c *SmokeTestEndpointCommand) Execute(_ []string) error {
 			}
 		}
 	}
+	for url, expected := range c.tests.API {
+		grip.Infof("Getting endpoint '%s'", url)
+		resp, err := c.client.Get(urlPrefix + apiPort + url)
+		if err != nil {
+			catcher.Add(errors.Errorf("error getting API endpoint '%s'", url))
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = errors.Wrap(err, "error reading response body")
+			grip.Error(err)
+			return err
+		}
+		page := string(body)
+		for _, text := range expected {
+			if strings.Contains(page, text) {
+				grip.Infof("found '%s' in API endpoint '%s'", text, url)
+			} else {
+				grip.Infof("did not find '%s' in API endpoint '%s'", text, url)
+				catcher.Add(errors.Errorf("'%s' not in API endpoint '%s'", text, url))
+			}
+		}
+	}
+
 	if catcher.HasErrors() {
 		grip.Error(catcher.String())
 		grip.ErrorWhenf(catcher.HasErrors(), "failed to get %d endpoints", catcher.Len())
-		return catcher.Resolve()
 	}
-	grip.Info("success: all endpoints accessible")
-	return nil
-}
-
-func setSenderNameToSmoke() {
-	sender := grip.GetSender()
-	sender.SetName("evergreen.smoke")
+	return catcher.Resolve()
 }
