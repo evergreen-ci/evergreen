@@ -17,7 +17,6 @@ type GithubSuite struct {
 	url      string
 	baseRepo string
 	headRepo string
-	ref      string
 	user     string
 }
 
