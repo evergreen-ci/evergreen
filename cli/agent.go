@@ -17,7 +17,7 @@ type AgentCommand struct {
 	HostSecret       string `long:"host_secret" description:"secret for the current host"`
 	ServiceURL       string `long:"api_server" description:"URL of API server"`
 	LogPrefix        string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
-	StatusPort       int    `long:"status_part" default:"2285" description:"port to run the status server on"`
+	StatusPort       int    `long:"status_port" default:"2285" description:"port to run the status server on"`
 	WorkingDirectory string `long:"working_directory" default:"" description:"working directory"`
 }
 
