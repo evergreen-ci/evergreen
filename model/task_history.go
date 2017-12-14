@@ -750,7 +750,8 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 				for t := range taskChan {
 					err = t.MergeNewTestResults()
 					if err != nil {
-						grip.Error(errors.Wrap(err, "error merging test results"))
+						grip.Error(errors.Wrapf(err, "error merging test results for task %s", t.Id))
+						continue
 					}
 					for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
 						result := t.LocalTestResults[j]
