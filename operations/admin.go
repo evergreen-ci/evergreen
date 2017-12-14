@@ -48,7 +48,8 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 				Name:  clearFlagName,
 				Usage: "clear the content of the banner",
 			}),
-		Before: requireConfig(
+		Before: mergeBeforeFuncs(
+			requireConfig,
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) != "" && c.Bool(clearFlagName) {
 					return errors.New("cannot specify a message and the 'clear' option at the same time")

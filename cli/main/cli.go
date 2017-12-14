@@ -1,4 +1,4 @@
-epackage main
+package main
 
 import (
 	"os"
@@ -31,8 +31,8 @@ func main() {
 	parser.AddCommand("rm-module", "remove a module from an existing patch", "", &cli.RemoveModuleCommand{GlobalOpts: opts})
 	parser.AddCommand("cancel-patch", "cancel an existing patch", "", &cli.CancelPatchCommand{GlobalOpts: opts})
 	parser.AddCommand("finalize-patch", "finalize an existing patch", "", &cli.FinalizePatchCommand{GlobalOpts: opts})
-
 	parser.AddCommand("last-green", "return a project's most recent successful version for given variants", "", &cli.LastGreenCommand{GlobalOpts: opts})
+
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: opts})
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: opts})
 
