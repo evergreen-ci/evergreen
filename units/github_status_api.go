@@ -52,7 +52,8 @@ type githubStatus struct {
 
 func (status *githubStatus) Valid() bool {
 	if status.Owner == "" || status.Repo == "" || status.PRNumber == 0 ||
-		status.Ref == "" || status.URLPath == "" || status.Context == "" {
+		status.Ref == "" || status.URLPath == "" || status.Context == "" ||
+		!strings.HasPrefix(status.URLPath, "/") {
 		return false
 	}
 
@@ -273,6 +274,7 @@ func taskStatusToDesc(b *build.Build) string {
 	success := 0
 	failed := 0
 	systemError := 0
+	other := 0
 	for _, task := range b.Tasks {
 		switch task.Status {
 		case evergreen.TaskSucceeded:
@@ -285,17 +287,20 @@ func taskStatusToDesc(b *build.Build) string {
 			evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut,
 			evergreen.TaskTestTimedOut:
 			systemError++
+
+		default:
+			other++
 		}
 	}
 
-	if success == 0 && failed == 0 && systemError == 0 {
+	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
 		return "no tasks were run"
 	}
 
-	if success != 0 && failed == 0 && systemError == 0 {
+	if success != 0 && failed == 0 && systemError == 0 && other == 0 {
 		return "all tasks succeeded!"
 	}
-	if success == 0 && (failed != 0 || systemError != 0) {
+	if success == 0 && (failed != 0 || systemError != 0) && other == 0 {
 		return "all tasks failed!"
 	}
 
@@ -303,6 +308,9 @@ func taskStatusToDesc(b *build.Build) string {
 		taskStatusSubformat(failed, "failed"))
 	if systemError > 0 {
 		desc += fmt.Sprintf(", %d internal errors", systemError)
+	}
+	if other > 0 {
+		desc += fmt.Sprintf(", %d other", systemError)
 	}
 
 	return desc
