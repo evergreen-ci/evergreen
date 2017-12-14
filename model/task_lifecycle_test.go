@@ -803,7 +803,7 @@ func TestTryResetTask(t *testing.T) {
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
 		dtFromDb, err := task.FindOne(task.ById(dt.Id))
 		So(err, ShouldBeNil)
-		So(dtFromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
+		So(dtFromDb.Status, ShouldEqual, evergreen.TaskUnstarted)
 		dbBuild, err := build.FindOne(build.ById(b.Id))
 		So(err, ShouldBeNil)
 		So(dbBuild.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
