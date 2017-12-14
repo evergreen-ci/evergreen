@@ -18,7 +18,7 @@ func (t *Task) ResultStatus() string {
 		if !t.Activated {
 			status = evergreen.TaskInactive
 		} else {
-			status = evergreen.TaskUndispatched
+			status = evergreen.TaskUnstarted
 		}
 	} else if t.Status == evergreen.TaskStarted {
 		status = evergreen.TaskStarted
