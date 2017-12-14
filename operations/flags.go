@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	confFlagName = "conf"
+	confFlagName       = "conf"
+	adminFlagsFlagName = "flags"
 )
 
 func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
@@ -28,6 +29,13 @@ func clientConfigFlags(flags ...cli.Flag) []cli.Flag {
 		Usage:   "path to the service configuration file, defaults to ~/.evergreen.yml",
 	})
 
+}
+
+func adminFlagFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:  flagFlagName,
+		Usage: "specify a flag to disable; may specify more than once",
+	})
 }
 
 func requireConfig(ops ...func(c *cli.Context) error) cli.BeforeFunc {

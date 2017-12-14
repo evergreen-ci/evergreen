@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/mongodb/grip"
 	"github.com/urfave/cli"
 )
 
@@ -106,8 +108,87 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 
 func adminDisableService() cli.Command {
 	return cli.Command{
-		Name:  "disable-service",
-		Usage: "disable a background service",
+		Name:   "disable-service",
+		Usage:  "disable a background service",
+		Flags:  clientConfigFlags(adminFlagFlag()...),
+		Action: adminServiceChange(true),
 	}
 }
-func adminEnableService() cli.Command {}
+
+func adminEnableService() cli.Command {
+	return cli.Command{
+		Name:   "enable-service",
+		Usage:  "enable a background service",
+		Flags:  clientConfigFlags(adminFlagFlag()...),
+		Action: adminServiceChange(false),
+	}
+
+}
+
+func adminServiceChange(disable bool) cli.Command {
+	return func(c *cli.Context) error {
+		confPath := c.String(confFlagName)
+		flagsToSet := c.StringSlice(adminFlagFlag)
+
+		confPath, err := findConfigFilePath(confPath)
+		if err != nil {
+			return errors.Wrap(err, "problem finding configuration file")
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		conf, err := NewClientSetttings(confPath)
+		if err != nil {
+			return errors.Wrap(err, "problem loading configuration")
+		}
+		client := conf.GetRestCommunicator(ctx)
+		defer client.Close()
+
+		client.SetAPIUser(settings.User)
+		client.SetAPIKey(settings.APIKey)
+
+		flags, err := client.GetServiceFlags(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem getting current service flag state")
+		}
+
+		if err := setServiceFlagValues(flagsToSet, disable, flags); err != nil {
+			return errors.Wrap(err, "invalid service flags")
+		}
+
+		return errors.Wrap(client.SetServiceFlags(ctx, flags),
+			"problem changing service state")
+
+	}
+
+}
+
+func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFlags) error {
+	catcher := grip.NewSimpleCatcher()
+
+	for _, f := range args {
+		switch f {
+		case "dispatch", "tasks", "taskdispatch", "task-dispatch":
+			flags.TaskDispatchDisabled = target
+		case "hostinit", "host-init":
+			flags.HostinitDisabled = target
+		case "monitor":
+			flags.MonitorDisabled = target
+		case "notify", "notifications", "notification":
+			flags.NotificationsDisabled = target
+		case "alerts", "alert":
+			flags.AlertsDisabled = target
+		case "taskrunner", "new-agents", "agents":
+			flags.TaskrunnerDisabled = target
+		case "github", "repotracker", "gitter", "commits", "repo-tracker":
+			flags.RepotrackerDisabled = target
+		case "scheduler":
+			flags.SchedulerDisabled = target
+		default:
+			catcher.Add(errors.Errorf("%s is not a recognized service flag", f))
+		}
+	}
+
+	return catcher.Resolve()
+}
