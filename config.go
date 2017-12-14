@@ -255,10 +255,6 @@ type SlackConfig struct {
 	Level   string             `yaml:"level"`
 }
 
-type GithubPRTesting struct {
-	MemberOf string `yaml:"member_of"`
-}
-
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	Database            DBSettings                `yaml:"database"`

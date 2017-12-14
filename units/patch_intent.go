@@ -177,10 +177,11 @@ func (j *patchIntentProcessor) Run() {
 		}
 
 		// TODO NO! Github Intents not testable!
-		if j.Intent.GetType() == patch.GithubIntentType {
-			job := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
-			job.Run()
-		}
+		//if j.Intent.GetType() == patch.GithubIntentType {
+		//	update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+		//	update.Run()
+		//      j.AddError(update.Error())
+		//}
 	}
 }
 
@@ -281,7 +282,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 			"message":  "github API failure: patch intents",
 			"job":      j.ID(),
 			"patch_id": j.PatchID,
-			"error":    err,
+			"error":    err.Error(),
 		})
 		return err
 	}

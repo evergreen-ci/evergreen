@@ -37,7 +37,7 @@ type PatchIntentUnitsSuite struct {
 	prNumber int
 	user     string
 	hash     string
-	patchURL string
+	diffURL  string
 	desc     string
 	project  string
 	variants []string
@@ -99,7 +99,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.prNumber = 448
 	s.user = "github_patch_user"
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
-	s.patchURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
+	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
 	s.desc = "Test!"
 	s.project = "mci"
 	s.variants = []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
@@ -132,7 +132,7 @@ func (s *PatchIntentUnitsSuite) verifyJob(intent patch.Intent) *patchIntentProce
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
-	patchContent, err := fetchDiffByURL(s.patchURL)
+	patchContent, err := fetchDiffByURL(s.diffURL)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 
@@ -148,21 +148,17 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	s.Require().NotNil(patchDoc)
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
-	for _, variant := range patchDoc.BuildVariants {
-		s.Contains(s.variants, variant)
-	}
-	s.Equal(s.tasks, patchDoc.Tasks)
 
 	s.Zero(patchDoc.GithubPatchData)
 
-	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester, j.user.Email())
+	s.verifyVersionDoc(patchDoc, evergreen.PatchVersionRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
-
-	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.patchURL)
+	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
+	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL)
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -173,19 +169,11 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotNil(patchDoc)
 
 	s.verifyPatchDoc(patchDoc, j.PatchID)
-	s.Len(patchDoc.BuildVariants, 4)
-	s.Contains(patchDoc.BuildVariants, "ubuntu1604")
-	s.Contains(patchDoc.BuildVariants, "ubuntu1604-arm64")
-	s.Contains(patchDoc.BuildVariants, "ubuntu1604-debug")
-	s.Contains(patchDoc.BuildVariants, "race-detector")
-	s.Len(patchDoc.Tasks, 2)
-	s.Contains(patchDoc.Tasks, "dist")
-	s.Contains(patchDoc.Tasks, "dist-test")
 
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
 	s.Equal(s.user, patchDoc.Author)
-	s.Equal(s.patchURL, patchDoc.GithubPatchData.DiffURL)
+	s.Equal(s.diffURL, patchDoc.GithubPatchData.DiffURL)
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
 	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepo)
@@ -194,7 +182,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", patchDoc.Githash)
 
-	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester, j.user.Email())
+	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
 }
@@ -217,9 +205,18 @@ func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPa
 	s.Empty(patchDoc.Patches[0].PatchSet.Patch)
 	s.NotEmpty(patchDoc.Patches[0].PatchSet.PatchFileId)
 	s.Len(patchDoc.Patches[0].PatchSet.Summary, 2)
+
+	s.Len(patchDoc.BuildVariants, 4)
+	s.Contains(patchDoc.BuildVariants, "ubuntu1604")
+	s.Contains(patchDoc.BuildVariants, "ubuntu1604-arm64")
+	s.Contains(patchDoc.BuildVariants, "ubuntu1604-debug")
+	s.Contains(patchDoc.BuildVariants, "race-detector")
+	s.Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "dist")
+	s.Contains(patchDoc.Tasks, "dist-test")
 }
 
-func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester, expectedEmail string) {
+func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expectedRequester string) {
 	versionDoc, err := version.FindOne(version.ById(patchDoc.Id.Hex()))
 	s.NoError(err)
 	s.Require().NotNil(versionDoc)
@@ -228,7 +225,6 @@ func (s *PatchIntentUnitsSuite) verifyVersionDoc(patchDoc *patch.Patch, expected
 	s.Zero(versionDoc.StartTime)
 	s.Zero(versionDoc.FinishTime)
 	s.Equal(s.hash, versionDoc.Revision)
-	s.Equal(expectedEmail, versionDoc.AuthorEmail)
 	s.Equal(patchDoc.Description, versionDoc.Message)
 	s.NotZero(versionDoc.Config)
 	s.Equal(s.user, versionDoc.Author)

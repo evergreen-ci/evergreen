@@ -88,4 +88,5 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testSettings.AuthConfig = integrationSettings.AuthConfig
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
+	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg
 }
