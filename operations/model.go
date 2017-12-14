@@ -5,11 +5,13 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/kardianos/osext"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -67,15 +69,20 @@ type ClientSettings struct {
 }
 
 func NewClientSetttings(fn string) (*ClientSettings, error) {
-	data, err := ioutil.ReadFile(fn)
+	path, err := findConfigFilePath(fn)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could find file %s", fn)
+	}
+
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem reading configuration from file")
 	}
 
 	conf := &ClientSettings{}
 
 	if err = yaml.Unmarshal(data, conf); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "problem reading yaml data from configuration file")
 	}
 
 	return conf, nil
@@ -101,6 +108,9 @@ func (s *ClientSettings) Write(fn string) error {
 
 func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communicator {
 	c := client.NewCommunicator(s.APIServerHost)
+
+	client.SetAPIUser(c.User)
+	client.SetAPIKey(c.APIKey)
 
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {

@@ -2,12 +2,11 @@ package operations
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -72,14 +71,8 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 			var ok bool
 			if themeName != "" {
 				if ok, theme = admin.IsValidBannerTheme(themeName); !ok {
-					return fmt.Errorf("%s is not a valid banner theme", themeName)
+					return errors.Errorf("%s is not a valid banner theme", themeName)
 				}
-			}
-
-			var err error
-			confPath, err := findConfigFilePath(confPath)
-			if err != nil {
-				return errors.Wrap(err, "problem finding configuration file")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -96,9 +89,6 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 
 			client := conf.GetRestCommunicator(ctx)
 			defer client.Close()
-
-			client.SetAPIUser(settings.User)
-			client.SetAPIKey(settings.APIKey)
 
 			return errors.Wrap(client.SetBannerMessage(ctx, msgContent, theme),
 				"problem setting the site-wide banner message")
@@ -130,11 +120,6 @@ func adminServiceChange(disable bool) cli.Command {
 		confPath := c.String(confFlagName)
 		flagsToSet := c.StringSlice(adminFlagFlag)
 
-		confPath, err := findConfigFilePath(confPath)
-		if err != nil {
-			return errors.Wrap(err, "problem finding configuration file")
-		}
-
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -144,9 +129,6 @@ func adminServiceChange(disable bool) cli.Command {
 		}
 		client := conf.GetRestCommunicator(ctx)
 		defer client.Close()
-
-		client.SetAPIUser(settings.User)
-		client.SetAPIKey(settings.APIKey)
 
 		flags, err := client.GetServiceFlags(ctx)
 		if err != nil {
