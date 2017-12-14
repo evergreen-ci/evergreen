@@ -125,11 +125,6 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 	if err != nil {
 		c.Add(err)
 	}
-
-	token := strings.Split(githubOauthToken, " ")
-	if len(token) != 2 || token[0] != "token" {
-		c.Add(errors.New("github token format expected to be 'token [oauthtoken]'"))
-	}
 	if c.HasErrors() {
 		return c.Resolve()
 	}
