@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -19,7 +20,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -133,13 +133,15 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 		return c.Resolve()
 	}
 
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token[1]},
-	)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+
+	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
+	if err != nil {
+		return err
+	}
+	defer util.PutHttpClient(httpClient)
+	client := github.NewClient(httpClient)
 
 	newStatus := github.RepoStatus{
 		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, status.URLPath)),

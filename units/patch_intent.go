@@ -25,7 +25,6 @@ import (
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -322,12 +321,12 @@ func authAndFetchPRMergeBase(patchDoc *patch.Patch, requiredOrganization, github
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	token := strings.Split(githubOauthToken, " ")
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token[1]},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
+	if err != nil {
+		return false, err
+	}
+	defer util.PutHttpClient(httpClient)
+	client := github.NewClient(httpClient)
 
 	// doesn't count against API limits
 	limits, _, err := client.RateLimits(ctx)
