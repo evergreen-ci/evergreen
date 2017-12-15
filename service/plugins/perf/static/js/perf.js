@@ -474,17 +474,12 @@ function TrendSamples(samples){
         this.seriesByName[rec.name] = [];
       }
 
-      // TODO _.chain
-      var sorted = _.sortBy(
-        _.filter(
-          _.values(rec.results), function(x) {
-            return typeof(x) == "object"
-          }
-        ),
-        "ops_per_sec"
-      );
+      var sorted = _.chain(rec.results)
+        .values()
+        .filter(function(d) { return typeof(d) == 'object' })
+        .sortBy('ops_per_sec')
+        .value()
 
-      // NOTE could ut be changed with _.max by ops_per_sec?
       var last = _.last(sorted);
 
       this.seriesByName[rec.name].push({
@@ -610,8 +605,11 @@ function TestSample(sample){
 }
 
 var drawTrendGraph = function(trendSamples, tests, scope, taskId, compareSamples) {
-  scope.d3data = {}
+  scope.locked = false;
+
   for (var i = 0; i < tests.length; i++) {
-    drawSingleTrendChart(trendSamples, tests, scope, taskId, compareSamples, i);
+    var key = tests[i];
+    var series = trendSamples.seriesByName[key];
+    drawSingleTrendChart(series, key, scope, taskId, compareSamples, i);
   }
 }

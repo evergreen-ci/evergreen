@@ -4,7 +4,7 @@
 var drawSingleTrendChart = function(
   // TODO idx should be passed in different manner
   // TODO Use object instead of positional args
-  trendSamples, tests, scope, taskId, compareSamples, idx
+  series, key, scope, taskId, compareSamples, idx
 ) {
   var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + idx;
 
@@ -50,9 +50,6 @@ var drawSingleTrendChart = function(
   cfg.effectiveWidth = cfg.container.width - cfg.margin.left - cfg.margin.right;
   cfg.effectiveHeight = cfg.container.height - cfg.margin.top - cfg.margin.bottom;
 
-  // Q: Figure out what does 'key' mean
-  var key = tests[idx];
-
   var svg = d3.select('#' + containerId)
     .append('svg')
     .attr({
@@ -61,14 +58,10 @@ var drawSingleTrendChart = function(
       height: cfg.container.height,
     })
 
-  // TODO Q: Do we really need `trendSamples` here?
-  var series = trendSamples.seriesByName[key];
-
   var ops = _.pluck(series, 'ops_per_sec');
   var opsValues = _.pluck(series, 'ops_per_sec_values');
   var avgOpsPerSec = d3.mean(ops)
 
-  // TODO Q: What is this?
   var hasValues = !_.contains(opsValues, undefined)
 
   var seriesMax = _.max(ops)
@@ -163,25 +156,20 @@ var drawSingleTrendChart = function(
     .append('svg:text')
     .attr({
       y: (cfg.effectiveHeight + cfg.margin.bottom / 2),
-      class: 'x-tick',
+      class: 'x-tick-label',
       'text-anchor': 'middle'
     })
-    .style('fill', '#777')
     .text(function(d) { return moment(d.startedAt).format(cfg.xAxis.format) })
 
   // X Tick vertical line
   xTicks
     .append('svg:line')
     .attr({
+      class: 'x-tick-line',
       x0: 0,
       x1: 0,
       y1: 0,
       y2: cfg.effectiveHeight
-    })
-    .style({
-      stroke: '#CCC',
-      'shape-rendering': 'crispEdges',
-      'stroke-dasharray': '2,2',
     })
 
   // Chart draw area group
@@ -220,8 +208,10 @@ var drawSingleTrendChart = function(
       class: function(d) {
         if (d.task_id == scope.task.id) {
           return 'point current';
-        // FIXME long line
-        } else if(!!scope.comparePerfSample && d.revision == scope.comparePerfSample.sample.revision) {
+        } else if (
+          !!scope.comparePerfSample &&
+          d.revision == scope.comparePerfSample.sample.revision
+        ) {
           return 'point compare';
         }
         return 'point'
@@ -257,17 +247,15 @@ var drawSingleTrendChart = function(
 
   // Contains elements for hover behavior
   var focusG = chartG.append('svg:g')
-    //TODO Figure out how to sync this across all charts
-    //.style('display', 'none')
+    .style('display', 'none')
 
   var focusedLine = focusG.append('svg:line')
     .attr({
+      class: 'focus-line',
       x1: 0,
       x2: 0,
       y1: 0,
-      'stroke-dasharray': '2,2'
     })
-    .style('stroke', '#AAA')
 
   var focusedPoint = focusG.append('svg:circle')
     .attr({
@@ -276,10 +264,17 @@ var drawSingleTrendChart = function(
 
   var focusedText = focusG.append('svg:text')
     .attr({
+      class: 'focus-text',
       x: cfg.focus.labelOffset.x,
       'text-anchor': 'middle'
     })
-    .style('font-weight', 'bold')
+
+  // This function could be called just once
+  var enableFocusGroup = _.once(
+    function() {
+      focusG.style('display', null)
+    }
+  )
 
   // Overlay to handle hover action
   chartG.append('svg:rect')
@@ -289,17 +284,11 @@ var drawSingleTrendChart = function(
       height: cfg.effectiveHeight
     })
     .on('mouseover', function() {
-      // TODO figure out how to sync
-      //focusG.style('display', null);
       scope.currentHoverSeries = series;
     })
     .on('click', function() {
       scope.locked = !scope.locked
       scope.$digest()
-    })
-    .on('mouseout', function() {
-      // TODO figure out how sync
-      //!scope.locked && focusG.style('display', 'none')
     })
     .on('mousemove', overlayMouseMove)
 
@@ -319,14 +308,14 @@ var drawSingleTrendChart = function(
   }
 
   function focusPoint(hash) {
-    // | 0 for fast Math.floor
-    // Just for conveniece
     var idx = _.findIndex(series, function(d) {
       return d && d.revision == hash
     })
     if (!idx) return;
     var d = series[idx]
     if (!d) return;
+    // | 0 for fast Math.floor
+    // Just for conveniece
     var x = xScale(idx) | 0
     var y = yScale(d[cfg.chart.yValueAttr]) | 0
     var toolTipY = cfg.focus.labelOffset.y * ((y > cfg.margin.top) ? 1 : -1.5)
@@ -339,6 +328,9 @@ var drawSingleTrendChart = function(
   }
 
   scope.$on('hashChanged', function(e, hash) {
+    // Make tool tip visible
+    enableFocusGroup();
+    // Apply new position to tool tip
     focusPoint(hash)
   })
 }
