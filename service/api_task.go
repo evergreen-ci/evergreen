@@ -168,10 +168,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	go as.updateTaskCost(t, currentHost, finishTime)
 
 	if t.Requester != evergreen.PatchVersionRequester {
-		grip.Infoln("Processing alert triggers for task", t.Id)
+		if t.IsPartOfDisplay() {
+			parent := t.DisplayTask
+			if task.IsFinished(*parent) {
+				grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(parent.Id),
+					"processing alert triggers for display task %s", parent.Id))
+			}
+		} else {
+			grip.Infoln("Processing alert triggers for task", t.Id)
 
-		grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
-			"processing alert triggers for task %s", t.Id))
+			grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
+				"processing alert triggers for task %s", t.Id))
+		}
 	}
 	// TODO(EVG-223) process patch-specific triggers
 
