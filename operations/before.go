@@ -53,6 +53,22 @@ var (
 		}
 
 		c.Set(pathFlagName, path)
+		return nil
+	}
+
+	requirePatchIDFlag = func(c *cli.Context) error {
+		patch := c.String(patchIDFlagName)
+		if patch == "" {
+			return errors.New("must specify a patch id")
+		}
+		return nil
+	}
+
+	requireModuleFlag = func(c *cli.Context) error {
+		if c.String(moduleFlagName) == "" {
+			return errors.New("must specify a module")
+		}
+		return nil
 	}
 )
 
@@ -101,9 +117,7 @@ func requireIntValueBetween(name string, min, max int) cli.BeforeFunc {
 				name, val, min, max)
 		}
 		return nil
-
 	}
-
 }
 
 func requireOnlyOneBool(flags ...string) cli.BeforeFunc {

@@ -406,8 +406,7 @@ func (fpc *FinalizePatchCommand) Execute(_ []string) error {
 	}
 	notifyUserUpdate(ac)
 
-	err = ac.FinalizePatch(fpc.PatchId)
-	if err != nil {
+	if err = ac.FinalizePatch(fpc.PatchId); err != nil {
 		return err
 	}
 	fmt.Println("Patch finalized.")

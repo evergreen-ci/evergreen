@@ -11,6 +11,9 @@ const (
 	pathFlagName       = "path"
 	projectFlagName    = "project"
 	variantsFlagName   = "variants"
+	patchIDFlagName    = "patch"
+	moduleFlagName     = "module"
+	yesFlagName        = "yes"
 )
 
 func addPathFlag(flags ...cli.Flag) []cli.Flag {
@@ -59,4 +62,38 @@ func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 		Aliases: []string{"v"},
 		Usage:   "variant name(s)",
 	})
+}
+
+func addPatchIDFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:    patchIDFlagName,
+		Aliases: []string{"i", "id", "patch"},
+		Usage:   "specify the ID of a patch",
+	})
+}
+
+func addModuleFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:    moduleFlagName,
+		Aliases: []string{"m"},
+		Usage:   "the name of a module in the project configuration",
+	})
+}
+
+func addYesFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:    yesFlagName,
+		Aliases: []string{"y"},
+		Usage:   "skip confirmation text",
+	})
+}
+
+func mergeFlagSlices(in [][]cli.Flag) []cli.Flag {
+	out := []cli.Flag{}
+
+	for idx := range in {
+		out = append(out, in[idx]...)
+	}
+
+	return out
 }
