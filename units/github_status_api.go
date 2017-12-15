@@ -204,11 +204,11 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		switch patchDoc.Status {
 		case evergreen.PatchSucceeded:
 			status.State = githubStatusSuccess
-			status.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+			status.Description = fmt.Sprintf("patch finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
 
 		case evergreen.PatchFailed:
 			status.State = githubStatusFailure
-			status.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+			status.Description = fmt.Sprintf("patch finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
 
 		case evergreen.PatchCreated:
 			status.State = githubStatusPending
@@ -292,23 +292,16 @@ func taskStatusToDesc(b *build.Build) string {
 		return "no tasks were run"
 	}
 
-	if success != 0 && failed == 0 && systemError == 0 && other == 0 {
-		return "all tasks succeeded!"
-	}
-	if success == 0 && (failed != 0 || systemError != 0) && other == 0 {
-		return "all tasks failed!"
-	}
-
 	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
 		taskStatusSubformat(failed, "failed"))
 	if systemError > 0 {
 		desc += fmt.Sprintf(", %d internal errors", systemError)
 	}
 	if other > 0 {
-		desc += fmt.Sprintf(", %d other", systemError)
+		desc += fmt.Sprintf(", %d other", other)
 	}
 
-	return desc
+	return appendTime(b, desc)
 }
 
 func taskStatusSubformat(n int, verb string) string {
@@ -320,4 +313,8 @@ func taskStatusSubformat(n int, verb string) string {
 
 func repoReference(owner, repo string, prNumber int, ref string) string {
 	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
+}
+
+func appendTime(b *build.Build, txt string) string {
+	return fmt.Sprintf("%s in %s", txt, b.FinishTime.Sub(b.StartTime).String())
 }

@@ -5,6 +5,8 @@ import (
 	"sync"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
@@ -130,8 +132,24 @@ func (e *envState) initDB() error {
 	var err error
 
 	e.session, _, err = sf.GetSession()
+	if err != nil {
+		return errors.Wrap(err, "problem getting database session")
+	}
 
-	return errors.Wrap(err, "problem getting database session")
+	ghUser, err := user.FindOne(user.ById(GithubPatchUser))
+	if err != nil {
+		return errors.Wrap(err, "error fetching github pull request user")
+	}
+	if ghUser == nil {
+		ghUser = &user.DBUser{
+			Id:       GithubPatchUser,
+			DispName: "Github Pull Requests",
+			APIKey:   util.RandomString(),
+		}
+		return errors.Wrap(ghUser.Insert(), "error creating github patch user")
+	}
+
+	return nil
 }
 
 func (e *envState) createQueues(ctx context.Context) error {
