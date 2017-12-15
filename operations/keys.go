@@ -33,7 +33,7 @@ func keysList() cli.Command {
 	return cli.Command{
 		Name:   "list",
 		Usage:  "list all public keys for the current user",
-		Before: mergeBeforeFuncs(setPlainLogger, requireConfig),
+		Before: mergeBeforeFuncs(setPlainLogger, requireClientConfig),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 
@@ -70,7 +70,7 @@ func keysDelete() cli.Command {
 	return cli.Command{
 		Name: "delete",
 		Before: mergeBeforeFuncs(
-			requireConfig,
+			requireClientConfig,
 			setPlainLogger,
 			func(c *cli.Context) error {
 				if c.NArg() != 1 {

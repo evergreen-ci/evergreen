@@ -3,6 +3,7 @@ package operations
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
@@ -44,6 +45,22 @@ var (
 		c.Set(pathFlagName, path)
 	}
 )
+
+func requireOnlyOneBool(flags ...string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		count := 0
+		for idx := range flags {
+			if c.Bool(flags[idx]) {
+				count++
+			}
+		}
+
+		if count != 1 {
+			return errors.Errorf("must specify one and only one of: --%s", strings.Join(flags, ", --"))
+		}
+		return nil
+	}
+}
 
 func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 	return func(c *cli.Context) error {

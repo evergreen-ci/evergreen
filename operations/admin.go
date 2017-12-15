@@ -50,7 +50,7 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireConfig,
+			requireClientConfig,
 			func(c *cli.Context) error {
 				if c.String(messageFlagName) != "" && c.Bool(clearFlagName) {
 					return errors.New("cannot specify a message and the 'clear' option at the same time")
@@ -65,9 +65,9 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 			},
 		),
 		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
 			themeName := c.String(themeFlagName)
 			msgContent := c.String(messageFlagName)
-			confPath := c.Parent().String(confFlagName)
 
 			var theme admin.BannerTheme
 			var ok bool

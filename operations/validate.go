@@ -14,7 +14,7 @@ func Validate() cli.Command {
 	return cli.Command{
 		Name:   "validate",
 		Usage:  "verify that an evergreen project config is valid",
-		Flag:   pathFlag(),
+		Flag:   addPathFlag(),
 		Before: requirePathFlag,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)

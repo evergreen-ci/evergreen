@@ -48,6 +48,7 @@ func buildApp() *cli.App {
 		operations.Keys(),
 		operations.Fetch(),
 		operations.Evaluate(),
+		operations.Validate(),
 	}
 
 	userHome, err := homedir.Dir()

@@ -9,12 +9,13 @@ const (
 	confFlagName       = "conf"
 	adminFlagsFlagName = "flags"
 	pathFlagName       = "path"
+	projectFlagName    = "project"
 )
 
-func pathFlag(flags ...cli.Flag) []cli.Flag {
+func addPathFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:    pathFlagName,
-		Aliases: []string{"p", "filename"},
+		Aliases: []string{"filename", "file", "f"},
 		Usage:   "path to an evergreen project configuration file",
 	})
 }
@@ -25,6 +26,14 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 		Aliases: []string{"c", "config"},
 		Usage:   "path to the service configuration file",
 		Default: evergreen.DefaultServiceConfigurationFileName,
+	})
+}
+
+func addProjectFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:    projectFlagName,
+		Aliases: []string{"p"},
+		Usage:   "specify the name of an existing evergreen project",
 	})
 }
 

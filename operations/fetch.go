@@ -67,7 +67,7 @@ func Fetch() cli.Command {
 			},
 		},
 		Before: mergeBeforeFuncs(
-			requireConfig,
+			requireClientConfig,
 			func(c *cli.Context) error {
 				if c.String(taskFlagName) == "" {
 					return errors.New("must specify a task")
@@ -90,7 +90,7 @@ func Fetch() cli.Command {
 				}
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 			wd := c.String(dirFlagName)
 			fetchSource := c.Bool(fetchSourcew)
 			fetchArtifacts := c.Bool(artifactsFlagName)
