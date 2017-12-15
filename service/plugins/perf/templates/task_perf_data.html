@@ -20,6 +20,7 @@
       fill: none;
       stroke: steelblue;
     }
+
     .perf-panel{
       padding:10px;
     }
@@ -51,39 +52,60 @@
       font-weight:bold;
     }
 
-    svg{
+    svg {
       border:1px solid #eee;
     }
+
     .perf-chart {
       margin-top:5px;
       display:inline-block;
     }
 
-    .perf-table{
+    .perf-trendchart .x-tick-label {
+      fill: #777;
+    }
+
+    .perf-trendchart .x-tick-line {
+      stroke: #CCC;
+      shape-rendering: crispEdges;
+      stroke-dasharray: 2,2;
+    }
+
+    .perf-trendchart .focus-line {
+      stroke: #AAA;
+      stroke-dasharray: 2,2;
+    }
+
+    .perf-trendchart .focus-text {
+      font-weight: bold;
+    }
+
+    .perf-table {
       border: 1px solid #ccc;
     }
-    .overlay{
+
+    .overlay {
       fill:none;
       stroke-width:1px;
       pointer-events: all;
     }
+
     .perf-table th {
       text-align:center;
       padding-left:10px;
       padding-right:10px;
     }
+
     .perf-table td {
       padding: 3px;
       text-align:right;
       border: 1px solid #888;
     }
+
     .perf-table tr.odd{
       background-color: #eee;
     }
-    .perf-trendchart svg{
-      padding-left:60px;
-      padding-top:10px;
-    }
+
     .bar-highlighted {
       color: green;
     }
@@ -104,8 +126,6 @@
     }
     .sample-cell {
       font-size:.7em;
-    }
-    .compare-input{
     }
     .mono {
       font-family:monospace;

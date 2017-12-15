@@ -1,5 +1,5 @@
-var numericFilter = function(x){
-  return !isNaN(parseInt(x))
+var numericFilter = function(x) {
+  return !_.isNaN(parseInt(x))
 }
 
 // since we are using an older version of _.js that does not have this function
@@ -17,7 +17,6 @@ function average (arr){
     return memo + num;
   }, 0) / arr.length;
 }
-
 
 
 mciModule.controller('PerfController', function PerfController($scope, $window, $http, $location){
@@ -56,13 +55,14 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
 
   $scope.syncHash = function(tab){
     var hash = {}
-    if($location.hash().length > 0){
-      hash = JSON.parse(decodeURIComponent($location.hash()))
+    var locationHash = decodeURIComponent($location.hash());
+    if(locationHash.length > 0) {
+      hash = JSON.parse(locationHash)
     }
     if(Object.keys($scope.hiddenGraphs).length > 0){
       hash.hiddenGraphs = Object.keys($scope.hiddenGraphs)
     }
-    if(tab >=0){
+    if(tab >= 0){
       hash.perftab = tab
     }
 
@@ -74,7 +74,7 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
     setTimeout(function(){
       $location.hash(encodeURIComponent(JSON.stringify(hash)))
       $scope.$apply()
-    },1)
+    }, 1)
   }
 
   $scope.checkEnter = function(keyEvent){
@@ -114,8 +114,11 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
     $scope.hoverSamples = {}
     if(!!$scope.perfSample){
       var testNames = $scope.perfSample.testNames()
+
       for(var i=0;i<testNames.length;i++){
-        var s = $scope.trendSamples.sampleInSeriesAtCommit(testNames[i], $scope.currentHash)
+        var s = $scope.trendSamples.sampleInSeriesAtCommit(
+          testNames[i], $scope.currentHash
+        )
         $scope.hoverSamples[testNames[i]] = s
       }
     }
@@ -149,7 +152,9 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
 
   $scope.getPctDiff = function(referenceOps, sample, testKey){
     if(sample == null) return "";
-    var compareTest = _.find(sample.data.results, function(x){return x.name == testKey});
+    var compareTest = _.find(sample.data.results, function(x) {
+      return x.name == testKey
+    });
     var compareMaxOps = $scope.getMax(compareTest.results);
     var pctDiff = (referenceOps-compareMaxOps)/referenceOps;
     return pctDiff;
@@ -200,7 +205,6 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
           .range([height, 0]);
       }
 
-
       var x = d3.scale.ordinal()
         .domain(_.pluck(_.flatten(series), "threads"))
         .rangeRoundBands([0, width]);
@@ -245,7 +249,6 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
         .y1(function(d) {
           return y(d3.max(d.ops_per_sec_values))
         }).interpolate("linear");
-
 
       bar.selectAll(".err")
         .data(function(d) {
@@ -354,7 +357,7 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
           if(draw)
             $scope.redrawGraphs()
         },
-        function(resp){console.log(resp.data) });
+        function(resp){ console.log(resp.data) });
     }else if(!!formData.tag && formData.tag.length > 0){
       $http.get("/plugin/json/tag/" + $scope.project + "/" + formData.tag + "/" + $scope.task.build_variant + "/" + $scope.task.display_name + "/perf").then(
         function(resp){
@@ -380,15 +383,15 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
 
   $scope.redrawGraphs = function(){
       setTimeout(function(){
-        drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
         drawTrendGraph($scope.trendSamples, $scope.perfSample.testNames(), $scope, $scope.task.id, $scope.comparePerfSamples);
-      },0)
+        drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
+      }, 0)
   }
 
   if($scope.conf.enabled){
     if($location.hash().length>0){
       try{
-        var hashparsed = JSON.parse($location.hash())
+        var hashparsed = JSON.parse(decodeURIComponent($location.hash()))
         if('hiddenGraphs' in hashparsed){
           for(var i=0;i<hashparsed.hiddenGraphs.length;i++){
             $scope.hiddenGraphs[hashparsed.hiddenGraphs[i]]=true
@@ -459,20 +462,33 @@ function TrendSamples(samples){
 
   // testNames is a unique list of all the tests that appear in *any* of the given list of samples.
   this.testNames = [];
+
   for (var i = 0; i < samples.length; i++) {
-    for (var j = 0; j < samples[i].data.results.length; j++) {
-      var name = samples[i].data.results[j].name;
-      if (!(name in this.seriesByName)) {
-        this.seriesByName[name] = [];
+    var sample = samples[i];
+
+    for (var j = 0; j < sample.data.results.length; j++) {
+      var rec = sample.data.results[j];
+
+      // Create entry if not exists
+      if (!(rec.name in this.seriesByName)) {
+        this.seriesByName[rec.name] = [];
       }
-      var rec = samples[i].data.results[j];
-      var sorted = _.sortBy(_.filter(_.values(rec.results), function(x){return typeof(x)=="object"}), "ops_per_sec");
-      this.seriesByName[name].push({
-        revision: samples[i].revision,
-        task_id: samples[i].task_id,
-        "ops_per_sec": sorted[sorted.length-1].ops_per_sec,
-        "ops_per_sec_values": sorted[sorted.length-1].ops_per_sec_values,
-        order: samples[i].order,
+
+      var sorted = _.chain(rec.results)
+        .values()
+        .filter(function(d) { return typeof(d) == 'object' })
+        .sortBy('ops_per_sec')
+        .value()
+
+      var last = _.last(sorted);
+
+      this.seriesByName[rec.name].push({
+        revision: sample.revision,
+        task_id: sample.task_id,
+        ops_per_sec: last.ops_per_sec,
+        ops_per_sec_values: last.ops_per_sec_values,
+        order: sample.order,
+        startedAt: rec.start * 1000,
       });
     }
   }
@@ -482,7 +498,7 @@ function TrendSamples(samples){
     this.testNames.unshift(key);
   }
 
-  for(var i=0;i<this.testNames.length;i++){
+  for(var i=0; i < this.testNames.length; i++){
     //make an index for commit hash -> sample for each test series
     var k = this.testNames[i];
     this._sampleByCommitIndexes[k] = _.groupBy(this.seriesByName[k], "revision"), function(x){return x[0]};
@@ -522,7 +538,6 @@ function TrendSamples(samples){
       return r;
     }
   }
-
 }
 
 function TestSample(sample){
@@ -587,202 +602,14 @@ function TestSample(sample){
     }
     return this._maxes[testName];
   }
-
-
 }
 
 var drawTrendGraph = function(trendSamples, tests, scope, taskId, compareSamples) {
-  scope.d3data = {}
+  scope.locked = false;
+
   for (var i = 0; i < tests.length; i++) {
-    var testNameIndex = i
-
-    // clear out the DOM element containing the graph for this task
-    $("#perf-trendchart-" + cleanId(taskId) + "-" + i).empty();
-    var margin = { top: 20, right: 50, bottom: 30, left: 50 }
-    var width = 960 - margin.left - margin.right;
-    var height = 200 - margin.top - margin.bottom;
-
     var key = tests[i];
-    var svg = d3.select("#perf-trendchart-" + cleanId(taskId) + "-" + i)
-      .append("svg")
-      .attr('class', "series")
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom);
     var series = trendSamples.seriesByName[key];
-    var ops = _.pluck(series, 'ops_per_sec');
-    var opsValues = _.pluck(series, 'ops_per_sec_values');
-    var hasValues = !_.contains(opsValues, undefined)
-
-    var seriesMax = d3.max(ops)
-    var seriesAvg = d3.mean(ops)
-
-    var compareMax = 0
-    if(compareSamples){
-        compareMax = d3.max(_.map(compareSamples, function(x){return x.maxThroughputForTest(key)}))
-    }
-
-    // If the upper and lower y-axis values are very close to the average
-    // (within 10%) add extra padding to the upper and lower bounds of the graph for display
-    var yAxisUpperBound = d3.max([compareMax, seriesMax, seriesAvg*1.1])
-    var yAxisLowerBound = d3.min([d3.min(ops), seriesAvg*.9])
-
-    // create extra padding if seriesMax
-
-    var y = d3.scale.linear()
-      .domain([yAxisLowerBound, yAxisUpperBound])
-      .range([height, 0]);
-    var x = d3.scale.linear()
-      .domain([0, ops.length - 1])
-      .range([0, width]);
-
-    var z = d3.scale.category10();
-
-    var line = d3.svg.line()
-      .x(function(d, i) {
-        return x(i);
-      })
-      .y(function(d) {
-        return y(d.ops_per_sec)
-      });
-    svg.append("path")
-      .data([series])
-      .attr("class", "line")
-      .attr("d", line);
-
-    if(hasValues){
-      var maxline = d3.svg.line()
-        .x(function(d, i){
-          return x(i);
-        })
-        .y(function(d){
-          return y(d3.max(d.ops_per_sec_values))
-        })
-
-      var minline = d3.svg.line()
-        .x(function(d, i){
-          return x(i);
-        })
-        .y(function(d){
-          return y(d3.min(d.ops_per_sec_values))
-        })
-
-      svg.append("path")
-        .data([series])
-        .attr("class", "error-line")
-        .attr("d", maxline);
-      svg.append("path")
-        .data([series])
-        .attr("class", "error-line")
-        .attr("d", minline);
-    }
-
-    var focus = svg.append("circle")
-      .attr("r", 4.5);
-    scope.d3data[key] = { x:x, y:y, z:z, focus:focus }
-
-    svg.selectAll(".point")
-      .data(series)
-      .enter()
-      .append("svg:circle")
-      .attr("class", function(d){
-        if(d.task_id == scope.task.id){
-          return "point current"
-        }else if(!!scope.comparePerfSample && d.revision == scope.comparePerfSample.sample.revision){
-          return "point compare"
-        }
-        return "point";
-      })
-      .attr("cx", function(d, i) {
-        return x(i);
-      })
-      .attr("cy", function(d) {
-        return y(d.ops_per_sec);
-      })
-      .attr("r", function(d){
-        return d.task_id == scope.task.id ? 5 : 2;
-      });
-    svg.append("rect")
-      .attr("class", "overlay")
-      .attr("y", margin.top)
-      .attr("width", width)
-      .attr("height", height)
-      .on("mouseover", function() {
-        focus.style("display", null);
-      })
-      .on("mouseout", function() {
-        focus.style("display", "none");
-      })
-      .on("click", function(s){
-        return function(){
-          s.locked = !s.locked
-          scope.$digest()
-        }
-      }(scope))
-      .on("mousemove", function(data, f, xscale, scope, series, ts) {
-        return function() {
-          if(scope.locked){
-            return;
-          }
-
-          var i = Math.round(xscale.invert(d3.mouse(this)[0]));
-          var hash = data[i].revision
-          if(hash == scope.currentHash){
-            return
-          }
-          for(var q=0;q<tests.length;q++){
-            var d = scope.d3data[tests[q]]
-            var index = findIndex(ts.tasksByCommitOrderByTestName(tests[q]), function(x){return x.revision==hash})
-            var tempSample = ts.sampleInSeriesAtCommit(tests[q], hash)
-            if(index && tempSample){
-              d.focus.attr("cx", d.x(index)).attr("cy", d.y(tempSample.ops_per_sec))
-            }else{
-              d.focus.attr("cx", 0).attr("cy", 0)
-            }
-          }
-          scope.currentSample = data[i];
-          scope.currentHash = data[i].revision;
-          scope.currentHoverSeries = series;
-          scope.$digest();
-        }
-      }(series, focus, x, scope, key, trendSamples))
-
-    var avgOpsPerSec = d3.mean(ops)
-    if (compareSamples) {
-      for(var j=0;j<compareSamples.length;j++){
-        var compareSample = compareSamples[j]
-        var compareMax = compareSample.maxThroughputForTest(key)
-        if (!isNaN(compareMax)) {
-          var compareLine = d3.svg.line()
-            .x(function(d, i) {
-              return x(i);
-            })
-            .y(function(d) {
-              return y(compareMax);
-            })
-
-          svg.append("line")
-            .attr("stroke", function(d,i){return z(j+1)})
-            .attr("stroke-width", "1")
-            .attr("stroke-dasharray", "5,5")
-            .attr("class", "mean-line")
-            .attr({
-              x1: x(0),
-              x2: x(width),
-              y1: y(compareMax),
-              y2: y(compareMax)
-            })
-        }
-      }
-    }
-
-    var padding = 30
-    var yAxis = d3.svg.axis()
-      .scale(y)
-      .orient("left")
-      .ticks(5);
-    svg.append("g")
-      .attr("class", "axis")
-      .call(yAxis);
+    drawSingleTrendChart(series, key, scope, taskId, compareSamples, i);
   }
-
 }
