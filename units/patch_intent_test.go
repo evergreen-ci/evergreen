@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -61,7 +62,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearCollections(admin.Collection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -132,6 +133,11 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
+	flags := admin.ServiceFlags{
+		GithubPRTestingDisabled: true,
+	}
+	s.NoError(admin.SetServiceFlags(flags))
+
 	patchContent, err := fetchDiffByURL(s.diffURL)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
@@ -269,4 +275,35 @@ func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
 	bytes, err := ioutil.ReadAll(reader)
 	s.NoError(err)
 	s.NotEmpty(bytes)
+}
+
+func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
+	flags := admin.ServiceFlags{
+		GithubPRTestingDisabled: true,
+	}
+	s.NoError(admin.SetServiceFlags(flags))
+
+	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL)
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	patchID := bson.NewObjectId()
+	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
+	j.env = s.env
+	s.True(ok)
+	s.NotNil(j)
+	j.Run()
+	s.Error(j.Error())
+	s.Contains(j.Error().Error(), "github pr testing is disabled, not processing pull request")
+
+	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	s.NoError(err)
+	s.Nil(patchDoc)
+
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	s.NoError(err)
+	s.Len(unprocessedIntents, 1)
+
+	s.Equal(intent.ID(), unprocessedIntents[0].ID())
 }

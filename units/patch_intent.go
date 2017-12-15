@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -23,6 +24,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
@@ -78,7 +80,6 @@ func (j *patchIntentProcessor) Run() {
 	if j.HasErrors() {
 		return
 	}
-	defer j.Intent.SetProcessed()
 
 	patchDoc := j.Intent.NewPatch()
 
@@ -212,6 +213,7 @@ func fetchDiffByURL(URL string) (string, error) {
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) error {
+	defer j.Intent.SetProcessed()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
@@ -252,6 +254,19 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
+	adminSettings, err := admin.GetSettings()
+	if err != nil {
+		return errors.Wrap(err, "github pr testing is disabled, error retrieving admin settings")
+	}
+	if adminSettings.ServiceFlags.GithubPRTestingDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     patchIntentJobName,
+			"message": "github pr testing is disabled, not processing pull request",
+		})
+		return errors.New("github pr testing is disabled, not processing pull request")
+	}
+	defer j.Intent.SetProcessed()
+
 	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {
 		return errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
