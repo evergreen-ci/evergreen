@@ -20,14 +20,15 @@ func Update() cli.Command {
 		Name:    "get-update",
 		Aliases: "update",
 		Usage:   "fetch the latest version of this binary",
-		Flags: clientConfigFlags(
+		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:    installFlagName,
 				Aliases: []string{"i", "yes", "y"},
 				Usage:   "after downloading the update, install the updated binary",
-			}),
+			},
+		},
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 			doInstall := c.Bool(installFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())

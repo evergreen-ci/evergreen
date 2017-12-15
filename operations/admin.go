@@ -33,7 +33,7 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 		Name:    "banner",
 		Aliases: []string{"set-banner"},
 		Usage:   "modify the contents of the site-wide display banner",
-		Flags: clientConfigFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:    messageFlagName,
 				Aliases: []string{"m"},
@@ -47,7 +47,8 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 			cli.BoolFlag{
 				Name:  clearFlagName,
 				Usage: "clear the content of the banner",
-			}),
+			},
+		},
 		Before: mergeBeforeFuncs(
 			requireConfig,
 			func(c *cli.Context) error {
@@ -66,7 +67,7 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 		Action: func(c *cli.Context) error {
 			themeName := c.String(themeFlagName)
 			msgContent := c.String(messageFlagName)
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 
 			var theme admin.BannerTheme
 			var ok bool
@@ -101,7 +102,7 @@ func adminDisableService() cli.Command {
 	return cli.Command{
 		Name:   "disable-service",
 		Usage:  "disable a background service",
-		Flags:  clientConfigFlags(adminFlagFlag()...),
+		Flags:  adminFlagFlag(),
 		Action: adminServiceChange(true),
 	}
 }
@@ -110,7 +111,7 @@ func adminEnableService() cli.Command {
 	return cli.Command{
 		Name:   "enable-service",
 		Usage:  "enable a background service",
-		Flags:  clientConfigFlags(adminFlagFlag()...),
+		Flags:  adminFlagFlag(),
 		Action: adminServiceChange(false),
 	}
 
@@ -118,7 +119,7 @@ func adminEnableService() cli.Command {
 
 func adminServiceChange(disable bool) cli.Command {
 	return func(c *cli.Context) error {
-		confPath := c.String(confFlagName)
+		confPath := c.Parent().String(confFlagName)
 		flagsToSet := c.StringSlice(adminFlagFlag)
 
 		ctx, cancel := context.WithCancel(context.Background())

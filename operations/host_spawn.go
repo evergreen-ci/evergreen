@@ -14,7 +14,6 @@ func hostStatus() cli.Command {
 	return cli.Command{
 		Name:  "status",
 		Usage: "print the status of spawn hosts",
-		Flags: clientConfigFlags(),
 		Action: func(c *cli.Context) error {
 			return errors.New("not implemented")
 		},
@@ -30,7 +29,7 @@ func hostCreate() cli.Command {
 	return cli.Command{
 		Name:  "create",
 		Usage: "spawn a host",
-		Flags: clientConfigFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:    distroFlagName,
 				Aliases: []string{"d"},
@@ -40,9 +39,10 @@ func hostCreate() cli.Command {
 				Name:    keyFlagName,
 				Aliases: []string{"k"},
 				Usage:   "name or value of an public key to use",
-			}),
+			},
+		},
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
 			key := c.string(keyFlagName)
 
@@ -79,7 +79,7 @@ func hostlist() cli.Command {
 	return cli.Command{
 		Name:  "list",
 		Usage: "list active spawn hosts",
-		Flags: clientConfigFlags(
+		Flags: []cli.Flag{
 			cli.BoolFlag{
 				Name:  mineFlagName,
 				Usage: "list hosts spawned but the current user",
@@ -87,7 +87,8 @@ func hostlist() cli.Command {
 			cli.BoolFlag{
 				Name:  allFlagName,
 				Usage: "list all hosts",
-			}),
+			},
+		},
 		Befor: func(c *cli.Context) error {
 			if c.Bool(mineFlagName) == c.Bool(allFlagName) {
 				return errors.New("Must specify exactly one of --all or --mine")
@@ -96,7 +97,7 @@ func hostlist() cli.Command {
 			grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 		},
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
 			showAll := c.Bool(allFlagName)
 
@@ -148,13 +149,13 @@ func hostTerminate() cli.Command {
 	return cli.Command{
 		Name:  "terminate",
 		Usage: "terminate active spawn hosts",
-		Flags: clientConfigFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:    hostFlagName,
 				Aliases: []string{"h"},
 				Usage:   "terminate the specified host",
 			},
-		),
+		},
 		Before: func(c *cli.Context) error {
 			grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 

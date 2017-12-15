@@ -25,7 +25,6 @@ func keysAdd() cli.Command {
 	return cli.Command{
 		Name:   "add",
 		Usage:  "add a public key",
-		Flags:  clientConfigFlags(),
 		Action: func(c *cli.Context) error {},
 	}
 }
@@ -34,10 +33,9 @@ func keysList() cli.Command {
 	return cli.Command{
 		Name:   "list",
 		Usage:  "list all public keys for the current user",
-		Flags:  clientConfigFlags(),
 		Before: mergeBeforeFuncs(setPlainLogger, requireConfig),
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -70,8 +68,7 @@ func keysList() cli.Command {
 }
 func keysDelete() cli.Command {
 	return cli.Command{
-		Name:  "delete",
-		Flags: clientConfigFlags(),
+		Name: "delete",
 		Before: mergeBeforeFuncs(
 			requireConfig,
 			setPlainLogger,
@@ -85,7 +82,7 @@ func keysDelete() cli.Command {
 				}
 			}),
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

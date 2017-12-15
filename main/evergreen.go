@@ -33,13 +33,21 @@ func buildApp() *cli.App {
 
 	// Register sub-commands here.
 	app.Commands = []cli.Command{
+		// Version and auto-update
+		operations.Version(),
+		operations.Update(),
+
+		// Sub-Commands
 		operations.Deploy(),
 		operations.Service(),
 		operations.Agent(),
 		operations.Admin(),
 		operations.Host(),
-		operations.Version(),
-		operations.Update(),
+
+		// Top-level commands.
+		operations.Keys(),
+		operations.Fetch(),
+		operations.Evaluate(),
 	}
 
 	userHome, err := homedir.Dir()
@@ -60,8 +68,8 @@ func buildApp() *cli.App {
 			Usage: "Specify lowest visible log level as string: 'emergency|alert|critical|error|warning|notice|info|debug|trace'",
 		},
 		cli.StringFlag{
-			Name:    "config",
-			Aliases: []string{"c"},
+			Name:    "conf",
+			Aliases: []string{"c", "config"},
 			Usage:   "specify the path for the evergreen CLI config",
 			Value:   confPath,
 		},

@@ -81,7 +81,7 @@ func startRunnerService() cli.Command {
 		Flags:  serviceConfigFlags(),
 		Before: setupRunner(),
 		Action: func(c *cli.Context) error {
-			confPath := c.String(confFlagName)
+			confPath := c.Parent().String(confFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			env := evergreen.GetEnvironment()
