@@ -45,7 +45,7 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(db.ClearCollections(admin.Collection, patch.Collection))
 	startTime := time.Now()
 	s.patchDoc = &patch.Patch{
 		Id:         bson.NewObjectId(),
@@ -137,7 +137,7 @@ func (s *githubStatusUpdateSuite) TestForPatch() {
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
 	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.URLPath)
-	s.Equal("finished in 10m0s", status.Description)
+	s.Equal("patch finished in 10m0s", status.Description)
 	s.Equal("evergreen", status.Context)
 	s.Equal("failure", status.State)
 }

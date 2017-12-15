@@ -76,7 +76,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	}).Insert())
 
 	s.NoError((&user.DBUser{
-		Id: "github_patch_user",
+		Id: evergreen.GithubPatchUser,
 	}).Insert())
 
 	s.NoError((&model.ProjectVars{
@@ -98,7 +98,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.repo = "evergreen-ci/evergreen"
 	s.headRepo = "tychoish/evergreen"
 	s.prNumber = 448
-	s.user = "github_patch_user"
+	s.user = evergreen.GithubPatchUser
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
 	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
 	s.desc = "Test!"

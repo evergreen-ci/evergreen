@@ -229,6 +229,7 @@ functions:
         plugins:
           manifest:
             github_token: "${github_token}"
+        github_pr_creator_org: "10gen"
         EOF
   set-up-mongodb:
     - command: shell.exec

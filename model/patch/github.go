@@ -81,11 +81,11 @@ type githubIntent struct {
 	// User is the login username of the Github user that created the pull request
 	User string `bson:"user"`
 
-	// BaseHash is the head hash of the diff, i.e. hash of the most recent
+	// HeadHash is the head hash of the diff, i.e. hash of the most recent
 	// commit.
 	HeadHash string `bson:"head_hash"`
 
-	// URL is the URL of the url to the diff file for this pull request
+	// DiffURL is the URL to the diff file for this pull request
 	DiffURL string `bson:"diff_url"`
 
 	// CreatedAt is the time that this intent was stored in the database

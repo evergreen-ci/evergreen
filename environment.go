@@ -2,11 +2,12 @@ package evergreen
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"sync"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
@@ -141,10 +142,13 @@ func (e *envState) initDB() error {
 		return errors.Wrap(err, "error fetching github pull request user")
 	}
 	if ghUser == nil {
+		b := make([]byte, 16)
+		_, _ = rand.Read(b)
+
 		ghUser = &user.DBUser{
 			Id:       GithubPatchUser,
 			DispName: "Github Pull Requests",
-			APIKey:   util.RandomString(),
+			APIKey:   hex.EncodeToString(b),
 		}
 		return errors.Wrap(ghUser.Insert(), "error creating github patch user")
 	}
