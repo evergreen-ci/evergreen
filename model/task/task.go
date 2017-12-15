@@ -896,6 +896,21 @@ func (t TestResult) convertToNewStyleTestResult() testresult.TestResult {
 	}
 }
 
+func ConvertToOld(in *testresult.TestResult) TestResult {
+	return TestResult{
+		Status:    in.Status,
+		TestFile:  in.TestFile,
+		URL:       in.URL,
+		URLRaw:    in.URLRaw,
+		LogId:     in.LogID,
+		LineNum:   in.LineNum,
+		ExitCode:  in.ExitCode,
+		StartTime: in.StartTime,
+		EndTime:   in.EndTime,
+		LogRaw:    in.LogRaw,
+	}
+}
+
 // MarkUnscheduled marks the task as undispatched and updates it in the database
 func (t *Task) MarkUnscheduled() error {
 	t.Status = evergreen.TaskUndispatched

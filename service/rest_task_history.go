@@ -154,7 +154,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	results, err := model.GetTestHistory(&params)
+	results, err := model.GetTestHistoryV2(&params)
 	if err != nil {
 		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
 		return
