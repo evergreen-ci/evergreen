@@ -809,6 +809,16 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISe
 		return err
 	}
 
+	if params.Alias != "" {
+		fmt.Printf("activated tasks on %d variants...\n", len(newPatch.VariantsTasks))
+		for _, v := range newPatch.VariantsTasks {
+			fmt.Printf("\ntasks for variant %s:\n", v.Variant)
+			for _, t := range v.Tasks {
+				fmt.Println(t)
+			}
+		}
+		fmt.Printf("\n")
+	}
 	fmt.Println("Patch successfully created.")
 	fmt.Print(patchDisp)
 	return nil
