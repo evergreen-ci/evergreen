@@ -303,7 +303,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return err
 	}
 	if !isMember {
-		return errors.Errorf("user is not member of %s", patchDoc.GithubPatchData.BaseOwner)
+		return errors.Errorf("user is not a member of %s", mustBeMemberOfOrg)
 	}
 
 	patchContent, err := fetchDiffByURL(patchDoc.GithubPatchData.DiffURL)
