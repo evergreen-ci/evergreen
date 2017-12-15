@@ -43,6 +43,7 @@ type patchIntentProcessor struct {
 
 	Intent  patch.Intent  `bson:"intent" json:"intent"`
 	PatchID bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
+	user    *user.DBUser
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
@@ -118,12 +119,15 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		})
 		return c.Resolve()
 	}
-	user, err := user.FindOne(user.ById(patchDoc.Author))
-	if err != nil {
-		return err
-	}
-	if user == nil {
-		return errors.New("Can't find patch author")
+	var err error
+	if j.user == nil {
+		j.user, err = user.FindOne(user.ById(patchDoc.Author))
+		if err != nil {
+			return err
+		}
+		if j.user == nil {
+			return errors.New("Can't find patch author")
+		}
 	}
 
 	// Get and validate patched config and add it to the patch document
@@ -165,7 +169,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	project.BuildProjectTVPairs(patchDoc, j.Intent.GetAlias())
 
 	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = user.IncPatchNumber()
+	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
 		return errors.Wrap(err, "error computing patch num")
 	}
@@ -316,22 +320,35 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return err
 	}
 
-	patchFileId := bson.NewObjectId().Hex()
+	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
 	patchDoc.Patches = append(patchDoc.Patches, patch.ModulePatch{
 		ModuleName: "",
 		Githash:    patchDoc.Githash,
 		PatchSet: patch.PatchSet{
-			PatchFileId: patchFileId,
+			PatchFileId: patchFileID,
 			Summary:     summaries,
 		},
 	})
 	patchDoc.Project = projectRef.Identifier
 
-	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent)); err != nil {
+	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return errors.Wrap(err, "failed to write patch file to db")
 	}
 
-	return nil
+	j.user, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
+	if err != nil {
+		return err
+	}
+	if j.user == nil {
+		j.user = &user.DBUser{
+			Id:       evergreen.GithubPatchUser,
+			DispName: "Github Pull Requests",
+			APIKey:   util.RandomString(),
+		}
+		err = j.user.Insert()
+	}
+
+	return errors.Wrap(err, "failed to create github pull request user")
 }
 
 func authAndFetchPRMergeBase(patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
@@ -342,7 +359,7 @@ func authAndFetchPRMergeBase(patchDoc *patch.Patch, requiredOrganization, github
 	if err != nil {
 		return false, err
 	}
-	defer util.PutHttpClient(httpClient)
+	defer util.PutHttpClientForOauth2(httpClient)
 	client := github.NewClient(httpClient)
 
 	// doesn't count against API limits

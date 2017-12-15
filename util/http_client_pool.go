@@ -42,13 +42,15 @@ func init() {
 
 func GetHttpClient() *http.Client { return httpClientPool.Get().(*http.Client) }
 func GetHttpClientForOauth2(oauthToken string) (*http.Client, error) {
-	if oauthToken != "" {
-		splitToken := strings.Split(oauthToken, " ")
-		if len(splitToken) != 2 {
-			return nil, errors.New("token format was invalid, expected 'token [token]' or empty token")
-		}
-		oauthToken = splitToken[1]
+	if oauthToken == "" {
+		return nil, errors.New("oauth token cannot be empty")
 	}
+	splitToken := strings.Split(oauthToken, " ")
+	if len(splitToken) != 2 || splitToken[0] != "token" {
+		return nil, errors.New("token format was invalid, expected 'token [token]'")
+	}
+	oauthToken = splitToken[1]
+
 	client := httpClientPool.Get().(*http.Client)
 	client.Transport = &oauth2.Transport{
 		Base: client.Transport,
@@ -62,10 +64,12 @@ func GetHttpClientForOauth2(oauthToken string) (*http.Client, error) {
 }
 
 func PutHttpClient(c *http.Client) {
-	if oauthTransport, ok := c.Transport.(*oauth2.Transport); ok {
-		c.Transport = oauthTransport.Base
-	}
 	c.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = false
 	c.Timeout = httpClientTimeout
 	httpClientPool.Put(c)
+}
+func PutHttpClientForOauth2(c *http.Client) {
+	oauthTransport := c.Transport.(*oauth2.Transport)
+	c.Transport = oauthTransport.Base
+	PutHttpClient(c)
 }

@@ -136,7 +136,7 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 	if err != nil {
 		return err
 	}
-	defer util.PutHttpClient(httpClient)
+	defer util.PutHttpClientForOauth2(httpClient)
 	client := github.NewClient(httpClient)
 
 	newStatus := github.RepoStatus{
