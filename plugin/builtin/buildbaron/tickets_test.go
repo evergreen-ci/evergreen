@@ -25,6 +25,23 @@ func TestDescriptionGeneration(t *testing.T) {
 		)
 		So(err, ShouldBeNil)
 	})
+	Convey("With a display task, a valid description should also be generated", t, func() {
+		_, err := getDescription(
+			&task.Task{
+				DisplayName:  "My Task",
+				Id:           "mytaskid1",
+				BuildVariant: "osx-108",
+				DisplayOnly:  true,
+			},
+			nil,
+			"myUser",
+			[]jiraTestFailure{
+				{Name: "1.js", URL: "path/to/1"},
+				{Name: "2.js", URL: "path/to/2"},
+			},
+		)
+		So(err, ShouldBeNil)
+	})
 }
 
 func TestCleanTestName(t *testing.T) {
