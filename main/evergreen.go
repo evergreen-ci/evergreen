@@ -53,6 +53,7 @@ func buildApp() *cli.App {
 		operations.TestHistory(),
 		operations.LastGreen(),
 
+		operations.Patch(),
 		operations.PatchList(),
 		operations.PatchSetModule(),
 		operations.PatchRemoveModule(),
