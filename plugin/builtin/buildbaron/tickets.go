@@ -27,7 +27,7 @@ const (
 const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Task.BuildVariant}}|` + UIRoot + `/task/{{.Task.Id}}/{{.Task.Execution}}]
 
-{{with .Host}} Host: [{{.Host.Host}}|` + UIRoot + `/host/{{.Host.Id}}] {{end}}
+{{with .Host}} Host: [{{.Host}}|` + UIRoot + `/host/{{.Id}}] {{end}}
 Project: [{{.Task.Project}}|` + UIRoot + `/waterfall/{{.Task.Project}}]
 
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
