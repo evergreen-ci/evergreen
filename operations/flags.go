@@ -14,6 +14,8 @@ const (
 	patchIDFlagName    = "patch"
 	moduleFlagName     = "module"
 	yesFlagName        = "yes"
+	tasksFlagName      = "tasks"
+	largeFlagName      = "large"
 )
 
 func addPathFlag(flags ...cli.Flag) []cli.Flag {
@@ -46,6 +48,20 @@ func addProjectFlag(flags ...cli.Flag) []cli.Flag {
 		Name:    projectFlagName,
 		Aliases: []string{"p"},
 		Usage:   "specify the name of an existing evergreen project",
+	})
+}
+func addLargeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.BoolFlag{
+		Name:  largeFlagName,
+		Usage: "enable submitting larger patches (>16MB)",
+	})
+
+}
+
+func addTasksFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:  taskFlagName,
+		Usage: "task name",
 	})
 }
 
@@ -88,7 +104,7 @@ func addYesFlag(flags ...cli.Flag) []cli.Flag {
 	})
 }
 
-func mergeFlagSlices(in [][]cli.Flag) []cli.Flag {
+func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {
 	out := []cli.Flag{}
 
 	for idx := range in {

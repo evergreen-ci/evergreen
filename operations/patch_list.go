@@ -1,13 +1,10 @@
 package operations
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/urfave/cli"
 )
 
@@ -68,33 +65,4 @@ func PatchList() cli.Command {
 
 		},
 	}
-}
-
-// getPatchDisplay returns a human-readable summary representation of a patch object
-// which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
-	var out bytes.Buffer
-	var url string
-
-	if p.Activated {
-		url = uiHost + "/version/" + p.Id.Hex()
-	} else {
-		url = uiHost + "/patch/" + p.Id.Hex()
-	}
-
-	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch       *patch.Patch
-		ShowSummary bool
-		Link        string
-		Now         time.Time
-	}{
-		Patch:       p,
-		ShowSummary: summarize,
-		Link:        url,
-		Now:         time.Now(),
-	})
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
 }

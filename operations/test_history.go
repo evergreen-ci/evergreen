@@ -22,7 +22,6 @@ const (
 
 func TestHistory() cli.Command {
 	const (
-		taskFlagName       = "task"
 		testFlagName       = "test"
 		taskStatusFlagName = "task-status"
 		testStatusFlagName = "test-status"
@@ -39,15 +38,7 @@ func TestHistory() cli.Command {
 	return cli.Command{
 		Name:  "test-history",
 		Usage: "",
-		Flags: addProjectFlag(addOutputPath(
-			cli.StringSliceFlag{
-				Name:  taskFlagName,
-				Usage: "task name",
-			},
-			cli.StringSliceFlag{
-				Name:  testFlagName,
-				Usage: "test name",
-			},
+		Flags: mergeFlagSlices(addProjectFlag(), addTasksFlag(), addOutputPath(
 			cli.StringSliceFlag{
 				Name:  taskStatusFlagName,
 				Usage: "task status, either fail, pass, sysfail, or timeout ",
@@ -140,7 +131,7 @@ func TestHistory() cli.Command {
 			// create a test history parameter struct and validate it
 			testHistoryParameters := model.TestHistoryParameters{
 				Project:         c.String(projectFlagName),
-				TaskNames:       c.StringSlice(taskFlagName),
+				TaskNames:       c.StringSlice(tasksFlagName),
 				TestNames:       c.StringSlice(testFlagName),
 				BuildVariants:   c.StringSlice(variantsFlagName),
 				TaskStatuses:    testHistoryGetTaskStatuses(c.StringSlice(taskStatusFlagName)),
