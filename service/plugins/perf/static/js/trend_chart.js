@@ -59,7 +59,7 @@ var drawSingleTrendChart = function(
       class: 'series',
       width: cfg.container.width,
       height: cfg.container.height,
-    });
+    })
 
   // TODO Q: Do we really need `trendSamples` here?
   var series = trendSamples.seriesByName[key];
@@ -87,9 +87,7 @@ var drawSingleTrendChart = function(
   var yAxisUpperBound = d3.max([compareMax, seriesMax, seriesAvg * 1.1])
   var yAxisLowerBound = d3.min([d3.min(ops), seriesAvg * .9])
 
-  // Calculate datetime difference between the first and last item
-  var dateMinMax = d3.extent(series, function(d) { return d.startedAt })
-  var period = dateMinMax[1] - dateMinMax[0]
+  // Calculate X Ticks values
   var idxStep = (series.length / cfg.xAxis.maxTicks + 2) | 0
   var xTicksData = _.filter(series, function(d, i) {
     return i % idxStep == 0
@@ -147,7 +145,7 @@ var drawSingleTrendChart = function(
   var xTicks = svg.append('svg:g')
     .attr({
       transform: 'translate(' +
-        cfg.margin.left + ',' + (cfg.container.height - cfg.margin.bottom / 2) +
+        cfg.margin.left + ',' + cfg.margin.top +
       ')'
     })
     .selectAll('g')
@@ -159,13 +157,32 @@ var drawSingleTrendChart = function(
         return 'translate(' + xScale(getIdx(d)) + ',0)'
       }
     })
+
+  // X Tick date text
+  xTicks
     .append('svg:text')
     .attr({
+      y: (cfg.effectiveHeight + cfg.margin.bottom / 2),
       class: 'x-tick',
       'text-anchor': 'middle'
     })
     .style('fill', '#777')
     .text(function(d) { return moment(d.startedAt).format(cfg.xAxis.format) })
+
+  // X Tick vertical line
+  xTicks
+    .append('svg:line')
+    .attr({
+      x0: 0,
+      x1: 0,
+      y1: 0,
+      y2: cfg.effectiveHeight
+    })
+    .style({
+      stroke: '#CCC',
+      'shape-rendering': 'crispEdges',
+      'stroke-dasharray': '2,2',
+    })
 
   // Chart draw area group
   var chartG = svg.append('svg:g')
@@ -220,7 +237,7 @@ var drawSingleTrendChart = function(
     for(var j=0; j < compareSamples.length; j++) {
       var compareSample = compareSamples[j]
       var compareMax = compareSample.maxThroughputForTest(key)
-      if (!_.isNaN(compareMax)) {
+      if (compareMax && !_.isNaN(compareMax)) {
 
         var meanValue = yScale(compareMax)
         chartG.append('svg:line')
@@ -243,6 +260,15 @@ var drawSingleTrendChart = function(
     //TODO Figure out how to sync this across all charts
     //.style('display', 'none')
 
+  var focusedLine = focusG.append('svg:line')
+    .attr({
+      x1: 0,
+      x2: 0,
+      y1: 0,
+      'stroke-dasharray': '2,2'
+    })
+    .style('stroke', '#AAA')
+
   var focusedPoint = focusG.append('svg:circle')
     .attr({
       r: cfg.points.focusedR
@@ -251,7 +277,6 @@ var drawSingleTrendChart = function(
   var focusedText = focusG.append('svg:text')
     .attr({
       x: cfg.focus.labelOffset.x,
-      y: cfg.focus.labelOffset.y,
       'text-anchor': 'middle'
     })
     .style('font-weight', 'bold')
@@ -304,9 +329,13 @@ var drawSingleTrendChart = function(
     if (!d) return;
     var x = xScale(idx) | 0
     var y = yScale(d[cfg.chart.yValueAttr]) | 0
+    var toolTipY = cfg.focus.labelOffset.y * ((y > cfg.margin.top) ? 1 : -1.5)
 
     focusG.attr('transform', 'translate(' + x +',' + y + ')')
-    focusedText.text(moment(d.startedAt).format(cfg.format.date))
+    focusedText
+      .attr('y', toolTipY)
+      .text(moment(d.startedAt).format(cfg.format.date))
+    focusedLine.attr('y2', cfg.effectiveHeight - y)
   }
 
   scope.$on('hashChanged', function(e, hash) {
