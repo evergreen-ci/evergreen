@@ -27,7 +27,7 @@ const (
 const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Task.BuildVariant}}|` + UIRoot + `/task/{{.Task.Id}}/{{.Task.Execution}}]
 
-Host: [{{.Host.Host}}|` + UIRoot + `/host/{{.Host.Id}}]
+{{with .Host}} Host: [{{.Host.Host}}|` + UIRoot + `/host/{{.Host.Id}}] {{end}}
 Project: [{{.Task.Project}}|` + UIRoot + `/waterfall/{{.Task.Project}}]
 
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
@@ -74,15 +74,18 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 		util.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("task not found for id %v", input.TaskId))
 		return
 	}
-	// Find the host the task ran on
-	h, err := host.FindOne(host.ById(t.HostId))
-	if err != nil {
-		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if h == nil {
-		util.WriteJSON(w, http.StatusInternalServerError, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
-		return
+	var h *host.Host
+	if !t.DisplayOnly {
+		// Find the host the task ran on
+		h, err = host.FindOne(host.ById(t.HostId))
+		if err != nil {
+			util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if h == nil {
+			util.WriteJSON(w, http.StatusInternalServerError, fmt.Sprintf("host not found for task id %v with host id: %v", input.TaskId, t.HostId))
+			return
+		}
 	}
 
 	// build a list of all failed tests to include
