@@ -230,7 +230,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	patchDoc := &Patch{
 		Id:          bson.NewObjectId(),
 		Description: fmt.Sprintf("%s pull request #%d", g.BaseRepoName, g.PRNumber),
-		Author:      "github_patch_user",
+		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
 		GithubPatchData: GithubPatch{
 			PRNumber:  g.PRNumber,

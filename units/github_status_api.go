@@ -315,7 +315,7 @@ func taskStatusSubformat(n int, verb string) string {
 	if n == 0 {
 		return fmt.Sprintf("none %s", verb)
 	}
-	return fmt.Sprintf("%d %s, ", n, verb)
+	return fmt.Sprintf("%d %s", n, verb)
 }
 
 func repoReference(owner, repo string, prNumber int, ref string) string {

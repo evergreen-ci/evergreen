@@ -1,6 +1,8 @@
 package patch
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -92,6 +94,24 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
 	s.Equal(evergreen.GithubPRRequester, intent.RequesterIdentity())
+
+	patchDoc := intent.NewPatch()
+	s.Require().NotNil(patchDoc)
+	baseRepo := strings.Split(s.baseRepo, "/")
+	headRepo := strings.Split(s.headRepo, "/")
+	s.Equal(fmt.Sprintf("%s pull request %d", s.headRepo, s.prNumber), patchDoc.Description)
+	s.Equal(evergreen.GithubPatchUser, patchDoc.Author)
+	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.NotZero(patchDoc.Id)
+
+	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
+	s.Equal(baseRepo[0], patchDoc.GithubPatchData.BaseOwner)
+	s.Equal(baseRepo[1], patchDoc.GithubPatchData.BaseRepo)
+	s.Equal(headRepo[0], patchDoc.GithubPatchData.HeadOwner)
+	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
+	s.Equal(s.headHash, patchDoc.GithubPatchData.HeadHash)
+	s.Equal(s.user, patchDoc.GithubPatchData.Author)
+	s.Equal(s.url, patchDoc.GithubPatchData.DiffURL)
 }
 
 func (s *GithubSuite) TestInsert() {

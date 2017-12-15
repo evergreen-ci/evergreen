@@ -13,7 +13,8 @@ type (
 )
 
 const (
-	User = "mci"
+	User            = "mci"
+	GithubPatchUser = "github_pull_request"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
