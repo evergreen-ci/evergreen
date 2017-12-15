@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"fmt"
-	"strings"
-	"time"
-
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,8 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
-
-var ()
 
 const (
 	prettyStringFormat = "%-25s %-15s %-40s%-40s %-40s %-40s \n"
@@ -44,50 +40,6 @@ type TestHistoryCommand struct {
 	Format     string `long:"format" description:"format to export test history, options are 'json', 'csv', 'pretty', default pretty to stdout"`
 	Limit      int    `long:"limit" description:"number of tasks to include the request. defaults to no limit, but you must specify either a limit or before/after revisions."`
 	Request    string `long:"request-source" short:"r" description:"include 'patch', 'commit' or 'all' builds. Only shows commit builds if not specified."`
-}
-
-// createUrlQuery returns a string url query parameter with relevant url parameters.
-func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
-	queryString := fmt.Sprintf("testStatuses=%s&taskStatuses=%s",
-		strings.Join(testHistoryParameters.TestStatuses, ","),
-		strings.Join(testHistoryParameters.TaskStatuses, ","),
-	)
-
-	if testHistoryParameters.TaskRequestType != "" {
-		queryString += fmt.Sprintf("&buildType=%s", testHistoryParameters.TaskRequestType)
-	}
-
-	if len(testHistoryParameters.TaskNames) > 0 {
-		queryString += fmt.Sprintf("&tasks=%v", strings.Join(testHistoryParameters.TaskNames, ","))
-	}
-
-	if len(testHistoryParameters.TestNames) > 0 {
-		queryString += fmt.Sprintf("&tests=%v", strings.Join(testHistoryParameters.TestNames, ","))
-	}
-
-	if len(testHistoryParameters.BuildVariants) > 0 {
-		queryString += fmt.Sprintf("&variants=%v", strings.Join(testHistoryParameters.BuildVariants, ","))
-	}
-
-	if testHistoryParameters.BeforeRevision != "" {
-		queryString += fmt.Sprintf("&beforeRevision=%v", testHistoryParameters.BeforeRevision)
-	}
-
-	if testHistoryParameters.AfterRevision != "" {
-		queryString += fmt.Sprintf("&afterRevision=%v", testHistoryParameters.AfterRevision)
-	}
-	if !util.IsZeroTime(testHistoryParameters.BeforeDate) {
-		queryString += fmt.Sprintf("&beforeDate=%v", testHistoryParameters.BeforeDate.Format(time.RFC3339))
-	}
-	if !util.IsZeroTime(testHistoryParameters.AfterDate) {
-		queryString += fmt.Sprintf("&afterDate=%v", testHistoryParameters.AfterDate.Format(time.RFC3339))
-	}
-
-	if testHistoryParameters.Limit != 0 {
-		queryString += fmt.Sprintf("&limit=%v", testHistoryParameters.Limit)
-	}
-
-	return queryString
 }
 
 // Execute transfers the fields from a TestHistoryCommand to a TestHistoryParameter
@@ -190,7 +142,7 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 	if thc.Format == csvFormat {
 		isCSV = true
 	}
-	body, err := rc.GetTestHistory(testHistoryParameters.Project, createUrlQuery(testHistoryParameters), isCSV)
+	body, err := rc.GetTestHistory(testHistoryParameters.Project, testHistoryParameters.QueryString(), isCSV)
 	if err != nil {
 		return err
 	}
@@ -214,5 +166,5 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 		return nil
 	}
 
-	return WriteToFile(body, thc.Filepath)
+	return util.WriteToFile(body, thc.Filepath)
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/urfave/cli"
@@ -27,6 +28,15 @@ var (
 
 	setPlainLogger = func(c *cli.Conetext) error {
 		grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
+		return nil
+	}
+
+	requireVariantsFlag = func(c *cli.Context) error {
+		variants := c.StringSlice(variantsFlagName)
+		if len(variants) == 0 {
+			return errors.New("must specify at least one variant")
+		}
+		return nil
 	}
 
 	requirePathFlag = func(c *cli.Context) error {
@@ -45,6 +55,56 @@ var (
 		c.Set(pathFlagName, path)
 	}
 )
+
+func requireStringFlag(name string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		if c.String(name) == "" {
+			return errors.Errorf("flag '--%s' was not specified", name)
+		}
+		return nil
+	}
+}
+
+func requireStringValueChoices(name string, options []string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		val := c.String(name)
+		if !util.StringSliceContains(options, val) {
+			return errors.Errorf("flag '--%s' value of '%s' is not an acceptable value %s",
+				name, val, options)
+		}
+		return nil
+	}
+}
+
+func requireStringLengthIfSpecified(name string, length int) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		val := c.String(name)
+
+		if val == "" {
+			return nil
+		}
+
+		if len(val) != length {
+			return errors.Errorf("option '--%s' has length %d, not %d, which is required",
+				name, len(val), length)
+		}
+
+		return nil
+	}
+}
+
+func requireIntValueBetween(name string, min, max int) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		val := c.Int(name)
+		if val < min || val > max {
+			return errors.Errorf("value of option '--%s' (%d) should be between %d and %d",
+				name, val, min, max)
+		}
+		return nil
+
+	}
+
+}
 
 func requireOnlyOneBool(flags ...string) cli.BeforeFunc {
 	return func(c *cli.Context) error {

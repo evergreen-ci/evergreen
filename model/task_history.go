@@ -119,6 +119,49 @@ type TestHistoryParameters struct {
 	Limit           int       `json:"limit"`
 }
 
+func (t TestHistoryParameters) QueryString() string {
+	out := []string{
+		"testStatuses=" + strings.Join(t.TestStatuses, ","),
+		"taskStatuses=" + strings.Join(t.TaskStatuses, ","),
+	}
+
+	if t.TaskRequestType != "" {
+		out = append(out, "buildType="+t.TaskRequestType)
+	}
+
+	if len(t.TaskNames) > 0 {
+		out = append(out, "tasks="+strings.Join(t.TaskNames, ","))
+	}
+
+	if len(t.TestNames) > 0 {
+		out = append(out, "tests="+strings.Join(t.TestNames, ","))
+	}
+
+	if len(t.BuildVariants) > 0 {
+		out = append(out, "variants="+strings.Join(t.BuildVariants, ","))
+	}
+
+	if t.BeforeRevision != "" {
+		out = append(out, "beforeRevision="+t.BeforeRevision)
+	}
+
+	if t.AfterRevision != "" {
+		out = append(out, "afterRevision="+t.AfterRevision)
+	}
+	if !util.IsZeroTime(t.BeforeDate) {
+		out = append(out, "beforeDate="+t.BeforeDate.Format(time.RFC3339))
+	}
+	if !util.IsZeroTime(t.AfterDate) {
+		out = append(out, "afterDate="+t.AfterDate.Format(time.RFC3339))
+	}
+
+	if t.Limit != 0 {
+		out = append(out, fmt.Sprintf("limit=%d", t.Limit))
+	}
+
+	return strings.Join(out, "&")
+}
+
 type TaskHistoryIterator interface {
 	GetChunk(version *version.Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
 	GetDistinctTestNames(numCommits int) ([]string, error)

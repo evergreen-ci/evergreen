@@ -3,8 +3,8 @@ package cli
 import (
 	"context"
 	"io"
-	"os"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -98,7 +98,7 @@ func (ec *ExportCommand) Execute(_ []string) error {
 
 	}
 
-	return WriteToFile(body, ec.Filepath)
+	return util.WriteToFile(body, ec.Filepath)
 }
 
 // convertGranularityToSeconds takes in a string granularity and returns its
@@ -115,21 +115,4 @@ func convertGranularityToSeconds(granString string) (int, error) {
 	default:
 		return 0, errors.Errorf("not a valid granularity, %v", granString)
 	}
-}
-
-// WriteToFile takes in a body and filepath and writes out the data in the body
-func WriteToFile(body io.ReadCloser, filepath string) error {
-	defer body.Close()
-	if filepath == "" {
-		return errors.New("cannot write output to an unspecified ")
-	}
-
-	file, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, body)
-	return err
 }

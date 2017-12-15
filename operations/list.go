@@ -48,26 +48,29 @@ func List() cli.Command {
 		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, distrosFlagName, spawnableFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
+			project := c.String(projectFlagName)
+			filename := c.String(pathFlagName)
+			onlyUserSpawnable := c.Bool(spawnableFlagName)
 
-			// do setup
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			switch {
 			case c.Bool(projectsFlagName):
-				return listProjects(confPath)
+				return listProjects(ctx, confPath)
 			case c.Bool(variantsFlagName):
+				return listVariants(ctx, confPath, project, filename)
 			case c.Bool(tasksFlagName):
-			case c.Bool(distrosFlagName):
-			case c.Bool(spawnableFlagName), c.Bool(spawnableFlagName):
+				return listTasks(ctx, confPath, project, filename)
+			case c.Bool(distrosFlagName), onlyUserSpawnable:
+				return listDistros(ctx, confPath, onlyUserSpawnable)
 			}
 			return errors.Errorf("this code should not be reachable")
 		},
 	}
 }
 
-func listProjects(confPath string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func listProjects(ctx context.Context, confPath string) error {
 	conf, err := NewClientSetttings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
@@ -110,10 +113,7 @@ func listProjects(confPath string) error {
 	return errors.WithStack(w.Flush())
 }
 
-func listVariants(confPath, project, filename string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+func listVariants(ctx context.Context, confPath, project, filename string) error {
 	conf, err := NewClientSetttings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
@@ -121,7 +121,7 @@ func listVariants(confPath, project, filename string) error {
 	_ = conf.GetRestCommunicator(ctx)
 
 	var variants []model.BuildVariant
-	if lc.Project != "" {
+	if project != "" {
 		ac, _, err := conf.getLegacyClients()
 		if err != nil {
 			return errors.Wrap(err, "problem accessing evergreen service")
@@ -132,7 +132,7 @@ func listVariants(confPath, project, filename string) error {
 		if err != nil {
 			return err
 		}
-	} else if lc.File != "" {
+	} else if filename != "" {
 		project, err := loadLocalConfig(filename)
 		if err != nil {
 			return err
@@ -162,5 +162,83 @@ func listVariants(confPath, project, filename string) error {
 	}
 
 	return w.Flush()
+}
 
+func listTasks(ctx context.Context, confPath, project, filename string) error {
+	conf, err := NewClientSetttings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	_ = conf.GetRestCommunicator(ctx)
+
+	var tasks []model.ProjectTask
+	if project != "" {
+		ac, _, err := conf.getLegacyClients()
+		if err != nil {
+			return errors.Wrap(err, "problem accessing evergreen service")
+		}
+
+		notifyUserUpdate(ac)
+		tasks, err = ac.ListTasks(project)
+		if err != nil {
+			return err
+		}
+	} else if filename != "" {
+		project, err := loadLocalConfig(filename)
+		if err != nil {
+			return err
+		}
+		tasks = project.Tasks
+	} else {
+		return noProjectError
+	}
+	fmt.Println(len(tasks), "tasks:")
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	for _, t := range tasks {
+		line := fmt.Sprintf("\t%v\t", t.Name)
+		fmt.Fprintln(w, line)
+	}
+
+	return w.Flush()
+}
+
+func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) error {
+	conf, err := NewClientSetttings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	_ = conf.GetRestCommunicator(ctx)
+
+	client, _, err := conf.getLegacyClients()
+	if err != nil {
+		return errors.Wrap(err, "problem accessing evergreen service")
+	}
+
+	distros, err := client.GetDistrosList(ctx)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if onlyUserSpawnable {
+		spawnableDistros := []restmodel.APIDistro{}
+		for _, distro := range distros {
+			if distro.UserSpawnAllowed {
+				spawnableDistros = append(spawnableDistros, distro)
+			}
+		}
+
+		fmt.Println(len(spawnableDistros), "spawnable distros:")
+		for _, distro := range spawnableDistros {
+			fmt.Println(distro.Name)
+		}
+
+	} else {
+		fmt.Println(len(distros), "distros:")
+		for _, distro := range distros {
+			fmt.Println(distro.Name)
+		}
+	}
+
+	return nil
 }

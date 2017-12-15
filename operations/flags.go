@@ -10,6 +10,7 @@ const (
 	adminFlagsFlagName = "flags"
 	pathFlagName       = "path"
 	projectFlagName    = "project"
+	variantsFlagName   = "variants"
 )
 
 func addPathFlag(flags ...cli.Flag) []cli.Flag {
@@ -17,6 +18,14 @@ func addPathFlag(flags ...cli.Flag) []cli.Flag {
 		Name:    pathFlagName,
 		Aliases: []string{"filename", "file", "f"},
 		Usage:   "path to an evergreen project configuration file",
+	})
+}
+
+func addOutputPath(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:    pathFlagName,
+		Aliases: []string{"filename", "file", "f"},
+		Usage:   "path to the output file",
 	})
 }
 
@@ -41,5 +50,13 @@ func adminFlagFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
 		Name:  flagFlagName,
 		Usage: "specify a flag to disable; may specify more than once",
+	})
+}
+
+func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringSliceFlag{
+		Name:    variantsFlagName,
+		Aliases: []string{"v"},
+		Usage:   "variant name(s)",
 	})
 }
