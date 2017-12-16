@@ -2,9 +2,10 @@ package operations
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -35,14 +36,12 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 		Usage:   "modify the contents of the site-wide display banner",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:    messageFlagName,
-				Aliases: []string{"m"},
-				Usage:   "content of new message",
+				Name:  fmt.Sprintf("%s, m", messageFlagName),
+				Usage: "content of new message",
 			},
 			cli.StringFlag{
-				Name:    themeFlagName,
-				Aliases: []string{"t"},
-				Usage:   "color theme to use for banner",
+				Name:  fmt.Sprintf("%s, t", themeFlagName),
+				Usage: "color theme to use for banner",
 			},
 			cli.BoolFlag{
 				Name:  clearFlagName,
@@ -117,10 +116,10 @@ func adminEnableService() cli.Command {
 
 }
 
-func adminServiceChange(disable bool) cli.Command {
+func adminServiceChange(disable bool) cli.ActionFunc {
 	return func(c *cli.Context) error {
 		confPath := c.Parent().String(confFlagName)
-		flagsToSet := c.StringSlice(adminFlagFlag)
+		flagsToSet := c.StringSlice(adminFlagsFlagName)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

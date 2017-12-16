@@ -2,16 +2,16 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
 const (
 	granularityHours   = "hour"
-	granularityMinute  = "minute"
+	granularityMinutes = "minute"
 	granularitySeconds = "second"
 	granularityDays    = "day"
 )
@@ -64,8 +64,8 @@ func Export() cli.Command {
 		Before: mergeBeforeFuncs(
 			requireStringFlag(statFlagName),
 			requireStringValueChoices(granularityFlagName,
-				[]string{granularityDays, granularityHours, granularityMinute, granularitySeconds}),
-			requiredStringValueChoices(statFlagName,
+				[]string{granularityDays, granularityHours, granularityMinutes, granularitySeconds}),
+			requireStringValueChoices(statFlagName,
 				[]string{statHostUtilization, statSecheduledToStart, statOptimalMakespan}),
 			requireIntValueBetween(daysFlagName, 1, 30),
 			requireStringFlag(pathFlagName)),
@@ -77,6 +77,7 @@ func Export() cli.Command {
 			days := c.Int(daysFlagName)
 			number := c.Int(numberFlagName)
 			distro := c.String(distroFlagName)
+			filePath := c.String(pathFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -107,7 +108,7 @@ func Export() cli.Command {
 					return err
 				}
 			case statSecheduledToStart:
-				if ec.DistroId == "" {
+				if distro == "" {
 					return errors.New("cannot have empty distro id")
 				}
 				granSeconds, err = convertGranularityToSeconds(granularity)
@@ -119,7 +120,7 @@ func Export() cli.Command {
 					return err
 				}
 			case statOptimalMakespan:
-				body, err = rc.GetOptimalMakespans(numbers, isCSV)
+				body, err = rc.GetOptimalMakespans(number, isCSV)
 				if err != nil {
 					return err
 				}
@@ -128,7 +129,7 @@ func Export() cli.Command {
 				return errors.Errorf("%v is not a valid stats type", statType)
 			}
 
-			return util.WriteToFile(body, ec.Filepath)
+			return util.WriteToFile(body, filePath)
 		},
 	}
 }

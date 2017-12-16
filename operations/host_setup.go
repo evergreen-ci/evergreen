@@ -2,13 +2,13 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -39,7 +39,7 @@ func hostSetup() cli.Command {
 				return nil
 			}
 
-			ctx, cancel := context.WithTimeout(ctx, setupTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), setupTimeout)
 			defer cancel()
 
 			chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)

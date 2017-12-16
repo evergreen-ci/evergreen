@@ -2,9 +2,9 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"io/ioutil"
 
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -17,15 +17,15 @@ const (
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(
 		cli.StringFlag{
-			Name:  descriptionFlagName,
+			Name:  patchDescriptionFlagName,
 			Usage: "description for the patch",
 		},
 		cli.BoolFlag{
-			Name:  finalizeFlagName,
+			Name:  patchFinalizeFlagName,
 			Usage: "schedule tasks immediately",
 		},
 		cli.BoolFlag{
-			Name:  verboseFlagName,
+			Name:  patchVerboseFlagName,
 			Usage: "show patch summary",
 		}))
 }
@@ -38,12 +38,13 @@ func Patch() cli.Command {
 		Flags:   getPatchFlags(),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
+			args := c.Args()
 			params := &patchParams{
 				Project:     c.String(projectFlagName),
 				Variants:    c.StringSlice(variantsFlagName),
 				Tasks:       c.StringSlice(tasksFlagName),
 				SkipConfirm: c.Bool(yesFlagName),
-				Description: c.String(pathDescriptionFlagName),
+				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
 				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
@@ -92,9 +93,8 @@ func PatchFile() cli.Command {
 		Usage: "submit patch using a diff file",
 		Flags: getPatchFlags(
 			cli.StringFlag{
-				Name:    "base",
-				Aliases: []string{"b"},
-				Usage:   "githash of base",
+				Name:  joinFlagNames("base", "b"),
+				Usage: "githash of base",
 			},
 			cli.StringFlag{
 				Name:  diffPathFlagName,
@@ -109,7 +109,7 @@ func PatchFile() cli.Command {
 				Variants:    c.StringSlice(variantsFlagName),
 				Tasks:       c.StringSlice(tasksFlagName),
 				SkipConfirm: c.Bool(yesFlagName),
-				Description: c.String(pathDescriptionFlagName),
+				Description: c.String(patchDescriptionFlagName),
 				Finalize:    c.Bool(patchFinalizeFlagName),
 				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
@@ -134,8 +134,7 @@ func PatchFile() cli.Command {
 
 			notifyUserUpdate(ac)
 
-			_, err := params.validatePatchCommand(conf, ac)
-			if err != nil {
+			if _, err = params.validatePatchCommand(conf, ac); err != nil {
 				return err
 			}
 

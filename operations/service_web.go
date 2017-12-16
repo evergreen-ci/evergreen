@@ -2,22 +2,26 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
+	textTemplate "text/template"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/render"
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	"github.com/urfave/negroni"
 )
 
 func startWebService() cli.Command {
@@ -67,7 +71,7 @@ func startWebService() cli.Command {
 			catcher := grip.NewBasicCatcher()
 			apiWait := make(chan struct{})
 			go func() {
-				catcher.Add(service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, apiHandler))
+				catcher.Add(service.RunGracefully(settings.Api.HttpListenAddr, apiHandler))
 				close(apiWait)
 			}()
 
@@ -77,14 +81,14 @@ func startWebService() cli.Command {
 					errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
 					uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
 				}
-				catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, uiHandler))
+				catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, uiHandler))
 				close(uiWait)
 			}()
 
 			pprofWait := make(chan struct{})
 			go func() {
 				if settings.PprofPort != "" {
-					catcher.Add(service.RunGracefully(settings.PprofPort, requestTimeout, pprofHandler))
+					catcher.Add(service.RunGracefully(settings.PprofPort, pprofHandler))
 				}
 				close(pprofWait)
 			}()

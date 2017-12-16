@@ -1,13 +1,13 @@
 package operations
 
 import (
-	"errors"
 	"os"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -26,7 +26,7 @@ var (
 		return nil
 	}
 
-	setPlainLogger = func(c *cli.Conetext) error {
+	setPlainLogger = func(c *cli.Context) error {
 		grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 		return nil
 	}
@@ -45,7 +45,7 @@ var (
 			if c.NArg() != 1 {
 				return errors.New("must specify the path to an evergreen configuration")
 			}
-			path = c.Arg().Get(0)
+			path = c.Args().Get(0)
 		}
 
 		if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -152,7 +152,7 @@ func mergeBeforeFuncs(ops ...func(c *cli.Context) error) cli.BeforeFunc {
 		catcher := grip.NewBasicCatcher()
 
 		for _, op := range ops {
-			catcher.Add(op())
+			catcher.Add(op(c))
 		}
 
 		return catcher.Resolve()

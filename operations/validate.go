@@ -2,11 +2,11 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -14,7 +14,7 @@ func Validate() cli.Command {
 	return cli.Command{
 		Name:   "validate",
 		Usage:  "verify that an evergreen project config is valid",
-		Flag:   addPathFlag(),
+		Flags:  addPathFlag(),
 		Before: requirePathFlag,
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)

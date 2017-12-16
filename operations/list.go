@@ -2,13 +2,15 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"sort"
 	"text/tabwriter"
 
 	"github.com/evergreen-ci/evergreen/model"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -139,7 +141,7 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 		}
 		variants = project.BuildVariants
 	} else {
-		return noProjectError
+		return errors.New("could not resolve project")
 	}
 
 	names := make([]string, 0, len(variants))
@@ -190,7 +192,7 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 		}
 		tasks = project.Tasks
 	} else {
-		return noProjectError
+		return errors.New("could not resolve project")
 	}
 	fmt.Println(len(tasks), "tasks:")
 	w := new(tabwriter.Writer)
@@ -208,12 +210,7 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	_ = conf.GetRestCommunicator(ctx)
-
-	client, _, err := conf.getLegacyClients()
-	if err != nil {
-		return errors.Wrap(err, "problem accessing evergreen service")
-	}
+	client := conf.GetRestCommunicator(ctx)
 
 	distros, err := client.GetDistrosList(ctx)
 	if err != nil {
@@ -241,4 +238,20 @@ func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) e
 	}
 
 	return nil
+}
+
+// LoadLocalConfig loads the local project config into a project
+func loadLocalConfig(filepath string) (*model.Project, error) {
+	configBytes, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading project config")
+	}
+
+	project := &model.Project{}
+	err = model.LoadProjectInto(configBytes, "", project)
+	if err != nil {
+		return nil, errors.Wrap(err, "error loading project")
+	}
+
+	return project, nil
 }

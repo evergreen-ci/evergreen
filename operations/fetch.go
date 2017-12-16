@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	humanize "github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
@@ -38,16 +39,14 @@ func Fetch() cli.Command {
 	return cli.Command{
 		Name:  "fetch",
 		Usage: "fetch the source or artifacts associated with a task",
-		Flags: []cli.Command{
+		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:    dirFlagName,
-				Aliases: []string{"d"},
-				Usage:   "root directory to fetch artifacts into. defaults to current working directory",
+				Name:  joinFlagNames(dirFlagName, "d"),
+				Usage: "root directory to fetch artifacts into. defaults to current working directory",
 			},
 			cli.StringFlag{
-				Name:    taskFlagName,
-				Aliases: []string{"t"},
-				Usage:   "task associated with the data to fetch",
+				Name:  joinFlagNames(taskFlagName, "t"),
+				Usage: "task associated with the data to fetch",
 			},
 			cli.BoolFlag{
 				Name:  sourceFlagName,
@@ -68,11 +67,7 @@ func Fetch() cli.Command {
 		},
 		Before: mergeBeforeFuncs(
 			requireClientConfig,
-			func(c *cli.Context) error {
-				if c.String(taskFlagName) == "" {
-					return errors.New("must specify a task")
-				}
-			},
+			requireStringFlag(taskFlagName),
 			func(c *cli.Context) error {
 				wd := c.String(dirFlagName)
 				if wd == "" {
@@ -83,17 +78,22 @@ func Fetch() cli.Command {
 					}
 					c.Set(dirFlagName, wd)
 				}
+				return nil
 			},
 			func(c *cli.Context) error {
-				if c.Bool(sourceFlagName) && !c.Bool(artifactsFlagName) {
-					return errors.New("must specify at least one of either --artifacts or --source")
+				if c.Bool(sourceFlagName) || c.Bool(artifactsFlagName) {
+					return nil
 				}
+				return errors.New("must specify at least one of either --artifacts or --source")
 			}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			wd := c.String(dirFlagName)
-			fetchSource := c.Bool(fetchSourcew)
-			fetchArtifacts := c.Bool(artifactsFlagName)
+			doFetchSource := c.Bool(sourceFlagName)
+			doFetchArtifacts := c.Bool(artifactsFlagName)
+			taskID := c.String(taskFlagName)
+			noPatch := c.Bool(noPatchFlagName)
+			shallow := c.Bool(shallowFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -112,14 +112,14 @@ func Fetch() cli.Command {
 
 			notifyUserUpdate(ac)
 
-			if fetchSource {
-				if err = fetchSource(ac, rc, wd, fc.TaskId, fc.NoPatch); err != nil {
+			if doFetchSource {
+				if err = fetchSource(ac, rc, wd, taskID, noPatch); err != nil {
 					return err
 				}
 			}
 
-			if fetchArtifacts {
-				if err = fetchArtifacts(rc, fc.TaskId, wd, fc.Shallow); err != nil {
+			if doFetchArtifacts {
+				if err = fetchArtifacts(rc, taskID, wd, shallow); err != nil {
 					return err
 				}
 			}

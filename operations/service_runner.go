@@ -36,6 +36,8 @@ func setupRunner() cli.BeforeFunc {
 		if home := evergreen.FindEvergreenHome(); home == "" {
 			grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
 		}
+
+		return nil
 	}
 }
 
@@ -44,8 +46,7 @@ func handcrankRunner() cli.Command {
 		Name:    "handcrank",
 		Aliases: []string{"run-single", "single"},
 		Flags: serviceConfigFlags(cli.StringFlag{
-			Name:    "runner",
-			Alaises: []string{"r", "n", "name", "single"},
+			Name: joinFlagNames("runner", "r", "n", "name", "single"),
 		}),
 		Before: setupRunner(),
 		Action: func(c *cli.Context) error {
@@ -163,6 +164,12 @@ var backgroundRunners = []processRunner{
 // startRunners starts a goroutine for each runner exposed via Runners. It
 // returns a channel on which all runners listen on, for when to terminate.
 func startRunners(ctx context.Context, s *evergreen.Settings) {
+	const (
+		frequentRunInterval   = 20 * time.Second
+		defaultRunInterval    = 60 * time.Second
+		infrequentRunInterval = 120 * time.Second
+	)
+
 	wg := &sync.WaitGroup{}
 
 	frequentRunners := []string{

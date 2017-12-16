@@ -2,11 +2,12 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -29,7 +30,8 @@ func PatchSetModule() cli.Command {
 			patchID := c.String(patchIDFlagName)
 			large := c.Bool(largeFlagName)
 			skipConfirm := c.Bool(yesFlagName)
-			project := s.String(projectFlagName)
+			project := c.String(projectFlagName)
+			args := c.Args()
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -48,7 +50,7 @@ func PatchSetModule() cli.Command {
 
 			notifyUserUpdate(ac)
 
-			proj, err := rc.GetPatchedConfig(smc.PatchId)
+			proj, err := rc.GetPatchedConfig(patchID)
 			if err != nil {
 				return err
 			}
@@ -151,4 +153,15 @@ func PatchRemoveModule() cli.Command {
 			return nil
 		},
 	}
+}
+
+// getModuleBranch returns the branch for the config.
+func getModuleBranch(moduleName string, proj *model.Project) (string, error) {
+	// find the module of the patch
+	for _, module := range proj.Modules {
+		if module.Name == moduleName {
+			return module.Branch, nil
+		}
+	}
+	return "", errors.Errorf("module '%s' unknown or not found", moduleName)
 }

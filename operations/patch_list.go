@@ -2,9 +2,9 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -17,17 +17,15 @@ func PatchList() cli.Command {
 	return cli.Command{
 		Name:  "list-patches",
 		Usage: "show existing patches",
-		Flags: addPatchIDFlag(addVariantsFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addVariantsFlag(
 			cli.IntFlag{
-				Name:    numberFlagName,
-				Aliases: []string{"n"},
-				Usage:   "number of patches to show (0 for all patches)",
-				Value:   5,
+				Name:  joinFlagNames(numberFlagName, "n"),
+				Usage: "number of patches to show (0 for all patches)",
+				Value: 5,
 			},
 			cli.BoolFlag{
-				Name:    showSummaryFlagName,
-				Usage:   "show a summary of the diff for each patch",
-				Aliases: []string{"s"},
+				Name:  joinFlagNames(showSummaryFlagName, "s"),
+				Usage: "show a summary of the diff for each patch",
 			})),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
@@ -62,7 +60,7 @@ func PatchList() cli.Command {
 				}
 				fmt.Println(disp)
 			}
-
+			return nil
 		},
 	}
 }

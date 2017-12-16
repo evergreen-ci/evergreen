@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -27,7 +27,7 @@ func Deploy() cli.Command {
 		Name:  "deploy",
 		Usage: "deployment helpers for evergreen site administration",
 		Subcommands: []cli.Command{
-			anser(),
+			migration(),
 			startEvergreen(),
 			smokeTestEndpoints(),
 		},
@@ -41,32 +41,27 @@ func migration() cli.Command {
 		Usage:   "database migration tool",
 		Flags: serviceConfigFlags(
 			cli.BoolFlag{
-				Name:    "dry-run",
-				Aliases: []string{"n"},
-				Usage:   "run migration in a dry-run mode",
+				Name:  "dry-run, n",
+				Usage: "run migration in a dry-run mode",
 			},
 			cli.IntFlag{
-				Name:    "limit",
-				Alaises: []string{"l"},
-				Usage:   "limit the number of migration jobs to process",
+				Name:  "limit, l",
+				Usage: "limit the number of migration jobs to process",
 			},
 			cli.IntFlag{
-				Name:    "target",
-				Aliases: []string{"t"},
-				Usage:   "target number of migrations",
-				Value:   60,
+				Name:  "target, t",
+				Usage: "target number of migrations",
+				Value: 60,
 			},
 			cli.IntFlag{
-				Name:    "workers",
-				Aliases: []string{"j"},
-				Usage:   "total number of parallel migration workers",
-				Value:   4,
+				Name:  "workers, j",
+				Usage: "total number of parallel migration workers",
+				Value: 4,
 			},
 			cli.DurationFlag{
-				Name:    "period",
-				Aliases: []string{"p"},
-				Usage:   "length of scheduling window",
-				Value:   time.Minute,
+				Name:  "period, p",
+				Usage: "length of scheduling window",
+				Value: time.Minute,
 			},
 		),
 		Action: func(c *cli.Context) error {
@@ -127,9 +122,9 @@ func startEvergreen() cli.Command {
 		Usage:   "start evergreen web service and runner (for smoke tests)",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:    confFlagName,
-				Usage:   "path to the (test) service configuration file",
-				Default: confPath,
+				Name:  confFlagName,
+				Usage: "path to the (test) service configuration file",
+				Value: confPath,
 			},
 			cli.StringFlag{
 				Name:  "binary",
@@ -198,6 +193,12 @@ func startEvergreen() cli.Command {
 	}
 }
 
+// smokeEndpointTestDefinitions describes the UI and API endpoints to verify are up.
+type smokeEndpointTestDefinitions struct {
+	UI  map[string][]string `yaml:"ui,omitempty"`
+	API map[string][]string `yaml:"api,omitempty"`
+}
+
 func smokeTestEndpoints() cli.Command {
 	const (
 		// uiPort is the local port the UI will listen on.
@@ -214,13 +215,13 @@ func smokeTestEndpoints() cli.Command {
 		Usage:   "run smoke tests against ",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:    "test-file",
-				Usage:   "file with test endpoints definitions",
-				Default: filepath.Join(wd, "scripts", defaultTestFile),
+				Name:  "test-file",
+				Usage: "file with test endpoints definitions",
+				Value: filepath.Join(wd, "scripts", "smoke_test.yml"),
 			},
 		},
 		Before: setupSmokeTest(err),
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 
 			testFile := c.String("test-file")
 
@@ -228,7 +229,7 @@ func smokeTestEndpoints() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "error opening test file")
 			}
-			tests := EndpointTestDefinitions{}
+			tests := smokeEndpointTestDefinitions{}
 			err = yaml.Unmarshal(defs, &tests)
 			if err != nil {
 				return errors.Wrap(err, "error unmarshalling yaml")

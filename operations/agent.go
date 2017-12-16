@@ -2,7 +2,6 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/evergreen-ci/evergreen/agent"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -64,7 +64,7 @@ func Agent() cli.Command {
 			opts := agent.Options{
 				HostID:           c.String("host_id"),
 				HostSecret:       c.String("host_secret"),
-				StatusPort:       c.String("status_port"),
+				StatusPort:       c.Int("status_port"),
 				LogPrefix:        c.String("log_prefix"),
 				WorkingDirectory: c.String("working_directory"),
 			}

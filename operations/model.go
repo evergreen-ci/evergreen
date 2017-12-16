@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"runtime"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type ClientProjectConf struct {
@@ -34,15 +34,17 @@ func findConfigFilePath(fn string) (string, error) {
 		}
 	}
 
+	absfn, _ := filepath.Abs(fn)
+
 	files := []string{
 		fn,
-		filepath.Abspath(fn),
+		absfn,
 		filepath.Join(userHome, ".evergreen.yml"),
 		filepath.Join(filepath.Dir(currentBinPath), ".evergreen.yml"),
 	}
 
 	for _, path := range files {
-		stat, err = os.Stat(path)
+		stat, err := os.Stat(path)
 		if os.IsNotExist(err) {
 			continue
 		}
@@ -103,14 +105,14 @@ func (s *ClientSettings) Write(fn string) error {
 		return errors.Wrap(err, "could not marshal data")
 	}
 
-	return errors.Wrap(ioutil.WriteFile(confPath, yamlData, 0644), "could not write file")
+	return errors.Wrap(ioutil.WriteFile(fn, yamlData, 0644), "could not write file")
 }
 
 func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communicator {
 	c := client.NewCommunicator(s.APIServerHost)
 
-	client.SetAPIUser(c.User)
-	client.SetAPIKey(c.APIKey)
+	c.SetAPIUser(s.User)
+	c.SetAPIKey(s.APIKey)
 
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
@@ -174,7 +176,7 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 		}
 	}
 
-	s.Projects = append(s.Projects, ProjectConf{project, true, variants, nil})
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, variants, nil})
 }
 
 func (s *ClientSettings) FindDefaultTasks(project string) []string {
@@ -194,7 +196,7 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 		}
 	}
 
-	s.Projects = append(s.Projects, ProjectConf{project, true, nil, tasks})
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, nil, tasks})
 }
 
 func (s *ClientSettings) SetDefaultProject(name string) {
@@ -209,6 +211,6 @@ func (s *ClientSettings) SetDefaultProject(name string) {
 	}
 
 	if !foundDefault {
-		s.Projects = append(s.Projects, ProjectConf{name, true, []string{}, []string{}})
+		s.Projects = append(s.Projects, ClientProjectConf{name, true, []string{}, []string{}})
 	}
 }

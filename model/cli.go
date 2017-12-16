@@ -9,7 +9,7 @@ type ClientProjectConf struct {
 
 // CLISettings represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
-type ClientSettings struct {
+type CLISettings struct {
 	APIServerHost string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
 	UIServerHost  string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
 	APIKey        string              `json:"api_key" yaml:"api_key,omitempty"`
@@ -44,7 +44,7 @@ func (s *CLISettings) SetDefaultVariants(project string, variants ...string) {
 		}
 	}
 
-	s.Projects = append(s.Projects, ProjectConf{project, true, variants, nil})
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, variants, nil})
 }
 
 func (s *CLISettings) FindDefaultTasks(project string) []string {
@@ -64,7 +64,7 @@ func (s *CLISettings) SetDefaultTasks(project string, tasks ...string) {
 		}
 	}
 
-	s.Projects = append(s.Projects, ProjectConf{project, true, nil, tasks})
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, nil, tasks})
 }
 
 func (s *CLISettings) SetDefaultProject(name string) {
@@ -79,6 +79,6 @@ func (s *CLISettings) SetDefaultProject(name string) {
 	}
 
 	if !foundDefault {
-		s.Projects = append(s.Projects, ProjectConf{name, true, []string{}, []string{}})
+		s.Projects = append(s.Projects, ClientProjectConf{name, true, []string{}, []string{}})
 	}
 }

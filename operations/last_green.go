@@ -2,11 +2,11 @@ package operations
 
 import (
 	"context"
-	"errors"
 	"os"
 	"text/template"
 
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 

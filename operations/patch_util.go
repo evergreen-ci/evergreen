@@ -2,9 +2,9 @@ package operations
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"strings"
 	"text/template"
 	"time"
@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 // Above this size, the user must explicitly use --large to submit the patch (or confirm)
@@ -63,7 +64,7 @@ type patchSubmission struct {
 	finalize    bool
 }
 
-func (p *patchParams) createPatch(ac *legacyClient, conf *model.CLISettings, diffData *localDiff) error {
+func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffData *localDiff) error {
 	if err := validatePatchSize(diffData, p.Large); err != nil {
 		return err
 	}
@@ -82,17 +83,17 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *model.CLISettings, dif
 		}
 	}
 
-	variantsStr := strings.Join(params.Variants, ",")
+	variantsStr := strings.Join(p.Variants, ",")
 	patchSub := patchSubmission{
-		params.Project, diffData.fullPatch, params.Description,
-		diffData.base, variantsStr, params.Tasks, params.Finalize,
+		p.Project, diffData.fullPatch, p.Description,
+		diffData.base, variantsStr, p.Tasks, p.Finalize,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
 		return err
 	}
-	patchDisp, err := getPatchDisplay(newPatch, params.ShowSummary, conf.UIServerHost)
+	patchDisp, err := getPatchDisplay(newPatch, p.ShowSummary, conf.UIServerHost)
 	if err != nil {
 		return err
 	}
@@ -254,4 +255,44 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 		return nil, errors.Errorf("Error getting patch: %v", err)
 	}
 	return &localDiff{patch, stat, log, mergeBase}, nil
+}
+
+// gitMergeBase runs "git merge-base <branch1> <branch2>" and returns the
+// resulting githash as string
+func gitMergeBase(branch1, branch2 string) (string, error) {
+	cmd := exec.Command("git", "merge-base", branch1, branch2)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", errors.Wrapf(err, "'git merge-base %s %s' failed: %s (%s)", branch1, branch2, out, err)
+	}
+	return strings.TrimSpace(string(out)), err
+}
+
+// gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
+func gitDiff(base string, diffArgs ...string) (string, error) {
+	args := append([]string{
+		"--no-ext-diff",
+	}, diffArgs...)
+	return gitCmd("diff", base, args...)
+}
+
+// getLog runs "git log <base>
+func gitLog(base string, logArgs ...string) (string, error) {
+	args := append(logArgs, "--oneline")
+	return gitCmd("log", fmt.Sprintf("...%v", base), args...)
+}
+
+func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
+	args := make([]string, 0, 1+len(gitArgs))
+	args = append(args, cmdName)
+	if base != "" {
+		args = append(args, base)
+	}
+	args = append(args, gitArgs...)
+	cmd := exec.Command("git", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", errors.Errorf("'git %v %v' failed with err %v", base, strings.Join(args, " "), err)
+	}
+	return string(out), err
 }

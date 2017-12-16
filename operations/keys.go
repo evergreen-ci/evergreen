@@ -2,9 +2,11 @@ package operations
 
 import (
 	"context"
-	"errors"
+	"io/ioutil"
+	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -22,10 +24,76 @@ func Keys() cli.Command {
 }
 
 func keysAdd() cli.Command {
+	const (
+		keyNameFlagName = "name"
+		keyFileFlagName = "file"
+	)
+
 	return cli.Command{
-		Name:   "add",
-		Usage:  "add a public key",
-		Action: func(c *cli.Context) error {},
+		Name:  "add",
+		Usage: "add a public key",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  keyNameFlagName,
+				Usage: "specify the name of a key to add",
+			},
+			cli.StringFlag{
+				Name:  keyFileFlagName,
+				Usage: "specify the path of a file, which must exist",
+			},
+		},
+		Before: mergeBeforeFuncs(
+			setPlainLogger,
+			requireClientConfig,
+			requireFileExists(keyFileFlagName),
+			func(c *cli.Context) error {
+				numArgs := c.NArg()
+
+				if numArgs < 2 {
+					return errors.New("Too few arguments to add, need key name and public key file path")
+				} else if numArgs > 2 {
+					return errors.New("too many arguments to add a key")
+				}
+				args := c.Args()
+
+				c.Set(keyNameFlagName, args[0])
+				c.Set(keyFileFlagName, args[1])
+
+				return nil
+			}),
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
+			keyName := c.String(keyNameFlagName)
+			keyFile := c.String(keyFileFlagName)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSetttings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			keyFileContents, err := ioutil.ReadFile(keyFile)
+			if err != nil {
+				return errors.Wrap(err, "can't read public key file")
+			}
+
+			pubKey := string(keyFileContents)
+			// verify that this isn't a private key
+			if !strings.HasPrefix(strings.TrimSpace(pubKey), "ssh-") {
+				return errors.Errorf("'%s' does not appear to be an ssh public key", keyFile)
+			}
+
+			if err := client.AddPublicKey(ctx, keyName, pubKey); err != nil {
+				return err
+			}
+
+			return nil
+		},
 	}
 }
 
@@ -80,6 +148,7 @@ func keysDelete() cli.Command {
 				if c.Args().Get(0) == "" {
 					return errors.New("keys delete requires a key name")
 				}
+				return nil
 			}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)

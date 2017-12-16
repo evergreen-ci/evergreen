@@ -81,10 +81,9 @@ func buildApp() *cli.App {
 			Usage: "Specify lowest visible log level as string: 'emergency|alert|critical|error|warning|notice|info|debug|trace'",
 		},
 		cli.StringFlag{
-			Name:    "conf",
-			Aliases: []string{"c", "config"},
-			Usage:   "specify the path for the evergreen CLI config",
-			Value:   confPath,
+			Name:  "conf, config, c",
+			Usage: "specify the path for the evergreen CLI config",
+			Value: confPath,
 		},
 	}
 

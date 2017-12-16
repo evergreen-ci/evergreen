@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -77,9 +77,8 @@ func TestHistory() cli.Command {
 				Usage: "number of tasks to include the request. defaults to no limit, but you must specify either a limit or before/after revisions",
 			},
 			cli.StringFlag{
-				Name:    requestFlagName,
-				Aliases: []string{"r"},
-				Usage:   "include 'patch', 'commit' or 'all' builds. Only shows commit builds if not specified",
+				Name:  joinFlagNames(requestFlagName, "r"),
+				Usage: "include 'patch', 'commit' or 'all' builds. Only shows commit builds if not specified",
 			})),
 		Before: mergeBeforeFuncs(
 			requireStringLengthIfSpecified(beforeRevFlagName, 40),
@@ -89,14 +88,14 @@ func TestHistory() cli.Command {
 			requireStringValueChoices(taskStatusFlagName, []string{"pass", "fail", "silentfail", "skip", "timeout"}),
 			requireStringValueChoices(testStatusFlagName, []string{"pass", "fail", "sysfail", "timeout"}),
 			func(c *cli.Context) error {
-				if c.String(formatFlagName) != prettyFormat && c.String(pathFlagName) {
+				if c.String(formatFlagName) != prettyFormat && c.String(pathFlagName) != "" {
 					return errors.New("must specify a filepath for csv and json output")
 				}
 				return nil
 			},
 			func(c *cli.Context) error {
 				if c.Int(limitFlagName) == 0 {
-					if c.String(beforeRevFlagName) == "" || c.String(afterRevFlagName) {
+					if c.String(beforeRevFlagName) == "" || c.String(afterRevFlagName) != "" {
 						return errors.New("must specify either a limit or before/after revision")
 					}
 				}
@@ -110,6 +109,7 @@ func TestHistory() cli.Command {
 			format := c.String(formatFlagName)
 			outputPath := c.String(pathFlagName)
 
+			var err error
 			// parse dates into time.Time values
 			beforeDate := time.Time{}
 			if beforeDateArg != "" {
@@ -141,7 +141,7 @@ func TestHistory() cli.Command {
 				BeforeDate:      beforeDate,
 				AfterDate:       afterDate,
 				Sort:            -1,
-				Limit:           c.Int(limit),
+				Limit:           c.Int(limitFlagName),
 				TaskRequestType: c.String(requestFlagName),
 			}
 

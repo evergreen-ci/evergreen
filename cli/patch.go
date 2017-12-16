@@ -532,22 +532,6 @@ func (lc *ListCommand) listDistros(onlyUserSpawnable bool) error {
 	return nil
 }
 
-// LoadLocalConfig loads the local project config into a project
-func loadLocalConfig(filepath string) (*model.Project, error) {
-	configBytes, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return nil, errors.Wrap(err, "error reading project config")
-	}
-
-	project := &model.Project{}
-	err = model.LoadProjectInto(configBytes, "", project)
-	if err != nil {
-		return nil, errors.Wrap(err, "error loading project")
-	}
-
-	return project, nil
-}
-
 func (lc *ListCommand) listTasks() error {
 	var tasks []model.ProjectTask
 	ctx := context.Background()

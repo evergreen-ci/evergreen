@@ -1,6 +1,8 @@
 package operations
 
 import (
+	"strings"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/urfave/cli"
 )
@@ -18,36 +20,34 @@ const (
 	largeFlagName      = "large"
 )
 
+func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
+
 func addPathFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:    pathFlagName,
-		Aliases: []string{"filename", "file", "f"},
-		Usage:   "path to an evergreen project configuration file",
+		Name:  joinFlagNames(pathFlagName, "filename", "file", "f"),
+		Usage: "path to an evergreen project configuration file",
 	})
 }
 
 func addOutputPath(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:    pathFlagName,
-		Aliases: []string{"filename", "file", "f"},
-		Usage:   "path to the output file",
+		Name:  joinFlagNames(pathFlagName, "filename", "file", "f"),
+		Usage: "path to the output file",
 	})
 }
 
 func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:    confFlagName,
-		Aliases: []string{"c", "config"},
-		Usage:   "path to the service configuration file",
-		Default: evergreen.DefaultServiceConfigurationFileName,
+		Name:  joinFlagNames(confFlagName, "config", "c"),
+		Usage: "path to the service configuration file",
+		Value: evergreen.DefaultServiceConfigurationFileName,
 	})
 }
 
 func addProjectFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:    projectFlagName,
-		Aliases: []string{"p"},
-		Usage:   "specify the name of an existing evergreen project",
+		Name:  joinFlagNames(projectFlagName, "p"),
+		Usage: "specify the name of an existing evergreen project",
 	})
 }
 func addLargeFlag(flags ...cli.Flag) []cli.Flag {
@@ -60,47 +60,43 @@ func addLargeFlag(flags ...cli.Flag) []cli.Flag {
 
 func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
-		Name:  taskFlagName,
+		Name:  tasksFlagName,
 		Usage: "task name",
 	})
 }
 
 func adminFlagFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
-		Name:  flagFlagName,
+		Name:  adminFlagsFlagName,
 		Usage: "specify a flag to disable; may specify more than once",
 	})
 }
 
 func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
-		Name:    variantsFlagName,
-		Aliases: []string{"v"},
-		Usage:   "variant name(s)",
+		Name:  joinFlagNames(variantsFlagName, "v"),
+		Usage: "variant name(s)",
 	})
 }
 
 func addPatchIDFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:    patchIDFlagName,
-		Aliases: []string{"i", "id", "patch"},
-		Usage:   "specify the ID of a patch",
+		Name:  joinFlagNames(patchIDFlagName, "patch", "id", "i"),
+		Usage: "specify the ID of a patch",
 	})
 }
 
 func addModuleFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:    moduleFlagName,
-		Aliases: []string{"m"},
-		Usage:   "the name of a module in the project configuration",
+		Name:  joinFlagNames(moduleFlagName, "m"),
+		Usage: "the name of a module in the project configuration",
 	})
 }
 
 func addYesFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
-		Name:    yesFlagName,
-		Aliases: []string{"y"},
-		Usage:   "skip confirmation text",
+		Name:  joinFlagNames(yesFlagName, "y"),
+		Usage: "skip confirmation text",
 	})
 }
 

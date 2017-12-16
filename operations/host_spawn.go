@@ -2,11 +2,11 @@ package operations
 
 import (
 	"context"
-	"errors"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -31,20 +31,18 @@ func hostCreate() cli.Command {
 		Usage: "spawn a host",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:    distroFlagName,
-				Aliases: []string{"d"},
-				Usage:   "name of an evergreen distro",
+				Name:  joinFlagNames(distroFlagName, "d"),
+				Usage: "name of an evergreen distro",
 			},
 			cli.StringFlag{
-				Name:    keyFlagName,
-				Aliases: []string{"k"},
-				Usage:   "name or value of an public key to use",
+				Name:  joinFlagNames(keyFlagName, "k"),
+				Usage: "name or value of an public key to use",
 			},
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			distro := c.String(distroFlagName)
-			key := c.string(keyFlagName)
+			key := c.String(keyFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -89,12 +87,13 @@ func hostlist() cli.Command {
 				Usage: "list all hosts",
 			},
 		},
-		Befor: func(c *cli.Context) error {
+		Before: func(c *cli.Context) error {
 			if c.Bool(mineFlagName) == c.Bool(allFlagName) {
 				return errors.New("Must specify exactly one of --all or --mine")
 			}
 
 			grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
+			return nil
 		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
@@ -151,9 +150,8 @@ func hostTerminate() cli.Command {
 		Usage: "terminate active spawn hosts",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:    hostFlagName,
-				Aliases: []string{"h"},
-				Usage:   "terminate the specified host",
+				Name:  joinFlagNames(hostFlagName, "h"),
+				Usage: "terminate the specified host",
 			},
 		},
 		Before: func(c *cli.Context) error {
@@ -166,6 +164,7 @@ func hostTerminate() cli.Command {
 			return nil
 		},
 		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
