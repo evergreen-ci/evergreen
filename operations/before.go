@@ -72,6 +72,17 @@ var (
 	}
 )
 
+func requireFileExists(name string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		path := c.String(name)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return errors.Errorf("file '%s' does not exist", path)
+		}
+
+		return nil
+	}
+}
+
 func requireStringFlag(name string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		if c.String(name) == "" {
