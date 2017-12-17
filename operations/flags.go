@@ -52,7 +52,7 @@ func addProjectFlag(flags ...cli.Flag) []cli.Flag {
 }
 func addLargeFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.BoolFlag{
-		Name:  largeFlagName,
+		Name:  joinFlagNames(largeFlagName, "l"),
 		Usage: "enable submitting larger patches (>16MB)",
 	})
 
@@ -60,7 +60,7 @@ func addLargeFlag(flags ...cli.Flag) []cli.Flag {
 
 func addTasksFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringSliceFlag{
-		Name:  tasksFlagName,
+		Name:  joinFlagNames(tasksFlagName, "t"),
 		Usage: "task name",
 	})
 }

@@ -17,11 +17,11 @@ const (
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 	return mergeFlagSlices(addProjectFlag(flags...), addVariantsFlag(), addTasksFlag(), addLargeFlag(), addYesFlag(
 		cli.StringFlag{
-			Name:  patchDescriptionFlagName,
+			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
 		},
 		cli.BoolFlag{
-			Name:  patchFinalizeFlagName,
+			Name:  joinFlagNames(patchFinalizeFlagName, "f"),
 			Usage: "schedule tasks immediately",
 		},
 		cli.BoolFlag{
