@@ -21,6 +21,7 @@ func List() cli.Command {
 		tasksFlagName     = "tasks"
 		distrosFlagName   = "distros"
 		spawnableFlagName = "spawnable"
+		aliasesFlagName   = "aliases"
 	)
 
 	return cli.Command{
@@ -40,6 +41,10 @@ func List() cli.Command {
 				Usage: "list all tasks for a project",
 			},
 			cli.BoolFlag{
+				Name:  aliasesFlagName,
+				Usage: "list all patch aliases for a project",
+			},
+			cli.BoolFlag{
 				Name:  distrosFlagName,
 				Usage: "list all distros for a project",
 			},
@@ -47,7 +52,7 @@ func List() cli.Command {
 				Name:  spawnableFlagName,
 				Usage: "list all spawnable distros for a project",
 			})...),
-		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, distrosFlagName, spawnableFlagName),
+		Before: requireOnlyOneBool(projectsFlagName, variantsFlagName, tasksFlagName, aliasesFlagName, distrosFlagName, spawnableFlagName),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			project := c.String(projectFlagName)
@@ -64,6 +69,8 @@ func List() cli.Command {
 				return listVariants(ctx, confPath, project, filename)
 			case c.Bool(tasksFlagName):
 				return listTasks(ctx, confPath, project, filename)
+			case c.Bool(aliasesFlagName):
+				return listAliases(ctx, confPath, project, project, filename)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
 				return listDistros(ctx, confPath, onlyUserSpawnable)
 			}
@@ -203,6 +210,43 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 	}
 
 	return w.Flush()
+}
+
+func listAliases(ctx context.Context, confPath, project, filename string) error {
+	conf, err := NewClientSetttings(confPath)
+	if err != nil {
+		return errors.Wrap(err, "problem loading configuration")
+	}
+	comm = conf.GetRestCommunicator(ctx)
+
+	var aliases []model.PatchDefinition
+
+	if project != "" {
+		if err != nil {
+			return err
+		}
+		notifyUserUpdate(ac)
+		aliases, err = v2.ListAliases(ctx, lc.Project)
+		if err != nil {
+			return err
+		}
+	} else if filename != "" {
+		project, err := loadLocalConfig(filename)
+		if err != nil {
+			return err
+		}
+		aliases, err = comm.ListAliases(ctx, project.Identifier)
+		if err != nil {
+			return errors.Wrap(err, "error returned from API")
+		}
+	} else {
+		return errors.New("no project specified")
+	}
+
+	for _, alias := range aliases {
+		fmt.Printf("%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task)
+	}
+
 }
 
 func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) error {

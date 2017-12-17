@@ -111,6 +111,10 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 }
 
 func startEvergreen() cli.Command {
+	const (
+		binaryFlagName = "binary"
+	)
+
 	wd, err := os.Getwd()
 
 	binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
@@ -127,7 +131,7 @@ func startEvergreen() cli.Command {
 				Value: confPath,
 			},
 			cli.StringFlag{
-				Name:  "binary",
+				Name:  binaryFlagName,
 				Usage: "path to evergreen binary",
 				Value: binary,
 			},
@@ -135,7 +139,7 @@ func startEvergreen() cli.Command {
 		Before: setupSmokeTest(err),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
-			binary := c.String("binary")
+			binary := c.String(binaryFlagName)
 
 			web := exec.Command(binary, "service", "web", "--conf", confPath)
 			web.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
@@ -205,6 +209,8 @@ func smokeTestEndpoints() cli.Command {
 		uiPort = ":9090"
 		// urlPrefix is the localhost prefix for accessing local Evergreen.
 		urlPrefix = "http://localhost"
+
+		testFileFlagName = "test-file"
 	)
 
 	wd, err := os.Getwd()
@@ -215,15 +221,14 @@ func smokeTestEndpoints() cli.Command {
 		Usage:   "run smoke tests against ",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "test-file",
+				Name:  testFileFlagName,
 				Usage: "file with test endpoints definitions",
 				Value: filepath.Join(wd, "scripts", "smoke_test.yml"),
 			},
 		},
 		Before: setupSmokeTest(err),
 		Action: func(c *cli.Context) error {
-
-			testFile := c.String("test-file")
+			testFile := c.String(testFileFlagName)
 
 			defs, err := ioutil.ReadFile(testFile)
 			if err != nil {

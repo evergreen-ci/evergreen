@@ -2,6 +2,7 @@ package operations
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -46,8 +48,9 @@ type patchParams struct {
 	Project     string
 	Variants    []string
 	Tasks       []string
-	SkipConfirm bool
 	Description string
+	Alias       string
+	SkipConfirm bool
 	Finalize    bool
 	Large       bool
 	ShowSummary bool
@@ -85,8 +88,14 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 
 	variantsStr := strings.Join(p.Variants, ",")
 	patchSub := patchSubmission{
-		p.Project, diffData.fullPatch, p.Description,
-		diffData.base, variantsStr, p.Tasks, p.Finalize,
+		projectId:   p.Project,
+		patchData:   diffData.fullPatch,
+		description: p.Description,
+		base:        diffData.base,
+		variants:    variantsStr,
+		tasks:       p.Tasks,
+		finalize:    p.Finalize,
+		alias:       p.Alias,
 	}
 
 	newPatch, err := ac.PutPatch(patchSub)
@@ -98,13 +107,24 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		return err
 	}
 
+	if p.Alias != "" {
+		fmt.Printf("activated tasks on %d variants...\n", len(newPatch.VariantsTasks))
+		for _, v := range newPatch.VariantsTasks {
+			fmt.Printf("\ntasks for variant %s:\n", v.Variant)
+			for _, t := range v.Tasks {
+				fmt.Println(t)
+			}
+		}
+		fmt.Printf("\n")
+	}
+
 	fmt.Println("Patch successfully created.")
 	fmt.Print(patchDisp)
 	return nil
 }
 
 // Performs validation for patch or patch-file
-func (p *patchParams) validatePatchCommand(conf *ClientSettings, ac *legacyClient) (ref *model.ProjectRef, err error) {
+func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSettings, ac *legacyClient, comm client.Communicator) (ref *model.ProjectRef, err error) {
 	if p.Project == "" {
 		p.Project = conf.FindDefaultProject()
 	} else {
@@ -122,6 +142,26 @@ func (p *patchParams) validatePatchCommand(conf *ClientSettings, ac *legacyClien
 		return
 	}
 
+	if p.Alias != "" {
+		validAlias := false
+		var aliases []model.PatchDefinition
+		aliases, err = comm.ListAliases(ctx, p.Project)
+		if err != nil {
+			err = errors.Wrap(err, "error contacting API server")
+			return
+		}
+		for _, alias := range aliases {
+			if alias.Alias == p.Alias {
+				validAlias = true
+				break
+			}
+		}
+		if !validAlias {
+			err = errors.Errorf("%s is not a valid alias", params.Alias)
+			return
+		}
+	}
+
 	ref, err = ac.GetProjectRef(p.Project)
 	if err != nil {
 		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
@@ -131,14 +171,14 @@ func (p *patchParams) validatePatchCommand(conf *ClientSettings, ac *legacyClien
 	}
 
 	// update variants
-	if len(p.Variants) == 0 {
+	if len(p.Variants) == 0 && p.Alias == "" {
 		p.Variants = conf.FindDefaultVariants(p.Project)
 		if len(p.Variants) == 0 && p.Finalize {
 			err = errors.Errorf("Need to specify at least one buildvariant with -v when finalizing." +
 				" Run with `-v all` to finalize against all variants.")
 			return
 		}
-	} else {
+	} else if p.Alias == "" {
 		defaultVariants := conf.FindDefaultVariants(p.Project)
 		if len(defaultVariants) == 0 && !p.SkipConfirm &&
 			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?",
@@ -158,7 +198,7 @@ func (p *patchParams) validatePatchCommand(conf *ClientSettings, ac *legacyClien
 				" Run with `-t all` to finalize against all tasks.")
 			return
 		}
-	} else {
+	} else if p.Alias == "" {
 		defaultTasks := conf.FindDefaultTasks(p.Project)
 		if len(defaultTasks) == 0 && !p.SkipConfirm &&
 			confirm(fmt.Sprintf("Set %v as the default tasks for project '%v'?",

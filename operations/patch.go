@@ -12,6 +12,7 @@ const (
 	patchDescriptionFlagName = "description"
 	patchFinalizeFlagName    = "finalize"
 	patchVerboseFlagName     = "verbose"
+	patchAliasFlagName       = "alias"
 )
 
 func getPatchFlags(flags ...cli.Flag) []cli.Flag {
@@ -19,6 +20,10 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  joinFlagNames(patchDescriptionFlagName, "d"),
 			Usage: "description for the patch",
+		},
+		cli.StringFlag{
+			Name:  joinFlagNames(patchAliasFlagName, "a"),
+			Usage: "patch alias (set by project admin)",
 		},
 		cli.BoolFlag{
 			Name:  joinFlagNames(patchFinalizeFlagName, "f"),
@@ -48,6 +53,7 @@ func Patch() cli.Command {
 				Finalize:    c.Bool(patchFinalizeFlagName),
 				ShowSummary: c.Bool(patchVerboseFlagName),
 				Large:       c.Bool(largeFlagName),
+				Alias:       c.String(patchAliasFlagName),
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -58,7 +64,7 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			comm = conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -67,7 +73,7 @@ func Patch() cli.Command {
 
 			notifyUserUpdate(ac)
 
-			ref, err := params.validatePatchCommand(conf, ac)
+			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
 			if err != nil {
 				return err
 			}
