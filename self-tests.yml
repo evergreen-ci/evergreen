@@ -470,7 +470,7 @@ tasks:
     name: test-rest-data
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
-    name: test-cli
+    name: test-operations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
@@ -583,7 +583,7 @@ tasks:
     name: race-hostinit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
-    name: race-cli
+    name: race-operations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-agent
@@ -667,7 +667,7 @@ tasks:
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash 
+    name: race-plugin-builtin-perfdash
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
@@ -687,7 +687,7 @@ tasks:
     name: xc-agent
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "cli"]
-    name: xc-cli
+    name: xc-operations
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "agent"]
     name: xc-util

@@ -1,7 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent cloud command db cli subprocess taskrunner util plugin hostinit units 
+packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task
@@ -24,7 +24,7 @@ clientBuildDir := clients
 clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
-clientSource := cli/main/cli.go
+clientSource := main/evergreen.go
 
 distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates ./notify/templates
 distContents := $(clientBuildDir) $(distArtifacts)
