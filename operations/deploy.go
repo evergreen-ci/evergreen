@@ -35,31 +35,39 @@ func Deploy() cli.Command {
 }
 
 func migration() cli.Command {
+	const (
+		dryRunFlagName  = "dry-run"
+		limitFlagName   = "limit"
+		targetFlagName  = "target"
+		workersFlagName = "workers"
+		periodFlagName  = "period"
+	)
+
 	return cli.Command{
 		Name:    "anser",
 		Aliases: []string{"migrations", "migrate"},
 		Usage:   "database migration tool",
 		Flags: serviceConfigFlags(
 			cli.BoolFlag{
-				Name:  "dry-run, n",
+				Name:  joinFlagNames(dryRunFlagName, "n"),
 				Usage: "run migration in a dry-run mode",
 			},
 			cli.IntFlag{
-				Name:  "limit, l",
+				Name:  joinFlagNames(limitFlagName, "l"),
 				Usage: "limit the number of migration jobs to process",
 			},
 			cli.IntFlag{
-				Name:  "target, t",
+				Name:  joinFlagNames(targetFlagName, "t"),
 				Usage: "target number of migrations",
 				Value: 60,
 			},
 			cli.IntFlag{
-				Name:  "workers, j",
+				Name:  joinFlagNames(workersFlagName, "j"),
 				Usage: "total number of parallel migration workers",
 				Value: 4,
 			},
 			cli.DurationFlag{
-				Name:  "period, p",
+				Name:  joinFlagNames(periodFlagName, "p"),
 				Usage: "length of scheduling window",
 				Value: time.Minute,
 			},
@@ -75,11 +83,11 @@ func migration() cli.Command {
 			settings := env.Settings()
 
 			opts := migrations.Options{
-				Period:   c.Duration("period"),
-				Target:   c.Int("target"),
-				Limit:    c.Int("limit"),
+				Period:   c.Duration(periodFlagName),
+				Target:   c.Int(targetFlagName),
+				Limit:    c.Int(limitFlagName),
 				Session:  env.Session(),
-				Workers:  c.Int("workers"),
+				Workers:  c.Int(workersFlagName),
 				Database: settings.Database.DB,
 			}
 
@@ -93,7 +101,7 @@ func migration() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem configuring migration application")
 			}
-			app.DryRun = c.Bool("dry-run")
+			app.DryRun = c.Bool(dryRunFlagName)
 
 			return errors.Wrap(app.Run(ctx), "problem running migration operation")
 		},
