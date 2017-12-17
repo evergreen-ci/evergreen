@@ -16,14 +16,14 @@ func Admin() cli.Command {
 		Name:  "admin",
 		Usage: "site administration for an evergreen deployment",
 		Subcommands: []cli.Command{
-			adminSetBanner(false),
+			adminSetBanner(),
 			adminDisableService(),
 			adminEnableService(),
 		},
 	}
 }
 
-func adminSetBanner(disableNetworkForTest bool) cli.Command {
+func adminSetBanner() cli.Command {
 	const (
 		messageFlagName = "message"
 		clearFlagName   = "clear"
@@ -82,10 +82,6 @@ func adminSetBanner(disableNetworkForTest bool) cli.Command {
 			conf, err := NewClientSetttings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
-			}
-
-			if disableNetworkForTest {
-				return nil
 			}
 
 			client := conf.GetRestCommunicator(ctx)

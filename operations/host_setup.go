@@ -31,35 +31,39 @@ func hostSetup() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			setupAsSudo := c.Bool("setup_as_sudo")
 			wd := c.String("working_directory")
-
-			grip.Warning(os.MkdirAll(wd, 0777))
-			if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
-				return nil
-			}
-
+			setupAsSudo := c.Bool("setup_as_sudo")
 			ctx, cancel := context.WithTimeout(context.Background(), setupTimeout)
 			defer cancel()
 
-			chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
-			out, err := chmod.CombinedOutput()
-			if err != nil {
-				return errors.Wrap(err, string(out))
-			}
-
-			cmd := getShCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
-			out, err = cmd.CombinedOutput()
-
-			catcher := grip.NewSimpleCatcher()
-			catcher.Add(err)
-			catcher.Add(os.Remove(evergreen.SetupScriptName))
-
-			grip.Warning(os.MkdirAll(wd, 0777))
-
-			return errors.Wrap(catcher.Resolve(), string(out))
+			return errors.WithStack(runSetupScript(ctx, wd, setupAsSudo))
 		},
 	}
+}
+
+func runSetupScript(ctx context.Context, wd string, setupAsSudo bool) error {
+	grip.Warning(os.MkdirAll(wd, 0777))
+
+	if _, err := os.Stat(evergreen.SetupScriptName); os.IsNotExist(err) {
+		return nil
+	}
+
+	chmod := getChmodCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
+	out, err := chmod.CombinedOutput()
+	if err != nil {
+		return errors.Wrap(err, string(out))
+	}
+
+	cmd := getShCommandWithSudo(ctx, evergreen.SetupScriptName, setupAsSudo)
+	out, err = cmd.CombinedOutput()
+
+	catcher := grip.NewSimpleCatcher()
+	catcher.Add(err)
+	catcher.Add(os.Remove(evergreen.SetupScriptName))
+
+	grip.Warning(os.MkdirAll(wd, 0777))
+
+	return errors.Wrap(catcher.Resolve(), string(out))
 
 }
 
@@ -71,22 +75,25 @@ func hostTeardown() cli.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), setupTimeout)
 			defer cancel()
 
-			chmod := getChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
-			out, err := chmod.CombinedOutput()
-			if err != nil {
-				return errors.Wrap(err, string(out))
-			}
-
-			cmd := getShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
-			out, err = cmd.CombinedOutput()
-			if err != nil {
-				return errors.Wrap(err, string(out))
-			}
-
-			return nil
+			return errors.WithStack(runHostTeardownScript(ctx))
 		},
 	}
+}
 
+func runHostTeardownScript(ctx context.Context) error {
+	chmod := getChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
+	out, err := chmod.CombinedOutput()
+	if err != nil {
+		return errors.Wrap(err, string(out))
+	}
+
+	cmd := getShCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrap(err, string(out))
+	}
+
+	return nil
 }
 
 func getShCommandWithSudo(ctx context.Context, script string, sudo bool) *exec.Cmd {

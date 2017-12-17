@@ -33,12 +33,11 @@ func (s *CliHttpTestSuite) SetupSuite() {
 
 // tests to make sure that an API V2 client can be created with the right settings
 func (s *CliHttpTestSuite) TestV2Client() {
-	opts := &Options{
-		ConfFile: testFileName,
-	}
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	client, settings, err := getAPIV2Client(ctx, opts)
+	settings, err := NewClientSetttings(testFileName)
+	client := settings.GetRestCommunicator(ctx)
 	if s.NoError(err) {
 		s.NotNil(client)
 		s.NotNil(settings)
