@@ -100,6 +100,7 @@ func smokeStartEvergreen() cli.Command {
 				err := smokeRunBinary(exit, "agent",
 					wd,
 					binary,
+					"agent",
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
 					"--api_server", smokeUrlPrefix+apiPort,
