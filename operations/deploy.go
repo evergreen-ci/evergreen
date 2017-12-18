@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -121,6 +120,8 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 func startEvergreen() cli.Command {
 	const (
 		binaryFlagName = "binary"
+		runnerFlagName = "runner"
+		webFlagName    = "web"
 	)
 
 	wd, err := os.Getwd()
@@ -143,62 +144,63 @@ func startEvergreen() cli.Command {
 				Usage: "path to evergreen binary",
 				Value: binary,
 			},
+			cli.BoolFlag{
+				Name:  runnerFlagName,
+				Usage: "run the evergreen runner",
+			},
+			cli.BoolFlag{
+				Name:  webFlagName,
+				Usage: "run the evergreen web",
+			},
 		},
-		Before: setupSmokeTest(err),
+		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(runnerFlagName, webFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			binary := c.String(binaryFlagName)
+			startRunner := c.Bool(runnerFlagName)
+			startWeb := c.Bool(webFlagName)
 
-			web := exec.Command(binary, "service", "web", "--conf", confPath)
-			web.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
-			webSender := send.NewWriterSender(send.MakeNative())
-			defer webSender.Close()
-			webSender.SetName("evergreen.smoke.web.service")
-			web.Stdout = webSender
-			web.Stderr = webSender
+			exit := make(chan error, 2)
 
-			runner := exec.Command(binary, "service", "runner", "--conf", confPath)
-			runner.Env = []string{fmt.Sprintf("EVGHOME=%s", wd), "PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1)}
-			runnerSender := send.NewWriterSender(send.MakeNative())
-			defer runnerSender.Close()
-			runnerSender.SetName("evergreen.smoke.runner")
-			runner.Stdout = runnerSender
-			runner.Stderr = runnerSender
-
-			if err = web.Start(); err != nil {
-				return errors.Wrap(err, "error starting web service")
-			}
-			if err = runner.Start(); err != nil {
-				return errors.Wrap(err, "error starting runner")
-			}
-
-			exit := make(chan error)
-			interrupt := make(chan os.Signal, 1)
-			signal.Notify(interrupt, os.Interrupt)
-			go func() {
-				exit <- web.Wait()
-				grip.Errorf("web service exited: %s", err)
-			}()
-			go func() {
-				exit <- runner.Wait()
-				grip.Errorf("runner exited: %s", err)
-			}()
-
-			select {
-			case <-exit:
-				err = errors.New("problem running Evergreen")
-				grip.Error(err)
-				return err
-			case <-interrupt:
-				grip.Info("received SIGINT, killing Evergreen")
-				if err := web.Process.Kill(); err != nil {
-					grip.Errorf("error killing evergreen web service: %s", err)
+			if startWeb {
+				web := exec.Command(binary, "service", "web", "--conf", confPath)
+				web.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+				webSender := send.NewWriterSender(send.MakeNative())
+				defer webSender.Close()
+				webSender.SetName("web.service")
+				web.Stdout = webSender
+				web.Stderr = webSender
+				if err = web.Start(); err != nil {
+					return errors.Wrap(err, "error starting web service")
 				}
-				if err := runner.Process.Kill(); err != nil {
-					grip.Errorf("error killing evergreen runner: %s", err)
-				}
+				defer web.Process.Kill()
+				go func() {
+					exit <- web.Wait()
+					grip.Errorf("web service exited: %s", err)
+				}()
 			}
 
+			if startRunner {
+				runner := exec.Command(binary, "service", "runner", "--conf", confPath)
+
+				runner.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+				runnerSender := send.NewWriterSender(send.MakeNative())
+				defer runnerSender.Close()
+				runnerSender.SetName("runner")
+				runner.Stdout = runnerSender
+				runner.Stderr = runnerSender
+				if err = runner.Start(); err != nil {
+					return errors.Wrap(err, "error starting runner")
+				}
+				defer runner.Process.Kill()
+				go func() {
+					exit <- runner.Wait()
+					grip.Errorf("runner exited: %s", err)
+				}()
+
+			}
+
+			<-exit
 			return nil
 
 		},
