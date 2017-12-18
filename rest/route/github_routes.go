@@ -88,7 +88,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 		if event.Hook == nil || event.Hook.URL == nil {
 			return ResponseData{}, rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    "bad ping",
+				Message:    "malformed ping event",
 			}
 
 		}
@@ -101,7 +101,8 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				Message:    "pull request has no action",
 			}
 		}
-		if *event.Action == "opened" || *event.Action == "synchronize" {
+		if *event.Action == "opened" || *event.Action == "synchronize" ||
+			*event.Action == "reopened" {
 			ghi, err := patch.NewGithubIntent(gh.msgId, event)
 			if err != nil {
 				return ResponseData{}, rest.APIError{

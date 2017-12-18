@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -27,6 +29,12 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 			Message:    "failed to queue patch intent for processing",
 		}
 	}
+
+	grip.Info(message.Fields{
+		"message":     "Github pull request queued",
+		"intent_type": intent.GetType(),
+		"intent_id":   intent.ID(),
+	})
 
 	return nil
 }

@@ -86,13 +86,6 @@ func (j *patchIntentProcessor) Run() {
 
 	if err := j.finishPatch(patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
-		grip.Error(message.Fields{
-			"message":     "Failed to finish patch",
-			"errors":      err.Error(),
-			"job":         j.ID(),
-			"patch_id":    j.PatchID,
-			"intent_type": j.Intent.GetType(),
-		})
 		return
 	}
 
@@ -108,6 +101,8 @@ func (j *patchIntentProcessor) Run() {
 			"patch_id":           j.PatchID,
 			"update_id":          update.ID(),
 			"update_for_version": patchDoc.Version,
+			"intent_type":        j.Intent.GetType(),
+			"intent_id":          j.Intent.ID(),
 		})
 	}
 }
@@ -130,10 +125,12 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	}
 	if c.HasErrors() {
 		grip.Error(message.Fields{
-			"message":  "Failed to build patch document",
-			"errors":   c.Resolve().Error(),
-			"job":      j.ID(),
-			"patch_id": j.PatchID,
+			"message":     "Failed to build patch document",
+			"errors":      c.Resolve().Error(),
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"intent_type": j.Intent.GetType(),
+			"intent_id":   j.Intent.ID(),
 		})
 		return c.Resolve()
 	}
@@ -202,10 +199,12 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.Fields{
-				"message":  "Failed to finalize patch document",
-				"errors":   c.Resolve().Error(),
-				"job":      j.ID(),
-				"patch_id": j.PatchID,
+				"message":     "Failed to finalize patch document",
+				"errors":      c.Resolve().Error(),
+				"job":         j.ID(),
+				"patch_id":    j.PatchID,
+				"intent_type": j.Intent.GetType(),
+				"intent_id":   j.Intent.ID(),
 			})
 			return err
 		}
@@ -290,6 +289,9 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     patchIntentJobName,
 			"message": "github pr testing is disabled, not processing pull request",
+
+			"intent_type": j.Intent.GetType(),
+			"intent_id":   j.Intent.ID(),
 		})
 		return errors.New("github pr testing is disabled, not processing pull request")
 	}
@@ -330,6 +332,9 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number": patchDoc.GithubPatchData.PRNumber,
+
+			"intent_type": j.Intent.GetType(),
+			"intent_id":   j.Intent.ID(),
 		})
 		return err
 	}
