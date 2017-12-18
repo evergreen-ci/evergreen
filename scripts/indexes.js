@@ -43,6 +43,7 @@ db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
 
 //======project_ref======//
 db.project_ref.ensureIndex({ "identifier" : 1 })
+db.project_ref.ensureIndex({ "owner" : 1, "repo" : 1 })
 
 //======spawn_requests======//
 db.spawn_requests.ensureIndex({ "host" : 1 })

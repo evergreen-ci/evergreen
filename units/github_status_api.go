@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -19,18 +20,18 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 )
 
 const (
 	githubStatusUpdateJobName = "github-status-update"
-	githubStatusError         = "error"
-	githubStatusFailure       = "failure"
-	githubStatusPending       = "pending"
-	githubStatusSuccess       = "success"
 
-	githubUpdateTypeBuild = "build"
-	githubUpdateTypePatch = "patch"
+	githubStatusError   = "error"
+	githubStatusFailure = "failure"
+	githubStatusPending = "pending"
+	githubStatusSuccess = "success"
+
+	githubUpdateTypeBuild            = "build"
+	githubUpdateTypePatchWithVersion = "patch-with-version"
 )
 
 func init() {
@@ -51,7 +52,8 @@ type githubStatus struct {
 
 func (status *githubStatus) Valid() bool {
 	if status.Owner == "" || status.Repo == "" || status.PRNumber == 0 ||
-		status.Ref == "" || status.URLPath == "" || status.Context == "" {
+		status.Ref == "" || status.URLPath == "" || status.Context == "" ||
+		!strings.HasPrefix(status.URLPath, "/") {
 		return false
 	}
 
@@ -96,16 +98,12 @@ func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	return job
 }
 
-func repoReference(owner, repo string, prNumber int, ref string) string {
-	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
-}
-
-// NewGithubStatusUpdateForPatch creates a job to update github's API from a
-// Patch. Status will be reported as 'evergreen'
-func NewGithubStatusUpdateJobForPatch(version string) amboy.Job {
+// NewGithubStatusUpdateForPatchWithVersion creates a job to update github's API
+// from a Patch with specified version. Status will be reported as 'evergreen'
+func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
 	job.FetchID = version
-	job.UpdateType = githubUpdateTypePatch
+	job.UpdateType = githubUpdateTypePatchWithVersion
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
 
@@ -127,22 +125,19 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 	if err != nil {
 		c.Add(err)
 	}
-
-	token := strings.Split(githubOauthToken, " ")
-	if len(token) != 2 || token[0] != "token" {
-		c.Add(errors.New("github token format expected to be 'token [oauthtoken]'"))
-	}
 	if c.HasErrors() {
 		return c.Resolve()
 	}
 
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token[1]},
-	)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+
+	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
+	if err != nil {
+		return err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
 
 	newStatus := github.RepoStatus{
 		TargetURL:   github.String(fmt.Sprintf("%s%s", evergreenBaseURL, status.URLPath)),
@@ -168,7 +163,7 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 
 func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 	patchVersion := j.FetchID
-	if j.UpdateType == "build" {
+	if j.UpdateType == githubUpdateTypeBuild {
 		b, err := build.FindOne(build.ById(j.FetchID))
 		if err != nil {
 			return err
@@ -202,18 +197,18 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		return errors.New("can't find patch")
 	}
 
-	if j.UpdateType == "patch" {
+	if j.UpdateType == githubUpdateTypePatchWithVersion {
 		status.URLPath = fmt.Sprintf("/version/%s", patchVersion)
 		status.Context = "evergreen"
 
 		switch patchDoc.Status {
 		case evergreen.PatchSucceeded:
 			status.State = githubStatusSuccess
-			status.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+			status.Description = fmt.Sprintf("patch finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
 
 		case evergreen.PatchFailed:
 			status.State = githubStatusFailure
-			status.Description = fmt.Sprintf("finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
+			status.Description = fmt.Sprintf("patch finished in %s", patchDoc.FinishTime.Sub(patchDoc.StartTime).String())
 
 		case evergreen.PatchCreated:
 			status.State = githubStatusPending
@@ -260,6 +255,7 @@ func (j *githubStatusUpdateJob) Run() {
 	if err := j.sendStatusUpdate(&status); err != nil {
 		grip.Alert(message.Fields{
 			"message":     "github API failure",
+			"source":      "status updates",
 			"job":         j.ID(),
 			"status":      status,
 			"fetch_id":    j.FetchID,
@@ -274,6 +270,7 @@ func taskStatusToDesc(b *build.Build) string {
 	success := 0
 	failed := 0
 	systemError := 0
+	other := 0
 	for _, task := range b.Tasks {
 		switch task.Status {
 		case evergreen.TaskSucceeded:
@@ -286,18 +283,14 @@ func taskStatusToDesc(b *build.Build) string {
 			evergreen.TaskSystemUnresponse, evergreen.TaskSystemTimedOut,
 			evergreen.TaskTestTimedOut:
 			systemError++
+
+		default:
+			other++
 		}
 	}
 
-	if success == 0 && failed == 0 && systemError == 0 {
+	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
 		return "no tasks were run"
-	}
-
-	if success != 0 && failed == 0 && systemError == 0 {
-		return "all tasks succeeded!"
-	}
-	if success == 0 && (failed != 0 || systemError != 0) {
-		return "all tasks failed!"
 	}
 
 	desc := fmt.Sprintf("%s, %s", taskStatusSubformat(success, "succeeded"),
@@ -305,13 +298,24 @@ func taskStatusToDesc(b *build.Build) string {
 	if systemError > 0 {
 		desc += fmt.Sprintf(", %d internal errors", systemError)
 	}
+	if other > 0 {
+		desc += fmt.Sprintf(", %d other", other)
+	}
 
-	return desc
+	return appendTime(b, desc)
 }
 
 func taskStatusSubformat(n int, verb string) string {
 	if n == 0 {
 		return fmt.Sprintf("none %s", verb)
 	}
-	return fmt.Sprintf("%d %s, ", n, verb)
+	return fmt.Sprintf("%d %s", n, verb)
+}
+
+func repoReference(owner, repo string, prNumber int, ref string) string {
+	return fmt.Sprintf("%s/%s#%d@%s", owner, repo, prNumber, ref)
+}
+
+func appendTime(b *build.Build, txt string) string {
+	return fmt.Sprintf("%s in %s", txt, b.FinishTime.Sub(b.StartTime).String())
 }

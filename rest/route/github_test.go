@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
@@ -28,6 +29,7 @@ type GithubWebhookRouteSuite struct {
 	conf     *evergreen.Settings
 	prBody   []byte
 	h        *githubHookApi
+	queue    amboy.Queue
 	suite.Suite
 }
 
@@ -52,7 +54,8 @@ func (s *GithubWebhookRouteSuite) TearDownSuite() {
 func (s *GithubWebhookRouteSuite) SetupTest() {
 	grip.Critical(s.conf.Api)
 
-	s.rm = getGithubHooksRouteManager([]byte(s.conf.Api.GithubWebhookSecret))("", 2)
+	s.queue = evergreen.GetEnvironment().LocalQueue()
+	s.rm = getGithubHooksRouteManager(s.queue, []byte(s.conf.Api.GithubWebhookSecret))("", 2)
 	s.sc = &data.MockConnector{MockPatchIntentConnector: data.MockPatchIntentConnector{
 		CachedIntents: map[data.MockPatchIntentKey]patch.Intent{},
 	}}

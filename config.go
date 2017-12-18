@@ -285,6 +285,7 @@ type Settings struct {
 	LoggerConfig        LoggerConfig              `yaml:"logger_config"`
 	LogPath             string                    `yaml:"log_path"`
 	PprofPort           string                    `yaml:"pprof_port"`
+	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.

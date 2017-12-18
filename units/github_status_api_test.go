@@ -45,7 +45,7 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(patch.Collection))
+	s.NoError(db.ClearCollections(admin.Collection, patch.Collection))
 	startTime := time.Now()
 	s.patchDoc = &patch.Patch{
 		Id:         bson.NewObjectId(),
@@ -123,10 +123,10 @@ func (s *githubStatusUpdateSuite) TestForBuild() {
 }
 
 func (s *githubStatusUpdateSuite) TestForPatch() {
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+	s.Require().Equal(githubUpdateTypePatchWithVersion, job.UpdateType)
 
 	status := githubStatus{}
 	s.NoError(job.fetch(&status))
@@ -137,7 +137,7 @@ func (s *githubStatusUpdateSuite) TestForPatch() {
 	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
 
 	s.Equal(fmt.Sprintf("/version/%s", s.patchDoc.Version), status.URLPath)
-	s.Equal("finished in 10m0s", status.Description)
+	s.Equal("patch finished in 10m0s", status.Description)
 	s.Equal("evergreen", status.Context)
 	s.Equal("failure", status.State)
 }
@@ -147,10 +147,10 @@ func (s *githubStatusUpdateSuite) TestForPendingPatchStarted() {
 	s.patchDoc.Status = evergreen.PatchStarted
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+	s.Require().Equal(githubUpdateTypePatchWithVersion, job.UpdateType)
 
 	status := githubStatus{}
 	s.NoError(job.fetch(&status))
@@ -171,10 +171,10 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.patchDoc.Status = evergreen.PatchCreated
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	s.Require().Equal(githubUpdateTypePatch, job.UpdateType)
+	s.Require().Equal(githubUpdateTypePatchWithVersion, job.UpdateType)
 
 	status := githubStatus{}
 	s.NoError(job.fetch(&status))
@@ -209,7 +209,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	s.NoError(db.ClearCollections(patch.Collection))
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	job.Run()
