@@ -384,3 +384,24 @@ func CancelPatch(p *patch.Patch, caller string) error {
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
+
+// CancelPatchesWithGithubPatchData runs CancelPatch on patches created before
+// the given time, with the same github author, pr number, and base repository
+// Errors in this function should not treated as critical failures, as this
+// function is subject to a data-race when patches, versions, builds or tasks
+// are updated between it's Find query and the patch cancellation
+func CancelPatchesWithGithubPatchData(createdBefore time.Time, githubData *patch.GithubPatch) error {
+	patches, err := patch.Find(patch.ByGithubPatchCreatedBefore(createdBefore, githubData))
+	if err != nil {
+		return err
+	}
+
+	c := grip.NewSimpleCatcher()
+	for i, _ := range patches {
+		if patches[i].Version != "" {
+			c.Add(CancelPatch(&patches[i], ""))
+		}
+	}
+
+	return c.Resolve()
+}

@@ -47,6 +47,16 @@ var (
 	GitSummaryNameKey      = bsonutil.MustHaveTag(Summary{}, "Name")
 	GitSummaryAdditionsKey = bsonutil.MustHaveTag(Summary{}, "Additions")
 	GitSummaryDeletionsKey = bsonutil.MustHaveTag(Summary{}, "Deletions")
+
+	// BSON fields for the github patch data struct
+	githubPatchDataPRNumberKey  = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
+	githubPatchDataBaseOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
+	githubPatchDataBaseRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
+	githubPatchDataHeadOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "HeadOwner")
+	githubPatchDataHeadRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
+	githubPatchDataHeadHashKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
+	githubPatchDataAuthorKey    = bsonutil.MustHaveTag(GithubPatch{}, "Author")
+	githubPatchDataDiffURLKey   = bsonutil.MustHaveTag(GithubPatch{}, "DiffURL")
 )
 
 // Query Validation
@@ -183,4 +193,14 @@ func PatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) d
 		filter[CreateTimeKey] = bson.M{"$gt": ts}
 	}
 	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+}
+
+func ByGithubPatchCreatedBefore(createdBefore time.Time, patchData *GithubPatch) db.Q {
+	return db.Query(bson.M{
+		CreateTimeKey:               createdBefore,
+		githubPatchDataAuthorKey:    patchData.Author,
+		githubPatchDataPRNumberKey:  patchData.PRNumber,
+		githubPatchDataBaseOwnerKey: patchData.BaseOwner,
+		githubPatchDataBaseRepoKey:  patchData.BaseRepo,
+	})
 }

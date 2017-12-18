@@ -89,7 +89,6 @@ func (j *patchIntentProcessor) Run() {
 		return
 	}
 
-	// TODO cleaner way to do this?
 	if j.Intent.GetType() == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		err = j.env.LocalQueue().Put(update)
