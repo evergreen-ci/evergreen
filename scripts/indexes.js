@@ -76,6 +76,7 @@ db.tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.tasks.ensureIndex({ "finish_time": 1, "_id": 1})
 db.tasks.ensureIndex({ "build_variant": 1, "branch" : 1, "order" : 1})
+db.tasks.ensureIndex({ "execution_tasks": 1})
 
 //======old_tasks======//
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
@@ -103,3 +104,9 @@ db.json.ensureIndex({ "version_id" : 1 })
 
 //======testresults======//
 db.testresults.ensureIndex({ "task_id" : 1, "task_execution" : 1 })
+
+//======project_aliases======//
+db.testresults.ensureIndex({ "project_id" : 1, "alias" : 1 })
+
+//======patch_intents======//
+db.testresults.ensureIndex({ "processed" : 1, "intent_type" : 1 })
