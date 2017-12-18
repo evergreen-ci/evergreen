@@ -12,6 +12,7 @@ var (
 	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 	patchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
+	githubWebhookKey    = bsonutil.MustHaveTag(ProjectVars{}, "GithubWebhook")
 )
 
 const (
@@ -118,6 +119,7 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 				projectVarsMapKey:   projectVars.Vars,
 				privateVarsMapKey:   projectVars.PrivateVars,
 				patchDefinitionsKey: projectVars.PatchDefinitions,
+				githubWebhookKey:    projectVars.GithubHook,
 			},
 		},
 	)

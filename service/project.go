@@ -1,16 +1,19 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -146,6 +149,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
+		SetupGithubWebhook bool `json:"setup_github_webhook"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -209,12 +213,31 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	oldVars, err := model.FindOneProjectVars(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	hookID := oldVars.GithubWebhook
+
+	if responseRef.SetupGithubWebhook && oldVars.GithubWebhook != 0 {
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("github webhook is already configured"))
+		return
+	}
+	if responseRef.SetupGithubWebhook {
+		if hookID, err = uis.setupGithubWebhook(projectRef); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
 	//modify project vars if necessary
 	projectVars := model.ProjectVars{
 		Id:               id,
 		Vars:             responseRef.ProjVarsMap,
 		PrivateVars:      responseRef.PrivateVars,
 		PatchDefinitions: responseRef.PatchDefinitions,
+		GithubWebhook:    hookID,
 	}
 	_, err = projectVars.Upsert()
 
@@ -338,4 +361,42 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, error) {
+	token, err := uis.Settings.GetGithubOauthToken()
+	if err != nil {
+		return 0, err
+	}
+
+	if uis.Settings.Api.GithubWebhookSecret == "" {
+		return 0, errors.New("config error")
+	}
+
+	// TODO
+	client := &github.Client{}
+	hook := github.Hook{
+		Name:   github.String("web"),
+		Active: github.Bool(true),
+		Events: []string{"*"},
+		Config: map[string]interface{}{
+			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.Api.HttpListenAddr)),
+			"content_type": github.String("json"),
+			"secret":       github.String(uis.Settings.Api.GithubWebhookSecret),
+			"insecure_ssl": github.String("0"),
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+	newHook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &hook)
+	if err != nil {
+		return 0, err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || newHook == nil || newHook.ID == nil {
+		return 0, errors.New("unexpected data from github")
+	}
+
+	return *newHook.ID, nil
 }
