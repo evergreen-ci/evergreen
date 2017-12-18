@@ -210,7 +210,12 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars, responseRef.PatchDefinitions}
+	projectVars := model.ProjectVars{
+		Id:               id,
+		Vars:             responseRef.ProjVarsMap,
+		PrivateVars:      responseRef.PrivateVars,
+		PatchDefinitions: responseRef.PatchDefinitions,
+	}
 	_, err = projectVars.Upsert()
 
 	if err != nil {

@@ -171,6 +171,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           return v.alias + v.variant + v.task;
         });
         $scope.privateVars = data.ProjectVars.private_vars || {};
+        $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
+        $scope.githubWebhook = data.ProjectVars.github_hook || 0;
+        console.log($scope.githubWebhook)
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -324,6 +327,10 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       $scope.invalidPatchAliasMessage = "";
     }
   };
+
+  $scope.setupGithubWebhook = function() {
+      console.log("TODO do real stuff here!")
+  }
 
   $scope.removeProjectVar = function(name) {
     delete $scope.settingsFormData.project_vars[name];

@@ -37,6 +37,10 @@ type ProjectVars struct {
 	// PatchDefinitions contains regexes that are used to determine which
 	// combinations of variants and tasks should be run in a patch build.
 	PatchDefinitions []PatchDefinition `bson:"patch_definitions" json:"patch_definitions"`
+
+	// GithubHook is the unique number for the Github Hook configuration
+	// of this repository
+	GithubHook int `bson:"github_hook,omitempty" json:"github_hook,omitempty"`
 }
 
 type PatchDefinition struct {
