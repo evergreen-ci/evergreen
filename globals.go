@@ -134,6 +134,8 @@ const (
 )
 
 const (
+	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
+
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"
 	ClientDirectory   = "clients"

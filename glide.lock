@@ -66,6 +66,9 @@ imports:
 
   - name: github.com/urfave/negroni
     version: c262547a5086067ebe455c81db5cc52eb298ac3c
+  - name: github.com/urfave/cli
+    version: 01857ac33766ce0c93856370626f9799281c14f4
+
 
   - name: github.com/evergreen-ci/render
     version: efb1df5f8dc1036d747e92e7b875ebb7557f0173

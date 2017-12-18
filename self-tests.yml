@@ -1,4 +1,4 @@
-command_type: test
+paramsommand_type: test
 stepback: true
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
@@ -374,24 +374,21 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
+          working_directory: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
-            set -o xtrace
-            set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
             $binary service deploy start-evergreen --web --binary $binary
       - command: shell.exec
         params:
           shell: bash
+          working_directory: gopath/src/github.com/evergreen-ci/evergreen
           script: |
             set -o xtrace
             set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy test-endpoints --test-file smoke_test.yml
+            ./clients/linux_amd64/evergreen service deploy test-endpoints
   - name: smoke-test-task
     tags: ["smoke"]
     commands:
@@ -407,12 +404,12 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
+          working_directory: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
             set -o xtrace
             set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
             $binary service deploy start-evergreen --web --runner --binary $binary
       - command: shell.exec
@@ -470,7 +467,7 @@ tasks:
     name: test-rest-data
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
-    name: test-cli
+    name: test-operations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
@@ -583,7 +580,7 @@ tasks:
     name: race-hostinit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
-    name: race-cli
+    name: race-operations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-agent
@@ -667,7 +664,7 @@ tasks:
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash 
+    name: race-plugin-builtin-perfdash
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
@@ -687,7 +684,7 @@ tasks:
     name: xc-agent
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "cli"]
-    name: xc-cli
+    name: xc-operations
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "agent"]
     name: xc-util

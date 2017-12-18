@@ -11,11 +11,17 @@ import (
 	"github.com/tylerb/graceful"
 )
 
+var (
+	// defaultRequestTimeout is the duration to wait until killing
+	// active requests and stopping the server.
+	defaultRequestTimeout = 30 * time.Second
+)
+
 // RunGracefully borrows extensively from the grace
-func RunGracefully(addr string, timeout time.Duration, n http.Handler) error {
+func RunGracefully(addr string, n http.Handler) error {
 	startedAt := time.Now()
 	srv := &graceful.Server{
-		Timeout:      timeout,
+		Timeout:      defaultRequestTimeout,
 		TCPKeepAlive: time.Minute,
 		Server: &http.Server{
 			Addr:         addr,
