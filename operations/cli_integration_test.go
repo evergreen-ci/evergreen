@@ -126,13 +126,15 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		// first, create a patch
-		patchSub := patchSubmission{"sample",
-			testPatch,
-			"sample patch",
-			"3c7bfeb82d492dc453e7431be664539c35b5db4b",
-			"all",
-			[]string{"all"},
-			false}
+		patchSub := patchSubmission{
+			projectId:   "sample",
+			patchData:   testPatch,
+			description: "sample patch",
+			base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+			variants:    "all",
+			tasks:       []string{"all"},
+			finalize:    false,
+		}
 
 		client, err := NewClientSetttings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
@@ -338,13 +340,15 @@ func TestCLIFunctions(t *testing.T) {
 			})
 
 			Convey("Creating a simple patch should be successful", func() {
-				patchSub := patchSubmission{"sample",
-					testPatch,
-					"sample patch",
-					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					"all",
-					[]string{"all"},
-					false}
+				patchSub := patchSubmission{
+					projectId:   "sample",
+					patchData:   testPatch,
+					description: "sample patch",
+					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					variants:    "all",
+					tasks:       []string{"all"},
+					finalize:    false,
+				}
 
 				newPatch, err := ac.PutPatch(patchSub)
 				So(err, ShouldBeNil)
@@ -393,26 +397,28 @@ func TestCLIFunctions(t *testing.T) {
 
 			Convey("Creating a patch without variants should be successful", func() {
 				patchSub := patchSubmission{
-					"sample",
-					testPatch,
-					"sample patch",
-					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					"all",
-					[]string{},
-					false,
+					projectId:   "sample",
+					patchData:   testPatch,
+					description: "sample patch",
+					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					variants:    "all",
+					tasks:       []string{},
+					finalize:    false,
 				}
 				_, err := ac.PutPatch(patchSub)
 				So(err, ShouldBeNil)
 			})
 
 			Convey("Creating a complex patch should be successful", func() {
-				patchSub := patchSubmission{"sample",
-					testPatch,
-					"sample patch #2",
-					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					"osx-108",
-					[]string{"failing_test"},
-					false}
+				patchSub := patchSubmission{
+					projectId:   "sample",
+					patchData:   testPatch,
+					description: "sample patch #2",
+					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					variants:    "osx-108",
+					tasks:       []string{"failing_test"},
+					finalize:    false,
+				}
 
 				_, err := ac.PutPatch(patchSub)
 				So(err, ShouldBeNil)
@@ -511,13 +517,15 @@ func TestCLIFunctions(t *testing.T) {
 				So(len(variants), ShouldEqual, 2)
 			})
 			Convey("Creating a patch using 'all' as variants should schedule all variants", func() {
-				patchSub := patchSubmission{"sample",
-					testPatch,
-					"sample patch #2",
-					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					"all",
-					[]string{"failing_test"},
-					false}
+				patchSub := patchSubmission{
+					projectId:   "sample",
+					patchData:   testPatch,
+					description: "sample patch #2",
+					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					variants:    "all",
+					tasks:       []string{"failing_test"},
+					finalize:    false,
+				}
 
 				_, err := ac.PutPatch(patchSub)
 				So(err, ShouldBeNil)
@@ -538,13 +546,15 @@ func TestCLIFunctions(t *testing.T) {
 			})
 
 			Convey("Creating a patch using 'all' as tasks should schedule all tasks", func() {
-				patchSub := patchSubmission{"sample",
-					testPatch,
-					"sample patch #2",
-					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
-					"osx-108",
-					[]string{"all"},
-					false}
+				patchSub := patchSubmission{
+					projectId:   "sample",
+					patchData:   testPatch,
+					description: "sample patch #2",
+					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					variants:    "osx-108",
+					tasks:       []string{"all"},
+					finalize:    false,
+				}
 
 				_, err := ac.PutPatch(patchSub)
 				So(err, ShouldBeNil)
