@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -268,20 +269,9 @@ func (c *SmokeTestEndpointCommand) checkEndpoints() error {
 	return catcher.Resolve()
 }
 
-// APIBuild represents part of a build from the REST API
-type APIBuild struct {
-	Tasks []string `json:"tasks"`
-}
-
-// APITask represents part of a task from the REST API
-type APITask struct {
-	Status string            `json:"status"`
-	Logs   map[string]string `json:"logs"`
-}
-
 func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
-	var builds []APIBuild
-	var build APIBuild
+	var builds []apimodels.APIBuild
+	var build apimodels.APIBuild
 	for i := 0; i <= 300; i++ {
 		// get task id
 		if i == 300 {
@@ -309,7 +299,7 @@ func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 			}
 		}
 		if len(builds) == 0 {
-			builds = []APIBuild{build}
+			builds = []apimodels.APIBuild{build}
 		}
 		if len(builds[0].Tasks) == 0 {
 			grip.Info("no tasks found")
@@ -318,7 +308,7 @@ func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 		break
 	}
 
-	var task APITask
+	var task apimodels.APITask
 	for i := 0; i <= 300; i++ {
 		// check task
 		if i == 300 {
@@ -363,7 +353,6 @@ func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "error reading response body")
-		grip.Error(err)
 		return err
 	}
 	page := string(body)
