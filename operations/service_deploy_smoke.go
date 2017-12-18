@@ -74,7 +74,7 @@ func smokeStartEvergreen() cli.Command {
 				Usage: "start an evergreen agent",
 			},
 		},
-		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(runnerFlagName, webFlagName)),
+		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(runnerFlagName, webFlagName, agentFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			binary := c.String(binaryFlagName)
@@ -168,7 +168,7 @@ func smokeTestEndpoints() cli.Command {
 				Usage: "key to use with the API",
 			},
 		},
-		Before: mergeBeforeFuncs(setupSmokeTest(err), requireOnlyOneString(testFileFlagName, commitFlagName)),
+		Before: mergeBeforeFuncs(setupSmokeTest(err)),
 		Action: func(c *cli.Context) error {
 			testFile := c.String(testFileFlagName)
 			commit := c.String(commitFlagName)
@@ -185,11 +185,11 @@ func smokeTestEndpoints() cli.Command {
 				return errors.Wrap(err, "error unmarshalling yaml")
 			}
 
-			if testFileFlagName != "" {
-				return errors.WithStack(tests.checkEndpoints())
+			if commit != "" {
+				return errors.Wrap(checkTaskByCommit(username, key, commit), "check task failed")
 			}
 
-			return errors.Wrap(checkTaskByCommit(username, key, commit), "check task failed")
+			return errors.WithStack(tests.checkEndpoints())
 		},
 	}
 }

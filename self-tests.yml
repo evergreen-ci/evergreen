@@ -1,4 +1,4 @@
-command_type: test
+paramsommand_type: test
 stepback: true
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
@@ -374,24 +374,21 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
+          working_directory: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
-            set -o xtrace
-            set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
             $binary service deploy start-evergreen --web --binary $binary
       - command: shell.exec
         params:
           shell: bash
+          working_directory: gopath/src/github.com/evergreen-ci/evergreen
           script: |
             set -o xtrace
             set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy test-endpoints --test-file smoke_test.yml
+            ./clients/linux_amd64/evergreen service deploy test-endpoints
   - name: smoke-test-task
     tags: ["smoke"]
     commands:
@@ -407,12 +404,12 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
+          working_directory: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
             set -o xtrace
             set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
             $binary service deploy start-evergreen --web --runner --binary $binary
       - command: shell.exec
