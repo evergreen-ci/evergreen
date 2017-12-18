@@ -195,9 +195,12 @@ func PatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) d
 	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 }
 
+// TODO test
 func ByGithubPatchCreatedBefore(createdBefore time.Time, patchData *GithubPatch) db.Q {
 	return db.Query(bson.M{
-		CreateTimeKey:               createdBefore,
+		CreateTimeKey: bson.M{
+			"$lt": createdBefore,
+		},
 		githubPatchDataAuthorKey:    patchData.Author,
 		githubPatchDataPRNumberKey:  patchData.PRNumber,
 		githubPatchDataBaseOwnerKey: patchData.BaseOwner,

@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -385,11 +386,12 @@ func CancelPatch(p *patch.Patch, caller string) error {
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
 
+// TODO test maybe?
 // CancelPatchesWithGithubPatchData runs CancelPatch on patches created before
 // the given time, with the same github author, pr number, and base repository
 // Errors in this function should not treated as critical failures, as this
-// function is subject to a data-race when patches, versions, builds or tasks
-// are updated between it's Find query and the patch cancellation
+// function is subject to a data-race when patches are updated between its
+// Find query and the patch cancellation
 func CancelPatchesWithGithubPatchData(createdBefore time.Time, githubData *patch.GithubPatch) error {
 	patches, err := patch.Find(patch.ByGithubPatchCreatedBefore(createdBefore, githubData))
 	if err != nil {
@@ -403,5 +405,11 @@ func CancelPatchesWithGithubPatchData(createdBefore time.Time, githubData *patch
 		}
 	}
 
-	return c.Resolve()
+	err = c.Resolve()
+	grip.InfoWhen(err, message.Fields{
+		"message": "error canceling patches",
+		"error":   err.Error(),
+	})
+
+	return err
 }

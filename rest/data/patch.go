@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/google/go-github/github"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -116,11 +114,7 @@ func (p *DBPatchConnector) CancelPatchFromPullRequest(event *github.PullRequestE
 		BaseRepo:  baseRepo[1],
 	}
 
-	err := model.CancelPatchesWithGithubPatchData(time.Now(), &githubPatch)
-	grip.InfoWhen(err != nil, message.Fields{
-		"message": "error canceling patches",
-		"error":   err.Error(),
-	})
+	_ := model.CancelPatchesWithGithubPatchData(time.Now(), &githubPatch)
 
 	return nil
 }

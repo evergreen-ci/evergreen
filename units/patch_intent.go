@@ -103,6 +103,8 @@ func (j *patchIntentProcessor) Run() {
 			"intent_type":        j.Intent.GetType(),
 			"intent_id":          j.Intent.ID(),
 		})
+
+		j.AddError(model.CancelPatchesWithGithubPatchData(patchDoc.CreatedAt, &patchDoc.GithubPatchData))
 	}
 }
 
