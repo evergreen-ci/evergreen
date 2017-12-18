@@ -82,22 +82,23 @@ func smokeStartEvergreen() cli.Command {
 			startWeb := c.Bool(webFlagName)
 			startAgent := c.Bool(agentFlagName)
 
-			exit := make(chan error, 2)
+			exit := make(chan error, 3)
 
 			if startWeb {
-				if err := smokeRunBinary(exit, "web.service", binary, "service", "web", "--conf", confPath); err != nil {
+				if err := smokeRunBinary(exit, "web.service", wd, binary, "service", "web", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "error running web service")
 				}
 			}
 
 			if startRunner {
-				if err := smokeRunBinary(exit, "runner", binary, "service", "runner", "--conf", confPath); err != nil {
+				if err := smokeRunBinary(exit, "runner", wd, binary, "service", "runner", "--conf", confPath); err != nil {
 					return errors.Wrap(err, "error running web service")
 				}
 			}
 
 			if startAgent {
 				err := smokeRunBinary(exit, "agent",
+					wd,
 					"agent",
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
@@ -118,7 +119,7 @@ func smokeStartEvergreen() cli.Command {
 	}
 }
 
-func smokeRunBinary(exit chan error, name, bin, wd string, cmdParts ...string) error {
+func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) error {
 	cmd := exec.Command(bin, cmdParts...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
 	cmdSender := send.NewWriterSender(send.MakeNative())

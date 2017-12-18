@@ -374,16 +374,17 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
-          working_directory: gopath/src/github.com/evergreen-ci/evergreen
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
+            set -o xtrace
+            set -o errexit
 
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy start-evergreen --web --binary $binary
+            ./clients/linux_amd64/evergreen service deploy start-evergreen --web --binary ./clients/linux_amd64/evergreen
       - command: shell.exec
         params:
           shell: bash
-          working_directory: gopath/src/github.com/evergreen-ci/evergreen
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
           script: |
             set -o xtrace
             set -o errexit
@@ -404,35 +405,32 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
-          working_directory: gopath/src/github.com/evergreen-ci/evergreen
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
             set -o xtrace
             set -o errexit
 
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy start-evergreen --web --runner --binary $binary
+            ./clients/linux_amd64/evergreen service deploy start-evergreen --web --runner --binary ./clients/linux_amd64/evergreen
       - command: shell.exec
         params:
           shell: bash
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
           background: true
           script: |
             set -o xtrace
             set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy start-evergreen --agent --binary $binary
+            ./clients/linux_amd64/evergreen service deploy start-evergreen --agent --binary ./clients/linux_amd64/evergreen
       - command: shell.exec
         params:
+          working_dir: gopath/src/github.com/evergreen-ci/evergreen
           shell: bash
           script: |
             set -o xtrace
             set -o errexit
 
-            cd gopath/src/github.com/evergreen-ci/evergreen
-            binary=./clients/linux_amd64/evergreen
-            $binary service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
+            ./clients/linux_amd64/evergreen service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
