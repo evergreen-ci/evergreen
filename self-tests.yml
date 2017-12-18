@@ -116,6 +116,8 @@ variables:
       - func: set-up-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
+  - &version-constants
+    nodejs_version: "6.11.1"
 
 #######################################
 #              Functions              #
@@ -131,6 +133,9 @@ functions:
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
+
+         # Set the path to nodejs binaries
+         export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
 
          cd gopath/src/github.com/evergreen-ci/evergreen
 
@@ -309,6 +314,18 @@ functions:
             github: "${github_token}",
           }
           EOF
+  npm-install:
+    - command: shell.exec
+      type: system
+      params:
+        shell: bash
+        script: |
+          set -o xtrace
+          set -o errexit
+
+          export PATH=/opt/node/bin:$PATH
+          cd gopath/src/github.com/evergreen-ci/evergreen/public
+          npm install
 
 #######################################
 #                Tasks                #
@@ -432,6 +449,16 @@ tasks:
             set -o errexit
 
             ./clients/linux_amd64/evergreen service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
+  - name: js-tests
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: npm-install
+      - func: run-make
+        vars:
+          target: "js-test"
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -800,3 +827,11 @@ buildvariants:
         distros:
           *generic-linux-distros
       - name: ".xc"
+
+  - name: js-tests
+    display_name: UI Tests
+    run_on:
+      - ubuntu1604-build
+      - ubuntu1604-test
+    tasks:
+      - name: "js-tests"

@@ -16,22 +16,21 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
-      'http://code.angularjs.org/1.0.7/angular.min.js',
-      'http://code.angularjs.org/1.0.7/angular-mocks.js',
+      'angular.min.js',
+      'angular-mocks.js',
       'angular-md5.js',
+      'underscore-min.js',
       'filters/*',
       'directives/*',
       'mci_module.js',
       'build.js',
-      'tests/*.js',
+      'tests/*.js'
     ],
 
 
     // list of files to exclude
     exclude: [
-      
     ],
-
 
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
@@ -54,16 +53,14 @@ module.exports = function(config) {
     // enable / disable watching file and executing tests whenever any file changes
     autoWatch: true,
 
+    plugins: [
+        require( 'jasmine' ),
+        require( 'karma-jasmine' ),
+        require( 'karma-phantomjs-launcher' )
+    ],
 
-    // Start these browsers, currently available:
-    // - Chrome
-    // - ChromeCanary
-    // - Firefox
-    // - Opera
-    // - Safari (only Mac)
-    // - PhantomJS
-    // - IE (only Windows)
-    browsers: ['Chrome', 'Firefox', 'Safari'], // Need to do npm install karma-safari-runner -g for safari
+    // Start these browsers
+    browsers: ['PhantomJS'],
 
 
     // If browser does not capture in given timeout [ms], kill it
@@ -72,6 +69,6 @@ module.exports = function(config) {
 
     // Continuous Integration mode
     // if true, it capture browsers, run tests and exit
-    singleRun: false
+    singleRun: true
   });
 };

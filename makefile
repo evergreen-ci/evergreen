@@ -1,6 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
+nodeDir := public
 packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
@@ -152,6 +153,9 @@ build:cli
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
+js-test:
+	cd $(nodeDir); \
+	./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
