@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -87,14 +86,7 @@ func hostlist() cli.Command {
 				Usage: "list all hosts",
 			},
 		},
-		Before: func(c *cli.Context) error {
-			if c.Bool(mineFlagName) == c.Bool(allFlagName) {
-				return errors.New("Must specify exactly one of --all or --mine")
-			}
-
-			grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
-			return nil
-		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireOnlyOneBool(mineFlagName, allFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			showMine := c.Bool(mineFlagName)
@@ -154,15 +146,7 @@ func hostTerminate() cli.Command {
 				Usage: "terminate the specified host",
 			},
 		},
-		Before: func(c *cli.Context) error {
-			grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
-
-			if c.String(hostFlagName) == "" {
-				return errors.New("must specify host to terminate")
-			}
-
-			return nil
-		},
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(hostFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)
