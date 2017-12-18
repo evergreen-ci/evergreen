@@ -321,11 +321,12 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
 	}
 
-	isMember, err := authAndFetchPRMergeBase(patchDoc, mustBeMemberOfOrg,
+	isMember, err := authAndFetchPRMergeBase(context.TODO(), patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		grip.Alert(message.Fields{
-			"message":   "github API failure: patch intents",
+			"message":   "github API failure",
+			"source":    "patch intents",
 			"job":       j.ID(),
 			"patch_id":  j.PatchID,
 			"error":     err.Error(),
@@ -383,8 +384,8 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	return errors.Wrap(err, "failed to create github pull request user")
 }
 
-func authAndFetchPRMergeBase(patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
