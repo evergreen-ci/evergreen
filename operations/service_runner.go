@@ -44,11 +44,12 @@ func setupRunner() cli.BeforeFunc {
 func handcrankRunner() cli.Command {
 	return cli.Command{
 		Name:    "handcrank",
+		Usage:   "run a single background process by name",
 		Aliases: []string{"run-single", "single"},
 		Flags: serviceConfigFlags(cli.StringFlag{
 			Name: joinFlagNames("runner", "r", "n", "name", "single"),
 		}),
-		Before: setupRunner(),
+		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			name := c.String("runner")
@@ -80,9 +81,9 @@ func startRunnerService() cli.Command {
 		Name:   "runner",
 		Usage:  "run evergreen background worker",
 		Flags:  serviceConfigFlags(),
-		Before: setupRunner(),
+		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
 		Action: func(c *cli.Context) error {
-			confPath := c.Parent().String(confFlagName)
+			confPath := c.String(confFlagName)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			env := evergreen.GetEnvironment()
