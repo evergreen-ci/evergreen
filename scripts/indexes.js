@@ -41,9 +41,6 @@ db.patches.ensureIndex({ "branch" : 1, "create_time" : 1 })
 db.patches.ensureIndex({ "version" : 1 })
 db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
 
-//======patch_intents======//
-db.patch_intents.ensureIndex({ "msg_id" : 1, "intent_type": 1 }, { "unique" : true })
-
 //======project_ref======//
 db.project_ref.ensureIndex({ "identifier" : 1 })
 
@@ -76,6 +73,7 @@ db.tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
 db.tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 db.tasks.ensureIndex({ "finish_time": 1, "_id": 1})
 db.tasks.ensureIndex({ "build_variant": 1, "branch" : 1, "order" : 1})
+db.tasks.ensureIndex({ "execution_tasks": 1})
 
 //======old_tasks======//
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
@@ -103,3 +101,9 @@ db.json.ensureIndex({ "version_id" : 1 })
 
 //======testresults======//
 db.testresults.ensureIndex({ "task_id" : 1, "task_execution" : 1 })
+
+//======project_aliases======//
+db.project_aliases.ensureIndex({ "project_id" : 1, "alias" : 1 })
+
+//======patch_intents======//
+db.patch_intents.ensureIndex({ "processed" : 1, "intent_type" : 1 })
