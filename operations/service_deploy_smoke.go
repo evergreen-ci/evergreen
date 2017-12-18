@@ -99,7 +99,7 @@ func smokeStartEvergreen() cli.Command {
 			if startAgent {
 				err := smokeRunBinary(exit, "agent",
 					wd,
-					"agent",
+					binary,
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
 					"--api_server", smokeUrlPrefix+apiPort,
