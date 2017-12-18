@@ -86,13 +86,29 @@ func (j *patchIntentProcessor) Run() {
 
 	if err := j.finishPatch(patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
+		grip.Error(message.Fields{
+			"message":     "Failed to finish patch",
+			"errors":      err.Error(),
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"intent_type": j.Intent.GetType(),
+		})
 		return
 	}
 
 	// TODO cleaner way to do this?
 	if j.Intent.GetType() == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
-		j.AddError(j.env.LocalQueue().Put(update))
+		err = j.env.LocalQueue().Put(update)
+		j.AddError(err)
+		grip.ErrorWhen(err != nil, message.Fields{
+			"message":            "Failed to queue status update",
+			"errors":             err.Error(),
+			"job":                j.ID(),
+			"patch_id":           j.PatchID,
+			"update_id":          update.ID(),
+			"update_for_version": patchDoc.Version,
+		})
 	}
 }
 
@@ -114,8 +130,10 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	}
 	if c.HasErrors() {
 		grip.Error(message.Fields{
-			"message": "Failed to build patch document",
-			"errors":  c.Resolve().Error(),
+			"message":  "Failed to build patch document",
+			"errors":   c.Resolve().Error(),
+			"job":      j.ID(),
+			"patch_id": j.PatchID,
 		})
 		return c.Resolve()
 	}
@@ -183,6 +201,12 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
+			grip.Error(message.Fields{
+				"message":  "Failed to finalize patch document",
+				"errors":   c.Resolve().Error(),
+				"job":      j.ID(),
+				"patch_id": j.PatchID,
+			})
 			return err
 		}
 
@@ -299,10 +323,13 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		grip.Alert(message.Fields{
-			"message":  "github API failure: patch intents",
-			"job":      j.ID(),
-			"patch_id": j.PatchID,
-			"error":    err.Error(),
+			"message":   "github API failure: patch intents",
+			"job":       j.ID(),
+			"patch_id":  j.PatchID,
+			"error":     err.Error(),
+			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number": patchDoc.GithubPatchData.PRNumber,
 		})
 		return err
 	}
@@ -376,6 +403,14 @@ func authAndFetchPRMergeBase(patchDoc *patch.Patch, requiredOrganization, github
 
 	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, githubUser)
 	if !isMember || err != nil {
+		grip.Info(message.Fields{
+			"message":      "Failed to authenticate github PR",
+			"creator":      githubUser,
+			"required_org": requiredOrganization,
+			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+		})
 		return false, err
 	}
 
