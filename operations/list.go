@@ -70,7 +70,7 @@ func List() cli.Command {
 			case c.Bool(tasksFlagName):
 				return listTasks(ctx, confPath, project, filename)
 			case c.Bool(aliasesFlagName):
-				return listAliases(ctx, confPath, project, project, filename)
+				return listAliases(ctx, confPath, project, filename)
 			case c.Bool(distrosFlagName), onlyUserSpawnable:
 				return listDistros(ctx, confPath, onlyUserSpawnable)
 			}
@@ -217,16 +217,18 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
-	comm = conf.GetRestCommunicator(ctx)
+	comm := conf.GetRestCommunicator(ctx)
 
 	var aliases []model.PatchDefinition
 
 	if project != "" {
+		ac, _, err := conf.getLegacyClients()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "problem accessing evergreen service")
 		}
+
 		notifyUserUpdate(ac)
-		aliases, err = v2.ListAliases(ctx, lc.Project)
+		aliases, err = comm.ListAliases(ctx, project)
 		if err != nil {
 			return err
 		}
@@ -247,6 +249,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 		fmt.Printf("%s\t%s\t%s\n", alias.Alias, alias.Variant, alias.Task)
 	}
 
+	return nil
 }
 
 func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) error {

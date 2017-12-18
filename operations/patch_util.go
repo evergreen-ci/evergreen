@@ -157,7 +157,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 			}
 		}
 		if !validAlias {
-			err = errors.Errorf("%s is not a valid alias", params.Alias)
+			err = errors.Errorf("%s is not a valid alias", p.Alias)
 			return
 		}
 	}

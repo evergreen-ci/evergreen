@@ -64,7 +64,7 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			comm = conf.GetRestCommunicator(ctx)
+			comm := conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -131,7 +131,7 @@ func PatchFile() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			comm := conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
@@ -140,7 +140,7 @@ func PatchFile() cli.Command {
 
 			notifyUserUpdate(ac)
 
-			if _, err = params.validatePatchCommand(conf, ac); err != nil {
+			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
 				return err
 			}
 
