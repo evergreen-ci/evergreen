@@ -62,6 +62,7 @@ func Agent() cli.Command {
 		Before: mergeBeforeFuncs(
 			func(c *cli.Context) error {
 				grip.SetName("evergreen.agent")
+				return nil
 			},
 			requireStringFlag(apiServerFlagName),
 			requireStringFlag(hostIDFlagName),

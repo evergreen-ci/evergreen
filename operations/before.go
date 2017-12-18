@@ -147,6 +147,27 @@ func requireOnlyOneBool(flags ...string) cli.BeforeFunc {
 	}
 }
 
+func requireOnlyOneString(flags ...string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		empty := 0
+		full := 0
+		for idx := range flags {
+			val := c.String(flags[idx])
+			if val == "" {
+				empty++
+			} else {
+				full++
+			}
+		}
+
+		if empty == 0 || full == 0 {
+			return errors.Errorf("must specify one and only one of: --%s", strings.Join(flags, ", --"))
+		}
+
+		return nil
+	}
+}
+
 func requireAtLeastOneBool(flags ...string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		for idx := range flags {
