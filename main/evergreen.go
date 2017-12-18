@@ -38,7 +38,6 @@ func buildApp() *cli.App {
 		operations.Update(),
 
 		// Sub-Commands
-		operations.Deploy(),
 		operations.Service(),
 		operations.Agent(),
 		operations.Admin(),

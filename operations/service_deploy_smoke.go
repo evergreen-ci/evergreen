@@ -16,18 +16,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func Deploy() cli.Command {
-	return cli.Command{
-		Name:  "deploy",
-		Usage: "deployment helpers for evergreen site administration",
-		Subcommands: []cli.Command{
-			deployMigration(),
-			smokeStartEvergreen(),
-			smokeTestEndpoints(),
-		},
-	}
-}
-
 func setupSmokeTest(err error) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		if err != nil {
