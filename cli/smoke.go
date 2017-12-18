@@ -272,25 +272,25 @@ func (c *SmokeTestEndpointCommand) checkEndpoints() error {
 func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild
-	for i := 0; i <= 300; i++ {
+	for i := 0; i <= 30; i++ {
 		// get task id
-		if i == 300 {
+		if i == 30 {
 			return errors.New("error getting builds for version")
 		}
-		time.Sleep(time.Second)
-		grip.Infof("checking for a build of %s (%d/300)", c.Commit, i+1)
+		time.Sleep(10 * time.Second)
+		grip.Infof("checking for a build of %s (%d/30)", c.Commit, i+1)
 		resp, err := c.client.Get(urlPrefix + uiPort + "/rest/v2/versions/evergreen_" + c.Commit + "/builds")
 		if err != nil {
 			grip.Info(err)
 			continue
 		}
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			err = errors.Wrap(err, "error reading response body")
 			grip.Error(err)
 			return err
 		}
+		resp.Body.Close()
 		err = json.Unmarshal(body, &builds)
 		if err != nil {
 			err = json.Unmarshal(body, &build)
@@ -302,20 +302,21 @@ func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 			builds = []apimodels.APIBuild{build}
 		}
 		if len(builds[0].Tasks) == 0 {
-			grip.Info("no tasks found")
+			builds = []apimodels.APIBuild{}
+			build = apimodels.APIBuild{}
 			continue
 		}
 		break
 	}
 
 	var task apimodels.APITask
-	for i := 0; i <= 300; i++ {
+	for i := 0; i <= 30; i++ {
 		// check task
-		if i == 300 {
+		if i == 30 {
 			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
 		}
-		time.Sleep(time.Second)
-		grip.Infof("checking for task %s (%d/300)", builds[0].Tasks[0], i+1)
+		time.Sleep(10 * time.Second)
+		grip.Infof("checking for task %s (%d/30)", builds[0].Tasks[0], i+1)
 		r, err := http.NewRequest("GET", urlPrefix+uiPort+"/rest/v2/tasks/"+builds[0].Tasks[0], nil)
 		if err != nil {
 			return errors.Wrap(err, "failed to make request")
@@ -326,13 +327,13 @@ func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 		if err != nil {
 			return errors.Wrap(err, "error getting task data")
 		}
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			err = errors.Wrap(err, "error reading response body")
 			grip.Error(err)
 			return err
 		}
+		resp.Body.Close()
 		err = json.Unmarshal(body, &task)
 		if err != nil {
 			return errors.Wrap(err, "error unmarshaling json")
@@ -340,6 +341,7 @@ func (c *SmokeTestEndpointCommand) checkTaskByCommit() error {
 
 		if task.Status != evergreen.TaskSucceeded {
 			grip.Infof("found task is status %s", task.Status)
+			task = apimodels.APITask{}
 			continue
 		}
 		break
