@@ -1,7 +1,6 @@
 package operations
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/migrations"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -26,83 +24,9 @@ func Deploy() cli.Command {
 		Name:  "deploy",
 		Usage: "deployment helpers for evergreen site administration",
 		Subcommands: []cli.Command{
-			migration(),
-			startEvergreen(),
+			deployMigration(),
+			smokeStartEvergreen(),
 			smokeTestEndpoints(),
-		},
-	}
-}
-
-func migration() cli.Command {
-	const (
-		dryRunFlagName  = "dry-run"
-		limitFlagName   = "limit"
-		targetFlagName  = "target"
-		workersFlagName = "workers"
-		periodFlagName  = "period"
-	)
-
-	return cli.Command{
-		Name:    "anser",
-		Aliases: []string{"migrations", "migrate"},
-		Usage:   "database migration tool",
-		Flags: serviceConfigFlags(
-			cli.BoolFlag{
-				Name:  joinFlagNames(dryRunFlagName, "n"),
-				Usage: "run migration in a dry-run mode",
-			},
-			cli.IntFlag{
-				Name:  joinFlagNames(limitFlagName, "l"),
-				Usage: "limit the number of migration jobs to process",
-			},
-			cli.IntFlag{
-				Name:  joinFlagNames(targetFlagName, "t"),
-				Usage: "target number of migrations",
-				Value: 60,
-			},
-			cli.IntFlag{
-				Name:  joinFlagNames(workersFlagName, "j"),
-				Usage: "total number of parallel migration workers",
-				Value: 4,
-			},
-			cli.DurationFlag{
-				Name:  joinFlagNames(periodFlagName, "p"),
-				Usage: "length of scheduling window",
-				Value: time.Minute,
-			},
-		),
-		Action: func(c *cli.Context) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, c.String(confFlagName))
-
-			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
-			settings := env.Settings()
-
-			opts := migrations.Options{
-				Period:   c.Duration(periodFlagName),
-				Target:   c.Int(targetFlagName),
-				Limit:    c.Int(limitFlagName),
-				Session:  env.Session(),
-				Workers:  c.Int(workersFlagName),
-				Database: settings.Database.DB,
-			}
-
-			anserEnv, err := opts.Setup(ctx)
-			if err != nil {
-				return errors.Wrap(err, "problem setting up migration environment")
-			}
-			defer anserEnv.Close()
-
-			app, err := opts.Application(anserEnv)
-			if err != nil {
-				return errors.Wrap(err, "problem configuring migration application")
-			}
-			app.DryRun = c.Bool(dryRunFlagName)
-
-			return errors.Wrap(app.Run(ctx), "problem running migration operation")
 		},
 	}
 }
@@ -117,10 +41,11 @@ func setupSmokeTest(err error) cli.BeforeFunc {
 	}
 }
 
-func startEvergreen() cli.Command {
+func smokeStartEvergreen() cli.Command {
 	const (
 		binaryFlagName = "binary"
 		runnerFlagName = "runner"
+		agentFlagName  = "agent"
 		webFlagName    = "web"
 	)
 
@@ -150,7 +75,11 @@ func startEvergreen() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  webFlagName,
-				Usage: "run the evergreen web",
+				Usage: "run the evergreen web service",
+			},
+			cli.BoolFlag{
+				Name:  agentFlagName,
+				Usage: "start an evergreen agent",
 			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err), requireFileExists(confFlagName), requireAtLeastOneBool(runnerFlagName, webFlagName)),
@@ -159,45 +88,35 @@ func startEvergreen() cli.Command {
 			binary := c.String(binaryFlagName)
 			startRunner := c.Bool(runnerFlagName)
 			startWeb := c.Bool(webFlagName)
+			startAgent := c.Bool(agentFlagName)
 
 			exit := make(chan error, 2)
 
 			if startWeb {
-				web := exec.Command(binary, "service", "web", "--conf", confPath)
-				web.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
-				webSender := send.NewWriterSender(send.MakeNative())
-				defer webSender.Close()
-				webSender.SetName("web.service")
-				web.Stdout = webSender
-				web.Stderr = webSender
-				if err = web.Start(); err != nil {
-					return errors.Wrap(err, "error starting web service")
+				if err := c.smokeRunBinary(exit, "web.service", binary, "service", "web", "--conf", confPath); err != nil {
+					return errors.Wrap(err, "error running web service")
 				}
-				defer web.Process.Kill()
-				go func() {
-					exit <- web.Wait()
-					grip.Errorf("web service exited: %s", err)
-				}()
 			}
 
 			if startRunner {
-				runner := exec.Command(binary, "service", "runner", "--conf", confPath)
-
-				runner.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
-				runnerSender := send.NewWriterSender(send.MakeNative())
-				defer runnerSender.Close()
-				runnerSender.SetName("runner")
-				runner.Stdout = runnerSender
-				runner.Stderr = runnerSender
-				if err = runner.Start(); err != nil {
-					return errors.Wrap(err, "error starting runner")
+				if err := c.smokeRunBinary(exit, "runner", binary, "service", "runner", "--conf", confPath); err != nil {
+					return errors.Wrap(err, "error running web service")
 				}
-				defer runner.Process.Kill()
-				go func() {
-					exit <- runner.Wait()
-					grip.Errorf("runner exited: %s", err)
-				}()
+			}
 
+			if startAgent {
+				err := smokeRunBinary(exit, "agent",
+					"agent",
+					"--host_id", hostId,
+					"--host_secret", hostSecret,
+					"--api_server", urlPrefix+apiPort,
+					"--log_prefix", evergreen.LocalLoggingOverride,
+					"--status_port", statusPort,
+					"--working_directory", wd)
+
+				if err != nil {
+					return errors.Wrap(err, "error running agent")
+				}
 			}
 
 			<-exit
@@ -207,13 +126,30 @@ func startEvergreen() cli.Command {
 	}
 }
 
+func smokeRunBinary(exit chan error, name, bin, wd string, cmdParts ...string) error {
+	cmd := exec.Command(bin, cmdParts...)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("EVGHOME=%s", wd))
+	cmdSender := send.NewWriterSender(send.MakeNative())
+	cmdSender.SetName(name)
+	cmd.Stdout = cmdSender
+	cmd.Stderr = cmdSender
+	if err := cmd.Start(); err != nil {
+		return errors.Wrap(err, "error starting cmd service")
+	}
+	go func() {
+		exit <- cmd.Wait()
+		grip.Errorf("%s service exited", name)
+	}()
+	return nil
+}
+
 // smokeEndpointTestDefinitions describes the UI and API endpoints to verify are up.
 type smokeEndpointTestDefinitions struct {
 	UI  map[string][]string `yaml:"ui,omitempty"`
 	API map[string][]string `yaml:"api,omitempty"`
 }
 
-func smokeTestEndpoints() cli.Command {
+func deploySmokeTest() cli.Command {
 	const (
 		// uiPort is the local port the UI will listen on.
 		uiPort = ":9090"

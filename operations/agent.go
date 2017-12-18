@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -15,58 +14,68 @@ import (
 )
 
 func Agent() cli.Command {
+	const (
+		hostIDFlagName           = "host_id"
+		hostSecretFlagName       = "host_secret"
+		apiServerFlagName        = "api_server"
+		workingDirectoryFlagName = "working_directory"
+		logPrefixFlagName        = "log_prefix"
+		statusPortFlagName       = "status_port"
+		cleanupFlagName          = "cleanup"
+	)
+
 	return cli.Command{
 		Name:  "agent",
 		Usage: "run an evergreen agent",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "host_id",
+				Name:  hostIDFlagName,
 				Usage: "id of machine agent is running on",
 			},
 			cli.StringFlag{
-				Name:  "host_secret",
+				Name:  hostSecretFlagName,
 				Usage: "secret for the current host",
 			},
 			cli.StringFlag{
-				Name:  "api_server",
+				Name:  apiServerFlagName,
 				Usage: "URL of the API server",
 			},
 			cli.StringFlag{
-				Name:  "working_directory",
+				Name:  workingDirectoryFlagName,
 				Usage: "working directory for the agent",
 			},
 			cli.StringFlag{
-				Name:  "log_prefix",
+				Name:  logPrefixFlagName,
 				Value: "evg.agent",
 				Usage: "prefix for the agent's log filename",
 			},
 			cli.IntFlag{
-				Name:  "status_port",
+				Name:  statusPortFlagName,
 				Value: 2285,
 				Usage: "port to run the status server",
 			},
+			cli.BoolFlag{
+				Name:  cleanupFlagName,
+				Usage: "clean up working directory and processes (do not set for smoke tests)",
+			},
 		},
-		Before: func(c *cli.Context) error {
-			grip.SetName("evergreen.agent")
-
-			required := []string{
-				c.String("api_server"),
-				c.String("host_id"),
-				c.String("host_secret"),
-				c.String("working_directory"),
-			}
-			if util.StringSliceContains(required, "") {
-				return errors.New("agent cannot start with missing required argument")
-			}
-			return nil
-		},
+		Before: mergeBeforeFuncs(
+			func(c *cli.Context) error {
+				grip.SetName("evergreen.agent")
+			},
+			requireStringFlag(apiServerFlagName),
+			requireStringFlag(hostIDFlagName),
+			requireStringFlag(hostSecretFlagName),
+			requireStringFlag(workingDirectoryFlagName),
+		),
 		Action: func(c *cli.Context) error {
 			opts := agent.Options{
-				HostID:           c.String("host_id"),
-				HostSecret:       c.String("host_secret"),
-				StatusPort:       c.Int("status_port"),
-				LogPrefix:        c.String("log_prefix"),
-				WorkingDirectory: c.String("working_directory"),
+				HostID:           c.String(hostIDFlagName),
+				HostSecret:       c.String(hostSecretFlagName),
+				StatusPort:       c.Int(statusPortFlagName),
+				LogPrefix:        c.String(logPrefixFlagName),
+				WorkingDirectory: c.String(workingDirectoryFlagName),
+				Cleanup:          c.Bool(cleanupFlagName),
 			}
 
 			if err := os.MkdirAll(opts.WorkingDirectory, 0777); err != nil {
