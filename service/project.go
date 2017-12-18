@@ -373,9 +373,13 @@ func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, erro
 		return 0, errors.New("config error")
 	}
 
-	// TODO
-	client := &github.Client{}
-	hook := github.Hook{
+	httpClient, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return 0, err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+	newHook := github.Hook{
 		Name:   github.String("web"),
 		Active: github.Bool(true),
 		Events: []string{"*"},
@@ -389,7 +393,7 @@ func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, erro
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	defer cancel()
-	newHook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &hook)
+	hook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &newHook)
 	if err != nil {
 		return 0, err
 	}
@@ -398,5 +402,5 @@ func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, erro
 		return 0, errors.New("unexpected data from github")
 	}
 
-	return *newHook.ID, nil
+	return *hook.ID, nil
 }
