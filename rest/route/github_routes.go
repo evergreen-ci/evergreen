@@ -95,25 +95,18 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 		grip.Infof("Received Github Webhook Ping for hook: %s", *event.Hook.URL)
 
 	case *github.PullRequestEvent:
-		if !validatePullRequestEvent(event) {
+		if event.Action == nil {
 			return ResponseData{}, rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    "bad pull request",
+				Message:    "pull request has no action",
 			}
-
 		}
 		if *event.Action == "opened" || *event.Action == "synchronize" {
-			ghi, err := patch.NewGithubIntent(gh.msgId,
-				*event.Number,
-				*event.Repo.FullName,
-				*event.PullRequest.Head.Repo.FullName,
-				*event.PullRequest.Head.SHA,
-				*event.Sender.Login,
-				*event.PullRequest.DiffURL)
+			ghi, err := patch.NewGithubIntent(gh.msgId, event)
 			if err != nil {
 				return ResponseData{}, rest.APIError{
 					StatusCode: http.StatusBadRequest,
-					Message:    "unexpected pr event data",
+					Message:    err.Error(),
 				}
 			}
 
@@ -127,17 +120,4 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 	}
 
 	return ResponseData{}, nil
-}
-
-func validatePullRequestEvent(event *github.PullRequestEvent) bool {
-	if event.Action == nil || event.Number == nil ||
-		event.Repo == nil || event.Repo.FullName == nil ||
-		event.Sender == nil || event.Sender.Login == nil ||
-		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
-		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
-		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil {
-		return false
-	}
-
-	return true
 }

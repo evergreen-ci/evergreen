@@ -165,7 +165,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
 
-	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL)
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -283,7 +283,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL)
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

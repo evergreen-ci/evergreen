@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -118,42 +119,51 @@ var (
 	intentTypeKey   = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
 )
 
-// NewGithubIntent return a new github patch intent.
-func NewGithubIntent(msgDeliveryID string, prNumber int, baseRepoName, headRepoName, headHash, user, url string) (Intent, error) {
+// NewGithubIntent creates an Intent from a google/go-github PullRequestEvent,
+// or returns an error if the some part of the struct is invalid
+func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Intent, error) {
+	if event.Action == nil || event.Number == nil ||
+		event.Repo == nil || event.Repo.FullName == nil ||
+		event.Sender == nil || event.Sender.Login == nil ||
+		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
+		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
+		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil {
+		return nil, errors.New("pull request document is malformed/missing data")
+	}
 	if msgDeliveryID == "" {
 		return nil, errors.New("Unique msg id cannot be empty")
 	}
-	if baseRepoName == "" || len(strings.Split(baseRepoName, "/")) != 2 {
-		return nil, errors.New("Base repo name is invalid")
+	if len(strings.Split(*event.Repo.FullName, "/")) != 2 {
+		return nil, errors.New("Base repo name is invalid (expected [owner]/[repo])")
 	}
-	if headRepoName == "" || len(strings.Split(headRepoName, "/")) != 2 {
-		return nil, errors.New("Head repo name is invalid")
+	if len(strings.Split(*event.PullRequest.Head.Repo.FullName, "/")) != 2 {
+		return nil, errors.New("Head repo name is invalid (expected [owner]/[repo])")
 	}
-	if prNumber == 0 {
+	if *event.Number == 0 {
 		return nil, errors.New("PR number must not be 0")
 	}
-	if user == "" {
-		return nil, errors.New("Github user name must not be empty string")
+	if *event.Sender.Login == "" {
+		return nil, errors.New("Github *event.Sender.Login name must not be empty string")
 	}
-	if len(headHash) == 0 {
+	if len(*event.PullRequest.Head.SHA) == 0 {
 		return nil, errors.New("Head hash must not be empty")
 	}
-	if !strings.HasPrefix(url, "https://") {
-		return nil, errors.Errorf("Diff URL must begin with 'https://' (%s)", url)
+	if !strings.HasPrefix(*event.PullRequest.DiffURL, "https://") {
+		return nil, errors.Errorf("DiffURL must begin with 'https://' (%s)", *event.PullRequest.DiffURL)
 	}
-	if !strings.HasSuffix(url, ".diff") {
+	if !strings.HasSuffix(*event.PullRequest.DiffURL, ".diff") {
 		return nil, errors.New("Github patch intents must be created from *.diff files")
 	}
 
 	return &githubIntent{
 		DocumentID:   bson.NewObjectId(),
 		MsgID:        msgDeliveryID,
-		BaseRepoName: baseRepoName,
-		HeadRepoName: headRepoName,
-		PRNumber:     prNumber,
-		User:         user,
-		HeadHash:     headHash,
-		DiffURL:      url,
+		BaseRepoName: *event.Repo.FullName,
+		HeadRepoName: *event.PullRequest.Head.Repo.FullName,
+		PRNumber:     *event.Number,
+		User:         *event.Sender.Login,
+		HeadHash:     *event.PullRequest.Head.SHA,
+		DiffURL:      *event.PullRequest.DiffURL,
 		IntentType:   GithubIntentType,
 	}, nil
 }
