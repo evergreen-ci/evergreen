@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
 )
@@ -169,4 +170,6 @@ type Connector interface {
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.PatchDefinition, error)
+
+	CancelPatchFromPullRequest(*github.PullRequestEvent) error
 }

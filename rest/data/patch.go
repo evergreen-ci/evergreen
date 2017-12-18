@@ -3,11 +3,15 @@ package data
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -85,6 +89,40 @@ func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit i
 	}
 
 	return patches, nil
+}
+
+func (p *DBPatchConnector) CancelPatchFromPullRequest(event *github.PullRequestEvent) error {
+	if event.Number == nil ||
+		event.Repo == nil || event.Repo.FullName == nil ||
+		event.Sender == nil || event.Sender.Login == nil ||
+		event.PullRequest == nil {
+
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "pull request data is malformed",
+		}
+	}
+	baseRepo := strings.Split(*event.Repo.FullName, "/")
+	if len(baseRepo) == 2 {
+		return ResponseData{}, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "repository name is invalid",
+		}
+	}
+	githubPatch := patch.GithubPatch{
+		Author:    *event.Sender.Login,
+		PRNumber:  *event.Number,
+		BaseOwner: baseRepo[0],
+		BaseRepo:  baseRepo[1],
+	}
+
+	err := model.CancelPatchesWithGithubPatchData(time.Now(), &githubPatch)
+	grip.InfoWhen(err != nil, message.Fields{
+		"message": "error canceling patches",
+		"error":   err.Error(),
+	})
+
+	return nil
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods
@@ -207,4 +245,8 @@ func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit
 		}
 	}
 	return patchesToReturn, nil
+}
+
+func (p *MockPatchConnector) CancelPatchFromPullRequest(_ *github.PullRequestEvent) error {
+	return errors.New("(*MockPatchIntentConnector) CancelPatchFromPullRequest is not implemented")
 }
