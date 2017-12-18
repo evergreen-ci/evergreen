@@ -200,7 +200,9 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
 		fmt.Sprintf("--working_directory='%s'", hostObj.Distro.WorkDir),
+		"--cleanup",
 	}
+
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
 	cmdId := fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int())

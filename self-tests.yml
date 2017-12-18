@@ -290,15 +290,24 @@ functions:
           done
     - command: shell.exec
       params:
+        silent: true
         shell: bash
-        background: true
         script: |
-          set -o xtrace
           set -o errexit
 
-          cd gopath/src/github.com/evergreen-ci/evergreen
-          binary=./clients/linux_amd64/evergreen
-          $binary service deploy start-evergreen --web --runner --binary $binary
+          pushd mongodb
+          ./mongo mci --eval 'db.project_vars.update({"_id": "evergreen"}, {"$set": {"vars.aws_key": "${aws_key}"}})'
+          ./mongo mci --eval 'db.project_vars.update({"_id": "evergreen"}, {"$set": {"vars.aws_secret": "${aws_secret}"}})'
+          popd
+
+          # matches agent_revision in hosts.json
+          echo "foo" > gopath/src/github.com/evergreen-ci/evergreen/clients/version
+
+          cat >> gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_config.yml <<EOF
+          credentials: {
+            github: "${github_token}",
+          }
+          EOF
 
 #######################################
 #                Tasks                #
@@ -365,6 +374,17 @@ tasks:
       - command: shell.exec
         params:
           shell: bash
+          background: true
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            binary=./clients/linux_amd64/evergreen
+            $binary service deploy start-evergreen --web --binary $binary
+      - command: shell.exec
+        params:
+          shell: bash
           script: |
             set -o xtrace
             set -o errexit
@@ -372,6 +392,50 @@ tasks:
             cd gopath/src/github.com/evergreen-ci/evergreen
             binary=./clients/linux_amd64/evergreen
             $binary service deploy test-endpoints --test-file smoke_test.yml
+  - name: smoke-test-task
+    tags: ["smoke"]
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-mongodb
+      - func: run-make
+        vars:
+          target: "build"
+      - func: set-up-smoke-test
+      - command: shell.exec
+        params:
+          shell: bash
+          background: true
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            binary=./clients/linux_amd64/evergreen
+            $binary service deploy start-evergreen --web --runner --binary $binary
+      - command: shell.exec
+        params:
+          shell: bash
+          background: true
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            binary=./clients/linux_amd64/evergreen
+            $binary service deploy start-evergreen --agent --binary $binary
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            set -o xtrace
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            binary=./clients/linux_amd64/evergreen
+            $binary service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
