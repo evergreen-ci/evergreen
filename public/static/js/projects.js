@@ -172,7 +172,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         });
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
-        $scope.githubWebhook = data.ProjectVars.github_hook || 0;
+        $scope.githubWebhook = data.ProjectVars.github_hook_id || 0;
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,

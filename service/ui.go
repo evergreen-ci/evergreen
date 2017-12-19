@@ -246,7 +246,6 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.projectPage))).Methods("GET")
 	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.modifyProject))).Methods("POST")
 	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.addProject))).Methods("PUT")
-	r.HandleFunc("/project/{project_id}/github", uis.loadCtx(uis.requireSuperUser(uis.addGithubConfig))).Methods("PUT")
 	r.HandleFunc("/project/{project_id}/repo_revision", uis.loadCtx(uis.requireAdmin(uis.setRevision))).Methods("PUT")
 
 	// Admin routes

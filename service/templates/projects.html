@@ -284,6 +284,22 @@ Evergreen Projects
           </div>
         </div>
 
+        <div class="variables" ng-show="isSuperUser">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Configuration </h3>
+                <div class="muted small" ng-show="githubWebhook === 0">Github Webhooks have not been configured for this repository. In order to use Github Pull Request testing, tick the box below to setup the repository on save</div>
+                <div class="muted small" ng-show="githubWebhook !== 0">Github Webhooks are setup!. You can uncheck the box to remove the webhook at any time.</div>
+            </div>
+          </div>
+
+          <div id="patch-variants-list" class="form-group">
+            <div class="col-lg-6">
+                <input type="checkbox" id="githubwebhook-checkbox" ng-model="settingsFormData.setup_github_webhook" />
+                <label for="githubwebhook-checkbox">Setup Github Webhooks</label>
+            </div>
+          </div>
+        </div>
+
         <div class="variables" ng-show="githubWebhook !== 0">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Patch Definitions </h3>
@@ -321,30 +337,6 @@ Evergreen Projects
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
-            </div>
-          </div>
-        </div>
-
-        <div class="variables" ng-show="isSuperUser && githubWebook !== 0">
-          <div class="form-group">
-            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Configuration </h3>
-                <div class="muted small" ng-show="githubWebhook === 0">Github Webhooks have not been configured for this repository. In order to use Github Pull Request testing, click the button below to setup the repository</div>
-            </div>
-          </div>
-
-          <div id="patch-variants-list" class="form-group">
-            <div class="col-lg-4">
-                <input type="checkbox" id="githubwebhook-checkbox" ng-disabled="githubWebhook !== 0" ng-model="settingsFormData.setup_github_webhook"/>
-                <label for="githubwebhook-checkbox">Setup Github webhooks on Save</label>
-            </div>
-            <div class="col-lg-2">
-            </div>
-          </div>
-          <div id="patch-variants-list" class="form-group" ng-show="githubSetupErrorMessage">
-            <div class="col-lg-8">
-                <div class="col-lg-6">
-                    <label class="distro-error">[[githubSetupErrorMessage]]</label>
-                </div>
             </div>
           </div>
         </div>

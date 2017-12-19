@@ -207,40 +207,40 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = projectRef.Upsert()
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	oldVars, err := model.FindOneProjectVars(id)
+	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	hookID := oldVars.GithubWebhook
 
-	if responseRef.SetupGithubWebhook && oldVars.GithubWebhook != 0 {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("github webhook is already configured"))
-		return
-	}
 	if responseRef.SetupGithubWebhook {
-		if hookID, err = uis.setupGithubWebhook(projectRef); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
+		if projectVars.GithubHookID == 0 {
+			if projectVars.GithubHookID, err = uis.setupGithubWebhook(projectRef); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+		}
+
+	} else {
+		if projectVars.GithubHookID != 0 {
+			if err = uis.deleteGithubWebhook(projectRef, projectVars.GithubHookID); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			projectVars.GithubHookID = 0
 		}
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{
-		Id:               id,
-		Vars:             responseRef.ProjVarsMap,
-		PrivateVars:      responseRef.PrivateVars,
-		PatchDefinitions: responseRef.PatchDefinitions,
-		GithubWebhook:    hookID,
-	}
+	projectVars.Vars = responseRef.ProjVarsMap
+	projectVars.PrivateVars = responseRef.PrivateVars
+	projectVars.PatchDefinitions = responseRef.PatchDefinitions
 	_, err = projectVars.Upsert()
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -397,10 +397,41 @@ func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, erro
 	if err != nil {
 		return 0, err
 	}
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated || newHook == nil || newHook.ID == nil {
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || hook == nil || hook.ID == nil {
 		return 0, errors.New("unexpected data from github")
 	}
 
 	return *hook.ID, nil
+}
+
+func (uis *UIServer) deleteGithubWebhook(projectRef *model.ProjectRef, hookID int) error {
+	token, err := uis.Settings.GetGithubOauthToken()
+	if err != nil {
+		return err
+	}
+
+	if uis.Settings.Api.GithubWebhookSecret == "" {
+		return errors.New("config error")
+	}
+
+	httpClient, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+	resp, err := client.Repositories.DeleteHook(ctx, projectRef.Owner, projectRef.Repo, hookID)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNotFound {
+		return errors.New("unexpected data from github")
+	}
+
+	return nil
 }
