@@ -189,7 +189,7 @@ Evergreen Projects
           <div id="adminsList" class="form-group" ng-repeat="(index, admin) in settingsFormData.admins">
             <div class="col-lg-4"> <label class="control-label">[[admin]]</label> </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeAdmin(index)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeAdmin(index)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -199,7 +199,7 @@ Evergreen Projects
               <input ng-model="admin_name" class="form-control" type="text" placeholder="username">
             </div>
             <div class="col-lg-2">
-              <button class="plus-button btn btn-primary " ng-disabled="!(admin_name)" id="admin-add" type="button" ng-click="addAdmin()">
+              <button class="plus-button btn btn-primary" ng-disabled="!(admin_name)" type="button" ng-click="addAdmin()">
                 <i class="fa fa-plus"></i>
               </button>
             </div>
@@ -258,7 +258,7 @@ Evergreen Projects
               <textarea class="form-control" style="font-family:monospace;" readonly>[[valueString(name, value)]]</textarea>
             </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeProjectVar(name)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -276,7 +276,7 @@ Evergreen Projects
              </label>
             </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary " ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
+              <button class="plus-button btn btn-primary " ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" type="button" ng-click="addProjectVar()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidKeyMessage]]</label>
@@ -284,7 +284,24 @@ Evergreen Projects
           </div>
         </div>
 
-        <div class="variables">
+        <div class="variables" ng-show="isSuperUser">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Configuration </h3>
+                <div class="muted small" ng-show="githubHookId === 0">Github webhooks have not been enabled for this repository. In order to use Github Pull Request testing, tick the box below, and save the project to set up the webhook in this
+                repository.</div>
+                <div class="muted small" ng-show="githubHookId !== 0">Github webhooks are enabled!. You can uncheck the box to remove the webhook at any time.</div>
+            </div>
+          </div>
+
+          <div id="patch-variants-list" class="form-group">
+            <div class="col-lg-6">
+                <input type="checkbox" id="githubhook-checkbox" ng-model="settingsFormData.setup_github_hook" />
+                <label for="githubhook-checkbox">Enable Github Webhooks</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="variables" ng-show="githubHookId !== 0">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Patch Definitions </h3>
               <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
@@ -304,7 +321,7 @@ Evergreen Projects
               <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeGithubPatchDefinition($index)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubPatchDefinition($index)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -317,7 +334,7 @@ Evergreen Projects
               <input ng-model="github_patch_definition.task" class="form-control" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary " ng-disabled="!validPatchDefinition(github_patch_definition.variant, github_patch_definition.task)" id="variable-add" type="button" ng-click="addGithubPatchDefinition()">
+              <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_patch_definition.variant, github_patch_definition.task)" type="button" ng-click="addGithubPatchDefinition()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
@@ -349,7 +366,7 @@ Evergreen Projects
               <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removePatchAlias($index)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removePatchAlias($index)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -365,7 +382,7 @@ Evergreen Projects
               <input ng-model="patch_alias.task" class="form-control" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task)" id="variable-add" type="button" ng-click="addPatchAlias()">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task)" type="button" ng-click="addPatchAlias()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchAliasMessage]]</label>
@@ -376,9 +393,13 @@ Evergreen Projects
         <br/>
 
         <div class="row">
-          <div class="col-lg-2">
-            <label>[[saveMessage]]</label>
+          <div class="col-lg-6">
+            <label ng-show="saveMessage">[[saveMessage]]</label>
+            <label ng-hide="saveMessage">&nbsp;</label>
           </div>
+        </div>
+        <div class="row">
+          <div class="col-lg-2">&nbsp;</div>
           <div class="col-lg-4">
             <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
           </div>

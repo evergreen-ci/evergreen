@@ -1,16 +1,19 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -146,6 +149,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
+		SetupGithubHook bool `json:"setup_github_hook"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -203,16 +207,40 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = projectRef.Upsert()
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars, responseRef.PatchDefinitions}
-	_, err = projectVars.Upsert()
+	projectVars, err := model.FindOneProjectVars(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
+	if responseRef.SetupGithubHook {
+		if projectVars.GithubHookID == 0 {
+			if projectVars.GithubHookID, err = uis.setupGithubHook(projectRef); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+		}
+
+	} else {
+		if projectVars.GithubHookID != 0 {
+			if err = uis.deleteGithubHook(projectRef, projectVars.GithubHookID); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			projectVars.GithubHookID = 0
+		}
+	}
+
+	//modify project vars if necessary
+	projectVars.Vars = responseRef.ProjVarsMap
+	projectVars.PrivateVars = responseRef.PrivateVars
+	projectVars.PatchDefinitions = responseRef.PatchDefinitions
+	_, err = projectVars.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -333,4 +361,77 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) {
+	token, err := uis.Settings.GetGithubOauthToken()
+	if err != nil {
+		return 0, err
+	}
+
+	if uis.Settings.Api.GithubWebhookSecret == "" {
+		return 0, errors.New("Evergreen is not configured for Github Webhooks")
+	}
+
+	httpClient, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return 0, err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+	newHook := github.Hook{
+		Name:   github.String("web"),
+		Active: github.Bool(true),
+		Events: []string{"*"},
+		Config: map[string]interface{}{
+			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.Api.HttpListenAddr)),
+			"content_type": github.String("json"),
+			"secret":       github.String(uis.Settings.Api.GithubWebhookSecret),
+			"insecure_ssl": github.String("0"),
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	hook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &newHook)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || hook == nil || hook.ID == nil {
+		return 0, errors.New("unexpected data from github")
+	}
+
+	return *hook.ID, nil
+}
+
+func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) error {
+	token, err := uis.Settings.GetGithubOauthToken()
+	if err != nil {
+		return err
+	}
+
+	if uis.Settings.Api.GithubWebhookSecret == "" {
+		return errors.New("Evergreen is not configured for Github Webhooks")
+	}
+
+	httpClient, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := client.Repositories.DeleteHook(ctx, projectRef.Owner, projectRef.Repo, hookID)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNotFound {
+		return errors.New("unexpected data from github")
+	}
+
+	return nil
 }
