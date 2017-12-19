@@ -19,13 +19,6 @@ var (
 		return nil
 	}
 
-	requireServiceConfig = func(c *cli.Context) error {
-		if c.String(confFlagName) == "" {
-			return errors.New("service configuration path is not specified")
-		}
-		return nil
-	}
-
 	setPlainLogger = func(c *cli.Context) error {
 		grip.CatchWarning(grip.SetSender(send.MakePlainLogger()))
 		return nil
@@ -52,8 +45,7 @@ var (
 			return errors.Errorf("configuration file %s does not exist", path)
 		}
 
-		c.Set(pathFlagName, path)
-		return nil
+		return c.Set(pathFlagName, path)
 	}
 
 	requirePatchIDFlag = func(c *cli.Context) error {
@@ -143,27 +135,6 @@ func requireOnlyOneBool(flags ...string) cli.BeforeFunc {
 		if count != 1 {
 			return errors.Errorf("must specify one and only one of: --%s", strings.Join(flags, ", --"))
 		}
-		return nil
-	}
-}
-
-func requireOnlyOneString(flags ...string) cli.BeforeFunc {
-	return func(c *cli.Context) error {
-		empty := 0
-		full := 0
-		for idx := range flags {
-			val := c.String(flags[idx])
-			if val == "" {
-				empty++
-			} else {
-				full++
-			}
-		}
-
-		if empty == 0 || full == 0 {
-			return errors.Errorf("must specify one and only one of: --%s", strings.Join(flags, ", --"))
-		}
-
 		return nil
 	}
 }

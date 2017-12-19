@@ -56,10 +56,11 @@ func keysAdd() cli.Command {
 				}
 				args := c.Args()
 
-				c.Set(keyNameFlagName, args[0])
-				c.Set(keyFileFlagName, args[1])
+				catcher := grip.NewBasicCatcher()
+				catcher.Add(c.Set(keyNameFlagName, args[0]))
+				catcher.Add(c.Set(keyFileFlagName, args[1]))
 
-				return nil
+				return catcher.Resolve()
 			}),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)

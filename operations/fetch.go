@@ -76,7 +76,7 @@ func Fetch() cli.Command {
 					if err != nil {
 						return errors.Wrap(err, "cannot find working directory")
 					}
-					c.Set(dirFlagName, wd)
+					return c.Set(dirFlagName, wd)
 				}
 				return nil
 			},
