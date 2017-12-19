@@ -413,3 +413,22 @@ func CancelPatch(p *patch.Patch, caller string) error {
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
+
+// CancelPatchesWithGithubPatchData runs CancelPatch on patches created before
+// the given time, with the same github author, pr number, and base repository
+func CancelPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string, prNumber int) error {
+	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
+	if err != nil {
+		return errors.Wrap(err, "initial patch fetch failed")
+	}
+
+	for i, _ := range patches {
+		if patches[i].Version != "" {
+			if err = CancelPatch(&patches[i], "github-pr"); err != nil {
+				return errors.Wrap(err, "patch cancellation failed")
+			}
+		}
+	}
+
+	return nil
+}

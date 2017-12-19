@@ -103,23 +103,6 @@ func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
 
-func (s *GithubWebhookRouteSuite) TestAddIntentWithClosedPRHasNoSideEffects() {
-	event, err := github.ParseWebHook("pull_request", s.prBody)
-	s.NotNil(event)
-	s.NoError(err)
-	*event.(*github.PullRequestEvent).Action = "closed"
-
-	s.h.event = event
-	s.h.msgId = "1"
-
-	ctx := context.Background()
-	resp, err := s.h.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.Empty(resp.Result)
-
-	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 0)
-}
-
 func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	ctx := context.Background()
 	secret := []byte(s.conf.Api.GithubWebhookSecret)

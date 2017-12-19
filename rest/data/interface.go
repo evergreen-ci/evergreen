@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
 )
@@ -131,6 +132,9 @@ type Connector interface {
 
 	// AbortPatch aborts the patch corresponding to the input patch ID and deletes if not finalized.
 	AbortPatch(string, string) error
+	// AbortPatchesFromPullRequest aborts patches with the same PR Number,
+	// in the same repository, at the pull request's close time
+	AbortPatchesFromPullRequest(*github.PullRequestEvent) error
 
 	// RestartVersion restarts all completed tasks of a version given its ID and the caller.
 	RestartVersion(string, string) error

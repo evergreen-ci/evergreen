@@ -16,23 +16,24 @@ const (
 
 // BSON fields for the patches
 var (
-	IdKey            = bsonutil.MustHaveTag(Patch{}, "Id")
-	DescriptionKey   = bsonutil.MustHaveTag(Patch{}, "Description")
-	ProjectKey       = bsonutil.MustHaveTag(Patch{}, "Project")
-	GithashKey       = bsonutil.MustHaveTag(Patch{}, "Githash")
-	AuthorKey        = bsonutil.MustHaveTag(Patch{}, "Author")
-	NumberKey        = bsonutil.MustHaveTag(Patch{}, "PatchNumber")
-	VersionKey       = bsonutil.MustHaveTag(Patch{}, "Version")
-	StatusKey        = bsonutil.MustHaveTag(Patch{}, "Status")
-	CreateTimeKey    = bsonutil.MustHaveTag(Patch{}, "CreateTime")
-	StartTimeKey     = bsonutil.MustHaveTag(Patch{}, "StartTime")
-	FinishTimeKey    = bsonutil.MustHaveTag(Patch{}, "FinishTime")
-	BuildVariantsKey = bsonutil.MustHaveTag(Patch{}, "BuildVariants")
-	TasksKey         = bsonutil.MustHaveTag(Patch{}, "Tasks")
-	VariantsTasksKey = bsonutil.MustHaveTag(Patch{}, "VariantsTasks")
-	PatchesKey       = bsonutil.MustHaveTag(Patch{}, "Patches")
-	ActivatedKey     = bsonutil.MustHaveTag(Patch{}, "Activated")
-	PatchedConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
+	IdKey              = bsonutil.MustHaveTag(Patch{}, "Id")
+	DescriptionKey     = bsonutil.MustHaveTag(Patch{}, "Description")
+	ProjectKey         = bsonutil.MustHaveTag(Patch{}, "Project")
+	GithashKey         = bsonutil.MustHaveTag(Patch{}, "Githash")
+	AuthorKey          = bsonutil.MustHaveTag(Patch{}, "Author")
+	NumberKey          = bsonutil.MustHaveTag(Patch{}, "PatchNumber")
+	VersionKey         = bsonutil.MustHaveTag(Patch{}, "Version")
+	StatusKey          = bsonutil.MustHaveTag(Patch{}, "Status")
+	CreateTimeKey      = bsonutil.MustHaveTag(Patch{}, "CreateTime")
+	StartTimeKey       = bsonutil.MustHaveTag(Patch{}, "StartTime")
+	FinishTimeKey      = bsonutil.MustHaveTag(Patch{}, "FinishTime")
+	BuildVariantsKey   = bsonutil.MustHaveTag(Patch{}, "BuildVariants")
+	TasksKey           = bsonutil.MustHaveTag(Patch{}, "Tasks")
+	VariantsTasksKey   = bsonutil.MustHaveTag(Patch{}, "VariantsTasks")
+	PatchesKey         = bsonutil.MustHaveTag(Patch{}, "Patches")
+	ActivatedKey       = bsonutil.MustHaveTag(Patch{}, "Activated")
+	PatchedConfigKey   = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
+	githubPatchDataKey = bsonutil.MustHaveTag(Patch{}, "GithubPatchData")
 
 	// BSON fields for the module patch struct
 	ModulePatchNameKey    = bsonutil.MustHaveTag(ModulePatch{}, "ModuleName")
@@ -47,6 +48,16 @@ var (
 	GitSummaryNameKey      = bsonutil.MustHaveTag(Summary{}, "Name")
 	GitSummaryAdditionsKey = bsonutil.MustHaveTag(Summary{}, "Additions")
 	GitSummaryDeletionsKey = bsonutil.MustHaveTag(Summary{}, "Deletions")
+
+	// BSON fields for GithubPatch
+	githubPatchPRNumberKey  = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
+	githubPatchBaseOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
+	githubPatchBaseRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
+	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "HeadOwner")
+	githubPatchHeadRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
+	githubPatchHeadHashKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
+	githubPatchAuthorKey    = bsonutil.MustHaveTag(GithubPatch{}, "Author")
+	githubPatchDiffURLKey   = bsonutil.MustHaveTag(GithubPatch{}, "DiffURL")
 )
 
 // Query Validation
@@ -183,4 +194,15 @@ func PatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) d
 		filter[CreateTimeKey] = bson.M{"$gt": ts}
 	}
 	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+}
+
+func ByGithubPRAndCreatedBefore(t time.Time, owner, repo string, prNumber int) db.Q {
+	return db.Query(bson.M{
+		CreateTimeKey: bson.M{
+			"$lt": t,
+		},
+		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchBaseOwnerKey): owner,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchBaseRepoKey):  repo,
+		bsonutil.GetDottedKeyName(githubPatchDataKey, githubPatchPRNumberKey):  prNumber,
+	})
 }

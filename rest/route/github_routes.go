@@ -12,6 +12,13 @@ import (
 	"github.com/mongodb/grip"
 )
 
+const (
+	githubActionClosed      = "closed"
+	githubActionOpened      = "opened"
+	githubActionSynchronize = "synchronize"
+	githubActionReopened    = "reopened"
+)
+
 type githubHookApi struct {
 	queue  amboy.Queue
 	secret []byte
@@ -101,22 +108,26 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 				Message:    "pull request has no action",
 			}
 		}
-		if *event.Action == "opened" || *event.Action == "synchronize" ||
-			*event.Action == "reopened" {
+
+		if *event.Action == githubActionOpened || *event.Action == githubActionSynchronize ||
+			*event.Action == githubActionReopened {
 			ghi, err := patch.NewGithubIntent(gh.msgId, event)
 			if err != nil {
-				return ResponseData{}, rest.APIError{
+				return ResponseData{}, &rest.APIError{
 					StatusCode: http.StatusBadRequest,
 					Message:    err.Error(),
 				}
 			}
 
 			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
-				return ResponseData{}, rest.APIError{
+				return ResponseData{}, &rest.APIError{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
 				}
 			}
+
+		} else if *event.Action == githubActionClosed {
+			return ResponseData{}, sc.AbortPatchesFromPullRequest(event)
 		}
 	}
 

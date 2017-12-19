@@ -89,7 +89,6 @@ func (j *patchIntentProcessor) Run() {
 		return
 	}
 
-	// TODO cleaner way to do this?
 	if j.Intent.GetType() == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		err = j.env.LocalQueue().Put(update)
@@ -104,6 +103,10 @@ func (j *patchIntentProcessor) Run() {
 			"intent_type":        j.Intent.GetType(),
 			"intent_id":          j.Intent.ID(),
 		})
+
+		j.AddError(model.CancelPatchesWithGithubPatchData(patchDoc.CreateTime,
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.PRNumber))
 	}
 }
 
