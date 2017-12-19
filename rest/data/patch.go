@@ -89,32 +89,21 @@ func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit i
 	return patches, nil
 }
 
-func (p *DBPatchConnector) CancelPatchFromPullRequest(event *github.PullRequestEvent) error {
-	if event.Number == nil ||
-		event.Repo == nil || event.Repo.FullName == nil ||
-		event.Sender == nil || event.Sender.Login == nil ||
-		event.PullRequest == nil {
-
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "pull request data is malformed",
-		}
-	}
-	baseRepo := strings.Split(*event.Repo.FullName, "/")
-	if len(baseRepo) == 2 {
-		return ResponseData{}, &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "repository name is invalid",
-		}
-	}
-	githubPatch := patch.GithubPatch{
-		Author:    *event.Sender.Login,
-		PRNumber:  *event.Number,
-		BaseOwner: baseRepo[0],
-		BaseRepo:  baseRepo[1],
+func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+	owner, repo, err := verifyPullRequestForAbort(event)
+	if err != nil {
+		return err
 	}
 
-	_ := model.CancelPatchesWithGithubPatchData(time.Now(), &githubPatch)
+	err = model.CancelPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
+		owner, repo, *event.Number)
+
+	if strings.Contains(err.Error(), "initial patch fetch failed") {
+		return &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error determing which patches to cancel",
+		}
+	}
 
 	return nil
 }
@@ -241,6 +230,28 @@ func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit
 	return patchesToReturn, nil
 }
 
-func (p *MockPatchConnector) CancelPatchFromPullRequest(_ *github.PullRequestEvent) error {
-	return errors.New("(*MockPatchIntentConnector) CancelPatchFromPullRequest is not implemented")
+func (c *MockPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) (string, string, error) {
+	_, _, err := verifyPullRequestForAbort(event)
+	return err
+}
+
+func verifyPullRequestForAbort(event *github.PullRequestEvent) error {
+	if event.Number == nil || event.Repo == nil ||
+		event.Repo.FullName == nil || event.PullRequest == nil ||
+		event.PullRequest.ClosedAt == nil {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "pull request data is malformed",
+		}
+	}
+
+	baseRepo := strings.Split(*event.Repo.FullName, "/")
+	if len(baseRepo) == 2 {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "repository name is invalid",
+		}
+	}
+
+	return nil
 }

@@ -120,7 +120,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			}
 
 		} else if *event.Action == "closed" {
-			return ResponseData{}, sc.CancelPatchFromPullRequest(event)
+			return ResponseData{}, sc.AbortPatchesFromPullRequest(event)
 		}
 	}
 
