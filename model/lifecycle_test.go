@@ -1332,7 +1332,7 @@ func TestVersionRestart(t *testing.T) {
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) //nolint
 	displayTasks := []string{"displayTask"}
 	allTasks := []string{"displayTask", "task5", "task6"}
 
