@@ -10,6 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -97,11 +99,14 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 
 	err = model.CancelPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
 		owner, repo, *event.Number)
-
-	if strings.Contains(err.Error(), "initial patch fetch failed") {
+	if err != nil {
+		grip.Error(message.Fields{
+			"message": "error cancelling patches",
+			"error":   err.Error(),
+		})
 		return &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "error determing which patches to cancel",
+			Message:    "error cancelling patches",
 		}
 	}
 

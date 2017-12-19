@@ -20,7 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -388,27 +387,19 @@ func CancelPatch(p *patch.Patch, caller string) error {
 
 // CancelPatchesWithGithubPatchData runs CancelPatch on patches created before
 // the given time, with the same github author, pr number, and base repository
-// Errors in this function should not treated as critical failures, as this
-// function is subject to a data-race when patches are updated between its
-// Find query and the patch cancellation
 func CancelPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
 		return errors.Wrap(err, "initial patch fetch failed")
 	}
 
-	c := grip.NewSimpleCatcher()
 	for i, _ := range patches {
 		if patches[i].Version != "" {
-			c.Add(CancelPatch(&patches[i], ""))
+			if err = CancelPatch(&patches[i], "github-pr"); err != nil {
+				return errors.Wrap(err, "patch cancellation failed")
+			}
 		}
 	}
 
-	err = c.Resolve()
-	grip.InfoWhen(err != nil, message.Fields{
-		"message": "error canceling patches",
-		"error":   err.Error(),
-	})
-
-	return errors.Wrap(err, "patch cancellation failed")
+	return nil
 }
