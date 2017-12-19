@@ -4,17 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
-
-var testConfig = testutil.TestConfig()
-
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
 
 func TestConfigChanged(t *testing.T) {
 	assert := assert.New(t) //nolint
@@ -39,6 +34,8 @@ func TestConfigChanged(t *testing.T) {
 
 type patchSuite struct {
 	suite.Suite
+	testConfig *evergreen.Settings
+
 	patches []*Patch
 	time    time.Time
 }
@@ -48,6 +45,9 @@ func TestPatchSuite(t *testing.T) {
 }
 
 func (s *patchSuite) SetupTest() {
+	s.testConfig = testutil.TestConfig()
+	db.SetGlobalSessionProvider(s.testConfig.SessionFactory())
+
 	db.ClearCollections(Collection)
 	s.time = time.Now().Add(-12 * time.Hour)
 	s.patches = []*Patch{
