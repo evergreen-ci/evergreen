@@ -287,20 +287,20 @@ Evergreen Projects
         <div class="variables" ng-show="isSuperUser">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Configuration </h3>
-                <div class="muted small" ng-show="githubWebhook === 0">Github Webhooks have not been configured for this repository. In order to use Github Pull Request testing, tick the box below to setup the repository on save</div>
-                <div class="muted small" ng-show="githubWebhook !== 0">Github Webhooks are setup!. You can uncheck the box to remove the webhook at any time.</div>
+                <div class="muted small" ng-show="githubHookId === 0">Github Webhooks have not been configured for this repository. In order to use Github Pull Request testing, tick the box below to setup the repository on save</div>
+                <div class="muted small" ng-show="githubHookId !== 0">Github Webhooks are setup!. You can uncheck the box to remove the webhook at any time.</div>
             </div>
           </div>
 
           <div id="patch-variants-list" class="form-group">
             <div class="col-lg-6">
-                <input type="checkbox" id="githubwebhook-checkbox" ng-model="settingsFormData.setup_github_webhook" />
-                <label for="githubwebhook-checkbox">Setup Github Webhooks</label>
+                <input type="checkbox" id="githubhook-checkbox" ng-model="settingsFormData.setup_github_hook" />
+                <label for="githubhook-checkbox">Setup Github Webhooks</label>
             </div>
           </div>
         </div>
 
-        <div class="variables" ng-show="githubWebhook !== 0">
+        <div class="variables" ng-show="githubHookId !== 0">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Patch Definitions </h3>
               <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>

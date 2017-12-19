@@ -172,7 +172,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         });
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
-        $scope.githubWebhook = data.ProjectVars.github_hook_id || 0;
+        $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -197,7 +197,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
-          setup_github_webhook: false,
+          setup_github_hook: data.ProjectVars.github_hook_id !== 0,
         };
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;

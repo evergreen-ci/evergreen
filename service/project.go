@@ -149,7 +149,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		SetupGithubWebhook bool `json:"setup_github_webhook"`
+		SetupGithubHook bool `json:"setup_github_hook"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -218,9 +218,9 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if responseRef.SetupGithubWebhook {
+	if responseRef.SetupGithubHook {
 		if projectVars.GithubHookID == 0 {
-			if projectVars.GithubHookID, err = uis.setupGithubWebhook(projectRef); err != nil {
+			if projectVars.GithubHookID, err = uis.setupGithubHook(projectRef); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
@@ -228,7 +228,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		if projectVars.GithubHookID != 0 {
-			if err = uis.deleteGithubWebhook(projectRef, projectVars.GithubHookID); err != nil {
+			if err = uis.deleteGithubHook(projectRef, projectVars.GithubHookID); err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
@@ -363,7 +363,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	uis.WriteJSON(w, http.StatusOK, nil)
 }
 
-func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, error) {
+func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) {
 	token, err := uis.Settings.GetGithubOauthToken()
 	if err != nil {
 		return 0, err
@@ -405,7 +405,7 @@ func (uis *UIServer) setupGithubWebhook(projectRef *model.ProjectRef) (int, erro
 	return *hook.ID, nil
 }
 
-func (uis *UIServer) deleteGithubWebhook(projectRef *model.ProjectRef, hookID int) error {
+func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) error {
 	token, err := uis.Settings.GetGithubOauthToken()
 	if err != nil {
 		return err
