@@ -196,6 +196,8 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		return err
 	}
 
+	//TODO: handle display tasks here
+
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.Fields{
@@ -208,7 +210,6 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 			})
 			return err
 		}
-
 	}
 
 	return nil

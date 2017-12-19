@@ -94,18 +94,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return
 	}
-	tasks := extractDisplayTasks(pairs, apiRequest.Tasks, apiRequest.BuildVariants, project)
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't fetch patch data"))
-	// update variant and tasks to include dependencies
-	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
-
-	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
-
-	if err = patchDoc.Insert(); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error inserting patch"))
 		return
 	}
 	if patchDoc == nil {
