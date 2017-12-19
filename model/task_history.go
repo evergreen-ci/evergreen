@@ -791,7 +791,7 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 			go func() {
 				defer wg.Done()
 				for t := range taskChan {
-					err = t.MergeNewTestResults()
+					err := t.MergeNewTestResults() //nolint
 					if err != nil {
 						grip.Error(errors.Wrapf(err, "error merging test results for task %s", t.Id))
 						continue

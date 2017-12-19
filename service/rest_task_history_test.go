@@ -19,7 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -200,7 +199,6 @@ func TestGetTestHistory(t *testing.T) {
 			So(results[0].Url, ShouldEqual, "anotherurl")
 
 			So(results[1].Url, ShouldEqual, "url")
-			grip.Info(results)
 			So(results[2].Url, ShouldEqual, fmt.Sprintf("%v/test_log/2", taskTestConfig.Ui.Url))
 		})
 

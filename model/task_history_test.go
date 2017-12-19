@@ -1059,7 +1059,7 @@ func TestGetTestHistory(t *testing.T) {
 }
 
 func TestCompareQueryRunTimes(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) //nolint
 	rand.Seed(time.Now().UnixNano())
 	numTasks := 1000  // # of tasks to insert into the db
 	maxNumTests := 50 // max # of tests per task to insert (randomized per task)

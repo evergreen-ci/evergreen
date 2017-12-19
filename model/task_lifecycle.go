@@ -431,10 +431,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
+			var displayTask *task.Task
 			status := ""
 			finishedTasks++
 
-			displayTask, err := t.GetDisplayTask()
+			displayTask, err = t.GetDisplayTask()
 			if err != nil {
 				return err
 			}
