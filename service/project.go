@@ -370,7 +370,7 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 	}
 
 	if uis.Settings.Api.GithubWebhookSecret == "" {
-		return 0, errors.New("config error")
+		return 0, errors.New("Evergreen is not configured for Github Webhooks")
 	}
 
 	httpClient, err := util.GetHttpClientForOauth2(token)
@@ -391,7 +391,7 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	hook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &newHook)
 	if err != nil {
@@ -412,7 +412,7 @@ func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) 
 	}
 
 	if uis.Settings.Api.GithubWebhookSecret == "" {
-		return errors.New("config error")
+		return errors.New("Evergreen is not configured for Github Webhooks")
 	}
 
 	httpClient, err := util.GetHttpClientForOauth2(token)
@@ -422,7 +422,7 @@ func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) 
 	defer util.PutHttpClientForOauth2(httpClient)
 	client := github.NewClient(httpClient)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	resp, err := client.Repositories.DeleteHook(ctx, projectRef.Owner, projectRef.Repo, hookID)
 	if err != nil {
