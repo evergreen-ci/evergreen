@@ -19,25 +19,24 @@ const (
 
 func init() {
 	registry.AddJobType(latencyStatsCollectorJobName,
-		func() amboy.Job { return makeLatencyStatsCollector() })
+		func() amboy.Job { return makeLatencyStatsCollector(time.Minute) })
 }
 
 type latencyStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	logger   grip.Journaler
+	duration time.Duration
 }
 
 // NewLatencyStatsCollector captures a single report of the latency of
 // tasks that have started in the last minute.
-func NewLatencyStatsCollector(id string) amboy.Job {
-	t := makeTaskStatsCollector()
+func NewLatencyStatsCollector(id string, duration time.Duration) amboy.Job {
+	t := makeLatencyStatsCollector(duration)
 	t.SetID(id)
 	return t
 }
 
-func makeLatencyStatsCollector() *latencyStatsCollector {
+func makeLatencyStatsCollector(duration time.Duration) *latencyStatsCollector {
 	return &latencyStatsCollector{
-		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    latencyStatsCollectorJobName,
@@ -45,16 +44,18 @@ func makeLatencyStatsCollector() *latencyStatsCollector {
 				Format:  amboy.BSON,
 			},
 		},
+		duration: duration,
 	}
 }
 
 func (j *latencyStatsCollector) Run() {
 	defer j.MarkComplete()
+	logger := logging.MakeGrip(grip.GetSender())
 
-	latencies, err := model.AverageTaskLatency(time.Minute)
+	latencies, err := model.AverageTaskLatency(j.duration)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding task latencies"))
 		return
 	}
-	j.logger.Info(latencies)
+	logger.Info(latencies)
 }
