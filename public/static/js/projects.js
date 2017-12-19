@@ -196,7 +196,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
-          setup_github_hook: data.ProjectVars.github_hook_id !== 0,
+          setup_github_hook: $scope.githubHookId != 0,
         };
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
