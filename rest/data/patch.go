@@ -92,7 +92,7 @@ func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit i
 }
 
 func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
-	owner, repo, err := verifyPullRequestForAbort(event)
+	owner, repo, err := verifyPullRequestEventForAbort(event)
 	if err != nil {
 		return err
 	}
@@ -235,16 +235,16 @@ func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit
 	return patchesToReturn, nil
 }
 
-func (c *MockPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) (string, string, error) {
-	_, _, err := verifyPullRequestForAbort(event)
+func (c *MockPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+	_, _, err := verifyPullRequestEventForAbort(event)
 	return err
 }
 
-func verifyPullRequestForAbort(event *github.PullRequestEvent) error {
+func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, string, error) {
 	if event.Number == nil || event.Repo == nil ||
 		event.Repo.FullName == nil || event.PullRequest == nil ||
 		event.PullRequest.ClosedAt == nil {
-		return &rest.APIError{
+		return "", "", &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "pull request data is malformed",
 		}
@@ -252,11 +252,11 @@ func verifyPullRequestForAbort(event *github.PullRequestEvent) error {
 
 	baseRepo := strings.Split(*event.Repo.FullName, "/")
 	if len(baseRepo) == 2 {
-		return &rest.APIError{
+		return "", "", &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "repository name is invalid",
 		}
 	}
 
-	return nil
+	return baseRepo[0], baseRepo[1], nil
 }
