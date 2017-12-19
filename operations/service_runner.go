@@ -133,7 +133,7 @@ func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
 		catcher.Add(queue.Put(units.NewAmboyStatsCollector(env, fmt.Sprintf("amboy-stats-%d", ts))))
 		catcher.Add(queue.Put(units.NewHostStatsCollector(fmt.Sprintf("host-stats-%d", ts))))
 		catcher.Add(queue.Put(units.NewTaskStatsCollector(fmt.Sprintf("task-stats-%d", ts))))
-		catcher.Add(queue.Put(units.NewLatencyStatsCollector(fmt.Sprintf("latency-stats-%d", ts))))
+		catcher.Add(queue.Put(units.NewLatencyStatsCollector(fmt.Sprintf("latency-stats-%d", ts), time.Minute)))
 
 		return catcher.Resolve()
 	})
