@@ -1,5 +1,5 @@
 paramsommand_type: test
-stepback: true
+stepback: false
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
