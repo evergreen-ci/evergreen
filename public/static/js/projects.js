@@ -171,7 +171,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           return v.alias + v.variant + v.task;
         });
         $scope.privateVars = data.ProjectVars.private_vars || {};
-        $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
         $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
 
         $scope.settingsFormData = {
