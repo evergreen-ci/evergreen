@@ -8,7 +8,6 @@ import (
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/logging"
 	"github.com/pkg/errors"
 )
 
@@ -19,23 +18,24 @@ const (
 
 func init() {
 	registry.AddJobType(latencyStatsCollectorJobName,
-		func() amboy.Job { return makeLatencyStatsCollector(time.Minute) })
+		func() amboy.Job { return makeLatencyStatsCollector() })
 }
 
 type latencyStatsCollector struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	duration time.Duration
+	Duration time.Duration `bson:"dur" json:"duration" yaml:"duration"`
 }
 
 // NewLatencyStatsCollector captures a single report of the latency of
 // tasks that have started in the last minute.
 func NewLatencyStatsCollector(id string, duration time.Duration) amboy.Job {
-	t := makeLatencyStatsCollector(duration)
+	t := makeLatencyStatsCollector()
 	t.SetID(id)
+	t.Duration = duration
 	return t
 }
 
-func makeLatencyStatsCollector(duration time.Duration) *latencyStatsCollector {
+func makeLatencyStatsCollector() *latencyStatsCollector {
 	return &latencyStatsCollector{
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -44,18 +44,17 @@ func makeLatencyStatsCollector(duration time.Duration) *latencyStatsCollector {
 				Format:  amboy.BSON,
 			},
 		},
-		duration: duration,
+		Duration: time.Minute,
 	}
 }
 
 func (j *latencyStatsCollector) Run() {
 	defer j.MarkComplete()
-	logger := logging.MakeGrip(grip.GetSender())
 
-	latencies, err := model.AverageTaskLatency(j.duration)
+	latencies, err := model.AverageTaskLatency(j.Duration)
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error finding task latencies"))
 		return
 	}
-	logger.Info(latencies)
+	grip.Info(latencies)
 }
