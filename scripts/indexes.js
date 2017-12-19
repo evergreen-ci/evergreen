@@ -40,7 +40,7 @@ db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
 db.patches.ensureIndex({ "branch" : 1, "create_time" : 1 })
 db.patches.ensureIndex({ "version" : 1 })
 db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
-db.patches.ensureIndex({ "github_patch_data.pr_number" : 1, "github_patch_data.base_repo" : 1,"github_patch_data.base_owner" : 1, "create_time" : 1 })
+db.patches.ensureIndex({ "github_patch_data.pr_number" : 1, "github_patch_data.base_repo" : 1,"github_patch_data.base_owner" : 1, "create_time" : 1 }, { "sparse": true })
 
 //======project_ref======//
 db.project_ref.ensureIndex({ "identifier" : 1 })
