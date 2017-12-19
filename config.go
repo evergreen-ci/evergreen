@@ -418,7 +418,7 @@ func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
 
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	token, ok := s.Credentials["github"]
-	if ok || token == "" {
+	if ok && token != "" {
 		return token, nil
 	}
 
