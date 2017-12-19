@@ -108,3 +108,4 @@ db.project_aliases.ensureIndex({ "project_id" : 1, "alias" : 1 })
 
 //======patch_intents======//
 db.patch_intents.ensureIndex({ "processed" : 1, "intent_type" : 1 })
+db.patch_intents.ensureIndex({ "msg_id" : 1 }, { "unique" : true, "sparse": true })
