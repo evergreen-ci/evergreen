@@ -129,7 +129,7 @@ $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 # npm setup
 $(buildDir)/.npmSetup:
 	@mkdir -p $(buildDir)
-	cd $(nodeDir) && npm install --save-dev
+	cd $(nodeDir) && npm install
 	touch $@
 # end npm setup
 
