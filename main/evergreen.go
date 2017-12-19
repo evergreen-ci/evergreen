@@ -5,6 +5,10 @@ import (
 	"path/filepath"
 	"runtime"
 
+	// this *must* be included in the binary so that the legacy
+	// plugins are built into the binary.
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/operations"
 	homedir "github.com/mitchellh/go-homedir"
