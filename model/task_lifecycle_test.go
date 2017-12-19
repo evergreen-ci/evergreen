@@ -625,7 +625,7 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskFailed,
 			Type:   "system",
 		}
-		So(MarkEnd(t1.Id, "test", time.Now(), detail, p, false), ShouldBeNil)
+		So(MarkEnd(t1.Id, "test", time.Now(), detail, p, false, &updates), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskFailed)
@@ -959,7 +959,7 @@ func TestMarkStart(t *testing.T) {
 		}
 		So(t1.Insert(), ShouldBeNil)
 
-		So(MarkStart(t1.Id), ShouldBeNil)
+		So(MarkStart(t1.Id, &StatusChanges{}), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskStarted)

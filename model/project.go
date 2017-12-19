@@ -842,10 +842,31 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 		}
 	}
 
-	// update variant and tasks to include dependencies
-	pairs = IncludePatchDependencies(p, pairs)
+	tasks := extractDisplayTasks(pairs, patchDoc.Tasks, patchDoc.BuildVariants, p)
 
-	patchDoc.SyncVariantsTasks((&TaskVariantPairs{ExecTasks: pairs}).TVPairsToVariantTasks())
+	// update variant and tasks to include dependencies
+	tasks.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
+
+	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+}
+
+func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
+	displayTasks := []TVPair{}
+	for _, bv := range p.BuildVariants {
+		if !util.StringSliceContains(variants, bv.Name) {
+			continue
+		}
+		for _, dt := range bv.DisplayTasks {
+			if util.StringSliceContains(tasks, dt.Name) {
+				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
+				for _, et := range dt.ExecutionTasks {
+					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
+				}
+			}
+		}
+	}
+
+	return TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
 }
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
