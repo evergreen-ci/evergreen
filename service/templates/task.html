@@ -99,7 +99,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         {{if .User}}
           <div ng-show="!task.archived" class="pull-right page-actions">
             <div ng-controller="AdminOptionsCtrl" ng-init="setTask(task)">
-              <div id="admin-dropdown" class="dropdown pull-right">
+              <div id="admin-dropdown" class="dropdown pull-right" ng-show="!task.in_display">
                   <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
                     <i class="fa fa-gear"></i>
                     <i class="fa fa-caret-down"></i>
@@ -158,7 +158,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <span ng-show="timeTaken>0"> [[timeTaken | stringifyNanoseconds]] </span>
                     <span ng-show="timeTaken==0"> Not Started </span>
                   </span>
-                  <span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
+                  <span ng-show="(task.status == 'started' || task.status == 'dispatched') && !task.display_only"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
                  <span ng-show="task.status == 'undispatched' && task.expected_duration > 0"> Estimated Runtime: [[timeToCompletion | stringifyNanoseconds]]</span>
                 </td>
               </tr>
@@ -219,6 +219,12 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td class="icon"><i class="fa fa-ban"></i></td>
                 <td>Blacklisted</td>
               </tr>
+              <tr ng-show="task.display_only">
+                <div ng-show="task.display_only">This task contains:</div>
+                <li ng-repeat="et in task.execution_tasks">
+                  <a ng-href="[[execTaskUrl(et.id)]]">[[et.display_name]]</a>
+                </li>
+              </tr>
             </table>
           </div>
         </div>
@@ -262,7 +268,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       {{.}}
       {{end}}
     </div>
-    <div class="col-lg-5">
+    <div class="col-lg-5" ng-class="{fullWidth: task.display_only}">
       <div class="row">
         <div class="col-md-4">
           <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
@@ -302,7 +308,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         <div class=row>
           <div class="col-md-12">
             <span class="label success pull-left" style="margin-right: 5px">
-              [[(task.test_results | filter:{'status' : 'pass'}).length]] Succeeded
+              [[(task.test_results | filter:isSuccessful).length]] Succeeded
             </span>
             <span class="label failed pull-left">
               [[(task.test_results | filter:hasTestFailureStatus).length]] Failed
@@ -318,34 +324,35 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               <tr>
                 <th class="col-lg-6">Test</th>
                 <th class="col-lg-3">Time</th>
-                <th class="col-lg-3">Logs</th>
+                <th class="col-lg-3">Test Logs</th>
+                <th ng-if="task.display_only" class="col-lg-3">Other Logs/Execution Task</th>
               </tr>
             </thead>
             <tbody data-test-results="task.test_results">
               <tr ng-repeat="test in task.test_results | orderBy:sortBy.by:sortBy.reverse"
-                  ng-show="test.status != 'skip'"
+                  ng-show="test.test_result.status != 'skip'"
                   class="test-result-row"
-                  ng-class="test.display_name == hash.test | conditional:'highlight-bg':''">
+                  ng-class="test.test_result.display_name == hash.test | conditional:'highlight-bg':''">
                 <td class="col-lg-6">
                   <div class="test-result-link-wrapper">
                     <i  class="icon fa fa-link"
                         style="cursor: pointer;"
-                        ng-click="linkToTest(test.display_name)">
+                        ng-click="linkToTest(test.test_result.display_name)">
                     </i>
                   </div>
                   <div class="test-result-name one-liner">
-                    <a ng-href="[[getTestHistoryUrl(project, task, test)]]">
-                      [[test.display_name]]
+                    <a ng-href="[[getTestHistoryUrl(project, task, test.test_result)]]">
+                      [[test.test_result.display_name]]
                     </a>
                   </div>
                   <div style="clear: both"></div>
                 </td>
                 <td class="col-lg-3">
-                  <div class="progress [[progressBarClass]]" test-result-bar="test" style="width: [[barWidth]]%"></div>
+                  <div class="progress [[progressBarClass]]" test-result-bar="test.test_result" style="width: [[barWidth]]%"></div>
                 </td>
                 <td class="col-lg-3">
                   <div class="url-link nowrap" id="html-link">
-                    <a ng-href="[[getURL(test, false)]]" ng-hide="[[hideURL(test, false)]]">
+                    <a ng-href="[[getURL(test.test_result, false)]]" ng-hide="[[hideURL(test.test_result, false)]]">
                       HTML
                     </a>
                   </div>
@@ -353,10 +360,13 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <b ng-show="[[hasBothURL(test)]]">&middot;</b>
                   </div>
                   <div class="url-link nowrap" id="raw-link">
-                    <a ng-href="[[getURL(test, true)]]" ng-hide="[[hideURL(test, true)]]">
+                    <a ng-href="[[getURL(test.test_result, true)]]" ng-hide="[[hideURL(test.test_result, true)]]">
                       Raw
                     </a>
                   </div>
+                </td>
+                <td ng-if="task.display_only" class="col-lg-3">
+                  <a ng-href="[[execTaskUrl(test.task_id)]]">[[test.task_name]]</a>
                 </td>
               </tr>
             </tbody>
@@ -378,7 +388,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
   </div>
 </div>
 
-<div class="row" ng-controller="TaskLogCtrl">
+<div class="row" ng-controller="TaskLogCtrl" ng-hide="task.display_only">
 <div class="col-lg-12">
   <h3 class="section-heading">
     <i class="fa fa-folder-open"></i>

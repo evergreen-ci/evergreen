@@ -58,7 +58,7 @@ func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error
 		TaskIDKey:    0,
 		ExecutionKey: 0,
 	})
-	return find(q)
+	return Find(q)
 }
 
 // InsertByTaskIDAndExecution adds task metadata to a TestResult and then writes it to the database.
@@ -71,7 +71,7 @@ func (t *TestResult) InsertByTaskIDAndExecution(taskID string, execution int) er
 	return errors.Wrap(t.Insert(), "error inserting test result")
 }
 
-// InsertManyByTaskIDAndExecution adds task metadata to many TestResults and writes them to the database.
+// InsertManyByTaskIDAndExecution adds task metadata to many LocalTestResults and writes them to the database.
 func InsertManyByTaskIDAndExecution(testResults []TestResult, taskID string, execution int) error {
 	catcher := grip.NewSimpleCatcher()
 	for _, t := range testResults {
@@ -81,7 +81,7 @@ func InsertManyByTaskIDAndExecution(testResults []TestResult, taskID string, exe
 }
 
 // find returns all test results that satisfy the query. Returns an empty slice no tasks match.
-func find(query db.Q) ([]TestResult, error) {
+func Find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
 	err := db.FindAllQ(Collection, query, &tests)
 	return tests, err

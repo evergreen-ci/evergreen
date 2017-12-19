@@ -23,7 +23,7 @@ import (
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
 func getUiTaskCache(build *build.Build) ([]uiTask, error) {
-	tasks, err := task.Find(task.ByBuildId(build.Id))
+	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(build.Id))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

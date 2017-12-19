@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -101,13 +102,13 @@ type Task struct {
 	// an estimate of what the task cost to run, hidden from JSON views for now
 	Cost float64 `bson:"cost,omitempty" json:"-"`
 
-	// test results captured and sent back by agent
-	TestResults []TestResult `bson:"test_results" json:"test_results"`
+	// test results embedded from the testresults collection
+	LocalTestResults []TestResult `bson:"-" json:"test_results"`
 
 	// display task fields
 	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
 	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
-	displayTask    *Task
+	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -166,8 +167,8 @@ func (d *Dependency) SetBSON(raw bson.Raw) error {
 	return bson.SetZero
 }
 
-// TestResults is only used when transferring data from agent to api.
-type TestResults struct {
+// LocalTestResults is only used when transferring data from agent to api.
+type LocalTestResults struct {
 	Results []TestResult `json:"results"`
 }
 
@@ -200,7 +201,11 @@ func IsAbortable(t Task) bool {
 func IsFinished(t Task) bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
-		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime)
+		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime) ||
+		t.Status == evergreen.TaskSystemFailed ||
+		t.Status == evergreen.TaskSystemTimedOut ||
+		t.Status == evergreen.TaskSystemUnresponse ||
+		t.Status == evergreen.TaskTestTimedOut
 }
 
 // IsDispatchable return true if the task should be dispatched
@@ -308,7 +313,7 @@ func (t *Task) AllDependenciesSatisfied(cache map[string]Task) (bool, error) {
 // HasFailedTests iterates through a tasks' tests and returns true if
 // that task had any failed tests.
 func (t *Task) HasFailedTests() bool {
-	for _, test := range t.TestResults {
+	for _, test := range t.LocalTestResults {
 		if test.Status == evergreen.TestFailedStatus {
 			return true
 		}
@@ -392,9 +397,8 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				DistroIdKey:      distroId,
 			},
 			"$unset": bson.M{
-				AbortedKey:     "",
-				TestResultsKey: "",
-				DetailsKey:     "",
+				AbortedKey: "",
+				DetailsKey: "",
 			},
 		},
 	)
@@ -423,7 +427,6 @@ func (t *Task) MarkAsUndispatched() error {
 				DistroIdKey:      "",
 				HostIdKey:        "",
 				AbortedKey:       "",
-				TestResultsKey:   "",
 				DetailsKey:       "",
 			},
 		},
@@ -596,9 +599,126 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
+func (t *Task) UpdateDisplayTask() error {
+	if !t.DisplayOnly {
+		return fmt.Errorf("%s is not a display task", t.Id)
+	}
+
+	statuses := []string{}
+	var timeTaken time.Duration
+	var status string
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return errors.Wrap(err, "error retrieving execution tasks")
+	}
+	hasFinishedTasks := false
+	hasUnfinishedTasks := false
+	for _, execTask := range execTasks {
+		// if any of the execution tasks are scheduled, the display task is too
+		if execTask.Activated {
+			t.Activated = true
+		}
+
+		if IsFinished(*t) {
+			hasFinishedTasks = true
+		} else {
+			hasUnfinishedTasks = true
+		}
+
+		// the display task's status will be the highest priority of its exec tasks
+		statuses = append(statuses, execTask.ResultStatus())
+
+		// add up the duration of the execution tasks
+		timeTaken += execTask.TimeTaken
+	}
+
+	if hasFinishedTasks && hasUnfinishedTasks {
+		// if the display task has a mix of finished and unfinished tasks, the status
+		// will be "started"
+		status = evergreen.TaskStarted
+	} else if len(statuses) > 0 {
+		// the status of the display task will be the status of its constituent task
+		// that is logically the most exclusive
+		sort.Sort(byPriority(statuses))
+		status = statuses[0]
+	}
+
+	err = UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey:    status,
+				ActivatedKey: t.Activated,
+				TimeTakenKey: timeTaken,
+			},
+		})
+	if err != nil {
+		return errors.Wrap(err, "error updating display task")
+	}
+
+	t.Status = status
+	t.TimeTaken = timeTaken
+	return nil
+}
+
+type byPriority []string
+
+func (p byPriority) Len() int {
+	return len(p)
+}
+
+func (p byPriority) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func (p byPriority) Less(i, j int) bool {
+	return displayTaskPriority(p[i]) < displayTaskPriority(p[j])
+}
+
+func displayTaskPriority(status string) int {
+	switch status {
+	case evergreen.TaskStarted:
+		return 10
+	case evergreen.TaskInactive:
+		return 20
+	case evergreen.TaskUnstarted:
+		return 30
+	case evergreen.TaskUndispatched:
+		return 40
+	case evergreen.TaskFailed:
+		return 50
+	case evergreen.TaskTestTimedOut:
+		return 60
+	case evergreen.TaskSystemFailed:
+		return 70
+	case evergreen.TaskSystemTimedOut:
+		return 80
+	case evergreen.TaskSystemUnresponse:
+		return 90
+	case evergreen.TaskSucceeded:
+		return 100
+	}
+	return 1000
+}
+
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
+
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = execTask.Reset(); err != nil {
+				return errors.Wrap(err, "error resetting execution task")
+			}
+		}
+	}
+
 	t.Activated = true
 	t.Secret = util.RandomString()
 	t.DispatchTime = util.ZeroTime
@@ -614,7 +734,6 @@ func (t *Task) Reset() error {
 			StartTimeKey:     util.ZeroTime,
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
-			TestResultsKey:   []TestResult{},
 		},
 		"$unset": bson.M{
 			DetailsKey: "",
@@ -632,6 +751,16 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
+	tasks, err := Find(ByIds(taskIds))
+	if err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.Id)
+		}
+	}
+
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -641,14 +770,13 @@ func ResetTasks(taskIds []string) error {
 			StartTimeKey:     util.ZeroTime,
 			ScheduledTimeKey: util.ZeroTime,
 			FinishTimeKey:    util.ZeroTime,
-			TestResultsKey:   []TestResult{},
 		},
 		"$unset": bson.M{
 			DetailsKey: "",
 		},
 	}
 
-	_, err := UpdateAll(
+	_, err = UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
@@ -743,7 +871,7 @@ func (t *Task) MarkStart(startTime time.Time) error {
 	)
 }
 
-// SetResults sets the results of the task in TestResults
+// SetResults sets the results of the task in LocalTestResults
 func (t *Task) SetResults(results []TestResult) error {
 	catcher := grip.NewSimpleCatcher()
 	var testResult testresult.TestResult
@@ -765,6 +893,21 @@ func (t TestResult) convertToNewStyleTestResult() testresult.TestResult {
 		ExitCode:  t.ExitCode,
 		StartTime: t.StartTime,
 		EndTime:   t.EndTime,
+	}
+}
+
+func ConvertToOld(in *testresult.TestResult) TestResult {
+	return TestResult{
+		Status:    in.Status,
+		TestFile:  in.TestFile,
+		URL:       in.URL,
+		URLRaw:    in.URLRaw,
+		LogId:     in.LogID,
+		LineNum:   in.LineNum,
+		ExitCode:  in.ExitCode,
+		StartTime: in.StartTime,
+		EndTime:   in.EndTime,
+		LogRaw:    in.LogRaw,
 	}
 }
 
@@ -835,6 +978,18 @@ func (t *Task) Insert() error {
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
 	var update bson.M
+
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = execTask.Archive(); err != nil {
+				return errors.Wrap(err, "error archiving execution task")
+			}
+		}
+	}
 
 	// only increment restarts if have a current restarts
 	// this way restarts will never be set for new tasks but will be
@@ -987,7 +1142,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 
 // MergeNewTestResults returns the task with both old (embedded in
 // the tasks collection) and new (from the testresults collection) test results
-// merged in the Task's TestResults field.
+// merged in the Task's LocalTestResults field.
 func (t *Task) MergeNewTestResults() error {
 	id := t.Id
 	if t.Archived {
@@ -998,7 +1153,7 @@ func (t *Task) MergeNewTestResults() error {
 		return errors.Wrap(err, "problem finding test results")
 	}
 	for _, result := range newTestResults {
-		t.TestResults = append(t.TestResults, TestResult{
+		t.LocalTestResults = append(t.LocalTestResults, TestResult{
 			Status:    result.Status,
 			TestFile:  result.TestFile,
 			URL:       result.URL,
@@ -1124,13 +1279,13 @@ func (t *Task) IsPartOfDisplay() bool {
 }
 
 func (t *Task) GetDisplayTask() (*Task, error) {
-	if t.displayTask != nil {
+	if t.DisplayTask != nil {
 		return t, nil
 	}
 	dt, err := FindOne(ByExecutionTask(t.Id))
 	if err != nil {
 		return nil, err
 	}
-	t.displayTask = dt
+	t.DisplayTask = dt
 	return dt, nil
 }

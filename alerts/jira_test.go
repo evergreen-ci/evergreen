@@ -85,7 +85,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task with two failed tests should return a subject", func() {
-			ctx.Task.TestResults = []task.TestResult{
+			ctx.Task.LocalTestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
@@ -111,7 +111,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task with failing tests should return a subject omitting any silently failing tests", func() {
-			ctx.Task.TestResults = []task.TestResult{
+			ctx.Task.LocalTestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestSilentlyFailedStatus},
@@ -134,7 +134,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a task with five failed tests should return a subject", func() {
-			ctx.Task.TestResults = []task.TestResult{
+			ctx.Task.LocalTestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
 				{TestFile: TestName3, Status: evergreen.TestFailedStatus},
@@ -156,7 +156,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a failed task with passing tests should return a subject", func() {
-			ctx.Task.TestResults = []task.TestResult{
+			ctx.Task.LocalTestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
@@ -177,7 +177,7 @@ func TestJIRASummary(t *testing.T) {
 			})
 		})
 		Convey("a failed task with only passing or silently failing tests should return a subject", func() {
-			ctx.Task.TestResults = []task.TestResult{
+			ctx.Task.LocalTestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestSilentlyFailedStatus},
 				{TestFile: TestName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName3, Status: evergreen.TestSilentlyFailedStatus},
@@ -222,7 +222,7 @@ func TestJIRADescription(t *testing.T) {
 				DisplayName: TaskName,
 				Details:     apimodels.TaskEndDetail{},
 				Project:     ProjectId,
-				TestResults: []task.TestResult{
+				LocalTestResults: []task.TestResult{
 					{TestFile: TestName1, Status: evergreen.TestFailedStatus, URL: "direct_link"},
 					{TestFile: TestName2, Status: evergreen.TestFailedStatus, LogId: "123"},
 					{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
