@@ -147,7 +147,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 				}
 				// write the results out to a results channel
 				distroSchedulerResultChan <- res
-				m := message.Fields{
+				grip.Info(message.Fields{
 					"runner":                 RunnerName,
 					"distro":                 d.distroId,
 					"operation":              "scheduling distro",
@@ -156,16 +156,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 					"expected_duration_span": res.schedulerEvent.ExpectedDuration.String(),
 					"span":     time.Since(distroStartTime).String(),
 					"duration": time.Since(distroStartTime),
-				}
-				latencies, err := model.AverageTaskLatencyByDistro(d.distroId, time.Minute)
-				if err != nil {
-					grip.Error(errors.Wrap(err, "error getting latencies"))
-				} else {
-					for r, d := range latencies {
-						m[r+"_duration"] = d
-					}
-				}
-				grip.Info(m)
+				})
 				if len(d.runnableTasksForDistro) != len(res.taskQueueItem) {
 					delta := make(map[string]string)
 					for _, t := range res.taskQueueItem {

@@ -389,31 +389,24 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 			Requester:     evergreen.RepotrackerVersionRequester,
 			ScheduledTime: now,
 			StartTime:     now.Add(1000 * time.Second),
-			Status:        evergreen.TaskSucceeded,
-			DistroId:      "not this distro"},
-		task.Task{
-			Id:            "task5",
-			Requester:     evergreen.RepotrackerVersionRequester,
-			ScheduledTime: now,
-			StartTime:     now.Add(1000 * time.Second),
 			Status:        evergreen.TaskUnstarted,
 			DistroId:      distroName},
 		task.Task{
-			Id:            "task6",
+			Id:            "task5",
 			Requester:     evergreen.PatchVersionRequester,
 			ScheduledTime: now,
 			StartTime:     now.Add(5 * time.Second),
 			Status:        evergreen.TaskSucceeded,
 			DistroId:      distroName},
 		task.Task{
-			Id:            "task7",
+			Id:            "task6",
 			Requester:     evergreen.PatchVersionRequester,
 			ScheduledTime: now,
 			StartTime:     now.Add(15 * time.Second),
 			Status:        evergreen.TaskSucceeded,
 			DistroId:      distroName},
 		task.Task{
-			Id:            "task8",
+			Id:            "task7",
 			Requester:     evergreen.GithubPRRequester,
 			ScheduledTime: now,
 			StartTime:     now.Add(1 * time.Second),
@@ -423,9 +416,24 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 	for _, t := range tasks {
 		require.NoError(t.Insert())
 	}
-	m, err := AverageTaskLatencyByDistro(distroName, time.Minute)
+	latencies, err := AverageTaskLatency(time.Minute)
 	assert.NoError(err)
-	assert.Equal(20*time.Second, m[evergreen.RepotrackerVersionRequester])
-	assert.Equal(10*time.Second, m[evergreen.PatchVersionRequester])
-	assert.Equal(1*time.Second, m[evergreen.GithubPRRequester])
+	expected := []AverageTimeByDistroAndRequester{
+		AverageTimeByDistroAndRequester{
+			Distro:      "sampleDistro",
+			Requester:   evergreen.GithubPRRequester,
+			AverageTime: time.Second,
+		},
+		AverageTimeByDistroAndRequester{
+			Distro:      "sampleDistro",
+			Requester:   evergreen.PatchVersionRequester,
+			AverageTime: 10 * time.Second,
+		},
+		AverageTimeByDistroAndRequester{
+			Distro:      "sampleDistro",
+			Requester:   evergreen.RepotrackerVersionRequester,
+			AverageTime: 20 * time.Second,
+		},
+	}
+	assert.Equal(expected, latencies.times)
 }

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -57,10 +59,20 @@ type HostUtilizationBucket struct {
 
 type AvgBuckets []AvgBucket
 
-// AverageTimeByRequester is the average time of a task.
-type AverageTimeByRequester struct {
-	Requester   string        `bson:"_id"`
-	AverageTime time.Duration `bson:"average_time"`
+// AverageTimeByDistroAndRequester is the average time of a task.
+type AverageTimeByDistroAndRequester struct {
+	Distro      string        `bson:"distro" json:"distro"`
+	Requester   string        `bson:"requester" json:"requester"`
+	AverageTime time.Duration `bson:"average_time" json:"average_time"`
+}
+
+// AverageTimes implements message.Composer.
+type AverageTimes struct {
+	times []AverageTimeByDistroAndRequester
+
+	loggable      bool
+	cachedMessage string
+	message.Base  `json:"metadata, omitempty"`
 }
 
 // dependencyPath represents the path of tasks that can
@@ -332,8 +344,8 @@ func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) 
 	return convertBucketsToNanoseconds(buckets, bounds), nil
 }
 
-// AverageTaskLatencyByDistro finds the average task latency grouped by requester.
-func AverageTaskLatencyByDistro(distroId string, since time.Duration) (map[string]time.Duration, error) {
+// AverageTaskLatency finds the average task latency by distro and requester.
+func AverageTaskLatency(since time.Duration) (AverageTimes, error) {
 	now := time.Now()
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -347,28 +359,50 @@ func AverageTaskLatencyByDistro(distroId string, since time.Duration) (map[strin
 					evergreen.TaskFailed,
 					evergreen.TaskSucceeded},
 			},
-			task.DistroIdKey: distroId,
 		}},
 		{"$group": bson.M{
-			"_id": "$" + task.RequesterKey,
+			"_id": bson.M{
+				"distro":    "$" + task.DistroIdKey,
+				"requester": "$" + task.RequesterKey,
+			},
 			"average_time": bson.M{
 				"$avg": bson.M{
 					"$subtract": []interface{}{"$" + task.StartTimeKey, "$" + task.ScheduledTimeKey},
 				},
 			},
 		}},
+		{"$project": bson.M{
+			"distro":       "$" + "_id.distro",
+			"requester":    "$" + "_id.requester",
+			"average_time": "$" + "average_time",
+		}},
 	}
 
-	stats := []AverageTimeByRequester{}
-	if err := db.Aggregate(task.Collection, pipeline, &stats); err != nil {
-		return nil, errors.Wrap(err, "error running average task latency aggregation")
+	stats := AverageTimes{}
+	if err := db.Aggregate(task.Collection, pipeline, &stats.times); err != nil {
+		return AverageTimes{}, errors.Wrap(err, "error running average task latency aggregation")
 	}
-	m := map[string]time.Duration{}
-	for _, t := range stats {
-		// multiply by time.Millisecond/time.Nanosecond to convert from MongoDB to Golang times
-		m[t.Requester] = t.AverageTime * (time.Millisecond / time.Nanosecond)
+	// set mongodb times to golang times
+	for i, t := range stats.times {
+		stats.times[i].AverageTime = t.AverageTime * (time.Millisecond / time.Nanosecond)
 	}
-	return m, nil
+	stats.loggable = true
+	return stats, nil
+}
+
+func (a *AverageTimes) Raw() interface{} { _ = a.Collect(); return a } // nolint: golint
+func (a *AverageTimes) Loggable() bool   { return a.loggable }         // nolint: golint
+func (a *AverageTimes) String() string { // nolint: golint
+	if !a.Loggable() {
+		return ""
+	}
+
+	if a.cachedMessage == "" {
+		out, _ := json.Marshal(a)
+		a.cachedMessage = string(out)
+	}
+
+	return a.cachedMessage
 }
 
 // convertBucketsToNanoseconds fills in 0 time buckets to the list of Average Buckets
