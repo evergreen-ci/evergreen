@@ -314,18 +314,6 @@ functions:
             github: "${github_token}",
           }
           EOF
-  npm-install:
-    - command: shell.exec
-      type: system
-      params:
-        shell: bash
-        script: |
-          set -o xtrace
-          set -o errexit
-
-          export PATH=/opt/node/bin:$PATH
-          cd gopath/src/github.com/evergreen-ci/evergreen/public
-          npm install
 
 #######################################
 #                Tasks                #
@@ -455,10 +443,10 @@ tasks:
         type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: npm-install
       - func: run-make
         vars:
           target: "js-test"
+          build_env: "PATH=/opt/node/bin:$PATH"
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
