@@ -392,9 +392,13 @@ Evergreen Projects
         <br/>
 
         <div class="row">
-          <div class="col-lg-2">
-            <label>[[saveMessage]]</label>
+          <div class="col-lg-6">
+            <label ng-show="saveMessage">[[saveMessage]]</label>
+            <label ng-hide="saveMessage">&nbsp;</label>
           </div>
+        </div>
+        <div class="row">
+          <div class="col-lg-2">&nbsp;</div>
           <div class="col-lg-4">
             <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
           </div>
