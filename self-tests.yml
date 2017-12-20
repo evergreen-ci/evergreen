@@ -446,7 +446,6 @@ tasks:
       - func: run-make
         vars:
           target: "js-test"
-          build_env: "PATH=/opt/node/bin:$PATH"
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -711,7 +710,7 @@ buildvariants:
       - ubuntu1604-build
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
+      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
     tasks:
       - name: "dist"
