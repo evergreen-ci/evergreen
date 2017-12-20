@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -72,7 +73,12 @@ func (c *gitFetchProject) buildHTTPCloneCommand(projectRef *model.ProjectRef) ([
 		pull = fmt.Sprintf("%s '%s'", pull, projectRef.Branch)
 	}
 
-	cmds = append(cmds, pull)
+	redactedPull := strings.Replace(pull, c.GithubOauthToken, "[redacted oauth token]", 0)
+	cmds = append(cmds,
+		"set +o xtrace",
+		fmt.Sprintf(`echo %s`, strconv.Quote(redactedPull)),
+		pull,
+		"set -o xtrace")
 
 	return cmds, nil
 }
@@ -93,8 +99,8 @@ func (c *gitFetchProject) buildSSHCloneCommand(projectRef *model.ProjectRef) ([]
 
 func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, error) {
 	gitCommands := []string{
-		fmt.Sprintf("set -o xtrace"),
-		fmt.Sprintf("set -o errexit"),
+		"set -o xtrace",
+		"set -o errexit",
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
@@ -128,7 +134,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	gitCommands, err := c.buildCloneCommand(conf)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
@@ -150,7 +156,11 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	errChan := make(chan error)
 	go func() {
 		logger.Execution().Info("Fetching source from git...")
-		logger.Execution().Debug(fmt.Sprintf("Commands are: %s", cmdsJoined))
+		redactedCmds := cmdsJoined
+		if c.GithubOauthToken != "" {
+			redactedCmds = strings.Replace(redactedCmds, c.GithubOauthToken, "[redacted oauth token]", 0)
+		}
+		logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 		errChan <- fetchSourceCmd.Run(ctx)
 	}()
 
