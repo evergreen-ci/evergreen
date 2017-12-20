@@ -3,12 +3,15 @@ package amboy
 import (
 	"testing"
 
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestQueueStats(t *testing.T) {
 	assert := assert.New(t)
-	stat := QueueStats{}
+	stat := &QueueStats{}
+
+	assert.Implements((*message.Composer)(nil), stat)
 
 	assert.True(stat.isComplete())
 

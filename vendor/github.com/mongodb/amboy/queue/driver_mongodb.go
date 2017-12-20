@@ -34,7 +34,7 @@ type mongoDB struct {
 	LockManager
 }
 
-// mongoDBOptions is a struct passed to the NewMongoDB constructor to
+// MongoDBOptions is a struct passed to the NewMongoDB constructor to
 // communicate mongoDB specific settings about the driver's behavior
 // and operation.
 type MongoDBOptions struct {

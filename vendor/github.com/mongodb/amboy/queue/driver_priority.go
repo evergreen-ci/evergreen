@@ -23,7 +23,7 @@ type priorityDriver struct {
 	LockManager
 }
 
-// NewPriority returns an initialized Priority Driver instances.
+// NewPriorityDriver returns an initialized Priority Driver instances.
 func NewPriorityDriver() Driver {
 	p := &priorityDriver{
 		storage: makePriorityStorage(),
