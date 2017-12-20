@@ -369,7 +369,8 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 			ScheduledTime: now,
 			StartTime:     now.Add(10 * time.Second),
 			Status:        evergreen.TaskStarted,
-			DistroId:      distroName},
+			DistroId:      distroName,
+			DisplayOnly:   false},
 		task.Task{
 			Id:            "task2",
 			Requester:     evergreen.RepotrackerVersionRequester,
@@ -377,6 +378,14 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 			StartTime:     now.Add(20 * time.Second),
 			Status:        evergreen.TaskFailed,
 			DistroId:      distroName},
+		task.Task{
+			Id:            "displaytask",
+			Requester:     evergreen.RepotrackerVersionRequester,
+			ScheduledTime: now,
+			StartTime:     now.Add(40 * time.Second),
+			Status:        evergreen.TaskFailed,
+			DistroId:      distroName,
+			DisplayOnly:   true},
 		task.Task{
 			Id:            "task3",
 			Requester:     evergreen.RepotrackerVersionRequester,
@@ -435,5 +444,5 @@ func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
 			AverageTime: 20 * time.Second,
 		},
 	}
-	assert.Equal(expected, latencies.times)
+	assert.Equal(expected, latencies.Times)
 }

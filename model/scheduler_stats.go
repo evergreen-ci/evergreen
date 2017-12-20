@@ -68,11 +68,9 @@ type AverageTimeByDistroAndRequester struct {
 
 // AverageTimes implements message.Composer.
 type AverageTimes struct {
-	times []AverageTimeByDistroAndRequester
-
-	loggable      bool
+	Times         []AverageTimeByDistroAndRequester `json:"times"`
+	message.Base  `json:"metadata,omitempty"`
 	cachedMessage string
-	message.Base  `json:"metadata, omitempty"`
 }
 
 // dependencyPath represents the path of tasks that can
@@ -345,7 +343,7 @@ func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) 
 }
 
 // AverageTaskLatency finds the average task latency by distro and requester.
-func AverageTaskLatency(since time.Duration) (AverageTimes, error) {
+func AverageTaskLatency(since time.Duration) (*AverageTimes, error) {
 	now := time.Now()
 	pipeline := []bson.M{
 		{"$match": bson.M{
@@ -358,6 +356,9 @@ func AverageTaskLatency(since time.Duration) (AverageTimes, error) {
 					evergreen.TaskStarted,
 					evergreen.TaskFailed,
 					evergreen.TaskSucceeded},
+			},
+			task.DisplayOnlyKey: bson.M{
+				"$ne": true,
 			},
 		}},
 		{"$group": bson.M{
@@ -379,26 +380,22 @@ func AverageTaskLatency(since time.Duration) (AverageTimes, error) {
 	}
 
 	stats := AverageTimes{}
-	if err := db.Aggregate(task.Collection, pipeline, &stats.times); err != nil {
-		return AverageTimes{}, errors.Wrap(err, "error running average task latency aggregation")
+	if err := db.Aggregate(task.Collection, pipeline, &stats.Times); err != nil {
+		return &AverageTimes{}, errors.Wrap(err, "error running average task latency aggregation")
 	}
 	// set mongodb times to golang times
-	for i, t := range stats.times {
-		stats.times[i].AverageTime = t.AverageTime * (time.Millisecond / time.Nanosecond)
+	for i, t := range stats.Times {
+		stats.Times[i].AverageTime = t.AverageTime * time.Millisecond
 	}
-	stats.loggable = true
-	return stats, nil
+	return &stats, nil
 }
 
 func (a *AverageTimes) Raw() interface{} { _ = a.Collect(); return a } // nolint: golint
-func (a *AverageTimes) Loggable() bool   { return a.loggable }         // nolint: golint
+func (a *AverageTimes) Loggable() bool   { return len(a.Times) > 0 }   // nolint: golint
 func (a *AverageTimes) String() string { // nolint: golint
-	if !a.Loggable() {
-		return ""
-	}
-
 	if a.cachedMessage == "" {
-		out, _ := json.Marshal(a)
+		_ = a.Collect()
+		out, _ := json.Marshal(a.Times)
 		a.cachedMessage = string(out)
 	}
 
