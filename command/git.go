@@ -55,26 +55,22 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *gitFetchProject) buildHTTPCloneCommand(projectRef *model.ProjectRef) ([]string, error) {
-	location, err := projectRef.HTTPLocation()
-	if err != nil {
-		return nil, err
-	}
-	location.User = url.UserPassword(c.Token, "x-oauth-basic")
+func buildHTTPCloneCommand(location *url.URL, branch, dir, token string) ([]string, error) {
+	location.User = url.UserPassword(token, "x-oauth-basic")
 
 	cmds := []string{
-		fmt.Sprintf("git init '%s'", c.Directory),
-		fmt.Sprintf("cd %s", c.Directory),
+		fmt.Sprintf("git init '%s'", dir),
+		fmt.Sprintf("cd %s", dir),
 	}
 
 	pull := fmt.Sprintf("git pull '%s'", location.String())
 
-	if projectRef.Branch != "" {
-		cmds = append(cmds, fmt.Sprintf("git checkout -b '%s'", projectRef.Branch))
-		pull = fmt.Sprintf("%s '%s'", pull, projectRef.Branch)
+	if branch != "" {
+		cmds = append(cmds, fmt.Sprintf("git checkout -b '%s'", branch))
+		pull = fmt.Sprintf("%s '%s'", pull, branch)
 	}
 
-	redactedPull := strings.Replace(pull, c.Token, "[redacted oauth token]", 0)
+	redactedPull := strings.Replace(pull, token, "[redacted oauth token]", -1)
 	cmds = append(cmds,
 		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(redactedPull)),
@@ -84,20 +80,15 @@ func (c *gitFetchProject) buildHTTPCloneCommand(projectRef *model.ProjectRef) ([
 	return cmds, nil
 }
 
-func (c *gitFetchProject) buildSSHCloneCommand(projectRef *model.ProjectRef) ([]string, error) {
-	location, err := projectRef.Location()
-	if err != nil {
-		return nil, err
-	}
-
-	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, c.Directory)
-	if projectRef.Branch != "" {
-		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, projectRef.Branch)
+func buildSSHCloneCommand(location, branch, dir string) ([]string, error) {
+	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, dir)
+	if branch != "" {
+		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, branch)
 	}
 
 	return []string{
 		cloneCmd,
-		fmt.Sprintf("cd %s", c.Directory),
+		fmt.Sprintf("cd %s", dir),
 	}, nil
 }
 
@@ -111,10 +102,18 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	var err error
 	var cloneCmd []string
 	if c.Token == "" {
-		cloneCmd, err = c.buildSSHCloneCommand(conf.ProjectRef)
+		location, err := conf.ProjectRef.Location()
+		if err != nil {
+			return nil, err
+		}
+		cloneCmd, err = buildSSHCloneCommand(location, conf.ProjectRef.Branch, c.Directory)
 
 	} else {
-		cloneCmd, err = c.buildHTTPCloneCommand(conf.ProjectRef)
+		location, err := conf.ProjectRef.HTTPLocation()
+		if err != nil {
+			return nil, err
+		}
+		cloneCmd, err = buildHTTPCloneCommand(location, conf.ProjectRef.Branch, c.Directory, c.Token)
 	}
 	if err != nil {
 		return nil, err
@@ -128,13 +127,42 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 }
 
 func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref string) ([]string, error) {
+	if cloneURI == "" {
+		return nil, errors.New("empty repository URI")
+	}
+	if moduleBase == "" {
+		return nil, errors.New("empty clone path")
+	}
+	if ref == "" {
+		return nil, errors.New("empty ref/branch to checkout")
+	}
+
 	gitCommands := []string{
 		"set -o xtrace",
 		"set -o errexit",
-		fmt.Sprintf("git clone %s '%s'", cloneURI, filepath.ToSlash(moduleBase)),
-		fmt.Sprintf("cd %s", filepath.ToSlash(moduleBase)),
-		fmt.Sprintf("git checkout '%s'", ref),
 	}
+
+	if strings.Contains(cloneURI, "git@github.com:") {
+		cmds, err := buildSSHCloneCommand(cloneURI, "", moduleBase)
+		if err != nil {
+			return nil, err
+		}
+		gitCommands = append(gitCommands, cmds...)
+
+	} else {
+		url, err := url.Parse(cloneURI)
+		if err != nil {
+			return nil, errors.Wrap(err, "repository URL is invalid")
+		}
+		url.Scheme = "https"
+		cmds, err := buildHTTPCloneCommand(url, ref, moduleBase, c.Token)
+		if err != nil {
+			return nil, err
+		}
+		gitCommands = append(gitCommands, cmds...)
+	}
+
+	gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 
 	return gitCommands, nil
 }
@@ -174,7 +202,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		logger.Execution().Info("Fetching source from git...")
 		redactedCmds := cmdsJoined
 		if c.Token != "" {
-			redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", 0)
+			redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
 		}
 		logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
 		errChan <- fetchSourceCmd.Run(ctx)
