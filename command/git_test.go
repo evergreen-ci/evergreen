@@ -115,23 +115,25 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	cmds, err := c.buildHTTPCloneCommand(projectRef)
 	s.NoError(err)
-	s.Len(cmds, 6)
+	s.Len(cmds, 7)
 	s.Equal("git init 'dir'", cmds[0])
-	s.Equal("cd dir; git checkout -b 'master'", cmds[1])
-	s.Equal("set +o xtrace", cmds[2])
-	s.Equal("echo \"cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'\"", cmds[3])
-	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'", cmds[4])
-	s.Equal("set -o xtrace", cmds[5])
+	s.Equal("cd dir", cmds[1])
+	s.Equal("git checkout -b 'master'", cmds[2])
+	s.Equal("set +o xtrace", cmds[3])
+	s.Equal("echo \"git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'\"", cmds[4])
+	s.Equal("git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'", cmds[5])
+	s.Equal("set -o xtrace", cmds[6])
 
 	projectRef.Branch = ""
 	cmds, err = c.buildHTTPCloneCommand(projectRef)
 	s.NoError(err)
-	s.Len(cmds, 5)
+	s.Len(cmds, 6)
 	s.Equal("git init 'dir'", cmds[0])
-	s.Equal("set +o xtrace", cmds[1])
-	s.Equal("echo \"cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'\"", cmds[2])
-	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[3])
-	s.Equal("set -o xtrace", cmds[4])
+	s.Equal("cd dir", cmds[1])
+	s.Equal("set +o xtrace", cmds[2])
+	s.Equal("echo \"git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'\"", cmds[3])
+	s.Equal("git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[4])
+	s.Equal("set -o xtrace", cmds[5])
 
 	projectRef.Owner = ""
 	cmds, err = c.buildHTTPCloneCommand(projectRef)
@@ -152,14 +154,16 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 
 	cmds, err := c.buildSSHCloneCommand(projectRef)
 	s.NoError(err)
-	s.Len(cmds, 1)
+	s.Len(cmds, 2)
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[0])
+	s.Equal("cd dir", cmds[1])
 
 	projectRef.Branch = ""
 	cmds, err = c.buildSSHCloneCommand(projectRef)
 	s.NoError(err)
-	s.Len(cmds, 1)
+	s.Len(cmds, 2)
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir'", cmds[0])
+	s.Equal("cd dir", cmds[1])
 
 	projectRef.Owner = ""
 	cmds, err = c.buildSSHCloneCommand(projectRef)
@@ -176,17 +180,33 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 
 	cmds, err := c.buildCloneCommand(conf)
 	s.NoError(err)
-	s.Len(cmds, 5)
+	s.Len(cmds, 6)
 	s.Equal("set -o xtrace", cmds[0])
 	s.Equal("set -o errexit", cmds[1])
 	s.Equal("rm -rf dir", cmds[2])
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
-	s.Equal("cd dir; git reset --hard ", cmds[4])
+	s.Equal("cd dir", cmds[4])
+	s.Equal("git reset --hard ", cmds[5])
 
 	conf.ProjectRef.Owner = ""
 	cmds, err = c.buildCloneCommand(conf)
 	s.Error(err)
 	s.Nil(cmds)
+}
+
+func (s *GitGetProjectSuite) TestBuildModuleCommand() {
+	c := gitFetchProject{
+		Directory: "dir",
+	}
+
+	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "module", "master")
+	s.NoError(err)
+	s.Len(cmds, 5)
+	s.Equal("set -o xtrace", cmds[0])
+	s.Equal("set -o errexit", cmds[1])
+	s.Equal("git clone git@github.com:deafgoat/mci_test.git 'module'", cmds[2])
+	s.Equal("cd module", cmds[3])
+	s.Equal("git checkout 'master'", cmds[4])
 }
 
 func (s *GitGetProjectSuite) TearDownSuite() {

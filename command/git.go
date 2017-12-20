@@ -62,14 +62,15 @@ func (c *gitFetchProject) buildHTTPCloneCommand(projectRef *model.ProjectRef) ([
 	}
 	location.User = url.UserPassword(c.Token, "x-oauth-basic")
 
-	pull := fmt.Sprintf("cd %s; git pull '%s'", c.Directory, location.String())
-
 	cmds := []string{
 		fmt.Sprintf("git init '%s'", c.Directory),
+		fmt.Sprintf("cd %s", c.Directory),
 	}
 
+	pull := fmt.Sprintf("git pull '%s'", location.String())
+
 	if projectRef.Branch != "" {
-		cmds = append(cmds, fmt.Sprintf("cd %s; git checkout -b '%s'", c.Directory, projectRef.Branch))
+		cmds = append(cmds, fmt.Sprintf("git checkout -b '%s'", projectRef.Branch))
 		pull = fmt.Sprintf("%s '%s'", pull, projectRef.Branch)
 	}
 
@@ -94,7 +95,10 @@ func (c *gitFetchProject) buildSSHCloneCommand(projectRef *model.ProjectRef) ([]
 		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, projectRef.Branch)
 	}
 
-	return []string{cloneCmd}, nil
+	return []string{
+		cloneCmd,
+		fmt.Sprintf("cd %s", c.Directory),
+	}, nil
 }
 
 func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, error) {
@@ -118,7 +122,19 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 
 	gitCommands = append(gitCommands, cloneCmd...)
 	gitCommands = append(gitCommands,
-		fmt.Sprintf("cd %s; git reset --hard %s", c.Directory, conf.Task.Revision))
+		fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
+
+	return gitCommands, nil
+}
+
+func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref string) ([]string, error) {
+	gitCommands := []string{
+		"set -o xtrace",
+		"set -o errexit",
+		fmt.Sprintf("git clone %s '%s'", cloneURI, filepath.ToSlash(moduleBase)),
+		fmt.Sprintf("cd %s", filepath.ToSlash(moduleBase)),
+		fmt.Sprintf("git checkout '%s'", ref),
+	}
 
 	return gitCommands, nil
 }
@@ -210,11 +226,9 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			}
 		}
 
-		moduleCmds := []string{
-			fmt.Sprintf("set -o xtrace"),
-			fmt.Sprintf("set -o errexit"),
-			fmt.Sprintf("git clone %v '%v'", module.Repo, filepath.ToSlash(moduleBase)),
-			fmt.Sprintf("cd %v; git checkout '%v'", filepath.ToSlash(moduleBase), revision),
+		moduleCmds, err := c.buildModuleCloneCommand(module.Repo, moduleBase, revision)
+		if err != nil {
+			return err
 		}
 
 		moduleFetchCmd := &subprocess.LocalCommand{
