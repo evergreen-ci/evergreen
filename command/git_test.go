@@ -115,17 +115,23 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 
 	cmds, err := c.buildHTTPCloneCommand(projectRef)
 	s.NoError(err)
-	s.Len(cmds, 3)
+	s.Len(cmds, 6)
 	s.Equal("git init 'dir'", cmds[0])
 	s.Equal("cd dir; git checkout -b 'master'", cmds[1])
-	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'", cmds[2])
+	s.Equal("set +o xtrace", cmds[2])
+	s.Equal("echo \"cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'\"", cmds[3])
+	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'", cmds[4])
+	s.Equal("set -o xtrace", cmds[5])
 
 	projectRef.Branch = ""
 	cmds, err = c.buildHTTPCloneCommand(projectRef)
 	s.NoError(err)
-	s.Len(cmds, 2)
+	s.Len(cmds, 5)
 	s.Equal("git init 'dir'", cmds[0])
-	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[1])
+	s.Equal("set +o xtrace", cmds[1])
+	s.Equal("echo \"cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'\"", cmds[2])
+	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[3])
+	s.Equal("set -o xtrace", cmds[4])
 
 	projectRef.Owner = ""
 	cmds, err = c.buildHTTPCloneCommand(projectRef)
