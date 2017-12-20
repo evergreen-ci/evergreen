@@ -1,7 +1,7 @@
 mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
   var ret = {};
 
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#content").addClass("bannerMargin");
     $("#filters").addClass("bannerMargin");
   }

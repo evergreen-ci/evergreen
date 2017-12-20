@@ -10,7 +10,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   hash = $location.hash();
   path = $location.path();
   $scope.collapsed = localStorage.getItem("collapsed") == "true";
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#drawer").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
   }

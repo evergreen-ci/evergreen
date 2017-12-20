@@ -10,7 +10,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     return revision.revision === $scope.task.gitspec;
   }
 
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#drawer").addClass("bannerMargin");
     $("#page-content").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
