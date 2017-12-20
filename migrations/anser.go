@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -16,6 +17,7 @@ type Options struct {
 	Limit    int
 	Target   int
 	Workers  int
+	DryRun   bool
 	Period   time.Duration
 	Database string
 	Session  db.Session
@@ -59,11 +61,14 @@ type migrationGeneratorFactory func(anser.Environment, string, int) (anser.Gener
 // anser/example_test.go for an example.
 func (opts Options) Application(env anser.Environment) (*anser.Application, error) {
 	app := &anser.Application{
-		Limit: opts.Limit,
+		Options: model.ApplicationOptions{
+			Limit:  opts.Limit,
+			DryRun: opts.DryRun,
+		},
 	}
 
 	generatorFactories := []migrationGeneratorFactory{
-		addExecutionToTasksGenerator,
+		// addExecutionToTasksGenerator,
 		oldTestResultsGenerator,
 		testResultsGenerator,
 	}

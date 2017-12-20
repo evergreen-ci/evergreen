@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -50,8 +51,7 @@ import (
 // application will only run *that* number of jobs.
 type Application struct {
 	Generators []Generator
-	DryRun     bool
-	Limit      int
+	Options    model.ApplicationOptions
 	env        Environment
 	hasSetup   bool
 }
@@ -105,12 +105,12 @@ func (a *Application) Run(ctx context.Context) error {
 		return errors.New("migration operation canceled")
 	}
 
-	numMigrations, err := addMigrationJobs(ctx, queue, a.DryRun, a.Limit)
+	numMigrations, err := addMigrationJobs(ctx, queue, a.Options.DryRun, a.Options.Limit)
 	if err != nil {
 		return errors.New("problem adding generated migration jobs")
 	}
 
-	if a.DryRun {
+	if a.Options.DryRun {
 		grip.Noticef("ending dry run, generated %d jobs in %d migrations", numMigrations, len(a.Generators))
 		return nil
 	}

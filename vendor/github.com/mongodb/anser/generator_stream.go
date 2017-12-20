@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -21,7 +22,7 @@ func init() {
 func NewStreamMigrationGenerator(e Environment, opts model.GeneratorOptions, opName string) Generator {
 	j := makeStreamGenerator()
 	j.SetID(opts.JobID)
-	j.SetDependency(generatorDependency(opts))
+	j.SetDependency(generatorDependency(e, opts))
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS
 	j.Query = opts.Query
@@ -55,7 +56,7 @@ type streamMigrationGenerator struct {
 }
 
 func (j *streamMigrationGenerator) Run() {
-	defer j.MarkComplete()
+	defer j.FinishMigration(j.ID(), &j.Base)
 
 	env := j.Env()
 
@@ -104,10 +105,18 @@ func (j *streamMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 			Namespace:     j.NS,
 		}).(*streamMigrationJob)
 
-		m.SetDependency(env.NewDependencyManager(j.ID(), j.NS))
+		m.SetDependency(env.NewDependencyManager(j.ID()))
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
+
+		grip.Debug(message.Fields{
+			"ns":  j.NS,
+			"id":  m.ID(),
+			"doc": doc.ID,
+			"num": count,
+		})
+
 		if j.Limit > 0 && count >= j.Limit {
 			break
 		}

@@ -60,9 +60,11 @@ func deployMigration() cli.Command {
 			settings := env.Settings()
 
 			opts := migrations.Options{
-				Period:   c.Duration(periodFlagName),
-				Target:   c.Int(targetFlagName),
-				Limit:    c.Int(limitFlagName),
+				Period: c.Duration(periodFlagName),
+				Target: c.Int(targetFlagName),
+				Limit:  c.Int(limitFlagName),
+				DryRun: c.Bool(dryRunFlagName),
+
 				Session:  env.Session(),
 				Workers:  c.Int(workersFlagName),
 				Database: settings.Database.DB,
@@ -78,7 +80,6 @@ func deployMigration() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem configuring migration application")
 			}
-			app.DryRun = c.Bool(dryRunFlagName)
 
 			return errors.Wrap(app.Run(ctx), "problem running migration operation")
 		},

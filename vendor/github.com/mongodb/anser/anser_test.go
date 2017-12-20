@@ -28,7 +28,7 @@ func (s *ApplicationSuite) SetupSuite()    {}
 func (s *ApplicationSuite) TearDownSuite() {}
 func (s *ApplicationSuite) SetupTest() {
 	s.app = &Application{}
-	s.env = &mock.Environment{}
+	s.env = mock.NewEnvironment()
 }
 func (s *ApplicationSuite) TearDownTest() {}
 
@@ -83,7 +83,7 @@ func (s *ApplicationSuite) TestRunDoesNotErrorWithDryRun() {
 	s.NoError(s.app.Setup(s.env))
 
 	ctx := context.Background()
-	s.app.DryRun = true
+	s.app.Options.DryRun = true
 	s.NoError(s.app.Run(ctx))
 }
 
