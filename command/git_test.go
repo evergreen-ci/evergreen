@@ -109,8 +109,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	}
 
 	c := gitFetchProject{
-		Directory:        "dir",
-		GithubOauthToken: "token",
+		Directory: "dir",
+		Token:     "token",
 	}
 
 	cmds, err := c.buildHTTPCloneCommand(projectRef)
