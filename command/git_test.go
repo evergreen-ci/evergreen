@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -34,7 +35,7 @@ func TestGitGetProjectSuite(t *testing.T) {
 	suite.Run(t, new(GitGetProjectSuite))
 }
 
-func (s *GitGetProjectSuite) SetupSuite() {
+func (s *GitGetProjectSuite) SetupTest() {
 	var err error
 	testConfig := testutil.TestConfig()
 	s.NoError(err)
@@ -98,6 +99,88 @@ func (s *GitGetProjectSuite) TestValidateGitCommands() {
 	s.NoError(err)
 	ref := strings.Trim(out.String(), "\n") // revision that we actually checked out
 	s.Equal(refToCompare, ref)
+}
+
+func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
+	projectRef := &model.ProjectRef{
+		Owner:  "deafgoat",
+		Repo:   "mci_test",
+		Branch: "master",
+	}
+
+	c := gitFetchProject{
+		Directory:        "dir",
+		GithubOauthToken: "token",
+	}
+
+	cmds, err := c.buildHTTPCloneCommand(projectRef)
+	s.NoError(err)
+	s.Len(cmds, 3)
+	s.Equal("git init 'dir'", cmds[0])
+	s.Equal("cd dir; git checkout -b 'master'", cmds[1])
+	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git' 'master'", cmds[2])
+
+	projectRef.Branch = ""
+	cmds, err = c.buildHTTPCloneCommand(projectRef)
+	s.NoError(err)
+	s.Len(cmds, 2)
+	s.Equal("git init 'dir'", cmds[0])
+	s.Equal("cd dir; git pull 'https://token:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[1])
+
+	projectRef.Owner = ""
+	cmds, err = c.buildHTTPCloneCommand(projectRef)
+	s.Error(err)
+	s.Nil(cmds)
+}
+
+func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
+	projectRef := &model.ProjectRef{
+		Owner:  "deafgoat",
+		Repo:   "mci_test",
+		Branch: "master",
+	}
+
+	c := gitFetchProject{
+		Directory: "dir",
+	}
+
+	cmds, err := c.buildSSHCloneCommand(projectRef)
+	s.NoError(err)
+	s.Len(cmds, 1)
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[0])
+
+	projectRef.Branch = ""
+	cmds, err = c.buildSSHCloneCommand(projectRef)
+	s.NoError(err)
+	s.Len(cmds, 1)
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir'", cmds[0])
+
+	projectRef.Owner = ""
+	cmds, err = c.buildSSHCloneCommand(projectRef)
+	s.Error(err)
+	s.Nil(cmds)
+}
+
+func (s *GitGetProjectSuite) TestBuildCommand() {
+	conf := s.modelData1.TaskConfig
+
+	c := gitFetchProject{
+		Directory: "dir",
+	}
+
+	cmds, err := c.buildCloneCommand(conf)
+	s.NoError(err)
+	s.Len(cmds, 5)
+	s.Equal("set -o xtrace", cmds[0])
+	s.Equal("set -o errexit", cmds[1])
+	s.Equal("rm -rf dir", cmds[2])
+	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[3])
+	s.Equal("cd dir; git reset --hard ", cmds[4])
+
+	conf.ProjectRef.Owner = ""
+	cmds, err = c.buildCloneCommand(conf)
+	s.Error(err)
+	s.Nil(cmds)
 }
 
 func (s *GitGetProjectSuite) TearDownSuite() {

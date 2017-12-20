@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -30,6 +31,8 @@ type gitFetchProject struct {
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
 
+	GithubOauthToken string `plugin:"token"`
+
 	base
 }
 
@@ -51,6 +54,69 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
+func (c *gitFetchProject) buildHTTPCloneCommand(projectRef *model.ProjectRef) ([]string, error) {
+	location, err := projectRef.HTTPLocation()
+	if err != nil {
+		return nil, err
+	}
+	location.User = url.UserPassword(c.GithubOauthToken, "x-oauth-basic")
+
+	pull := fmt.Sprintf("cd %s; git pull '%s'", c.Directory, location.String())
+
+	cmds := []string{
+		fmt.Sprintf("git init '%s'", c.Directory),
+	}
+
+	if projectRef.Branch != "" {
+		cmds = append(cmds, fmt.Sprintf("cd %s; git checkout -b '%s'", c.Directory, projectRef.Branch))
+		pull = fmt.Sprintf("%s '%s'", pull, projectRef.Branch)
+	}
+
+	cmds = append(cmds, pull)
+
+	return cmds, nil
+}
+
+func (c *gitFetchProject) buildSSHCloneCommand(projectRef *model.ProjectRef) ([]string, error) {
+	location, err := projectRef.Location()
+	if err != nil {
+		return nil, err
+	}
+
+	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, c.Directory)
+	if projectRef.Branch != "" {
+		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, projectRef.Branch)
+	}
+
+	return []string{cloneCmd}, nil
+}
+
+func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, error) {
+	gitCommands := []string{
+		fmt.Sprintf("set -o xtrace"),
+		fmt.Sprintf("set -o errexit"),
+		fmt.Sprintf("rm -rf %s", c.Directory),
+	}
+
+	var err error
+	cloneCmd := []string{}
+	if c.GithubOauthToken == "" {
+		cloneCmd, err = c.buildSSHCloneCommand(conf.ProjectRef)
+
+	} else {
+		cloneCmd, err = c.buildHTTPCloneCommand(conf.ProjectRef)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	gitCommands = append(gitCommands, cloneCmd...)
+	gitCommands = append(gitCommands,
+		fmt.Sprintf("cd %s; git reset --hard %s", c.Directory, conf.Task.Revision))
+
+	return gitCommands, nil
+}
+
 // Execute gets the source code required by the project
 func (c *gitFetchProject) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
@@ -60,25 +126,10 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		return err
 	}
 
-	location, err := conf.ProjectRef.Location()
+	gitCommands, err := c.buildCloneCommand(conf)
 	if err != nil {
 		return err
 	}
-
-	gitCommands := []string{
-		fmt.Sprintf("set -o xtrace"),
-		fmt.Sprintf("set -o errexit"),
-		fmt.Sprintf("rm -rf %s", c.Directory),
-	}
-
-	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, c.Directory)
-	if conf.ProjectRef.Branch != "" {
-		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, conf.ProjectRef.Branch)
-	}
-
-	gitCommands = append(gitCommands,
-		cloneCmd,
-		fmt.Sprintf("cd %v; git reset --hard %s", c.Directory, conf.Task.Revision))
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
 
@@ -99,6 +150,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	errChan := make(chan error)
 	go func() {
 		logger.Execution().Info("Fetching source from git...")
+		logger.Execution().Debug(fmt.Sprintf("Commands are: %s", cmdsJoined))
 		errChan <- fetchSourceCmd.Run(ctx)
 	}()
 

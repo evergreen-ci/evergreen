@@ -60,3 +60,56 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 		"ProjectRef.GetBatchTime() is not returning the correct BatchTime")
 
 }
+
+func TestProjectRefHTTPLocation(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	projectRef := &ProjectRef{
+		Owner: "mongodb",
+		Repo:  "mci",
+	}
+
+	url, err := projectRef.HTTPLocation()
+	assert.NoError(err)
+	assert.NotNil(url)
+	assert.Equal("https", url.Scheme)
+	assert.Equal("github.com", url.Host)
+	assert.Equal("/mongodb/mci.git", url.Path)
+	assert.Nil(url.User)
+
+	projectRef.Owner = ""
+	url, err = projectRef.HTTPLocation()
+	assert.Error(err)
+	assert.Nil(url)
+
+	projectRef.Owner = "mongodb"
+	projectRef.Repo = ""
+	url, err = projectRef.HTTPLocation()
+	assert.Error(err)
+	assert.Nil(url)
+}
+
+func TestProjectRefLocation(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	projectRef := &ProjectRef{
+		Owner: "mongodb",
+		Repo:  "mci",
+	}
+
+	location, err := projectRef.Location()
+	assert.NoError(err)
+	assert.NotEmpty(location)
+	assert.Equal("git@github.com:mongodb/mci.git", location)
+
+	projectRef.Owner = ""
+	location, err = projectRef.Location()
+	assert.Error(err)
+	assert.Empty(location)
+
+	projectRef.Owner = "mongodb"
+	projectRef.Repo = ""
+	location, err = projectRef.Location()
+	assert.Error(err)
+	assert.Empty(location)
+}
