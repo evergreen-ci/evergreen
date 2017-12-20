@@ -46,6 +46,7 @@ func (j *streamMigrationJob) Run() {
 		"migration": j.Definition.Migration,
 		"operation": "stream",
 		"id":        j.ID(),
+		"ns":        j.Definition.Namespace,
 	})
 
 	defer j.FinishMigration(j.Definition.Migration, &j.Base)

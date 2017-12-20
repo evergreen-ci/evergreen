@@ -34,7 +34,6 @@ import:
   - package: github.com/urfave/cli
   - package: github.com/evergreen-ci/render
   - package: github.com/evergreen-ci/crowd
-  - package: github.com/jessevdk/go-flags
   - package: github.com/kardianos/osext
   - package: github.com/sabhiram/go-git-ignore
   - package: github.com/tylerb/graceful

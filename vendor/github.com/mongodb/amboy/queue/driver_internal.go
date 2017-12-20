@@ -27,7 +27,7 @@ type driverInternal struct {
 	LockManager
 }
 
-// NewdriverInternal creates a local persistence layer object.
+// NewInternalDriver creates a local persistence layer object.
 func NewInternalDriver() Driver {
 	d := &driverInternal{}
 	d.jobs.m = make(map[string]amboy.Job)
