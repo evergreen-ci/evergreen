@@ -1,5 +1,6 @@
 {{ define "menu"}}
 <script src="{{Static "js" "menu.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "js" "md5.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
 {{if .User}}
   window.isSuperUser = {{IsSuperUser .User.Id}};
@@ -94,10 +95,11 @@ window.JiraHost = {{.JiraHost}};
 
   <!-- banner -->
   {{if ne .Banner ""}}
-  <div class="banner-container">
+  <div id="banner-container" class="banner-container">
     <div id="bannerBack" class="banner-contents">
       <div id="bannerIcon" class="bannerIcon"></div>
       <div id="bannerText" class="bannerText"></div>
+      <i class="dismiss fa fa-times" tabindex="0" onclick="dismissBanner()"></i>
     </div>
   </div>
   {{end}}

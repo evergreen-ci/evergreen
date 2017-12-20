@@ -3,7 +3,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   $scope.canEdit = $window.canEdit;
   $scope.enabledTasks = _.pluck($window.tasks, "Name");
   $scope.disableSubmit = false;
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#drawer").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
   }
