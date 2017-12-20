@@ -81,7 +81,7 @@ func addVariantsFlag(flags ...cli.Flag) []cli.Flag {
 
 func addPatchIDFlag(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
-		Name:  joinFlagNames(patchIDFlagName, "patch", "id", "i"),
+		Name:  joinFlagNames(patchIDFlagName, "id", "i"),
 		Usage: "specify the ID of a patch",
 	})
 }
