@@ -2,6 +2,7 @@ package operations
 
 import (
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/urfave/cli"
@@ -18,6 +19,12 @@ const (
 	yesFlagName        = "yes"
 	tasksFlagName      = "tasks"
 	largeFlagName      = "large"
+
+	anserDryRunFlagName  = "dry-run"
+	anserLimitFlagName   = "limit"
+	anserTargetFlagName  = "target"
+	anserWorkersFlagName = "workers"
+	anserPeriodFlagName  = "period"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -98,6 +105,34 @@ func addYesFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  joinFlagNames(yesFlagName, "y"),
 		Usage: "skip confirmation text",
 	})
+}
+
+func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
+	return append(flags,
+		cli.BoolFlag{
+			Name:  joinFlagNames(anserDryRunFlagName, "n"),
+			Usage: "run migration in a dry-run mode",
+		},
+		cli.IntFlag{
+			Name:  joinFlagNames(anserLimitFlagName, "l"),
+			Usage: "limit the number of migration jobs to process",
+		},
+		cli.IntFlag{
+			Name:  joinFlagNames(anserTargetFlagName, "t"),
+			Usage: "target number of migrations",
+			Value: 60,
+		},
+		cli.IntFlag{
+			Name:  joinFlagNames(anserWorkersFlagName, "j"),
+			Usage: "total number of parallel migration workers",
+			Value: 4,
+		},
+		cli.DurationFlag{
+			Name:  joinFlagNames(anserPeriodFlagName, "p"),
+			Usage: "length of scheduling window",
+			Value: time.Minute,
+		})
+
 }
 
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {

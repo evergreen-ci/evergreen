@@ -31,7 +31,7 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 
 	app, err := opts.Application(mock.NewEnvironment())
 	assert.NoError(err)
-	assert.False(app.DryRun)
+	assert.NotNil(app)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
