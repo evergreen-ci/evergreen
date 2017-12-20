@@ -116,6 +116,8 @@ variables:
       - func: set-up-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
+  - &version-constants
+    nodejs_version: "6.11.1"
 
 #######################################
 #              Functions              #
@@ -131,6 +133,9 @@ functions:
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
+
+         # Set the path to nodejs binaries
+         export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
 
          cd gopath/src/github.com/evergreen-ci/evergreen
 
@@ -422,6 +427,8 @@ tasks:
             set -o errexit
 
             ./clients/linux_amd64/evergreen service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
+  - <<: *run-go-test-suite
+    name: js-test
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -802,7 +809,7 @@ buildvariants:
       - ubuntu1604-build
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
+      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
     tasks:
       - name: "dist"
@@ -869,7 +876,7 @@ buildvariants:
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
-
+      
   - name: rhel71-power8
     display_name: RHEL 7.1 POWER8
     batchtime: 2880
@@ -911,3 +918,11 @@ buildvariants:
         distros:
           *generic-linux-distros
       - name: ".xc"
+
+  - name: js-tests
+    display_name: UI Tests
+    run_on:
+      - ubuntu1604-build
+      - ubuntu1604-test
+    tasks:
+      - name: "js-test"

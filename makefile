@@ -1,6 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
+nodeDir := public
 packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
@@ -125,6 +126,13 @@ $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	go build -o $@ $<
 # end lint setup targets
 
+# npm setup
+$(buildDir)/.npmSetup:
+	@mkdir -p $(buildDir)
+	cd $(nodeDir) && npm install
+	touch $@
+# end npm setup
+
 
 # distribution targets and implementation
 $(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
@@ -152,6 +160,8 @@ build:cli
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
+js-test:$(buildDir)/.npmSetup
+	cd $(nodeDir) && ./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
