@@ -60,11 +60,10 @@ func deployMigration() cli.Command {
 			settings := env.Settings()
 
 			opts := migrations.Options{
-				Period: c.Duration(periodFlagName),
-				Target: c.Int(targetFlagName),
-				Limit:  c.Int(limitFlagName),
-				DryRun: c.Bool(dryRunFlagName),
-
+				Period:   c.Duration(periodFlagName),
+				Target:   c.Int(targetFlagName),
+				Limit:    c.Int(limitFlagName),
+				DryRun:   c.Bool(dryRunFlagName),
 				Session:  env.Session(),
 				Workers:  c.Int(workersFlagName),
 				Database: settings.Database.DB,
