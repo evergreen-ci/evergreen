@@ -683,8 +683,6 @@ func displayTaskPriority(status string) int {
 		return 10
 	case evergreen.TaskInactive:
 		return 20
-	case evergreen.TaskUnstarted:
-		return 30
 	case evergreen.TaskUndispatched:
 		return 40
 	case evergreen.TaskFailed:
