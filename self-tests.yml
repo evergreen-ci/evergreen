@@ -437,15 +437,8 @@ tasks:
             set -o errexit
 
             ./clients/linux_amd64/evergreen service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
-  - name: js-tests
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: run-make
-        vars:
-          target: "js-test"
+  - <<: *run-go-test-suite
+    name: js-test
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -772,7 +765,7 @@ buildvariants:
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
-
+      
   - name: rhel71-power8
     display_name: RHEL 7.1 POWER8
     batchtime: 2880
@@ -821,4 +814,4 @@ buildvariants:
       - ubuntu1604-build
       - ubuntu1604-test
     tasks:
-      - name: "js-tests"
+      - name: "js-test"
