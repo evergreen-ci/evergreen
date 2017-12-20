@@ -99,7 +99,7 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	}
 
 	var err error
-	cloneCmd := []string{}
+	var cloneCmd []string
 	if c.GithubOauthToken == "" {
 		cloneCmd, err = c.buildSSHCloneCommand(conf.ProjectRef)
 
