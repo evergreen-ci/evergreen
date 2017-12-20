@@ -670,7 +670,7 @@ tasks:
     name: lint-auth
   - <<: *run-go-test-suite
     tags: ["lint"]
-    name: lint-cli
+    name: lint-operations
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-cloud
