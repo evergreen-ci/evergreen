@@ -44,7 +44,7 @@ func makeLatencyStatsCollector() *latencyStatsCollector {
 				Format:  amboy.BSON,
 			},
 		},
-		Duration: time.Minute,
+		Duration: latencyStatsCollectorInterval,
 	}
 }
 
