@@ -320,9 +320,9 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     /**
      * Defines the sort order for a test's status.
      */
-    function ordinalForTestStatus(testResult) {
+    function ordinalForTestStatus(task) {
       var orderedTestStatuses = ['fail', 'silentfail', 'pass', 'skip'];
-      return orderedTestStatuses.indexOf(testResult.status);
+      return orderedTestStatuses.indexOf(task.test_result.status);
     }
 
     $scope.sortOrders = [{
