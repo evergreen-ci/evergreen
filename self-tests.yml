@@ -10,6 +10,11 @@ post:
     params:
       files:
         - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
+  - command: attach.xunit_results
+    type: system
+    params:
+      files:
+        - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
   - command: s3.put
     type: system
     params:
@@ -809,7 +814,7 @@ buildvariants:
       - ubuntu1604-build
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:$PATH"
+      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
     tasks:
       - name: "dist"
@@ -876,7 +881,7 @@ buildvariants:
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
-      
+
   - name: rhel71-power8
     display_name: RHEL 7.1 POWER8
     batchtime: 2880
@@ -924,5 +929,7 @@ buildvariants:
     run_on:
       - ubuntu1604-build
       - ubuntu1604-test
+    expansions:
+      build_env: "GOROOT=/opt/go PATH=/opt/node/bin:$PATH REPORTER=junit"
     tasks:
       - name: "js-test"
