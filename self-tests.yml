@@ -329,16 +329,6 @@ tasks:
           target: "coverage-html"
           make_args: "-k"
           build_env: "EVERGREEN_ALL=true"
-  - name: lint
-    tags: [ "report" ]
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: run-make
-        vars: { target: "${task_name}" }
-        make_args: "-k"
   - name: dist-test
     commands:
       - command: git.get_project
@@ -668,6 +658,122 @@ tasks:
     tags: ["db", "race"]
     name: race-migrations
 
+  # lint tasks
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-agent
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-alerts
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-auth
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-cli
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-cloud
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-command
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-db
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-evergreen
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-hostinit
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-hostutil
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-migrations
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model-artifact
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model-build
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model-event
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model-host
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model-patch
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-model-task
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-monitor
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-notify
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-plugin
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-plugin-builtin-buildbaron
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-plugin-builtin-manifest
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-plugin-builtin-perfdash
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-repotracker
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-rest-client
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-rest-data
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-rest-model
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-rest-route
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-scheduler
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-service
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-spawn
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-subprocess
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-taskrunner
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-thirdparty
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-units
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-util
+  - <<: *run-go-test-suite
+    tags: ["lint"]
+    name: lint-validator
+
   # cross compiled test suites
   - <<: *run-xc-test-suite
     tags: ["nodb", "xc", "agent"]
@@ -729,8 +835,13 @@ buildvariants:
           - archlinux-build
       - name: ".race"
       - name: ".report"
+      - name: ".lint"
         distros:
           - archlinux-build
+    display_tasks:
+      - name: lint
+        execution_tasks:
+        - ".lint"
 
   - name: osx
     display_name: OSX
