@@ -17,9 +17,14 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
 
-	"github.com/evergreen-ci/evergreen/cli"
-	"github.com/jessevdk/go-flags"
+	"github.com/evergreen-ci/evergreen/operations"
+	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mongodb/grip"
+	"github.com/urfave/cli"
 )
 
 // uiClient handles requests against the UI server.
@@ -88,31 +93,53 @@ func fetchAndWriteConfig(uic *uiClient, project string) {
 }
 
 func main() {
-	opts := &cli.Options{}
-	var parser = flags.NewParser(opts, flags.Default)
-	_, err := parser.Parse()
+	app := cli.NewApp()
+	app.Name = "all_configs"
+	app.Usage = "Evergreen Configuration Download Tool"
+
+	userHome, err := homedir.Dir()
 	if err != nil {
-		panic(err)
+		// workaround for cygwin if we're on windows but couldn't get a homedir
+		if runtime.GOOS == "windows" && len(os.Getenv("HOME")) > 0 {
+			userHome = os.Getenv("HOME")
+		}
 	}
-	settings, err := cli.LoadSettings(opts)
-	if err != nil {
-		panic(err)
+	confPath := filepath.Join(userHome, ".evergreen.yml")
+
+	// These are global options. Use this to configure logging or
+	// other options independent from specific sub commands.
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "conf, config, c",
+			Usage: "specify the path for the evergreen CLI config",
+			Value: confPath,
+		},
 	}
-	uic := &uiClient{
-		client: &http.Client{},
-		user:   settings.User,
-		key:    settings.APIKey,
-		uiRoot: settings.UIServerHost,
+	app.Action = func(c *cli.Context) error {
+		settings, err := operations.NewClientSetttings(c.GlobalString("config"))
+		if err != nil {
+			return err
+		}
+
+		uic := &uiClient{
+			client: &http.Client{},
+			user:   settings.User,
+			key:    settings.APIKey,
+			uiRoot: settings.UIServerHost,
+		}
+
+		// fetch list of all projects
+		resp := uic.get("projects")
+		pList := struct {
+			Projects []string `json:"projects"`
+		}{}
+		mustDecodeJSON(resp.Body, &pList)
+
+		for _, p := range pList.Projects {
+			fetchAndWriteConfig(uic, p)
+		}
+		return nil
 	}
 
-	// fetch list of all projects
-	resp := uic.get("projects")
-	pList := struct {
-		Projects []string `json:"projects"`
-	}{}
-	mustDecodeJSON(resp.Body, &pList)
-
-	for _, p := range pList.Projects {
-		fetchAndWriteConfig(uic, p)
-	}
+	grip.CatchEmergencyFatal(app.Run(os.Args))
 }
