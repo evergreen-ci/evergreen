@@ -31,7 +31,7 @@ type Scheduler struct {
 	FindRunnableTasks TaskFinder
 }
 
-const underwaterPruningEnabled = false
+const underwaterPruningEnabled = true
 
 // versionBuildVariant is used to keep track of the version/buildvariant fields
 // for tasks that are to be split by distro
