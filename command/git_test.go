@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 )
@@ -71,6 +72,18 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 			s.NoError(err)
 		}
 	}
+
+	cs := model.PluginCommandConf{
+		Command: "git.get_project",
+		Type:    "system",
+		Params: map[string]interface{}{
+			"token":     "TOKEN",
+			"directory": "cake",
+		},
+	}
+
+	pluginCmds, err := Render(cs, nil)
+	s.NoError(err)
 }
 
 func (s *GitGetProjectSuite) TestValidateGitCommands() {
