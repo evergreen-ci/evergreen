@@ -82,10 +82,13 @@ func buildHTTPCloneCommand(location *url.URL, branch, dir, token string) ([]stri
 		clone = fmt.Sprintf("%s --branch '%s'", clone, branch)
 	}
 
-	redactedPull := strings.Replace(clone, tokenFlag, "-c '[redacted oauth token]'", -1)
+	redactedClone := clone
+	if tokenFlag != "" {
+		redactedClone = strings.Replace(clone, tokenFlag, "-c '[redacted oauth token]'", -1)
+	}
 	return []string{
 		"set +o xtrace",
-		fmt.Sprintf(`echo %s`, strconv.Quote(redactedPull)),
+		fmt.Sprintf(`echo %s`, strconv.Quote(redactedClone)),
 		clone,
 		"set -o xtrace",
 		fmt.Sprintf("cd %s", dir),

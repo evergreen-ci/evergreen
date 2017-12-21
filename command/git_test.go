@@ -140,6 +140,16 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'\"", cmds[1])
 	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[2])
 	s.Equal("https", location.Scheme)
+
+	location, err = url.Parse("http://someothergithost.com/something/else.git")
+	s.Require().NoError(err)
+	s.Require().NotNil(location)
+	cmds, err = buildHTTPCloneCommand(location, projectRef.Branch, "dir", "")
+	s.NoError(err)
+	s.Require().Len(cmds, 5)
+	s.Equal("echo \"GIT_ASKPASS='true' git  clone 'https://someothergithost.com/something/else.git' 'dir' --branch 'master'\"", cmds[1])
+	s.Equal("GIT_ASKPASS='true' git  clone 'https://someothergithost.com/something/else.git' 'dir' --branch 'master'", cmds[2])
+	s.Equal("https", location.Scheme)
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
