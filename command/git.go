@@ -114,7 +114,6 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 		fmt.Sprintf("rm -rf %s", c.Directory),
 	}
 
-	var err error
 	var cloneCmd []string
 	if c.Token == "" {
 		location, err := conf.ProjectRef.Location()
@@ -122,6 +121,9 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 			return nil, err
 		}
 		cloneCmd, err = buildSSHCloneCommand(location, conf.ProjectRef.Branch, c.Directory)
+		if err != nil {
+			return nil, err
+		}
 
 	} else {
 		location, err := conf.ProjectRef.HTTPLocation()
@@ -129,9 +131,9 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 			return nil, err
 		}
 		cloneCmd, err = buildHTTPCloneCommand(location, conf.ProjectRef.Branch, c.Directory, c.Token)
-	}
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	gitCommands = append(gitCommands, cloneCmd...)
