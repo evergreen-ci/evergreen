@@ -930,6 +930,6 @@ buildvariants:
       - ubuntu1604-build
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go PATH=/opt/node/bin:$PATH REPORTER=junit"
+      build_env: "GOROOT=/opt/go PATH=/opt/node/bin:$PATH KARMA_REPORTER=junit"
     tasks:
       - name: "js-test"

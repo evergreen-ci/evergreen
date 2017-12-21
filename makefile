@@ -35,7 +35,7 @@ srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -n
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
 ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
-karmaFlags := $(if $(REPORTER),--reporters $(REPORTER),)
+karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
 
 
