@@ -152,6 +152,7 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref stri
 	if ref == "" {
 		return nil, errors.New("empty ref/branch to checkout")
 	}
+	moduleBase = filepath.ToSlash(moduleBase)
 
 	gitCommands := []string{
 		"set -o xtrace",
