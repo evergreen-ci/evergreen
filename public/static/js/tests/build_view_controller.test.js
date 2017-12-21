@@ -32,6 +32,15 @@ describe("BuildViewController", function() {
             fromMilliseconds : function(ms) { return new Date(ms); },
             fromNanoseconds : function(ns) { return new Date(ns / (1000 * 1000)) },
             finishConditional : function() { return 0; }
+          },
+          $window: {
+            build: {
+              Version: {},
+              Build: {},
+              Tasks: [{
+                Task: {}
+              }],
+            },
           }
         });
   }));
@@ -46,6 +55,7 @@ describe("BuildViewController", function() {
       Build : {
         activated_time : '2013-08-26'
       },
+      Version: {},
       Tasks : []
     };
 
@@ -62,75 +72,16 @@ describe("BuildViewController", function() {
       Build : {
         activated_time : '2013-08-26'
       },
+      Version: {},
       Tasks : [
-        { Task : { TimeTaken : 25 } },
-        { Task : { TimeTaken : 2 } },
-        { Task : { TimeTaken : 35 } },
-        { Task : { TimeTaken : 0 } },
-      ]
+        { Task : { time_taken : 25 } },
+        { Task : { time_taken : 2 } },
+        { Task : { time_taken : 35 } },
+        { Task : { time_taken : 0 } },
+      ],
     };
     scope.setBuild(mockBuild);
 
     expect(scope.computed.maxTaskTime).toBe(35);
-  });
-
-  it("should ping the correct route to refresh its data", function() {
-    var mockBuild = {
-      Build : {
-        activated_time : '2013-08-26',
-        _id : "FAKEBUILDID"
-      },
-      Tasks : [
-        { Task : { TimeTaken : 25 } },
-        { Task : { TimeTaken : 2 } },
-        { Task : { TimeTaken : 35 } },
-        { Task : { TimeTaken : 0 } },
-      ]
-    };
-    scope.setBuild(mockBuild);
-    expect(scope.lastUpdate.getTime()).toBe(new Date(2013, 8, 26).getTime());
-
-    var reloadedBuild = angular.copy(mockBuild);
-    reloadedBuild.Tasks.push({ Task : { TimeTaken : 50 } });
-
-    date = new Date(2013, 8, 27);
-
-    $httpBackend.expectGET('/json/build/FAKEBUILDID').respond(200, reloadedBuild);
-    scope.reloadBuild();
-    $httpBackend.flush();
-
-    expect(scope.build).toBe(reloadedBuild);
-    expect(scope.lastUpdate.getTime()).toBe(new Date(2013, 8, 27).getTime());
-    expect(scope.computed.maxTaskTime).toBe(50);
-  });
-
-  it("should reload after 10 minutes", function() {
-    var mockBuild = {
-      Build : {
-        activated_time : '2013-08-26',
-        _id : "FAKEBUILDID"
-      },
-      Tasks : [
-        { Task : { TimeTaken : 25 } },
-        { Task : { TimeTaken : 2 } },
-        { Task : { TimeTaken : 35 } },
-        { Task : { TimeTaken : 0 } },
-      ]
-    };
-    scope.setBuild(mockBuild);
-    expect(scope.lastUpdate.getTime()).toBe(new Date(2013, 8, 26).getTime());
-
-    var reloadedBuild = angular.copy(mockBuild);
-    reloadedBuild.Tasks.push({ Task : { TimeTaken : 50 } });
-
-    date = new Date(2013, 8, 28);
-
-    $httpBackend.expectGET('/json/build/FAKEBUILDID').respond(200, reloadedBuild);
-    $timeout.flush(10 * 60 * 1000 + 1);
-
-    $httpBackend.flush();
-    expect(scope.build).toBe(reloadedBuild);
-    expect(scope.lastUpdate.getTime()).toBe(new Date(2013, 8, 28).getTime());
-    expect(scope.computed.maxTaskTime).toBe(50);
   });
 });

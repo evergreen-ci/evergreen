@@ -17,12 +17,13 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       'angular.min.js',
-      'angular-mocks.js',
-      'angular-md5.js',
+      'angular-*.js',
+      'md-*.js',
       'underscore-min.js',
       'filters/*',
       'directives/*',
       'mci_module.js',
+      'services/*.js',
       'build.js',
       'tests/*.js'
     ],
