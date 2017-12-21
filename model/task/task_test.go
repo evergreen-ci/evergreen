@@ -811,6 +811,17 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		},
 	}
 	assert.NoError(dt.Insert())
+	dt2 := Task{
+		Id:          "dt2",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task5",
+			"task6",
+		},
+	}
+	assert.NoError(dt2.Insert())
 	task1 := Task{
 		Id:        "task1",
 		Status:    evergreen.TaskFailed,
@@ -819,7 +830,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(task1.Insert())
 	task2 := Task{
 		Id:        "task2",
-		Status:    evergreen.TaskInactive,
+		Status:    evergreen.TaskSucceeded,
 		TimeTaken: 2 * time.Minute,
 	}
 	assert.NoError(task2.Insert())
@@ -837,16 +848,35 @@ func TestDisplayTaskUpdates(t *testing.T) {
 		TimeTaken: 1 * time.Minute,
 	}
 	assert.NoError(task4.Insert())
+	task5 := Task{
+		Id:        "task5",
+		Activated: true,
+		Status:    evergreen.TaskUndispatched,
+	}
+	assert.NoError(task5.Insert())
+	task6 := Task{
+		Id:        "task6",
+		Activated: true,
+		Status:    evergreen.TaskSucceeded,
+	}
+	assert.NoError(task6.Insert())
 
 	// test that updating the status + activated from execution tasks works
 	assert.NoError(dt.UpdateDisplayTask())
 	dbTask, err := FindOne(ById(dt.Id))
 	assert.NoError(err)
 	assert.NotNil(dbTask)
-	assert.Equal(evergreen.TaskInactive, dbTask.Status)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
 	assert.True(dbTask.Activated)
 	assert.Equal(11*time.Minute, dbTask.TimeTaken)
 
 	// test that you can't update an execution task
 	assert.Error(task1.UpdateDisplayTask())
+
+	// test that a display task with a finished + unstarted task is "scheduled"
+	assert.NoError(dt2.UpdateDisplayTask())
+	dbTask, err = FindOne(ById(dt2.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 }

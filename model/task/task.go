@@ -201,7 +201,7 @@ func IsAbortable(t Task) bool {
 func IsFinished(t Task) bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
-		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime) ||
+		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
 		t.Status == evergreen.TaskSystemFailed ||
 		t.Status == evergreen.TaskSystemTimedOut ||
 		t.Status == evergreen.TaskSystemUnresponse ||
@@ -619,7 +619,7 @@ func (t *Task) UpdateDisplayTask() error {
 			t.Activated = true
 		}
 
-		if IsFinished(*t) {
+		if IsFinished(execTask) {
 			hasFinishedTasks = true
 		} else {
 			hasUnfinishedTasks = true
