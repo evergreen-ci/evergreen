@@ -2,16 +2,19 @@ package command
 
 import (
 	"context"
+	"io"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
 
 type simpleExec struct {
 	CommandName string   `mapstructure:"command_name"`
 	Args        []string `mapstructure:"args"`
+	Env map[string]string `mapstructure:"env"`
 
 	Command string `mapstructure:"command"`
 
@@ -74,5 +77,36 @@ func (c *simpleExec) ParseParams(params map[string]interface{}) error {
 }
 
 func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+
+	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+	c.WorkingDir = wd
+
+	var output io.WriteCloser
+	var error io.WriteCloser
+
+	if c.SystemLog {
+		output = logger.SystemWriter(level.Info)
+		error = logger.SystemWriter(level.Error)
+	} else {
+		output = logger.TaskWriter(level.Info)
+		error = logger.TaskWriter(level.Error)
+	}
+
+
+	opts := subprocess.OutputOptions{
+		Output: output,
+		Error: error,
+		SuppresOutput: c.IgnoreStandardOutput,
+		SuppressError: c.IgnoreStandardError,
+		SendOutputToError: c.RedirectStandardErrorToOutput,
+	}
+
+	proc := subprocess.NewLocalExec(c.CommandName, c.Args, )
+
+	if err := 
 
 }

@@ -292,17 +292,6 @@ type ProjectTask struct {
 	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
-type TaskConfig struct {
-	Distro       *distro.Distro
-	Version      *version.Version
-	ProjectRef   *ProjectRef
-	Project      *Project
-	Task         *task.Task
-	BuildVariant *BuildVariant
-	Expansions   *util.Expansions
-	WorkDir      string
-}
-
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
 
@@ -512,26 +501,6 @@ var (
 	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
-
-func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
-	// do a check on if the project is empty
-	if p == nil {
-		return nil, errors.Errorf("project for task with branch %v is empty", t.Project)
-	}
-
-	// check on if the project ref is empty
-	if r == nil {
-		return nil, errors.Errorf("Project ref with identifier: %v was empty", p.Identifier)
-	}
-
-	bv := p.FindBuildVariant(t.BuildVariant)
-	if bv == nil {
-		return nil, errors.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
-	}
-
-	e := populateExpansions(d, v, bv, t)
-	return &TaskConfig{d, v, r, p, t, bv, e, d.WorkDir}, nil
-}
 
 func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *util.Expansions {
 	expansions := util.NewExpansions(map[string]string{})

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -84,24 +83,12 @@ func (c *shellExec) Execute(ctx context.Context,
 
 	logger.Execution().Debug("Preparing script...")
 
-	if c.WorkingDir == "" {
-		c.WorkingDir = conf.WorkDir
-	} else {
-		c.WorkingDir = filepath.Join(conf.WorkDir, c.WorkingDir)
+	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
 	}
-
-	if stat, err := os.Stat(c.WorkingDir); os.IsNotExist(err) {
-		msg := fmt.Sprintf("cannot run %s because working directory %s does not exist",
-			c.Name(), c.WorkingDir)
-
-		logger.Execution().Warning(msg)
-		return errors.Wrap(err, msg)
-	} else if !stat.IsDir() {
-		msg := fmt.Sprintf("%s is not a directory, cannot run %s",
-			c.WorkingDir, c.Name())
-		logger.Execution().Warning(msg)
-		return errors.New(msg)
-	}
+	c.WorkingDir = wd
 
 	var logWriterInfo io.WriteCloser
 	var logWriterErr io.WriteCloser

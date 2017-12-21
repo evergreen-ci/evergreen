@@ -53,6 +53,20 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 	}
 }
 
+func (lc *LocalCommand) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
+	lc.Stderr = opts.GetError()
+	lc.Stdout = opts.GetOutput()
+
+	return nil
+}
+
 func (lc *LocalCommand) Wait() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()

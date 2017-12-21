@@ -30,6 +30,17 @@ type ScpCommand struct {
 	Cmd *exec.Cmd
 }
 
+func (self *ScpCommand) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	self.Stderr = opts.GetError()
+	self.Stdout = opts.GetOutput()
+
+	return nil
+}
+
 func (self *ScpCommand) Run(ctx context.Context) error {
 	grip.Debugf("SCPCommand(%s) beginning Run()", self.Id)
 
@@ -57,6 +68,18 @@ func (self *ScpCommand) Run(ctx context.Context) error {
 	case err := <-errChan:
 		return errors.WithStack(err)
 	}
+}
+
+func (self *ScpCommand) Wait() error {
+	return self.Cmd.Wait()
+}
+
+func (self *ScpCommand) GetPid() int {
+	if self.Cmd == nil {
+		return -1
+	}
+
+	return self.Cmd.Process.Pid
 }
 
 func (self *ScpCommand) Start() error {

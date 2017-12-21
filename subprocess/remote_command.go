@@ -65,6 +65,25 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 	}
 }
 
+func (rc *RemoteCommand) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	rc.Stderr = opts.GetError()
+	rc.Stdout = opts.GetOutput()
+
+	return nil
+}
+
+func (rc *RemoteCommand) GetPid() int {
+	if rc.Cmd == nil {
+		return -1
+	}
+
+	return rc.Cmd.Process.Pid
+}
+
 func (rc *RemoteCommand) Wait() error {
 	return rc.Cmd.Wait()
 }
