@@ -109,6 +109,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 		Branch: "master",
 	}
 
+	// build clone command to clone by http, master branch with token into 'dir'
 	location, err := projectRef.HTTPLocation()
 	s.Require().NoError(err)
 	cmds, err := buildHTTPCloneCommand(location, projectRef.Branch, "dir", "GITHUBTOKEN")
@@ -120,6 +121,7 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
+	// build clone command to clone by http with token into 'dir' w/o specified branch
 	location, err = projectRef.HTTPLocation()
 	s.Require().NoError(err)
 	cmds, err = buildHTTPCloneCommand(location, "", "dir", "GITHUBTOKEN")
@@ -131,6 +133,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Equal("set -o xtrace", cmds[3])
 	s.Equal("cd dir", cmds[4])
 
+	// build clone command with a URL that uses http, and ensure it's
+	// been forced to use https
 	location, err = url.Parse("http://github.com/deafgoat/mci_test.git")
 	s.Require().NoError(err)
 	s.Require().NotNil(location)
@@ -141,6 +145,8 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[2])
 	s.Equal("https", location.Scheme)
 
+	// ensure that we aren't sending the github oauth token to other
+	// servers
 	location, err = url.Parse("http://someothergithost.com/something/else.git")
 	s.Require().NoError(err)
 	s.Require().NotNil(location)
@@ -159,6 +165,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 		Branch: "master",
 	}
 
+	// ssh clone command with branch
 	location, err := projectRef.Location()
 	s.NoError(err)
 	cmds, err := buildSSHCloneCommand(location, projectRef.Branch, "dir")
@@ -167,6 +174,7 @@ func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
 	s.Equal("git clone 'git@github.com:deafgoat/mci_test.git' 'dir' --branch 'master'", cmds[0])
 	s.Equal("cd dir", cmds[1])
 
+	// ssh clone command without branch
 	projectRef.Branch = ""
 	location, err = projectRef.Location()
 	s.NoError(err)
@@ -184,6 +192,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 		Directory: "dir",
 	}
 
+	// ensure clone command without specified token uses ssh
 	cmds, err := c.buildCloneCommand(conf)
 	s.NoError(err)
 	s.Require().Len(cmds, 6)
@@ -194,6 +203,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("cd dir", cmds[4])
 	s.Equal("git reset --hard ", cmds[5])
 
+	// ensure clone command with a token uses http
 	c.Token = "GITHUBTOKEN"
 	cmds, err = c.buildCloneCommand(conf)
 	s.NoError(err)
@@ -208,6 +218,7 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	s.Equal("cd dir", cmds[7])
 	s.Equal("git reset --hard ", cmds[8])
 
+	// ensure clone command cannot be built if projectref has no owner
 	conf.ProjectRef.Owner = ""
 	cmds, err = c.buildCloneCommand(conf)
 	s.Error(err)
@@ -220,6 +231,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 		Token:     "GITHUBTOKEN",
 	}
 
+	// ensure module clone command with ssh URL does not inject token
 	cmds, err := c.buildModuleCloneCommand("git@github.com:deafgoat/mci_test.git", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 5)
@@ -229,6 +241,7 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("cd module", cmds[3])
 	s.Equal("git checkout 'master'", cmds[4])
 
+	// ensure module clone command with http URL injects token
 	cmds, err = c.buildModuleCloneCommand("https://github.com/deafgoat/mci_test.git", "module", "master")
 	s.NoError(err)
 	s.Require().Len(cmds, 8)
@@ -240,6 +253,13 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("set -o xtrace", cmds[5])
 	s.Equal("cd module", cmds[6])
 	s.Equal("git checkout 'master'", cmds[7])
+
+	// ensure insecure github url is force to use https
+	cmds, err = c.buildModuleCloneCommand("http://github.com/deafgoat/mci_test.git", "module", "master")
+	s.NoError(err)
+	s.Require().Len(cmds, 8)
+	s.Equal("echo \"GIT_ASKPASS='true' git -c '[redacted oauth token]' clone 'https://github.com/deafgoat/mci_test.git' 'module'\"", cmds[3])
+	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'module'", cmds[4])
 }
 
 func (s *GitGetProjectSuite) TearDownSuite() {
