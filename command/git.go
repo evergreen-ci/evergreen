@@ -54,11 +54,25 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 		return errors.Errorf("error parsing '%v' params: value for directory "+
 			"must not be blank", c.Name())
 	}
+
+	if strings.HasPrefix(c.Token, "token") {
+		splitToken := strings.Split(c.Token, " ")
+		if len(splitToken) != 2 {
+			return errors.New("token format is invalid")
+		}
+		c.Token = splitToken[1]
+	}
 	return nil
 }
 
 func buildHTTPCloneCommand(location *url.URL, branch, dir, token string) ([]string, error) {
-	location.User = url.UserPassword(token, "x-oauth-basic")
+	if location.Host != "github.com" {
+		return nil, errors.Errorf("Token support is only for Github, refusing to send token to '%s'", location.Host)
+	}
+	if token != "" {
+		location.User = url.UserPassword(token, "x-oauth-basic")
+	}
+	location.Scheme = "https"
 
 	cmds := []string{
 		fmt.Sprintf("git init '%s'", dir),
@@ -156,7 +170,6 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref stri
 		if err != nil {
 			return nil, errors.Wrap(err, "repository URL is invalid")
 		}
-		url.Scheme = "https"
 		cmds, err := buildHTTPCloneCommand(url, ref, moduleBase, c.Token)
 		if err != nil {
 			return nil, err

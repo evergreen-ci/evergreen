@@ -3,6 +3,7 @@ package command
 import (
 	"bytes"
 	"context"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/k0kubun/pp"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 )
@@ -72,18 +72,6 @@ func (s *GitGetProjectSuite) TestGitPlugin() {
 			s.NoError(err)
 		}
 	}
-
-	cs := model.PluginCommandConf{
-		Command: "git.get_project",
-		Type:    "system",
-		Params: map[string]interface{}{
-			"token":     "TOKEN",
-			"directory": "cake",
-		},
-	}
-
-	pluginCmds, err := Render(cs, nil)
-	s.NoError(err)
 }
 
 func (s *GitGetProjectSuite) TestValidateGitCommands() {
@@ -146,6 +134,16 @@ func (s *GitGetProjectSuite) TestBuildHTTPCloneCommand() {
 	s.Equal("echo \"git pull 'https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git'\"", cmds[3])
 	s.Equal("git pull 'https://GITHUBTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[4])
 	s.Equal("set -o xtrace", cmds[5])
+
+	location, err = url.Parse("http://github.com/deafgoat/mci_test.git")
+	s.Require().NoError(err)
+	s.Require().NotNil(location)
+	cmds, err = buildHTTPCloneCommand(location, projectRef.Branch, "dir", "GITHUBTOKEN")
+	s.NoError(err)
+	s.Len(cmds, 6)
+	s.Equal("echo \"git pull 'https://[redacted oauth token]:x-oauth-basic@github.com/deafgoat/mci_test.git'\"", cmds[3])
+	s.Equal("git pull 'https://GITHUBTOKEN:x-oauth-basic@github.com/deafgoat/mci_test.git'", cmds[4])
+	s.Equal("https", location.Scheme)
 }
 
 func (s *GitGetProjectSuite) TestBuildSSHCloneCommand() {
