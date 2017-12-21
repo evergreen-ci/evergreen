@@ -66,34 +66,30 @@ func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
 }
 
 func buildHTTPCloneCommand(location *url.URL, branch, dir, token string) ([]string, error) {
-	if location.Host != "github.com" {
-		return nil, errors.Errorf("Token support is only for Github, refusing to send token to '%s'", location.Host)
-	}
-	if token != "" {
-		location.User = url.UserPassword(token, "x-oauth-basic")
-	}
 	location.Scheme = "https"
 
-	cmds := []string{
-		fmt.Sprintf("git init '%s'", dir),
-		fmt.Sprintf("cd %s", dir),
+	tokenFlag := ""
+	if token != "" {
+		if location.Host != "github.com" {
+			return nil, errors.Errorf("Token support is only for Github, refusing to send token to '%s'", location.Host)
+		}
+		tokenFlag = fmt.Sprintf("-c 'credential.%s://%s.username=%s'", location.Scheme, location.Host, token)
 	}
 
-	pull := fmt.Sprintf("git pull '%s'", location.String())
+	clone := fmt.Sprintf("GIT_ASKPASS='true' git %s clone '%s' '%s'", tokenFlag, location.String(), dir)
 
 	if branch != "" {
-		cmds = append(cmds, fmt.Sprintf("git checkout -b '%s'", branch))
-		pull = fmt.Sprintf("%s '%s'", pull, branch)
+		clone = fmt.Sprintf("%s --branch '%s'", clone, branch)
 	}
 
-	redactedPull := strings.Replace(pull, token, "[redacted oauth token]", -1)
-	cmds = append(cmds,
+	redactedPull := strings.Replace(clone, tokenFlag, "-c '[redacted oauth token]'", -1)
+	return []string{
 		"set +o xtrace",
 		fmt.Sprintf(`echo %s`, strconv.Quote(redactedPull)),
-		pull,
-		"set -o xtrace")
-
-	return cmds, nil
+		clone,
+		"set -o xtrace",
+		fmt.Sprintf("cd %s", dir),
+	}, nil
 }
 
 func buildSSHCloneCommand(location, branch, dir string) ([]string, error) {
@@ -171,13 +167,12 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref stri
 		if err != nil {
 			return nil, errors.Wrap(err, "repository URL is invalid")
 		}
-		cmds, err := buildHTTPCloneCommand(url, ref, moduleBase, c.Token)
+		cmds, err := buildHTTPCloneCommand(url, "", moduleBase, c.Token)
 		if err != nil {
 			return nil, err
 		}
 		gitCommands = append(gitCommands, cmds...)
 	}
-
 	gitCommands = append(gitCommands, fmt.Sprintf("git checkout '%s'", ref))
 
 	return gitCommands, nil
