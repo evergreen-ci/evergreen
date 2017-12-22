@@ -126,8 +126,7 @@ func (c *shellExec) Execute(ctx context.Context,
 		localCmd.Shell = c.Shell
 	}
 
-	err := localCmd.PrepToRun(conf.Expansions)
-	if err != nil {
+	if err = localCmd.PrepToRun(conf.Expansions); err != nil {
 		return errors.Wrap(err, "Failed to apply expansions")
 	}
 
@@ -149,9 +148,8 @@ func (c *shellExec) Execute(ctx context.Context,
 		if ctx.Err() != nil {
 			return
 		}
-		err = localCmd.Start()
 
-		if err != nil {
+		if err = localCmd.Start(ctx); err != nil {
 			logger.System().Debugf("error spawning shell process: %v", err)
 		} else {
 			logger.System().Debugf("spawned shell process with pid %d", localCmd.GetPid())
@@ -202,6 +200,7 @@ func (c *shellExec) Execute(ctx context.Context,
 
 			// try and stop the process
 			if err := localCmd.Stop(); err != nil {
+
 				err = errors.Wrap(err, "error while stopping process")
 				logger.Execution().Error(err)
 				return err

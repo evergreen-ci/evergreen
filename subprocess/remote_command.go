@@ -35,7 +35,7 @@ type RemoteCommand struct {
 
 func (rc *RemoteCommand) Run(ctx context.Context) error {
 	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
-	err := rc.Start()
+	err := rc.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -88,8 +88,7 @@ func (rc *RemoteCommand) Wait() error {
 	return rc.Cmd.Wait()
 }
 
-func (rc *RemoteCommand) Start() error {
-
+func (rc *RemoteCommand) Start(ctx context.Context) error {
 	// build the remote connection, in user@host format
 	remote := rc.RemoteHostName
 	if rc.User != "" {
@@ -125,7 +124,7 @@ func (rc *RemoteCommand) Start() error {
 		})
 
 	// set up execution
-	cmd := exec.Command("ssh", cmdArray...)
+	cmd := exec.CommandContext(ctx, "ssh", cmdArray...)
 	cmd.Stdout = rc.Stdout
 	cmd.Stderr = rc.Stderr
 

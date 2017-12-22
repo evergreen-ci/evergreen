@@ -12,7 +12,7 @@ func TestInterfaceCompliance(t *testing.T) {
 
 	assert.Implements((*Command)(nil), &LocalCommand{})
 	assert.Implements((*Command)(nil), &RemoteCommand{})
-	assert.Implements((*Command)(nil), &LocalExec{})
+	assert.Implements((*Command)(nil), &localExec{})
 	assert.Implements((*Command)(nil), &ScpCommand{})
 }
 

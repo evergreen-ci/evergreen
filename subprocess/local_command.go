@@ -36,13 +36,13 @@ func NewLocalCommand(cmdString, workingDir, shell string, env []string, scriptMo
 }
 
 func (lc *LocalCommand) Run(ctx context.Context) error {
-	lc.mutex.RLock()
-	defer lc.mutex.RUnlock()
-
-	err := lc.Start()
+	err := lc.Start(ctx)
 	if err != nil {
 		return err
 	}
+
+	lc.mutex.RLock()
+	defer lc.mutex.RUnlock()
 
 	errChan := make(chan error)
 	go func() {
@@ -95,7 +95,7 @@ func (lc *LocalCommand) GetPid() int {
 	return lc.cmd.Process.Pid
 }
 
-func (lc *LocalCommand) Start() error {
+func (lc *LocalCommand) Start(ctx context.Context) error {
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
@@ -105,10 +105,10 @@ func (lc *LocalCommand) Start() error {
 
 	var cmd *exec.Cmd
 	if lc.ScriptMode {
-		cmd = exec.Command(lc.Shell)
+		cmd = exec.CommandContext(ctx, lc.Shell)
 		cmd.Stdin = strings.NewReader(lc.CmdString)
 	} else {
-		cmd = exec.Command(lc.Shell, "-c", lc.CmdString)
+		cmd = exec.CommandContext(ctx, lc.Shell, "-c", lc.CmdString)
 	}
 
 	// create the command, set the options

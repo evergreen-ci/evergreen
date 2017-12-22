@@ -8,7 +8,6 @@ package subprocess
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type localExec struct {
@@ -28,7 +28,7 @@ type localExec struct {
 	mutex            sync.RWMutex
 }
 
-func NewLocalExec(binary string, args []string, env map[string]string, workingdir string, enheritEnv bool) (Command, error) {
+func NewLocalExec(binary string, args []string, env map[string]string, workingdir string) (Command, error) {
 	if binary == "" {
 		return nil, errors.New("must specify a command")
 	}
@@ -36,10 +36,7 @@ func NewLocalExec(binary string, args []string, env map[string]string, workingdi
 	c := &localExec{
 		binary: binary,
 		args:   args,
-	}
-
-	if enheritEnv {
-		c.env = os.Environ()
+		env:    os.Environ(),
 	}
 
 	for k, v := range env {
@@ -58,18 +55,20 @@ func NewLocalExec(binary string, args []string, env map[string]string, workingdi
 		} else if !stat.IsDir() {
 			return nil, errors.Errorf("could not use file as working directory")
 		}
+
+		c.workingDirectory = workingdir
 	}
 
 	return c, nil
 }
 
 func (c *localExec) Run(ctx context.Context) error {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
-	if err := c.Start(); err != nil {
+	if err := c.Start(ctx); err != nil {
 		return errors.WithStack(err)
 	}
+
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
 
 	errChan := make(chan error)
 	go func() {
@@ -81,11 +80,11 @@ func (c *localExec) Run(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		err = c.cmd.Process.Kill()
+		err := c.cmd.Process.Kill()
 		return errors.Wrapf(err,
 			"operation '%s %s' was canceled and terminated.",
 			c.binary, strings.Join(c.args, " "))
-	case err = <-errChan:
+	case err := <-errChan:
 		return errors.WithStack(err)
 	}
 }
@@ -97,11 +96,11 @@ func (c *localExec) Wait() error {
 	return c.cmd.Wait()
 }
 
-func (c *localExec) Start() error {
+func (c *localExec) Start(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.cmd = exec.CommandContext(c.binary, c.args...) // nolint
+	c.cmd = exec.CommandContext(ctx, c.binary, c.args...) // nolint
 	c.cmd.Dir = c.workingDirectory
 	c.cmd.Env = c.env
 
@@ -122,7 +121,7 @@ func (c *localExec) Stop() error {
 	return nil
 }
 
-func (c *localExec) GetPid() error {
+func (c *localExec) GetPid() int {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 

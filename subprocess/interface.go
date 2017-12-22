@@ -12,9 +12,14 @@ import (
 // Command provides a common interface for the three methods of
 // managing commands in evergreen
 type Command interface {
+	// Run Provides a wrapper around start and wait, that provides
+	// a blocking operation, with the ability to cancel the operation
+	// via the context.
 	Run(context.Context) error
+
+	Start(context.Context) error
 	Wait() error
-	Start() error
+
 	Stop() error
 	GetPid() int
 	SetOutput(OutputOptions) error

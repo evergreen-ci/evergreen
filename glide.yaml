@@ -53,3 +53,4 @@ import:
   - package: github.com/tychoish/tarjan
   - package: github.com/google/go-github
   - package: github.com/google/go-querystring
+  - package: github.com/google/shlex

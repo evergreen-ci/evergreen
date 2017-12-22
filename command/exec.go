@@ -3,18 +3,24 @@ package command
 import (
 	"context"
 	"io"
+	"os"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/shlex"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
 
 type simpleExec struct {
-	CommandName string   `mapstructure:"command_name"`
-	Args        []string `mapstructure:"args"`
-	Env map[string]string `mapstructure:"env"`
+	CommandName string            `mapstructure:"command_name"`
+	Args        []string          `mapstructure:"args"`
+	Env         map[string]string `mapstructure:"env"`
 
 	Command string `mapstructure:"command"`
 
@@ -54,7 +60,7 @@ type simpleExec struct {
 }
 
 func simpleExecFactory() Command   { return &simpleExec{} }
-func (c *simpleExec) Name() string { "simple.exec" }
+func (c *simpleExec) Name() string { return "simple.exec" }
 
 func (c *simpleExec) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
@@ -67,23 +73,67 @@ func (c *simpleExec) ParseParams(params map[string]interface{}) error {
 			return errors.New("must specify command as either arguments or a command string but not both")
 		}
 
-		// DO THE THING WHERE YOU PARSE THE STRING INTO THE BITS
+		args, err := shlex.Split(c.Command)
+		if err != nil || len(args) == 0 {
+			return errors.Wrap(err, "problem parsing shell command")
+		}
+
+		c.CommandName = args[0]
+		if len(args) > 1 {
+			c.Args = args[1:]
+		}
+	}
+
+	if c.Silent {
+		c.IgnoreStandardError = true
+		c.IgnoreStandardOutput = true
 	}
 
 	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
 		return errors.New("cannot ignore standard out, and redirect standard error to it")
 	}
 
+	if c.Env == nil {
+		c.Env = make(map[string]string)
+	}
+
+	return nil
+}
+
+func (c *simpleExec) doExpansions(exp *util.Expansions) error {
+	var err error
+	catcher := grip.NewBasicCatcher()
+
+	c.WorkingDir, err = exp.ExpandString(c.WorkingDir)
+	catcher.Add(err)
+
+	c.CommandName, err = exp.ExpandString(c.CommandName)
+	catcher.Add(err)
+
+	for idx := range c.Args {
+		c.Args[idx], err = exp.ExpandString(c.Args[idx])
+		catcher.Add(err)
+	}
+
+	for k, v := range c.Env {
+		c.Env[k], err = exp.ExpandString(v)
+		catcher.Add(err)
+	}
+
+	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
 func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-
 	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
 	c.WorkingDir = wd
+
+	if err = c.doExpansions(conf.Expansions); err != nil {
+		logger.Execution().Error("problem expanding command values")
+	}
 
 	var output io.WriteCloser
 	var error io.WriteCloser
@@ -96,17 +146,54 @@ func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logg
 		error = logger.TaskWriter(level.Error)
 	}
 
-
 	opts := subprocess.OutputOptions{
-		Output: output,
-		Error: error,
-		SuppresOutput: c.IgnoreStandardOutput,
-		SuppressError: c.IgnoreStandardError,
+		Output:            output,
+		Error:             error,
+		SuppressOutput:    c.IgnoreStandardOutput,
+		SuppressError:     c.IgnoreStandardError,
 		SendOutputToError: c.RedirectStandardErrorToOutput,
 	}
 
-	proc := subprocess.NewLocalExec(c.CommandName, c.Args, )
+	c.Env[subprocess.MarkerTaskID] = conf.Task.Id
+	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
-	if err := 
+	proc, err := subprocess.NewLocalExec(c.CommandName, c.Args, c.Env, c.WorkingDir)
+	if err != nil {
+		return errors.Wrap(err, "problem constructing command wrapper")
+	}
+	proc.SetOutput(opts)
+	grip.Info(proc)
 
+	if c.Silent {
+		logger.Execution().Info("executing command in silent mode")
+	}
+
+	if err = proc.Start(ctx); err != nil {
+		return c.continueOnErrorWhenSet(errors.Wrap(err, "problem starting background process"), logger.Execution())
+	}
+	pid := proc.GetPid()
+	subprocess.TrackProcess(conf.Task.Id, pid, logger.System())
+
+	if c.Background {
+		logger.Execution().Infof("started background process with pid %d", pid)
+
+		return nil
+	}
+	logger.Execution().Debugf("started foreground process with pid %d, waiting for completion", pid)
+
+	// The "shell.exec" command uses a thread and a channel and
+	// does some fancy cleanup work here to stop the command if
+	// the context is canceled. However, since that
+	// implementation, the os/exec package added a command+context
+	// that makes the following implementation possible:
+	return errors.Wrapf(proc.Wait(), "command with pid %s encountered error", pid)
+}
+
+func (c *simpleExec) continueOnErrorWhenSet(err error, logger grip.Journaler) error {
+	if c.ContinueOnError {
+		logger.Notice(err)
+		return nil
+	}
+
+	return err
 }
