@@ -25,14 +25,24 @@ type LocalCommand struct {
 	mutex            sync.RWMutex
 }
 
+func NewLocalCommand(cmdString, workingDir, shell string, env []string, scriptMode bool) Command {
+	return &LocalCommand{
+		CmdString:        cmdString,
+		WorkingDirectory: workingDir,
+		Shell:            shell,
+		Environment:      env,
+		ScriptMode:       scriptMode,
+	}
+}
+
 func (lc *LocalCommand) Run(ctx context.Context) error {
+	lc.mutex.RLock()
+	defer lc.mutex.RUnlock()
+
 	err := lc.Start()
 	if err != nil {
 		return err
 	}
-
-	lc.mutex.RLock()
-	defer lc.mutex.RUnlock()
 
 	errChan := make(chan error)
 	go func() {
