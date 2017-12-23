@@ -144,7 +144,8 @@ func (c *shellExec) Execute(ctx context.Context,
 			localCmd.Shell, localCmd.CmdString)
 	}
 
-	localCmd.Environment = append(os.Environ(), fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
+	localCmd.Environment = append(os.Environ(),
+		fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
 		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
 
 	if err = localCmd.Start(ctx); err != nil {
@@ -161,7 +162,7 @@ func (c *shellExec) Execute(ctx context.Context,
 
 	if c.Background {
 		logger.Execution().Debug("running command in the background")
-		return
+		return nil
 	}
 
 	err = errors.Wrap(localCmd.Wait(), "command encountered problem")

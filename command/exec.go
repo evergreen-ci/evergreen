@@ -14,6 +14,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -215,7 +216,7 @@ func (c *simpleExec) runCommand(ctx context.Context, taskID string, proc subproc
 	err := errors.Wrapf(proc.Wait(), "command with pid %s encountered error", pid)
 
 	if c.ContinueOnError {
-		logger.Execution.Notice(err)
+		logger.Execution().Notice(err)
 		return nil
 	}
 
