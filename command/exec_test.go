@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 )
@@ -130,4 +131,155 @@ func (s *execCmdSuite) TestCommandParsing() {
 	s.Equal("/bin/bash", cmd.CommandName)
 	s.Equal("-c", cmd.Args[0])
 	s.Equal("foo bar", cmd.Args[1])
+}
+
+func (s *execCmdSuite) TestParseErrorIfTypeMismatch() {
+	cmd := &simpleExec{}
+	s.Error(cmd.ParseParams(map[string]interface{}{"args": 1, "silent": "false"}))
+	s.False(cmd.Background)
+}
+
+func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
+	cmd := &simpleExec{
+		Command:     "/bin/bash -c 'echo foo'",
+		CommandName: "bash",
+		Args: []string{
+			"-c",
+			"echo foo",
+		},
+	}
+	s.Error(cmd.ParseParams(map[string]interface{}{}))
+}
+
+func (s *execCmdSuite) TestGetProcErrorsIfCommandIsNotSet() {
+	cmd := &simpleExec{}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.Len(cmd.Env, 2)
+	s.Error(err)
+	s.Nil(exec)
+	s.Nil(closer)
+}
+
+func (s *execCmdSuite) TestGetProcEnvSetting() {
+	cmd := &simpleExec{
+		CommandName: "bash",
+		SystemLog:   true,
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
+	s.NotNil(exec)
+	s.NotNil(closer)
+	s.NotPanics(func() { closer() })
+	s.Len(cmd.Env, 2)
+}
+
+func (s *execCmdSuite) TestRunCommand() {
+	cmd := &simpleExec{
+		CommandName: "bash",
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
+	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
+}
+
+func (s *execCmdSuite) TestRunCommandPropgatesError() {
+	cmd := &simpleExec{
+		Command: "bash -c 'exit 1'",
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
+	s.Error(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
+}
+
+func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
+	cmd := &simpleExec{
+		Command:         "bash -c 'exit 1'",
+		ContinueOnError: true,
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
+	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
+}
+
+func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
+	cmd := &simpleExec{
+		Command:    "bash -c 'exit 1'",
+		Background: true,
+		Silent:     true,
+	}
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	exec, closer, err := cmd.getProc("foo", s.logger)
+	s.NoError(err)
+	s.NoError(cmd.runCommand(s.ctx, "foo", exec, s.logger))
+	s.NotPanics(func() { closer() })
+}
+
+func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {
+	// this is a situation that won't happen in production code,
+	// but should happen logicaly, but means if you don't specify
+	// a directory and there's not one configured on the distro,
+	// then you're in trouble.
+	cmd := &simpleExec{
+		Command: "bash -c 'echo hello world!'",
+	}
+
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+func (s *execCmdSuite) TestCommandIntegrationSimple() {
+	cmd := &simpleExec{
+		Command:    "bash -c 'echo hello world!'",
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.NoError(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+func (s *execCmdSuite) TestCommandIntegrationFailureExpansion() {
+	cmd := &simpleExec{
+		Command:    "bash -c 'echo hello wor${ld!'",
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
+	if s.Error(err) {
+		s.Contains(err.Error(), "problem expanding")
+	}
+}
+
+func (s *execCmdSuite) TestCommandIntegrationFailureCase() {
+	cmd := &simpleExec{
+		// just set up enough so that we don't fail parse params
+		Env:        map[string]string{},
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	s.Error(cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
+	cmd := &simpleExec{
+		Command:    "bash -c 'echo hello world!'",
+		WorkingDir: testutil.GetDirectoryOfFile(),
+	}
+
+	s.cancel()
+
+	s.NoError(cmd.ParseParams(map[string]interface{}{}))
+	err := cmd.Execute(s.ctx, s.comm, s.logger, s.conf)
+	if s.Error(err) {
+		s.Contains(err.Error(), "aborted")
+	}
 }

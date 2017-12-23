@@ -167,6 +167,7 @@ func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logg
 
 	if err = c.doExpansions(conf.Expansions); err != nil {
 		logger.Execution().Error("problem expanding command values")
+		return errors.WithStack(err)
 	}
 
 	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
