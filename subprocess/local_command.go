@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -138,19 +137,4 @@ func (lc *LocalCommand) Stop() error {
 	}
 	grip.Warning("Trying to stop command but Cmd / Process was nil")
 	return nil
-}
-
-func (lc *LocalCommand) PrepToRun(expansions *util.Expansions) error {
-	lc.mutex.Lock()
-	defer lc.mutex.Unlock()
-
-	var err error
-
-	lc.CmdString, err = expansions.ExpandString(lc.CmdString)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	lc.WorkingDirectory, err = expansions.ExpandString(lc.WorkingDirectory)
-	return errors.WithStack(err)
 }

@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -20,67 +19,6 @@ func TestLocalCommands(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("When running local commands", t, func() {
-
-		Convey("the preparation step should replace expansions and forward"+
-			" slashes in the command string", func() {
-
-			command := &LocalCommand{
-				CmdString: "one ${two} \\three${four|five}",
-			}
-
-			expansions := util.NewExpansions(map[string]string{
-				"two": "TWO",
-				"six": "SIX",
-			})
-
-			// run the preparation stage, and make sure the replacements are
-			// correctly made
-			So(command.PrepToRun(expansions), ShouldBeNil)
-			So(command.CmdString, ShouldEqual, "one TWO \\threefive")
-
-		})
-
-		Convey("the preparation step should replace expansion in the working directory", func() {
-			command := &LocalCommand{
-				WorkingDirectory: "one ${two} ${other|three} four five ${six}",
-			}
-
-			expansions := util.NewExpansions(map[string]string{
-				"two": "TWO",
-				"six": "SIX",
-			})
-
-			So(command.PrepToRun(expansions), ShouldBeNil)
-			So(command.WorkingDirectory, ShouldEqual, "one TWO three four five SIX")
-		})
-
-		Convey("the perpetration step should return an error if invalid expansions", func() {
-			expansions := util.NewExpansions(map[string]string{"foo": "bar"})
-
-			for _, cmd := range []*LocalCommand{
-				{WorkingDirectory: "${foo|${bar}}"},
-				{CmdString: "${foo${bar}}"},
-			} {
-				So(cmd.PrepToRun(expansions), ShouldNotBeNil)
-			}
-
-		})
-
-		Convey("the preparation step should not replace strings without expansions", func() {
-			var cmd *LocalCommand
-
-			expansions := util.NewExpansions(map[string]string{"foo": "bar"})
-
-			for _, input := range []string{"", "nothing", "this is empty", "foo"} {
-				cmd = &LocalCommand{WorkingDirectory: input}
-				So(cmd.PrepToRun(expansions), ShouldBeNil)
-				So(cmd.WorkingDirectory, ShouldEqual, input)
-
-				cmd = &LocalCommand{CmdString: input}
-				So(cmd.PrepToRun(expansions), ShouldBeNil)
-				So(cmd.CmdString, ShouldEqual, input)
-			}
-		})
 
 		Convey("the specified environment should be used", func() {
 			stdout := &CacheLastWritten{}

@@ -123,20 +123,18 @@ func (c *simpleExec) doExpansions(exp *util.Expansions) error {
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
-func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
-	if err != nil {
-		logger.Execution().Warning(err.Error())
-		return errors.WithStack(err)
-	}
-	c.WorkingDir = wd
+func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subprocess.Command, func(), error) {
+	c.Env[subprocess.MarkerTaskID] = taskID
+	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
-	if err = c.doExpansions(conf.Expansions); err != nil {
-		logger.Execution().Error("problem expanding command values")
+	proc, err := subprocess.NewLocalExec(c.CommandName, c.Args, c.Env, c.WorkingDir)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "problem constructing command wrapper")
 	}
 
 	var output io.WriteCloser
 	var error io.WriteCloser
+	var closer func()
 
 	if c.SystemLog {
 		output = logger.SystemWriter(level.Info)
@@ -154,44 +152,70 @@ func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logg
 		SendOutputToError: c.RedirectStandardErrorToOutput,
 	}
 
-	c.Env[subprocess.MarkerTaskID] = conf.Task.Id
-	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
-
-	proc, err := subprocess.NewLocalExec(c.CommandName, c.Args, c.Env, c.WorkingDir)
-	if err != nil {
-		return errors.Wrap(err, "problem constructing command wrapper")
-	}
 	proc.SetOutput(opts)
+	closer = func() {
+		output.Close()
+		error.Close()
+	}
+
+	return proc, closer, nil
+}
+
+func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	var err error
+
+	if err = c.doExpansions(conf.Expansions); err != nil {
+		logger.Execution().Error("problem expanding command values")
+	}
+
+	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+
+	proc, closer, err := c.getProc(conf.Task.Id, logger)
+	if err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+	defer closer()
 	grip.Info(proc)
 
+	err = errors.WithStack(c.runCommand(ctx, conf.Task.Id, proc, logger))
+
+	if ctx.Err() != nil {
+		logger.System().Debug("dumping running processes")
+		logger.System().Debug(message.CollectAllProcesses())
+		logger.Execution().Notice(err)
+
+		return errors.New("simple.exec aborted")
+	}
+
+	return err
+}
+
+func (c *simpleExec) runCommand(ctx context.Context, taskID string, proc subprocess.Command, logger client.LoggerProducer) error {
 	if c.Silent {
 		logger.Execution().Info("executing command in silent mode")
 	}
 
-	if err = proc.Start(ctx); err != nil {
-		return c.continueOnErrorWhenSet(errors.Wrap(err, "problem starting background process"), logger.Execution())
+	if err := proc.Start(ctx); err != nil {
+		return errors.Wrap(err, "problem starting background process")
 	}
 	pid := proc.GetPid()
-	subprocess.TrackProcess(conf.Task.Id, pid, logger.System())
+	subprocess.TrackProcess(taskID, pid, logger.System())
 
 	if c.Background {
 		logger.Execution().Infof("started background process with pid %d", pid)
-
 		return nil
 	}
 	logger.Execution().Debugf("started foreground process with pid %d, waiting for completion", pid)
 
-	// The "shell.exec" command uses a thread and a channel and
-	// does some fancy cleanup work here to stop the command if
-	// the context is canceled. However, since that
-	// implementation, the os/exec package added a command+context
-	// that makes the following implementation possible:
-	return errors.Wrapf(proc.Wait(), "command with pid %s encountered error", pid)
-}
+	err := errors.Wrapf(proc.Wait(), "command with pid %s encountered error", pid)
 
-func (c *simpleExec) continueOnErrorWhenSet(err error, logger grip.Journaler) error {
 	if c.ContinueOnError {
-		logger.Notice(err)
+		logger.Execution.Notice(err)
 		return nil
 	}
 

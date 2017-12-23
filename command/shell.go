@@ -9,7 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -80,15 +82,24 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 // Execute starts the shell with its given parameters.
 func (c *shellExec) Execute(ctx context.Context,
 	_ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 
 	logger.Execution().Debug("Preparing script...")
 
-	wd, err := conf.GetWorkingDirectory(c.WorkingDir)
+	var err error
+
+	if err = c.doExpansions(conf.Expansions); err != nil {
+		logger.Execution().Warning(err.Error())
+		return errors.WithStack(err)
+	}
+
+	c.WorkingDir, err = conf.GetWorkingDirectory(c.WorkingDir)
 	if err != nil {
 		logger.Execution().Warning(err.Error())
 		return errors.WithStack(err)
 	}
-	c.WorkingDir = wd
 
 	var logWriterInfo io.WriteCloser
 	var logWriterErr io.WriteCloser
@@ -100,7 +111,6 @@ func (c *shellExec) Execute(ctx context.Context,
 		logWriterInfo = logger.TaskWriter(level.Info)
 		logWriterErr = logger.TaskWriter(level.Error)
 	}
-
 	defer logWriterInfo.Close()
 	defer logWriterErr.Close()
 
@@ -126,10 +136,6 @@ func (c *shellExec) Execute(ctx context.Context,
 		localCmd.Shell = c.Shell
 	}
 
-	if err = localCmd.PrepToRun(conf.Expansions); err != nil {
-		return errors.Wrap(err, "Failed to apply expansions")
-	}
-
 	if c.Silent {
 		logger.Execution().Infof("Executing script with %s (source hidden)...",
 			localCmd.Shell)
@@ -138,77 +144,46 @@ func (c *shellExec) Execute(ctx context.Context,
 			localCmd.Shell, localCmd.CmdString)
 	}
 
-	doneStatus := make(chan error)
-	go func() {
-		var err error
-		env := os.Environ()
-		env = append(env, fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
-			fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
-		localCmd.Environment = env
-		if ctx.Err() != nil {
-			return
-		}
+	localCmd.Environment = append(os.Environ(), fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
+		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
 
-		if err = localCmd.Start(ctx); err != nil {
-			logger.System().Debugf("error spawning shell process: %v", err)
-		} else {
-			logger.System().Debugf("spawned shell process with pid %d", localCmd.GetPid())
+	if err = localCmd.Start(ctx); err != nil {
+		logger.System().Debugf("error spawning shell process: %v", err)
+		return err
+	}
 
-			// Call the platform's process-tracking function. On some OSes this will be a noop,
-			// on others this may need to do some additional work to track the process so that
-			// it can be cleaned up later.
-			subprocess.TrackProcess(conf.Task.Id, localCmd.GetPid(), logger.System())
+	logger.System().Debugf("spawned shell process with pid %d", localCmd.GetPid())
 
-			if c.Background {
-				logger.Execution().Debug("running command in the background")
-				close(doneStatus)
-			} else {
-				select {
-				case doneStatus <- localCmd.Wait():
-					logger.System().Debugf("shell process %d completed", localCmd.GetPid())
-				case <-ctx.Done():
-					doneStatus <- localCmd.Stop()
-					logger.System().Infof("shell process %d terminated", localCmd.GetPid())
-				}
-			}
-		}
-	}()
+	// Call the platform's process-tracking function. On some OSes this will be a noop,
+	// on others this may need to do some additional work to track the process so that
+	// it can be cleaned up later.
+	subprocess.TrackProcess(conf.Task.Id, localCmd.GetPid(), logger.System())
 
-	select {
-	case err = <-doneStatus:
-		if err != nil {
-			if c.ContinueOnError {
-				logger.Execution().Infof("(ignoring) Script finished with error: %v", err)
-				return nil
-			}
+	if c.Background {
+		logger.Execution().Debug("running command in the background")
+		return
+	}
 
-			err = errors.Wrap(err, "script finished with error")
-			logger.Execution().Info(err)
-			return err
-		}
-
-		logger.Execution().Info("Script execution complete.")
-	case <-ctx.Done():
-		logger.Execution().Info("Got kill signal")
-
+	err = errors.Wrap(localCmd.Wait(), "command encountered problem")
+	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())
-
-		// need to check command has started
-		if pid := localCmd.GetPid(); pid > 0 {
-			logger.Execution().Infof("Stopping process: %d", pid)
-
-			// try and stop the process
-			if err := localCmd.Stop(); err != nil {
-
-				err = errors.Wrap(err, "error while stopping process")
-				logger.Execution().Error(err)
-				return err
-			}
-		}
-
+		logger.Execution().Notice(err)
 		return errors.New("shell command interrupted")
 	}
 
-	return nil
+	return err
+}
+
+func (c *shellExec) doExpansions(exp *util.Expansions) error {
+	catcher := grip.NewBasicCatcher()
+	var err error
+
+	c.WorkingDir, err = exp.ExpandString(c.WorkingDir)
+	catcher.Add(err)
+
+	c.Script, err = exp.ExpandString(c.Script)
+	catcher.Add(err)
+
+	return catcher.Resolve()
 }
