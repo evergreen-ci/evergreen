@@ -392,7 +392,18 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {
-			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+			var slackFallback send.Sender
+
+			switch len(senders) {
+			case 0:
+				slackFallback = fallback
+			case 1:
+				slackFallback = senders[0]
+			default:
+				slackFallback = send.NewConfiguredMultiSender(senders...)
+			}
+
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(slackFallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 

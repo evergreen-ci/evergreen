@@ -50,7 +50,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 	j.Host = h
 	j.Message = message
 	if err != nil {
-		j.OpError = ""
+		j.OpError = err.Error()
 		j.HasError = true
 	}
 
@@ -67,6 +67,7 @@ func (j *decoHostNotifyJob) Run() {
 	if j.Host.Provider != evergreen.HostTypeStatic {
 		// if this isn't a static host
 		m := message.Fields{
+			"operation":   decoHostNotifyJobName,
 			"message":     j.Message,
 			"distro":      j.Host.Distro.Id,
 			"provider":    j.Host.Provider,
@@ -97,6 +98,7 @@ func (j *decoHostNotifyJob) Run() {
 		j.AddError(err)
 
 		m := message.Fields{
+			"operation":   decoHostNotifyJobName,
 			"message":     j.Message,
 			"state":       "host disabled, jira ticket creation failed",
 			"distro":      j.Host.Distro.Id,
