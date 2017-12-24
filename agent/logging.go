@@ -69,7 +69,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 
 	if prefix == "" {
 		// pass
-	} else if prefix == evergreen.LocalLoggingOverride || prefix == "--" {
+	} else if prefix == evergreen.LocalLoggingOverride || prefix == "--" || prefix == evergreen.StandardOutputLoggingOverride {
 		sender, err = send.NewNativeLogger("evergreen.agent", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
 		if err != nil {
 			return nil, errors.Wrap(err, "problem creating a native console logger")
