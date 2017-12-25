@@ -36,6 +36,8 @@ type File struct {
 	Link string `json:"link" bson:"link"`
 	// Visibility determines who can see the file in the UI
 	Visibility string `json:"visibility" bson:"visibility"`
+	// When true, these artifacts are excluded from reproduction
+	IgnoreForRepro bool `bson:"repro_ignore,omitempty" json:"ignore_for_reproduction"`
 }
 
 // Array turns the parameter map into an array of File structs.
@@ -43,7 +45,10 @@ type File struct {
 func (params Params) Array() []File {
 	var files []File
 	for name, link := range params {
-		files = append(files, File{name, link, ""})
+		files = append(files, File{
+			Name: name,
+			Link: link,
+		})
 	}
 	return files
 }
