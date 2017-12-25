@@ -121,6 +121,18 @@ variables:
       - func: set-up-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
+  - &run-smoke-test
+    name: smoke
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-mongodb
+      - func: set-up-smoke-test
+      - func: run-make
+        vars:
+          target: "${task_name}"
   - &version-constants
     nodejs_version: "6.11.1"
 
@@ -242,6 +254,13 @@ functions:
             github_token: "${github_token}"
         github_pr_creator_org: "10gen"
         EOF
+
+        cat >> gopath/src/github.com/evergreen-ci/evergreen/testdata/smoke_config.yml <<EOF
+        credentials: {
+          github: "${github_token}",
+        }
+        EOF
+
   set-up-mongodb:
     - command: shell.exec
       type: system
@@ -285,20 +304,8 @@ functions:
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
           echo "mongod is up."
   set-up-smoke-test:
-    - command: shell.exec
-      type: system
-      params:
-        shell: bash
-        script: |
-          set -o xtrace
-          set -o errexit
-
-          cp mongodb/mongoimport gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
-          cd gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_test
-          for fn in *.json; do
-            collection=$(echo $fn | cut -f 1 -d '.')
-            ./mongoimport --db mci --collection $collection --file $fn
-          done
+    - func: run-make
+      vars: { target: "set-project-var" }
     - command: shell.exec
       params:
         silent: true
@@ -306,19 +313,11 @@ functions:
         script: |
           set -o errexit
 
-          pushd mongodb
-          ./mongo mci --eval 'db.project_vars.update({"_id": "evergreen"}, {"$set": {"vars.aws_key": "${aws_key}"}})'
-          ./mongo mci --eval 'db.project_vars.update({"_id": "evergreen"}, {"$set": {"vars.aws_secret": "${aws_secret}"}})'
-          popd
+          ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
+          ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
 
           # matches agent_revision in hosts.json
-          echo "foo" > gopath/src/github.com/evergreen-ci/evergreen/clients/version
-
-          cat >> gopath/src/github.com/evergreen-ci/evergreen/scripts/smoke_config.yml <<EOF
-          credentials: {
-            github: "${github_token}",
-          }
-          EOF
+          echo "foo" >| gopath/src/github.com/evergreen-ci/evergreen/clients/version
 
 #######################################
 #                Tasks                #
@@ -370,78 +369,13 @@ tasks:
           content_type: application/x-gzip
           permissions: public-read
           display_name: dist-test-${distro_id}.tar.gz
-  - name: smoke-test-endpoints
+  - <<: *run-smoke-test
+    name: smoke-test-task
     tags: ["smoke"]
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: set-up-mongodb
-      - func: run-make
-        vars:
-          target: "build"
-      - func: set-up-smoke-test
-      - command: shell.exec
-        params:
-          shell: bash
-          working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          background: true
-          script: |
-            set -o xtrace
-            set -o errexit
-
-            ./clients/linux_amd64/evergreen service deploy start-evergreen --web --binary ./clients/linux_amd64/evergreen
-      - command: shell.exec
-        params:
-          shell: bash
-          working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          script: |
-            set -o xtrace
-            set -o errexit
-
-            ./clients/linux_amd64/evergreen service deploy test-endpoints
-  - name: smoke-test-task
+  - <<: *run-smoke-test
+    name: smoke-test-endpoints
     tags: ["smoke"]
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: set-up-mongodb
-      - func: run-make
-        vars:
-          target: "build"
-      - func: set-up-smoke-test
-      - command: shell.exec
-        params:
-          shell: bash
-          working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          background: true
-          script: |
-            set -o xtrace
-            set -o errexit
 
-            ./clients/linux_amd64/evergreen service deploy start-evergreen --web --runner --binary ./clients/linux_amd64/evergreen
-      - command: shell.exec
-        params:
-          shell: bash
-          working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          background: true
-          script: |
-            set -o xtrace
-            set -o errexit
-
-            ./clients/linux_amd64/evergreen service deploy start-evergreen --agent --binary ./clients/linux_amd64/evergreen
-      - command: shell.exec
-        params:
-          working_dir: gopath/src/github.com/evergreen-ci/evergreen
-          shell: bash
-          script: |
-            set -o xtrace
-            set -o errexit
-
-            ./clients/linux_amd64/evergreen service deploy test-endpoints --commit ${revision} --username admin --key abb623665fdbf368a1db980dde6ee0f0
   - <<: *run-go-test-suite
     name: js-test
   - <<: *run-build

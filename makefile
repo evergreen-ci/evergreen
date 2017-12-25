@@ -70,10 +70,11 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 
 # start rules for building services and clients
 ifeq ($(OS),Windows_NT)
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
 else
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
+cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
@@ -86,6 +87,27 @@ $(buildDir)/test.agent $(buildDir)/race.agent:$(clientBuildDir)/version
 $(buildDir)/test.proto $(buildDir)/race.proto:$(clientBuildDir)/version
 # end client build directives
 
+
+# start smoke test specific rules
+$(buildDir)/load-smoke-data:scripts/load-smoke-data.go
+	go build -o $@ $<
+$(buildDir)/set-project-var:scripts/set-project-var.go
+	go build -o $@ $<
+set-project-var:$(buildDir)/load-smoke-data
+load-smoke-data:$(buildDir)/.load-smoke-data
+$(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
+	./$<
+	@touch $@
+smoke-test-task:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --runner --binary ./$< &
+	./$< service deploy start-evergreen --agent --binary ./$< &
+	./$< service deploy test-endpoints --commit $(currentHash) --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	killall $<
+smoke-test-endpoints:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --binary ./$< &
+	./$< service deploy test-endpoints
+	killall $<
+# end smoke test rules
 
 ######################################################################
 ##

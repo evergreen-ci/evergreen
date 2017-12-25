@@ -44,7 +44,7 @@ func smokeStartEvergreen() cli.Command {
 	wd, err := os.Getwd()
 
 	binary := filepath.Join(wd, "clients", runtime.GOOS+"_"+runtime.GOARCH, "evergreen")
-	confPath := filepath.Join(wd, "scripts", "smoke_config.yml")
+	confPath := filepath.Join(wd, "testdata", "smoke_config.yml")
 
 	return cli.Command{
 		Name:    "start-evergreen",
