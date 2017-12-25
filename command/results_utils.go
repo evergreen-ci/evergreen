@@ -19,7 +19,7 @@ func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
 
 	for i, res := range results.Results {
 		if ctx.Err() != nil {
-			return errors.Errorf("operation canceled after uploading ")
+			return errors.Errorf("operation canceled during uploading")
 		}
 
 		if res.LogRaw != "" {
