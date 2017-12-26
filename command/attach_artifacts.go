@@ -54,11 +54,12 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 
 	if len(c.Files) < 1 {
 		err = errors.New("expanded file specification had no items")
-		logger.Execution().Error(err)
+		logger.Task().Error(err)
 		return err
 	}
 
 	catcher := grip.NewBasicCatcher()
+	missedSegments := 0
 	files := []*artifact.File{}
 	var segment []*artifact.File
 	for idx := range c.Files {
@@ -69,6 +70,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		}
 
 		if segment == nil {
+			missedSegments++
 			continue
 		}
 
@@ -77,12 +79,16 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 
 	if catcher.HasErrors() {
 		err = errors.Wrap(catcher.Resolve(), "encountered errors reading artifact json files")
-		logger.Execution().Error(err)
+		logger.Task().Error(err)
 		return err
 	}
 
+	if missedSegments > 0 {
+		logger.Task().Noticef("encountered %d empty file definitions", missedSegments)
+	}
+
 	if len(files) == 0 {
-		logger.Execution().Warning("no artifacts defined")
+		logger.Task().Warning("no artifacts defined")
 		return nil
 	}
 
@@ -91,7 +97,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "attach artifacts failed")
 	}
 
-	logger.Execution().Infof("'$s' attached %d resources to task", c.Name(), len(files))
+	logger.Task().Infof("$s attached %d resources to task", c.Name(), len(files))
 	return nil
 }
 
