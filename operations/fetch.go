@@ -396,7 +396,7 @@ func getUrlsChannel(rc *legacyClient, seed *service.RestTask, shallow bool) (cha
 	go func() {
 		for _, t := range allTasks {
 			for _, f := range t.Files {
-				if f.IgnoreForRepro {
+				if f.IgnoreForFetch {
 					continue
 				}
 

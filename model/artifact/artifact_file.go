@@ -37,7 +37,7 @@ type File struct {
 	// Visibility determines who can see the file in the UI
 	Visibility string `json:"visibility" bson:"visibility"`
 	// When true, these artifacts are excluded from reproduction
-	IgnoreForRepro bool `bson:"repro_ignore,omitempty" json:"ignore_for_reproduction"`
+	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
 }
 
 // Array turns the parameter map into an array of File structs.

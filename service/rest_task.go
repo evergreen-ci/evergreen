@@ -76,7 +76,7 @@ type taskTestLogURL struct {
 type taskFile struct {
 	Name           string `json:"name"`
 	URL            string `json:"url"`
-	IgnoreForRepro bool   `json:"ignore_for_reproduction"`
+	IgnoreForFetch bool   `json:"ignore_for_fetch"`
 }
 
 type taskTestResultsByName map[string]taskTestResult
