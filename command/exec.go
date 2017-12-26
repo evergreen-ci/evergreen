@@ -19,11 +19,10 @@ import (
 )
 
 type simpleExec struct {
-	CommandName string            `mapstructure:"command_name"`
-	Args        []string          `mapstructure:"args"`
-	Env         map[string]string `mapstructure:"env"`
-
-	Command string `mapstructure:"command"`
+	Binary  string            `mapstructure:"binary"`
+	Args    []string          `mapstructure:"args"`
+	Env     map[string]string `mapstructure:"env"`
+	Command string            `mapstructure:"command"`
 
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
@@ -66,11 +65,11 @@ func (c *simpleExec) Name() string { return "simple.exec" }
 func (c *simpleExec) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
-		return errors.Wrapf(err, "error decoding %v params", c.Name())
+		return errors.Wrapf(err, "error decoding %s params", c.Name())
 	}
 
 	if c.Command != "" {
-		if c.CommandName != "" || len(c.Args) > 0 {
+		if c.Binary != "" || len(c.Args) > 0 {
 			return errors.New("must specify command as either arguments or a command string but not both")
 		}
 
@@ -79,7 +78,7 @@ func (c *simpleExec) ParseParams(params map[string]interface{}) error {
 			return errors.Wrap(err, "problem parsing shell command")
 		}
 
-		c.CommandName = args[0]
+		c.Binary = args[0]
 		if len(args) > 1 {
 			c.Args = args[1:]
 		}
@@ -108,7 +107,7 @@ func (c *simpleExec) doExpansions(exp *util.Expansions) error {
 	c.WorkingDir, err = exp.ExpandString(c.WorkingDir)
 	catcher.Add(err)
 
-	c.CommandName, err = exp.ExpandString(c.CommandName)
+	c.Binary, err = exp.ExpandString(c.Binary)
 	catcher.Add(err)
 
 	for idx := range c.Args {
@@ -128,7 +127,7 @@ func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subpr
 	c.Env[subprocess.MarkerTaskID] = taskID
 	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
-	proc, err := subprocess.NewLocalExec(c.CommandName, c.Args, c.Env, c.WorkingDir)
+	proc, err := subprocess.NewLocalExec(c.Binary, c.Args, c.Env, c.WorkingDir)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "problem constructing command wrapper")
 	}
