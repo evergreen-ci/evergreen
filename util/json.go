@@ -17,3 +17,12 @@ func ReadJSONInto(r io.ReadCloser, data interface{}) error {
 	}
 	return json.Unmarshal(bytes, data)
 }
+
+func WriteJSONInto(fn string, data interface{}) error {
+	out, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrap(err, "problem writing JSON")
+	}
+
+	return errors.Wrap(ioutil.WriteFile(fn, out, 0667), "problem writing data")
+}

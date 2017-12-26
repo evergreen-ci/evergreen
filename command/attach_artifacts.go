@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -46,8 +47,14 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 
 	c.Files, err = util.BuildFileList(conf.WorkDir, c.Files...)
 	if err != nil {
-		err = errors.Wrap(err, "problem finding wildcard paths")
+		err = errors.Wrap(err, "problem building wildcard paths")
 		logger.Task().Error(err)
+		return err
+	}
+
+	if len(c.Files) < 1 {
+		err = errors.New("expanded file specification had no items")
+		logger.Execution().Error(err)
 		return err
 	}
 
@@ -55,7 +62,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	files := []*artifact.File{}
 	var segment []*artifact.File
 	for idx := range c.Files {
-		segment, err = readArtifactsFile(c.Files[idx])
+		segment, err = readArtifactsFile(conf.WorkDir, c.Files[idx])
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -88,7 +95,11 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	return nil
 }
 
-func readArtifactsFile(fn string) ([]*artifact.File, error) {
+func readArtifactsFile(wd, fn string) ([]*artifact.File, error) {
+	if !filepath.IsAbs(fn) {
+		fn = filepath.Join(wd, fn)
+	}
+
 	file, err := os.Open(fn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem opening file '%s'", fn)
@@ -97,7 +108,7 @@ func readArtifactsFile(fn string) ([]*artifact.File, error) {
 
 	out := []*artifact.File{}
 
-	if err = util.ReadJSONInto(file, out); err != nil {
+	if err = util.ReadJSONInto(file, &out); err != nil {
 		return nil, errors.Wrapf(err, "problem reading JSON from file '%s'", fn)
 	}
 
