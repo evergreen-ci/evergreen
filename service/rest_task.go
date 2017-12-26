@@ -49,7 +49,7 @@ type RestTask struct {
 	Aborted             bool                  `json:"aborted"`
 	TimeTaken           time.Duration         `json:"time_taken"`
 	ExpectedDuration    time.Duration         `json:"expected_duration"`
-	LocalTestResults         taskTestResultsByName `json:"test_results"`
+	LocalTestResults    taskTestResultsByName `json:"test_results"`
 	MinQueuePos         int                   `json:"min_queue_pos"`
 	PatchNumber         int                   `json:"patch_number,omitempty"`
 	PatchId             string                `json:"patch_id,omitempty"`
@@ -74,8 +74,9 @@ type taskTestLogURL struct {
 }
 
 type taskFile struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	IgnoreForFetch bool   `json:"ignore_for_fetch"`
 }
 
 type taskTestResultsByName map[string]taskTestResult

@@ -396,6 +396,10 @@ func getUrlsChannel(rc *legacyClient, seed *service.RestTask, shallow bool) (cha
 	go func() {
 		for _, t := range allTasks {
 			for _, f := range t.Files {
+				if f.IgnoreForFetch {
+					continue
+				}
+
 				directoryName := getArtifactFolderName(t)
 				urls <- artifactDownload{f.URL, directoryName}
 			}
