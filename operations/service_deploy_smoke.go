@@ -104,7 +104,7 @@ func smokeStartEvergreen() cli.Command {
 					"--host_id", hostId,
 					"--host_secret", hostSecret,
 					"--api_server", smokeUrlPrefix+apiPort,
-					"--log_prefix", evergreen.LocalLoggingOverride,
+					"--log_prefix", evergreen.StandardOutputLoggingOverride,
 					"--status_port", statusPort,
 					"--working_directory", wd)
 

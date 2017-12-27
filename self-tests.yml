@@ -256,6 +256,7 @@ functions:
         EOF
 
         cat >> gopath/src/github.com/evergreen-ci/evergreen/testdata/smoke_config.yml <<EOF
+        log_path: "STDOUT"
         credentials: {
           github: "${github_token}",
         }
@@ -318,6 +319,7 @@ functions:
 
           # matches agent_revision in hosts.json
           echo "foo" >| gopath/src/github.com/evergreen-ci/evergreen/clients/version
+
 
 #######################################
 #                Tasks                #

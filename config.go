@@ -331,31 +331,32 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 		return nil, errors.Wrap(err, "problem configuring err fallback logger")
 	}
 
-	if s.LogPath == LocalLoggingOverride {
+	// setup the base/default logger (generaly direct to systemd
+	// or standard output)
+	switch s.LogPath {
+	case LocalLoggingOverride:
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-		if err = sender.SetLevel(levelInfo); err != nil {
-			return nil, errors.Wrap(err, "problem setting level")
-		}
-		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-			return nil, errors.Wrap(err, "problem setting error handler")
-		}
-	} else {
+	case StandardOutputLoggingOverride, "":
+		sender = send.MakeNative()
+	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
-		if err = sender.SetLevel(levelInfo); err != nil {
-			return nil, errors.Wrap(err, "problem setting level")
-		}
-		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-			return nil, errors.Wrap(err, "problem setting error handler")
-		}
+	}
+
+	if err = sender.SetLevel(levelInfo); err != nil {
+		return nil, errors.Wrap(err, "problem setting level")
+	}
+	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+		return nil, errors.Wrap(err, "problem setting error handler")
 	}
 	senders = append(senders, sender)
 
 	// set up external log aggregation services:
+	//
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
@@ -388,6 +389,7 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 		}
 	}
 
+	// the slack logging service is only for logging very high level alerts.
 	if s.Slack.Token != "" {
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})

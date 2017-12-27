@@ -81,8 +81,11 @@ const (
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
-	EvergreenHome        = "EVGHOME"
-	LocalLoggingOverride = "LOCAL"
+	EvergreenHome = "EVGHOME"
+
+	// Special logging output targets
+	LocalLoggingOverride          = "LOCAL"
+	StandardOutputLoggingOverride = "STDOUT"
 
 	DefaultTaskActivator   = ""
 	StepbackTaskActivator  = "stepback"
