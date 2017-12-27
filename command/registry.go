@@ -20,6 +20,7 @@ func init() {
 		"archive.targz_pack":    tarballCreateFactory,
 		"attach.results":        attachResultsFactory,
 		"attach.xunit_results":  xunitResultsFactory,
+		"attach.artifacts":      attachArtifactsFactory,
 		"expansions.fetch_vars": fetchVarsFactory,
 		"expansions.update":     updateExpansionsFactory,
 		"git.apply_patch":       gitApplyPatchFactory,
