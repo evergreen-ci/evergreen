@@ -6,7 +6,8 @@
     "protocol":"rest-json",
     "serviceAbbreviation":"EFS",
     "serviceFullName":"Amazon Elastic File System",
-    "signatureVersion":"v4"
+    "signatureVersion":"v4",
+    "uid":"elasticfilesystem-2015-02-01"
   },
   "operations":{
     "CreateFileSystem":{
@@ -204,7 +205,9 @@
       "required":["CreationToken"],
       "members":{
         "CreationToken":{"shape":"CreationToken"},
-        "PerformanceMode":{"shape":"PerformanceMode"}
+        "PerformanceMode":{"shape":"PerformanceMode"},
+        "Encrypted":{"shape":"Encrypted"},
+        "KmsKeyId":{"shape":"KmsKeyId"}
       }
     },
     "CreateMountTargetRequest":{
@@ -401,6 +404,7 @@
         "NextMarker":{"shape":"Marker"}
       }
     },
+    "Encrypted":{"type":"boolean"},
     "ErrorCode":{
       "type":"string",
       "min":1
@@ -441,7 +445,9 @@
         "Name":{"shape":"TagValue"},
         "NumberOfMountTargets":{"shape":"MountTargetCount"},
         "SizeInBytes":{"shape":"FileSystemSize"},
-        "PerformanceMode":{"shape":"PerformanceMode"}
+        "PerformanceMode":{"shape":"PerformanceMode"},
+        "Encrypted":{"shape":"Encrypted"},
+        "KmsKeyId":{"shape":"KmsKeyId"}
       }
     },
     "FileSystemDescriptions":{
@@ -531,6 +537,11 @@
       },
       "error":{"httpStatusCode":409},
       "exception":true
+    },
+    "KmsKeyId":{
+      "type":"string",
+      "max":2048,
+      "min":1
     },
     "LifeCycleState":{
       "type":"string",

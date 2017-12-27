@@ -6,6 +6,7 @@
     "protocol":"query",
     "serviceFullName":"Amazon ElastiCache",
     "signatureVersion":"v4",
+    "uid":"elasticache-2015-02-02",
     "xmlNamespace":"http://elasticache.amazonaws.com/doc/2015-02-02/"
   },
   "operations":{
@@ -173,6 +174,7 @@
         {"shape":"CacheParameterGroupNotFoundFault"},
         {"shape":"InvalidVPCNetworkStateFault"},
         {"shape":"TagQuotaPerResourceExceeded"},
+        {"shape":"NodeGroupsPerReplicationGroupQuotaExceededFault"},
         {"shape":"InvalidParameterValueException"},
         {"shape":"InvalidParameterCombinationException"}
       ]
@@ -191,7 +193,9 @@
       "errors":[
         {"shape":"SnapshotAlreadyExistsFault"},
         {"shape":"CacheClusterNotFoundFault"},
+        {"shape":"ReplicationGroupNotFoundFault"},
         {"shape":"InvalidCacheClusterStateFault"},
+        {"shape":"InvalidReplicationGroupStateFault"},
         {"shape":"SnapshotQuotaExceededFault"},
         {"shape":"SnapshotFeatureNotSupportedFault"},
         {"shape":"InvalidParameterCombinationException"},
@@ -617,6 +621,29 @@
         {"shape":"InvalidParameterCombinationException"}
       ]
     },
+    "ModifyReplicationGroupShardConfiguration":{
+      "name":"ModifyReplicationGroupShardConfiguration",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"ModifyReplicationGroupShardConfigurationMessage"},
+      "output":{
+        "shape":"ModifyReplicationGroupShardConfigurationResult",
+        "resultWrapper":"ModifyReplicationGroupShardConfigurationResult"
+      },
+      "errors":[
+        {"shape":"ReplicationGroupNotFoundFault"},
+        {"shape":"InvalidReplicationGroupStateFault"},
+        {"shape":"InvalidCacheClusterStateFault"},
+        {"shape":"InvalidVPCNetworkStateFault"},
+        {"shape":"InsufficientCacheClusterCapacityFault"},
+        {"shape":"NodeGroupsPerReplicationGroupQuotaExceededFault"},
+        {"shape":"NodeQuotaForCustomerExceededFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"InvalidParameterCombinationException"}
+      ]
+    },
     "PurchaseReservedCacheNodesOffering":{
       "name":"PurchaseReservedCacheNodesOffering",
       "http":{
@@ -706,9 +733,42 @@
         {"shape":"InvalidParameterValueException"},
         {"shape":"InvalidParameterCombinationException"}
       ]
+    },
+    "TestFailover":{
+      "name":"TestFailover",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"TestFailoverMessage"},
+      "output":{
+        "shape":"TestFailoverResult",
+        "resultWrapper":"TestFailoverResult"
+      },
+      "errors":[
+        {"shape":"APICallRateForCustomerExceededFault"},
+        {"shape":"InvalidCacheClusterStateFault"},
+        {"shape":"InvalidReplicationGroupStateFault"},
+        {"shape":"NodeGroupNotFoundFault"},
+        {"shape":"ReplicationGroupNotFoundFault"},
+        {"shape":"TestFailoverNotAvailableFault"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"InvalidParameterCombinationException"}
+      ]
     }
   },
   "shapes":{
+    "APICallRateForCustomerExceededFault":{
+      "type":"structure",
+      "members":{
+      },
+      "error":{
+        "code":"APICallRateForCustomerExceeded",
+        "httpStatusCode":400,
+        "senderFault":true
+      },
+      "exception":true
+    },
     "AZMode":{
       "type":"string",
       "enum":[
@@ -824,7 +884,10 @@
         "SecurityGroups":{"shape":"SecurityGroupMembershipList"},
         "ReplicationGroupId":{"shape":"String"},
         "SnapshotRetentionLimit":{"shape":"IntegerOptional"},
-        "SnapshotWindow":{"shape":"String"}
+        "SnapshotWindow":{"shape":"String"},
+        "AuthTokenEnabled":{"shape":"BooleanOptional"},
+        "TransitEncryptionEnabled":{"shape":"BooleanOptional"},
+        "AtRestEncryptionEnabled":{"shape":"BooleanOptional"}
       },
       "wrapper":true
     },
@@ -1252,7 +1315,8 @@
         "NotificationTopicArn":{"shape":"String"},
         "AutoMinorVersionUpgrade":{"shape":"BooleanOptional"},
         "SnapshotRetentionLimit":{"shape":"IntegerOptional"},
-        "SnapshotWindow":{"shape":"String"}
+        "SnapshotWindow":{"shape":"String"},
+        "AuthToken":{"shape":"String"}
       }
     },
     "CreateCacheClusterResult":{
@@ -1329,6 +1393,9 @@
         "AutomaticFailoverEnabled":{"shape":"BooleanOptional"},
         "NumCacheClusters":{"shape":"IntegerOptional"},
         "PreferredCacheClusterAZs":{"shape":"AvailabilityZonesList"},
+        "NumNodeGroups":{"shape":"IntegerOptional"},
+        "ReplicasPerNodeGroup":{"shape":"IntegerOptional"},
+        "NodeGroupConfiguration":{"shape":"NodeGroupConfigurationList"},
         "CacheNodeType":{"shape":"String"},
         "Engine":{"shape":"String"},
         "EngineVersion":{"shape":"String"},
@@ -1344,7 +1411,10 @@
         "NotificationTopicArn":{"shape":"String"},
         "AutoMinorVersionUpgrade":{"shape":"BooleanOptional"},
         "SnapshotRetentionLimit":{"shape":"IntegerOptional"},
-        "SnapshotWindow":{"shape":"String"}
+        "SnapshotWindow":{"shape":"String"},
+        "AuthToken":{"shape":"String"},
+        "TransitEncryptionEnabled":{"shape":"BooleanOptional"},
+        "AtRestEncryptionEnabled":{"shape":"BooleanOptional"}
       }
     },
     "CreateReplicationGroupResult":{
@@ -1355,11 +1425,9 @@
     },
     "CreateSnapshotMessage":{
       "type":"structure",
-      "required":[
-        "CacheClusterId",
-        "SnapshotName"
-      ],
+      "required":["SnapshotName"],
       "members":{
+        "ReplicationGroupId":{"shape":"String"},
         "CacheClusterId":{"shape":"String"},
         "SnapshotName":{"shape":"String"}
       }
@@ -1439,7 +1507,8 @@
         "CacheClusterId":{"shape":"String"},
         "MaxRecords":{"shape":"IntegerOptional"},
         "Marker":{"shape":"String"},
-        "ShowCacheNodeInfo":{"shape":"BooleanOptional"}
+        "ShowCacheNodeInfo":{"shape":"BooleanOptional"},
+        "ShowCacheClustersNotInReplicationGroups":{"shape":"BooleanOptional"}
       }
     },
     "DescribeCacheEngineVersionsMessage":{
@@ -1557,11 +1626,13 @@
     "DescribeSnapshotsMessage":{
       "type":"structure",
       "members":{
+        "ReplicationGroupId":{"shape":"String"},
         "CacheClusterId":{"shape":"String"},
         "SnapshotName":{"shape":"String"},
         "SnapshotSource":{"shape":"String"},
         "Marker":{"shape":"String"},
-        "MaxRecords":{"shape":"IntegerOptional"}
+        "MaxRecords":{"shape":"IntegerOptional"},
+        "ShowNodeGroupConfig":{"shape":"BooleanOptional"}
       }
     },
     "Double":{"type":"double"},
@@ -1838,10 +1909,32 @@
         "AutoMinorVersionUpgrade":{"shape":"BooleanOptional"},
         "SnapshotRetentionLimit":{"shape":"IntegerOptional"},
         "SnapshotWindow":{"shape":"String"},
-        "CacheNodeType":{"shape":"String"}
+        "CacheNodeType":{"shape":"String"},
+        "NodeGroupId":{"shape":"String"}
       }
     },
     "ModifyReplicationGroupResult":{
+      "type":"structure",
+      "members":{
+        "ReplicationGroup":{"shape":"ReplicationGroup"}
+      }
+    },
+    "ModifyReplicationGroupShardConfigurationMessage":{
+      "type":"structure",
+      "required":[
+        "ReplicationGroupId",
+        "NodeGroupCount",
+        "ApplyImmediately"
+      ],
+      "members":{
+        "ReplicationGroupId":{"shape":"String"},
+        "NodeGroupCount":{"shape":"Integer"},
+        "ApplyImmediately":{"shape":"Boolean"},
+        "ReshardingConfiguration":{"shape":"ReshardingConfigurationList"},
+        "NodeGroupsToRemove":{"shape":"NodeGroupsToRemoveList"}
+      }
+    },
+    "ModifyReplicationGroupShardConfigurationResult":{
       "type":"structure",
       "members":{
         "ReplicationGroup":{"shape":"ReplicationGroup"}
@@ -1853,7 +1946,24 @@
         "NodeGroupId":{"shape":"String"},
         "Status":{"shape":"String"},
         "PrimaryEndpoint":{"shape":"Endpoint"},
+        "Slots":{"shape":"String"},
         "NodeGroupMembers":{"shape":"NodeGroupMemberList"}
+      }
+    },
+    "NodeGroupConfiguration":{
+      "type":"structure",
+      "members":{
+        "Slots":{"shape":"String"},
+        "ReplicaCount":{"shape":"IntegerOptional"},
+        "PrimaryAvailabilityZone":{"shape":"String"},
+        "ReplicaAvailabilityZones":{"shape":"AvailabilityZonesList"}
+      }
+    },
+    "NodeGroupConfigurationList":{
+      "type":"list",
+      "member":{
+        "shape":"NodeGroupConfiguration",
+        "locationName":"NodeGroupConfiguration"
       }
     },
     "NodeGroupList":{
@@ -1878,6 +1988,35 @@
       "member":{
         "shape":"NodeGroupMember",
         "locationName":"NodeGroupMember"
+      }
+    },
+    "NodeGroupNotFoundFault":{
+      "type":"structure",
+      "members":{
+      },
+      "error":{
+        "code":"NodeGroupNotFoundFault",
+        "httpStatusCode":404,
+        "senderFault":true
+      },
+      "exception":true
+    },
+    "NodeGroupsPerReplicationGroupQuotaExceededFault":{
+      "type":"structure",
+      "members":{
+      },
+      "error":{
+        "code":"NodeGroupsPerReplicationGroupQuotaExceeded",
+        "httpStatusCode":400,
+        "senderFault":true
+      },
+      "exception":true
+    },
+    "NodeGroupsToRemoveList":{
+      "type":"list",
+      "member":{
+        "shape":"String",
+        "locationName":"NodeGroupToRemove"
       }
     },
     "NodeQuotaForClusterExceededFault":{
@@ -1905,7 +2044,10 @@
     "NodeSnapshot":{
       "type":"structure",
       "members":{
+        "CacheClusterId":{"shape":"String"},
+        "NodeGroupId":{"shape":"String"},
         "CacheNodeId":{"shape":"String"},
+        "NodeGroupConfiguration":{"shape":"NodeGroupConfiguration"},
         "CacheSize":{"shape":"String"},
         "CacheNodeCreateTime":{"shape":"TStamp"},
         "SnapshotCreateTime":{"shape":"TStamp"}
@@ -2056,7 +2198,15 @@
         "MemberClusters":{"shape":"ClusterIdList"},
         "NodeGroups":{"shape":"NodeGroupList"},
         "SnapshottingClusterId":{"shape":"String"},
-        "AutomaticFailover":{"shape":"AutomaticFailoverStatus"}
+        "AutomaticFailover":{"shape":"AutomaticFailoverStatus"},
+        "ConfigurationEndpoint":{"shape":"Endpoint"},
+        "SnapshotRetentionLimit":{"shape":"IntegerOptional"},
+        "SnapshotWindow":{"shape":"String"},
+        "ClusterEnabled":{"shape":"BooleanOptional"},
+        "CacheNodeType":{"shape":"String"},
+        "AuthTokenEnabled":{"shape":"BooleanOptional"},
+        "TransitEncryptionEnabled":{"shape":"BooleanOptional"},
+        "AtRestEncryptionEnabled":{"shape":"BooleanOptional"}
       },
       "wrapper":true
     },
@@ -2100,7 +2250,8 @@
       "type":"structure",
       "members":{
         "PrimaryClusterId":{"shape":"String"},
-        "AutomaticFailoverStatus":{"shape":"PendingAutomaticFailoverStatus"}
+        "AutomaticFailoverStatus":{"shape":"PendingAutomaticFailoverStatus"},
+        "Resharding":{"shape":"ReshardingStatus"}
       }
     },
     "ReservedCacheNode":{
@@ -2216,6 +2367,25 @@
         "ParameterNameValues":{"shape":"ParameterNameValueList"}
       }
     },
+    "ReshardingConfiguration":{
+      "type":"structure",
+      "members":{
+        "PreferredAvailabilityZones":{"shape":"AvailabilityZonesList"}
+      }
+    },
+    "ReshardingConfigurationList":{
+      "type":"list",
+      "member":{
+        "shape":"ReshardingConfiguration",
+        "locationName":"ReshardingConfiguration"
+      }
+    },
+    "ReshardingStatus":{
+      "type":"structure",
+      "members":{
+        "SlotMigration":{"shape":"SlotMigration"}
+      }
+    },
     "RevokeCacheSecurityGroupIngressMessage":{
       "type":"structure",
       "required":[
@@ -2253,10 +2423,18 @@
       "type":"list",
       "member":{"shape":"SecurityGroupMembership"}
     },
+    "SlotMigration":{
+      "type":"structure",
+      "members":{
+        "ProgressPercentage":{"shape":"Double"}
+      }
+    },
     "Snapshot":{
       "type":"structure",
       "members":{
         "SnapshotName":{"shape":"String"},
+        "ReplicationGroupId":{"shape":"String"},
+        "ReplicationGroupDescription":{"shape":"String"},
         "CacheClusterId":{"shape":"String"},
         "SnapshotStatus":{"shape":"String"},
         "SnapshotSource":{"shape":"String"},
@@ -2275,6 +2453,8 @@
         "AutoMinorVersionUpgrade":{"shape":"Boolean"},
         "SnapshotRetentionLimit":{"shape":"IntegerOptional"},
         "SnapshotWindow":{"shape":"String"},
+        "NumNodeGroups":{"shape":"IntegerOptional"},
+        "AutomaticFailover":{"shape":"AutomaticFailoverStatus"},
         "NodeSnapshots":{"shape":"NodeSnapshotList"}
       },
       "wrapper":true
@@ -2343,7 +2523,8 @@
         "cache-cluster",
         "cache-parameter-group",
         "cache-security-group",
-        "cache-subnet-group"
+        "cache-subnet-group",
+        "replication-group"
       ]
     },
     "String":{"type":"string"},
@@ -2421,6 +2602,34 @@
         "senderFault":true
       },
       "exception":true
+    },
+    "TestFailoverMessage":{
+      "type":"structure",
+      "required":[
+        "ReplicationGroupId",
+        "NodeGroupId"
+      ],
+      "members":{
+        "ReplicationGroupId":{"shape":"String"},
+        "NodeGroupId":{"shape":"String"}
+      }
+    },
+    "TestFailoverNotAvailableFault":{
+      "type":"structure",
+      "members":{
+      },
+      "error":{
+        "code":"TestFailoverNotAvailableFault",
+        "httpStatusCode":400,
+        "senderFault":true
+      },
+      "exception":true
+    },
+    "TestFailoverResult":{
+      "type":"structure",
+      "members":{
+        "ReplicationGroup":{"shape":"ReplicationGroup"}
+      }
     }
   }
 }
