@@ -39,6 +39,12 @@ type AWSClient interface {
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
 	CancelSpotInstanceRequests(*ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
+
+	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
+	DescribeVolumes(*ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
+
+	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
+	DescribeSpotPriceHistory(*ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -82,6 +88,8 @@ type awsClientMock struct {
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
 	*ec2.CancelSpotInstanceRequestsInput
+	*ec2.DescribeVolumesInput
+	*ec2.DescribeSpotPriceHistoryInput
 }
 
 // Create a new mock client.
@@ -170,4 +178,16 @@ func (c *awsClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 func (c *awsClientMock) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	c.CancelSpotInstanceRequestsInput = input
 	return nil, nil
+}
+
+// DescribeVolumes is a mock for ec2.DescribeVolumes.
+func (c *awsClientMock) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
+	c.DescribeVolumesInput = input
+	return &ec2.DescribeVolumesOutput{}, nil
+}
+
+// DescribeSpotPriceHistory is a mock for ec2.DescribeSpotPriceHistory.
+func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
+	c.DescribeSpotPriceHistoryInput = input
+	return &ec2.DescribeSpotPriceHistoryOutput{}, nil
 }
