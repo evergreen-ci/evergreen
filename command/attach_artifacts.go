@@ -52,7 +52,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return err
 	}
 
-	if len(c.Files) < 1 {
+	if len(c.Files) == 0 {
 		err = errors.New("expanded file specification had no items")
 		logger.Task().Error(err)
 		return err
@@ -97,7 +97,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 		return errors.Wrap(err, "attach artifacts failed")
 	}
 
-	logger.Task().Infof("$s attached %d resources to task", c.Name(), len(files))
+	logger.Task().Infof("'%s' attached %d resources to task", c.Name(), len(files))
 	return nil
 }
 
