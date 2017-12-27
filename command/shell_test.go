@@ -17,14 +17,14 @@ import (
 )
 
 type shellExecuteCommandSuite struct {
-	suite.Suite
-	cancel func()
+	ctx    context.Context
+	cancel context.CancelFunc
 	conf   *model.TaskConfig
 	comm   client.Communicator
 	logger client.LoggerProducer
-	ctx    context.Context
-
 	shells []string
+
+	suite.Suite
 }
 
 func TestShellExecuteCommand(t *testing.T) {

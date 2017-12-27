@@ -45,8 +45,8 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	}
 
 	done := make(chan error)
-	err = remoteCommand.Start()
-	if err != nil {
+
+	if err = remoteCommand.Start(ctx); err != nil {
 		return false, errors.Wrap(err, "problem starting command")
 	}
 

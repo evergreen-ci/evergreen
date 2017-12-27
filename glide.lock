@@ -109,6 +109,9 @@ imports:
   - name: golang.org/x/sys
     version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
 
+  - name: github.com/google/shlex
+    version: 6f45313302b9c56850fc17f99e40caebce98c716
+
   - name: github.com/mongodb/grip
     version: 955295d738468a0a1b1b4b77969ece3c718615c5
   - name: github.com/mongodb/anser

@@ -4,6 +4,7 @@ package subprocess
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -29,7 +30,7 @@ func TestSubtreeCleanup(t *testing.T) {
 			ScriptMode:  true,
 			Environment: env,
 		}
-		So(localCmd.Start(), ShouldBeNil)
+		So(localCmd.Start(context.TODO()), ShouldBeNil)
 		TrackProcess(id, localCmd.GetPid(), logging.MakeGrip(grip.GetSender()))
 
 		Convey("running KillSpawnedProcs should kill the process before it finishes", func() {

@@ -30,10 +30,21 @@ type ScpCommand struct {
 	Cmd *exec.Cmd
 }
 
+func (self *ScpCommand) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	self.Stderr = opts.GetError()
+	self.Stdout = opts.GetOutput()
+
+	return nil
+}
+
 func (self *ScpCommand) Run(ctx context.Context) error {
 	grip.Debugf("SCPCommand(%s) beginning Run()", self.Id)
 
-	if err := self.Start(); err != nil {
+	if err := self.Start(ctx); err != nil {
 		return err
 	}
 
@@ -59,7 +70,19 @@ func (self *ScpCommand) Run(ctx context.Context) error {
 	}
 }
 
-func (self *ScpCommand) Start() error {
+func (self *ScpCommand) Wait() error {
+	return self.Cmd.Wait()
+}
+
+func (self *ScpCommand) GetPid() int {
+	if self.Cmd == nil {
+		return -1
+	}
+
+	return self.Cmd.Process.Pid
+}
+
+func (self *ScpCommand) Start(ctx context.Context) error {
 
 	// build the remote side of the connection, in user@host: format
 	remote := self.RemoteHostName
@@ -80,7 +103,7 @@ func (self *ScpCommand) Start() error {
 	cmdArray := append(self.Options, source, dest)
 
 	// set up execution
-	cmd := exec.Command("scp", cmdArray...)
+	cmd := exec.CommandContext(ctx, "scp", cmdArray...)
 	cmd.Stdout = self.Stdout
 	cmd.Stderr = self.Stderr
 

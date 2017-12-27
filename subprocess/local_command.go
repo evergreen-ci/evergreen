@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -25,8 +24,18 @@ type LocalCommand struct {
 	mutex            sync.RWMutex
 }
 
+func NewLocalCommand(cmdString, workingDir, shell string, env []string, scriptMode bool) Command {
+	return &LocalCommand{
+		CmdString:        cmdString,
+		WorkingDirectory: workingDir,
+		Shell:            shell,
+		Environment:      env,
+		ScriptMode:       scriptMode,
+	}
+}
+
 func (lc *LocalCommand) Run(ctx context.Context) error {
-	err := lc.Start()
+	err := lc.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -53,6 +62,20 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 	}
 }
 
+func (lc *LocalCommand) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
+	lc.Stderr = opts.GetError()
+	lc.Stdout = opts.GetOutput()
+
+	return nil
+}
+
 func (lc *LocalCommand) Wait() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
@@ -71,7 +94,7 @@ func (lc *LocalCommand) GetPid() int {
 	return lc.cmd.Process.Pid
 }
 
-func (lc *LocalCommand) Start() error {
+func (lc *LocalCommand) Start(ctx context.Context) error {
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
@@ -81,10 +104,10 @@ func (lc *LocalCommand) Start() error {
 
 	var cmd *exec.Cmd
 	if lc.ScriptMode {
-		cmd = exec.Command(lc.Shell)
+		cmd = exec.CommandContext(ctx, lc.Shell)
 		cmd.Stdin = strings.NewReader(lc.CmdString)
 	} else {
-		cmd = exec.Command(lc.Shell, "-c", lc.CmdString)
+		cmd = exec.CommandContext(ctx, lc.Shell, "-c", lc.CmdString)
 	}
 
 	// create the command, set the options
@@ -114,19 +137,4 @@ func (lc *LocalCommand) Stop() error {
 	}
 	grip.Warning("Trying to stop command but Cmd / Process was nil")
 	return nil
-}
-
-func (lc *LocalCommand) PrepToRun(expansions *util.Expansions) error {
-	lc.mutex.Lock()
-	defer lc.mutex.Unlock()
-
-	var err error
-
-	lc.CmdString, err = expansions.ExpandString(lc.CmdString)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	lc.WorkingDirectory, err = expansions.ExpandString(lc.WorkingDirectory)
-	return errors.WithStack(err)
 }
