@@ -87,6 +87,7 @@ func runRepoTracker(config *evergreen.Settings) error {
 	if err != nil {
 		return errors.Wrap(err, "contacting github")
 	}
+
 	if status != thirdparty.GithubAPIStatusGood {
 		err = errors.Errorf("bad github api status: %v", status)
 		if status == thirdparty.GithubAPIStatusMajor {
@@ -211,31 +212,18 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 	)
 
 	for project := range projects {
-		if !project.Enabled {
+		err := CollectRevisionsForProject(conf, project)
+
+		switch errors.Cause(err) {
+		case errProjectDisabled:
 			disabled = append(disabled, project.String())
-			continue
-		}
-
-		tracker := &RepoTracker{
-			conf,
-			&project,
-			NewGithubRepositoryPoller(&project, conf.Credentials["github"]),
-		}
-
-		if err := tracker.FetchRevisions(num); err != nil {
+		case errEncounteredError:
 			errored = append(errored, project.String())
-			grip.Warning(message.Fields{
-				"project": project.Identifier,
-				"error":   err,
-				"message": "problem fetching revisions",
-				"runner":  RunnerName,
-				"worker":  id,
-			})
+		default:
+			completed = append(completed, project.String())
 
-			continue
 		}
 
-		completed = append(completed, project.String())
 	}
 
 	grip.Info(message.Fields{
@@ -246,4 +234,35 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 		"errored":   errored,
 		"completed": completed,
 	})
+}
+
+var (
+	errProjectDisabled  = errors.New("project disabled")
+	errEncounteredError = errors.New("repotracker encountered error")
+)
+
+func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef) error {
+	if !project.Enabled {
+		return errors.Wrap(errProjectDisabled, project.String)
+	}
+
+	tracker := &RepoTracker{
+		Settings:   conf,
+		ProjectRef: &project,
+		RepoPoller: NewGithubRepositoryPoller(&project, conf.Credentials["github"]),
+	}
+
+	if err := tracker.FetchRevisions(num); err != nil {
+		grip.Warning(message.Fields{
+			"project": project.Identifier,
+			"error":   err,
+			"message": "problem fetching revisions",
+			"runner":  RunnerName,
+		})
+		grip.Debug(message.NewErrorWrap(err, "problem fetching revisions for project %s", project.Identifier))
+
+		return errors.Wrap(errEncounteredError, err.Error())
+	}
+
+	return nil
 }
