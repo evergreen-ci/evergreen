@@ -180,18 +180,14 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 	)
 
 	for project := range projects {
-		err := CollectRevisionsForProject(conf, project)
-
-		switch errors.Cause(err) {
+		switch errors.Cause(CollectRevisionsForProject(conf, project)) {
 		case errProjectDisabled:
 			disabled = append(disabled, project.String())
 		case errEncounteredError:
 			errored = append(errored, project.String())
 		default:
 			completed = append(completed, project.String())
-
 		}
-
 	}
 
 	grip.Info(message.Fields{
