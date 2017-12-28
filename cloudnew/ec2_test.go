@@ -1,7 +1,6 @@
 package cloudnew
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -19,6 +18,7 @@ type EC2Suite struct {
 	suite.Suite
 	opts *EC2ManagerOptions
 	m    cloud.CloudManager
+	impl *ec2Manager
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -35,6 +35,9 @@ func (s *EC2Suite) SetupTest() {
 		client: &AWSClientMock{},
 	}
 	s.m = NewEC2Manager(s.opts)
+	var ok bool
+	s.impl, ok = s.m.(*ec2Manager)
+	s.Require().True(ok)
 }
 
 func (s *EC2Suite) TestConstructor() {
@@ -66,6 +69,12 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	s.Nil(p.Validate())
 	p.KeyName = ""
 	s.Error(p.Validate())
+	p.KeyName = "keyName"
+
+	p.BidPrice = -1
+	s.Error(p.Validate())
+	p.BidPrice = 1
+	s.NoError(p.Validate())
 }
 
 func (s *EC2Suite) TestMakeDeviceMappings() {
@@ -141,18 +150,14 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 			Id:       "id",
 		},
 	}
+
 	spawned, err := s.m.SpawnHost(h)
 	s.Nil(spawned)
 	s.Error(err)
 	s.EqualError(err, "Can't spawn instance of ec2 for distro id: provider is foo")
-
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	spawned, err = s.m.SpawnHost(h)
-	s.Nil(spawned)
-	s.Error(err)
 }
 
-func (s *EC2Suite) TestSpawnHostClassic() {
+func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -175,7 +180,6 @@ func (s *EC2Suite) TestSpawnHostClassic() {
 	mock, ok := manager.client.(*AWSClientMock)
 	s.True(ok)
 
-	fmt.Println(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
@@ -206,7 +210,7 @@ func (s *EC2Suite) TestSpawnHostClassic() {
 	s.True(foundDistroID)
 }
 
-func (s *EC2Suite) TestSpawnHostVPC() {
+func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
@@ -230,7 +234,6 @@ func (s *EC2Suite) TestSpawnHostVPC() {
 	mock, ok := manager.client.(*AWSClientMock)
 	s.True(ok)
 
-	fmt.Println(mock.RunInstancesInput)
 	runInput := *mock.RunInstancesInput
 	s.Equal("ami", *runInput.ImageId)
 	s.Equal("instanceType", *runInput.InstanceType)
@@ -261,6 +264,109 @@ func (s *EC2Suite) TestSpawnHostVPC() {
 	s.True(foundDistroID)
 }
 
+func (s *EC2Suite) TestSpawnHostClassicSpot() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": "instanceType",
+		"key_name":      "keyName",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group": "sg-123456",
+		"subnet_id":      "subnet-123456",
+	}
+
+	_, err := s.m.SpawnHost(h)
+	s.NoError(err)
+
+	manager, ok := s.m.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*AWSClientMock)
+	s.True(ok)
+
+	requestInput := *mock.RequestSpotInstancesInput
+	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
+	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
+	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
+	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroups[0])
+	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
+	s.Nil(requestInput.LaunchSpecification.SubnetId)
+	tagsInput := *mock.CreateTagsInput
+	s.Equal("instance_id", *tagsInput.Resources[0])
+	s.Len(tagsInput.Tags, 8)
+	var foundInstanceName bool
+	var foundDistroID bool
+	for _, tag := range tagsInput.Tags {
+		if *tag.Key == "name" {
+			foundInstanceName = true
+			s.Equal(*tag.Value, "instance_id")
+		}
+		if *tag.Key == "distro" {
+			foundDistroID = true
+			s.Equal(*tag.Value, "distro_id")
+		}
+	}
+	s.True(foundInstanceName)
+	s.True(foundDistroID)
+}
+
+func (s *EC2Suite) TestSpawnHostVPCSpot() {
+	h := &host.Host{}
+	h.Distro.Id = "distro_id"
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	h.Distro.ProviderSettings = &map[string]interface{}{
+		"ami":           "ami",
+		"instance_type": "instanceType",
+		"key_name":      "keyName",
+		"mount_points": []map[string]string{
+			map[string]string{"device_name": "device", "virtual_name": "virtual"},
+		},
+		"security_group": "sg-123456",
+		"subnet_id":      "subnet-123456",
+		"is_vpc":         true,
+	}
+
+	_, err := s.m.SpawnHost(h)
+	s.NoError(err)
+
+	manager, ok := s.m.(*ec2Manager)
+	s.True(ok)
+	mock, ok := manager.client.(*AWSClientMock)
+	s.True(ok)
+
+	requestInput := *mock.RequestSpotInstancesInput
+	s.Equal("ami", *requestInput.LaunchSpecification.ImageId)
+	s.Equal("instanceType", *requestInput.LaunchSpecification.InstanceType)
+	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
+	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
+	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
+	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroupIds[0])
+	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
+	s.Equal("subnet-123456", *requestInput.LaunchSpecification.SubnetId)
+	tagsInput := *mock.CreateTagsInput
+	s.Equal("instance_id", *tagsInput.Resources[0])
+	s.Len(tagsInput.Tags, 8)
+	var foundInstanceName bool
+	var foundDistroID bool
+	for _, tag := range tagsInput.Tags {
+		if *tag.Key == "name" {
+			foundInstanceName = true
+			s.Equal(*tag.Value, "instance_id")
+		}
+		if *tag.Key == "distro" {
+			foundDistroID = true
+			s.Equal(*tag.Value, "distro_id")
+		}
+	}
+	s.True(foundInstanceName)
+	s.True(foundDistroID)
+}
+
 func (s *EC2Suite) TestCanSpawn() {
 	can, err := s.m.CanSpawn()
 	s.True(can)
@@ -268,7 +374,14 @@ func (s *EC2Suite) TestCanSpawn() {
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
-	status, err := s.m.GetInstanceStatus(&host.Host{})
+	h := &host.Host{}
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	status, err := s.m.GetInstanceStatus(h)
+	s.NoError(err)
+	s.Equal(cloud.StatusRunning, status)
+
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	status, err = s.m.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(cloud.StatusRunning, status)
 }
@@ -342,6 +455,5 @@ func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
 
 func (s *EC2Suite) TestGetInstanceName() {
 	id := s.m.GetInstanceName(&distro.Distro{Id: "foo"})
-	fmt.Printf("the id is %s\n", id)
 	s.True(strings.HasPrefix(id, "evg-foo-"))
 }
