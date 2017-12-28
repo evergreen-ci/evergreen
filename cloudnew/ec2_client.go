@@ -33,6 +33,12 @@ type AWSClient interface {
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
 	CancelSpotInstanceRequests(*ec2.CancelSpotInstanceRequestsInput) error
+
+	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
+	DescribeVolumes(*ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
+
+	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
+	DescribeSpotPriceHistory(*ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
 }
 
 // AWSClientImpl wraps ec2.EC2.
@@ -94,6 +100,16 @@ func (c *AWSClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 	return err
 }
 
+// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
+func (c *AWSClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
+	return c.EC2.DescribeVolumes(input)
+}
+
+// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
+func (c *AWSClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
+	return c.EC2.DescribeSpotPriceHistory(input)
+}
+
 // AWSClientMock mocks ec2.EC2.
 type AWSClientMock struct {
 	*credentials.Credentials
@@ -104,6 +120,8 @@ type AWSClientMock struct {
 	*ec2.RequestSpotInstancesInput
 	*ec2.DescribeSpotInstanceRequestsInput
 	*ec2.CancelSpotInstanceRequestsInput
+	*ec2.DescribeVolumesInput
+	*ec2.DescribeSpotPriceHistoryInput
 }
 
 // Create a new mock client.
@@ -190,4 +208,16 @@ func (c *AWSClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 func (c *AWSClientMock) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) error {
 	c.CancelSpotInstanceRequestsInput = input
 	return nil
+}
+
+// DescribeVolumes is a mock for ec2.DescribeVolumes.
+func (c *AWSClientMock) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
+	c.DescribeVolumesInput = input
+	return &ec2.DescribeVolumesOutput{}, nil
+}
+
+// DescribeSpotPriceHistory is a mock for ec2.DescribeSpotPriceHistory.
+func (c *AWSClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
+	c.DescribeSpotPriceHistoryInput = input
+	return &ec2.DescribeSpotPriceHistoryOutput{}, nil
 }
