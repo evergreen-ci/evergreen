@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -83,55 +82,24 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 }
 
 func runRepoTracker(config *evergreen.Settings) error {
-	status, err := thirdparty.GetGithubAPIStatus()
-	if err != nil {
-		return errors.Wrap(err, "contacting github")
+	if !CheckGithubAPIResources(conf) {
+		return errors.New("github API is is not ready to run the repotracker")
 	}
-
-	if status != thirdparty.GithubAPIStatusGood {
-		err = errors.Errorf("bad github api status: %v", status)
-		if status == thirdparty.GithubAPIStatusMajor {
-			return err
-		}
-		grip.Warning(message.Fields{
-			"error":   err,
-			"message": "github api status degraded",
-			"status":  status,
-			"runner":  RunnerName,
-		})
-	}
-
-	token, ok := config.Credentials[githubCredentialsKey]
-	if !ok {
-		return errors.New("Github credentials not specified in Evergreen credentials file")
-	}
-	remaining, err := thirdparty.CheckGithubAPILimit(token)
-	if err != nil {
-		return errors.Wrap(err, "Error checking Github API limit")
-	}
-	if remaining < githubAPILimitCeiling {
-		return errors.Errorf("Too few Github API requests remaining: %d < %d", remaining, githubAPILimitCeiling)
-	}
-	grip.Debug(message.Fields{
-		"runner":  RunnerName,
-		"message": "github api requests remaining",
-		"num":     remaining,
-	})
 
 	lockAcquired, err := db.WaitTillAcquireLock(RunnerName)
 	if err != nil {
-		return errors.Wrap(err, "Error acquiring global lock")
+		return errors.Wrap(err, "Error acquiring lock")
 	}
 
 	if !lockAcquired {
-		return errors.New("Timed out acquiring global lock")
+		return errors.New("Timed out acquiring lock")
 	}
 
 	defer func() {
 		if err = db.ReleaseLock(RunnerName); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  RunnerName,
-				"message": "Error releasing global lock",
+				"message": "Error releasing lock",
 			}))
 		}
 	}()
@@ -234,35 +202,4 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 		"errored":   errored,
 		"completed": completed,
 	})
-}
-
-var (
-	errProjectDisabled  = errors.New("project disabled")
-	errEncounteredError = errors.New("repotracker encountered error")
-)
-
-func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef) error {
-	if !project.Enabled {
-		return errors.Wrap(errProjectDisabled, project.String)
-	}
-
-	tracker := &RepoTracker{
-		Settings:   conf,
-		ProjectRef: &project,
-		RepoPoller: NewGithubRepositoryPoller(&project, conf.Credentials["github"]),
-	}
-
-	if err := tracker.FetchRevisions(num); err != nil {
-		grip.Warning(message.Fields{
-			"project": project.Identifier,
-			"error":   err,
-			"message": "problem fetching revisions",
-			"runner":  RunnerName,
-		})
-		grip.Debug(message.NewErrorWrap(err, "problem fetching revisions for project %s", project.Identifier))
-
-		return errors.Wrap(errEncounteredError, err.Error())
-	}
-
-	return nil
 }
