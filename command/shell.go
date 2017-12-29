@@ -82,9 +82,6 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 // Execute starts the shell with its given parameters.
 func (c *shellExec) Execute(ctx context.Context,
 	_ client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
 
 	logger.Execution().Debug("Preparing script...")
 
