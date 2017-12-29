@@ -40,14 +40,14 @@ func (s *execCmdSuite) TearDownTest() {
 
 func (s *execCmdSuite) TestNoopExpansion() {
 	cmd := &simpleExec{
-		WorkingDir:  "foo",
-		CommandName: "bar",
-		Args:        []string{"a", "b"},
+		WorkingDir: "foo",
+		Binary:     "bar",
+		Args:       []string{"a", "b"},
 	}
 
 	s.NoError(cmd.doExpansions(s.conf.Expansions))
 	s.Equal("foo", cmd.WorkingDir)
-	s.Equal("bar", cmd.CommandName)
+	s.Equal("bar", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
 	s.Equal("b", cmd.Args[1])
 }
@@ -85,14 +85,14 @@ func (s *execCmdSuite) TestExpansionOfEnvVarValues() {
 
 func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 	cmd := &simpleExec{
-		WorkingDir:  "fo${o",
-		CommandName: "ba${sfdf${bar}f}}r",
-		Args:        []string{"${foo|a}", "${bar|b}"},
+		WorkingDir: "fo${o",
+		Binary:     "ba${sfdf${bar}f}}r",
+		Args:       []string{"${foo|a}", "${bar|b}"},
 	}
 
 	s.Error(cmd.doExpansions(s.conf.Expansions))
 	s.Equal("fo${o", cmd.WorkingDir)
-	s.Equal("baf}}r", cmd.CommandName)
+	s.Equal("baf}}r", cmd.Binary)
 	s.Equal("a", cmd.Args[0])
 	s.Equal("b", cmd.Args[1])
 
@@ -123,12 +123,12 @@ func (s *execCmdSuite) TestCommandParsing() {
 	cmd := &simpleExec{
 		Command: "/bin/bash -c 'foo bar'",
 	}
-	s.Zero(cmd.CommandName)
+	s.Zero(cmd.Binary)
 	s.Zero(cmd.Args)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.Len(cmd.Args, 2)
-	s.NotZero(cmd.CommandName)
-	s.Equal("/bin/bash", cmd.CommandName)
+	s.NotZero(cmd.Binary)
+	s.Equal("/bin/bash", cmd.Binary)
 	s.Equal("-c", cmd.Args[0])
 	s.Equal("foo bar", cmd.Args[1])
 }
@@ -141,8 +141,8 @@ func (s *execCmdSuite) TestParseErrorIfTypeMismatch() {
 
 func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
 	cmd := &simpleExec{
-		Command:     "/bin/bash -c 'echo foo'",
-		CommandName: "bash",
+		Command: "/bin/bash -c 'echo foo'",
+		Binary:  "bash",
 		Args: []string{
 			"-c",
 			"echo foo",
@@ -163,8 +163,8 @@ func (s *execCmdSuite) TestGetProcErrorsIfCommandIsNotSet() {
 
 func (s *execCmdSuite) TestGetProcEnvSetting() {
 	cmd := &simpleExec{
-		CommandName: "bash",
-		SystemLog:   true,
+		Binary:    "bash",
+		SystemLog: true,
 	}
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec, closer, err := cmd.getProc("foo", s.logger)
@@ -177,7 +177,7 @@ func (s *execCmdSuite) TestGetProcEnvSetting() {
 
 func (s *execCmdSuite) TestRunCommand() {
 	cmd := &simpleExec{
-		CommandName: "bash",
+		Binary: "bash",
 	}
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec, closer, err := cmd.getProc("foo", s.logger)
