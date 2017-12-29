@@ -2,7 +2,7 @@
 name := evergreen
 buildDir := bin
 nodeDir := public
-packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
+packages := $(name) agent operations cloud cloudnew command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task

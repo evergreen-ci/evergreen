@@ -399,6 +399,9 @@ tasks:
     tags: ["nodb", "test", "agent"]
     name: test-subprocess
   - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-cloudnew
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "db", "agent"]
     name: test-command
   - <<: *run-go-test-suite-with-mongodb
@@ -613,6 +616,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-cloudnew
 
   # cross compiled test suites
   - <<: *run-xc-test-suite
