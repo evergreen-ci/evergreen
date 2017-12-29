@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
@@ -19,6 +20,8 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 
 func (m *ec2Manager) spot(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2Spot
@@ -318,7 +321,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	}
 
 	if m.spot(h) {
-		canTerminate, err := m.cancelSpotRequest(h.Id)
+		canTerminate, err := m.cancelSpotRequest(h)
 		if err != nil {
 			return errors.Wrap(err, "error canceling spot request")
 		}
@@ -345,26 +348,40 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	return h.Terminate()
 }
 
-func (m *ec2Manager) cancelSpotRequest(id string) (bool, error) {
-	spotDetails, err := m.getSpotInstanceStatus(id)
+func (m *ec2Manager) cancelSpotRequest(h *host.Host) (bool, error) {
+	spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
+	})
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get spot instance status")
+		if ec2err, ok := err.(awserr.Error); ok {
+			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
+				return false, h.Terminate()
+			}
+		}
+		err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		grip.Error(err)
+		return false, err
 	}
 	grip.Info(message.Fields{
 		"msg":     "canceling spot request",
-		"spot_id": id,
+		"spot_id": h.Id,
 	})
 	if err = m.client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(id)},
+		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
 		grip.Error(message.Fields{
 			"msg":     "failed to cancel spot request",
-			"spot_id": id,
+			"spot_id": h.Id,
 			"err":     err,
 		})
-		return false, errors.Wrapf(err, "Failed to cancel spot request for host %s", id)
+		return false, errors.Wrapf(err, "Failed to cancel spot request for host %s", h.Id)
 	}
-	if spotDetails == cloud.StatusRunning || spotDetails == cloud.StatusPending {
+	grip.Info(message.Fields{
+		"msg":     "canceled spot request",
+		"spot_id": h.Id,
+	})
+
+	if *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
 		return true, nil
 	}
 	return false, nil
