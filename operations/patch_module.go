@@ -18,7 +18,7 @@ func PatchSetModule() cli.Command {
 		Name:    "patch-set-module",
 		Aliases: []string{"set-module"},
 		Usage:   "update or add module to an existing patch",
-		Flags: mergeFlagSlices(addPathFlag(), addModuleFlag(), addYesFlag(
+		Flags: mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag(), addYesFlag(
 			cli.BoolFlag{
 				Name:  largeFlagName,
 				Usage: "enable submitting larger patches (>16MB)",
@@ -120,7 +120,7 @@ func PatchRemoveModule() cli.Command {
 		Name:    "patch-remove-module",
 		Aliases: []string{"rm-module", "patch-rm-module"},
 		Usage:   "remove a module from an existing patch",
-		Flags:   mergeFlagSlices(addPathFlag(), addModuleFlag()),
+		Flags:   mergeFlagSlices(addPatchIDFlag(), addPathFlag(), addModuleFlag()),
 		Before:  mergeBeforeFuncs(requirePatchIDFlag, requireModuleFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
