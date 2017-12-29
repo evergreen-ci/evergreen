@@ -9,13 +9,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
 const (
-	// nameTimeFormat is the format in which to log times like start time.
-	nameTimeFormat = "20060102150405"
 	// statusProvisioning means resources are being reserved for the instance.
 	statusProvisioning = "PROVISIONING"
 	// statusStaging means resources have been acquired and the instance is
@@ -139,7 +138,7 @@ func makeLabels(intent *host.Host) map[string]string {
 		"username":          username,
 		"owner":             intent.StartedBy,
 		"mode":              "production",
-		"start-time":        intent.CreationTime.Format(nameTimeFormat),
+		"start-time":        intent.CreationTime.Format(evergreen.NameTimeFormat),
 	}
 
 	// Ensure all characters in tags are on the whitelist

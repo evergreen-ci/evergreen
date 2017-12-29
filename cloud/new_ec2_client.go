@@ -1,10 +1,13 @@
-package cloudnew
+package cloud
 
 import (
+	"net/http"
+
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -13,6 +16,9 @@ type AWSClient interface {
 	// Create a new aws-sdk-client or mock if one does not exist, otherwise no-op.
 	Create(*credentials.Credentials) error
 
+	// Close an aws-sdk-client or mock.
+	Close()
+
 	// RunInstances is a wrapper for ec2.RunInstances.
 	RunInstances(*ec2.RunInstancesInput) (*ec2.Reservation, error)
 
@@ -20,7 +26,7 @@ type AWSClient interface {
 	DescribeInstances(*ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error)
 
 	// CreateTags is a wrapper for ec2.CreateTags.
-	CreateTags(*ec2.CreateTagsInput) error
+	CreateTags(*ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
 	TerminateInstances(*ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
@@ -32,24 +38,28 @@ type AWSClient interface {
 	DescribeSpotInstanceRequests(*ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
-	CancelSpotInstanceRequests(*ec2.CancelSpotInstanceRequestsInput) error
+	CancelSpotInstanceRequests(*ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
 }
 
-// AWSClientImpl wraps ec2.EC2.
-type AWSClientImpl struct {
-	session *session.Session
+// awsClientImpl wraps ec2.EC2.
+type awsClientImpl struct {
+	session    *session.Session
+	httpClient *http.Client
 	*ec2.EC2
 }
 
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
-func (c *AWSClientImpl) Create(creds *credentials.Credentials) error {
+func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 	if creds == nil {
 		return errors.New("creds must not be nil")
 	}
 	if c.session == nil {
-		s, err := session.NewSession()
+		c.httpClient = util.GetHttpClient()
+		s, err := session.NewSession(&aws.Config{
+			HTTPClient: c.httpClient,
+		})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "error creating session")
 		}
 		c.session = s
 	}
@@ -57,45 +67,13 @@ func (c *AWSClientImpl) Create(creds *credentials.Credentials) error {
 	return nil
 }
 
-// RunInstances is a wrapper for ec2.RunInstances.
-func (c *AWSClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
-	return c.EC2.RunInstances(input)
+func (c *awsClientImpl) Close() {
+	util.PutHttpClient(c.httpClient)
+	c.httpClient = nil
 }
 
-// DescribeInstances is a wrapper for ec2.DescribeInstances
-func (c *AWSClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
-	return c.EC2.DescribeInstances(input)
-}
-
-// CreateTags is a wrapper for ec2.CreateTags.
-func (c *AWSClientImpl) CreateTags(input *ec2.CreateTagsInput) error {
-	_, err := c.EC2.CreateTags(input)
-	return err
-}
-
-// TerminateInstances is a wrapper for ec2.TerminateInstances.
-func (c *AWSClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
-	return c.EC2.TerminateInstances(input)
-}
-
-// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
-func (c *AWSClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
-	return c.EC2.RequestSpotInstances(input)
-}
-
-// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-func (c *AWSClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
-	return c.EC2.DescribeSpotInstanceRequests(input)
-}
-
-// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
-func (c *AWSClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) error {
-	_, err := c.EC2.CancelSpotInstanceRequests(input)
-	return err
-}
-
-// AWSClientMock mocks ec2.EC2.
-type AWSClientMock struct {
+// awsClientMock mocks ec2.EC2.
+type awsClientMock struct {
 	*credentials.Credentials
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput
@@ -107,13 +85,15 @@ type AWSClientMock struct {
 }
 
 // Create a new mock client.
-func (c *AWSClientMock) Create(creds *credentials.Credentials) error {
+func (c *awsClientMock) Create(creds *credentials.Credentials) error {
 	c.Credentials = creds
 	return nil
 }
 
+func (c *awsClientMock) Close() {}
+
 // RunInstances is a mock for ec2.RunInstances.
-func (c *AWSClientMock) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
+func (c *awsClientMock) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	c.RunInstancesInput = input
 	return &ec2.Reservation{
 		Instances: []*ec2.Instance{
@@ -126,7 +106,7 @@ func (c *AWSClientMock) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 }
 
 // DescribeInstances is a mock for ec2.DescribeInstances
-func (c *AWSClientMock) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
+func (c *awsClientMock) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	c.DescribeInstancesInput = input
 	return &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
@@ -147,25 +127,25 @@ func (c *AWSClientMock) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 }
 
 // CreateTags is a mock for ec2.CreateTags.
-func (c *AWSClientMock) CreateTags(input *ec2.CreateTagsInput) error {
+func (c *awsClientMock) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	c.CreateTagsInput = input
-	return nil
+	return nil, nil
 }
 
 // TerminateInstances is a mock for ec2.TerminateInstances.
-func (c *AWSClientMock) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
+func (c *awsClientMock) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	c.TerminateInstancesInput = input
 	return &ec2.TerminateInstancesOutput{}, nil
 }
 
 // RequestSpotInstances is a mock for ec2.RequestSpotInstances.
-func (c *AWSClientMock) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
+func (c *awsClientMock) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	c.RequestSpotInstancesInput = input
 	return &ec2.RequestSpotInstancesOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
 				InstanceId: makeStringPtr("instance_id"),
-				State:      makeStringPtr(cloud.SpotStatusOpen),
+				State:      makeStringPtr(SpotStatusOpen),
 				SpotInstanceRequestId: makeStringPtr("instance_id"),
 			},
 		},
@@ -173,13 +153,13 @@ func (c *AWSClientMock) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 }
 
 // DescribeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
-func (c *AWSClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+func (c *awsClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	c.DescribeSpotInstanceRequestsInput = input
 	return &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
 			&ec2.SpotInstanceRequest{
 				InstanceId: makeStringPtr("instance_id"),
-				State:      makeStringPtr(cloud.SpotStatusActive),
+				State:      makeStringPtr(SpotStatusActive),
 				SpotInstanceRequestId: makeStringPtr("instance_id"),
 			},
 		},
@@ -187,7 +167,7 @@ func (c *AWSClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 }
 
 // CancelSpotInstanceRequests is a mock for ec2.CancelSpotInstanceRequests.
-func (c *AWSClientMock) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) error {
+func (c *awsClientMock) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	c.CancelSpotInstanceRequestsInput = input
-	return nil
+	return nil, nil
 }

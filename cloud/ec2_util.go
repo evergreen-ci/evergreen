@@ -14,7 +14,9 @@ import (
 	"sync"
 	"time"
 
+	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
@@ -25,10 +27,8 @@ import (
 )
 
 const (
-	// NameTimeFormat is the format in which to log times like instance start time.
-	NameTimeFormat      = "20060102150405"
-	SpawnHostExpireDays = 30
-	MciHostExpireDays   = 10
+	spawnHostExpireDays = 30
+	mciHostExpireDays   = 10
 )
 
 type MountPoint struct {
@@ -230,10 +230,10 @@ func makeTags(intentHost *host.Host) map[string]string {
 	// and if that tag is passed the reaper terminates the host. This reaping occurs to
 	// ensure that any hosts that we forget about or that fail to terminate do not stay alive
 	// forever.
-	expireOn := expireInDays(MciHostExpireDays)
+	expireOn := expireInDays(mciHostExpireDays)
 	if intentHost.UserHost {
 		// If this is a spawn host, use a different expiration date.
-		expireOn = expireInDays(SpawnHostExpireDays)
+		expireOn = expireInDays(spawnHostExpireDays)
 	}
 
 	tags := map[string]string{
@@ -243,7 +243,7 @@ func makeTags(intentHost *host.Host) map[string]string {
 		"username":          username,
 		"owner":             intentHost.StartedBy,
 		"mode":              "production",
-		"start-time":        intentHost.CreationTime.Format(NameTimeFormat),
+		"start-time":        intentHost.CreationTime.Format(evergreen.NameTimeFormat),
 		"expire-on":         expireOn,
 	}
 
@@ -591,4 +591,31 @@ func onDemandCost(pf onDemandPriceFetcher, os osType, instance, region string, d
 		return 0, errors.New("price not found in EC2 price listings")
 	}
 	return price * dur.Hours(), nil
+}
+
+func newMakeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
+	mappings := []*ec2aws.BlockDeviceMapping{}
+	for i, mount := range mounts {
+		if mount.DeviceName == "" {
+			return nil, errors.Errorf("missing 'device_name': %+v", mount)
+		}
+		if mount.VirtualName == "" {
+			return nil, errors.Errorf("missing 'virtual_name': %+v", mount)
+		}
+		mappings = append(mappings, &ec2aws.BlockDeviceMapping{
+			DeviceName:  &mounts[i].DeviceName,
+			VirtualName: &mounts[i].VirtualName,
+		})
+	}
+	return mappings, nil
+}
+
+// makeInt64Ptr is necessary because Go does not allow you to write `&int64(1)`.
+func makeInt64Ptr(i int64) *int64 {
+	return &i
+}
+
+// makeStringPtr is necessary because Go does not allow you to write `&"foo"`.
+func makeStringPtr(s string) *string {
+	return &s
 }

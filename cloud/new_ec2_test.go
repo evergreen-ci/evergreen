@@ -1,4 +1,4 @@
-package cloudnew
+package cloud
 
 import (
 	"strings"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -17,7 +16,7 @@ import (
 type EC2Suite struct {
 	suite.Suite
 	opts *EC2ManagerOptions
-	m    cloud.CloudManager
+	m    CloudManager
 	impl *ec2Manager
 }
 
@@ -32,7 +31,7 @@ func (s *EC2Suite) SetupSuite() {
 func (s *EC2Suite) SetupTest() {
 	s.Require().NoError(db.Clear(host.Collection))
 	s.opts = &EC2ManagerOptions{
-		client: &AWSClientMock{},
+		client: &awsClientMock{},
 	}
 	s.m = NewEC2Manager(s.opts)
 	var ok bool
@@ -41,11 +40,11 @@ func (s *EC2Suite) SetupTest() {
 }
 
 func (s *EC2Suite) TestConstructor() {
-	s.Implements((*cloud.CloudManager)(nil), NewEC2Manager(s.opts))
+	s.Implements((*CloudManager)(nil), NewEC2Manager(s.opts))
 }
 
 func (s *EC2Suite) TestValidateProviderSettings() {
-	p := &EC2ProviderSettings{
+	p := &NewEC2ProviderSettings{
 		AMI:           "ami",
 		InstanceType:  "type",
 		SecurityGroup: "sg-123456",
@@ -78,35 +77,35 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 }
 
 func (s *EC2Suite) TestMakeDeviceMappings() {
-	validMount := cloud.MountPoint{
+	validMount := MountPoint{
 		DeviceName:  "device",
 		VirtualName: "virtual",
 	}
 
-	m := []cloud.MountPoint{}
-	b, err := makeBlockDeviceMappings(m)
+	m := []MountPoint{}
+	b, err := newMakeBlockDeviceMappings(m)
 	s.NoError(err)
 	s.Len(b, 0)
 
 	noDeviceName := validMount
 	noDeviceName.DeviceName = ""
-	m = []cloud.MountPoint{validMount, noDeviceName}
-	b, err = makeBlockDeviceMappings(m)
+	m = []MountPoint{validMount, noDeviceName}
+	b, err = newMakeBlockDeviceMappings(m)
 	s.Nil(b)
 	s.Error(err)
 
 	noVirtualName := validMount
 	noVirtualName.VirtualName = ""
-	m = []cloud.MountPoint{validMount, noVirtualName}
-	b, err = makeBlockDeviceMappings(m)
+	m = []MountPoint{validMount, noVirtualName}
+	b, err = newMakeBlockDeviceMappings(m)
 	s.Nil(b)
 	s.Error(err)
 
 	anotherMount := validMount
 	anotherMount.DeviceName = "anotherDeviceName"
 	anotherMount.VirtualName = "anotherVirtualName"
-	m = []cloud.MountPoint{validMount, anotherMount}
-	b, err = makeBlockDeviceMappings(m)
+	m = []MountPoint{validMount, anotherMount}
+	b, err = newMakeBlockDeviceMappings(m)
 	s.Len(b, 2)
 	s.Equal("device", *b[0].DeviceName)
 	s.Equal("virtual", *b[0].VirtualName)
@@ -116,7 +115,7 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 }
 
 func (s *EC2Suite) TestGetSettings() {
-	s.Equal(&EC2ProviderSettings{}, s.m.GetSettings())
+	s.Equal(&NewEC2ProviderSettings{}, s.m.GetSettings())
 }
 
 func (s *EC2Suite) TestConfigure() {
@@ -177,7 +176,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 
 	manager, ok := s.m.(*ec2Manager)
 	s.True(ok)
-	mock, ok := manager.client.(*AWSClientMock)
+	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
 	runInput := *mock.RunInstancesInput
@@ -231,7 +230,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 
 	manager, ok := s.m.(*ec2Manager)
 	s.True(ok)
-	mock, ok := manager.client.(*AWSClientMock)
+	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
 	runInput := *mock.RunInstancesInput
@@ -284,7 +283,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 
 	manager, ok := s.m.(*ec2Manager)
 	s.True(ok)
-	mock, ok := manager.client.(*AWSClientMock)
+	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
 	requestInput := *mock.RequestSpotInstancesInput
@@ -336,7 +335,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 
 	manager, ok := s.m.(*ec2Manager)
 	s.True(ok)
-	mock, ok := manager.client.(*AWSClientMock)
+	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
 
 	requestInput := *mock.RequestSpotInstancesInput
@@ -378,12 +377,12 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	status, err := s.m.GetInstanceStatus(h)
 	s.NoError(err)
-	s.Equal(cloud.StatusRunning, status)
+	s.Equal(StatusRunning, status)
 
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	status, err = s.m.GetInstanceStatus(h)
 	s.NoError(err)
-	s.Equal(cloud.StatusRunning, status)
+	s.Equal(StatusRunning, status)
 }
 
 func (s *EC2Suite) TestTerminateInstance() {

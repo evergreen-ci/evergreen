@@ -1,4 +1,4 @@
-package cloudnew
+package cloud
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -21,8 +20,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
-
 func (m *ec2Manager) spot(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2Spot
 }
@@ -30,8 +27,8 @@ func (m *ec2Manager) onDemand(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2OnDemand
 }
 
-// EC2ProviderSettings describes properties of managed instances.
-type EC2ProviderSettings struct {
+// NewEC2ProviderSettings describes properties of managed instances.
+type NewEC2ProviderSettings struct {
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
@@ -42,7 +39,7 @@ type EC2ProviderSettings struct {
 	KeyName string `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
 
 	// MountPoints are the disk mount points for EBS volumes.
-	MountPoints []cloud.MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
 	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
 	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
 	// SubnetId is only set in a VPC.
@@ -55,15 +52,15 @@ type EC2ProviderSettings struct {
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 }
 
-// Validate that essential EC2ProviderSettings fields are not empty.
-func (s *EC2ProviderSettings) Validate() error {
+// Validate that essential NewEC2ProviderSettings fields are not empty.
+func (s *NewEC2ProviderSettings) Validate() error {
 	if s.AMI == "" || s.InstanceType == "" || s.SecurityGroup == "" || s.KeyName == "" {
 		return errors.New("AMI, instance type, security group, and key name must not be empty")
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
 	}
-	if _, err := makeBlockDeviceMappings(s.MountPoints); err != nil {
+	if _, err := newMakeBlockDeviceMappings(s.MountPoints); err != nil {
 		return errors.Wrap(err, "block device mappings invalid")
 	}
 	return nil
@@ -82,13 +79,13 @@ type ec2Manager struct {
 }
 
 // NewEC2Manager creates a new manager of EC2 spot and on-demand instances.
-func NewEC2Manager(opts *EC2ManagerOptions) cloud.CloudManager {
+func NewEC2Manager(opts *EC2ManagerOptions) CloudManager {
 	return &ec2Manager{opts, nil}
 }
 
 // GetSettings returns a pointer to the manager's configuration settings struct.
-func (m *ec2Manager) GetSettings() cloud.ProviderSettings {
-	return &EC2ProviderSettings{}
+func (m *ec2Manager) GetSettings() ProviderSettings {
+	return &NewEC2ProviderSettings{}
 }
 
 // Configure loads credentials or other settings from the config file.
@@ -105,7 +102,7 @@ func (m *ec2Manager) Configure(settings *evergreen.Settings) error {
 	return nil
 }
 
-func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
 		MinCount:            makeInt64Ptr(1),
 		MaxCount:            makeInt64Ptr(1),
@@ -147,11 +144,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSet
 		})
 		if err != nil {
 			if i == max {
-				err = errors.Wrap(err, "error querying for instance info and retries exhausted")
-				grip.Error(message.Fields{
-					"error":    err,
-					"instance": *instance.InstanceId,
-				})
+				err = errors.Wrapf(err, "error querying for instance info and retries exhausted for %s", *instance.InstanceId)
 				return nil, err
 			}
 			time.Sleep(30 * time.Second)
@@ -183,7 +176,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSet
 	return resources, nil
 }
 
-func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	spotRequest := &ec2.RequestSpotInstancesInput{
 		SpotPrice:     makeStringPtr(fmt.Sprintf("%v", ec2Settings.BidPrice)),
 		InstanceCount: makeInt64Ptr(1),
@@ -209,10 +202,9 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSetting
 	}
 
 	spotReqRes := spotResp.SpotInstanceRequests[0]
-	if *spotReqRes.State != cloud.SpotStatusOpen && *spotReqRes.State != cloud.SpotStatusActive {
+	if *spotReqRes.State != SpotStatusOpen && *spotReqRes.State != SpotStatusActive {
 		err = errors.Errorf("Spot request %s was found in state %s on intent host %s",
 			*spotReqRes.SpotInstanceRequestId, *spotReqRes.State, h.Id)
-		grip.Error(err)
 		return nil, err
 	}
 
@@ -228,7 +220,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 			evergreen.ProviderNameEc2OnDemand, h.Distro.Id, h.Distro.Provider)
 	}
 
-	ec2Settings := &EC2ProviderSettings{}
+	ec2Settings := &NewEC2ProviderSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
 	}
@@ -237,7 +229,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
 	}
 
-	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
+	blockDevices, err := newMakeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}
@@ -246,6 +238,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if err := m.client.Create(m.credentials); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	var resources []*string
 	if m.onDemand(h) {
@@ -269,12 +262,11 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		val := tags[tag]
 		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
 	}
-	if err = m.client.CreateTags(&ec2.CreateTagsInput{
+	if _, err = m.client.CreateTags(&ec2.CreateTagsInput{
 		Resources: resources,
 		Tags:      tagSlice,
 	}); err != nil {
 		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
-		grip.Error(err)
 		return nil, err
 	}
 
@@ -290,20 +282,21 @@ func (m *ec2Manager) CanSpawn() (bool, error) {
 }
 
 // GetInstanceStatus returns the current status of an EC2 instance.
-func (m *ec2Manager) GetInstanceStatus(h *host.Host) (cloud.CloudStatus, error) {
+func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 	if err := m.client.Create(m.credentials); err != nil {
-		return cloud.StatusUnknown, errors.Wrap(err, "error creating client")
+		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 	if m.onDemand(h) {
 		info, err := m.getInstanceInfo(h.Id)
 		if err != nil {
-			return cloud.StatusUnknown, err
+			return StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(*info.State.Name), nil
 	} else if m.spot(h) {
 		return m.getSpotInstanceStatus(h.Id)
 	}
-	return cloud.StatusUnknown, errors.New("type must be on-demand or spot")
+	return StatusUnknown, errors.New("type must be on-demand or spot")
 }
 
 // TerminateInstance terminates the EC2 instance.
@@ -312,13 +305,13 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as "+
 			"terminated!", h.Id)
-		grip.Error(err)
 		return err
 	}
 
 	if err := m.client.Create(m.credentials); err != nil {
 		return errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	if m.spot(h) {
 		canTerminate, err := m.cancelSpotRequest(h)
@@ -345,7 +338,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 		})
 	}
 
-	return h.Terminate()
+	return errors.Wrap(h.Terminate(), "failed to terminate instance")
 }
 
 func (m *ec2Manager) cancelSpotRequest(h *host.Host) (bool, error) {
@@ -359,21 +352,15 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (bool, error) {
 			}
 		}
 		err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
-		grip.Error(err)
 		return false, err
 	}
 	grip.Info(message.Fields{
 		"msg":     "canceling spot request",
 		"spot_id": h.Id,
 	})
-	if err = m.client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
+	if _, err = m.client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
-		grip.Error(message.Fields{
-			"msg":     "failed to cancel spot request",
-			"spot_id": h.Id,
-			"err":     err,
-		})
 		return false, errors.Wrapf(err, "Failed to cancel spot request for host %s", h.Id)
 	}
 	grip.Info(message.Fields{
@@ -392,11 +379,12 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 	if err := m.client.Create(m.credentials); err != nil {
 		return false, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 	info, err := m.getInstanceInfo(h.Id)
 	if err != nil {
 		return false, err
 	}
-	if ec2StatusToEvergreenStatus(*info.State.Name).String() == cloud.EC2StatusRunning {
+	if ec2StatusToEvergreenStatus(*info.State.Name).String() == EC2StatusRunning {
 		return true, nil
 	}
 	return false, nil
@@ -457,17 +445,6 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
-
-// makeInt64Ptr is necessary because Go does not allow you to write `&int64(1)`.
-func makeInt64Ptr(i int64) *int64 {
-	return &i
-}
-
-// makeStringPtr is necessary because Go does not allow you to write `&"foo"`.
-func makeStringPtr(s string) *string {
-	return &s
-}
-
 func (m *ec2Manager) getInstanceInfo(id string) (*ec2.Instance, error) {
 	resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{makeStringPtr(id)},
@@ -478,7 +455,6 @@ func (m *ec2Manager) getInstanceInfo(id string) (*ec2.Instance, error) {
 	reservation := resp.Reservations
 	if len(reservation) == 0 {
 		err = errors.Errorf("No reservation found for instance id: %s", id)
-		grip.Error(err)
 		return nil, err
 	}
 
@@ -486,21 +462,19 @@ func (m *ec2Manager) getInstanceInfo(id string) (*ec2.Instance, error) {
 	if len(instances) == 0 {
 		err = errors.Errorf("'%s' was not found in reservation '%s'",
 			id, *resp.Reservations[0].ReservationId)
-		grip.Error(err)
 		return nil, err
 	}
 
 	return instances[0], nil
 }
 
-func (m *ec2Manager) getSpotInstanceStatus(id string) (cloud.CloudStatus, error) {
+func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 	spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(id)},
 	})
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get spot request info for %s", id)
-		grip.Error(err)
-		return cloud.StatusUnknown, err
+		return StatusUnknown, err
 	}
 
 	spotInstance := spotDetails.SpotInstanceRequests[0]
@@ -509,27 +483,34 @@ func (m *ec2Manager) getSpotInstanceStatus(id string) (cloud.CloudStatus, error)
 		instanceInfo, err := m.getInstanceInfo(*spotInstance.InstanceId)
 		if err != nil {
 			err = errors.Wrap(err, "Got an error checking spot details")
-			grip.Error(err)
-			return cloud.StatusUnknown, err
+			return StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(*instanceInfo.State.Name), nil
 	}
 
 	//Spot request is not fulfilled. Either it's failed/closed for some reason,
 	//or still pending evaluation
-	switch *spotInstance.State {
-	case cloud.SpotStatusOpen:
-		return cloud.StatusPending, nil
-	case cloud.SpotStatusActive:
-		return cloud.StatusPending, nil
-	case cloud.SpotStatusClosed:
-		return cloud.StatusTerminated, nil
-	case cloud.SpotStatusCanceled:
-		return cloud.StatusTerminated, nil
-	case cloud.SpotStatusFailed:
-		return cloud.StatusFailed, nil
+	return cloudStatusFromSpotStatus(id, *spotInstance.State), nil
+}
+
+func cloudStatusFromSpotStatus(id, state string) CloudStatus {
+	switch state {
+	case SpotStatusOpen:
+		return StatusPending
+	case SpotStatusActive:
+		return StatusPending
+	case SpotStatusClosed:
+		return StatusTerminated
+	case SpotStatusCanceled:
+		return StatusTerminated
+	case SpotStatusFailed:
+		return StatusFailed
 	default:
-		grip.Errorf("Unexpected status code in spot req: %v", spotInstance.State)
-		return cloud.StatusUnknown, nil
+		grip.Error(message.Fields{
+			"msg":  "Unexpected status code in spot request",
+			"code": state,
+			"id":   id,
+		})
+		return StatusUnknown
 	}
 }
