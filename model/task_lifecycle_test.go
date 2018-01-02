@@ -230,8 +230,6 @@ func TestSetActiveState(t *testing.T) {
 		dbBuild, err := build.FindOne(build.ById(b.Id))
 		So(err, ShouldBeNil)
 		So(dbBuild.Tasks[0].Activated, ShouldBeTrue)
-
-		So(SetActiveState(t1.Id, "test", false), ShouldNotBeNil)
 	})
 }
 
@@ -335,6 +333,96 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			previousTask, err = task.FindOne(task.ById(previousTask.Id))
 			So(err, ShouldBeNil)
 			So(previousTask.Activated, ShouldBeFalse)
+		})
+	})
+	Convey("With a display task", t, func() {
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection), t,
+			"Error clearing task and build collections")
+		userName := "user"
+		b1 := &build.Build{
+			Id: "testBuild1",
+		}
+		b2 := &build.Build{
+			Id: "testBuild2",
+		}
+		dt1 := &task.Task{
+			Id:                  "displayTaskOld",
+			DisplayName:         "displayTask",
+			RevisionOrderNumber: 1,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b1.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+			DisplayOnly:         true,
+			ExecutionTasks:      []string{"execTaskOld"},
+		}
+		et1 := &task.Task{
+			Id:                  "execTaskOld",
+			DisplayName:         "execTask",
+			RevisionOrderNumber: 1,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b1.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+		}
+		dt2 := &task.Task{
+			Id:                  "displayTaskNew",
+			DisplayName:         "displayTask",
+			RevisionOrderNumber: 2,
+			Status:              evergreen.TaskSucceeded,
+			Priority:            1,
+			Activated:           true,
+			BuildId:             b2.Id,
+			Project:             "sample",
+			DisplayOnly:         true,
+			ExecutionTasks:      []string{"execTaskNew"},
+		}
+		et2 := &task.Task{
+			Id:                  "execTaskNew",
+			DisplayName:         "execTask",
+			RevisionOrderNumber: 2,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b2.Id,
+			Status:              evergreen.TaskSucceeded,
+			Project:             "sample",
+		}
+		b1.Tasks = []build.TaskCache{
+			{
+				DisplayName: dt1.DisplayName,
+				Id:          dt1.Id,
+				Activated:   true,
+			},
+		}
+		b2.Tasks = []build.TaskCache{
+			{
+				DisplayName: dt2.DisplayName,
+				Id:          dt2.Id,
+				Activated:   true,
+			},
+		}
+		So(b1.Insert(), ShouldBeNil)
+		So(b2.Insert(), ShouldBeNil)
+		So(dt1.Insert(), ShouldBeNil)
+		So(dt2.Insert(), ShouldBeNil)
+		So(et1.Insert(), ShouldBeNil)
+		So(et2.Insert(), ShouldBeNil)
+		Convey("deactivating a display task should deactivate its child tasks", func() {
+			So(DeactivatePreviousTasks(dt2.Id, userName), ShouldBeNil)
+			dbTask, err := task.FindOne(task.ById(dt1.Id))
+			So(err, ShouldBeNil)
+			So(dbTask.Activated, ShouldBeFalse)
+			dbTask, err = task.FindOne(task.ById(et1.Id))
+			So(err, ShouldBeNil)
+			So(dbTask.Activated, ShouldBeFalse)
+			dbBuild, err := build.FindOne(build.ById(b1.Id))
+			So(err, ShouldBeNil)
+			So(dbBuild.Tasks[0].Activated, ShouldBeFalse)
 		})
 	})
 }
@@ -1267,4 +1355,186 @@ func TestFailedTaskRestart(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(dbTask.Status, evergreen.TaskFailed)
 	assert.Equal(1, dbTask.Execution)
+}
+
+func TestStepback(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+		"Error clearing task and build collections")
+	b1 := &build.Build{
+		Id:      "build1",
+		Status:  evergreen.BuildStarted,
+		Version: "v1",
+	}
+	b2 := &build.Build{
+		Id:      "build2",
+		Status:  evergreen.BuildStarted,
+		Version: "v2",
+	}
+	b3 := &build.Build{
+		Id:      "build3",
+		Status:  evergreen.BuildStarted,
+		Version: "v3",
+	}
+	t1 := &task.Task{
+		Id:                  "t1",
+		DisplayName:         "task",
+		Activated:           true,
+		BuildId:             b1.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+	}
+	t2 := &task.Task{
+		Id:                  "t2",
+		DisplayName:         "task",
+		Activated:           false,
+		BuildId:             b2.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskInactive,
+		RevisionOrderNumber: 2,
+	}
+	t3 := &task.Task{
+		Id:                  "t3",
+		DisplayName:         "task",
+		Activated:           true,
+		BuildId:             b2.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 3,
+	}
+	dt1 := &task.Task{
+		Id:                  "dt1",
+		DisplayName:         "displayTask",
+		Activated:           true,
+		BuildId:             b1.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+		DisplayOnly:         true,
+		ExecutionTasks:      []string{"et1"},
+	}
+	dt2 := &task.Task{
+		Id:                  "dt2",
+		DisplayName:         "displayTask",
+		Activated:           false,
+		BuildId:             b2.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskInactive,
+		RevisionOrderNumber: 2,
+		DisplayOnly:         true,
+		ExecutionTasks:      []string{"et2"},
+	}
+	dt3 := &task.Task{
+		Id:                  "dt3",
+		DisplayName:         "displayTask",
+		Activated:           true,
+		BuildId:             b2.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 3,
+		DisplayOnly:         true,
+		ExecutionTasks:      []string{"et3"},
+	}
+	et1 := &task.Task{
+		Id:                  "et1",
+		DisplayName:         "execTask",
+		Activated:           true,
+		BuildId:             b1.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskSucceeded,
+		RevisionOrderNumber: 1,
+	}
+	et2 := &task.Task{
+		Id:                  "et2",
+		DisplayName:         "execTask",
+		Activated:           false,
+		BuildId:             b2.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskInactive,
+		RevisionOrderNumber: 2,
+	}
+	et3 := &task.Task{
+		Id:                  "et3",
+		DisplayName:         "execTask",
+		Activated:           true,
+		BuildId:             b3.Id,
+		Execution:           1,
+		Project:             "sample",
+		StartTime:           time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
+		Status:              evergreen.TaskFailed,
+		RevisionOrderNumber: 1,
+	}
+	p := &ProjectRef{
+		Identifier: "sample",
+	}
+
+	b1.Tasks = []build.TaskCache{
+		{
+			Id: t1.Id,
+		},
+		{
+			Id: dt1.Id,
+		},
+	}
+	b2.Tasks = []build.TaskCache{
+		{
+			Id: t2.Id,
+		},
+		{
+			Id: dt2.Id,
+		},
+	}
+	b3.Tasks = []build.TaskCache{
+		{
+			Id: t3.Id,
+		},
+		{
+			Id: dt3.Id,
+		},
+	}
+	assert.NoError(b1.Insert())
+	assert.NoError(b2.Insert())
+	assert.NoError(b3.Insert())
+	assert.NoError(t1.Insert())
+	assert.NoError(t2.Insert())
+	assert.NoError(t3.Insert())
+	assert.NoError(et1.Insert())
+	assert.NoError(et2.Insert())
+	assert.NoError(et3.Insert())
+	assert.NoError(dt1.Insert())
+	assert.NoError(dt2.Insert())
+	assert.NoError(dt3.Insert())
+	assert.NoError(p.Insert())
+
+	// test stepping back a regular task
+	assert.NoError(doStepback(t3))
+	dbTask, err := task.FindOne(task.ById(t2.Id))
+	assert.NoError(err)
+	assert.True(dbTask.Activated)
+
+	// test stepping back a display task
+	assert.NoError(doStepback(dt3))
+	dbTask, err = task.FindOne(task.ById(dt2.Id))
+	assert.NoError(err)
+	assert.True(dbTask.Activated)
+	dbTask, err = task.FindOne(task.ById(dt2.Id))
+	assert.NoError(err)
+	assert.True(dbTask.Activated)
 }
