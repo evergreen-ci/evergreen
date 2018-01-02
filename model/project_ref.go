@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"math"
+	"net/url"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -289,4 +290,20 @@ func (projectRef *ProjectRef) Location() (string, error) {
 		return "", errors.Errorf("No repo in project ref: %v", projectRef.Identifier)
 	}
 	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
+}
+
+// HTTPLocation creates a url.URL for HTTPS checkout of a Github repository
+func (projectRef *ProjectRef) HTTPLocation() (*url.URL, error) {
+	if projectRef.Owner == "" {
+		return nil, errors.Errorf("No owner in project ref: %s", projectRef.Identifier)
+	}
+	if projectRef.Repo == "" {
+		return nil, errors.Errorf("No repo in project ref: %s", projectRef.Identifier)
+	}
+
+	return &url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   fmt.Sprintf("/%s/%s.git", projectRef.Owner, projectRef.Repo),
+	}, nil
 }
