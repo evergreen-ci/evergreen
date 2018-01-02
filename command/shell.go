@@ -150,19 +150,21 @@ func (c *shellExec) Execute(ctx context.Context,
 		return err
 	}
 
-	logger.System().Debugf("spawned shell process with pid %d", localCmd.GetPid())
+	pid := localCmd.GetPid()
+
+	logger.System().Debugf("spawned shell process with pid %d", pid)
 
 	// Call the platform's process-tracking function. On some OSes this will be a noop,
 	// on others this may need to do some additional work to track the process so that
 	// it can be cleaned up later.
-	subprocess.TrackProcess(conf.Task.Id, localCmd.GetPid(), logger.System())
+	subprocess.TrackProcess(conf.Task.Id, pid, logger.System())
 
 	if c.Background {
-		logger.Execution().Debug("running command in the background")
+		logger.Execution().Debugf("running command in the background [pid=%d]", pid)
 		return nil
 	}
 
-	err = errors.Wrap(localCmd.Wait(), "command encountered problem")
+	err = errors.Wrapf(localCmd.Wait(), "command [pid=%d] encountered problem", pid)
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())
