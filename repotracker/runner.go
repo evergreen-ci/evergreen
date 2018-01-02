@@ -82,7 +82,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 }
 
 func runRepoTracker(config *evergreen.Settings) error {
-	if !CheckGithubAPIResources(conf) {
+	if !CheckGithubAPIResources(config) {
 		return errors.New("github API is is not ready to run the repotracker")
 	}
 
@@ -180,7 +180,7 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 	)
 
 	for project := range projects {
-		switch errors.Cause(CollectRevisionsForProject(conf, project)) {
+		switch errors.Cause(CollectRevisionsForProject(conf, project, num)) {
 		case errProjectDisabled:
 			disabled = append(disabled, project.String())
 		case errEncounteredError:

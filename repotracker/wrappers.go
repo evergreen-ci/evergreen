@@ -15,9 +15,9 @@ var (
 	errEncounteredError = errors.New("repotracker encountered error")
 )
 
-func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef) error {
+func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef, num int) error {
 	if !project.Enabled {
-		return errors.Wrap(errProjectDisabled, project.String)
+		return errors.Wrap(errProjectDisabled, project.String())
 	}
 
 	tracker := &RepoTracker{
