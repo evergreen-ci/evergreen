@@ -236,6 +236,7 @@ func (j *githubStatusUpdateJob) Run() {
 	adminSettings, err := admin.GetSettings()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		return
 	}
 	if adminSettings.ServiceFlags.GithubPRTestingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
