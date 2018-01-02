@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 )
@@ -44,7 +43,6 @@ func (c *gitFetchProject) Name() string { return "git.get_project" }
 // ParseParams parses the command's configuration.
 // Fulfills the Command interface.
 func (c *gitFetchProject) ParseParams(params map[string]interface{}) error {
-	grip.Infof("%+v", params)
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return err
