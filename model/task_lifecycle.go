@@ -27,9 +27,6 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	if err != nil {
 		return err
 	}
-	if t.IsPartOfDisplay() {
-		return errors.New("cannot schedule or unschedule part of a display task")
-	}
 	if active {
 		// if the task is being activated, make sure to activate all of the task's
 		// dependencies as well
@@ -217,12 +214,20 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 	if err != nil {
 		return err
 	}
+	displayNames := []string{t.DisplayName}
+	for _, et := range t.ExecutionTasks {
+		execTask, err := task.FindOne(task.ById(et))
+		if err != nil {
+			return errors.Wrapf(err, "error retrieving execution task %s", et)
+		}
+		displayNames = append(displayNames, execTask.DisplayName)
+	}
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.Find(task.ByActivatedBeforeRevisionWithStatuses(
+	allTasks, err := task.FindWithDisplayTasks(task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
-		t.DisplayName,
+		displayNames,
 		t.Project,
 	))
 	if err != nil {
@@ -244,8 +249,10 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		}
 		event.LogTaskDeactivated(t.Id, caller)
 		// update the cached version of the task, in its build document to be deactivated
-		if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
-			return err
+		if !t.IsPartOfDisplay() {
+			if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -286,6 +293,21 @@ func getStepback(taskId string, project *Project) (bool, error) {
 
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
 func doStepback(t *task.Task) error {
+	if t.DisplayOnly {
+		catcher := grip.NewSimpleCatcher()
+		for _, et := range t.ExecutionTasks {
+			execTask, err := task.FindOne(task.ById(et))
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			catcher.Add(doStepback(execTask))
+		}
+		if catcher.HasErrors() {
+			return catcher.Resolve()
+		}
+	}
+
 	//See if there is a prior success for this particular task.
 	//If there isn't, we should not activate the previous task because
 	//it could trigger stepping backwards ad infinitum.
@@ -351,9 +373,27 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id, updates),
 			"Error updating build status (1)")
 	}
-	if detail.Status == evergreen.TaskFailed && detail.Type != "system" {
+	if t.IsPartOfDisplay() {
+		err = evalStepback(t.DisplayTask, p, caller, t.DisplayTask.Status, deactivatePrevious)
+	} else {
+		err = evalStepback(t, p, caller, status, deactivatePrevious)
+	}
+	if err != nil {
+		return err
+	}
+
+	// update the build
+	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
+		return errors.Wrap(err, "Error updating build status (2)")
+	}
+
+	return nil
+}
+
+func evalStepback(t *task.Task, p *Project, caller, status string, deactivatePrevious bool) error {
+	if status == evergreen.TaskFailed {
 		var shouldStepBack bool
-		shouldStepBack, err = getStepback(t.Id, p)
+		shouldStepBack, err := getStepback(t.Id, p)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -365,18 +405,13 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 			grip.Debugln("Not stepping backwards on task failure:", t.Id)
 		}
 
-	} else if deactivatePrevious {
+	} else if deactivatePrevious && status == evergreen.TaskSucceeded {
 		// if the task was successful, ignore running previous
 		// activated tasks for this buildvariant
 
-		if err = DeactivatePreviousTasks(t.Id, caller); err != nil {
+		if err := DeactivatePreviousTasks(t.Id, caller); err != nil {
 			return errors.Wrap(err, "Error deactivating previous task")
 		}
-	}
-
-	// update the build
-	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
-		return errors.Wrap(err, "Error updating build status (2)")
 	}
 
 	return nil
