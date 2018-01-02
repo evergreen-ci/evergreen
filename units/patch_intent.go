@@ -201,14 +201,13 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 
 	if j.Intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
-				"error":       message.WrapError(err),
 				"job":         j.ID(),
 				"patch_id":    j.PatchID,
 				"intent_type": j.Intent.GetType(),
 				"intent_id":   j.Intent.ID(),
-			})
+			}))
 			return err
 		}
 	}
