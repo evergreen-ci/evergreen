@@ -45,8 +45,7 @@ func isLastRevision(revision string, githubCommit *thirdparty.GithubCommit) bool
 
 // githubCommitToRevision converts a GithubCommit struct to a
 // model.Revision struct
-func githubCommitToRevision(
-	githubCommit *thirdparty.GithubCommit) model.Revision {
+func githubCommitToRevision(githubCommit *thirdparty.GithubCommit) model.Revision {
 	return model.Revision{
 		Author:          githubCommit.Commit.Author.Name,
 		AuthorEmail:     githubCommit.Commit.Author.Email,
@@ -58,8 +57,7 @@ func githubCommitToRevision(
 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
-func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(
-	projectFileRevision string) (projectConfig *model.Project, err error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision string) (projectConfig *model.Project, err error) {
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
 	projectFileURL := thirdparty.GetGithubFileURL(
@@ -69,10 +67,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(
 		projectFileRevision,
 	)
 
-	githubFile, err := thirdparty.GetGithubFile(
-		gRepoPoller.OauthToken,
-		projectFileURL,
-	)
+	githubFile, err := thirdparty.GetGithubFile(gRepoPoller.OauthToken, projectFileURL)
 	if err != nil {
 		return nil, err
 	}
