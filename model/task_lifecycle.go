@@ -215,12 +215,14 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		return err
 	}
 	displayNames := []string{t.DisplayName}
-	for _, et := range t.ExecutionTasks {
-		execTask, err := task.FindOne(task.ById(et))
+	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
-			return errors.Wrapf(err, "error retrieving execution task %s", et)
+			return errors.Wrapf(err, "error retrieving execution task for %s", t.Id)
 		}
-		displayNames = append(displayNames, execTask.DisplayName)
+		for _, et := range execTasks {
+			displayNames = append(displayNames, et.DisplayName)
+		}
 	}
 	statuses := []string{evergreen.TaskUndispatched}
 	allTasks, err := task.FindWithDisplayTasks(task.ByActivatedBeforeRevisionWithStatuses(
@@ -294,14 +296,13 @@ func getStepback(taskId string, project *Project) (bool, error) {
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
 func doStepback(t *task.Task) error {
 	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrapf(err, "error finding tasks for stepback of %s", t.Id)
+		}
 		catcher := grip.NewSimpleCatcher()
-		for _, et := range t.ExecutionTasks {
-			execTask, err := task.FindOne(task.ById(et))
-			if err != nil {
-				catcher.Add(err)
-				continue
-			}
-			catcher.Add(doStepback(execTask))
+		for _, et := range execTasks {
+			catcher.Add(doStepback(&et))
 		}
 		if catcher.HasErrors() {
 			return catcher.Resolve()
