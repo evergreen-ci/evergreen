@@ -260,7 +260,7 @@ func (j *githubStatusUpdateJob) Run() {
 			"status":      status,
 			"fetch_id":    j.FetchID,
 			"update_type": j.UpdateType,
-			"error":       j.Error().Error(),
+			"error":       err.Error(),
 		})
 		j.AddError(err)
 	}
