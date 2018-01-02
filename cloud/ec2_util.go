@@ -619,3 +619,8 @@ func makeInt64Ptr(i int64) *int64 {
 func makeStringPtr(s string) *string {
 	return &s
 }
+
+// makeBoolPtr is necessary because Go does not allow you to write `&true`.
+func makeBoolPtr(b bool) *bool {
+	return &b
+}

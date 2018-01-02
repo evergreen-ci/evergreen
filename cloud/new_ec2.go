@@ -115,6 +115,13 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 	if ec2Settings.IsVpc {
 		input.SecurityGroupIds = []*string{&ec2Settings.SecurityGroup}
 		input.SubnetId = &ec2Settings.SubnetId
+		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
+			&ec2.InstanceNetworkInterfaceSpecification{
+				AssociatePublicIpAddress: makeBoolPtr(true),
+				Groups:   []*string{&ec2Settings.SecurityGroup},
+				SubnetId: &ec2Settings.SubnetId,
+			},
+		}
 	} else {
 		input.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
 	}
@@ -191,6 +198,13 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSett
 	if ec2Settings.IsVpc {
 		spotRequest.LaunchSpecification.SecurityGroupIds = []*string{&ec2Settings.SecurityGroup}
 		spotRequest.LaunchSpecification.SubnetId = &ec2Settings.SubnetId
+		spotRequest.LaunchSpecification.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
+			&ec2.InstanceNetworkInterfaceSpecification{
+				AssociatePublicIpAddress: makeBoolPtr(true),
+				Groups:   []*string{&ec2Settings.SecurityGroup},
+				SubnetId: &ec2Settings.SubnetId,
+			},
+		}
 	} else {
 		spotRequest.LaunchSpecification.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
 	}
