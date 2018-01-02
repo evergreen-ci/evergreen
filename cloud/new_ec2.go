@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/jpillora/backoff"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -143,7 +144,13 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 		"key_name": *instance.KeyName,
 	})
 
-	max := 5
+	backoff := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    1 * time.Minute,
+		Factor: 2,
+		Jitter: true,
+	}
+	max := 10
 	var resp *ec2.DescribeInstancesOutput
 	for i := 0; i <= max; i++ {
 		resp, err = m.client.DescribeInstances(&ec2.DescribeInstancesInput{
@@ -154,7 +161,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 				err = errors.Wrapf(err, "error querying for instance info and retries exhausted for %s", *instance.InstanceId)
 				return nil, err
 			}
-			time.Sleep(30 * time.Second)
+			time.Sleep(backoff.Duration())
 			continue
 		}
 		break
@@ -496,8 +503,7 @@ func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 	if *spotInstance.InstanceId != "" {
 		instanceInfo, err := m.getInstanceInfo(*spotInstance.InstanceId)
 		if err != nil {
-			err = errors.Wrap(err, "Got an error checking spot details")
-			return StatusUnknown, err
+			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
 		}
 		return ec2StatusToEvergreenStatus(*instanceInfo.State.Name), nil
 	}
