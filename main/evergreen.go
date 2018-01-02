@@ -64,9 +64,6 @@ func buildApp() *cli.App {
 		operations.PatchRemoveModule(),
 		operations.PatchFinalize(),
 		operations.PatchCancel(),
-
-		// Old scripts
-		operations.FetchAllConfigs(),
 	}
 
 	userHome, err := homedir.Dir()

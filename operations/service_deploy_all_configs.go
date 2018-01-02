@@ -10,13 +10,12 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func FetchAllConfigs() cli.Command {
+func fetchAllProjectConfigs() cli.Command {
 	return cli.Command{
-		Name:     "all-configs",
-		Aliases:  []string{"all-configs"},
-		Usage:    "download the configuration files of all evergreen projects",
-		HideHelp: true,
-		Before:   setPlainLogger,
+		Name:    "all-configs",
+		Aliases: []string{"all-configs"},
+		Usage:   "download the configuration files of all evergreen projects to the current directory",
+		Before:  setPlainLogger,
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
