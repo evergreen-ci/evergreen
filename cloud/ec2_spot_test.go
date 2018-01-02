@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -56,27 +55,4 @@ func TestSpawnSpotInstance(t *testing.T) {
 		})
 	})
 
-}
-
-func fetchTestDistro() *distro.Distro {
-	return &distro.Distro{
-		Id:       "test_distro",
-		Arch:     "linux_amd64",
-		WorkDir:  "/data/mci",
-		PoolSize: 10,
-		Provider: evergreen.ProviderNameEc2Spot,
-		ProviderSettings: &map[string]interface{}{
-			"ami":            "ami-c7e7f2d0",
-			"instance_type":  "t1.micro",
-			"key_name":       "mci",
-			"bid_price":      .005,
-			"security_group": "default",
-		},
-
-		SetupAsSudo: true,
-		Setup:       "",
-		Teardown:    "",
-		User:        "root",
-		SSHKey:      "",
-	}
 }
