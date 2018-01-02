@@ -163,11 +163,11 @@ func (c *shellExec) Execute(ctx context.Context,
 	subprocess.TrackProcess(conf.Task.Id, pid, logger.System())
 
 	if c.Background {
-		logger.Execution().Debug("running command in the background [pid=%d]", pid)
+		logger.Execution().Debugf("running command in the background [pid=%d]", pid)
 		return nil
 	}
 
-	err = errors.Wrap(localCmd.Wait(), "command [pid=%d] encountered problem", pid)
+	err = errors.Wrapf(localCmd.Wait(), "command [pid=%d] encountered problem", pid)
 	if ctx.Err() != nil {
 		logger.System().Debug("dumping running processes before canceling work")
 		logger.System().Debug(message.CollectAllProcesses())
