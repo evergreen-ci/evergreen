@@ -236,6 +236,7 @@ func (j *githubStatusUpdateJob) Run() {
 	adminSettings, err := admin.GetSettings()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		return
 	}
 	if adminSettings.ServiceFlags.GithubPRTestingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
@@ -253,15 +254,14 @@ func (j *githubStatusUpdateJob) Run() {
 	}
 
 	if err := j.sendStatusUpdate(&status); err != nil {
-		grip.Alert(message.Fields{
+		grip.Alert(message.WrapError(err, message.Fields{
 			"message":     "github API failure",
 			"source":      "status updates",
 			"job":         j.ID(),
 			"status":      status,
 			"fetch_id":    j.FetchID,
 			"update_type": j.UpdateType,
-			"error":       j.Error().Error(),
-		})
+		}))
 		j.AddError(err)
 	}
 }
