@@ -544,3 +544,35 @@ func (ac *legacyClient) GetPatchModules(patchId, projectId string) ([]string, er
 
 	return out, nil
 }
+
+// GetRecentVersions retrieves a list of recent versions for a project,
+// regardless of their success
+func (ac *legacyClient) GetRecentVersions(projectID string) ([]string, error) {
+	resp, err := ac.get(fmt.Sprintf("projects/%s/versions", projectID), nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+
+	v := struct {
+		Versions []struct {
+			Id string `json:"version_id"`
+		} `json:"versions"`
+	}{}
+
+	err = util.ReadJSONInto(resp.Body, &v)
+	if err != nil {
+		return nil, err
+	}
+
+	out := []string{}
+	for _, v := range v.Versions {
+		out = append(out, v.Id)
+	}
+
+	return out, nil
+}
