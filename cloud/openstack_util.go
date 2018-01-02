@@ -6,8 +6,6 @@ import (
 )
 
 const (
-	// NameTimeFormat is the format in which to log times like instance start time.
-	OSNameTimeFormat = "20060102150405"
 	// OSStatusActive means the instance is currently running.
 	OSStatusActive = "ACTIVE"
 	// OSStatusInProgress means the instance is currently running and processing a request.

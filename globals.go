@@ -159,6 +159,9 @@ const (
 	defaultAmboyDBName           = "amboy"
 )
 
+// NameTimeFormat is the format in which to log times like instance start time.
+const NameTimeFormat = "20060102150405"
+
 var (
 	// UphostStatus is a list of all hostb statuses that are considered "up."
 	// This is used for query building.
