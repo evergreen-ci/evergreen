@@ -261,7 +261,7 @@ func (j *githubStatusUpdateJob) Run() {
 			"status":      status,
 			"fetch_id":    j.FetchID,
 			"update_type": j.UpdateType,
-			"error":       err.Error(),
+			"error":       message.WrapError(err),
 		})
 		j.AddError(err)
 	}
