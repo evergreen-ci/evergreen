@@ -19,11 +19,15 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 	if !project.Enabled {
 		return errors.Wrap(errProjectDisabled, project.String())
 	}
+	token, err := conf.GetGithubOauthToken()
+	if err != nil {
+		return err
+	}
 
 	tracker := &RepoTracker{
 		Settings:   conf,
 		ProjectRef: &project,
-		RepoPoller: NewGithubRepositoryPoller(&project, conf.Credentials["github"]),
+		RepoPoller: NewGithubRepositoryPoller(&project, token),
 	}
 
 	if err := tracker.FetchRevisions(num); err != nil {
@@ -39,7 +43,7 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 	return nil
 }
 
-func CheckGithubAPIResources(conf *evergreen.Settings) bool {
+func CheckGithubAPIResources(githubToken string) bool {
 	status, err := thirdparty.GetGithubAPIStatus()
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
@@ -67,15 +71,7 @@ func CheckGithubAPIResources(conf *evergreen.Settings) bool {
 		})
 	}
 
-	token, ok := conf.Credentials[githubCredentialsKey]
-	if !ok {
-		grip.Warning(message.Fields{
-			"runner":  RunnerName,
-			"message": "Github credentials not specified in Evergreen credentials file",
-		})
-		return false
-	}
-	remaining, err := thirdparty.CheckGithubAPILimit(token)
+	remaining, err := thirdparty.CheckGithubAPILimit(githubToken)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,

@@ -24,7 +24,6 @@ const (
 	// githubAPILimitCeiling is arbitrary but corresponds to when we start logging errors in
 	// thirdparty/github.go/getGithubRateLimit
 	githubAPILimitCeiling = 20
-	githubCredentialsKey  = "github"
 )
 
 func (r *Runner) Name() string { return RunnerName }
@@ -82,7 +81,15 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 }
 
 func runRepoTracker(config *evergreen.Settings) error {
-	if !CheckGithubAPIResources(config) {
+	token, err := config.GetGithubOauthToken()
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"message": "Github credentials not specified in Evergreen credentials file",
+		}))
+		return err
+	}
+	if !CheckGithubAPIResources(token) {
 		return errors.New("github API is is not ready to run the repotracker")
 	}
 
