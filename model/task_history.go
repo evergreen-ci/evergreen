@@ -786,13 +786,14 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(numQueryThreads)
 	resultChan := make(chan task.Task)
+	catcher := grip.NewSimpleCatcher()
 	for i := 0; i < numQueryThreads; i++ {
 		go func() {
 			defer wg.Done()
 			for t := range taskChan {
 				err := t.MergeNewTestResults() //nolint
 				if err != nil {
-					grip.Error(errors.Wrapf(err, "error merging test results for task %s", t.Id))
+					catcher.Add(errors.Wrapf(err, "error merging test results for task %s", t.Id))
 					continue
 				}
 				// strip out any test results that don't match input params
@@ -817,6 +818,9 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	wg.Wait()
 	close(resultChan)
 	<-doneChan
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
 	return out, nil
 }
 
