@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -51,29 +51,26 @@ func (s *CostUnitSuite) TestSpotCostForRange() {
 
 func (s *CostUnitSuite) TestEBSCostCalculation() {
 	region := "X"
-	pf := mockEBSPriceFetcher{
-		response: map[string]float64{
+	cpf := &cachingPriceFetcher{
+		ebsPrices: map[string]float64{
 			region: 1.00,
 		},
 	}
-	cost, err := ebsCost(pf, region, 1, time.Hour*24*30)
+	cost, err := cpf.ebsCost(region, 1, time.Hour*24*30)
 	s.NoError(err)
 	s.Equal(1.00, cost)
-	cost, err = ebsCost(pf, region, 20, time.Hour*24*30)
+	cost, err = cpf.ebsCost(region, 20, time.Hour*24*30)
 	s.NoError(err)
 	s.Equal(20.0, cost)
-	cost, err = ebsCost(pf, region, 100, time.Hour)
+	cost, err = cpf.ebsCost(region, 100, time.Hour)
 	s.NoError(err)
 	s.InDelta(.135, cost, .005)
-	cost, err = ebsCost(pf, region, 100, time.Minute*20)
+	cost, err = cpf.ebsCost(region, 100, time.Minute*20)
 	s.NoError(err)
 	s.InDelta(.045, cost, .005)
 
-	pf = mockEBSPriceFetcher{err: errors.New("NETWORK OH NO")}
-	_, err = ebsCost(pf, "", 100, time.Minute*20)
-	s.Error(err)
-	pf = mockEBSPriceFetcher{response: map[string]float64{}}
-	_, err = ebsCost(pf, "mars-west-1", 100, time.Minute*20)
+	cpf = &cachingPriceFetcher{ebsPrices: map[string]float64{}}
+	_, err = cpf.ebsCost("mars-west-1", 100, time.Minute*20)
 	s.Error(err)
 }
 
@@ -95,26 +92,29 @@ func (s *CostUnitSuite) TestOnDemandPriceAPITranslation() {
 }
 
 func (s *CostUnitSuite) TestOnDemandPriceCalculation() {
-	pf := &mockODPriceFetcher{1.0, nil}
-	cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Minute*30)
+	client := &awsClientMock{}
+	h := &host.Host{}
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	r, _ := regionFullname("us-east-1")
+	cpf := &cachingPriceFetcher{
+		ec2Prices: map[odInfo]float64{
+			odInfo{
+				"Linux",
+				"m3.4xlarge",
+				r,
+			}: 1.0,
+		},
+	}
+	now := time.Now()
+	cost, err := cpf.getEC2Cost(client, h, timeRange{now.Add(-30 * time.Minute), now})
 	s.NoError(err)
 	s.Equal(.50, cost)
-	cost, err = onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour)
+	cost, err = cpf.getEC2Cost(client, h, timeRange{now.Add(-time.Hour), now})
 	s.NoError(err)
 	s.Equal(1.0, cost)
-	cost, err = onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour*2)
+	cost, err = cpf.getEC2Cost(client, h, timeRange{now.Add(-2 * time.Hour), now})
 	s.NoError(err)
 	s.Equal(2.0, cost)
-	pf = &mockODPriceFetcher{0, nil}
-	cost, err = onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour)
-	s.Error(err)
-	s.EqualError(err, "price not found in EC2 price listings")
-	s.Equal(0.0, cost)
-	pf = &mockODPriceFetcher{1, errors.New("bad thing")}
-	cost, err = onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour*2)
-	s.Error(err)
-	s.EqualError(err, "bad thing")
-	s.Equal(0.0, cost)
 }
 
 func (s *CostUnitSuite) TestTimeTilNextPayment() {
@@ -156,7 +156,6 @@ func (s *CostUnitSuite) TestTimeTilNextPayment() {
 
 type CostIntegrationSuite struct {
 	suite.Suite
-	m *ec2Manager
 }
 
 func TestCostIntegrationSuite(t *testing.T) {
@@ -165,17 +164,19 @@ func TestCostIntegrationSuite(t *testing.T) {
 
 func (s *CostIntegrationSuite) SetupSuite() {
 	testutil.ConfigureIntegrationTest(s.T(), testutil.TestConfig(), "CostIntegrationSuite")
-	opts := &EC2ManagerOptions{
-		client: &awsClientImpl{},
-	}
-	manager := NewEC2Manager(opts)
-	var ok bool
-	s.m, ok = manager.(*ec2Manager)
-	s.Require().True(ok)
 }
 
 func (s *CostIntegrationSuite) TestSpotPriceHistory() {
-	ps, err := s.m.describeHourlySpotPriceHistory(hourlySpotPriceHistoryInput{"m3.large", "us-east-1a", osLinux, time.Now().Add(-2 * time.Hour), time.Now()})
+	cpf := cachingPriceFetcher{}
+	client := &awsClientImpl{}
+	input := hourlySpotPriceHistoryInput{
+		iType: "m3.large",
+		zone:  "us-east-1a",
+		os:    osLinux,
+		start: time.Now().Add(-2 * time.Hour),
+		end:   time.Now(),
+	}
+	ps, err := cpf.describeHourlySpotPriceHistory(client, input)
 	s.NoError(err)
 	s.True(len(ps) > 2)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
@@ -184,7 +185,14 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 	s.True(ps[0].Price < 2.0)
 	s.True(ps[0].Time.Before(ps[1].Time))
 
-	ps, err = s.m.describeHourlySpotPriceHistory(hourlySpotPriceHistoryInput{"m3.large", "us-east-1a", osLinux, time.Now().Add(-240 * time.Hour), time.Now()})
+	input = hourlySpotPriceHistoryInput{
+		iType: "m3.large",
+		zone:  "us-east-1a",
+		os:    osLinux,
+		start: time.Now().Add(-240 * time.Hour),
+		end:   time.Now(),
+	}
+	ps, err = cpf.describeHourlySpotPriceHistory(client, input)
 	s.NoError(err)
 	s.True(len(ps) > 240)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
@@ -197,43 +205,33 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 }
 
 func (s *CostIntegrationSuite) TestFetchEBSPricing() {
-	prices, err := fetchEBSPricing()
+	cpf := cachingPriceFetcher{}
+	price, err := cpf.ebsCost("us-east-1", 1, time.Hour*24*30)
 	s.NoError(err)
-	s.True(len(prices) > 5)
-	s.True(prices["us-east-1"] > 0)
-	s.True(prices["us-east-1"] < 1)
+	s.True(price > 0)
 }
 
 func (s *CostIntegrationSuite) TestEBSPriceCaching() {
-	pf := cachedEBSPriceFetcher{}
-	s.Nil(pf.prices)
-	prices, err := pf.FetchEBSPrices()
+	cpf := cachingPriceFetcher{}
+	s.Nil(cpf.ebsPrices)
+	err := cpf.cacheEBSPrices()
 	s.NoError(err)
-	s.NotNil(prices)
-	s.Equal(pf.prices, prices)
-	pf.m.Lock()
-	pf.prices["NEW"] = 1
-	pf.m.Unlock()
-	prices, err = pf.FetchEBSPrices()
-	s.NoError(err)
-	s.NotNil(prices)
-	s.Equal(1.0, prices["NEW"])
-
+	s.NotNil(cpf.ebsPrices)
 }
 
 func (s *CostIntegrationSuite) TestFetchOnDemandPricing() {
-	pf := cachedOnDemandPriceFetcher{}
-	s.Nil(pf.prices)
-	c34x, err := pf.FetchPrice(osLinux, "c3.4xlarge", "us-east-1")
+	cpf := cachingPriceFetcher{}
+	s.Nil(cpf.ec2Prices)
+	c34x, err := cpf.getEC2OnDemandCost(osLinux, "c3.4xlarge", "us-east-1")
 	s.NoError(err)
 	s.True(c34x > .80)
-	c3x, err := pf.FetchPrice(osLinux, "c3.xlarge", "us-east-1")
+	c3x, err := cpf.getEC2OnDemandCost(osLinux, "c3.xlarge", "us-east-1")
 	s.NoError(err)
 	s.True(c3x > .20)
 	s.True(c34x > c3x)
-	wc3x, err := pf.FetchPrice(osWindows, "c3.xlarge", "us-east-1")
+	wc3x, err := cpf.getEC2OnDemandCost(osWindows, "c3.xlarge", "us-east-1")
 	s.NoError(err)
 	s.True(wc3x > .20)
 	s.True(wc3x > c3x)
-	s.True(len(pf.prices) > 50)
+	s.True(len(cpf.ec2Prices) > 50)
 }

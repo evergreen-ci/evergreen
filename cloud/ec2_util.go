@@ -624,3 +624,8 @@ func makeStringPtr(s string) *string {
 func makeBoolPtr(b bool) *bool {
 	return &b
 }
+
+// makeTimePtr is necessary because Go does not allow you to write `&time.Time`.
+func makeTimePtr(t time.Time) *time.Time {
+	return &t
+}
