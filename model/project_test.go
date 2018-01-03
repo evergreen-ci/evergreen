@@ -399,8 +399,8 @@ func TestAliasResolution(t *testing.T) {
 	// test that the 'a' tag and .*_2 regex selects the union of both
 	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[4].Alias)
 	assert.NoError(err)
-	assert.Len(pairs, 2)
+	assert.Len(pairs, 6)
 	for _, pair := range pairs {
-		assert.Equal("a_task_2", pair.TaskName)
+		assert.NotEqual("b_task_1", pair.TaskName)
 	}
 }
