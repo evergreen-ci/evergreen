@@ -22,10 +22,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (m *ec2Manager) spot(h *host.Host) bool {
+func (m *ec2Manager) isHostSpot(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2Spot
 }
-func (m *ec2Manager) onDemand(h *host.Host) bool {
+func (m *ec2Manager) isHostOnDemand(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2OnDemand
 }
 
@@ -322,13 +322,13 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
-	if m.onDemand(h) {
+	if m.isHostOnDemand(h) {
 		info, err := m.getInstanceInfo(h.Id)
 		if err != nil {
 			return StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(*info.State.Name), nil
-	} else if m.spot(h) {
+	} else if m.isHostSpot(h) {
 		return m.getSpotInstanceStatus(h.Id)
 	}
 	return StatusUnknown, errors.New("type must be on-demand or spot")
@@ -348,7 +348,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	if m.spot(h) {
+	if m.isHostSpot(h) {
 		canTerminate, err := m.cancelSpotRequest(h)
 		if err != nil {
 			return errors.Wrap(err, "error canceling spot request")
@@ -557,9 +557,9 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 		return 0, errors.Wrap(err, "error creating client")
 	}
 
-	if m.onDemand(h) {
+	if m.isHostOnDemand(h) {
 		return m.costForDurationOnDemand(h, start, end)
-	} else if m.spot(h) {
+	} else if m.isHostSpot(h) {
 		return m.costForDurationSpot(h, start, end)
 	}
 	return 0, errors.New("type must be on-demand or spot")
