@@ -103,7 +103,6 @@ db.json.ensureIndex({ "version_id" : 1 })
 
 //======testresults======//
 db.testresults.ensureIndex({ "task_id" : 1, "task_execution" : 1 })
-db.testresults.ensureIndex({ "test_file" : 1, "status" : 1 })
 
 //======project_aliases======//
 db.project_aliases.ensureIndex({ "project_id" : 1, "alias" : 1 })
