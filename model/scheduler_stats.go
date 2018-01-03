@@ -311,6 +311,9 @@ func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) 
 					evergreen.TaskFailed, evergreen.TaskSucceeded},
 			},
 			task.DistroIdKey: distroId,
+			task.DisplayOnlyKey: bson.M{
+				"$ne": true,
+			},
 		}},
 		// project the difference in scheduled -> start, as well as the bucket
 		{"$project": bson.M{
