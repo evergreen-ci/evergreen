@@ -110,27 +110,26 @@ func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	return job
 }
 
-func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
-	c := grip.NewCatcher()
+func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *githubStatus) error {
+	catcher := grip.NewBasicCatcher()
 
 	if !status.Valid() {
-		c.Add(errors.New("status is invalid"))
+		catcher.Add(errors.New("status is invalid"))
 	}
 	if j.env.Settings() == nil || j.env.Settings().Ui.Url == "" {
-		c.Add(errors.New("ui not configured"))
+		catcher.Add(errors.New("ui not configured"))
 	}
 	evergreenBaseURL := j.env.Settings().Ui.Url
 
 	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
-		c.Add(err)
-	}
-	if c.HasErrors() {
-		return c.Resolve()
+		catcher.Add(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	err = catcher.Resolve()
+	if err != nil {
+		return err
+	}
 
 	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
 	if err != nil {
@@ -145,6 +144,11 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(status *githubStatus) error {
 		Description: github.String(status.Description),
 		State:       github.String(status.State),
 	}
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	respStatus, resp, err := client.Repositories.CreateStatus(ctx, status.Owner, status.Repo, status.Ref, &newStatus)
 	if err != nil {
 		return err
@@ -232,6 +236,8 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 
 func (j *githubStatusUpdateJob) Run() {
 	defer j.MarkComplete()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	adminSettings, err := admin.GetSettings()
 	if err != nil {
@@ -253,8 +259,8 @@ func (j *githubStatusUpdateJob) Run() {
 		return
 	}
 
-	if err := j.sendStatusUpdate(&status); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
+	if err := j.sendStatusUpdate(ctx, &status); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
 			"message":     "github API failure",
 			"source":      "status updates",
 			"job":         j.ID(),
