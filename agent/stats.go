@@ -77,6 +77,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 					command := subprocess.NewLocalCommand(cmd, "", "bash", nil, false)
 					if err := command.SetOutput(output); err != nil {
 						// if we get here, it's programmer error
+						grip.Critical(err)
 						panic("problem configuring output for stats collector")
 					}
 

@@ -23,7 +23,7 @@ func TestLocalCommands(t *testing.T) {
 		Convey("the specified environment should be used", func() {
 			stdout := &CacheLastWritten{}
 
-			command := &LocalCommand{
+			command := &localCmd{
 				CmdString: "echo $local_command_test",
 				Stdout:    stdout,
 				Stderr:    ioutil.Discard,
@@ -54,7 +54,7 @@ func TestLocalCommands(t *testing.T) {
 			workingDir, err := filepath.Abs(evergreen.FindEvergreenHome())
 			So(err, ShouldBeNil)
 
-			command := &LocalCommand{
+			command := &localCmd{
 				CmdString:        "pwd",
 				Stdout:           stdout,
 				Stderr:           ioutil.Discard,
@@ -75,7 +75,7 @@ func TestLocalCommands(t *testing.T) {
 		Convey("the specified shell should be used", func() {
 			for _, sh := range []string{"bash", "sh", "/bin/bash", "/bin/sh"} {
 				stdout := &CacheLastWritten{}
-				command := &LocalCommand{
+				command := &localCmd{
 					Shell:     sh,
 					CmdString: "echo $0",
 					Stdout:    stdout,
@@ -89,7 +89,7 @@ func TestLocalCommands(t *testing.T) {
 
 		Convey("if not specified, sh should be used", func() {
 			stdout := &CacheLastWritten{}
-			command := &LocalCommand{
+			command := &localCmd{
 				CmdString: "echo $0",
 				Stdout:    stdout,
 				Stderr:    ioutil.Discard,
@@ -101,7 +101,7 @@ func TestLocalCommands(t *testing.T) {
 
 		Convey("when specified, local command can also use python", func() {
 			stdout := &CacheLastWritten{}
-			command := &LocalCommand{
+			command := &localCmd{
 				Shell:     "python",
 				CmdString: "print('hello world')",
 				Stdout:    stdout,
@@ -130,7 +130,7 @@ func TestLocalScript(t *testing.T) {
 			workingDir, err := filepath.Abs(evergreen.FindEvergreenHome())
 			So(err, ShouldBeNil)
 
-			command := &LocalCommand{
+			command := &localCmd{
 				CmdString:        "set -v\necho 'hi'\necho 'foo'\necho `pwd`",
 				ScriptMode:       true,
 				Stdout:           stdout,

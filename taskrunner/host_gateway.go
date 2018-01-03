@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"path/filepath"
 	"strings"
 	"time"
@@ -205,9 +204,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 
 	// build the command to run on the remote machine
 	remoteCmd := strings.Join(agentCmdParts, " ")
-	cmdId := fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int())
 	grip.Info(message.Fields{
-		"id":      cmdId,
 		"message": "starting agent on host",
 		"host":    hostObj.Id,
 		"command": remoteCmd,
@@ -221,32 +218,34 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 	}
 
 	// run the command to kick off the agent remotely
-	var startAgentLog bytes.Buffer
-	startAgentCmd := &subprocess.RemoteCommand{
-		Id:             cmdId,
-		CmdString:      remoteCmd,
-		Stdout:         &startAgentLog,
-		Stderr:         &startAgentLog,
-		RemoteHostName: hostInfo.Hostname,
-		User:           hostObj.User,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     true,
-	}
-
+	env := map[string]string{}
 	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		startAgentCmd.EnvVars = append(startAgentCmd.EnvVars,
-			fmt.Sprintf("GRIP_SUMO_ENDPOINT='%s'", sumoEndpoint))
+		env["GRIP_SUMO_ENDPOINT"] = sumoEndpoint
 	}
 
 	if settings.Splunk.Populated() {
-		startAgentCmd.EnvVars = append(startAgentCmd.EnvVars,
-			fmt.Sprintf("GRIP_SPLUNK_SERVER_URL='%s'", settings.Splunk.ServerURL),
-			fmt.Sprintf("GRIP_SPLUNK_CLIENT_TOKEN='%s'", settings.Splunk.Token))
+		env["GRIP_SPLUNK_SERVER_URL"] = settings.Splunk.ServerURL
+		env["GRIP_SPLUNK_CLIENT_TOKEN"] = settings.Splunk.Token
 
 		if settings.Splunk.Channel != "" {
-			startAgentCmd.EnvVars = append(startAgentCmd.EnvVars,
-				fmt.Sprintf("GRIP_SPLUNK_CHANNEL='%s'", settings.Splunk.Channel))
+			env["GRIP_SPLUNK_CHANNEL"] = settings.Splunk.Channel
 		}
+	}
+
+	startAgentCmd := subprocess.NewRemoteCommand(
+		remoteCmd,
+		hostInfo.Hostname,
+		hostObj.User,
+		env,
+		true, // background
+		append([]string{"-p", hostInfo.Port}, sshOptions...),
+		false, // loggingDisabled
+	)
+	cmdOutBuff := &bytes.Buffer{}
+	outputOpts := subprocess.OutputOptions{Output: cmdOutBuff, SendOutputToError: true}
+
+	if err = startAgentCmd.SetOutput(cmdOutOpts); err != nil {
+		return errors.Wrap(err, "problem configuring command output")
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), sshTimeout)
@@ -263,7 +262,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		if err == util.ErrTimedOut {
 			return errors.Errorf("starting agent timed out on %s", hostObj.Id)
 		}
-		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())
+		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, cmdOutBuff.String())
 	}
 
 	event.LogHostAgentDeployed(hostObj.Id)

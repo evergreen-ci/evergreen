@@ -493,16 +493,19 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
 	}
 
-	var scpCmdStderr bytes.Buffer
-	scpCmd := &subprocess.ScpCommand{
-		Source:         file.Name(),
-		Dest:           filepath.Join("~", name),
-		Stdout:         &scpCmdStderr,
-		Stderr:         &scpCmdStderr,
-		RemoteHostName: hostInfo.Hostname,
-		User:           user,
-		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
+	scpCmdOut := &bytes.Buffer{}
+	output := subprocess.OutputOptions{Output: scpCmdOut, Error: scpCmdOut}
+	scpCmd := subprocess.NewSCPCommand(
+		file.Name(),
+		filepath.Join("~", name),
+		hostInfo.Hostname,
+		user,
+		append([]string{"-P", hostInfo.Port}, sshOptions...))
+
+	if err = scpCmd.SetOutput(output); err != nil {
+		return errors.Wrap(err, "problem configuring output")
 	}
+
 	// run the command to scp the script with a timeout
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, SCPTimeout)
@@ -520,7 +523,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 			return errors.Wrap(err, "scp-ing script timed out")
 		}
 		return errors.Wrapf(err, "error (%v) copying script to remote machine",
-			scpCmdStderr.String())
+			scpCmdOut.String())
 	}
 	return nil
 }
@@ -805,15 +808,20 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	defer os.Remove(tempFileName)
 
 	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
-	scpYmlCommand := &subprocess.ScpCommand{
-		Source:         tempFileName,
-		Dest:           fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
-		Stdout:         scpOut,
-		Stderr:         scpOut,
-		RemoteHostName: hostSSHInfo.Hostname,
-		User:           target.User,
-		Options:        append([]string{"-P", hostSSHInfo.Port}, sshOptions...),
+
+	output := subprocess.OutputOptions{Error: scpOut, Output: scpOut}
+
+	scpYmlCommand := subprocess.NewSCPCommand(
+		tempFileName,
+		fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
+		hostSSHInfo.Hostname,
+		target.User,
+		append([]string{"-P", hostSSHInfo.Port}, sshOptions...))
+
+	if err = scpYmlCommand.SetOutput(output); err != nil {
+		return nil, errors.Wrap(err, "problem configuring output")
 	}
+
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
