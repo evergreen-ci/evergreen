@@ -769,7 +769,10 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		ExecutionTasks:      execTasks,
 		Status:              evergreen.TaskUndispatched,
 		StartTime:           util.ZeroTime,
+		FinishTime:          util.ZeroTime,
 		Activated:           b.Activated,
+		DispatchTime:        util.ZeroTime,
+		ScheduledTime:       util.ZeroTime,
 	}
 }
 
