@@ -69,7 +69,7 @@ func fetchAndWriteConfig(c *legacyClient, project string) error {
 		return errors.Wrapf(err, "failed to marshal configuration for project %s", project)
 	}
 
-	err = ioutil.WriteFile(project+".yml", []byte(data), 0666)
+	err = ioutil.WriteFile(project+".yml", data, 0666)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write configuration for project %s", project)
 	}
