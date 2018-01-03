@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFindProject(t *testing.T) {
@@ -270,4 +272,135 @@ func TestIgnoresAllFiles(t *testing.T) {
 
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+func TestAliasResolution(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(ProjectVarsCollection), t, "Error clearing collection")
+	vars := ProjectVars{
+		Id: "project",
+		PatchDefinitions: []PatchDefinition{
+			{
+				Alias:   "all",
+				Variant: ".*",
+				Task:    ".*",
+			},
+			{
+				Alias:   "bv2",
+				Variant: ".*_2",
+				Task:    ".*",
+			},
+			{
+				Alias:   "2tasks",
+				Variant: ".*",
+				Task:    ".*_2",
+			},
+			{
+				Alias:   "aTags",
+				Variant: ".*",
+				Tags:    []string{"a"},
+			},
+			{
+				Alias:   "aTags_2tasks",
+				Variant: ".*",
+				Task:    ".*_2",
+				Tags:    []string{"a"},
+			},
+		},
+	}
+	assert.NoError(vars.Insert())
+	p := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv_1",
+				Tasks: []BuildVariantTask{
+					{
+						Name: "a_task_1",
+					},
+					{
+						Name: "a_task_2",
+					},
+					{
+						Name: "b_task_1",
+					},
+					{
+						Name: "b_task_2",
+					},
+				},
+			},
+			{
+				Name: "bv_2",
+				Tasks: []BuildVariantTask{
+					{
+						Name: "a_task_1",
+					},
+					{
+						Name: "a_task_2",
+					},
+					{
+						Name: "b_task_1",
+					},
+					{
+						Name: "b_task_2",
+					},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{
+				Name: "a_task_1",
+				Tags: []string{"a", "1"},
+			},
+			{
+				Name: "a_task_2",
+				Tags: []string{"a", "2"},
+			},
+			{
+				Name: "b_task_1",
+				Tags: []string{"b", "1"},
+			},
+			{
+				Name: "b_task_2",
+				Tags: []string{"b", "2"},
+			},
+		},
+	}
+
+	// test that .* on variants and tasks selects everything
+	pairs, err := p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[0].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 8)
+
+	// test that the .*_2 regex on variants selects just bv_2
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[1].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 4)
+	for _, pair := range pairs {
+		assert.Equal("bv_2", pair.Variant)
+	}
+
+	// test that the .*_2 regex on tasks selects just the _2 tasks
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[2].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 4)
+	for _, pair := range pairs {
+		assert.Contains(pair.TaskName, "task_2")
+	}
+
+	// test that the 'a' tag only selects 'a' tasks
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[3].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 4)
+	for _, pair := range pairs {
+		assert.Contains(pair.TaskName, "a_task")
+	}
+
+	// test that the 'a' tag and .*_2 regex selects the union of both
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[4].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 2)
+	for _, pair := range pairs {
+		assert.Equal("a_task_2", pair.TaskName)
+	}
 }

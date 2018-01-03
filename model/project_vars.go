@@ -45,9 +45,10 @@ type ProjectVars struct {
 }
 
 type PatchDefinition struct {
-	Alias   string `bson:"alias" json:"alias"`
-	Variant string `bson:"variant" json:"variant"`
-	Task    string `bson:"task" json:"task"`
+	Alias   string   `bson:"alias" json:"alias"`
+	Variant string   `bson:"variant" json:"variant"`
+	Task    string   `bson:"task" json:"task"`
+	Tags    []string `bson:"tags" json:"tags"`
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
