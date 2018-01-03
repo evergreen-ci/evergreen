@@ -321,7 +321,7 @@ func TestTaskSetPriority(t *testing.T) {
 		Convey("setting its priority should update it in-memory"+
 			" and update it and all dependencies in the database", func() {
 
-			So(tasks[0].SetPriority(1), ShouldBeNil)
+			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, 1)
 
 			task, err := FindOne(ById("one"))
@@ -361,9 +361,9 @@ func TestTaskSetPriority(t *testing.T) {
 
 		Convey("decreasing priority should update the task but not its dependencies", func() {
 
-			So(tasks[0].SetPriority(1), ShouldBeNil)
+			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
 			So(tasks[0].Activated, ShouldEqual, true)
-			So(tasks[0].SetPriority(-1), ShouldBeNil)
+			So(tasks[0].SetPriority(-1, "user"), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, -1)
 
 			task, err := FindOne(ById("one"))

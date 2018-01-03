@@ -803,7 +803,7 @@ func (t *Task) UpdateHeartbeat() error {
 }
 
 // SetPriority sets the priority of the tasks and the tasks that they depend on
-func (t *Task) SetPriority(priority int64) error {
+func (t *Task) SetPriority(priority int64, user string) error {
 	t.Priority = priority
 	modifier := bson.M{PriorityKey: priority}
 
@@ -825,7 +825,11 @@ func (t *Task) SetPriority(priority int64) error {
 		}},
 		bson.M{"$set": modifier},
 	)
+
+	event.LogTaskPriority(t.Id, user, priority)
+
 	return errors.WithStack(err)
+
 }
 
 // getRecursiveDependencies creates a slice containing t.Id and the Ids of all recursive dependencies.

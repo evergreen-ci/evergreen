@@ -528,7 +528,7 @@ func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Conne
 				StatusCode: http.StatusForbidden,
 			}
 		}
-		if err := sc.SetTaskPriority(tep.task, priority); err != nil {
+		if err := sc.SetTaskPriority(tep.task, tep.user.Username(), priority); err != nil {
 			return ResponseData{}, errors.Wrap(err, "Database error")
 		}
 	}
