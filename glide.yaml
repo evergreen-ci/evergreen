@@ -36,7 +36,6 @@ import:
   - package: github.com/evergreen-ci/crowd
   - package: github.com/kardianos/osext
   - package: github.com/sabhiram/go-git-ignore
-  - package: github.com/tylerb/graceful
   - package: github.com/dustin/go-humanize
   - package: github.com/mitchellh/go-homedir
   - package: github.com/go-ini/ini

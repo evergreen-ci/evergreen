@@ -5,7 +5,10 @@ import (
 	"fmt"
 	htmlTemplate "html/template"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	textTemplate "text/template"
 	"time"
 
@@ -60,47 +63,94 @@ func startWebService() cli.Command {
 			if err != nil {
 				return errors.WithStack(err)
 			}
+			apiServer := service.GetServer(settings.Api.HttpListenAddr, apiHandler)
 
 			uiHandler, err := getHandlerUI(settings, queue, router)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-
-			pprofHandler := service.GetHandlerPprof(settings)
+			if settings.Ui.CsrfKey != "" {
+				errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
+				uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
+			}
+			uiServer := service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
 
 			catcher := grip.NewBasicCatcher()
 			apiWait := make(chan struct{})
 			go func() {
-				catcher.Add(service.RunGracefully(settings.Api.HttpListenAddr, apiHandler))
+				defer recovery.LogStackTraceAndContinue("api server")
+				catcher.Add(apiServer.ListenAndServe())
 				close(apiWait)
 			}()
 
 			uiWait := make(chan struct{})
 			go func() {
-				if settings.Ui.CsrfKey != "" {
-					errorHandler := csrf.ErrorHandler(http.HandlerFunc(service.ForbiddenHandler))
-					uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
-				}
-				catcher.Add(service.RunGracefully(settings.Ui.HttpListenAddr, uiHandler))
+				defer recovery.LogStackTraceAndContinue("ui server")
+				catcher.Add(uiServer.ListenAndServe())
 				close(uiWait)
 			}()
 
 			pprofWait := make(chan struct{})
+			pprofServer := service.GetServer(settings.PprofPort, service.GetHandlerPprof(settings))
 			go func() {
+				defer recovery.LogStackTraceAndContinue("proff server")
+
 				if settings.PprofPort != "" {
-					catcher.Add(service.RunGracefully(settings.PprofPort, pprofHandler))
+					catcher.Add(pprofServer.ListenAndServe())
 				}
+
 				close(pprofWait)
 			}()
+
+			gracefulWait := make(chan struct{})
+			go gracefulShutdownForSIGTERM(ctx, []*http.Server{pprofServer, uiServer, apiServer}, gracefulWait, catcher)
 
 			<-apiWait
 			<-uiWait
 			<-pprofWait
 
+			grip.Notice("waiting for web services to terminate gracefully")
+			<-gracefulWait
+
 			return catcher.Resolve()
 		},
 	}
 
+}
+
+func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher) {
+	defer recovery.LogStackTraceAndContinue("graceful shutdown")
+	sigChan := make(chan os.Signal, len(servers))
+	signal.Notify(sigChan, syscall.SIGTERM)
+
+	<-sigChan
+	waiters := make([]chan struct{}, 0)
+
+	grip.Info("received SIGTERM, terminating web service")
+	for _, s := range servers {
+		if s == nil {
+			continue
+		}
+
+		waiter := make(chan struct{})
+		go func(server *http.Server) {
+			defer recovery.LogStackTraceAndContinue("server shutdown")
+
+			catcher.Add(server.Shutdown(ctx))
+			close(waiter)
+		}(s)
+		waiters = append(waiters, waiter)
+	}
+
+	for _, waiter := range waiters {
+		if waiter == nil {
+			continue
+		}
+
+		<-waiter
+	}
+
+	close(wait)
 }
 
 func getHandlerAPI(settings *evergreen.Settings, queue amboy.Queue, router *mux.Router) (http.Handler, error) {
