@@ -46,7 +46,7 @@ func NewGithubCommentLogger(name string, issueID int, opts *GithubOptions) (Send
 	}
 
 	s.reset = func() {
-		fallback.SetPrefix(fmt.Sprintf("[%s] [%s/%s#%d]",
+		fallback.SetPrefix(fmt.Sprintf("[%s] [%s/%s#%d] ",
 			s.Name(), opts.Account, opts.Repo, issueID))
 	}
 
