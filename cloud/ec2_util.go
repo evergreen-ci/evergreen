@@ -429,7 +429,7 @@ func blockDeviceCosts(handle *ec2.EC2, devices []ec2.BlockDevice, dur time.Durat
 			if err != nil {
 				return 0, errors.Wrap(err, "reading volume size")
 			}
-			p, err := ebsCost(&pkgEBSFetcher, region, size, dur)
+			p, err := ebsCost(&pkgEBSFetcher, region, int64(size), dur)
 			if err != nil {
 				return 0, errors.Wrapf(err, "EBS volume %v", v.VolumeId)
 			}
@@ -441,7 +441,7 @@ func blockDeviceCosts(handle *ec2.EC2, devices []ec2.BlockDevice, dur time.Durat
 
 // ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
 // EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.
-func ebsCost(pf ebsPriceFetcher, region string, size int, duration time.Duration) (float64, error) {
+func ebsCost(pf ebsPriceFetcher, region string, size int64, duration time.Duration) (float64, error) {
 	prices, err := pf.FetchEBSPrices()
 	if err != nil {
 		return 0.0, err

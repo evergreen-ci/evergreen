@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/jpillora/backoff"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -533,4 +534,20 @@ func cloudStatusFromSpotStatus(id, state string) CloudStatus {
 		})
 		return StatusUnknown
 	}
+}
+
+func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+		return 0, errors.New("task timing data is malformed")
+	}
+	if err := m.client.Create(m.credentials); err != nil {
+		return 0, errors.Wrap(err, "error creating client")
+	}
+
+	if m.onDemand(h) {
+		return m.costForDurationOnDemand(h, start, end)
+	} else if m.spot(h) {
+		return m.costForDurationSpot(h, start, end)
+	}
+	return 0, errors.New("type must be on-demand or spot")
 }
