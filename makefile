@@ -226,7 +226,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/gorilla/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/tylerb/graceful/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/urfave/negroni/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/

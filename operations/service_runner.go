@@ -101,22 +101,23 @@ func startRunnerService() cli.Command {
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 			startCollectorJobs(ctx, env)
-
-			pprofHandler := service.GetHandlerPprof(settings)
-			if settings.PprofPort != "" {
-				go func() {
-					defer recovery.LogStackTraceAndContinue("pprof threads")
-					grip.Alert(service.RunGracefully(settings.PprofPort, pprofHandler))
-				}()
-			}
+			go func() {
+				defer recovery.LogStackTraceAndContinue("pprof server")
+				if settings.PprofPort != "" {
+					pprofServer := service.GetServer(settings.PprofPort, service.GetHandlerPprof(settings))
+					grip.Alert(pprofServer.ListenAndServe())
+				}
+			}()
 
 			// start and schedule runners
 			//
 			go listenForSIGTERM(cancel)
-			startRunners(ctx, settings)
+			waiter := make(chan struct{})
+			startRunners(ctx, settings, waiter)
+			grip.Notice("waiting for runner processes to terminate")
+			<-waiter
 
 			return errors.WithStack(err)
-
 		},
 	}
 }
@@ -165,7 +166,7 @@ var backgroundRunners = []processRunner{
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
 // returns a channel on which all runners listen on, for when to terminate.
-func startRunners(ctx context.Context, s *evergreen.Settings) {
+func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct{}) {
 	const (
 		frequentRunInterval   = 20 * time.Second
 		defaultRunInterval    = 60 * time.Second
@@ -214,6 +215,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings) {
 
 	wg.Wait()
 	grip.Infof("Cleanly terminated all %d processes", len(backgroundRunners))
+	close(waiter)
 }
 
 // listenForSIGTERM listens for the SIGTERM signal and closes the
@@ -226,6 +228,7 @@ func listenForSIGTERM(cancel context.CancelFunc) {
 	<-sigChan
 	grip.Infof("Terminating %d processes", len(backgroundRunners))
 	cancel()
+
 }
 
 // runProcessByName runs a single process given its name and evergreen Settings.

@@ -6,7 +6,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -172,12 +174,10 @@ func (srv *Server) ListenTLS(certFile, keyFile string) (net.Listener, error) {
 	}
 
 	var err error
-	if certFile != "" && keyFile != "" {
-		config.Certificates = make([]tls.Certificate, 1)
-		config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
-		if err != nil {
-			return nil, err
-		}
+	config.Certificates = make([]tls.Certificate, 1)
+	config.Certificates[0], err = tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, err
 	}
 
 	// Enable http2
@@ -299,7 +299,7 @@ func (srv *Server) Serve(listener net.Listener) error {
 	interrupt := srv.interruptChan()
 	// Set up the interrupt handler
 	if !srv.NoSignalHandling {
-		signalNotify(interrupt)
+		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 	}
 	quitting := make(chan struct{})
 	go srv.handleInterrupt(interrupt, quitting, listener)
@@ -336,7 +336,8 @@ func (srv *Server) Stop(timeout time.Duration) {
 	defer srv.stopLock.Unlock()
 
 	srv.Timeout = timeout
-	sendSignalInt(srv.interruptChan())
+	interrupt := srv.interruptChan()
+	interrupt <- syscall.SIGINT
 }
 
 // StopChan gets the stop channel which will block until
@@ -366,7 +367,6 @@ func (srv *Server) manageConnections(add, idle, active, remove chan net.Conn, sh
 		select {
 		case conn := <-add:
 			srv.connections[conn] = struct{}{}
-			srv.idleConnections[conn] = struct{}{} // Newly-added connections are considered idle until they become active.
 		case conn := <-idle:
 			srv.idleConnections[conn] = struct{}{}
 		case conn := <-active:
@@ -458,8 +458,6 @@ func (srv *Server) shutdown(shutdown chan chan struct{}, kill chan struct{}) {
 	done := make(chan struct{})
 	shutdown <- done
 
-	srv.stopLock.Lock()
-	defer srv.stopLock.Unlock()
 	if srv.Timeout > 0 {
 		select {
 		case <-done:
