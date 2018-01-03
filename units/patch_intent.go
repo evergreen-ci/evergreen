@@ -93,16 +93,15 @@ func (j *patchIntentProcessor) Run() {
 		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		err = j.env.LocalQueue().Put(update)
 		j.AddError(err)
-		grip.ErrorWhen(err != nil, message.Fields{
+		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
 			"message":            "Failed to queue status update",
-			"errors":             err.Error(),
 			"job":                j.ID(),
 			"patch_id":           j.PatchID,
 			"update_id":          update.ID(),
 			"update_for_version": patchDoc.Version,
 			"intent_type":        j.Intent.GetType(),
 			"intent_id":          j.Intent.ID(),
-		})
+		}))
 
 		j.AddError(model.CancelPatchesWithGithubPatchData(patchDoc.CreateTime,
 			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
@@ -127,14 +126,13 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		c.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
 	}
 	if c.HasErrors() {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(c.Resolve(), message.Fields{
 			"message":     "Failed to build patch document",
-			"errors":      c.Resolve().Error(),
 			"job":         j.ID(),
 			"patch_id":    j.PatchID,
 			"intent_type": j.Intent.GetType(),
 			"intent_id":   j.Intent.ID(),
-		})
+		}))
 		return c.Resolve()
 	}
 	var err error
@@ -325,19 +323,18 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	isMember, err := authAndFetchPRMergeBase(context.TODO(), patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
-		grip.Alert(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":   "github API failure",
 			"source":    "patch intents",
 			"job":       j.ID(),
 			"patch_id":  j.PatchID,
-			"error":     err.Error(),
 			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number": patchDoc.GithubPatchData.PRNumber,
 
 			"intent_type": j.Intent.GetType(),
 			"intent_id":   j.Intent.ID(),
-		})
+		}))
 		return err
 	}
 	if !isMember {
