@@ -68,10 +68,10 @@ func (s *NewEC2ProviderSettings) Validate() error {
 	return nil
 }
 
-type providerType int
+type ec2ProviderType int
 
 const (
-	onDemandProvider providerType = iota
+	onDemandProvider ec2ProviderType = iota
 	spotProvider
 
 	// TODO EVG-2415
@@ -84,7 +84,7 @@ type EC2ManagerOptions struct {
 	client AWSClient
 
 	// provider is the type
-	provider providerType
+	provider ec2ProviderType
 }
 
 // ec2Manager starts and configures instances in EC2.
