@@ -68,10 +68,23 @@ func (s *NewEC2ProviderSettings) Validate() error {
 	return nil
 }
 
+type providerType int
+
+const (
+	onDemandProvider providerType = iota
+	spotProvider
+
+	// TODO EVG-2415
+	autoProvider
+)
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
 	client AWSClient
+
+	// provider is the type
+	provider providerType
 }
 
 // ec2Manager starts and configures instances in EC2.
@@ -263,12 +276,12 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	defer m.client.Close()
 
 	var resources []*string
-	if m.onDemand(h) {
+	if m.provider == onDemandProvider {
 		resources, err = m.spawnOnDemandHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			return nil, errors.Wrap(err, "error spawning on-demand host")
 		}
-	} else if m.spot(h) {
+	} else if m.provider == spotProvider {
 		resources, err = m.spawnSpotHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			return nil, errors.Wrap(err, "error spawning spot host")
