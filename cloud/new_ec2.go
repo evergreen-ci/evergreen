@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/jpillora/backoff"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -145,27 +144,16 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 		"key_name": *instance.KeyName,
 	})
 
-	backoff := &backoff.Backoff{
-		Min:    1 * time.Second,
-		Max:    1 * time.Minute,
-		Factor: 2,
-		Jitter: true,
-	}
-	max := 10
-	var resp *ec2.DescribeInstancesOutput
-	for i := 0; i <= max; i++ {
-		resp, err = m.client.DescribeInstances(&ec2.DescribeInstancesInput{
-			InstanceIds: []*string{instance.InstanceId},
-		})
-		if err != nil {
-			if i == max {
-				err = errors.Wrapf(err, "error querying for instance info and retries exhausted for %s", *instance.InstanceId)
-				return nil, err
-			}
-			time.Sleep(backoff.Duration())
-			continue
-		}
-		break
+	resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
+		InstanceIds: []*string{instance.InstanceId},
+	})
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+			"message": "error describing instance",
+		}))
+		return nil, errors.Wrap(err, "error describing instance")
 	}
 
 	grip.Debug(message.Fields{

@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -54,6 +55,11 @@ type awsClientImpl struct {
 	*ec2.EC2
 }
 
+const (
+	awsClientImplRetries     = 10
+	awsClientImplStartPeriod = time.Second
+)
+
 // Create a new aws-sdk-client if one does not exist, otherwise no-op.
 func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 	if creds == nil {
@@ -76,6 +82,168 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 func (c *awsClientImpl) Close() {
 	util.PutHttpClient(c.httpClient)
 	c.httpClient = nil
+}
+
+// RunInstances is a wrapper for ec2.RunInstances.
+func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
+	var output *ec2.Reservation
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.RunInstances(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// DescribeInstances is a wrapper for ec2.DescribeInstances
+func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
+	var output *ec2.DescribeInstancesOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DescribeInstances(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// CreateTags is a wrapper for ec2.CreateTags.
+func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
+	var output *ec2.CreateTagsOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.CreateTags(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// TerminateInstances is a wrapper for ec2.TerminateInstances.
+func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
+	var output *ec2.TerminateInstancesOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.TerminateInstances(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
+func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
+	var output *ec2.RequestSpotInstancesOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.RequestSpotInstances(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
+func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+	var output *ec2.DescribeSpotInstanceRequestsOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DescribeSpotInstanceRequests(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
+func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
+	var output *ec2.CancelSpotInstanceRequestsOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.CancelSpotInstanceRequests(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
+func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
+	var output *ec2.DescribeVolumesOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DescribeVolumes(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
+}
+
+// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
+func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
+	var output *ec2.DescribeSpotPriceHistoryOutput
+	var err error
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DescribeSpotPriceHistory(input)
+			if err != nil {
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
 }
 
 // awsClientMock mocks ec2.EC2.
