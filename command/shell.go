@@ -111,39 +111,30 @@ func (c *shellExec) Execute(ctx context.Context,
 	defer logWriterInfo.Close()
 	defer logWriterErr.Close()
 
-	localCmd := &subprocess.LocalCommand{
-		CmdString:        c.Script,
-		Stdout:           logWriterInfo,
-		Stderr:           logWriterErr,
-		WorkingDirectory: c.WorkingDir,
-		ScriptMode:       true,
+	opts := subprocess.OutputOptions{
+		Output:            logWriterInfo,
+		Error:             logWriterErr,
+		SuppressOutput:    c.IgnoreStandardOutput,
+		SuppressError:     c.IgnoreStandardError,
+		SendOutputToError: c.RedirectStandardErrorToOutput,
 	}
 
-	if c.IgnoreStandardError {
-		localCmd.Stderr = nil
-	}
-	if c.IgnoreStandardOutput {
-		localCmd.Stdout = nil
-	}
-	if c.RedirectStandardErrorToOutput {
-		localCmd.Stderr = logWriterInfo
-	}
+	env := append(os.Environ(),
+		fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
+		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
 
-	if c.Shell != "" {
-		localCmd.Shell = c.Shell
+	localCmd := subprocess.NewLocalCommand(c.Script, c.WorkingDir, c.Shell, env, true)
+	if err = localCmd.SetOutput(opts); err != nil {
+		return err
 	}
 
 	if c.Silent {
 		logger.Execution().Infof("Executing script with %s (source hidden)...",
-			localCmd.Shell)
+			c.Shell)
 	} else {
 		logger.Execution().Infof("Executing script with %s: %v",
-			localCmd.Shell, localCmd.CmdString)
+			c.Shell, c.Script)
 	}
-
-	localCmd.Environment = append(os.Environ(),
-		fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
-		fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
 
 	if err = localCmd.Start(ctx); err != nil {
 		logger.System().Debugf("error spawning shell process: %v", err)

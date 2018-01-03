@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type LocalCommand struct {
+type localCmd struct {
 	CmdString        string    `json:"command"`
 	WorkingDirectory string    `json:"directory"`
 	Shell            string    `json:"shell"`
@@ -25,7 +25,7 @@ type LocalCommand struct {
 }
 
 func NewLocalCommand(cmdString, workingDir, shell string, env []string, scriptMode bool) Command {
-	return &LocalCommand{
+	return &localCmd{
 		CmdString:        cmdString,
 		WorkingDirectory: workingDir,
 		Shell:            shell,
@@ -34,7 +34,7 @@ func NewLocalCommand(cmdString, workingDir, shell string, env []string, scriptMo
 	}
 }
 
-func (lc *LocalCommand) Run(ctx context.Context) error {
+func (lc *localCmd) Run(ctx context.Context) error {
 	err := lc.Start(ctx)
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 	}
 }
 
-func (lc *LocalCommand) SetOutput(opts OutputOptions) error {
+func (lc *localCmd) SetOutput(opts OutputOptions) error {
 	if err := opts.Validate(); err != nil {
 		return errors.WithStack(err)
 	}
@@ -76,14 +76,14 @@ func (lc *LocalCommand) SetOutput(opts OutputOptions) error {
 	return nil
 }
 
-func (lc *LocalCommand) Wait() error {
+func (lc *localCmd) Wait() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
 	return lc.cmd.Wait()
 }
 
-func (lc *LocalCommand) GetPid() int {
+func (lc *localCmd) GetPid() int {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
@@ -94,7 +94,7 @@ func (lc *LocalCommand) GetPid() int {
 	return lc.cmd.Process.Pid
 }
 
-func (lc *LocalCommand) Start(ctx context.Context) error {
+func (lc *localCmd) Start(ctx context.Context) error {
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
@@ -128,7 +128,7 @@ func (lc *LocalCommand) Start(ctx context.Context) error {
 	return cmd.Start()
 }
 
-func (lc *LocalCommand) Stop() error {
+func (lc *localCmd) Stop() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 

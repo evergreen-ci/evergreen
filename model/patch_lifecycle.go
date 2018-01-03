@@ -279,13 +279,17 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		defer stderr.Close()
 		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
 		defer stdout.Close()
+		output := subprocess.OutputOptions{Output: stdout, Error: stderr}
 
-		patchCmd := &subprocess.LocalCommand{
-			CmdString:        strings.Join(patchCommandStrings, "\n"),
-			WorkingDirectory: workingDirectory,
-			Stdout:           stdout,
-			Stderr:           stderr,
-			ScriptMode:       true,
+		patchCmd := subprocess.NewLocalCommand(
+			strings.Join(patchCommandStrings, "\n"),
+			workingDirectory,
+			"bash",
+			nil,
+			true)
+
+		if err = patchCmd.SetOutput(output); err != nil {
+			return nil, errors.Wrap(err, "problem configuring command output")
 		}
 
 		ctx := context.TODO()
