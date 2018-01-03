@@ -156,9 +156,9 @@ func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
 	return opts, nil
 }
 
-//getInstanceInfo returns the full ec2 instance info for the given instance ID.
+//GetInstanceInfo returns the full ec2 instance info for the given instance ID.
 //Note that this is the *instance* id, not the spot request ID, which is different.
-func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, error) {
+func GetInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, error) {
 	resp, err := ec2Handle.DescribeInstances([]string{instanceId}, nil)
 	if err != nil {
 		return nil, err
@@ -623,4 +623,9 @@ func makeStringPtr(s string) *string {
 // makeBoolPtr is necessary because Go does not allow you to write `&true`.
 func makeBoolPtr(b bool) *bool {
 	return &b
+}
+
+// makeTimePtr is necessary because Go does not allow you to write `&time.Time`.
+func makeTimePtr(t time.Time) *time.Time {
+	return &t
 }

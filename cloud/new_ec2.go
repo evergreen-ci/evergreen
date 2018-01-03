@@ -21,10 +21,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (m *ec2Manager) isHostSpot(h *host.Host) bool {
+func isHostSpot(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2Spot
 }
-func (m *ec2Manager) isHostOnDemand(h *host.Host) bool {
+func isHostOnDemand(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2OnDemand
 }
 
@@ -354,8 +354,8 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
-	if m.isHostOnDemand(h) {
-		info, err := m.getInstanceInfo(h.Id)
+	if isHostOnDemand(h) {
+		info, err := m.client.GetInstanceInfo(h.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error getting instance info",
@@ -366,7 +366,7 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 			return StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(*info.State.Name), nil
-	} else if m.isHostSpot(h) {
+	} else if isHostSpot(h) {
 		return m.getSpotInstanceStatus(h.Id)
 	}
 	return StatusUnknown, errors.New("type must be on-demand or spot")
@@ -386,7 +386,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	if m.isHostSpot(h) {
+	if isHostSpot(h) {
 		canTerminate, err := m.cancelSpotRequest(h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -482,7 +482,7 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 		return false, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
-	info, err := m.getInstanceInfo(h.Id)
+	info, err := m.client.GetInstanceInfo(h.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
@@ -521,7 +521,7 @@ func (m *ec2Manager) IsSSHReachable(h *host.Host, keyName string) (bool, error) 
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
-	info, err := m.getInstanceInfo(h.Id)
+	info, err := m.client.GetInstanceInfo(h.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error getting instance info",
@@ -565,28 +565,6 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
-func (m *ec2Manager) getInstanceInfo(id string) (*ec2.Instance, error) {
-	resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
-		InstanceIds: []*string{makeStringPtr(id)},
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "EC2 API returns error for DescribeInstances")
-	}
-	reservation := resp.Reservations
-	if len(reservation) == 0 {
-		err = errors.Errorf("No reservation found for instance id: %s", id)
-		return nil, err
-	}
-
-	instances := reservation[0].Instances
-	if len(instances) == 0 {
-		err = errors.Errorf("'%s' was not found in reservation '%s'",
-			id, *resp.Reservations[0].ReservationId)
-		return nil, err
-	}
-
-	return instances[0], nil
-}
 
 func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 	spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
@@ -600,7 +578,7 @@ func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 	spotInstance := spotDetails.SpotInstanceRequests[0]
 	//Spot request has been fulfilled, so get status of the instance itself
 	if *spotInstance.InstanceId != "" {
-		instanceInfo, err := m.getInstanceInfo(*spotInstance.InstanceId)
+		instanceInfo, err := m.client.GetInstanceInfo(*spotInstance.InstanceId)
 		if err != nil {
 			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
 		}
@@ -642,10 +620,14 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 		return 0, errors.Wrap(err, "error creating client")
 	}
 
-	if m.isHostOnDemand(h) {
-		return m.costForDurationOnDemand(h, start, end)
-	} else if m.isHostSpot(h) {
-		return m.costForDurationSpot(h, start, end)
+	t := timeRange{start: start, end: end}
+	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(m.client, h, t)
+	if err != nil {
+		return 0, errors.Wrap(err, "error fetching ec2 cost")
 	}
-	return 0, errors.New("type must be on-demand or spot")
+	ebsCost, err := pkgCachingPriceFetcher.getEBSCost(m.client, h, t)
+	if err != nil {
+		return 0, errors.Wrap(err, "error fetching ebs cost")
+	}
+	return ec2Cost + ebsCost, nil
 }
