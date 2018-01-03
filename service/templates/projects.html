@@ -345,13 +345,14 @@ Evergreen Projects
         <div class="variables">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> Patch Aliases </h3>
-              <div class="muted small">Specify aliases to use with the CLI. Aliases may be specified multiple times. The result will be their union. All regular expressions must be valid Golang regular expressions. Use an alias with the --alias flag to the CLI patch command.</div>
+              <div class="muted small">Specify aliases to use with the CLI. Aliases may be specified multiple times. The result will be their union. All regular expressions must be valid Golang regular expressions. Task regexes and tags will use their union, if specified. Use an alias with the --alias flag to the CLI patch command.</div>
             </div>
           </div>
           <div id="patch-aliases-list-header" class="form-group">
             <div class="col-lg-2"> <label class="control-label"> Alias </label> </div>
             <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
             <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
             <div class="col-lg-2"></div>
           </div>
 
@@ -364,6 +365,9 @@ Evergreen Projects
             </div>
             <div class="col-lg-2">
               <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].task" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].tags_temp" type="text" placeholder="tags (comma-delimited)">
             </div>
             <div class="col-lg-2">
               <button class="btn btn-default btn-danger" type="button" ng-click="removePatchAlias($index)">
@@ -381,8 +385,11 @@ Evergreen Projects
             <div class="col-lg-2">
               <input ng-model="patch_alias.task" class="form-control" type="text" placeholder="task regex">
             </div>
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.tags_temp" class="form-control" type="text" placeholder="tags (comma-delimited)">
+            </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task)" type="button" ng-click="addPatchAlias()">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task, patch_alias.tags_temp)" type="button" ng-click="addPatchAlias()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchAliasMessage]]</label>
