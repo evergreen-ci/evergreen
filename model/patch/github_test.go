@@ -20,6 +20,7 @@ type GithubSuite struct {
 	baseRepo string
 	headRepo string
 	user     string
+	title    string
 }
 
 func TestGithubSuite(t *testing.T) {
@@ -34,6 +35,7 @@ func (s *GithubSuite) SetupSuite() {
 	s.user = "octocat"
 	s.baseRepo = "evergreen-ci/evergreen"
 	s.headRepo = "octocat/evergreen"
+	s.title = "Art of Pull Requests"
 }
 
 func (s *GithubSuite) SetupTest() {
@@ -41,43 +43,43 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(0, s.baseRepo, s.headRepo, s.hash, s.user, s.url))
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(0, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, "", s.headRepo, s.hash, s.user, s.url))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, "", s.headRepo, s.hash, s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, "", s.hash, s.user, s.url))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, "", s.hash, s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, "", s.user, s.url))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, "", s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.url))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, ""))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "foo"))
+	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "foo", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "https://example.com/1.patch"))
+	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "https://example.com/1.patch", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "http://example.com/1.diff"))
+	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "http://example.com/1.diff", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url))
+	intent, err = NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
@@ -99,7 +101,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Require().NotNil(patchDoc)
 	baseRepo := strings.Split(s.baseRepo, "/")
 	headRepo := strings.Split(s.headRepo, "/")
-	s.Equal(fmt.Sprintf("%s pull request #%d", s.baseRepo, s.pr), patchDoc.Description)
+	s.Equal(fmt.Sprintf("'%s' pull request #%d by %s: %s (https://github.com/evergreen-ci/evergreen/pull/5)", s.baseRepo, s.pr, s.user, s.title), patchDoc.Description)
 	s.Equal(evergreen.GithubPatchUser, patchDoc.Author)
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
 	s.NotZero(patchDoc.Id)
@@ -115,7 +117,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url))
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -136,7 +138,7 @@ func (s *GithubSuite) TestInsert() {
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url))
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

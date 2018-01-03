@@ -89,6 +89,9 @@ type githubIntent struct {
 	// DiffURL is the URL to the diff file for this pull request
 	DiffURL string `bson:"diff_url"`
 
+	// Title is the title of the Github PR
+	Title string `bson:"Title"`
+
 	// CreatedAt is the time that this intent was stored in the database
 	CreatedAt time.Time `bson:"created_at"`
 
@@ -127,7 +130,8 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		event.Sender == nil || event.Sender.Login == nil ||
 		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
 		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
-		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil {
+		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil ||
+		event.PullRequest.Title == nil {
 		return nil, errors.New("pull request document is malformed/missing data")
 	}
 	if msgDeliveryID == "" {
@@ -164,6 +168,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		User:         *event.Sender.Login,
 		HeadHash:     *event.PullRequest.Head.SHA,
 		DiffURL:      *event.PullRequest.DiffURL,
+		Title:        *event.PullRequest.Title,
 		IntentType:   GithubIntentType,
 	}, nil
 }
@@ -237,9 +242,10 @@ func FindUnprocessedGithubIntents() ([]*githubIntent, error) {
 func (g *githubIntent) NewPatch() *Patch {
 	baseRepo := strings.Split(g.BaseRepoName, "/")
 	headRepo := strings.Split(g.HeadRepoName, "/")
+	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
 		Id:          bson.NewObjectId(),
-		Description: fmt.Sprintf("%s pull request #%d", g.BaseRepoName, g.PRNumber),
+		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
 		GithubPatchData: GithubPatch{
