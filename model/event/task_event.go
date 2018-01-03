@@ -11,16 +11,17 @@ const (
 	ResourceTypeTask = "TASK"
 
 	// event types
-	TaskCreated      = "TASK_CREATED"
-	TaskDispatched   = "TASK_DISPATCHED"
-	TaskUndispatched = "TASK_UNDISPATCHED"
-	TaskStarted      = "TASK_STARTED"
-	TaskFinished     = "TASK_FINISHED"
-	TaskRestarted    = "TASK_RESTARTED"
-	TaskActivated    = "TASK_ACTIVATED"
-	TaskDeactivated  = "TASK_DEACTIVATED"
-	TaskAbortRequest = "TASK_ABORT_REQUEST"
-	TaskScheduled    = "TASK_SCHEDULED"
+	TaskCreated         = "TASK_CREATED"
+	TaskDispatched      = "TASK_DISPATCHED"
+	TaskUndispatched    = "TASK_UNDISPATCHED"
+	TaskStarted         = "TASK_STARTED"
+	TaskFinished        = "TASK_FINISHED"
+	TaskRestarted       = "TASK_RESTARTED"
+	TaskActivated       = "TASK_ACTIVATED"
+	TaskDeactivated     = "TASK_DEACTIVATED"
+	TaskAbortRequest    = "TASK_ABORT_REQUEST"
+	TaskScheduled       = "TASK_SCHEDULED"
+	TaskPriorityChanged = "TASK_PRIORITY_CHANGED"
 )
 
 // implements Data
@@ -31,6 +32,7 @@ type TaskEventData struct {
 	UserId       string    `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status       string    `bson:"s,omitempty" json:"status,omitempty"`
 	Timestamp    time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
+	Priority     int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
 func (self TaskEventData) IsValid() bool {
@@ -50,6 +52,10 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	if err := logger.LogEvent(event); err != nil {
 		grip.Errorf("Error logging task event: %+v", err)
 	}
+}
+
+func LogTaskPriority(taskId, user string, priority int64) {
+	LogTaskEvent(taskId, TaskPriorityChanged, TaskEventData{UserId: user, Priority: priority})
 }
 
 func LogTaskCreated(taskId string) {
