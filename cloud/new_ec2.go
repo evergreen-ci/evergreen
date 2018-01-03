@@ -286,21 +286,21 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if m.onDemand(h) {
 		resources, err = m.spawnOnDemandHost(h, ec2Settings, blockDevices)
 		if err != nil {
-			message := "error spawning on-demand host"
+			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":       message,
+				"message":       msg,
 				"host":          h.Id,
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
 			}))
-			return nil, errors.Wrap(err, message)
+			return nil, errors.Wrap(err, msg)
 		}
 	} else if m.spot(h) {
 		resources, err = m.spawnSpotHost(h, ec2Settings, blockDevices)
 		if err != nil {
-			message := "error spawning spot host"
+			msg := "error spawning spot host"
 			grip.Error(message.WrapError(err, message.Fields{
-				"message":       message,
+				"message":       msg,
 				"host":          h.Id,
 				"host_provider": h.Distro.Provider,
 				"distro":        h.Distro.Id,
