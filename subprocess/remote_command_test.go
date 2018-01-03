@@ -16,7 +16,7 @@ func TestRemoteCommand(t *testing.T) {
 	Convey("With a remote command", t, func() {
 
 		Convey("failure and success should be detected", func() {
-			failCmd := &RemoteCommand{
+			failCmd := &remoteCmd{
 				CmdString:      "false",
 				Stdout:         ioutil.Discard,
 				Stderr:         ioutil.Discard,
@@ -26,7 +26,7 @@ func TestRemoteCommand(t *testing.T) {
 			}
 			So(failCmd.Run(ctx), ShouldNotBeNil)
 
-			trueCmd := &RemoteCommand{
+			trueCmd := &remoteCmd{
 				CmdString:      "true",
 				Stdout:         ioutil.Discard,
 				Stderr:         ioutil.Discard,
@@ -43,7 +43,7 @@ func TestRemoteCommand(t *testing.T) {
 			stdout := &CacheLastWritten{}
 			stderr := &CacheLastWritten{}
 
-			command := &RemoteCommand{
+			command := &remoteCmd{
 				CmdString:      "echo 'hi stdout'; echo 'hi stderr'>&2",
 				Stdout:         stdout,
 				Stderr:         stderr,
@@ -64,7 +64,7 @@ func TestRemoteCommand(t *testing.T) {
 
 			// this command would sleep for 30 years if it were waited for
 			sleepCmd := "sleep 1000000000"
-			command := &RemoteCommand{
+			command := &remoteCmd{
 				CmdString:      sleepCmd,
 				Stdout:         ioutil.Discard,
 				Stderr:         ioutil.Discard,
@@ -78,7 +78,7 @@ func TestRemoteCommand(t *testing.T) {
 			So(command.Run(ctx), ShouldBeNil)
 
 			// clean up the sleeping process
-			cleanupCmd := &RemoteCommand{
+			cleanupCmd := &remoteCmd{
 				CmdString:      fmt.Sprintf("pkill -xf '%v'", sleepCmd),
 				Stdout:         ioutil.Discard,
 				Stderr:         ioutil.Discard,

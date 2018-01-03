@@ -194,9 +194,7 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
-	password string) (*subprocess.RemoteCommand, error) {
-
+func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host, password string) (subprocess.Command, error) {
 	cloudHost, err := cloud.GetCloudHost(hostObj, settings)
 	if err != nil {
 		return nil, err
@@ -222,16 +220,21 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 		hostObj.User, password)
 
 	// construct the required termination command
-	remoteCommand := &subprocess.RemoteCommand{
-		CmdString:       updatePwdCmd,
-		Stdout:          stdout,
-		Stderr:          stderr,
-		LoggingDisabled: true,
-		RemoteHostName:  hostInfo.Hostname,
-		User:            hostObj.User,
-		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:      false,
+	remoteCommand := subprocess.NewRemoteCommand(
+		updatePwdCmd,
+		hostInfo.Hostname,
+		hostObj.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostInfo.Port}, sshOptions...),
+		true, // logging disabled
+	)
+
+	opts := subprocess.OutputOptions{Error: stderr, Output: stdout}
+	if err = remoteCommand.SetOutput(opts); err != nil {
+		return nil, err
 	}
+
 	return remoteCommand, nil
 }
 

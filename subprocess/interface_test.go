@@ -10,10 +10,10 @@ import (
 func TestInterfaceCompliance(t *testing.T) {
 	assert := assert.New(t) // nolint
 
-	assert.Implements((*Command)(nil), &LocalCommand{})
-	assert.Implements((*Command)(nil), &RemoteCommand{})
+	assert.Implements((*Command)(nil), &localCmd{})
+	assert.Implements((*Command)(nil), &remoteCmd{})
 	assert.Implements((*Command)(nil), &localExec{})
-	assert.Implements((*Command)(nil), &ScpCommand{})
+	assert.Implements((*Command)(nil), &scpCommand{})
 }
 
 func TestOutputOptions(t *testing.T) {

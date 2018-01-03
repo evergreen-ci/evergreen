@@ -185,8 +185,10 @@ func (c *gitFetchProject) buildModuleCloneCommand(cloneURI, moduleBase, ref stri
 func (c *gitFetchProject) Execute(ctx context.Context,
 	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 
+	var err error
+
 	// expand the github parameters before running the task
-	if err := util.ExpandValues(c, conf.Expansions); err != nil {
+	if err = util.ExpandValues(c, conf.Expansions); err != nil {
 		return err
 	}
 
@@ -198,45 +200,27 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	cmdsJoined := strings.Join(gitCommands, "\n")
 
 	stdOut := logger.TaskWriter(level.Info)
-	stdErr := logger.TaskWriter(level.Error)
 	defer stdOut.Close()
+	stdErr := logger.TaskWriter(level.Error)
 	defer stdErr.Close()
-	fetchSourceCmd := &subprocess.LocalCommand{
-		CmdString:        cmdsJoined,
-		WorkingDirectory: conf.WorkDir,
-		Stdout:           stdOut,
-		Stderr:           stdErr,
-		ScriptMode:       true,
+	output := subprocess.OutputOptions{Output: stdOut, Error: stdErr}
+	fetchSourceCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)
+	if err = fetchSourceCmd.SetOutput(output); err != nil {
+		return errors.WithStack(err)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	errChan := make(chan error)
-	go func() {
-		logger.Execution().Info("Fetching source from git...")
-		redactedCmds := cmdsJoined
-		if c.Token != "" {
-			redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
-		}
-		logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
-		errChan <- fetchSourceCmd.Run(ctx)
-	}()
 
-	// wait until the command finishes or the stop channel is tripped
-	select {
-	case err := <-errChan:
-		if err != nil {
-			return errors.WithStack(err)
-		}
-	case <-ctx.Done():
-		logger.Execution().Info("Got kill signal during git.get_project command")
-		if pid := fetchSourceCmd.GetPid(); pid > 0 {
-			logger.Execution().Infof("Stopping process: %d", pid)
-			if err := fetchSourceCmd.Stop(); err != nil {
-				logger.Execution().Errorf("Error occurred stopping process: %v", err)
-			}
-		}
-		return errors.New("Fetch command interrupted")
+	logger.Execution().Info("Fetching source from git...")
+	redactedCmds := cmdsJoined
+	if c.Token != "" {
+		redactedCmds = strings.Replace(redactedCmds, c.Token, "[redacted oauth token]", -1)
+	}
+	logger.Execution().Debug(fmt.Sprintf("Commands are: %s", redactedCmds))
+
+	if err = fetchSourceCmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "problem running fetch command")
 	}
 
 	// Fetch source for the modules
@@ -273,33 +257,19 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 			return err
 		}
 
-		moduleFetchCmd := &subprocess.LocalCommand{
-			CmdString:        strings.Join(moduleCmds, "\n"),
-			WorkingDirectory: filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory)),
-			Stdout:           stdOut,
-			Stderr:           stdErr,
-			ScriptMode:       true,
+		moduleFetchCmd := subprocess.NewLocalCommand(
+			strings.Join(moduleCmds, "\n"),
+			filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory)),
+			"bash",
+			nil,
+			true)
+
+		if err = moduleFetchCmd.SetOutput(output); err != nil {
+			return err
 		}
 
-		go func() {
-			errChan <- moduleFetchCmd.Run(ctx)
-		}()
-
-		// wait until the command finishes or the stop channel is tripped
-		select {
-		case err := <-errChan:
-			if err != nil {
-				return err
-			}
-		case <-ctx.Done():
-			logger.Execution().Info("Got kill signal")
-			if pid := moduleFetchCmd.GetPid(); pid > 0 {
-				logger.Execution().Infof("Stopping process: %d", pid)
-				if err := moduleFetchCmd.Stop(); err != nil {
-					logger.Execution().Errorf("Error occurred stopping process: %v", err)
-				}
-			}
-			return errors.New("Fetch module command interrupted")
+		if err = moduleFetchCmd.Run(ctx); err != nil {
+			return errors.Wrap(err, "problem with git command")
 		}
 	}
 
@@ -308,32 +278,27 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		return nil
 	}
 
-	go func() {
-		logger.Execution().Info("Fetching patch.")
-		patch, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
-		if err != nil {
-			logger.Execution().Errorf("Failed to get patch: %v", err)
-			errChan <- errors.Wrap(err, "Failed to get patch")
-		}
-		err = c.getPatchContents(ctx, comm, logger, conf, patch)
-		if err != nil {
-			logger.Execution().Errorf("Failed to get patch contents: %v", err)
-			errChan <- errors.Wrap(err, "Failed to get patch contents")
-		}
-		err = c.applyPatch(ctx, logger, conf, patch)
-		if err != nil {
-			logger.Execution().Infof("Failed to apply patch: %v", err)
-			errChan <- errors.Wrap(err, "Failed to apply patch")
-		}
-		errChan <- nil
-	}()
-
-	select {
-	case err := <-errChan:
-		return errors.WithStack(err)
-	case <-ctx.Done():
-		return errors.New("Patch command interrupted")
+	logger.Execution().Info("Fetching patch.")
+	patch, err := comm.GetTaskPatch(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	if err != nil {
+		err = errors.Wrap(err, "Failed to get patch")
+		logger.Execution().Error(err.Error())
+		return err
 	}
+
+	if err = c.getPatchContents(ctx, comm, logger, conf, patch); err != nil {
+		err = errors.Wrap(err, "Failed to get patch contents")
+		logger.Execution().Errorf(err.Error())
+		return err
+	}
+
+	if err = c.applyPatch(ctx, logger, conf, patch); err != nil {
+		err = errors.Wrap(err, "Failed to apply patch")
+		logger.Execution().Infof(err.Error())
+		return err
+	}
+
+	return nil
 }
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
@@ -394,9 +359,11 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 	conf *model.TaskConfig, p *patch.Patch) error {
 
 	stdOut := logger.TaskWriter(level.Info)
-	stdErr := logger.TaskWriter(level.Error)
 	defer stdOut.Close()
+	stdErr := logger.TaskWriter(level.Error)
 	defer stdErr.Close()
+
+	output := subprocess.OutputOptions{Output: stdOut, Error: stdErr}
 
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range p.Patches {
@@ -447,12 +414,10 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		// this applies the patch using the patch files in the temp directory
 		patchCommandStrings := getPatchCommands(patchPart, dir, tempAbsPath)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
-		patchCmd := &subprocess.LocalCommand{
-			CmdString:        cmdsJoined,
-			WorkingDirectory: conf.WorkDir,
-			Stdout:           stdOut,
-			Stderr:           stdErr,
-			ScriptMode:       true,
+
+		patchCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)
+		if err = patchCmd.SetOutput(output); err != nil {
+			return errors.WithStack(err)
 		}
 
 		if err = patchCmd.Run(ctx); err != nil {
