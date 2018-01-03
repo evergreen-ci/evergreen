@@ -101,7 +101,7 @@ func (cloudManager *ec2OnDemandManager) IsSSHReachable(host *host.Host, keyPath 
 func (cloudManager *ec2OnDemandManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
-	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
+	instanceInfo, err := GetInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
 		return StatusUnknown, err
 	}
@@ -218,7 +218,7 @@ func (cloudManager *ec2OnDemandManager) IsUp(host *host.Host) (bool, error) {
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
-	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
+	instanceInfo, err := GetInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}
@@ -237,7 +237,7 @@ func (cloudManager *ec2OnDemandManager) GetDNSName(host *host.Host) (string, err
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
-	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
+	instanceInfo, err := GetInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
 		return "", err
 	}
@@ -351,7 +351,7 @@ func (cloudManager *ec2OnDemandManager) CostForDuration(h *host.Host, start, end
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
-	instance, err := getInstanceInfo(ec2Handle, h.Id)
+	instance, err := GetInstanceInfo(ec2Handle, h.Id)
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}

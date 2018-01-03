@@ -310,7 +310,7 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 	}
 	defer m.client.Close()
 	if onDemand(h) {
-		info, err := m.client.getInstanceInfo(h.Id)
+		info, err := m.client.GetInstanceInfo(h.Id)
 		if err != nil {
 			return StatusUnknown, err
 		}
@@ -402,7 +402,7 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 		return false, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
-	info, err := m.client.getInstanceInfo(h.Id)
+	info, err := m.client.GetInstanceInfo(h.Id)
 	if err != nil {
 		return false, err
 	}
@@ -429,7 +429,7 @@ func (m *ec2Manager) IsSSHReachable(h *host.Host, keyName string) (bool, error) 
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
-	info, err := m.client.getInstanceInfo(h.Id)
+	info, err := m.client.GetInstanceInfo(h.Id)
 	if err != nil {
 		return "", err
 	}
@@ -480,7 +480,7 @@ func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 	spotInstance := spotDetails.SpotInstanceRequests[0]
 	//Spot request has been fulfilled, so get status of the instance itself
 	if *spotInstance.InstanceId != "" {
-		instanceInfo, err := m.client.getInstanceInfo(*spotInstance.InstanceId)
+		instanceInfo, err := m.client.GetInstanceInfo(*spotInstance.InstanceId)
 		if err != nil {
 			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
 		}
@@ -522,7 +522,7 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 		return 0, errors.Wrap(err, "error creating client")
 	}
 
-	t := timeRange{start, end}
+	t := timeRange{start: start, end: end}
 	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(m.client, h, t)
 	if err != nil {
 		return 0, errors.Wrap(err, "error fetching ec2 cost")

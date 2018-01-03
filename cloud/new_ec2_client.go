@@ -47,7 +47,7 @@ type AWSClient interface {
 	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
 	DescribeSpotPriceHistory(*ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
 
-	getInstanceInfo(string) (*ec2.Instance, error)
+	GetInstanceInfo(string) (*ec2.Instance, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -218,7 +218,7 @@ func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 	return &ec2.DescribeSpotPriceHistoryOutput{}, nil
 }
 
-func (c *awsClientMock) getInstanceInfo(id string) (*ec2.Instance, error) {
+func (c *awsClientMock) GetInstanceInfo(id string) (*ec2.Instance, error) {
 	instance := &ec2.Instance{}
 	instance.Placement = &ec2.Placement{}
 	instance.Placement.AvailabilityZone = makeStringPtr("us-east-1a")

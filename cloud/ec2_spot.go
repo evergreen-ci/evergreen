@@ -141,7 +141,7 @@ func (cloudManager *ec2SpotManager) OnUp(host *host.Host) error {
 		spotReq.InstanceId,
 	}
 
-	instance, err := getInstanceInfo(ec2handle, spotReq.InstanceId)
+	instance, err := GetInstanceInfo(ec2handle, spotReq.InstanceId)
 	if err != nil {
 		err = errors.Wrap(err, "problem getting underlying request")
 		grip.Error(err)
@@ -192,7 +192,7 @@ func (cloudManager *ec2SpotManager) GetInstanceStatus(host *host.Host) (CloudSta
 	if spotDetails.InstanceId != "" {
 		ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 		defer util.PutHttpClient(client)
-		instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
+		instanceInfo, err := GetInstanceInfo(ec2Handle, spotDetails.InstanceId)
 		if err != nil {
 			err = errors.Wrap(err, "Got an error checking spot details")
 			grip.Error(err)
@@ -240,7 +240,7 @@ func (cloudManager *ec2SpotManager) GetDNSName(host *host.Host) (string, error) 
 	//Spot request is fulfilled, find the instance info and get DNS info
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
-	instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
+	instanceInfo, err := GetInstanceInfo(ec2Handle, spotDetails.InstanceId)
 	if err != nil {
 		return "", err
 	}
@@ -447,7 +447,7 @@ func (cloudManager *ec2SpotManager) CostForDuration(h *host.Host, start, end tim
 	ec2Handle, client := getUSEast(*cloudManager.awsCredentials)
 	defer util.PutHttpClient(client)
 
-	instance, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
+	instance, err := GetInstanceInfo(ec2Handle, spotDetails.InstanceId)
 	if err != nil {
 		return 0, err
 	}

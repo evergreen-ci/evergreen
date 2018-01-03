@@ -41,7 +41,7 @@ func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t tim
 		os = osWindows
 	}
 	if onDemand(h) {
-		instance, err := client.getInstanceInfo(h.Id)
+		instance, err := client.GetInstanceInfo(h.Id)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting instance info")
 		}
@@ -59,7 +59,7 @@ func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t tim
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting spot info")
 	}
-	instance, err := client.getInstanceInfo(*spotDetails.SpotInstanceRequests[0].InstanceId)
+	instance, err := client.GetInstanceInfo(*spotDetails.SpotInstanceRequests[0].InstanceId)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
@@ -138,7 +138,7 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 }
 
 func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
-	instance, err := client.getInstanceInfo(h.Id)
+	instance, err := client.GetInstanceInfo(h.Id)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
