@@ -34,7 +34,6 @@ type remoteCmd struct {
 }
 
 func NewRemoteCommand(cmd, hostname, user string, env map[string]string, background bool, options []string, loggingDisabled bool) Command {
-
 	rc := &remoteCmd{
 		CmdString:       cmd,
 		RemoteHostName:  hostname,

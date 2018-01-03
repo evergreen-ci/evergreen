@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"path/filepath"
 	"strings"
 	"time"
@@ -71,7 +70,7 @@ func TearDownCommand(host *host.Host) string {
 }
 
 // RunSSHCommand runs an SSH command on a remote host.
-func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) (string, error) {
+func RunSSHCommand(ctx context.Context, cmd string, sshOptions []string, host host.Host) (string, error) {
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(host.Host)
 	if err != nil {
@@ -79,26 +78,33 @@ func RunSSHCommand(id, cmd string, sshOptions []string, host host.Host) (string,
 	}
 
 	output := newCappedOutputLog()
-	shellCmd := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("%s-%s-%d", id, host.Id, rand.Int()),
-		CmdString:      cmd,
-		Stdout:         output,
-		Stderr:         output,
-		RemoteHostName: hostInfo.Hostname,
-		User:           host.User,
-		Options:        append([]string{"-p", hostInfo.Port, "-t", "-t"}, sshOptions...),
+	opts := subprocess.OutputOptions{Output: output, SendErrorToOutput: true}
+	proc := subprocess.NewRemoteCommand(
+		cmd,
+		hostInfo.Hostname,
+		host.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostInfo.Port, "-t", "-t"}, sshOptions...),
+		false, // loggingDisabled
+	)
+
+	if err = proc.SetOutput(opts); err != nil {
+		return "", errors.Wrap(err, "problem setting up command output")
 	}
+
 	grip.Info(message.Fields{
-		"command": shellCmd,
+		"command": proc,
 		"host_id": host.Id,
 		"message": "running command over ssh",
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), SSHTimeout)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, SSHTimeout)
 	defer cancel()
-	err = shellCmd.Run(ctx)
 
-	grip.Notice(shellCmd.Stop())
+	err = proc.Run(ctx)
+	grip.Notice(proc.Stop())
 	return output.String(), errors.Wrap(err, "error running shell cmd")
 }
 

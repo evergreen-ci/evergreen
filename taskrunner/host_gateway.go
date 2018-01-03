@@ -32,7 +32,7 @@ const (
 type HostGateway interface {
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	StartAgentOnHost(*evergreen.Settings, host.Host) error
+	StartAgentOnHost(context.Context, *evergreen.Settings, host.Host) error
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -76,7 +76,7 @@ func getHostMessage(h host.Host) message.Fields {
 // Start an agent on the host specified.  First runs any necessary
 // preparation on the remote machine, then kicks off the agent process on the
 // machine. Returns an error if any step along the way fails.
-func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hostObj host.Host) error {
+func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
 	cloudHost, err := cloud.GetCloudHost(&hostObj, settings)
@@ -98,7 +98,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	grip.Info(message.Fields{"runner": RunnerName,
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
-	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions, settings)
+	agentRevision, err := agbh.prepRemoteHost(ctx, hostObj, sshOptions, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
@@ -153,9 +153,9 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 }
 
 // Prepare the remote machine to run a task.
-func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
+func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
-	if logs, err := hostutil.RunSSHCommand("curl", hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
+	if logs, err := hostutil.RunSSHCommand(ctx, hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
 		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
@@ -165,7 +165,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	}
 
 	// run the setup script with the agent
-	if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
+	if logs, err := hostutil.RunSSHCommand(ctx, hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
 		grip.Error(message.Fields{
 			"host":    hostObj.Id,
@@ -242,9 +242,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		false, // loggingDisabled
 	)
 	cmdOutBuff := &bytes.Buffer{}
-	outputOpts := subprocess.OutputOptions{Output: cmdOutBuff, SendOutputToError: true}
-
-	if err = startAgentCmd.SetOutput(cmdOutOpts); err != nil {
+	if err = startAgentCmd.SetOutput(subprocess.OutputOptions{Output: cmdOutBuff, SendErrorToOutput: true}); err != nil {
 		return errors.Wrap(err, "problem configuring command output")
 	}
 

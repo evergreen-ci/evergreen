@@ -494,7 +494,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	}
 
 	scpCmdOut := &bytes.Buffer{}
-	output := subprocess.OutputOptions{Output: scpCmdOut, Error: scpCmdOut}
+	output := subprocess.OutputOptions{Output: scpCmdOut, SendErrorToOutput: true}
 	scpCmd := subprocess.NewSCPCommand(
 		file.Name(),
 		filepath.Join("~", name),
@@ -628,7 +628,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
-		if logs, err := hostutil.RunSSHCommand("setup", hostutil.SetupCommand(h), sshOptions, *h); err != nil {
+		if logs, err := hostutil.RunSSHCommand(ctx, hostutil.SetupCommand(h), sshOptions, *h); err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"runner":    RunnerName,
@@ -747,21 +747,25 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
 	mkdirOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	opts := subprocess.OutputOptions{Output: mkdirOutput, SendErrorToOutput: true}
+	makeShellCmd := subprocess.NewRemoteCommand(
+		fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir),
+		hostSSHInfo.Hostname,
+		target.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+		false, // disable logging
+	)
+
+	if err = makeShellCmd.SetOutput(opts); err != nil {
+		return nil, errors.Wrap(err, "problem setting up output")
+	}
 
 	// Create the directory for the binary to be uploaded into.
 	// Also, make a best effort to add the binary's location to $PATH upon login. If we can't do
 	// this successfully, the command will still succeed, it just means that the user will have to
 	// use an absolute path (or manually set $PATH in their shell) to execute it.
-	makeShellCmd := &subprocess.RemoteCommand{
-		CmdString:      fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir),
-		Stdout:         mkdirOutput,
-		Stderr:         mkdirOutput,
-		RemoteHostName: hostSSHInfo.Hostname,
-		User:           target.User,
-		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
-	}
-
-	curlOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 
 	// run the make shell command with a timeout
 	var cancel context.CancelFunc
@@ -772,14 +776,22 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 			mkdirOutput.Buffer.String())
 	}
 
+	curlOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	opts.Output = curlOut
+
 	// place the binary into the directory
-	curlSetupCmd := &subprocess.RemoteCommand{
-		CmdString:      hostutil.CurlCommand(init.Settings.Ui.Url, target),
-		Stdout:         curlOut,
-		Stderr:         curlOut,
-		RemoteHostName: hostSSHInfo.Hostname,
-		User:           target.User,
-		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+	curlSetupCmd := subprocess.NewRemoteCommand(
+		hostutil.CurlCommand(init.Settings.Ui.Url, target),
+		hostSSHInfo.Hostname,
+		target.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+		false, // disable logging
+	)
+
+	if err = curlSetupCmd.SetOutput(opts); err != nil {
+		return nil, errors.Wrap(err, "problem setting up output")
 	}
 
 	// run the command to curl the agent
@@ -809,7 +821,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 
-	output := subprocess.OutputOptions{Error: scpOut, Output: scpOut}
+	output := subprocess.OutputOptions{Output: scpOut, SendErrorToOutput: true}
 
 	scpYmlCommand := subprocess.NewSCPCommand(
 		tempFileName,
@@ -852,14 +864,20 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
 	cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
-	makeShellCmd := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("fetch-artifacts-%s", taskId),
-		CmdString:      fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
-		Stdout:         cmdOutput,
-		Stderr:         cmdOutput,
-		RemoteHostName: hostSSHInfo.Hostname,
-		User:           target.User,
-		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+	fetchCmd := fmt.Sprintf("%s -c %s fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir)
+	makeShellCmd := subprocess.NewRemoteCommand(
+		fetchCmd,
+		hostSSHInfo.Hostname,
+		target.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+		false, // disable logging
+	)
+
+	output := subprocess.OutputOptions{Output: cmdOutput, SendErrorToOutput: true}
+	if err := makeShellCmd.SetOutput(output); err != nil {
+		return errors.Wrap(err, "problem configuring output for fetch command")
 	}
 
 	// run the make shell command with a timeout
@@ -871,9 +889,9 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": fmt.Sprintf("fetch-artifacts-%s", taskId),
 			"host":    hostSSHInfo.Hostname,
-			"cmd":     makeShellCmd.CmdString,
+			"cmd":     fetchCmd,
 			"runner":  RunnerName,
-			"output":  cmdOutput,
+			"output":  cmdOutput.Buffer.String(),
 		}))
 		return err
 	}

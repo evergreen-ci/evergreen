@@ -23,7 +23,7 @@ func TestSubtreeCleanup(t *testing.T) {
 		env = append(env, "EVR_AGENT_PID=12345")
 		env = append(env, fmt.Sprintf("EVR_TASK_ID=%v", id))
 		env = append(env, fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid()))
-		localCmd := &LocalCommand{
+		localCmd := &localCmd{
 			CmdString:   "while true; do sleep 1; done; echo 'finish'",
 			Stdout:      buf,
 			Stderr:      buf,

@@ -224,6 +224,7 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 		updatePwdCmd,
 		hostInfo.Hostname,
 		hostObj.User,
+		nil,   // env
 		false, // background
 		append([]string{"-p", hostInfo.Port}, sshOptions...),
 		true, // logging disabled
