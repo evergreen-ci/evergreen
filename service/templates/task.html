@@ -89,7 +89,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
     </li>
   </ol>
   <div class="row">
-    <div class="col-lg-7">
+    <div class="col-lg-7" style="max-height:500px; overflow: scroll">
       <header class="clearfix">
         <h1 class="one-liner" id="task-title">
           <span class="label status-label" ng-class="task | statusFilter">[[task | statusLabel]]</span>
