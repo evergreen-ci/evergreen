@@ -1173,6 +1173,45 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
+func MergeTestResultsBulk(tasks []Task) ([]Task, error) {
+	start := time.Now()
+	taskIds := []string{}
+	out := []Task{}
+	for _, t := range tasks {
+		taskIds = append(taskIds, t.Id)
+	}
+	results, err := testresult.Find(testresult.ByTaskIDs(taskIds))
+	if err != nil {
+		return nil, err
+	}
+	grip.Debug(message.Fields{
+		"message":  "query for bulk test result merge",
+		"count":    len(taskIds),
+		"tasks":    taskIds,
+		"duration": time.Since(start),
+		"span":     time.Since(start).String(),
+	})
+
+	for _, t := range tasks {
+		for _, result := range results {
+			if result.TaskID == t.Id && result.Execution == t.Execution {
+				t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&result))
+			}
+		}
+		out = append(out, t)
+	}
+
+	grip.Debug(message.Fields{
+		"message":  "completion of bulk test result merge",
+		"count":    len(taskIds),
+		"tasks":    taskIds,
+		"duration": time.Since(start),
+		"span":     time.Since(start).String(),
+	})
+
+	return out, nil
+}
+
 func FindSchedulable() ([]Task, error) {
 	return Find(db.Query(scheduleableTasksQuery()))
 }

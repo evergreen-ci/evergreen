@@ -516,10 +516,9 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 		return nil, errors.Wrap(err, "error getting sibling tasks")
 	}
 
-	for i := range tasks {
-		if err := tasks[i].MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging test results")
-		}
+	tasks, err = task.MergeTestResultsBulk(tasks)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results")
 	}
 
 	return createSiblingTaskGroups(tasks, versions), nil
