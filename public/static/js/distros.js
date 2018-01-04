@@ -14,12 +14,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     'id': 'ec2-spot',
     'display': 'EC2 (Spot Instance)'
   }, {
-    'id': 'ec2-ondemand-new',
-    'display': 'EC2 On-Demand (Beta)'
-  }, {
-    'id': 'ec2-spot-new',
-    'display': 'EC2 Spot (Beta)'
-  }, {
     'id': 'static',
     'display': 'Static IP/VM'
   }, {
@@ -366,7 +360,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
-    if ($scope.activeDistro.provider.startsWith('ec2') {
+    if ($scope.activeDistro.provider == 'ec2' || $scope.activeDistro.provider == 'ec2-spot'){
       return $scope.validSecurityGroup() && $scope.validSubnetId;
     }
     return true;
