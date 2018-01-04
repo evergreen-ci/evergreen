@@ -99,7 +99,7 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // DescribeInstances is a wrapper for ec2.DescribeInstances
@@ -117,7 +117,7 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // CreateTags is a wrapper for ec2.CreateTags.
@@ -135,7 +135,7 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // TerminateInstances is a wrapper for ec2.TerminateInstances.
@@ -153,7 +153,7 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
@@ -171,7 +171,7 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
@@ -189,7 +189,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
@@ -207,7 +207,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // DescribeVolumes is a wrapper for ec2.DescribeVolumes.
@@ -225,7 +225,7 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
@@ -243,7 +243,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 	if err != nil {
 		return nil, err
 	}
-	return output, err
+	return output, nil
 }
 
 // awsClientMock mocks ec2.EC2.
