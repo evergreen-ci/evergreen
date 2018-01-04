@@ -140,7 +140,7 @@ variables:
 
             ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
             ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
-            
+
             # matches agent_revision in hosts.json
             echo "foo" >| gopath/src/github.com/evergreen-ci/evergreen/clients/version
       - func: run-make
@@ -608,117 +608,155 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-agent
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-alerts
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-auth
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-operations
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-cloud
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-command
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-db
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-evergreen
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-hostinit
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-hostutil
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-migrations
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-artifact
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-build
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-event
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-host
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-patch
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-model-task
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-monitor
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-notify
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin-builtin-buildbaron
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin-builtin-manifest
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-plugin-builtin-perfdash
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-repotracker
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-client
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-data
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-model
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-rest-route
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-scheduler
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-service
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-spawn
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-subprocess
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-taskrunner
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-thirdparty
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-units
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-util
+    stepback: false
   - <<: *run-go-test-suite
     tags: ["lint"]
     name: lint-validator
+    stepback: false
 
   # cross compiled test suites
   - <<: *run-xc-test-suite
@@ -816,7 +854,7 @@ buildvariants:
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
-      
+
   - name: rhel71-power8
     display_name: RHEL 7.1 POWER8
     batchtime: 2880
