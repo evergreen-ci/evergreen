@@ -327,7 +327,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	})
 	event.LogHostStarted(h.Id)
 
-	return nil, nil
+	return h, nil
 }
 
 // CanSpawn indicates if a host can be spawned.
@@ -384,9 +384,9 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 			}))
 			return errors.Wrap(err, "error canceling spot request")
 		}
-		// the spot request wasn't fulfilled, so don't attempt to terminate
+		// the spot request wasn't fulfilled, so don't attempt to terminate in ec2
 		if !canTerminate {
-			return nil
+			return errors.Wrap(h.Terminate(), "failed to terminate instance in db")
 		}
 	}
 
@@ -457,7 +457,7 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (bool, error) {
 		"distro":        h.Distro.Id,
 	})
 
-	if *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
+	if spotDetails.SpotInstanceRequests[0].InstanceId != nil && *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
 		return true, nil
 	}
 	return false, nil

@@ -156,6 +156,8 @@ func (s *CostUnitSuite) TestTimeTilNextPayment() {
 
 type CostIntegrationSuite struct {
 	suite.Suite
+	m      *ec2Manager
+	client AWSClient
 }
 
 func TestCostIntegrationSuite(t *testing.T) {
@@ -163,12 +165,17 @@ func TestCostIntegrationSuite(t *testing.T) {
 }
 
 func (s *CostIntegrationSuite) SetupSuite() {
-	testutil.ConfigureIntegrationTest(s.T(), testutil.TestConfig(), "CostIntegrationSuite")
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(s.T(), settings, "CostIntegrationSuite")
+	m := NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}})
+	s.m = m.(*ec2Manager)
+	s.NoError(s.m.Configure(settings))
+	s.NoError(s.m.client.Create(s.m.credentials))
+	s.client = s.m.client
 }
 
 func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 	cpf := cachingPriceFetcher{}
-	client := &awsClientImpl{}
 	input := hourlySpotPriceHistoryInput{
 		iType: "m3.large",
 		zone:  "us-east-1a",
@@ -176,7 +183,7 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 		start: time.Now().Add(-2 * time.Hour),
 		end:   time.Now(),
 	}
-	ps, err := cpf.describeHourlySpotPriceHistory(client, input)
+	ps, err := cpf.describeHourlySpotPriceHistory(s.client, input)
 	s.NoError(err)
 	s.True(len(ps) > 2)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
@@ -192,7 +199,7 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 		start: time.Now().Add(-240 * time.Hour),
 		end:   time.Now(),
 	}
-	ps, err = cpf.describeHourlySpotPriceHistory(client, input)
+	ps, err = cpf.describeHourlySpotPriceHistory(s.client, input)
 	s.NoError(err)
 	s.True(len(ps) > 240)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
