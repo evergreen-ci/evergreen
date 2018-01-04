@@ -16,12 +16,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// costFetcher gets cost for a given time on a host.
-type costFetcher interface {
-	getEC2Cost(client AWSClient, h *host.Host, t timeRange) (float64, error)
-	getEBSCost(client AWSClient, h *host.Host, t timeRange) (float64, error)
-}
-
 type timeRange struct {
 	start time.Time
 	end   time.Time
