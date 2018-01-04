@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -45,6 +46,8 @@ type AWSClient interface {
 
 	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
 	DescribeSpotPriceHistory(*ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
+
+	GetInstanceInfo(string) (*ec2.Instance, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -76,6 +79,29 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 func (c *awsClientImpl) Close() {
 	util.PutHttpClient(c.httpClient)
 	c.httpClient = nil
+}
+
+func (c *awsClientImpl) getInstanceInfo(id string) (*ec2.Instance, error) {
+	resp, err := c.DescribeInstances(&ec2.DescribeInstancesInput{
+		InstanceIds: []*string{makeStringPtr(id)},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "EC2 API returns error for DescribeInstances")
+	}
+	reservation := resp.Reservations
+	if len(reservation) == 0 {
+		err = errors.Errorf("No reservation found for instance id: %s", id)
+		return nil, err
+	}
+
+	instances := reservation[0].Instances
+	if len(instances) == 0 {
+		err = errors.Errorf("'%s' was not found in reservation '%s'",
+			id, *resp.Reservations[0].ReservationId)
+		return nil, err
+	}
+
+	return instances[0], nil
 }
 
 // awsClientMock mocks ec2.EC2.
@@ -190,4 +216,13 @@ func (c *awsClientMock) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	c.DescribeSpotPriceHistoryInput = input
 	return &ec2.DescribeSpotPriceHistoryOutput{}, nil
+}
+
+func (c *awsClientMock) GetInstanceInfo(id string) (*ec2.Instance, error) {
+	instance := &ec2.Instance{}
+	instance.Placement = &ec2.Placement{}
+	instance.Placement.AvailabilityZone = makeStringPtr("us-east-1a")
+	instance.InstanceType = makeStringPtr("m3.4xlarge")
+	instance.LaunchTime = makeTimePtr(time.Now())
+	return instance, nil
 }
