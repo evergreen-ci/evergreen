@@ -110,33 +110,36 @@ func (j *patchIntentProcessor) Run() {
 }
 
 func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthToken string) error {
-	c := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 
 	switch j.Intent.GetType() {
 	case patch.CliIntentType:
-		c.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
+		catcher.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
 	case patch.GithubIntentType:
-		c.Add(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
+		catcher.Add(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
 
 	default:
 		return errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType())
 	}
 	if len := len(patchDoc.Patches); len != 1 {
-		c.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
+		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
 	}
-	if c.HasErrors() {
-		grip.Error(message.WrapError(c.Resolve(), message.Fields{
+
+	if err := catcher.Resolve(); err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":     "Failed to build patch document",
 			"job":         j.ID(),
 			"patch_id":    j.PatchID,
 			"intent_type": j.Intent.GetType(),
 			"intent_id":   j.Intent.ID(),
 		}))
-		return c.Resolve()
+
+		return err
 	}
-	var err error
+
 	if j.user == nil {
+		var err error
 		j.user, err = user.FindOne(user.ById(patchDoc.Author))
 		if err != nil {
 			return err
