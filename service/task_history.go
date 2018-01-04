@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
@@ -516,7 +517,17 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 		return nil, errors.Wrap(err, "error getting sibling tasks")
 	}
 
-	tasks, err = task.MergeTestResultsBulk(tasks)
+	taskIds := []string{}
+	for _, t := range tasks {
+		taskIds = append(taskIds, t.Id)
+	}
+	query := db.Query(bson.M{
+		testresult.TaskIDKey: bson.M{
+			"$in": taskIds,
+		},
+		testresult.StatusKey: evergreen.TestFailedStatus,
+	})
+	tasks, err = task.MergeTestResultsBulk(tasks, &query)
 	if err != nil {
 		return nil, errors.Wrap(err, "error merging test results")
 	}

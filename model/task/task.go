@@ -1173,24 +1173,20 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
-func MergeTestResultsBulk(tasks []Task) ([]Task, error) {
-	start := time.Now()
-	taskIds := []string{}
+func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	out := []Task{}
-	for _, t := range tasks {
-		taskIds = append(taskIds, t.Id)
+	if query == nil {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		q := testresult.ByTaskIDs(taskIds)
+		query = &q
 	}
-	results, err := testresult.Find(testresult.ByTaskIDs(taskIds))
+	results, err := testresult.Find(*query)
 	if err != nil {
 		return nil, err
 	}
-	grip.Debug(message.Fields{
-		"message":  "query for bulk test result merge",
-		"count":    len(taskIds),
-		"tasks":    taskIds,
-		"duration": time.Since(start),
-		"span":     time.Since(start).String(),
-	})
 
 	for _, t := range tasks {
 		for _, result := range results {
@@ -1200,14 +1196,6 @@ func MergeTestResultsBulk(tasks []Task) ([]Task, error) {
 		}
 		out = append(out, t)
 	}
-
-	grip.Debug(message.Fields{
-		"message":  "completion of bulk test result merge",
-		"count":    len(taskIds),
-		"tasks":    taskIds,
-		"duration": time.Since(start),
-		"span":     time.Since(start).String(),
-	})
 
 	return out, nil
 }
