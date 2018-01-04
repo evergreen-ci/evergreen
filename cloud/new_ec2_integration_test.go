@@ -21,11 +21,12 @@ func TestSpotInstanceIntegration(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 	require.NoError(db.Clear(host.Collection))
 	opts := &EC2ManagerOptions{
-		client: &awsClientImpl{},
+		client:   &awsClientImpl{},
+		provider: spotProvider,
 	}
-	m := NewEC2Manager(opts)
-	var ok bool
-	require.True(ok)
+	m := NewEC2Manager(opts).(*ec2Manager)
+	require.NoError(m.Configure(testConfig))
+	require.NoError(m.client.Create(m.credentials))
 	d := fetchTestDistro()
 	h := NewIntent(*d, m.GetInstanceName(d), d.Provider, HostOptions{
 		UserName: evergreen.User,

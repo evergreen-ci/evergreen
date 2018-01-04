@@ -15,9 +15,11 @@ import (
 
 type EC2Suite struct {
 	suite.Suite
-	opts *EC2ManagerOptions
-	m    CloudManager
-	impl *ec2Manager
+	onDemandOpts    *EC2ManagerOptions
+	onDemandManager CloudManager
+	spotOpts        *EC2ManagerOptions
+	spotManager     CloudManager
+	impl            *ec2Manager
 }
 
 func TestEC2Suite(t *testing.T) {
@@ -30,17 +32,23 @@ func (s *EC2Suite) SetupSuite() {
 
 func (s *EC2Suite) SetupTest() {
 	s.Require().NoError(db.Clear(host.Collection))
-	s.opts = &EC2ManagerOptions{
-		client: &awsClientMock{},
+	s.onDemandOpts = &EC2ManagerOptions{
+		client:   &awsClientMock{},
+		provider: onDemandProvider,
 	}
-	s.m = NewEC2Manager(s.opts)
+	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
+	s.spotOpts = &EC2ManagerOptions{
+		client:   &awsClientMock{},
+		provider: spotProvider,
+	}
+	s.spotManager = NewEC2Manager(s.spotOpts)
 	var ok bool
-	s.impl, ok = s.m.(*ec2Manager)
+	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
 }
 
 func (s *EC2Suite) TestConstructor() {
-	s.Implements((*CloudManager)(nil), NewEC2Manager(s.opts))
+	s.Implements((*CloudManager)(nil), NewEC2Manager(s.onDemandOpts))
 }
 
 func (s *EC2Suite) TestValidateProviderSettings() {
@@ -115,27 +123,27 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 }
 
 func (s *EC2Suite) TestGetSettings() {
-	s.Equal(&NewEC2ProviderSettings{}, s.m.GetSettings())
+	s.Equal(&NewEC2ProviderSettings{}, s.onDemandManager.GetSettings())
 }
 
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
-	err := s.m.Configure(settings)
+	err := s.onDemandManager.Configure(settings)
 	s.Error(err)
 
 	settings.Providers.AWS.Id = "id"
-	err = s.m.Configure(settings)
+	err = s.onDemandManager.Configure(settings)
 	s.Error(err)
 
 	settings.Providers.AWS.Id = ""
 	settings.Providers.AWS.Secret = "secret"
-	err = s.m.Configure(settings)
+	err = s.onDemandManager.Configure(settings)
 	s.Error(err)
 
 	settings.Providers.AWS.Id = "id"
-	err = s.m.Configure(settings)
+	err = s.onDemandManager.Configure(settings)
 	s.NoError(err)
-	ec2m := s.m.(*ec2Manager)
+	ec2m := s.onDemandManager.(*ec2Manager)
 	creds, err := ec2m.credentials.Get()
 	s.NoError(err)
 	s.Equal("id", creds.AccessKeyID)
@@ -150,7 +158,7 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 		},
 	}
 
-	spawned, err := s.m.SpawnHost(h)
+	spawned, err := s.onDemandManager.SpawnHost(h)
 	s.Nil(spawned)
 	s.Error(err)
 	s.EqualError(err, "Can't spawn instance of ec2 for distro id: provider is foo")
@@ -171,10 +179,10 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"subnet_id":      "subnet-123456",
 	}
 
-	_, err := s.m.SpawnHost(h)
+	_, err := s.onDemandManager.SpawnHost(h)
 	s.NoError(err)
 
-	manager, ok := s.m.(*ec2Manager)
+	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
@@ -225,10 +233,10 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"is_vpc":         true,
 	}
 
-	_, err := s.m.SpawnHost(h)
+	_, err := s.onDemandManager.SpawnHost(h)
 	s.NoError(err)
 
-	manager, ok := s.m.(*ec2Manager)
+	manager, ok := s.onDemandManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
@@ -278,10 +286,10 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"subnet_id":      "subnet-123456",
 	}
 
-	_, err := s.m.SpawnHost(h)
+	_, err := s.spotManager.SpawnHost(h)
 	s.NoError(err)
 
-	manager, ok := s.m.(*ec2Manager)
+	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
@@ -330,10 +338,10 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"is_vpc":         true,
 	}
 
-	_, err := s.m.SpawnHost(h)
+	_, err := s.spotManager.SpawnHost(h)
 	s.NoError(err)
 
-	manager, ok := s.m.(*ec2Manager)
+	manager, ok := s.spotManager.(*ec2Manager)
 	s.True(ok)
 	mock, ok := manager.client.(*awsClientMock)
 	s.True(ok)
@@ -367,7 +375,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 }
 
 func (s *EC2Suite) TestCanSpawn() {
-	can, err := s.m.CanSpawn()
+	can, err := s.onDemandManager.CanSpawn()
 	s.True(can)
 	s.NoError(err)
 }
@@ -375,12 +383,12 @@ func (s *EC2Suite) TestCanSpawn() {
 func (s *EC2Suite) TestGetInstanceStatus() {
 	h := &host.Host{}
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	status, err := s.m.GetInstanceStatus(h)
+	status, err := s.onDemandManager.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	status, err = s.m.GetInstanceStatus(h)
+	status, err = s.onDemandManager.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 }
@@ -388,30 +396,30 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 func (s *EC2Suite) TestTerminateInstance() {
 	h := &host.Host{Id: "host_id"}
 	s.NoError(h.Insert())
-	s.NoError(s.m.TerminateInstance(h))
+	s.NoError(s.onDemandManager.TerminateInstance(h))
 	found, err := host.FindOne(host.ById("host_id"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)
 }
 
 func (s *EC2Suite) TestIsUp() {
-	up, err := s.m.IsUp(&host.Host{})
+	up, err := s.onDemandManager.IsUp(&host.Host{})
 	s.True(up)
 	s.NoError(err)
 }
 
 func (s *EC2Suite) TestOnUp() {
-	s.NoError(s.m.OnUp(nil))
+	s.NoError(s.onDemandManager.OnUp(nil))
 }
 
 func (s *EC2Suite) TestGetDNSName() {
-	dns, err := s.m.GetDNSName(&host.Host{})
+	dns, err := s.onDemandManager.GetDNSName(&host.Host{})
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 }
 
 func (s *EC2Suite) TestGetSSHOptionsEmptyKey() {
-	opts, err := s.m.GetSSHOptions(&host.Host{}, "")
+	opts, err := s.onDemandManager.GetSSHOptions(&host.Host{}, "")
 	s.Nil(opts)
 	s.Error(err)
 }
@@ -425,7 +433,7 @@ func (s *EC2Suite) TestGetSSHOptions() {
 			},
 		},
 	}
-	opts, err := s.m.GetSSHOptions(h, "key")
+	opts, err := s.onDemandManager.GetSSHOptions(h, "key")
 	s.Equal([]string{"-i", "key", "-o", "foo", "-o", "bar", "-o", "UserKnownHostsFile=/dev/null"}, opts)
 	s.NoError(err)
 }
@@ -436,7 +444,7 @@ func (s *EC2Suite) TestTimeTilNextPaymentLinux() {
 			Arch: "linux",
 		},
 	}
-	s.Equal(time.Second, s.m.TimeTilNextPayment(h))
+	s.Equal(time.Second, s.onDemandManager.TimeTilNextPayment(h))
 }
 
 func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
@@ -449,10 +457,10 @@ func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
 		CreationTime: thirtyMinutesAgo,
 		StartTime:    thirtyMinutesAgo.Add(time.Minute),
 	}
-	s.InDelta(31*time.Minute, s.m.TimeTilNextPayment(h), float64(time.Millisecond))
+	s.InDelta(31*time.Minute, s.onDemandManager.TimeTilNextPayment(h), float64(time.Millisecond))
 }
 
 func (s *EC2Suite) TestGetInstanceName() {
-	id := s.m.GetInstanceName(&distro.Distro{Id: "foo"})
+	id := s.onDemandManager.GetInstanceName(&distro.Distro{Id: "foo"})
 	s.True(strings.HasPrefix(id, "evg-foo-"))
 }

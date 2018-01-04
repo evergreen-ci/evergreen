@@ -5,12 +5,17 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
+
+const defaultRegion = "us-east-1"
 
 // AWSClient is a wrapper for aws-sdk-go so we can use a mock in testing.
 type AWSClient interface {
@@ -71,6 +76,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 		c.httpClient = util.GetHttpClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient: c.httpClient,
+			Region:     makeStringPtr(defaultRegion),
 		})
 		if err != nil {
 			return errors.Wrap(err, "error creating session")
@@ -82,8 +88,10 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 }
 
 func (c *awsClientImpl) Close() {
-	util.PutHttpClient(c.httpClient)
-	c.httpClient = nil
+	if c.httpClient != nil {
+		util.PutHttpClient(c.httpClient)
+		c.httpClient = nil
+	}
 }
 
 // RunInstances is a wrapper for ec2.RunInstances.
@@ -94,6 +102,12 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 		func() (bool, error) {
 			output, err = c.EC2.RunInstances(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running RunInstances",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -112,6 +126,12 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 		func() (bool, error) {
 			output, err = c.EC2.DescribeInstances(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running DescribeInstances",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -130,6 +150,12 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 		func() (bool, error) {
 			output, err = c.EC2.CreateTags(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running CreateTags",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -148,6 +174,12 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 		func() (bool, error) {
 			output, err = c.EC2.TerminateInstances(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running TerminateInstances",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -166,6 +198,12 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 		func() (bool, error) {
 			output, err = c.EC2.RequestSpotInstances(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running RequestSpotInstances",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -184,6 +222,12 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotInstanceRequests(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running DescribeSpotInstanceRequests",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -202,6 +246,12 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 		func() (bool, error) {
 			output, err = c.EC2.CancelSpotInstanceRequests(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running CancelSpotInstanceRequests",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -220,6 +270,12 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVolumes(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running DescribeVolumes",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -238,6 +294,12 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotPriceHistory(input)
 			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"message": "error running DescribeSpotPriceHistory",
+						"args":    input,
+					}))
+				}
 				return true, err
 			}
 			return false, nil
@@ -253,7 +315,7 @@ func (c *awsClientImpl) GetInstanceInfo(id string) (*ec2.Instance, error) {
 		InstanceIds: []*string{makeStringPtr(id)},
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "EC2 API returns error for DescribeInstances")
+		return nil, errors.Wrap(err, "EC2 API returned error for DescribeInstances")
 	}
 	reservation := resp.Reservations
 	if len(reservation) == 0 {
@@ -391,5 +453,8 @@ func (c *awsClientMock) GetInstanceInfo(id string) (*ec2.Instance, error) {
 	instance.Placement.AvailabilityZone = makeStringPtr("us-east-1a")
 	instance.InstanceType = makeStringPtr("m3.4xlarge")
 	instance.LaunchTime = makeTimePtr(time.Now())
+	instance.PublicDnsName = makeStringPtr("public_dns_name")
+	instance.State = &ec2.InstanceState{}
+	instance.State.Name = makeStringPtr("running")
 	return instance, nil
 }
