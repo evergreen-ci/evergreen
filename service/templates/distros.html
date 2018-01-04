@@ -133,31 +133,31 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="form.sshKeyID.$dirty && form.sshKeyID.$error.required || form.sshKeyID.$invalid">Numeric SSH Key ID is required</div>
               </div>
             </div>
-            <div ng-show="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'">
+            <div ng-show="activeDistro.provider.startsWith('ec2')">
               <div>
                 <label class="distro-label">AMI ID:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="ami" class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776" ng-readonly="readOnly">
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="ami" class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776" ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.ami.$dirty && form.ami.$error.required || form.ami.$invalid">AMI ID is required</div>
               </div>
               <div>
                 <label class="distro-label">Instance Type:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="EC2 instance type for the AMI e.g t1.micro (must be available)" ng-readonly="readOnly">
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="EC2 instance type for the AMI e.g t1.micro (must be available)" ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance type is required</div>
               </div>
-              <div ng-show="activeDistro.provider == 'ec2-spot'">
+              <div ng-show="activeDistro.provider.startsWith('ec2-spot')">
                 <label class="distro-label">Bid Price:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'ec2-spot'" name="bidPrice" type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
+                <input ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2-spot')" name="bidPrice" type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
                 <div class="icon fa fa-warning distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">Numeric bid price is required</div>
               </div>
               <div>
                 <label class="distro-label">Key Name:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in EC2) to add on host machine" ng-readonly="readOnly">
+                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in EC2) to add on host machine" ng-readonly="readOnly">
                 <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2 key name is required</div>
               </div>
               <div>
                 <label class="distro-label"><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox" name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
                 <label class="distro-label">Security Group:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)" class="form-control">
+                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)" class="form-control">
                 <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">Security group is required</div>
                 <div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">Security group for EC2 VPC must be the id (starts with 'sg-')</div>
               </div>
@@ -166,7 +166,7 @@ Evergreen - Distros
                 <input type="text" name="subnet_id" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.subnet_id" placeholder="EC2 subnet id (must already exist) e.g subnet-xxxx" ng-required="activeDistro.settings.is_vpc">
                 <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.subnet_id.$error.required || form.subnet_id.$invalid || !validSubnetId()"> Subnet Id is required for EC2 VPC (must start with 'subnet-')</div>
               </div>
-              <div ng-show="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'">
+              <div ng-show="activeDistro.provider.startsWith('ec2')">
                 <div id="mounts-table" class="distro-table-scroll">
                   <label class="distro-label">Mount Points:</label>
                   <table ng-form name="mountPoints" class="table distro-table" ng-show="activeDistro.settings.mount_points" ng-init="form.devName=''; form.devSize=''">

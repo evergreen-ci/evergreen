@@ -21,10 +21,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (m *ec2Manager) spot(h *host.Host) bool {
+func (m *ec2Manager) isHostSpot(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2Spot
 }
-func (m *ec2Manager) onDemand(h *host.Host) bool {
+func (m *ec2Manager) isHostOnDemand(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2OnDemand
 }
 
@@ -67,10 +67,23 @@ func (s *NewEC2ProviderSettings) Validate() error {
 	return nil
 }
 
+type ec2ProviderType int
+
+const (
+	onDemandProvider ec2ProviderType = iota
+	spotProvider
+
+	// TODO EVG-2415
+	autoProvider
+)
+
 // EC2ManagerOptions are used to construct a new ec2Manager.
 type EC2ManagerOptions struct {
 	// client is the client library for communicating with AWS.
 	client AWSClient
+
+	// provider is the type
+	provider ec2ProviderType
 }
 
 // ec2Manager starts and configures instances in EC2.
@@ -271,7 +284,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	defer m.client.Close()
 
 	var resources []*string
-	if m.onDemand(h) {
+	if m.provider == onDemandProvider {
 		resources, err = m.spawnOnDemandHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning on-demand host"
@@ -283,7 +296,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 			}))
 			return nil, errors.Wrap(err, msg)
 		}
-	} else if m.spot(h) {
+	} else if m.provider == spotProvider {
 		resources, err = m.spawnSpotHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning spot host"
@@ -341,7 +354,7 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
-	if m.onDemand(h) {
+	if m.isHostOnDemand(h) {
 		info, err := m.getInstanceInfo(h.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -353,7 +366,7 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 			return StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(*info.State.Name), nil
-	} else if m.spot(h) {
+	} else if m.isHostSpot(h) {
 		return m.getSpotInstanceStatus(h.Id)
 	}
 	return StatusUnknown, errors.New("type must be on-demand or spot")
@@ -373,7 +386,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	}
 	defer m.client.Close()
 
-	if m.spot(h) {
+	if m.isHostSpot(h) {
 		canTerminate, err := m.cancelSpotRequest(h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -629,9 +642,9 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 		return 0, errors.Wrap(err, "error creating client")
 	}
 
-	if m.onDemand(h) {
+	if m.isHostOnDemand(h) {
 		return m.costForDurationOnDemand(h, start, end)
-	} else if m.spot(h) {
+	} else if m.isHostSpot(h) {
 		return m.costForDurationSpot(h, start, end)
 	}
 	return 0, errors.New("type must be on-demand or spot")

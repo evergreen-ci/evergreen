@@ -126,15 +126,17 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2OnDemand  = "ec2"
-	ProviderNameEc2Spot      = "ec2-spot"
-	ProviderNameDigitalOcean = "digitalocean"
-	ProviderNameDocker       = "docker"
-	ProviderNameGce          = "gce"
-	ProviderNameStatic       = "static"
-	ProviderNameOpenstack    = "openstack"
-	ProviderNameVsphere      = "vsphere"
-	ProviderNameMock         = "mock"
+	ProviderNameEc2OnDemand    = "ec2"
+	ProviderNameEc2Spot        = "ec2-spot"
+	ProviderNameEc2OnDemandNew = "ec2-ondemand-new"
+	ProviderNameEc2SpotNew     = "ec2-spot-new"
+	ProviderNameDigitalOcean   = "digitalocean"
+	ProviderNameDocker         = "docker"
+	ProviderNameGce            = "gce"
+	ProviderNameStatic         = "static"
+	ProviderNameOpenstack      = "openstack"
+	ProviderNameVsphere        = "vsphere"
+	ProviderNameMock           = "mock"
 )
 
 const (
