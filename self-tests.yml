@@ -796,7 +796,7 @@ buildvariants:
     run_on:
       - macos-1012
     expansions:
-      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.4.7.tgz
     tasks:
       - name: "dist"
@@ -807,7 +807,7 @@ buildvariants:
     run_on:
       - windows-64-vs2015-small
     expansions:
-      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=c:/go1.8/go/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.4.7.zip
       extension: ".exe"
       archiveExt: ".zip"
