@@ -37,7 +37,7 @@ func TestHistory() cli.Command {
 
 	return cli.Command{
 		Name:  "test-history",
-		Usage: "",
+		Usage: "view the execution history of specific task",
 		Flags: mergeFlagSlices(addProjectFlag(), addTasksFlag(), addOutputPath(
 			cli.StringSliceFlag{
 				Name:  taskStatusFlagName,
