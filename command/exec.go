@@ -152,10 +152,12 @@ func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subpr
 		SendOutputToError: c.RedirectStandardErrorToOutput,
 	}
 
-	proc.SetOutput(opts)
+	if err = proc.SetOutput(opts); err != nil {
+		return proc, nil, err
+	}
 	closer = func() {
-		output.Close()
-		error.Close()
+		_ = output.Close()
+		_ = error.Close()
 	}
 
 	return proc, closer, nil

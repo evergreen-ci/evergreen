@@ -307,7 +307,9 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 			}
 		}
 		if t.DisplayOnly {
-			taskIds = append(taskIds, t.ExecutionTasks...)
+			if err = task.ResetTasks(t.ExecutionTasks); err != nil {
+				return errors.WithStack(err)
+			}
 		}
 	}
 

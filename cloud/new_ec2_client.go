@@ -56,7 +56,7 @@ type AWSClient interface {
 }
 
 // awsClientImpl wraps ec2.EC2.
-type awsClientImpl struct {
+type awsClientImpl struct { //nolint
 	session    *session.Session
 	httpClient *http.Client
 	*ec2.EC2
@@ -334,7 +334,7 @@ func (c *awsClientImpl) GetInstanceInfo(id string) (*ec2.Instance, error) {
 }
 
 // awsClientMock mocks ec2.EC2.
-type awsClientMock struct {
+type awsClientMock struct { //nolint
 	*credentials.Credentials
 	*ec2.RunInstancesInput
 	*ec2.DescribeInstancesInput

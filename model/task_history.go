@@ -863,18 +863,6 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 	return query, nil
 }
 
-func formQueryFromTests(params *TestHistoryParameters) bson.M {
-	query := bson.M{}
-	if len(params.TestNames) > 0 {
-		query[testresult.TestFileKey] = bson.M{"$in": params.TestNames}
-	}
-	if len(params.TestStatuses) > 0 {
-		query[testresult.StatusKey] = bson.M{"$in": params.TestStatuses}
-	}
-
-	return query
-}
-
 func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 	// separate out pass/fail from timeouts and system failures
 	isTimeout := false

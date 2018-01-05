@@ -93,7 +93,7 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	if comm.AttachFiles(ctx, td, files); err != nil {
+	if err = comm.AttachFiles(ctx, td, files); err != nil {
 		return errors.Wrap(err, "attach artifacts failed")
 	}
 
