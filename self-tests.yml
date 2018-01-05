@@ -140,12 +140,24 @@ variables:
 
             ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
             ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
-            
+
             # matches agent_revision in hosts.json
             echo "foo" >| gopath/src/github.com/evergreen-ci/evergreen/clients/version
       - func: run-make
         vars:
           target: "${task_name}"
+  - &run-lint
+    name: test
+    stepback: false
+    tags: ["lint"]
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-credentials
+      - func: run-make
+        vars: { target: "${task_name}" }
   - &version-constants
     nodejs_version: "6.11.1"
 
@@ -605,119 +617,81 @@ tasks:
     name: race-migrations
 
   # lint tasks
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-agent
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-alerts
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-auth
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-operations
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-cloud
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-command
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-db
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-evergreen
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-hostinit
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-hostutil
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-migrations
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-artifact
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-build
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-event
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-host
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-patch
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-task
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-monitor
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-notify
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin-builtin-buildbaron
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin-builtin-manifest
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin-builtin-perfdash
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-repotracker
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-client
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-data
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-model
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-route
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-scheduler
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-service
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-spawn
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-subprocess
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-taskrunner
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-thirdparty
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-units
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-util
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-validator
 
   # cross compiled test suites
@@ -816,7 +790,7 @@ buildvariants:
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
-      
+
   - name: rhel71-power8
     display_name: RHEL 7.1 POWER8
     batchtime: 2880
