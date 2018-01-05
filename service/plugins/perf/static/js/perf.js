@@ -102,7 +102,14 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
   $scope.Math = $window.Math;
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
-  $scope.tablemode = "maxthroughput";
+  $scope.tablemode = 'maxthroughput';
+  $scope.threadLevelsRadio = {
+    options: [
+      {key: 'maxonly', val: 'Max Only'},
+      {key: 'all', val: 'All'}
+    ],
+    value: 'maxonly'
+  }
 
   // perftab refers to which tab should be selected. 0=graph, 1=table, 2=trend, 3=trend-table
   $scope.perftab = 2;
@@ -110,8 +117,15 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
   $scope.compareHash = "ss";
   $scope.comparePerfSamples = [];
 
+  $scope.$watch('threadLevelsRadio.value', function(oldVal, newVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    $scope.redrawGraphs()
+  })
+
   $scope.$watch('currentHash', function(){
     $scope.hoverSamples = {}
+    $scope.dateLabel = moment($scope.currentHashDate).format('ll')
     if(!!$scope.perfSample){
       var testNames = $scope.perfSample.testNames()
 
@@ -474,21 +488,31 @@ function TrendSamples(samples){
         this.seriesByName[rec.name] = [];
       }
 
-      var sorted = _.chain(rec.results)
-        .values()
-        .filter(function(d) { return typeof(d) == 'object' })
-        .sortBy('ops_per_sec')
-        .value()
+      // TODO chain
+      var threadResults = _.sortBy(
+        _.map(rec.results, function(v, k) {
+          return {
+            level: k,
+            ops_per_sec: v.ops_per_sec,
+            ops_per_sec_values: v.ops_per_sec_values,
+          }
+        }), 'level'
+      )
+      var threadResultsD = rec.results
 
-      var last = _.last(sorted);
+      var maxOpsPerSecItem = _.max(threadResults, function(d) {
+        return d.ops_per_sec
+      })
 
       this.seriesByName[rec.name].push({
         revision: sample.revision,
         task_id: sample.task_id,
-        ops_per_sec: last.ops_per_sec,
-        ops_per_sec_values: last.ops_per_sec_values,
+        ops_per_sec: maxOpsPerSecItem.ops_per_sec,
+        ops_per_sec_values: maxOpsPerSecItem.ops_per_sec_values,
         order: sample.order,
+        threadResults: threadResults,
         startedAt: rec.start * 1000,
+        threadResultsD: threadResultsD,
       });
     }
   }
@@ -547,7 +571,15 @@ function TestSample(sample){
 
   this.threads = function(){
     if(this._threads == null){
-      this._threads = _.uniq(_.filter(_.flatten(_.map(this.sample.data.results, function(x){ return _.keys(x.results) }), true), numericFilter));
+      this._threads = _.uniq(
+        _.filter(
+          _.flatten(
+            _.map(this.sample.data.results, function(x){
+              return _.keys(x.results)
+            }), true
+          ), numericFilter
+        )
+      );
     }
     return this._threads;
   }
@@ -589,7 +621,9 @@ function TestSample(sample){
   }
 
   this.resultForTest = function(testName){
-      return _.find(this.sample.data.results, function(x){return x.name == testName});
+      return _.findWhere(
+        this.sample.data.results, {name: testName}
+      );
   }
 
   this.maxThroughputForTest = function(testName){
@@ -608,8 +642,12 @@ var drawTrendGraph = function(trendSamples, tests, scope, taskId, compareSamples
   scope.locked = false;
 
   for (var i = 0; i < tests.length; i++) {
+    //if (i < tests.length - 2 && i > 20) continue;
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
-    drawSingleTrendChart(series, key, scope, taskId, compareSamples, i);
+    drawSingleTrendChart(
+      series, key, scope, taskId, compareSamples,
+      i, scope.threadLevelsRadio.value
+    );
   }
 }
