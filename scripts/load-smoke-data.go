@@ -51,6 +51,7 @@ func main() {
 	session, err := mgo.DialWithTimeout("mongodb://localhost:27017", 2*time.Second)
 	grip.CatchEmergencyFatal(err)
 	db := session.DB(dbName)
+	grip.CatchEmergencyFatal(db.DropDatabase())
 
 	var file *os.File
 	files, err := getFiles(path)
@@ -68,7 +69,6 @@ func main() {
 
 		collName := strings.Split(filepath.Base(fn), ".")[0]
 		collection := db.C(collName)
-		catcher.Add(collection.DropCollection())
 
 		scanner := bufio.NewScanner(file)
 		count := 0
