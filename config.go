@@ -331,7 +331,7 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 		return nil, errors.Wrap(err, "problem configuring err fallback logger")
 	}
 
-	// setup the base/default logger (generaly direct to systemd
+	// setup the base/default logger (generally direct to systemd
 	// or standard output)
 	switch s.LogPath {
 	case LocalLoggingOverride:

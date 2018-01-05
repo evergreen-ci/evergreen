@@ -87,7 +87,7 @@ func (s *CostUnitSuite) TestOnDemandPriceAPITranslation() {
 	r, err = regionFullname("us-west-2")
 	s.NoError(err)
 	s.Equal("US West (Oregon)", r)
-	r, err = regionFullname("amazing")
+	_, err = regionFullname("amazing")
 	s.Error(err)
 }
 

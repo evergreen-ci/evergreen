@@ -265,7 +265,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	}
 	h.InstanceType = ec2Settings.InstanceType
 
-	if err := m.client.Create(m.credentials); err != nil {
+	if err = m.client.Create(m.credentials); err != nil {
 		return nil, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()

@@ -108,26 +108,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
 }
 
-func extractDisplayTasks(pairs []model.TVPair, tasks []string, variants []string,
-	p *model.Project) model.TaskVariantPairs {
-	displayTasks := []model.TVPair{}
-	for _, bv := range p.BuildVariants {
-		if !util.StringSliceContains(variants, bv.Name) {
-			continue
-		}
-		for _, dt := range bv.DisplayTasks {
-			if util.StringSliceContains(tasks, dt.Name) {
-				displayTasks = append(displayTasks, model.TVPair{Variant: bv.Name, TaskName: dt.Name})
-				for _, et := range dt.ExecutionTasks {
-					pairs = append(pairs, model.TVPair{Variant: bv.Name, TaskName: et})
-				}
-			}
-		}
-	}
-
-	return model.TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
-}
-
 // Get the patch with the specified request it
 func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	// get id and secret from the request.

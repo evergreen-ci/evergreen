@@ -216,7 +216,8 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 	}
 	displayNames := []string{t.DisplayName}
 	if t.DisplayOnly {
-		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		var execTasks []task.Task
+		execTasks, err = task.Find(task.ByIds(t.ExecutionTasks))
 		if err != nil {
 			return errors.Wrapf(err, "error retrieving execution task for %s", t.Id)
 		}
