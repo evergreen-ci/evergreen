@@ -42,11 +42,19 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
 		return
 	}
-
-	if err := model.MarkStart(t.Id); err != nil {
+	updates := model.StatusChanges{}
+	if err := model.MarkStart(t.Id, &updates); err != nil {
 		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+
+	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
+		job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
+		if err := as.queue.Put(job); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
+			return
+		}
 	}
 
 	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
@@ -133,12 +141,30 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
+	updates := model.StatusChanges{}
 	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details,
-		project, projectRef.DeactivatePrevious)
+		project, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+	if t.Requester == evergreen.GithubPRRequester {
+		if updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded {
+			job := units.NewGithubStatusUpdateJobForBuild(t.BuildId)
+			if err = as.queue.Put(job); err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
+				return
+			}
+		}
+
+		if updates.PatchNewStatus == evergreen.PatchFailed || updates.PatchNewStatus == evergreen.PatchSucceeded {
+			job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
+			if err = as.queue.Put(job); err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
+				return
+			}
+		}
 	}
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -167,11 +193,19 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// task cost calculations have no impact on task results, so do them in their own goroutine
 	go as.updateTaskCost(t, currentHost, finishTime)
 
-	if t.Requester != evergreen.PatchVersionRequester {
-		grip.Infoln("Processing alert triggers for task", t.Id)
+	if !evergreen.IsPatchRequester(t.Requester) {
+		if t.IsPartOfDisplay() {
+			parent := t.DisplayTask
+			if task.IsFinished(*parent) {
+				grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(parent.Id),
+					"processing alert triggers for display task %s", parent.Id))
+			}
+		} else {
+			grip.Infoln("Processing alert triggers for task", t.Id)
 
-		grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
-			"processing alert triggers for task %s", t.Id))
+			grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
+				"processing alert triggers for task %s", t.Id))
+		}
 	}
 	// TODO(EVG-223) process patch-specific triggers
 

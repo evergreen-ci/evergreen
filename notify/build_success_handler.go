@@ -18,7 +18,7 @@ type BuildSuccessHandler struct {
 func (self *BuildSuccessHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciSuccessPreface
-	if key.NotificationRequester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(key.NotificationRequester) {
 		preface = patchSuccessPreface
 	}
 	triggeredNotifications, err :=

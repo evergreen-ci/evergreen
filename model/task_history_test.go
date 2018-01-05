@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -9,9 +10,12 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -189,6 +193,7 @@ func TestSetDefaultsAndValidate(t *testing.T) {
 				Project:      "project",
 				TestNames:    []string{"test"},
 				TestStatuses: []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus},
+				Limit:        10,
 			}
 			So(len(params.TaskStatuses), ShouldEqual, 0)
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
@@ -201,6 +206,7 @@ func TestSetDefaultsAndValidate(t *testing.T) {
 				Project:      "project",
 				TestNames:    []string{"test"},
 				TaskStatuses: []string{evergreen.TaskFailed},
+				Limit:        10,
 			}
 			So(len(params.TestStatuses), ShouldEqual, 0)
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
@@ -288,7 +294,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 			Convey("the pipeline created should be properly created with relevant fields", func() {
 				pipeline, err := buildTestHistoryQuery(&params)
 				So(err, ShouldBeNil)
-				So(len(pipeline), ShouldEqual, 7)
+				So(len(pipeline), ShouldEqual, 8)
 				Convey("the $match task query should have task names included", func() {
 					So(pipeline[0], ShouldContainKey, "$match")
 					taskMatchQuery := bson.M{
@@ -306,173 +312,18 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					}
 					So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 				})
-				Convey("the $project and $unwind bson.M should project the correct fields", func() {
-					So(pipeline[1], ShouldContainKey, "$project")
-					So(pipeline[1]["$project"], ShouldResemble, bson.M{
-						task.DisplayNameKey:         1,
-						task.BuildVariantKey:        1,
-						task.ProjectKey:             1,
-						task.StatusKey:              1,
-						task.TestResultsKey:         1,
-						task.RevisionKey:            1,
-						task.IdKey:                  1,
-						task.ExecutionKey:           1,
-						task.RevisionOrderNumberKey: 1,
-						task.OldTaskIdKey:           1,
-						task.StartTimeKey:           1,
-						task.DetailsKey:             1,
-					})
-					So(pipeline[2], ShouldContainKey, "$unwind")
-					So(pipeline[2]["$unwind"], ShouldResemble, "$"+task.TestResultsKey)
-				})
-				Convey("the $match test query should only have a status query", func() {
-					So(pipeline[3], ShouldContainKey, "$match")
-					testMatchQuery := bson.M{
-						task.TestResultsKey + "." + task.TestResultStatusKey: bson.M{"$in": []string{evergreen.TestFailedStatus}},
-					}
-					So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
-				})
-				Convey("the $sort and $project stages should have the correct fields", func() {
-					So(pipeline[5], ShouldContainKey, "$sort")
-					So(pipeline[5]["$sort"], ShouldResemble, bson.D{
-						{Name: task.RevisionOrderNumberKey, Value: -1},
-						{Name: task.TestResultsKey + "." + task.TestResultTestFileKey, Value: -1},
-					})
-					So(pipeline[6], ShouldContainKey, "$project")
-					So(pipeline[6]["$project"], ShouldResemble, bson.M{
-						TestFileKey:        "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
-						TaskIdKey:          "$" + task.IdKey,
-						TaskStatusKey:      "$" + task.StatusKey,
-						TestStatusKey:      "$" + task.TestResultsKey + "." + task.TestResultStatusKey,
-						RevisionKey:        "$" + task.RevisionKey,
-						ProjectKey:         "$" + task.ProjectKey,
-						TaskNameKey:        "$" + task.DisplayNameKey,
-						BuildVariantKey:    "$" + task.BuildVariantKey,
-						StartTimeKey:       "$" + task.TestResultsKey + "." + task.TestResultStartTimeKey,
-						EndTimeKey:         "$" + task.TestResultsKey + "." + task.TestResultEndTimeKey,
-						ExecutionKey:       "$" + task.ExecutionKey + "." + task.ExecutionKey,
-						OldTaskIdKey:       "$" + task.OldTaskIdKey,
-						UrlKey:             "$" + task.TestResultsKey + "." + task.TestResultURLKey,
-						UrlRawKey:          "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
-						TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
-						TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
-						LogIdKey:           "$" + task.TestResultsKey + "." + task.TestResultLogIdKey,
-					})
-				})
-
-			})
-			Convey("with setting the test names and unsetting the task names", func() {
-				params.TestNames = []string{"test1"}
-				params.TaskNames = []string{}
-				Convey("the pipeline should be created properly", func() {
-					pipeline, err := buildTestHistoryQuery(&params)
-					So(err, ShouldBeNil)
-					So(len(pipeline), ShouldEqual, 7)
-					Convey("the $match task query should have the test names included", func() {
-						So(pipeline[0], ShouldContainKey, "$match")
-						taskMatchQuery := bson.M{
-							"$or": []bson.M{
-								bson.M{
-									task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
-									task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
-										"$ne": true,
-									},
-									task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-										"$ne": "system",
-									}}}, task.ProjectKey: "project",
-							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-						}
-						So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
-					})
-					Convey("the $match test query should have the test names included", func() {
-						So(pipeline[3], ShouldContainKey, "$match")
-						testMatchQuery := bson.M{
-							task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-						}
-						So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
-					})
-
-				})
-			})
-			Convey("with setting the test names and the task names", func() {
-				params.TestNames = []string{"test1"}
-				params.TaskNames = []string{"task1", "task2"}
-				Convey("the pipeline should be created properly", func() {
-					pipeline, err := buildTestHistoryQuery(&params)
-					So(err, ShouldBeNil)
-					So(len(pipeline), ShouldEqual, 7)
-					Convey("the $match task query should have the test names included", func() {
-						So(pipeline[0], ShouldContainKey, "$match")
-						taskMatchQuery := bson.M{
-							"$or": []bson.M{
-								bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
-									task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
-										"$ne": true,
-									},
-									task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-										"$ne": "system",
-									}}},
-							task.ProjectKey:                                        "project",
-							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-							task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-						}
-						So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
-					})
-					Convey("the $match test query should have the test names included", func() {
-						So(pipeline[3], ShouldContainKey, "$match")
-						testMatchQuery := bson.M{
-							task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-						}
-						So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
-					})
-
-				})
 			})
 			Convey("with setting the test names, the task names and adding a build variant", func() {
 				params.TestNames = []string{"test1"}
 				params.TaskNames = []string{"task1", "task2"}
 				params.BuildVariants = []string{"osx"}
-				Convey("the pipeline should be created properly", func() {
-					pipeline, err := buildTestHistoryQuery(&params)
-					So(err, ShouldBeNil)
-					So(len(pipeline), ShouldEqual, 7)
-					Convey("the $match task query should have the test names included", func() {
-						So(pipeline[0], ShouldContainKey, "$match")
-						taskMatchQuery := bson.M{
-							"$or": []bson.M{
-								bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
-									task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
-										"$ne": true,
-									},
-									task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-										"$ne": "system",
-									}}},
-							task.ProjectKey:                                        "project",
-							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-							task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-							task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-						}
-						So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
-					})
-					Convey("the $match test query should have the test names included", func() {
-						So(pipeline[3], ShouldContainKey, "$match")
-						testMatchQuery := bson.M{
-							task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-						}
-						So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
-					})
-
-				})
 				Convey("with adding in a before revision and validating", func() {
 					params.BeforeRevision = "abc"
 					So(params.SetDefaultsAndValidate(), ShouldBeNil)
 					Convey("the pipeline should be created properly", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have the test names included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -484,25 +335,22 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
 											"$ne": "system",
 										}}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-								task.RevisionOrderNumberKey:                            bson.M{"$lte": 1},
+								task.ProjectKey:             "project",
+								task.DisplayNameKey:         bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey:        bson.M{"$in": []string{"osx"}},
+								task.RevisionOrderNumberKey: bson.M{"$lte": 1},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[3], ShouldContainKey, "$match")
+							So(pipeline[4], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
-								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
+								testResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
+								testResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
 						})
-
 					})
-
 				})
 				Convey("with adding in an after revision and validating", func() {
 					params.AfterRevision = "abc"
@@ -510,7 +358,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created properly", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have the test names included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -522,25 +370,22 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
 											"$ne": "system",
 										}}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-								task.RevisionOrderNumberKey:                            bson.M{"$gt": 1},
+								task.ProjectKey:             "project",
+								task.DisplayNameKey:         bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey:        bson.M{"$in": []string{"osx"}},
+								task.RevisionOrderNumberKey: bson.M{"$gt": 1},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[3], ShouldContainKey, "$match")
+							So(pipeline[4], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
-								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
+								testResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
+								testResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
 						})
-
 					})
-
 				})
 				Convey("with adding in a before and after revision and validating", func() {
 					params.AfterRevision = "abc"
@@ -549,7 +394,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created properly", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have the test names included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -561,25 +406,22 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
 											"$ne": "system",
 										}}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-								task.RevisionOrderNumberKey:                            bson.M{"$lte": 1, "$gt": 1},
+								task.ProjectKey:             "project",
+								task.DisplayNameKey:         bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey:        bson.M{"$in": []string{"osx"}},
+								task.RevisionOrderNumberKey: bson.M{"$lte": 1, "$gt": 1},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[3], ShouldContainKey, "$match")
+							So(pipeline[4], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
-								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
+								testResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
+								testResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
 						})
-
 					})
-
 				})
 				Convey("with adding in an after date and validating", func() {
 					now := time.Now()
@@ -588,7 +430,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created properly", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have the test names included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -600,25 +442,22 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
 											"$ne": "system",
 										}}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-								task.StartTimeKey:                                      bson.M{"$gte": now},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
+								task.StartTimeKey:    bson.M{"$gte": now},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[3], ShouldContainKey, "$match")
+							So(pipeline[4], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
-								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
+								testResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
+								testResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
 						})
-
 					})
-
 				})
 				Convey("with adding in a before date and validating", func() {
 					now := time.Now()
@@ -627,7 +466,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created properly", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have the test names included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -639,25 +478,22 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
 											"$ne": "system",
 										}}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-								task.StartTimeKey:                                      bson.M{"$lte": now},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
+								task.StartTimeKey:    bson.M{"$lte": now},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[3], ShouldContainKey, "$match")
+							So(pipeline[4], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
-								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
+								testResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
+								testResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
 						})
-
 					})
-
 				})
 				Convey("with adding in an after date and before date and validating", func() {
 					now := time.Now()
@@ -667,7 +503,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created properly", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have the test names included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -679,25 +515,22 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
 											"$ne": "system",
 										}}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
-								task.StartTimeKey:                                      bson.M{"$gte": now, "$lte": now},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
+								task.StartTimeKey:    bson.M{"$gte": now, "$lte": now},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[3], ShouldContainKey, "$match")
+							So(pipeline[4], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
-								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
+								testResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
+								testResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
 						})
-
 					})
-
 				})
 				Convey("with timeout in task status in the test history parameters", func() {
 					params.TaskStatuses = []string{TaskTimeout}
@@ -705,7 +538,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created without any errors", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have timeouts included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 
@@ -715,15 +548,13 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.StatusKey:                                     evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 									}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 					})
-
 				})
 				Convey("with system failure in task status in the test history parameters", func() {
 					params.TaskStatuses = []string{TaskSystemFailure}
@@ -731,7 +562,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created without any errors", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have timeouts included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 
@@ -741,10 +572,9 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.StatusKey:                                 evergreen.TaskFailed,
 										task.DetailsKey + "." + task.TaskEndDetailType: "system",
 									}},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
@@ -756,7 +586,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created without any errors", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have timeouts included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -770,10 +600,9 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: "system",
 									},
 								},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
@@ -785,7 +614,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					Convey("the pipeline should be created without any errors", func() {
 						pipeline, err := buildTestHistoryQuery(&params)
 						So(err, ShouldBeNil)
-						So(len(pipeline), ShouldEqual, 7)
+						So(len(pipeline), ShouldEqual, 8)
 						Convey("the $match task query should have timeouts included", func() {
 							So(pipeline[0], ShouldContainKey, "$match")
 							taskMatchQuery := bson.M{
@@ -806,24 +635,27 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 										task.DetailsKey + "." + task.TaskEndDetailType: "system",
 									},
 								},
-								task.ProjectKey:                                        "project",
-								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
-								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
-								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
+								task.ProjectKey:      "project",
+								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
+								task.BuildVariantKey: bson.M{"$in": []string{"osx"}},
 							}
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 					})
 				})
-
 			})
 		})
 	})
 }
 
 func TestGetTestHistory(t *testing.T) {
-	Convey("With a set of tasks and versions", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection),
+	assert := assert.New(t)
+	testFuncs := []func(*TestHistoryParameters) ([]TestHistoryResult, error){
+		GetTestHistory,
+		GetTestHistoryV2,
+	}
+	for _, testFunc := range testFuncs {
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
 			t, "Error clearing task collections")
 		project := "proj"
 		now := time.Now()
@@ -835,7 +667,7 @@ func TestGetTestHistory(t *testing.T) {
 			Identifier:          project,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(testVersion.Insert(), ShouldBeNil)
+		assert.NoError(testVersion.Insert())
 		testVersion2 := version.Version{
 			Id:                  "anotherVersion",
 			Revision:            "def",
@@ -843,7 +675,7 @@ func TestGetTestHistory(t *testing.T) {
 			Identifier:          project,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(testVersion2.Insert(), ShouldBeNil)
+		assert.NoError(testVersion2.Insert())
 		testVersion3 := version.Version{
 			Id:                  "testV",
 			Revision:            "abcd",
@@ -851,7 +683,7 @@ func TestGetTestHistory(t *testing.T) {
 			Identifier:          project,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
-		So(testVersion3.Insert(), ShouldBeNil)
+		assert.NoError(testVersion3.Insert())
 
 		task1 := task.Task{
 			Id:                  "task1",
@@ -861,18 +693,19 @@ func TestGetTestHistory(t *testing.T) {
 			StartTime:           now,
 			RevisionOrderNumber: 1,
 			Status:              evergreen.TaskFailed,
-			TestResults: []task.TestResult{
-				task.TestResult{
-					Status:   evergreen.TestFailedStatus,
-					TestFile: "test1",
-				},
-				task.TestResult{
-					Status:   evergreen.TestSucceededStatus,
-					TestFile: "test2",
-				},
+		}
+		assert.NoError(task1.Insert())
+		testresults1 := []testresult.TestResult{
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test1",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestSucceededStatus,
+				TestFile: "test2",
 			},
 		}
-		So(task1.Insert(), ShouldBeNil)
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(testresults1, task1.Id, task1.Execution))
 		task2 := task.Task{
 			Id:                  "task2",
 			DisplayName:         "test",
@@ -881,19 +714,19 @@ func TestGetTestHistory(t *testing.T) {
 			StartTime:           now.Add(time.Duration(30 * time.Minute)),
 			RevisionOrderNumber: 2,
 			Status:              evergreen.TaskFailed,
-			TestResults: []task.TestResult{
-				task.TestResult{
-					Status:   evergreen.TestFailedStatus,
-					TestFile: "test1",
-				},
-				task.TestResult{
-					Status:   evergreen.TestFailedStatus,
-					TestFile: "test2",
-				},
+		}
+		assert.NoError(task2.Insert())
+		testresults2 := []testresult.TestResult{
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test1",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test2",
 			},
 		}
-		So(task2.Insert(), ShouldBeNil)
-
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(testresults2, task2.Id, task2.Execution))
 		task3 := task.Task{
 			Id:                  "task3",
 			DisplayName:         "test2",
@@ -902,7 +735,7 @@ func TestGetTestHistory(t *testing.T) {
 			StartTime:           now,
 			RevisionOrderNumber: 1,
 			Status:              evergreen.TaskFailed,
-			TestResults: []task.TestResult{
+			LocalTestResults: []task.TestResult{
 				task.TestResult{
 					Status:   evergreen.TestFailedStatus,
 					TestFile: "test1",
@@ -917,318 +750,429 @@ func TestGetTestHistory(t *testing.T) {
 				},
 			},
 		}
-		So(task3.Insert(), ShouldBeNil)
+		assert.NoError(task3.Insert())
+		testresults3 := []testresult.TestResult{
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test1",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestSucceededStatus,
+				TestFile: "test3",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestSilentlyFailedStatus,
+				TestFile: "test4",
+			},
+		}
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(testresults3, task3.Id, task3.Execution))
+		// retrieving the task history with just a task name in the parameters should return relevant results
+		params := TestHistoryParameters{
+			TaskNames:    []string{"test"},
+			Project:      project,
+			Sort:         1,
+			TaskStatuses: []string{evergreen.TaskFailed},
+			TestStatuses: []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus},
+			Limit:        20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err := testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 4)
+		// the order of the test results should be in sorted order
+		assert.Equal("task1", testResults[0].TaskId)
+		assert.Equal("task1", testResults[1].TaskId)
+		assert.Equal("task2", testResults[2].TaskId)
+		assert.Equal("task2", testResults[3].TaskId)
+		// with a sort of -1, the order should be in reverse revision order number order
+		params.Sort = -1
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 4)
+		//the order of the test results should be in reverse revision number order
+		assert.Equal("task2", testResults[0].TaskId)
+		assert.Equal("task1", testResults[3].TaskId)
+		// retrieving the task history for just a set of test names in the parameters should return relevant results
+		params = TestHistoryParameters{
+			TestNames: []string{"test1"},
+			Project:   project,
+			Limit:     20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 3)
+		// including a filter on a before revision should return inclusive results
+		params = TestHistoryParameters{
+			TaskNames:      []string{"test"},
+			Project:        project,
+			Sort:           1,
+			BeforeRevision: testVersion2.Revision,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 3)
+		assert.Equal("task1", testResults[0].TaskId)
+		// including a filter on an after revision, should only return exclusive results
+		params = TestHistoryParameters{
+			TaskNames:     []string{"test"},
+			Project:       project,
+			Sort:          1,
+			AfterRevision: testVersion.Revision,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 2)
+		assert.Equal("task2", testResults[0].TaskId)
+		// including a filter on both before and after revision should return relevant results
+		params = TestHistoryParameters{
+			TaskNames:      []string{"test"},
+			Project:        project,
+			Sort:           1,
+			BeforeRevision: testVersion2.Revision,
+			AfterRevision:  testVersion.Revision,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 2)
+		assert.Equal("task2", testResults[0].TaskId)
+		// including a filter on a before start time should return relevant results
+		params = TestHistoryParameters{
+			TaskNames:  []string{"test"},
+			Project:    project,
+			BeforeDate: now.Add(time.Duration(15 * time.Minute)),
+			Limit:      20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 1)
+		// including a filter on an after start time should return relevant results
+		params = TestHistoryParameters{
+			TaskNames: []string{"test"},
+			Project:   project,
+			AfterDate: now,
+			Limit:     20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 3)
+		// including a filter on test status of 'silentfail' should return relevant results
+		params = TestHistoryParameters{
+			Project:      project,
+			TaskNames:    []string{"test2"},
+			TestStatuses: []string{evergreen.TestSilentlyFailedStatus},
+			Limit:        20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 1)
+		// with a task with a different build variant
+		anotherBV := task.Task{
+			Id:                  "task5",
+			DisplayName:         "test",
+			BuildVariant:        "bv2",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: 2,
+			Status:              evergreen.TaskFailed,
+		}
+		assert.NoError(anotherBV.Insert())
+		anotherBVresults := []testresult.TestResult{
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test1",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test2",
+			},
+		}
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(anotherBVresults, anotherBV.Id, anotherBV.Execution))
+		// including a filter on build variant should only return test results with that build variant
+		params = TestHistoryParameters{
+			TaskNames:     []string{"test"},
+			Project:       project,
+			BuildVariants: []string{"bv2"},
+			Limit:         20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 2)
+		// not having the filter should return all results
+		params = TestHistoryParameters{
+			TaskNames: []string{"test"},
+			Project:   project,
+			Limit:     20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 5)
+		// using a task with no test results
+		noResults := task.Task{
+			Id:                  "noResults",
+			DisplayName:         "anothertest",
+			BuildVariant:        "bv2",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: 2,
+			Status:              evergreen.TaskFailed,
+		}
+		assert.NoError(noResults.Insert())
+		params = TestHistoryParameters{
+			TaskNames: []string{"anothertest"},
+			Project:   project,
+			Limit:     20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Empty(testResults)
+		// with tasks with different ordered test results
+		diffOrder := task.Task{
+			Id:                  "anotherTaskId",
+			DisplayName:         "testTask",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: 2,
+			Status:              evergreen.TaskFailed,
+		}
+		assert.NoError(diffOrder.Insert())
+		diffOrderResults := []testresult.TestResult{
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test2",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test1",
+			},
+		}
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(diffOrderResults, diffOrder.Id, diffOrder.Execution))
+		diffOrder2 := task.Task{
+			Id:                  "anotherTaskId2",
+			DisplayName:         "testTask",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: 1,
+			Status:              evergreen.TaskFailed,
+		}
+		assert.NoError(diffOrder2.Insert())
+		diffOrder2Results := []testresult.TestResult{
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test1",
+			},
+			testresult.TestResult{
+				Status:   evergreen.TestFailedStatus,
+				TestFile: "test2",
+			},
+		}
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(diffOrder2Results, diffOrder2.Id, diffOrder2.Execution))
 
-		Convey("retrieving the task history with just a task name in the parameters should return relevant results", func() {
-			params := TestHistoryParameters{
-				TaskNames:    []string{"test"},
-				Project:      project,
-				Sort:         1,
-				TaskStatuses: []string{evergreen.TaskFailed},
-				TestStatuses: []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus},
-				Limit:        20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 4)
-			Convey("the order of the test results should be in sorted order", func() {
-				So(testResults[0].TaskId, ShouldEqual, "task1")
-				So(testResults[1].TaskId, ShouldEqual, "task1")
-				So(testResults[2].TaskId, ShouldEqual, "task2")
-				So(testResults[3].TaskId, ShouldEqual, "task2")
+		// the order of the tests should be the same
+		params = TestHistoryParameters{
+			TaskNames: []string{"testTask"},
+			Project:   project,
+			Limit:     20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 4)
+		assert.Equal("anotherTaskId", testResults[0].TaskId)
+		assert.Equal("test2", testResults[0].TestFile)
+		assert.Equal("anotherTaskId", testResults[1].TaskId)
+		assert.Equal("test1", testResults[1].TestFile)
+		assert.Equal("anotherTaskId2", testResults[2].TaskId)
+		assert.Equal("test2", testResults[2].TestFile)
+		assert.Equal("anotherTaskId2", testResults[3].TaskId)
+		assert.Equal("test1", testResults[3].TestFile)
+		// using test parameter with a task status with timeouts
+		timedOutTask := task.Task{
+			Id:                  "timeout",
+			DisplayName:         "test",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: 1,
+
+			Status: evergreen.TaskFailed,
+			Details: apimodels.TaskEndDetail{
+				TimedOut: true,
+			},
+		}
+		assert.NoError(timedOutTask.Insert())
+		timedOutResults := testresult.TestResult{
+			Status:   evergreen.TestFailedStatus,
+			TestFile: "test2",
+		}
+		assert.NoError(timedOutResults.InsertByTaskIDAndExecution(timedOutTask.Id, timedOutTask.Execution))
+		params = TestHistoryParameters{
+			Project:      project,
+			TaskNames:    []string{"test"},
+			TaskStatuses: []string{TaskTimeout},
+			Limit:        20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 1)
+		// using test parameter with a task status with system failures
+		systemFailureTask := task.Task{
+			Id:                  "systemfailed",
+			DisplayName:         "test",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: 1,
+
+			Status: evergreen.TaskFailed,
+			Details: apimodels.TaskEndDetail{
+				Type: "system",
+			},
+		}
+		assert.NoError(systemFailureTask.Insert())
+		systemFailureResult := testresult.TestResult{
+			Status:   evergreen.TestFailedStatus,
+			TestFile: "test2",
+		}
+		assert.NoError(systemFailureResult.InsertByTaskIDAndExecution(systemFailureTask.Id, systemFailureTask.Execution))
+		params = TestHistoryParameters{
+			Project:      project,
+			TaskNames:    []string{"test"},
+			TaskStatuses: []string{TaskSystemFailure},
+			Limit:        20,
+		}
+		assert.NoError(params.SetDefaultsAndValidate())
+		testResults, err = testFunc(&params)
+		assert.NoError(err)
+		assert.Len(testResults, 1)
+		assert.Equal("test2", testResults[0].TestFile)
+		assert.Equal("system", testResults[0].TaskDetailsType)
+	}
+}
+
+func TestCompareQueryRunTimes(t *testing.T) {
+	assert := assert.New(t) //nolint
+	rand.Seed(time.Now().UnixNano())
+	numTasks := 1000  // # of tasks to insert into the db
+	maxNumTests := 50 // max # of tests per task to insert (randomized per task)
+	taskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded}
+	testStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus, evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus}
+	systemTypes := []string{"test", "system"}
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
+		t, "Error clearing collections")
+	project := "proj"
+	now := time.Now()
+
+	testVersion := version.Version{
+		Id:                  "testVersion",
+		Revision:            "fgh",
+		RevisionOrderNumber: 1,
+		Identifier:          project,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(testVersion.Insert())
+	testVersion2 := version.Version{
+		Id:                  "anotherVersion",
+		Revision:            "def",
+		RevisionOrderNumber: 2,
+		Identifier:          project,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(testVersion2.Insert())
+	testVersion3 := version.Version{
+		Id:                  "testV",
+		Revision:            "abcd",
+		RevisionOrderNumber: 4,
+		Identifier:          project,
+		Requester:           evergreen.RepotrackerVersionRequester,
+	}
+	assert.NoError(testVersion3.Insert())
+
+	// insert tasks and tests
+	for i := 0; i < numTasks; i++ {
+		t := task.Task{
+			Id:                  fmt.Sprintf("task_%d", i),
+			DisplayName:         fmt.Sprintf("task_%d", i),
+			BuildVariant:        "osx",
+			Project:             project,
+			StartTime:           now,
+			RevisionOrderNumber: rand.Intn(100),
+			Execution:           0,
+			Status:              taskStatuses[rand.Intn(1)],
+			Details: apimodels.TaskEndDetail{
+				Type:     systemTypes[rand.Intn(1)],
+				TimedOut: (rand.Intn(1) == 1),
+			},
+		}
+
+		assert.NoError(t.Insert())
+		numTests := rand.Intn(maxNumTests)
+		tests := []testresult.TestResult{}
+		for j := 0; j < numTests; j++ {
+			tests = append(tests, testresult.TestResult{
+				TestFile: fmt.Sprintf("test_%d", j),
+				Status:   testStatuses[rand.Intn(3)],
 			})
-			Convey("with a sort of -1, the order should be in reverse revision order number order", func() {
-				params.Sort = -1
-				testResults, err := GetTestHistory(&params)
-				So(err, ShouldBeNil)
-				So(len(testResults), ShouldEqual, 4)
-				Convey("the order of the test results should be in reverse revision number order", func() {
-					So(testResults[0].TaskId, ShouldEqual, "task2")
-					So(testResults[3].TaskId, ShouldEqual, "task1")
-				})
-			})
-		})
-		Convey("retrieving the task history for just a set of test names in the parameters should return relevant results", func() {
-			params := TestHistoryParameters{
-				TestNames: []string{"test1"},
-				Project:   project,
-				Limit:     20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 3)
-		})
-		Convey("including a filter on a before revision should return inclusive results", func() {
-			params := TestHistoryParameters{
-				TaskNames:      []string{"test"},
-				Project:        project,
-				Sort:           1,
-				BeforeRevision: testVersion2.Revision,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 3)
-			So(testResults[0].TaskId, ShouldEqual, "task1")
-		})
-		Convey("including a filter on an after revision, should only return exclusive results", func() {
-			params := TestHistoryParameters{
-				TaskNames:     []string{"test"},
-				Project:       project,
-				Sort:          1,
-				AfterRevision: testVersion.Revision,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 2)
-			So(testResults[0].TaskId, ShouldEqual, "task2")
-		})
-		Convey("including a filter on both before and after revision should return relevant results", func() {
-			params := TestHistoryParameters{
-				TaskNames:      []string{"test"},
-				Project:        project,
-				Sort:           1,
-				BeforeRevision: testVersion2.Revision,
-				AfterRevision:  testVersion.Revision,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 2)
-			So(testResults[0].TaskId, ShouldEqual, "task2")
-		})
-		Convey("including a filter on a before start time should return relevant results", func() {
-			params := TestHistoryParameters{
-				TaskNames:  []string{"test"},
-				Project:    project,
-				BeforeDate: now.Add(time.Duration(15 * time.Minute)),
-				Limit:      20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 1)
+		}
+		assert.NoError(testresult.InsertManyByTaskIDAndExecution(tests, t.Id, t.Execution))
+	}
 
-		})
-		Convey("including a filter on an after start time should return relevant results", func() {
-			params := TestHistoryParameters{
-				TaskNames: []string{"test"},
-				Project:   project,
-				AfterDate: now,
-				Limit:     20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 3)
-		})
-		Convey("including a filter on test status of 'silentfail' should return relevant results", func() {
-			params := TestHistoryParameters{
-				Project:      project,
-				TaskNames:    []string{"test2"},
-				TestStatuses: []string{evergreen.TestSilentlyFailedStatus},
-				Limit:        20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 1)
-		})
-		Convey("with a task with a different build variant,", func() {
-			anotherBV := task.Task{
-				Id:                  "task5",
-				DisplayName:         "test",
-				BuildVariant:        "bv2",
-				Project:             project,
-				StartTime:           now,
-				RevisionOrderNumber: 2,
-				Status:              evergreen.TaskFailed,
-				TestResults: []task.TestResult{
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test1",
-					},
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test2",
-					},
-				},
-			}
-			So(anotherBV.Insert(), ShouldBeNil)
-			Convey("including a filter on build variant should only return test results with that build variant", func() {
-				params := TestHistoryParameters{
-					TaskNames:     []string{"test"},
-					Project:       project,
-					BuildVariants: []string{"bv2"},
-					Limit:         20,
-				}
-				So(params.SetDefaultsAndValidate(), ShouldBeNil)
-				testResults, err := GetTestHistory(&params)
-				So(err, ShouldBeNil)
-				So(len(testResults), ShouldEqual, 2)
-			})
-			Convey("not having the filter should return all results", func() {
-				params := TestHistoryParameters{
-					TaskNames: []string{"test"},
-					Project:   project,
-					Limit:     20,
-				}
-				So(params.SetDefaultsAndValidate(), ShouldBeNil)
-				testResults, err := GetTestHistory(&params)
-				So(err, ShouldBeNil)
-				So(len(testResults), ShouldEqual, 5)
-			})
-		})
-		Convey("using a task with no test results", func() {
-			noResults := task.Task{
-				Id:                  "noResults",
-				DisplayName:         "anothertest",
-				BuildVariant:        "bv2",
-				Project:             project,
-				StartTime:           now,
-				RevisionOrderNumber: 2,
-				Status:              evergreen.TaskFailed,
-			}
-			So(noResults.Insert(), ShouldBeNil)
-			params := TestHistoryParameters{
-				TaskNames: []string{"anothertest"},
-				Project:   project,
-				Limit:     20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(testResults, ShouldBeEmpty)
-		})
-		Convey("with tasks with different ordered test results", func() {
-			diffOrder := task.Task{
-				Id:                  "anotherTaskId",
-				DisplayName:         "testTask",
-				Project:             project,
-				StartTime:           now,
-				RevisionOrderNumber: 2,
-				Status:              evergreen.TaskFailed,
-				TestResults: []task.TestResult{
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test2",
-					},
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test1",
-					},
-				},
-			}
-			So(diffOrder.Insert(), ShouldBeNil)
-			diffOrder2 := task.Task{
-				Id:                  "anotherTaskId2",
-				DisplayName:         "testTask",
-				Project:             project,
-				StartTime:           now,
-				RevisionOrderNumber: 1,
-				Status:              evergreen.TaskFailed,
-				TestResults: []task.TestResult{
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test1",
-					},
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test2",
-					},
-				},
-			}
-			So(diffOrder2.Insert(), ShouldBeNil)
+	// test querying on task names
+	tasksToFind := []string{}
+	for i := 0; i < numTasks; i++ {
+		tasksToFind = append(tasksToFind, fmt.Sprintf("task_%d", i))
+	}
+	params := &TestHistoryParameters{
+		TaskNames: tasksToFind,
+		Project:   project,
+		Sort:      1,
+		Limit:     5000,
+	}
+	assert.NoError(params.SetDefaultsAndValidate())
+	startTime := time.Now()
+	resultsV1, err := GetTestHistory(params)
+	elapsedV1 := time.Since(startTime)
+	assert.NoError(err)
+	startTime = time.Now()
+	resultsV2, err := GetTestHistoryV2(params)
+	elapsedV2 := time.Since(startTime)
+	assert.NoError(err)
+	assert.Equal(len(resultsV1), len(resultsV2))
+	grip.Infof("elapsed time for aggregation test history query on task names: %s", elapsedV1.String())
+	grip.Infof("elapsed time for non-aggregation test history query on task names: %s", elapsedV2.String())
 
-			Convey("the order of the tests should be the same", func() {
-				params := TestHistoryParameters{
-					TaskNames: []string{"testTask"},
-					Project:   project,
-					Limit:     20,
-				}
-				So(params.SetDefaultsAndValidate(), ShouldBeNil)
-				testResults, err := GetTestHistory(&params)
-				So(err, ShouldBeNil)
-				So(len(testResults), ShouldEqual, 4)
-				So(testResults[0].TaskId, ShouldEqual, "anotherTaskId")
-				So(testResults[0].TestFile, ShouldEqual, "test2")
-				So(testResults[1].TaskId, ShouldEqual, "anotherTaskId")
-				So(testResults[1].TestFile, ShouldEqual, "test1")
-				So(testResults[2].TaskId, ShouldEqual, "anotherTaskId2")
-				So(testResults[2].TestFile, ShouldEqual, "test2")
-				So(testResults[3].TaskId, ShouldEqual, "anotherTaskId2")
-				So(testResults[3].TestFile, ShouldEqual, "test1")
+	// test querying on test names
+	testsToFind := []string{}
+	for i := 0; i < maxNumTests; i++ {
+		testsToFind = append(tasksToFind, fmt.Sprintf("test_%d", i))
+	}
+	params = &TestHistoryParameters{
+		TestNames: testsToFind,
+		Project:   project,
+		Sort:      1,
+		Limit:     5000,
+	}
+	assert.NoError(params.SetDefaultsAndValidate())
+	startTime = time.Now()
+	resultsV1, err = GetTestHistory(params)
+	elapsedV1 = time.Since(startTime)
+	assert.NoError(err)
+	startTime = time.Now()
+	resultsV2, err = GetTestHistoryV2(params)
+	elapsedV2 = time.Since(startTime)
+	assert.NoError(err)
+	assert.Equal(len(resultsV1), len(resultsV2))
+	grip.Infof("elapsed time for aggregation test history query on test names: %s", elapsedV1.String())
+	grip.Infof("elapsed time for non-aggregation test history query on test names: %s", elapsedV2.String())
 
-			})
-
-		})
-		Convey("using test parameter with a task status with timeouts", func() {
-			timedOutTask := task.Task{
-				Id:                  "timeout",
-				DisplayName:         "test",
-				Project:             project,
-				StartTime:           now,
-				RevisionOrderNumber: 1,
-
-				Status: evergreen.TaskFailed,
-				Details: apimodels.TaskEndDetail{
-					TimedOut: true,
-				},
-				TestResults: []task.TestResult{
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test2",
-					},
-				},
-			}
-			So(timedOutTask.Insert(), ShouldBeNil)
-			params := TestHistoryParameters{
-				Project:      project,
-				TaskNames:    []string{"test"},
-				TaskStatuses: []string{TaskTimeout},
-				Limit:        20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 1)
-		})
-		Convey("using test parameter with a task status with system failures", func() {
-			systemFailureTask := task.Task{
-				Id:                  "systemfailed",
-				DisplayName:         "test",
-				Project:             project,
-				StartTime:           now,
-				RevisionOrderNumber: 1,
-
-				Status: evergreen.TaskFailed,
-				Details: apimodels.TaskEndDetail{
-					Type: "system",
-				},
-				TestResults: []task.TestResult{
-					task.TestResult{
-						Status:   evergreen.TestFailedStatus,
-						TestFile: "test2",
-					},
-				},
-			}
-			So(systemFailureTask.Insert(), ShouldBeNil)
-			params := TestHistoryParameters{
-				Project:      project,
-				TaskNames:    []string{"test"},
-				TaskStatuses: []string{TaskSystemFailure},
-				Limit:        20,
-			}
-			So(params.SetDefaultsAndValidate(), ShouldBeNil)
-			testResults, err := GetTestHistory(&params)
-			So(err, ShouldBeNil)
-			So(len(testResults), ShouldEqual, 1)
-			So(testResults[0].TestFile, ShouldEqual, "test2")
-			So(testResults[0].TaskDetailsType, ShouldEqual, "system")
-		})
-
-	})
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
+		t, "Error clearing collections")
 }

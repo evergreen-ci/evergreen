@@ -131,6 +131,10 @@ func (c *cliIntent) ShouldFinalizePatch() bool {
 	return c.Finalize
 }
 
+func (g *cliIntent) RequesterIdentity() string {
+	return evergreen.PatchVersionRequester
+}
+
 // NewPatch creates a patch from the intent
 func (c *cliIntent) NewPatch() *Patch {
 	return &Patch{
@@ -172,9 +176,6 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 				return nil, errors.New("no tasks provided")
 			}
 		}
-	}
-	if len(patchContent) > SizeLimit {
-		return nil, errors.Errorf("patch size cannot exceed %d bytes; was %d bytes", SizeLimit, len(patchContent))
 	}
 
 	return &cliIntent{

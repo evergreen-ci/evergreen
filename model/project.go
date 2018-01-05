@@ -292,17 +292,6 @@ type ProjectTask struct {
 	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
-type TaskConfig struct {
-	Distro       *distro.Distro
-	Version      *version.Version
-	ProjectRef   *ProjectRef
-	Project      *Project
-	Task         *task.Task
-	BuildVariant *BuildVariant
-	Expansions   *util.Expansions
-	WorkDir      string
-}
-
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
 
@@ -407,7 +396,8 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	displayTable := TaskIdTable{}
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
-		if v.Requester == evergreen.PatchVersionRequester {
+
+		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		}
 		for _, t := range bv.Tasks {
@@ -437,55 +427,67 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
 }
 
-// NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task id])
-func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSet) TaskIdConfig {
-	execTable := TaskIdTable{}
-	displayTable := TaskIdTable{}
+// NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
+func NewPatchTaskIdTable(proj *Project, v *version.Version, tasks TaskVariantPairs) TaskIdConfig {
+	config := TaskIdConfig{}
 	processedVariants := map[string]bool{}
-	for _, vt := range patchConfig {
+	for _, vt := range tasks.ExecTasks {
 		// don't hit the same variant more than once
 		if _, ok := processedVariants[vt.Variant]; ok {
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		// we must track the project's variants definitions as well,
-		// so that we don't create Ids for variants that don't exist.
-		projBV := proj.FindBuildVariant(vt.Variant)
-		taskNamesForVariant := patchConfig.TaskNames(vt.Variant)
-
-		rev := v.Revision
-		if v.Requester == evergreen.PatchVersionRequester {
-			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks)
+	}
+	processedVariants = map[string]bool{}
+	for _, vt := range tasks.DisplayTasks {
+		// don't hit the same variant more than once
+		if _, ok := processedVariants[vt.Variant]; ok {
+			continue
 		}
-		for _, t := range projBV.Tasks {
-			// create Ids for each task that can run on the variant and is requested by the patch.
-			if util.StringSliceContains(taskNamesForVariant, t.Name) {
+		processedVariants[vt.Variant] = true
+		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks)
+	}
+	return config
+}
 
-				// create a unique Id for each task
-				taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
-					proj.Identifier,
-					projBV.Name,
-					t.Name,
-					rev,
-					v.CreateTime.Format(build.IdTimeLayout))
+func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks TVPairSet, table TaskIdTable) TaskIdTable {
+	if table == nil {
+		table = map[TVPair]string{}
+	}
 
-				execTable[TVPair{vt.Variant, t.Name}] = util.CleanName(taskId)
-			}
-		}
+	// we must track the project's variants definitions as well,
+	// so that we don't create Ids for variants that don't exist.
+	projBV := proj.FindBuildVariant(vt.Variant)
+	taskNamesForVariant := tasks.TaskNames(vt.Variant)
 
-		for _, dt := range projBV.DisplayTasks {
-			name := fmt.Sprintf("display_%s", dt.Name)
-			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
-				proj.Identifier,
-				projBV.Name,
-				name,
-				rev,
-				v.CreateTime.Format(build.IdTimeLayout))
-
-			displayTable[TVPair{projBV.Name, dt.Name}] = util.CleanName(taskId)
+	rev := v.Revision
+	if v.Requester == evergreen.PatchVersionRequester {
+		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+	}
+	for _, t := range projBV.Tasks {
+		// create Ids for each task that can run on the variant and is requested by the patch.
+		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
 		}
 	}
-	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
+	for _, t := range projBV.DisplayTasks {
+		// create Ids for each task that can run on the variant and is requested by the patch.
+		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(fmt.Sprintf("display_%s", t.Name), proj, projBV, rev, v))
+		}
+	}
+
+	return table
+}
+
+func generateId(name string, proj *Project, projBV *BuildVariant, rev string, v *version.Version) string {
+	return fmt.Sprintf("%s_%s_%s_%s_%s",
+		proj.Identifier,
+		projBV.Name,
+		name,
+		rev,
+		v.CreateTime.Format(build.IdTimeLayout))
 }
 
 var (
@@ -499,26 +501,6 @@ var (
 	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
-
-func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
-	// do a check on if the project is empty
-	if p == nil {
-		return nil, errors.Errorf("project for task with branch %v is empty", t.Project)
-	}
-
-	// check on if the project ref is empty
-	if r == nil {
-		return nil, errors.Errorf("Project ref with identifier: %v was empty", p.Identifier)
-	}
-
-	bv := p.FindBuildVariant(t.BuildVariant)
-	if bv == nil {
-		return nil, errors.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
-	}
-
-	e := populateExpansions(d, v, bv, t)
-	return &TaskConfig{d, v, r, p, t, bv, e, d.WorkDir}, nil
-}
 
 func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *util.Expansions {
 	expansions := util.NewExpansions(map[string]string{})
@@ -536,7 +518,7 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 	expansions.Put("distro_id", d.Id)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
-	if t.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 	} else {
@@ -829,10 +811,31 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 		}
 	}
 
-	// update variant and tasks to include dependencies
-	pairs = IncludePatchDependencies(p, pairs)
+	tasks := extractDisplayTasks(pairs, patchDoc.Tasks, patchDoc.BuildVariants, p)
 
-	patchDoc.SyncVariantsTasks(TVPairsToVariantTasks(pairs))
+	// update variant and tasks to include dependencies
+	tasks.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
+
+	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+}
+
+func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
+	displayTasks := []TVPair{}
+	for _, bv := range p.BuildVariants {
+		if !util.StringSliceContains(variants, bv.Name) {
+			continue
+		}
+		for _, dt := range bv.DisplayTasks {
+			if util.StringSliceContains(tasks, dt.Name) {
+				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
+				for _, et := range dt.ExecutionTasks {
+					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
+				}
+			}
+		}
+	}
+
+	return TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
 }
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
@@ -859,7 +862,9 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
 		for _, variant := range p.BuildVariants {
 			if variantRegex.MatchString(variant.Name) {
 				for _, task := range p.Tasks {
-					if taskRegex.MatchString(task.Name) && (p.FindTaskForVariant(task.Name, variant.Name) != nil) {
+					if ((v.Task != "" && taskRegex.MatchString(task.Name)) ||
+						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) &&
+						(p.FindTaskForVariant(task.Name, variant.Name) != nil) {
 						pairs = append(pairs, TVPair{variant.Name, task.Name})
 					}
 				}

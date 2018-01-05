@@ -47,9 +47,9 @@ func (c *xunitResults) expandParams(conf *model.TaskConfig) error {
 		c.Files = append(c.Files, c.File)
 	}
 
-	var err error
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 
+	var err error
 	for idx, f := range c.Files {
 		c.Files[idx], err = conf.Expansions.ExpandString(f)
 		catcher.Add(err)
@@ -84,7 +84,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 // getFilePaths is a helper function that returns a slice of all absolute paths
 // which match the given file path parameters.
 func getFilePaths(workDir string, files []string) ([]string, error) {
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 	out := []string{}
 
 	for _, fileSpec := range files {
@@ -183,5 +183,5 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		tests[logIdxToTestIdx[i]].LineNum = 1
 	}
 
-	return sendJSONResults(ctx, conf, logger, comm, &task.TestResults{tests})
+	return sendJSONResults(ctx, conf, logger, comm, &task.LocalTestResults{tests})
 }

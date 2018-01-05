@@ -74,7 +74,7 @@ func (l *logHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 
 	for _, w := range l.writers {
 		catcher.Add(w.Close())
@@ -140,7 +140,7 @@ func (l *singleChannelLogHarness) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 
 	for _, w := range l.writers {
 		catcher.Add(w.Close())

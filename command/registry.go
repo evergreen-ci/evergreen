@@ -18,9 +18,9 @@ func init() {
 
 	cmds := map[string]CommandFactory{
 		"archive.targz_pack":    tarballCreateFactory,
-		"archive.targz_unpack":  tarballExtractFactory,
 		"attach.results":        attachResultsFactory,
 		"attach.xunit_results":  xunitResultsFactory,
+		"attach.artifacts":      attachArtifactsFactory,
 		"expansions.fetch_vars": fetchVarsFactory,
 		"expansions.update":     updateExpansionsFactory,
 		"git.apply_patch":       gitApplyPatchFactory,
@@ -37,6 +37,7 @@ func init() {
 		"shell.cleanup":         shellCleanupFactory,
 		"shell.exec":            shellExecFactory,
 		"shell.track":           shellTrackFactory,
+		"simple.exec":           simpleExecFactory,
 		"setup.initial":         initialSetupFactory,
 	}
 

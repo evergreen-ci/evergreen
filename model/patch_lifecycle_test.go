@@ -6,11 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMakePatchedConfig(t *testing.T) {
@@ -304,4 +311,93 @@ func TestIncludePatchDependencies(t *testing.T) {
 		})
 	})
 
+}
+
+func TestVariantTasksToTVPairs(t *testing.T) {
+	assert := assert.New(t)
+
+	input := []patch.VariantTasks{
+		patch.VariantTasks{
+			Variant: "variant",
+			Tasks:   []string{"task1", "task2", "task3"},
+			DisplayTasks: []patch.DisplayTask{
+				patch.DisplayTask{
+					Name: "displaytask1",
+				},
+			},
+		},
+	}
+	output := VariantTasksToTVPairs(input)
+	assert.Len(output.ExecTasks, 3)
+	assert.Len(output.DisplayTasks, 1)
+
+	original := output.TVPairsToVariantTasks()
+	assert.Equal(input, original)
+}
+
+func TestAddNewPatch(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, version.Collection, build.Collection, task.Collection), t, "problem clearing collections")
+	p := &patch.Patch{
+		Activated: true,
+	}
+	v := &version.Version{
+		Id:         "version",
+		Revision:   "1234",
+		Requester:  evergreen.PatchVersionRequester,
+		CreateTime: time.Now(),
+	}
+	assert.NoError(p.Insert())
+	assert.NoError(v.Insert())
+
+	proj := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			BuildVariant{
+				Name: "variant",
+				Tasks: []BuildVariantTask{
+					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
+				},
+				DisplayTasks: []DisplayTask{
+					DisplayTask{
+						Name:           "displaytask1",
+						ExecutionTasks: []string{"task1", "task2"},
+					},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			ProjectTask{Name: "task1"}, ProjectTask{Name: "task2"}, ProjectTask{Name: "task3"},
+		},
+	}
+	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
+		patch.VariantTasks{
+			Variant: "variant",
+			Tasks:   []string{"task1", "task2", "task3"},
+			DisplayTasks: []patch.DisplayTask{
+				patch.DisplayTask{
+					Name: "displaytask1",
+				},
+			},
+		},
+	})
+
+	assert.NoError(AddNewBuildsForPatch(p, v, proj, tasks))
+	dbBuild, err := build.FindOne(db.Q{})
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.Len(dbBuild.Tasks, 2)
+	assert.Equal(dbBuild.Tasks[0].DisplayName, "displaytask1")
+	assert.Equal(dbBuild.Tasks[1].DisplayName, "task3")
+
+	assert.NoError(AddNewTasksForPatch(p, v, proj, tasks))
+	dbTasks, err := task.FindWithDisplayTasks(task.ByBuildId(dbBuild.Id))
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.Len(dbTasks, 4)
+	assert.Equal(dbTasks[0].DisplayName, "displaytask1")
+	assert.Equal(dbTasks[1].DisplayName, "task1")
+	assert.Equal(dbTasks[2].DisplayName, "task2")
+	assert.Equal(dbTasks[3].DisplayName, "task3")
 }

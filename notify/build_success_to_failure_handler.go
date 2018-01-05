@@ -26,7 +26,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, key *Not
 	}
 
 	preface := mciFailurePreface
-	if key.NotificationRequester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(key.NotificationRequester) {
 		preface = patchFailurePreface
 	}
 

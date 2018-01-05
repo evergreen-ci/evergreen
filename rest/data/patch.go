@@ -3,11 +3,15 @@ package data
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/google/go-github/github"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -85,6 +89,28 @@ func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit i
 	}
 
 	return patches, nil
+}
+
+func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+	owner, repo, err := verifyPullRequestEventForAbort(event)
+	if err != nil {
+		return err
+	}
+
+	err = model.CancelPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
+		owner, repo, *event.Number)
+	if err != nil {
+		grip.Error(message.Fields{
+			"message": "error cancelling patches",
+			"error":   err.Error(),
+		})
+		return &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    "error cancelling patches",
+		}
+	}
+
+	return nil
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods
@@ -207,4 +233,30 @@ func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit
 		}
 	}
 	return patchesToReturn, nil
+}
+
+func (c *MockPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequestEvent) error {
+	_, _, err := verifyPullRequestEventForAbort(event)
+	return err
+}
+
+func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, string, error) {
+	if event.Number == nil || event.Repo == nil ||
+		event.Repo.FullName == nil || event.PullRequest == nil ||
+		event.PullRequest.ClosedAt == nil {
+		return "", "", &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "pull request data is malformed",
+		}
+	}
+
+	baseRepo := strings.Split(*event.Repo.FullName, "/")
+	if len(baseRepo) == 2 {
+		return "", "", &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "repository name is invalid",
+		}
+	}
+
+	return baseRepo[0], baseRepo[1], nil
 }

@@ -3,7 +3,6 @@ package send
 import (
 	"log"
 
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 )
 
@@ -29,7 +28,6 @@ func ErrorHandlerFromSender(s Sender) ErrorHandler {
 			return
 		}
 
-		s.Send(message.NewErrorMessage(level.Error, err))
-		s.Send(m)
+		s.Send(message.WrapError(err, m))
 	}
 }

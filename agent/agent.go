@@ -34,6 +34,7 @@ type Options struct {
 	WorkingDirectory   string
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
+	Cleanup            bool
 }
 
 type taskContext struct {
@@ -65,7 +66,9 @@ func New(opts Options, comm client.Communicator) *Agent {
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(ctx, a.opts.StatusPort)
-	tryCleanupDirectory(a.opts.WorkingDirectory)
+	if a.opts.Cleanup {
+		tryCleanupDirectory(a.opts.WorkingDirectory)
+	}
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
 
@@ -291,13 +294,15 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 }
 
 func (a *Agent) killProcs(tc *taskContext) {
-	grip.Infof("cleaning up processes for task: %s", tc.task.ID)
+	if a.opts.Cleanup {
+		grip.Infof("cleaning up processes for task: %s", tc.task.ID)
 
-	if tc.task.ID != "" {
-		if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
-			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
-			grip.Critical(msg)
+		if tc.task.ID != "" {
+			if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
+				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
+				grip.Critical(msg)
+			}
 		}
+		grip.Infof("processes cleaned up for task %s", tc.task.ID)
 	}
-	grip.Infof("processes cleaned up for task %s", tc.task.ID)
 }

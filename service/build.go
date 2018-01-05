@@ -23,7 +23,7 @@ import (
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
 func getUiTaskCache(build *build.Build) ([]uiTask, error) {
-	tasks, err := task.Find(task.ByBuildId(build.Id))
+	tasks, err := task.FindWithDisplayTasks(task.ByBuildId(build.Id))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -68,7 +68,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	}
 	buildAsUI.Tasks = uiTasks
 
-	if projCtx.Build.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(projCtx.Build.Requester) {
 		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

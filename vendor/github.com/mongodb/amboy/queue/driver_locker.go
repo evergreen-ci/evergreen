@@ -11,6 +11,8 @@ import (
 
 type lockPings map[string]time.Time
 
+// LockManager describes the component of the Driver interface that
+// handles job mutexing.
 type LockManager interface {
 	Lock(amboy.Job) error
 	Unlock(amboy.Job) error

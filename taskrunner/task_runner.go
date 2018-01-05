@@ -1,6 +1,7 @@
 package taskrunner
 
 import (
+	"context"
 	"math/rand"
 	"path/filepath"
 	"runtime"
@@ -47,6 +48,9 @@ func (tr *TaskRunner) Run() error {
 		return err
 	}
 
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
 	grip.Info(message.Fields{
 		"runner":     RunnerName,
 		"free_hosts": len(freeHosts),
@@ -73,7 +77,7 @@ func (tr *TaskRunner) Run() error {
 		go func() {
 			defer wg.Done()
 			for input := range freeHostChan {
-				errorCollector.add(&input.Host, tr.StartAgentOnHost(input.Settings, input.Host))
+				errorCollector.add(&input.Host, tr.StartAgentOnHost(ctx, input.Settings, input.Host))
 			}
 		}()
 	}

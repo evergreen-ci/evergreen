@@ -11,6 +11,7 @@
     <span ng-switch-when="TASK_DEACTIVATED">Deactivated by user [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_ABORT_REQUEST">Marked to abort by user [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_SCHEDULED">Scheduled at [[eventLogObj.data.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY, h:mm:ss a']]</span>
+    <span ng-switch-when="TASK_PRIORITY_CHANGED">Priority Changed at [[eventLogObj.data.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY, h:mm:ss a']] to [[eventLogObj.data.priority]] by [[eventLogObj.data.user_id]]</span>
   </div>
   <div class="clearfix"></div>
 </div>

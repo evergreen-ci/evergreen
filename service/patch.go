@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
@@ -48,7 +49,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
 	project := &model.Project{}
-	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
+	if err := model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
 	}
 
@@ -108,22 +109,22 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pairs []model.TVPair
+	tasks := model.TaskVariantPairs{}
 	if len(patchUpdateReq.VariantsTasks) > 0 {
-		pairs = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
+		tasks = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
 	} else {
 		for _, v := range patchUpdateReq.Variants {
 			for _, t := range patchUpdateReq.Tasks {
 				if project.FindTaskForVariant(t, v) != nil {
-					pairs = append(pairs, model.TVPair{v, t})
+					tasks.ExecTasks = append(tasks.ExecTasks, model.TVPair{v, t})
 				}
 			}
 		}
 	}
 
-	pairs = model.IncludePatchDependencies(project, pairs)
+	tasks.ExecTasks = model.IncludePatchDependencies(project, tasks.ExecTasks)
 
-	if err = model.ValidateTVPairs(project, pairs); err != nil {
+	if err = model.ValidateTVPairs(project, tasks.ExecTasks); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -136,7 +137,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs)); err != nil {
+	if err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks()); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			errors.Wrap(err, "Error setting description"))
 		return
@@ -152,14 +153,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, pairs)
+		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new tasks for version `%v`", projCtx.Version.Id))
 			return
 		}
 
-		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, project, pairs)
+		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, project, tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "Error creating new builds for version `%v`", err, projCtx.Version.Id))
@@ -177,14 +178,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		projCtx.Patch.Activated = true
-		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs))
+		err = projCtx.Patch.SetVariantsTasks(tasks.TVPairsToVariantTasks())
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error setting patch variants and tasks"))
 			return
 		}
 
-		ver, err := model.FinalizePatch(projCtx.Patch, githubOauthToken)
+		ver, err := model.FinalizePatch(projCtx.Patch, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))

@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -51,6 +52,8 @@ type Mock struct {
 	HeartbeatShouldErr     bool
 	TaskExecution          int
 
+	AttachedFiles map[string][]*artifact.File
+
 	// metrics collection
 	ProcInfo map[string][]*message.ProcessInfo
 	SysInfo  map[string]*message.SystemInfo
@@ -73,15 +76,16 @@ type endTaskResult struct {
 // NewMock returns a Communicator for testing.
 func NewMock(serverURL string) *Mock {
 	return &Mock{
-		maxAttempts:  defaultMaxAttempts,
-		timeoutStart: defaultTimeoutStart,
-		timeoutMax:   defaultTimeoutMax,
-		logMessages:  make(map[string][]apimodels.LogMessage),
-		PatchFiles:   make(map[string]string),
-		keyVal:       make(map[string]*serviceModel.KeyVal),
-		ProcInfo:     make(map[string][]*message.ProcessInfo),
-		SysInfo:      make(map[string]*message.SystemInfo),
-		serverURL:    serverURL,
+		maxAttempts:   defaultMaxAttempts,
+		timeoutStart:  defaultTimeoutStart,
+		timeoutMax:    defaultTimeoutMax,
+		logMessages:   make(map[string][]apimodels.LogMessage),
+		PatchFiles:    make(map[string]string),
+		keyVal:        make(map[string]*serviceModel.KeyVal),
+		ProcInfo:      make(map[string][]*message.ProcessInfo),
+		SysInfo:       make(map[string]*message.SystemInfo),
+		AttachedFiles: make(map[string][]*artifact.File),
+		serverURL:     serverURL,
 	}
 }
 
@@ -350,12 +354,18 @@ func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) 
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
-func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.TestResults) error {
+func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.LocalTestResults) error {
 	return nil
 }
 
 // SendFiles attaches task files.
 func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifact.File) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	grip.Info("attaching files")
+	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
+
 	return nil
 }
 

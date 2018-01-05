@@ -143,7 +143,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		// add all of the necessary patch info into the relevant task queue
 		// items
 		for idx, queueItemAsUI := range asUI.Queue {
-			if queueItemAsUI.Requester == evergreen.PatchVersionRequester {
+			if evergreen.IsPatchRequester(queueItemAsUI.Requester) {
 				// fetch the patch, if necessary
 				var p *patch.Patch
 				var ok bool

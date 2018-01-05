@@ -13,7 +13,8 @@ type (
 )
 
 const (
-	User = "mci"
+	User            = "mci"
+	GithubPatchUser = "github_pull_request"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -80,8 +81,11 @@ const (
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
-	EvergreenHome        = "EVGHOME"
-	LocalLoggingOverride = "LOCAL"
+	EvergreenHome = "EVGHOME"
+
+	// Special logging output targets
+	LocalLoggingOverride          = "LOCAL"
+	StandardOutputLoggingOverride = "STDOUT"
 
 	DefaultTaskActivator   = ""
 	StepbackTaskActivator  = "stepback"
@@ -134,12 +138,15 @@ const (
 )
 
 const (
+	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
+
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"
 	ClientDirectory   = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
+	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
 )
 
@@ -151,6 +158,9 @@ const (
 	defaultAmboyQueueName        = "evg.service"
 	defaultAmboyDBName           = "amboy"
 )
+
+// NameTimeFormat is the format in which to log times like instance start time.
+const NameTimeFormat = "20060102150405"
 
 var (
 	// UphostStatus is a list of all hostb statuses that are considered "up."
@@ -183,4 +193,8 @@ func FindEvergreenHome() string {
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
 	return caller == DefaultTaskActivator || caller == APIServerTaskActivator
+}
+
+func IsPatchRequester(requester string) bool {
+	return requester == PatchVersionRequester || requester == GithubPRRequester
 }

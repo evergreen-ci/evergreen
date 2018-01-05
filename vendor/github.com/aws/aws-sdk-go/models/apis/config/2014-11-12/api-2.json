@@ -8,7 +8,8 @@
     "serviceAbbreviation":"Config Service",
     "serviceFullName":"AWS Config",
     "signatureVersion":"v4",
-    "targetPrefix":"StarlingDoveService"
+    "targetPrefix":"StarlingDoveService",
+    "uid":"config-2014-11-12"
   },
   "operations":{
     "DeleteConfigRule":{
@@ -83,7 +84,8 @@
       "output":{"shape":"DescribeComplianceByConfigRuleResponse"},
       "errors":[
         {"shape":"InvalidParameterValueException"},
-        {"shape":"NoSuchConfigRuleException"}
+        {"shape":"NoSuchConfigRuleException"},
+        {"shape":"InvalidNextTokenException"}
       ]
     },
     "DescribeComplianceByResource":{
@@ -108,7 +110,9 @@
       "input":{"shape":"DescribeConfigRuleEvaluationStatusRequest"},
       "output":{"shape":"DescribeConfigRuleEvaluationStatusResponse"},
       "errors":[
-        {"shape":"NoSuchConfigRuleException"}
+        {"shape":"NoSuchConfigRuleException"},
+        {"shape":"InvalidParameterValueException"},
+        {"shape":"InvalidNextTokenException"}
       ]
     },
     "DescribeConfigRules":{
@@ -120,7 +124,8 @@
       "input":{"shape":"DescribeConfigRulesRequest"},
       "output":{"shape":"DescribeConfigRulesResponse"},
       "errors":[
-        {"shape":"NoSuchConfigRuleException"}
+        {"shape":"NoSuchConfigRuleException"},
+        {"shape":"InvalidNextTokenException"}
       ]
     },
     "DescribeConfigurationRecorderStatus":{
@@ -215,6 +220,20 @@
       "output":{"shape":"GetComplianceSummaryByResourceTypeResponse"},
       "errors":[
         {"shape":"InvalidParameterValueException"}
+      ]
+    },
+    "GetDiscoveredResourceCounts":{
+      "name":"GetDiscoveredResourceCounts",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"GetDiscoveredResourceCountsRequest"},
+      "output":{"shape":"GetDiscoveredResourceCountsResponse"},
+      "errors":[
+        {"shape":"ValidationException"},
+        {"shape":"InvalidLimitException"},
+        {"shape":"InvalidNextTokenException"}
       ]
     },
     "GetResourceConfigHistory":{
@@ -354,6 +373,11 @@
     "AllSupported":{"type":"boolean"},
     "AvailabilityZone":{"type":"string"},
     "AwsRegion":{"type":"string"},
+    "BaseResourceId":{
+      "type":"string",
+      "max":768,
+      "min":1
+    },
     "Boolean":{"type":"boolean"},
     "ChannelName":{
       "type":"string",
@@ -389,7 +413,7 @@
       "type":"structure",
       "members":{
         "ResourceType":{"shape":"StringWithCharLimit256"},
-        "ResourceId":{"shape":"StringWithCharLimit256"},
+        "ResourceId":{"shape":"BaseResourceId"},
         "Compliance":{"shape":"Compliance"}
       }
     },
@@ -465,7 +489,7 @@
         "Description":{"shape":"EmptiableStringWithCharLimit256"},
         "Scope":{"shape":"Scope"},
         "Source":{"shape":"Source"},
-        "InputParameters":{"shape":"StringWithCharLimit256"},
+        "InputParameters":{"shape":"StringWithCharLimit1024"},
         "MaximumExecutionFrequency":{"shape":"MaximumExecutionFrequency"},
         "ConfigRuleState":{"shape":"ConfigRuleState"}
       }
@@ -702,7 +726,7 @@
       "type":"structure",
       "members":{
         "ResourceType":{"shape":"StringWithCharLimit256"},
-        "ResourceId":{"shape":"StringWithCharLimit256"},
+        "ResourceId":{"shape":"BaseResourceId"},
         "ComplianceTypes":{"shape":"ComplianceTypes"},
         "Limit":{"shape":"Limit"},
         "NextToken":{"shape":"NextToken"}
@@ -718,13 +742,16 @@
     "DescribeConfigRuleEvaluationStatusRequest":{
       "type":"structure",
       "members":{
-        "ConfigRuleNames":{"shape":"ConfigRuleNames"}
+        "ConfigRuleNames":{"shape":"ConfigRuleNames"},
+        "NextToken":{"shape":"String"},
+        "Limit":{"shape":"RuleLimit"}
       }
     },
     "DescribeConfigRuleEvaluationStatusResponse":{
       "type":"structure",
       "members":{
-        "ConfigRulesEvaluationStatus":{"shape":"ConfigRuleEvaluationStatusList"}
+        "ConfigRulesEvaluationStatus":{"shape":"ConfigRuleEvaluationStatusList"},
+        "NextToken":{"shape":"String"}
       }
     },
     "DescribeConfigRulesRequest":{
@@ -805,7 +832,7 @@
       ],
       "members":{
         "ComplianceResourceType":{"shape":"StringWithCharLimit256"},
-        "ComplianceResourceId":{"shape":"StringWithCharLimit256"},
+        "ComplianceResourceId":{"shape":"BaseResourceId"},
         "ComplianceType":{"shape":"ComplianceType"},
         "Annotation":{"shape":"StringWithCharLimit256"},
         "OrderingTimestamp":{"shape":"OrderingTimestamp"}
@@ -834,7 +861,7 @@
       "members":{
         "ConfigRuleName":{"shape":"StringWithCharLimit64"},
         "ResourceType":{"shape":"StringWithCharLimit256"},
-        "ResourceId":{"shape":"StringWithCharLimit256"}
+        "ResourceId":{"shape":"BaseResourceId"}
       }
     },
     "EvaluationResults":{
@@ -876,7 +903,7 @@
       ],
       "members":{
         "ResourceType":{"shape":"StringWithCharLimit256"},
-        "ResourceId":{"shape":"StringWithCharLimit256"},
+        "ResourceId":{"shape":"BaseResourceId"},
         "ComplianceTypes":{"shape":"ComplianceTypes"},
         "NextToken":{"shape":"String"}
       }
@@ -904,6 +931,22 @@
       "type":"structure",
       "members":{
         "ComplianceSummariesByResourceType":{"shape":"ComplianceSummariesByResourceType"}
+      }
+    },
+    "GetDiscoveredResourceCountsRequest":{
+      "type":"structure",
+      "members":{
+        "resourceTypes":{"shape":"ResourceTypes"},
+        "limit":{"shape":"Limit"},
+        "nextToken":{"shape":"NextToken"}
+      }
+    },
+    "GetDiscoveredResourceCountsResponse":{
+      "type":"structure",
+      "members":{
+        "totalDiscoveredResources":{"shape":"Long"},
+        "resourceCounts":{"shape":"ResourceCounts"},
+        "nextToken":{"shape":"NextToken"}
       }
     },
     "GetResourceConfigHistoryRequest":{
@@ -1046,6 +1089,7 @@
         "nextToken":{"shape":"NextToken"}
       }
     },
+    "Long":{"type":"long"},
     "MaxNumberOfConfigRulesExceededException":{
       "type":"structure",
       "members":{
@@ -1079,7 +1123,8 @@
       "enum":[
         "ConfigurationItemChangeNotification",
         "ConfigurationSnapshotDeliveryCompleted",
-        "ScheduledNotification"
+        "ScheduledNotification",
+        "OversizedConfigurationItemChangeNotification"
       ]
     },
     "Name":{"type":"string"},
@@ -1160,7 +1205,8 @@
       "required":["ResultToken"],
       "members":{
         "Evaluations":{"shape":"Evaluations"},
-        "ResultToken":{"shape":"String"}
+        "ResultToken":{"shape":"String"},
+        "TestMode":{"shape":"Boolean"}
       }
     },
     "PutEvaluationsResponse":{
@@ -1215,6 +1261,17 @@
       "member":{"shape":"Relationship"}
     },
     "RelationshipName":{"type":"string"},
+    "ResourceCount":{
+      "type":"structure",
+      "members":{
+        "resourceType":{"shape":"ResourceType"},
+        "count":{"shape":"Long"}
+      }
+    },
+    "ResourceCounts":{
+      "type":"list",
+      "member":{"shape":"ResourceCount"}
+    },
     "ResourceCreationTime":{"type":"timestamp"},
     "ResourceDeletionTime":{"type":"timestamp"},
     "ResourceId":{"type":"string"},
@@ -1276,7 +1333,31 @@
         "AWS::RDS::DBSecurityGroup",
         "AWS::RDS::DBSnapshot",
         "AWS::RDS::EventSubscription",
-        "AWS::ElasticLoadBalancingV2::LoadBalancer"
+        "AWS::ElasticLoadBalancingV2::LoadBalancer",
+        "AWS::S3::Bucket",
+        "AWS::SSM::ManagedInstanceInventory",
+        "AWS::Redshift::Cluster",
+        "AWS::Redshift::ClusterSnapshot",
+        "AWS::Redshift::ClusterParameterGroup",
+        "AWS::Redshift::ClusterSecurityGroup",
+        "AWS::Redshift::ClusterSubnetGroup",
+        "AWS::Redshift::EventSubscription",
+        "AWS::CloudWatch::Alarm",
+        "AWS::CloudFormation::Stack",
+        "AWS::DynamoDB::Table",
+        "AWS::AutoScaling::AutoScalingGroup",
+        "AWS::AutoScaling::LaunchConfiguration",
+        "AWS::AutoScaling::ScalingPolicy",
+        "AWS::AutoScaling::ScheduledAction",
+        "AWS::CodeBuild::Project",
+        "AWS::WAF::RateBasedRule",
+        "AWS::WAF::Rule",
+        "AWS::WAF::WebACL",
+        "AWS::WAFRegional::RateBasedRule",
+        "AWS::WAFRegional::Rule",
+        "AWS::WAFRegional::WebACL",
+        "AWS::CloudFront::Distribution",
+        "AWS::CloudFront::StreamingDistribution"
       ]
     },
     "ResourceTypeList":{
@@ -1289,17 +1370,26 @@
       "max":20,
       "min":0
     },
+    "RuleLimit":{
+      "type":"integer",
+      "max":50,
+      "min":0
+    },
     "Scope":{
       "type":"structure",
       "members":{
         "ComplianceResourceTypes":{"shape":"ComplianceResourceTypes"},
         "TagKey":{"shape":"StringWithCharLimit128"},
         "TagValue":{"shape":"StringWithCharLimit256"},
-        "ComplianceResourceId":{"shape":"StringWithCharLimit256"}
+        "ComplianceResourceId":{"shape":"BaseResourceId"}
       }
     },
     "Source":{
       "type":"structure",
+      "required":[
+        "Owner",
+        "SourceIdentifier"
+      ],
       "members":{
         "Owner":{"shape":"Owner"},
         "SourceIdentifier":{"shape":"StringWithCharLimit256"},
@@ -1346,6 +1436,11 @@
       }
     },
     "String":{"type":"string"},
+    "StringWithCharLimit1024":{
+      "type":"string",
+      "max":1024,
+      "min":1
+    },
     "StringWithCharLimit128":{
       "type":"string",
       "max":128,

@@ -10,6 +10,7 @@ import (
 	"github.com/VividCortex/ewma"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 )
@@ -50,7 +51,7 @@ func NewMovingAverageRateLimitedWorkers(size, targetNum int, period time.Duratio
 		target: targetNum,
 		size:   size,
 		queue:  q,
-		ewma:   ewma.NewMovingAverage(),
+		ewma:   ewma.NewMovingAverage(period.Minutes()),
 	}
 
 	return p, nil
@@ -74,6 +75,10 @@ func (p *ewmaRateLimiting) getNextTime(dur time.Duration) time.Duration {
 
 	// find the average runtime of a recent job using or weighted moving average
 	averageRuntime := time.Duration(math.Ceil(p.ewma.Value()))
+
+	if averageRuntime == 0 {
+		return time.Duration(0)
+	}
 
 	// find number of tasks per period, given the average runtime
 	tasksPerPeriod := p.period / averageRuntime
@@ -170,8 +175,12 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 
 	interval := p.getNextTime(duration)
 
-	grip.Debugf("task %s completed in %s, next job in %s",
-		j.ID(), duration, interval)
+	grip.Debug(message.Fields{
+		"message":  "rate limiting pool job stats",
+		"id":       j.ID(),
+		"duration": duration,
+		"interval": interval,
+	})
 
 	return interval
 }

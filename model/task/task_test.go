@@ -321,7 +321,7 @@ func TestTaskSetPriority(t *testing.T) {
 		Convey("setting its priority should update it in-memory"+
 			" and update it and all dependencies in the database", func() {
 
-			So(tasks[0].SetPriority(1), ShouldBeNil)
+			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, 1)
 
 			task, err := FindOne(ById("one"))
@@ -361,9 +361,9 @@ func TestTaskSetPriority(t *testing.T) {
 
 		Convey("decreasing priority should update the task but not its dependencies", func() {
 
-			So(tasks[0].SetPriority(1), ShouldBeNil)
+			So(tasks[0].SetPriority(1, "user"), ShouldBeNil)
 			So(tasks[0].Activated, ShouldEqual, true)
-			So(tasks[0].SetPriority(-1), ShouldBeNil)
+			So(tasks[0].SetPriority(-1, "user"), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, -1)
 
 			task, err := FindOne(ById("one"))
@@ -793,4 +793,90 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[6]}).SystemTimedOut)
 	assert.Equal(1, GetResultCounts([]Task{tasks[7]}).SystemUnresponsive)
 	assert.Equal(1, GetResultCounts([]Task{tasks[8]}).TestTimedOut)
+}
+
+func TestDisplayTaskUpdates(t *testing.T) {
+	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing task collection")
+	assert := assert.New(t) // nolint
+	dt := Task{
+		Id:          "dt",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task1",
+			"task2",
+			"task3",
+			"task4",
+		},
+	}
+	assert.NoError(dt.Insert())
+	dt2 := Task{
+		Id:          "dt2",
+		DisplayOnly: true,
+		Status:      evergreen.TaskUndispatched,
+		Activated:   false,
+		ExecutionTasks: []string{
+			"task5",
+			"task6",
+		},
+	}
+	assert.NoError(dt2.Insert())
+	task1 := Task{
+		Id:        "task1",
+		Status:    evergreen.TaskFailed,
+		TimeTaken: 3 * time.Minute,
+	}
+	assert.NoError(task1.Insert())
+	task2 := Task{
+		Id:        "task2",
+		Status:    evergreen.TaskSucceeded,
+		TimeTaken: 2 * time.Minute,
+	}
+	assert.NoError(task2.Insert())
+	task3 := Task{
+		Id:        "task3",
+		Activated: true,
+		Status:    evergreen.TaskSystemUnresponse,
+		TimeTaken: 5 * time.Minute,
+	}
+	assert.NoError(task3.Insert())
+	task4 := Task{
+		Id:        "task4",
+		Activated: true,
+		Status:    evergreen.TaskSystemUnresponse,
+		TimeTaken: 1 * time.Minute,
+	}
+	assert.NoError(task4.Insert())
+	task5 := Task{
+		Id:        "task5",
+		Activated: true,
+		Status:    evergreen.TaskUndispatched,
+	}
+	assert.NoError(task5.Insert())
+	task6 := Task{
+		Id:        "task6",
+		Activated: true,
+		Status:    evergreen.TaskSucceeded,
+	}
+	assert.NoError(task6.Insert())
+
+	// test that updating the status + activated from execution tasks works
+	assert.NoError(dt.UpdateDisplayTask())
+	dbTask, err := FindOne(ById(dt.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskFailed, dbTask.Status)
+	assert.True(dbTask.Activated)
+	assert.Equal(11*time.Minute, dbTask.TimeTaken)
+
+	// test that you can't update an execution task
+	assert.Error(task1.UpdateDisplayTask())
+
+	// test that a display task with a finished + unstarted task is "scheduled"
+	assert.NoError(dt2.UpdateDisplayTask())
+	dbTask, err = FindOne(ById(dt2.Id))
+	assert.NoError(err)
+	assert.NotNil(dbTask)
+	assert.Equal(evergreen.TaskStarted, dbTask.Status)
 }

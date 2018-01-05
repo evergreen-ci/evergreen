@@ -12,6 +12,7 @@ var (
 	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 	patchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
+	githubHookIDKey     = bsonutil.MustHaveTag(ProjectVars{}, "GithubHookID")
 )
 
 const (
@@ -37,12 +38,17 @@ type ProjectVars struct {
 	// PatchDefinitions contains regexes that are used to determine which
 	// combinations of variants and tasks should be run in a patch build.
 	PatchDefinitions []PatchDefinition `bson:"patch_definitions" json:"patch_definitions"`
+
+	// GithubHookID is the unique number for the Github Hook configuration
+	// of this repository
+	GithubHookID int `bson:"github_hook_id,omitempty" json:"github_hook_id,omitempty"`
 }
 
 type PatchDefinition struct {
-	Alias   string `bson:"alias" json:"alias"`
-	Variant string `bson:"variant" json:"variant"`
-	Task    string `bson:"task" json:"task"`
+	Alias   string   `bson:"alias" json:"alias"`
+	Variant string   `bson:"variant" json:"variant"`
+	Task    string   `bson:"task" json:"task"`
+	Tags    []string `bson:"tags" json:"tags"`
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
@@ -114,6 +120,7 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 				projectVarsMapKey:   projectVars.Vars,
 				privateVarsMapKey:   projectVars.PrivateVars,
 				patchDefinitionsKey: projectVars.PatchDefinitions,
+				githubHookIDKey:     projectVars.GithubHookID,
 			},
 		},
 	)

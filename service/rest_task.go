@@ -49,7 +49,7 @@ type RestTask struct {
 	Aborted             bool                  `json:"aborted"`
 	TimeTaken           time.Duration         `json:"time_taken"`
 	ExpectedDuration    time.Duration         `json:"expected_duration"`
-	TestResults         taskTestResultsByName `json:"test_results"`
+	LocalTestResults    taskTestResultsByName `json:"test_results"`
 	MinQueuePos         int                   `json:"min_queue_pos"`
 	PatchNumber         int                   `json:"patch_number,omitempty"`
 	PatchId             string                `json:"patch_id,omitempty"`
@@ -74,8 +74,9 @@ type taskTestLogURL struct {
 }
 
 type taskFile struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	IgnoreForFetch bool   `json:"ignore_for_fetch"`
 }
 
 type taskTestResultsByName map[string]taskTestResult
@@ -140,15 +141,15 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.StatusDetails.TimeoutStage = srcTask.Details.Description
 
 	// Copy over the test results
-	destTask.TestResults = make(taskTestResultsByName, len(srcTask.TestResults))
-	for _, _testResult := range srcTask.TestResults {
+	destTask.LocalTestResults = make(taskTestResultsByName, len(srcTask.LocalTestResults))
+	for _, _testResult := range srcTask.LocalTestResults {
 		numSecs := _testResult.EndTime - _testResult.StartTime
 		testResult := taskTestResult{
 			Status:    _testResult.Status,
 			TimeTaken: time.Duration(numSecs * float64(time.Second)),
 			Logs:      taskTestLogURL{_testResult.URL},
 		}
-		destTask.TestResults[_testResult.TestFile] = testResult
+		destTask.LocalTestResults[_testResult.TestFile] = testResult
 	}
 
 	// Copy over artifacts and binaries
@@ -199,8 +200,8 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	result.StatusDetails.TimeoutStage = task.Details.Description
 
 	// Copy over the test results
-	result.Tests = make(taskStatusByTest, len(task.TestResults))
-	for _, _testResult := range task.TestResults {
+	result.Tests = make(taskStatusByTest, len(task.LocalTestResults))
+	for _, _testResult := range task.LocalTestResults {
 		numSecs := _testResult.EndTime - _testResult.StartTime
 		testResult := taskTestResult{
 			Status:    _testResult.Status,

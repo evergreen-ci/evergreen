@@ -19,7 +19,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2017-12-12"
+	ClientVersion = "2017-12-29"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
@@ -285,6 +285,7 @@ type Settings struct {
 	LoggerConfig        LoggerConfig              `yaml:"logger_config"`
 	LogPath             string                    `yaml:"log_path"`
 	PprofPort           string                    `yaml:"pprof_port"`
+	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -330,31 +331,32 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 		return nil, errors.Wrap(err, "problem configuring err fallback logger")
 	}
 
-	if s.LogPath == LocalLoggingOverride {
+	// setup the base/default logger (generaly direct to systemd
+	// or standard output)
+	switch s.LogPath {
+	case LocalLoggingOverride:
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-		if err = sender.SetLevel(levelInfo); err != nil {
-			return nil, errors.Wrap(err, "problem setting level")
-		}
-		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-			return nil, errors.Wrap(err, "problem setting error handler")
-		}
-	} else {
+	case StandardOutputLoggingOverride, "":
+		sender = send.MakeNative()
+	default:
 		sender, err = send.MakeFileLogger(s.LogPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
-		if err = sender.SetLevel(levelInfo); err != nil {
-			return nil, errors.Wrap(err, "problem setting level")
-		}
-		if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
-			return nil, errors.Wrap(err, "problem setting error handler")
-		}
+	}
+
+	if err = sender.SetLevel(levelInfo); err != nil {
+		return nil, errors.Wrap(err, "problem setting level")
+	}
+	if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+		return nil, errors.Wrap(err, "problem setting error handler")
 	}
 	senders = append(senders, sender)
 
 	// set up external log aggregation services:
+	//
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
@@ -387,11 +389,23 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 		}
 	}
 
+	// the slack logging service is only for logging very high level alerts.
 	if s.Slack.Token != "" {
 		sender, err = send.NewSlackLogger(s.Slack.Options, s.Slack.Token,
 			send.LevelInfo{Default: level.Critical, Threshold: level.FromString(s.Slack.Level)})
 		if err == nil {
-			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback)); err != nil {
+			var slackFallback send.Sender
+
+			switch len(senders) {
+			case 0:
+				slackFallback = fallback
+			case 1:
+				slackFallback = senders[0]
+			default:
+				slackFallback = send.NewConfiguredMultiSender(senders...)
+			}
+
+			if err = sender.SetErrorHandler(send.ErrorHandlerFromSender(slackFallback)); err != nil {
 				return nil, errors.Wrap(err, "problem setting error handler")
 			}
 
@@ -417,7 +431,7 @@ func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
 
 func (s *Settings) GetGithubOauthToken() (string, error) {
 	token, ok := s.Credentials["github"]
-	if ok {
+	if ok && token != "" {
 		return token, nil
 	}
 

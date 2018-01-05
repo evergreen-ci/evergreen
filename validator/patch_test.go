@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -16,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -174,8 +177,22 @@ func TestGetPatchedProject(t *testing.T) {
 				So(project, ShouldNotBeNil)
 			})
 
+			Convey("Calling GetPatchedProject on a patch with GridFS patches works", func() {
+				configPatch := resetProjectlessPatchSetup(t)
+
+				patchFileID := bson.NewObjectId()
+				So(db.WriteGridFile(patch.GridFSPrefix, patchFileID.Hex(), strings.NewReader(configPatch.Patches[0].PatchSet.Patch)), ShouldBeNil)
+				configPatch.Patches[0].PatchSet.Patch = ""
+				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
+
+				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				So(err, ShouldBeNil)
+				So(project, ShouldNotBeNil)
+			})
+
 			Reset(func() {
 				So(db.Clear(distro.Collection), ShouldBeNil)
+				So(db.ClearGridCollections(patch.GridFSPrefix), ShouldBeNil)
 			})
 		})
 }
@@ -192,7 +209,7 @@ func TestFinalizePatch(t *testing.T) {
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, patchTestConfig.Credentials["github"])
+				version, err := model.FinalizePatch(configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				// ensure the relevant builds/tasks were created
@@ -214,7 +231,7 @@ func TestFinalizePatch(t *testing.T) {
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, patchTestConfig.Credentials["github"])
+				version, err := model.FinalizePatch(configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(err, ShouldBeNil)

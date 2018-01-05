@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -34,11 +35,16 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	var intent patch.Intent
 	if r.Header.Get("Content-Type") == formMimeType {
 		patchContent := r.FormValue("patch")
+		if patchContent == "" {
+			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Error: Patch must not be empty"))
+			return
+		}
+
 		variants := strings.Split(r.FormValue("buildvariants"), ",")
 		finalize := strings.ToLower(r.FormValue("finalize")) == "true"
 
 		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, nil, "")
+		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, []string{}, "")
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
@@ -57,6 +63,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}{}
 		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		if len(data.Patch) > patch.SizeLimit {
+			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large."))
 			return
 		}
 		variants := strings.Split(data.Variants, ",")
@@ -81,21 +91,41 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	job := units.NewPatchIntentProcessor(patchID, intent)
 	job.Run()
 	if err := job.Error(); err != nil {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return
 	}
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	if err != nil {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.New("can't fetch patch data"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("can't fetch patch data"))
 		return
 	}
 	if patchDoc == nil {
-		as.WriteJSON(w, http.StatusInternalServerError, errors.New("patch couldn't be found"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("patch couldn't be found"))
 		return
 	}
 
 	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
+}
+
+func extractDisplayTasks(pairs []model.TVPair, tasks []string, variants []string,
+	p *model.Project) model.TaskVariantPairs {
+	displayTasks := []model.TVPair{}
+	for _, bv := range p.BuildVariants {
+		if !util.StringSliceContains(variants, bv.Name) {
+			continue
+		}
+		for _, dt := range bv.DisplayTasks {
+			if util.StringSliceContains(tasks, dt.Name) {
+				displayTasks = append(displayTasks, model.TVPair{Variant: bv.Name, TaskName: dt.Name})
+				for _, et := range dt.ExecutionTasks {
+					pairs = append(pairs, model.TVPair{Variant: bv.Name, TaskName: et})
+				}
+			}
+		}
+	}
+
+	return model.TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
 }
 
 // Get the patch with the specified request it
@@ -292,7 +322,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 		p.PatchedConfig = string(projectYamlBytes)
-		_, err = model.FinalizePatch(p, githubOauthToken)
+		_, err = model.FinalizePatch(p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

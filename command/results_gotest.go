@@ -76,7 +76,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	// ship all of the test logs off to the server
 	logger.Task().Info("Sending test logs to server...")
-	allResults := task.TestResults{}
+	allResults := task.LocalTestResults{}
 	for idx, log := range logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
@@ -112,7 +112,6 @@ func (c *goTestResults) Execute(ctx context.Context,
 	logger.Task().Info("Successfully sent parsed results to server")
 
 	return nil
-
 }
 
 // AllOutputFiles creates a list of all test output files that will be parsed, by expanding

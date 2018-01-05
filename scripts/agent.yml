@@ -1,0 +1,99 @@
+command_type: test
+stepback: false
+
+tasks:
+  - name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: src
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "hi"
+
+            # files to archive.targz_pack
+            mkdir archive
+            touch archive/a_to_archive
+            touch archive/b_to_archive
+
+            # file to s3.put
+            mkdir upload
+            echo ${task_name} > upload/s3
+      - command: simple.exec
+        params: 
+          working_dir: archive
+          command_name: /usr/bin/bash
+          args: 
+            - "-c"
+            - "touch foo"
+      - command: simple.exec
+        params: 
+          working_dir: archive
+          command: "/usr/bin/touch bar"
+      - command: archive.targz_pack
+        params:
+          target: "archive.tgz"
+          source_dir: "archive"
+          include:
+            - "*_to_archive"
+      - command: attach.results
+        params:
+          file_location: "src/command/testdata/attach/plugin_attach_results.json"
+      - command: attach.xunit_results
+        params:
+          file: "src/command/testdata/xunit/junit_4.xml"
+      - command: expansions.update
+        params:
+          foo: bar
+      - command: gotest.parse_files
+        params:
+          files:
+            - "src/command/testdata/gotest/4_simple.log"
+      - command: json.send
+        params:
+          name: "foo"
+          file: "src/command/testdata/attach/plugin_attach_results.json"
+      - command: json.get_history
+        params:
+          task: ${task_name}
+          file: "foo.json"
+          name: "foo"
+      - command: keyval.inc
+        params:
+          key: "test"
+          destination: "test_num"
+      - command: manifest.load
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: upload/s3
+          remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
+          bucket: mciuploads
+          content_type: text/html
+          permissions: public-read
+      - command: s3.get
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
+          bucket: mciuploads
+          local_file: upload/s3-get
+      - command: s3Copy.copy
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          s3_copy_files:
+              - {'source': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}', 'bucket': 'mciuploads'},
+                'destination': {'path': 'evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}-copy', 'bucket': 'mciuploads'}}
+
+buildvariants:
+  - name: localhost
+    display_name: localhost
+    run_on:
+      - localhost
+    tasks:
+      - name: test

@@ -2,14 +2,11 @@ package hostutil
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -33,40 +30,22 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	}
 
 	// construct a command to check reachability
-	remoteCommand := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("reachability check %s", hostObject.Id),
-		CmdString:      "echo hi",
-		Stdout:         ioutil.Discard,
-		Stderr:         ioutil.Discard,
-		RemoteHostName: hostInfo.Hostname,
-		User:           hostInfo.User,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     false,
+	remoteCommand := subprocess.NewRemoteCommand(
+		"echo hi",
+		hostInfo.Hostname,
+		hostInfo.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostInfo.Port}, sshOptions...),
+		false, // logging disabled
+	)
+	if err = remoteCommand.SetOutput(subprocess.OutputOptions{SuppressOutput: true, SuppressError: true}); err != nil {
+		return false, errors.Wrap(err, "problem configuring output")
 	}
 
-	done := make(chan error)
-	err = remoteCommand.Start()
-	if err != nil {
-		return false, errors.Wrap(err, "problem starting command")
+	if err = remoteCommand.Run(ctx); err != nil {
+		return false, errors.Wrapf(err, "reachability command encountered error for %s", hostObject.Id)
 	}
 
-	go func() {
-		select {
-		case done <- remoteCommand.Wait():
-			return
-		case <-ctx.Done():
-			return
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		grip.Warning(remoteCommand.Stop())
-		return false, nil
-	case err = <-done:
-		if err != nil {
-			return false, errors.Wrap(err, "error during host check operation")
-		}
-		return true, nil
-	}
+	return true, nil
 }

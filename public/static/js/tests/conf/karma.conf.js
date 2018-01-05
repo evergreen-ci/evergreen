@@ -16,22 +16,22 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
-      'http://code.angularjs.org/1.0.7/angular.min.js',
-      'http://code.angularjs.org/1.0.7/angular-mocks.js',
-      'angular-md5.js',
+      'angular.min.js',
+      'angular-*.js',
+      'md-*.js',
+      'underscore-min.js',
       'filters/*',
       'directives/*',
       'mci_module.js',
+      'services/*.js',
       'build.js',
-      'tests/*.js',
+      'tests/*.js'
     ],
 
 
     // list of files to exclude
     exclude: [
-      
     ],
-
 
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'
@@ -54,16 +54,26 @@ module.exports = function(config) {
     // enable / disable watching file and executing tests whenever any file changes
     autoWatch: true,
 
+    junitReporter: {
+      outputDir: '../../../bin/jstests', // results will be saved as $outputDir/$browserName.xml
+      outputFile: undefined, // if included, results will be saved as $outputDir/$browserName/$outputFile
+      suite: '', // suite will become the package name attribute in xml testsuite element
+      useBrowserName: false, // add browser name to report and classes names
+      nameFormatter: undefined, // function (browser, result) to customize the name attribute in xml testcase element
+      classNameFormatter: undefined, // function (browser, result) to customize the classname attribute in xml testcase element
+      properties: {}, // key value pair of properties to add to the <properties> section of the report
+      xmlVersion: null // use '1' if reporting to be per SonarQube 6.2 XML format
+    },
 
-    // Start these browsers, currently available:
-    // - Chrome
-    // - ChromeCanary
-    // - Firefox
-    // - Opera
-    // - Safari (only Mac)
-    // - PhantomJS
-    // - IE (only Windows)
-    browsers: ['Chrome', 'Firefox', 'Safari'], // Need to do npm install karma-safari-runner -g for safari
+    plugins: [
+      require('karma-junit-reporter'),
+      require('jasmine'),
+      require('karma-jasmine'),
+      require('karma-phantomjs-launcher')
+    ],
+
+    // Start these browsers
+    browsers: ['PhantomJS'],
 
 
     // If browser does not capture in given timeout [ms], kill it
@@ -72,6 +82,6 @@ module.exports = function(config) {
 
     // Continuous Integration mode
     // if true, it capture browsers, run tests and exit
-    singleRun: false
+    singleRun: true
   });
 };

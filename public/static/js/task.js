@@ -10,7 +10,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     return revision.revision === $scope.task.gitspec;
   }
 
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#drawer").addClass("bannerMargin");
     $("#page-content").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
@@ -244,7 +244,11 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   // Returns true if 'testResult' represents a test failure, and returns false otherwise.
   $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
     var failureStatuses = ['fail', 'silentfail'];
-    return failureStatuses.indexOf(testResult.status) >= 0;
+    return failureStatuses.indexOf(testResult.test_result.status) >= 0;
+  };
+
+  $scope.isSuccessful = function(testResult) {
+    return testResult.test_result.status === 'pass';
   };
 
   $scope.getURL = function(testResult, isRaw) {
@@ -263,6 +267,10 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     }
 
     return url;
+  };
+
+  $scope.execTaskUrl = function(taskId) {
+    return '/task/' + taskId;
   };
 
   $scope.hideURL = function(testResult, isRaw) {
@@ -312,9 +320,9 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     /**
      * Defines the sort order for a test's status.
      */
-    function ordinalForTestStatus(testResult) {
+    function ordinalForTestStatus(task) {
       var orderedTestStatuses = ['fail', 'silentfail', 'pass', 'skip'];
-      return orderedTestStatuses.indexOf(testResult.status);
+      return orderedTestStatuses.indexOf(task.test_result.status);
     }
 
     $scope.sortOrders = [{
@@ -336,7 +344,8 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     }];
 
     var totalTestTime = 0;
-    (task.test_results || []).forEach(function(testResult) {
+    (task.test_results || []).forEach(function(t) {
+      var testResult = t.test_result;
       testResult.time_taken = testResult.end - testResult.start;
       totalTestTime += testResult.time_taken;
       testResult.display_name = $filter('endOfPath')(testResult.test_file);
@@ -490,7 +499,7 @@ mciModule.directive('testResults', function() {
       scope.$watch(attrs.testResults, function(testResults) {
         if (testResults) {
           for (var i = 0; i < testResults.length; i++) {
-            var timeTaken = testResults[i].end - testResults[i].start;
+            var timeTaken = testResults[i].test_result.end - testResults[i].test_result.start;
             if (scope.maxTestTime < timeTaken) {
               scope.maxTestTime = timeTaken;
             }

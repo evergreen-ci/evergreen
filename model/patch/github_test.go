@@ -1,8 +1,11 @@
 package patch
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -11,11 +14,13 @@ import (
 
 type GithubSuite struct {
 	suite.Suite
-	pr   int
-	hash string
-	url  string
-	repo string
-	user string
+	pr       int
+	hash     string
+	url      string
+	baseRepo string
+	headRepo string
+	user     string
+	title    string
 }
 
 func TestGithubSuite(t *testing.T) {
@@ -26,9 +31,11 @@ func (s *GithubSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.pr = 5
 	s.hash = "67da19930b1b18d346477e99a8e18094a672f48a"
-	s.url = "http://www.example.com"
+	s.url = "https://www.example.com/1.diff"
 	s.user = "octocat"
-	s.repo = "evergreen-ci/evergreen"
+	s.baseRepo = "evergreen-ci/evergreen"
+	s.headRepo = "octocat/evergreen"
+	s.title = "Art of Pull Requests"
 }
 
 func (s *GithubSuite) SetupTest() {
@@ -36,37 +43,81 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent("1", s.repo, 0, s.user, s.hash, s.url)
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(0, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", s.repo, s.pr, s.user, "", s.url)
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, "", s.headRepo, s.hash, s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("3", s.repo, s.pr, s.user, s.hash, "foo")
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, "", s.hash, s.user, s.url, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("4", s.repo, s.pr, s.user, s.hash, s.url)
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, "", s.user, s.url, s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.url, s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "", s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "foo", s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "https://example.com/1.patch", s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "http://example.com/1.diff", s.title))
+	s.Nil(intent)
+	s.Error(err)
+
+	intent, err = NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
 	githubIntent, ok := intent.(*githubIntent)
 	s.True(ok)
 	s.Equal("4", githubIntent.MsgID)
-	s.Equal(s.repo, githubIntent.RepoName)
+	s.Equal(s.baseRepo, githubIntent.BaseRepoName)
+	s.Equal(s.headRepo, githubIntent.HeadRepoName)
 	s.Equal(s.pr, githubIntent.PRNumber)
 	s.Equal(s.user, githubIntent.User)
-	s.Equal(s.hash, githubIntent.BaseHash)
-	s.Equal(s.url, githubIntent.PatchURL)
+	s.Equal(s.hash, githubIntent.HeadHash)
+	s.Equal(s.url, githubIntent.DiffURL)
 	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
+	s.Equal(evergreen.GithubPRRequester, intent.RequesterIdentity())
+
+	patchDoc := intent.NewPatch()
+	s.Require().NotNil(patchDoc)
+	baseRepo := strings.Split(s.baseRepo, "/")
+	headRepo := strings.Split(s.headRepo, "/")
+	s.Equal(fmt.Sprintf("'%s' pull request #%d by %s: %s (https://github.com/evergreen-ci/evergreen/pull/5)", s.baseRepo, s.pr, s.user, s.title), patchDoc.Description)
+	s.Equal(evergreen.GithubPatchUser, patchDoc.Author)
+	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.NotZero(patchDoc.Id)
+
+	s.Equal(s.pr, patchDoc.GithubPatchData.PRNumber)
+	s.Equal(baseRepo[0], patchDoc.GithubPatchData.BaseOwner)
+	s.Equal(baseRepo[1], patchDoc.GithubPatchData.BaseRepo)
+	s.Equal(headRepo[0], patchDoc.GithubPatchData.HeadOwner)
+	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
+	s.Equal(s.hash, patchDoc.GithubPatchData.HeadHash)
+	s.Equal(s.user, patchDoc.GithubPatchData.Author)
+	s.Equal(s.url, patchDoc.GithubPatchData.DiffURL)
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent("1", s.repo, s.pr, s.user, s.hash, s.url)
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -76,15 +127,18 @@ func (s *GithubSuite) TestInsert() {
 	s.Len(intents, 1)
 
 	found := intents[0]
+	s.Equal(s.baseRepo, found.BaseRepoName)
+	s.Equal(s.headRepo, found.HeadRepoName)
 	s.Equal(s.pr, found.PRNumber)
-	s.Equal(s.hash, found.BaseHash)
-	s.Equal(s.url, found.PatchURL)
+	s.Equal(s.user, found.User)
+	s.Equal(s.hash, found.HeadHash)
+	s.Equal(s.url, found.DiffURL)
 	s.False(found.IsProcessed())
 	s.Equal(GithubIntentType, found.GetType())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent("1", s.repo, s.pr, s.user, s.hash, s.url)
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -98,8 +152,14 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.NoError(db.FindAllQ(IntentCollection, db.Query(bson.M{processedKey: true}), &intents))
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
-	s.Equal(s.hash, intents[0].BaseHash)
-	s.Equal(s.url, intents[0].PatchURL)
+	s.Equal(s.hash, intents[0].HeadHash)
+	s.Equal(s.url, intents[0].DiffURL)
+	s.Equal(s.baseRepo, intents[0].BaseRepoName)
+	s.Equal(s.headRepo, intents[0].HeadRepoName)
+	s.Equal(s.pr, intents[0].PRNumber)
+	s.Equal(s.user, intents[0].User)
+	s.Equal(s.hash, intents[0].HeadHash)
+	s.Equal(s.url, intents[0].DiffURL)
 	s.True(intents[0].IsProcessed())
 	s.Equal(GithubIntentType, intents[0].GetType())
 }

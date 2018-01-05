@@ -1,6 +1,10 @@
 function setBanner() {
   var theme = window.BannerTheme;
-  var text = escapeHtml(window.BannerText);
+  var text = bannerText();
+  if (isDismissed(text)) {
+    $("#banner-container").addClass("nodisp");
+    return;
+  }
   $("#bannerText").html(jiraLinkify(text, window.JiraHost));
   switch(theme) {
     case "important":
@@ -23,4 +27,9 @@ function setBanner() {
       $("#bannerIcon").addClass("banner-icon-announcement");
       $("#bannerBack").addClass("banner-text-announcement");
   }
+};
+
+function dismissBanner() {
+  localStorage.setItem("dismissed", md5(bannerText()));
+  $("#banner-container").addClass("nodisp");
 };

@@ -171,6 +171,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           return v.alias + v.variant + v.task;
         });
         $scope.privateVars = data.ProjectVars.private_vars || {};
+        $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
@@ -195,7 +196,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
+          setup_github_hook: $scope.githubHookId != 0,
         };
+        for (var i = 0; i < $scope.settingsFormData.patch_aliases.length; i++) {
+          var alias = $scope.settingsFormData.patch_aliases[i];
+          if (alias.tags) {
+            alias.tags_temp = alias.tags.join(',');
+          }
+        }
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
         $location.hash($scope.projectRef.identifier);
@@ -252,17 +260,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
     if ($scope.patch_alias) {
       $scope.addPatchAlias();
-      if($scope.patch_alias.alias) {
-        $scope.invalidPatchAliasMessage = "Missing alias";
-        return;
-      }
-      if($scope.patch_alias.variant) {
-        $scope.invalidPatchAliasMessage = "Missing task regex";
-        return;
-      }
-      if($scope.patch_alias.task) {
-        $scope.invalidPatchAliasMessage = "Missing variant regex";
-        return;
+    }
+    for (var i = 0; i < $scope.settingsFormData.patch_aliases.length; i++) {
+      var alias = $scope.settingsFormData.patch_aliases[i];
+      if (alias.tags_temp) {
+        alias.tags = alias.tags_temp.split(',');
       }
     }
     $scope.settingsFormData.patch_definitions = $scope.settingsFormData.github_patch_definitions.concat($scope.settingsFormData.patch_aliases);
@@ -311,17 +313,19 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   };
 
   $scope.addPatchAlias = function() {
-    if ($scope.patch_alias.alias && $scope.patch_alias.variant && $scope.patch_alias.task) {
+    if ($scope.patch_alias.alias && $scope.patch_alias.variant && ($scope.patch_alias.task || $scope.patch_alias.tags_temp)) {
       item = {
         "alias": $scope.patch_alias.alias,
         "variant": $scope.patch_alias.variant,
-        "task": $scope.patch_alias.task
+        "task": $scope.patch_alias.task,
+        "tags_temp": $scope.patch_alias.tags_temp,
+        "tags": $scope.patch_alias.tags_temp.split(',')
       };
       $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
       $scope.patch_alias.alias = "";
       $scope.patch_alias.variant = "";
       $scope.patch_alias.task = "";
-      $scope.invalidPatchAliasMessage = "";
+      $scope.patch_alias.tags_temp = "";
     }
   };
 
@@ -413,8 +417,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     return true;
   };
 
-  $scope.validPatchAlias = function(alias, variantRegex, taskRegex){
-    if (!alias || !variantRegex || !taskRegex){
+  $scope.validPatchAlias = function(alias, variantRegex, taskRegex, taskTags){
+    if (!alias || !variantRegex || (!taskRegex && !taskTags)){
       return false;
     }
 

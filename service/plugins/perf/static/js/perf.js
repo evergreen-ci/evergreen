@@ -488,21 +488,13 @@ function TrendSamples(samples){
         this.seriesByName[rec.name] = [];
       }
 
-      // TODO chain
-      var threadResults = _.sortBy(
-        _.map(rec.results, function(v, k) {
-          return {
-            level: k,
-            ops_per_sec: v.ops_per_sec,
-            ops_per_sec_values: v.ops_per_sec_values,
-          }
-        }), 'level'
-      )
-      var threadResultsD = rec.results
+      var sorted = _.chain(rec.results)
+        .values()
+        .filter(function(d) { return typeof(d) == 'object' })
+        .sortBy('ops_per_sec')
+        .value()
 
-      var maxOpsPerSecItem = _.max(threadResults, function(d) {
-        return d.ops_per_sec
-      })
+      var last = _.last(sorted);
 
       this.seriesByName[rec.name].push({
         revision: sample.revision,
@@ -642,7 +634,6 @@ var drawTrendGraph = function(trendSamples, tests, scope, taskId, compareSamples
   scope.locked = false;
 
   for (var i = 0; i < tests.length; i++) {
-    //if (i < tests.length - 2 && i > 20) continue;
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
     drawSingleTrendChart(

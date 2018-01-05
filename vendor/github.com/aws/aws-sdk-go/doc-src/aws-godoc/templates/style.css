@@ -3,11 +3,35 @@
 	overflow:hidden;
 }
 
-a > img {
-	max-height:70%; 
-	float:left;
-	padding-left:22px;
-	padding-top:8px;
+div.deprecated {
+  background-color: #a39f9f;
+  border-radius: 5px;
+  font-weight: bold;
+  display: inline;
+  padding: 2px;
+  overflow: auto;
+  color: 	#ffffff;
+  font-family: "Georgia", Times, serif;
+  text-align: center;
+  font-size: small;
+	margin-left: 5px;
+}
+
+.packages {
+	margin:0;
+	padding:0;
+	display:inline;
+	text-align: left;
+	width: 100%;
+	list-style-type: none;
+}
+.packages li {
+	margin: 0;
+	line-height: 1.25;
+	font-size: larger;
+}
+.packages li:nth-child(odd) {
+	background-color: #eee;
 }
 
 body {
@@ -65,11 +89,6 @@ ul,
 ol {
 	display: inherit;
 	margin: 20px;
-}
-.packages {
-	margin: 0px;
-	text-align: left;
-	width: 100%;
 }
 pre {
 	background: #EFEFEF;
@@ -362,7 +381,6 @@ div#about {
 	margin: 0 auto 30px;
 }
 div#gopher {
-	background: url(/doc/gopher/frontpage.png) no-repeat;
 	background-position: center top;
 	height: 155px;
 }
@@ -394,7 +412,6 @@ div#learn .popout {
 	display: block;
 	cursor: pointer;
 	font-size: 12px;
-	background: url(/doc/share.png) no-repeat;
 	background-position: right top;
 	padding: 5px 27px;
 }
@@ -748,13 +765,6 @@ a.error {
 		padding: 10px;
 	}
 
-	a > img {
-		max-height:100%; 
-		float:left;
-		padding-left:10px;
-		padding-top:2px;
-	}
-
 	div#mobile-nav {
 		display:inline-block;
 		float:right;
@@ -768,8 +778,6 @@ a.error {
 	div#mobile_container {
 		display:inline-block;
 		width: 100%;
-		padding-left:20px;
-		padding-top:10px;
 	}
 }
 
@@ -820,6 +828,8 @@ a.error {
 		content:"";
 		height: 5px; 
 		width:30px;
+		padding-left:20px;
+		padding-top:10px;
 	}
 }
 
@@ -1030,4 +1040,11 @@ a.error {
 		border: 1px solid #BBB;
 		white-space: pre-wrap;
 	}
+}
+
+.permalink {
+	display: none;
+}
+:hover > .permalink {
+	display: inline;
 }

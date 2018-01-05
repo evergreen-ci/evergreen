@@ -1,3 +1,5 @@
+// +build example
+
 package main
 
 import (
@@ -84,11 +86,11 @@ func main() {
 		UploadId: output.UploadId,
 		MultipartUpload: &s3.CompletedMultipartUpload{
 			Parts: []*s3.CompletedPart{
-				&s3.CompletedPart{
+				{
 					ETag:       foo,
 					PartNumber: aws.Int64(1),
 				},
-				&s3.CompletedPart{
+				{
 					ETag:       bar,
 					PartNumber: aws.Int64(2),
 				},

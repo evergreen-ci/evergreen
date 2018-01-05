@@ -8,23 +8,33 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/google/go-github/github"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 )
 
+const (
+	githubActionClosed      = "closed"
+	githubActionOpened      = "opened"
+	githubActionSynchronize = "synchronize"
+	githubActionReopened    = "reopened"
+)
+
 type githubHookApi struct {
+	queue  amboy.Queue
 	secret []byte
 
 	event interface{}
 	msgId string
 }
 
-func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
+func getGithubHooksRouteManager(queue amboy.Queue, secret []byte) routeManagerFactory {
 	return func(route string, version int) *RouteManager {
 		methods := []MethodHandler{}
 		if len(secret) > 0 {
 			methods = append(methods, MethodHandler{
 				Authenticator: &NoAuthAuthenticator{},
 				RequestHandler: &githubHookApi{
+					queue:  queue,
 					secret: secret,
 				},
 				MethodType: http.MethodPost,
@@ -44,6 +54,7 @@ func getGithubHooksRouteManager(secret []byte) routeManagerFactory {
 
 func (gh *githubHookApi) Handler() RequestHandler {
 	return &githubHookApi{
+		queue:  gh.queue,
 		secret: gh.secret,
 	}
 }
@@ -52,7 +63,7 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 	eventType := r.Header.Get("X-Github-Event")
 	gh.msgId = r.Header.Get("X-Github-Delivery")
 
-	if len(gh.secret) == 0 {
+	if len(gh.secret) == 0 || gh.queue == nil {
 		return rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 		}
@@ -84,49 +95,41 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 		if event.Hook == nil || event.Hook.URL == nil {
 			return ResponseData{}, rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    "bad ping",
+				Message:    "malformed ping event",
 			}
 
 		}
 		grip.Infof("Received Github Webhook Ping for hook: %s", *event.Hook.URL)
 
 	case *github.PullRequestEvent:
-		if !validatePullRequestEvent(event) {
+		if event.Action == nil {
 			return ResponseData{}, rest.APIError{
 				StatusCode: http.StatusBadRequest,
-				Message:    "bad pull request",
+				Message:    "pull request has no action",
 			}
-
 		}
-		if *event.Action == "opened" || *event.Action == "synchronize" {
-			ghi, err := patch.NewGithubIntent(gh.msgId, *event.Repo.FullName, *event.Number, *event.Sender.Login, *event.PullRequest.Base.SHA, *event.PullRequest.PatchURL)
+
+		if *event.Action == githubActionOpened || *event.Action == githubActionSynchronize ||
+			*event.Action == githubActionReopened {
+			ghi, err := patch.NewGithubIntent(gh.msgId, event)
 			if err != nil {
-				return ResponseData{}, rest.APIError{
+				return ResponseData{}, &rest.APIError{
 					StatusCode: http.StatusBadRequest,
-					Message:    "unexpected pr event data",
+					Message:    err.Error(),
 				}
 			}
 
-			if err := sc.AddPatchIntent(ghi); err != nil {
-				return ResponseData{}, rest.APIError{
+			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
+				return ResponseData{}, &rest.APIError{
 					StatusCode: http.StatusInternalServerError,
 					Message:    err.Error(),
 				}
 			}
+
+		} else if *event.Action == githubActionClosed {
+			return ResponseData{}, sc.AbortPatchesFromPullRequest(event)
 		}
 	}
 
 	return ResponseData{}, nil
-}
-
-func validatePullRequestEvent(event *github.PullRequestEvent) bool {
-	if event.Action == nil || event.Number == nil ||
-		event.Repo == nil || event.Repo.FullName == nil ||
-		event.Sender == nil || event.Sender.Login == nil ||
-		event.PullRequest == nil || event.PullRequest.PatchURL == nil ||
-		event.PullRequest.Base == nil || event.PullRequest.Base.SHA == nil {
-		return false
-	}
-
-	return true
 }

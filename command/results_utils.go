@@ -13,13 +13,13 @@ import (
 // specified file to the API Server
 func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
 	logger client.LoggerProducer, comm client.Communicator,
-	results *task.TestResults) error {
+	results *task.LocalTestResults) error {
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	for i, res := range results.Results {
 		if ctx.Err() != nil {
-			return errors.Errorf("operation canceled after uploading ")
+			return errors.Errorf("operation canceled during uploading")
 		}
 
 		if res.LogRaw != "" {

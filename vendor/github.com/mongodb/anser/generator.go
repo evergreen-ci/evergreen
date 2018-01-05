@@ -38,10 +38,10 @@ type Generator interface {
 
 // generatorDependency produces a configured dependency.Manager from
 // the specified Generator options.
-func generatorDependency(o model.GeneratorOptions) dependency.Manager {
+func generatorDependency(env Environment, o model.GeneratorOptions) dependency.Manager {
 	// it might be worth considering using some other kind of
 	// dependency.Manager implementation.
-	dep := dependency.NewAlways()
+	dep := env.NewDependencyManager(o.JobID)
 	for _, edge := range o.DependsOn {
 		dep.AddEdge(edge)
 	}

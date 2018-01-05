@@ -18,7 +18,7 @@ type TaskFailureHandler struct {
 func (self *TaskFailureHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciFailurePreface
-	if key.NotificationRequester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(key.NotificationRequester) {
 		preface = patchFailurePreface
 	}
 	triggeredNotifications, err := self.getRecentlyFinishedTasksWithStatus(key,

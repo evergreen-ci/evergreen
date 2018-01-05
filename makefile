@@ -1,7 +1,8 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent cloud command db cli subprocess taskrunner util plugin hostinit units 
+nodeDir := public
+packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task
@@ -24,7 +25,7 @@ clientBuildDir := clients
 clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
-clientSource := cli/main/cli.go
+clientSource := main/evergreen.go
 
 distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates ./notify/templates
 distContents := $(clientBuildDir) $(distArtifacts)
@@ -34,6 +35,7 @@ srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -n
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
 ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
+karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
 
 
@@ -68,10 +70,11 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 
 # start rules for building services and clients
 ifeq ($(OS),Windows_NT)
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
 else
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
+localClientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
+cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
@@ -84,6 +87,27 @@ $(buildDir)/test.agent $(buildDir)/race.agent:$(clientBuildDir)/version
 $(buildDir)/test.proto $(buildDir)/race.proto:$(clientBuildDir)/version
 # end client build directives
 
+
+# start smoke test specific rules
+$(buildDir)/load-smoke-data:scripts/load-smoke-data.go
+	go build -o $@ $<
+$(buildDir)/set-project-var:scripts/set-project-var.go
+	go build -o $@ $<
+set-project-var:$(buildDir)/load-smoke-data
+load-smoke-data:$(buildDir)/.load-smoke-data
+$(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
+	./$<
+	@touch $@
+smoke-test-task:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --runner --binary ./$< &
+	./$< service deploy start-evergreen --agent --binary ./$< &
+	./$< service deploy test-endpoints --commit $(currentHash) --username admin --key abb623665fdbf368a1db980dde6ee0f0
+	killall $<
+smoke-test-endpoints:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --binary ./$< &
+	./$< service deploy test-endpoints
+	killall $<
+# end smoke test rules
 
 ######################################################################
 ##
@@ -120,10 +144,17 @@ $(gopath)/src/%:
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
 	@mkdir -p $(buildDir)
-	$(gopath)/bin/gometalinter --update --force --install >/dev/null && touch $@
+	$(gopath)/bin/gometalinter --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	go build -o $@ $<
 # end lint setup targets
+
+# npm setup
+$(buildDir)/.npmSetup:
+	@mkdir -p $(buildDir)
+	cd $(nodeDir) && npm install
+	touch $@
+# end npm setup
 
 
 # distribution targets and implementation
@@ -152,6 +183,8 @@ build:cli
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
+js-test:$(buildDir)/.npmSetup
+	cd $(nodeDir) && ./node_modules/.bin/karma start static/js/tests/conf/karma.conf.js $(karmaFlags)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
 list-tests:
@@ -193,7 +226,6 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/pkg/errors/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/gorilla/
-	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/tylerb/graceful/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/gimlet/vendor/github.com/urfave/negroni/
 	rm -rf vendor/github.com/docker/docker/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/

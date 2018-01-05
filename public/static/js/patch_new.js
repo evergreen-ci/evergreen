@@ -3,7 +3,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   $scope.canEdit = $window.canEdit;
   $scope.enabledTasks = _.pluck($window.tasks, "Name");
   $scope.disableSubmit = false;
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#drawer").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
   }
@@ -62,8 +62,6 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     return navigator.platform.toUpperCase().indexOf('MAC')>=0;
   }
 
-
-
   // Gets the list of tasks that are active across all the list of currently
   // selected variants, sorted by name. Used to populate the field of
   // checkboxes in the main panel.
@@ -99,11 +97,24 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     var data = {
       "description": $scope.patch.Description,
       "variants_tasks": _.filter(_.map($scope.variants, function(v){
+        var tasks = [];
+        var displayTasks = [];
+        for (var name in v.tasks) {
+          if (v.tasks[name].checked) {
+            if (v.tasks[name].displayOnly) {
+              displayTasks.push({ "name": name, "execTasks": v.tasks[name].execTasks});
+            }
+            else {
+              tasks.push(name);
+            }
+          }
+        }
         return {
           variant: v.id,
-          tasks: _.keys(_.omit(v.tasks, function(v){return !v.checked})),
+          tasks: tasks,
+          displayTasks: displayTasks
         };
-      }), function(v){return v.tasks.length > 0})
+      }), function(v){return (v.tasks.length > 0) || (v.displayTasks.length > 0)})
     }
     $http.post('/patch/' + $scope.patch.Id, data).then(
       function(resp) {
@@ -123,13 +134,27 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       return v;
     })
     $scope.variants = _.sortBy(_.map(variantsFilteredTasks, function(v, variantId){
+      var tasks = {};
+      var execTasks = {};
+      if (v.DisplayTasks && v.DisplayTasks.length > 0) {
+        v.DisplayTasks.forEach(function(task) {
+          tasks[task.Name] = {checked: false, displayOnly: true, execTasks: []};
+          task.ExecutionTasks.forEach(function(execTask) {
+            execTasks[execTask] = "";
+            tasks[task.Name].execTasks.push(execTask);
+          });
+        });
+      }
+      v.Tasks.forEach(function(task) {
+        if (!execTasks.hasOwnProperty(task.Name)) {
+          tasks[task.Name] = {checked: false, displayOnly: false};
+        }
+      });
       return {
         id: variantId,
         checked:false,
         name: v.DisplayName,
-        tasks : _.object(_.map(_.pluck(v.Tasks, "Name"), function(t){
-          return [t, {checked:false}];
-        }))
+        tasks: tasks
       };
     }), "name");
 
@@ -186,6 +211,16 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
 
   $scope.setPatchInfo();
 
+  var updateExistingTasks = function(task) {
+    if (task) {
+      task.checked = true;
+      if(!!patch.Version){
+        // if the task was already created, we can't uncheck the box
+        task.disabled = true;
+      }
+    }
+  }
+
   // Populate the checkboxes in the UI according to the variants and tasks that
   // were specified on the command line, or that may have already been created
   // if the patch was finalized already.
@@ -195,11 +230,12 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       var variantIndex = _.findIndex($scope.variants, function(x){return x.id == patch.VariantsTasks[i].Variant});
       if(variantIndex >= 0 ){
         _.each(vt.Tasks, function(x){
-          $scope.variants[variantIndex].tasks[x] = {checked:true};
-          if(!!patch.Version){
-            // if the task was already created, we can't uncheck the box
-            $scope.variants[variantIndex].tasks[x].disabled = true;
-          }
+          var task = $scope.variants[variantIndex].tasks[x];
+          updateExistingTasks(task);
+        })
+        _.each(vt.DisplayTasks, function(x){
+          var dt = $scope.variants[variantIndex].tasks[x.Name];
+          updateExistingTasks(dt);
         })
       }
     }

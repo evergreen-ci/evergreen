@@ -595,7 +595,7 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 		changeInfo.Revision = v.Revision
 		changeInfo.Email = v.AuthorEmail
 
-	case evergreen.PatchVersionRequester:
+	case evergreen.PatchVersionRequester, evergreen.GithubPRRequester:
 		// get the author and description from the patch request
 		patch, err := patch.FindOne(patch.ByVersion(v.Id))
 		if err != nil {
@@ -683,7 +683,7 @@ func getFailedTasks(current *build.Build, notificationName string) (failedTasks 
 // get the specific failed test(s) for this task
 func getFailedTests(current *task.Task, notificationName string) (failedTests []task.TestResult) {
 	if util.StringSliceContains(taskFailureKeys, notificationName) {
-		for _, test := range current.TestResults {
+		for _, test := range current.LocalTestResults {
 			if test.Status == "fail" {
 				// get the base name for windows/non-windows paths
 				test.TestFile = path.Base(strings.Replace(test.TestFile, "\\", "/", -1))

@@ -115,7 +115,7 @@ func InsertTaskJSON(t *task.Task, name string, data map[string]interface{}) erro
 		Revision:            t.Revision,
 		RevisionOrderNumber: t.RevisionOrderNumber,
 		Data:                data,
-		IsPatch:             t.Requester == evergreen.PatchVersionRequester,
+		IsPatch:             evergreen.IsPatchRequester(t.Requester),
 	}
 	_, err := db.Upsert(TaskJSONCollection, bson.M{TaskJSONTaskIdKey: t.Id, TaskJSONNameKey: name}, jsonBlob)
 
@@ -222,7 +222,7 @@ func SetTaskJSONTagForTask(taskId, name, tag string) error {
 func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	var t2 *task.Task = t
 	var err error
-	if t.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(t.Requester) {
 		t2, err = t.FindTaskOnBaseCommit()
 		if err != nil {
 			return nil, err
@@ -269,7 +269,7 @@ func GetTaskJSONHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	before = append(before, after...)
 
 	// if our task was a patch, replace the base commit's info in the history with the patch
-	if t.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(t.Requester) {
 		before, err = fixPatchInHistory(t.Id, t2, before)
 		if err != nil {
 			return nil, err

@@ -6,10 +6,29 @@
     "protocol":"query",
     "serviceAbbreviation":"Elastic Load Balancing v2",
     "serviceFullName":"Elastic Load Balancing",
+    "serviceId":"Elastic Load Balancing v2",
     "signatureVersion":"v4",
+    "uid":"elasticloadbalancingv2-2015-12-01",
     "xmlNamespace":"http://elasticloadbalancing.amazonaws.com/doc/2015-12-01/"
   },
   "operations":{
+    "AddListenerCertificates":{
+      "name":"AddListenerCertificates",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"AddListenerCertificatesInput"},
+      "output":{
+        "shape":"AddListenerCertificatesOutput",
+        "resultWrapper":"AddListenerCertificatesResult"
+      },
+      "errors":[
+        {"shape":"ListenerNotFoundException"},
+        {"shape":"TooManyCertificatesException"},
+        {"shape":"CertificateNotFoundException"}
+      ]
+    },
     "AddTags":{
       "name":"AddTags",
       "http":{
@@ -51,7 +70,8 @@
         {"shape":"SSLPolicyNotFoundException"},
         {"shape":"CertificateNotFoundException"},
         {"shape":"UnsupportedProtocolException"},
-        {"shape":"TooManyRegistrationsForTargetIdException"}
+        {"shape":"TooManyRegistrationsForTargetIdException"},
+        {"shape":"TooManyTargetsException"}
       ]
     },
     "CreateLoadBalancer":{
@@ -74,7 +94,10 @@
         {"shape":"InvalidSecurityGroupException"},
         {"shape":"InvalidSchemeException"},
         {"shape":"TooManyTagsException"},
-        {"shape":"DuplicateTagKeysException"}
+        {"shape":"DuplicateTagKeysException"},
+        {"shape":"ResourceInUseException"},
+        {"shape":"AllocationIdNotFoundException"},
+        {"shape":"AvailabilityZoneNotSupportedException"}
       ]
     },
     "CreateRule":{
@@ -93,10 +116,12 @@
         {"shape":"TooManyTargetGroupsException"},
         {"shape":"TooManyRulesException"},
         {"shape":"TargetGroupAssociationLimitException"},
+        {"shape":"IncompatibleProtocolsException"},
         {"shape":"ListenerNotFoundException"},
         {"shape":"TargetGroupNotFoundException"},
         {"shape":"InvalidConfigurationRequestException"},
-        {"shape":"TooManyRegistrationsForTargetIdException"}
+        {"shape":"TooManyRegistrationsForTargetIdException"},
+        {"shape":"TooManyTargetsException"}
       ]
     },
     "CreateTargetGroup":{
@@ -112,7 +137,8 @@
       },
       "errors":[
         {"shape":"DuplicateTargetGroupNameException"},
-        {"shape":"TooManyTargetGroupsException"}
+        {"shape":"TooManyTargetGroupsException"},
+        {"shape":"InvalidConfigurationRequestException"}
       ]
     },
     "DeleteListener":{
@@ -143,7 +169,8 @@
       },
       "errors":[
         {"shape":"LoadBalancerNotFoundException"},
-        {"shape":"OperationNotPermittedException"}
+        {"shape":"OperationNotPermittedException"},
+        {"shape":"ResourceInUseException"}
       ]
     },
     "DeleteRule":{
@@ -191,6 +218,33 @@
       "errors":[
         {"shape":"TargetGroupNotFoundException"},
         {"shape":"InvalidTargetException"}
+      ]
+    },
+    "DescribeAccountLimits":{
+      "name":"DescribeAccountLimits",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeAccountLimitsInput"},
+      "output":{
+        "shape":"DescribeAccountLimitsOutput",
+        "resultWrapper":"DescribeAccountLimitsResult"
+      }
+    },
+    "DescribeListenerCertificates":{
+      "name":"DescribeListenerCertificates",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"DescribeListenerCertificatesInput"},
+      "output":{
+        "shape":"DescribeListenerCertificatesOutput",
+        "resultWrapper":"DescribeListenerCertificatesResult"
+      },
+      "errors":[
+        {"shape":"ListenerNotFoundException"}
       ]
     },
     "DescribeListeners":{
@@ -359,7 +413,8 @@
         {"shape":"CertificateNotFoundException"},
         {"shape":"InvalidConfigurationRequestException"},
         {"shape":"UnsupportedProtocolException"},
-        {"shape":"TooManyRegistrationsForTargetIdException"}
+        {"shape":"TooManyRegistrationsForTargetIdException"},
+        {"shape":"TooManyTargetsException"}
       ]
     },
     "ModifyLoadBalancerAttributes":{
@@ -391,9 +446,12 @@
       },
       "errors":[
         {"shape":"TargetGroupAssociationLimitException"},
+        {"shape":"IncompatibleProtocolsException"},
         {"shape":"RuleNotFoundException"},
         {"shape":"OperationNotPermittedException"},
-        {"shape":"TooManyRegistrationsForTargetIdException"}
+        {"shape":"TooManyRegistrationsForTargetIdException"},
+        {"shape":"TooManyTargetsException"},
+        {"shape":"TargetGroupNotFoundException"}
       ]
     },
     "ModifyTargetGroup":{
@@ -408,7 +466,8 @@
         "resultWrapper":"ModifyTargetGroupResult"
       },
       "errors":[
-        {"shape":"TargetGroupNotFoundException"}
+        {"shape":"TargetGroupNotFoundException"},
+        {"shape":"InvalidConfigurationRequestException"}
       ]
     },
     "ModifyTargetGroupAttributes":{
@@ -423,7 +482,8 @@
         "resultWrapper":"ModifyTargetGroupAttributesResult"
       },
       "errors":[
-        {"shape":"TargetGroupNotFoundException"}
+        {"shape":"TargetGroupNotFoundException"},
+        {"shape":"InvalidConfigurationRequestException"}
       ]
     },
     "RegisterTargets":{
@@ -444,6 +504,22 @@
         {"shape":"TooManyRegistrationsForTargetIdException"}
       ]
     },
+    "RemoveListenerCertificates":{
+      "name":"RemoveListenerCertificates",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"RemoveListenerCertificatesInput"},
+      "output":{
+        "shape":"RemoveListenerCertificatesOutput",
+        "resultWrapper":"RemoveListenerCertificatesResult"
+      },
+      "errors":[
+        {"shape":"ListenerNotFoundException"},
+        {"shape":"OperationNotPermittedException"}
+      ]
+    },
     "RemoveTags":{
       "name":"RemoveTags",
       "http":{
@@ -461,6 +537,23 @@
         {"shape":"ListenerNotFoundException"},
         {"shape":"RuleNotFoundException"},
         {"shape":"TooManyTagsException"}
+      ]
+    },
+    "SetIpAddressType":{
+      "name":"SetIpAddressType",
+      "http":{
+        "method":"POST",
+        "requestUri":"/"
+      },
+      "input":{"shape":"SetIpAddressTypeInput"},
+      "output":{
+        "shape":"SetIpAddressTypeOutput",
+        "resultWrapper":"SetIpAddressTypeResult"
+      },
+      "errors":[
+        {"shape":"LoadBalancerNotFoundException"},
+        {"shape":"InvalidConfigurationRequestException"},
+        {"shape":"InvalidSubnetException"}
       ]
     },
     "SetRulePriorities":{
@@ -512,7 +605,9 @@
         {"shape":"LoadBalancerNotFoundException"},
         {"shape":"InvalidConfigurationRequestException"},
         {"shape":"SubnetNotFoundException"},
-        {"shape":"InvalidSubnetException"}
+        {"shape":"InvalidSubnetException"},
+        {"shape":"AllocationIdNotFoundException"},
+        {"shape":"AvailabilityZoneNotSupportedException"}
       ]
     }
   },
@@ -536,6 +631,23 @@
       "type":"list",
       "member":{"shape":"Action"}
     },
+    "AddListenerCertificatesInput":{
+      "type":"structure",
+      "required":[
+        "ListenerArn",
+        "Certificates"
+      ],
+      "members":{
+        "ListenerArn":{"shape":"ListenerArn"},
+        "Certificates":{"shape":"CertificateList"}
+      }
+    },
+    "AddListenerCertificatesOutput":{
+      "type":"structure",
+      "members":{
+        "Certificates":{"shape":"CertificateList"}
+      }
+    },
     "AddTagsInput":{
       "type":"structure",
       "required":[
@@ -552,12 +664,36 @@
       "members":{
       }
     },
+    "AllocationId":{"type":"string"},
+    "AllocationIdNotFoundException":{
+      "type":"structure",
+      "members":{
+      },
+      "error":{
+        "code":"AllocationIdNotFound",
+        "httpStatusCode":400,
+        "senderFault":true
+      },
+      "exception":true
+    },
     "AvailabilityZone":{
       "type":"structure",
       "members":{
         "ZoneName":{"shape":"ZoneName"},
-        "SubnetId":{"shape":"SubnetId"}
+        "SubnetId":{"shape":"SubnetId"},
+        "LoadBalancerAddresses":{"shape":"LoadBalancerAddresses"}
       }
+    },
+    "AvailabilityZoneNotSupportedException":{
+      "type":"structure",
+      "members":{
+      },
+      "error":{
+        "code":"AvailabilityZoneNotSupported",
+        "httpStatusCode":400,
+        "senderFault":true
+      },
+      "exception":true
     },
     "AvailabilityZones":{
       "type":"list",
@@ -567,7 +703,8 @@
     "Certificate":{
       "type":"structure",
       "members":{
-        "CertificateArn":{"shape":"CertificateArn"}
+        "CertificateArn":{"shape":"CertificateArn"},
+        "IsDefault":{"shape":"Default"}
       }
     },
     "CertificateArn":{"type":"string"},
@@ -628,16 +765,16 @@
     },
     "CreateLoadBalancerInput":{
       "type":"structure",
-      "required":[
-        "Name",
-        "Subnets"
-      ],
+      "required":["Name"],
       "members":{
         "Name":{"shape":"LoadBalancerName"},
         "Subnets":{"shape":"Subnets"},
+        "SubnetMappings":{"shape":"SubnetMappings"},
         "SecurityGroups":{"shape":"SecurityGroups"},
         "Scheme":{"shape":"LoadBalancerSchemeEnum"},
-        "Tags":{"shape":"TagList"}
+        "Tags":{"shape":"TagList"},
+        "Type":{"shape":"LoadBalancerTypeEnum"},
+        "IpAddressType":{"shape":"IpAddressType"}
       }
     },
     "CreateLoadBalancerOutput":{
@@ -687,7 +824,8 @@
         "HealthCheckTimeoutSeconds":{"shape":"HealthCheckTimeoutSeconds"},
         "HealthyThresholdCount":{"shape":"HealthCheckThresholdCount"},
         "UnhealthyThresholdCount":{"shape":"HealthCheckThresholdCount"},
-        "Matcher":{"shape":"Matcher"}
+        "Matcher":{"shape":"Matcher"},
+        "TargetType":{"shape":"TargetTypeEnum"}
       }
     },
     "CreateTargetGroupOutput":{
@@ -698,6 +836,7 @@
     },
     "CreatedTime":{"type":"timestamp"},
     "DNSName":{"type":"string"},
+    "Default":{"type":"boolean"},
     "DeleteListenerInput":{
       "type":"structure",
       "required":["ListenerArn"],
@@ -762,6 +901,36 @@
       "members":{
       }
     },
+    "DescribeAccountLimitsInput":{
+      "type":"structure",
+      "members":{
+        "Marker":{"shape":"Marker"},
+        "PageSize":{"shape":"PageSize"}
+      }
+    },
+    "DescribeAccountLimitsOutput":{
+      "type":"structure",
+      "members":{
+        "Limits":{"shape":"Limits"},
+        "NextMarker":{"shape":"Marker"}
+      }
+    },
+    "DescribeListenerCertificatesInput":{
+      "type":"structure",
+      "required":["ListenerArn"],
+      "members":{
+        "ListenerArn":{"shape":"ListenerArn"},
+        "Marker":{"shape":"Marker"},
+        "PageSize":{"shape":"PageSize"}
+      }
+    },
+    "DescribeListenerCertificatesOutput":{
+      "type":"structure",
+      "members":{
+        "Certificates":{"shape":"CertificateList"},
+        "NextMarker":{"shape":"Marker"}
+      }
+    },
     "DescribeListenersInput":{
       "type":"structure",
       "members":{
@@ -811,13 +980,16 @@
       "type":"structure",
       "members":{
         "ListenerArn":{"shape":"ListenerArn"},
-        "RuleArns":{"shape":"RuleArns"}
+        "RuleArns":{"shape":"RuleArns"},
+        "Marker":{"shape":"Marker"},
+        "PageSize":{"shape":"PageSize"}
       }
     },
     "DescribeRulesOutput":{
       "type":"structure",
       "members":{
-        "Rules":{"shape":"Rules"}
+        "Rules":{"shape":"Rules"},
+        "NextMarker":{"shape":"Marker"}
       }
     },
     "DescribeSSLPoliciesInput":{
@@ -1030,7 +1202,26 @@
       },
       "exception":true
     },
+    "IpAddress":{"type":"string"},
+    "IpAddressType":{
+      "type":"string",
+      "enum":[
+        "ipv4",
+        "dualstack"
+      ]
+    },
     "IsDefault":{"type":"boolean"},
+    "Limit":{
+      "type":"structure",
+      "members":{
+        "Name":{"shape":"Name"},
+        "Max":{"shape":"Max"}
+      }
+    },
+    "Limits":{
+      "type":"list",
+      "member":{"shape":"Limit"}
+    },
     "ListOfString":{
       "type":"list",
       "member":{"shape":"StringValue"}
@@ -1080,8 +1271,20 @@
         "State":{"shape":"LoadBalancerState"},
         "Type":{"shape":"LoadBalancerTypeEnum"},
         "AvailabilityZones":{"shape":"AvailabilityZones"},
-        "SecurityGroups":{"shape":"SecurityGroups"}
+        "SecurityGroups":{"shape":"SecurityGroups"},
+        "IpAddressType":{"shape":"IpAddressType"}
       }
+    },
+    "LoadBalancerAddress":{
+      "type":"structure",
+      "members":{
+        "IpAddress":{"shape":"IpAddress"},
+        "AllocationId":{"shape":"AllocationId"}
+      }
+    },
+    "LoadBalancerAddresses":{
+      "type":"list",
+      "member":{"shape":"LoadBalancerAddress"}
     },
     "LoadBalancerArn":{"type":"string"},
     "LoadBalancerArns":{
@@ -1144,12 +1347,16 @@
       "enum":[
         "active",
         "provisioning",
+        "active_impaired",
         "failed"
       ]
     },
     "LoadBalancerTypeEnum":{
       "type":"string",
-      "enum":["application"]
+      "enum":[
+        "application",
+        "network"
+      ]
     },
     "LoadBalancers":{
       "type":"list",
@@ -1163,6 +1370,7 @@
         "HttpCode":{"shape":"HttpCode"}
       }
     },
+    "Max":{"type":"string"},
     "ModifyListenerInput":{
       "type":"structure",
       "required":["ListenerArn"],
@@ -1251,6 +1459,7 @@
         "TargetGroups":{"shape":"TargetGroups"}
       }
     },
+    "Name":{"type":"string"},
     "OperationNotPermittedException":{
       "type":"structure",
       "members":{
@@ -1292,7 +1501,8 @@
       "type":"string",
       "enum":[
         "HTTP",
-        "HTTPS"
+        "HTTPS",
+        "TCP"
       ]
     },
     "RegisterTargetsInput":{
@@ -1307,6 +1517,22 @@
       }
     },
     "RegisterTargetsOutput":{
+      "type":"structure",
+      "members":{
+      }
+    },
+    "RemoveListenerCertificatesInput":{
+      "type":"structure",
+      "required":[
+        "ListenerArn",
+        "Certificates"
+      ],
+      "members":{
+        "ListenerArn":{"shape":"ListenerArn"},
+        "Certificates":{"shape":"CertificateList"}
+      }
+    },
+    "RemoveListenerCertificatesOutput":{
       "type":"structure",
       "members":{
       }
@@ -1382,7 +1608,7 @@
     },
     "RulePriority":{
       "type":"integer",
-      "max":99999,
+      "max":50000,
       "min":1
     },
     "RulePriorityList":{
@@ -1415,6 +1641,23 @@
     "SecurityGroups":{
       "type":"list",
       "member":{"shape":"SecurityGroupId"}
+    },
+    "SetIpAddressTypeInput":{
+      "type":"structure",
+      "required":[
+        "LoadBalancerArn",
+        "IpAddressType"
+      ],
+      "members":{
+        "LoadBalancerArn":{"shape":"LoadBalancerArn"},
+        "IpAddressType":{"shape":"IpAddressType"}
+      }
+    },
+    "SetIpAddressTypeOutput":{
+      "type":"structure",
+      "members":{
+        "IpAddressType":{"shape":"IpAddressType"}
+      }
     },
     "SetRulePrioritiesInput":{
       "type":"structure",
@@ -1454,7 +1697,8 @@
       ],
       "members":{
         "LoadBalancerArn":{"shape":"LoadBalancerArn"},
-        "Subnets":{"shape":"Subnets"}
+        "Subnets":{"shape":"Subnets"},
+        "SubnetMappings":{"shape":"SubnetMappings"}
       }
     },
     "SetSubnetsOutput":{
@@ -1489,6 +1733,17 @@
     "String":{"type":"string"},
     "StringValue":{"type":"string"},
     "SubnetId":{"type":"string"},
+    "SubnetMapping":{
+      "type":"structure",
+      "members":{
+        "SubnetId":{"shape":"SubnetId"},
+        "AllocationId":{"shape":"AllocationId"}
+      }
+    },
+    "SubnetMappings":{
+      "type":"list",
+      "member":{"shape":"SubnetMapping"}
+    },
     "SubnetNotFoundException":{
       "type":"structure",
       "members":{
@@ -1549,7 +1804,8 @@
       "required":["Id"],
       "members":{
         "Id":{"shape":"TargetId"},
-        "Port":{"shape":"Port"}
+        "Port":{"shape":"Port"},
+        "AvailabilityZone":{"shape":"ZoneName"}
       }
     },
     "TargetDescriptions":{
@@ -1572,7 +1828,8 @@
         "UnhealthyThresholdCount":{"shape":"HealthCheckThresholdCount"},
         "HealthCheckPath":{"shape":"Path"},
         "Matcher":{"shape":"Matcher"},
-        "LoadBalancerArns":{"shape":"LoadBalancerArns"}
+        "LoadBalancerArns":{"shape":"LoadBalancerArns"},
+        "TargetType":{"shape":"TargetTypeEnum"}
       }
     },
     "TargetGroupArn":{"type":"string"},
@@ -1660,6 +1917,7 @@
         "Target.NotInUse",
         "Target.DeregistrationInProgress",
         "Target.InvalidState",
+        "Target.IpUnusable",
         "Elb.InternalError"
       ]
     },
@@ -1670,10 +1928,18 @@
         "healthy",
         "unhealthy",
         "unused",
-        "draining"
+        "draining",
+        "unavailable"
       ]
     },
     "TargetId":{"type":"string"},
+    "TargetTypeEnum":{
+      "type":"string",
+      "enum":[
+        "instance",
+        "ip"
+      ]
+    },
     "TooManyCertificatesException":{
       "type":"structure",
       "members":{

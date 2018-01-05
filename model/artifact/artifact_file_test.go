@@ -31,8 +31,8 @@ func (s *TestArtifactFileSuite) SetupTest() {
 			TaskDisplayName: "Task One",
 			BuildId:         "build1",
 			Files: []File{
-				{"cat_pix", "http://placekitten.com/800/600", ""},
-				{"fast_download", "https://fastdl.mongodb.org", ""},
+				{"cat_pix", "http://placekitten.com/800/600", "", false},
+				{"fast_download", "https://fastdl.mongodb.org", "", false},
 			},
 			Execution: 1,
 		},
@@ -41,7 +41,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 			TaskDisplayName: "Task Two",
 			BuildId:         "build2",
 			Files: []File{
-				{"other", "http://example.com/other", ""},
+				{"other", "http://example.com/other", "", false},
 			},
 			Execution: 5,
 		},
@@ -59,7 +59,7 @@ func (s *TestArtifactFileSuite) SetupTest() {
 		TaskDisplayName: "Task Two",
 		BuildId:         "build2",
 		Files: []File{
-			{"other", "http://example.com/other", ""},
+			{"other", "http://example.com/other", "", false},
 		},
 	}))
 
@@ -89,8 +89,8 @@ func (s *TestArtifactFileSuite) TestArtifactFieldsArePresent() {
 
 func (s *TestArtifactFileSuite) TestArtifactFieldsAfterUpdate() {
 	s.testEntries[0].Files = []File{
-		{"cat_pix", "http://placekitten.com/300/400", ""},
-		{"the_value_of_four", "4", ""},
+		{"cat_pix", "http://placekitten.com/300/400", "", false},
+		{"the_value_of_four", "4", "", false},
 	}
 	s.NoError(s.testEntries[0].Upsert())
 

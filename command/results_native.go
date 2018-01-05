@@ -60,37 +60,22 @@ func (c *attachResults) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	errChan := make(chan error)
-	go func() {
-		reportFileLoc := c.FileLoc
-		if !filepath.IsAbs(c.FileLoc) {
-			reportFileLoc = filepath.Join(conf.WorkDir, c.FileLoc)
-		}
-
-		// attempt to open the file
-		reportFile, err := os.Open(reportFileLoc)
-		if err != nil {
-			errChan <- errors.Wrapf(err, "Couldn't open report file '%s'", reportFileLoc)
-			return
-		}
-
-		results := &task.TestResults{}
-		if err = util.ReadJSONInto(reportFile, results); err != nil {
-			errChan <- errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
-			return
-		}
-		if err := reportFile.Close(); err != nil {
-			logger.Execution().Infof("Error closing file: %v", err)
-		}
-
-		errChan <- errors.WithStack(sendJSONResults(ctx, conf, logger, comm, results))
-	}()
-
-	select {
-	case err := <-errChan:
-		return errors.WithStack(err)
-	case <-ctx.Done():
-		logger.Execution().Info("Received signal to terminate execution of attach results command")
-		return nil
+	reportFileLoc := c.FileLoc
+	if !filepath.IsAbs(c.FileLoc) {
+		reportFileLoc = filepath.Join(conf.WorkDir, c.FileLoc)
 	}
+
+	// attempt to open the file
+	reportFile, err := os.Open(reportFileLoc)
+	if err != nil {
+		return errors.Wrapf(err, "Couldn't open report file '%s'", reportFileLoc)
+	}
+	defer reportFile.Close()
+
+	results := &task.LocalTestResults{}
+	if err = util.ReadJSONInto(reportFile, results); err != nil {
+		return errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
+	}
+
+	return errors.WithStack(sendJSONResults(ctx, conf, logger, comm, results))
 }

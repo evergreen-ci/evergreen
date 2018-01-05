@@ -602,7 +602,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{RemoveTasks: []string{"brown"}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, bvs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, bvs, taskDefs)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -622,7 +622,7 @@ func TestRulesEvaluation(t *testing.T) {
 					}}}}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, bvs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, bvs, taskDefs)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -644,7 +644,7 @@ func TestRulesEvaluation(t *testing.T) {
 					}}}}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, bvs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, bvs, taskDefs)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -672,7 +672,7 @@ func TestRulesEvaluation(t *testing.T) {
 					}}}}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, bvs)
+			_, errs := evaluateBuildVariants(tse, nil, bvs, taskDefs)
 			So(errs, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 3)
 		})
@@ -689,7 +689,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{RemoveTasks: []string{"rainbow"}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, bvs)
+			_, errs := evaluateBuildVariants(tse, nil, bvs, taskDefs)
 			So(errs, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 2)
 		})

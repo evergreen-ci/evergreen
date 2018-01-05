@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/tylerb/graceful"
 	"github.com/urfave/negroni"
 )
 
@@ -25,12 +24,12 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.UseHandler(r)
-	srv := &graceful.Server{
-		Timeout: 10 * time.Second,
-		Server: &http.Server{
-			Addr:    addr,
-			Handler: n,
-		},
+
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      n,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 	grip.Infoln("starting status server on:", addr)
 
@@ -43,7 +42,7 @@ func (agt *Agent) startStatusServer(ctx context.Context, port int) {
 	go func() {
 		<-ctx.Done()
 		grip.Info("shutting down status server")
-		srv.Stop(10 * time.Second)
+		grip.Critical(srv.Shutdown(ctx))
 	}()
 }
 

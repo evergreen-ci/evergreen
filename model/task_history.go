@@ -2,13 +2,16 @@ package model
 
 import (
 	"fmt"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
@@ -21,6 +24,8 @@ import (
 const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
+	testResultsKey    = "test_results"
+	numQueryThreads   = 16
 )
 
 type taskHistoryIterator struct {
@@ -47,12 +52,12 @@ type TaskHistory struct {
 }
 
 type aggregatedTaskHistory struct {
-	Id           string                   `bson:"_id" json:"_id"`
-	Status       string                   `bson:"status" json:"status"`
-	Activated    bool                     `bson:"activated" json:"activated"`
-	TimeTaken    time.Duration            `bson:"time_taken" json:"time_taken"`
-	BuildVariant string                   `bson:"build_variant" json:"build_variant"`
-	TestResults  apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
+	Id               string                   `bson:"_id" json:"_id"`
+	Status           string                   `bson:"status" json:"status"`
+	Activated        bool                     `bson:"activated" json:"activated"`
+	TimeTaken        time.Duration            `bson:"time_taken" json:"time_taken"`
+	BuildVariant     string                   `bson:"build_variant" json:"build_variant"`
+	LocalTestResults apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
 }
 type TaskDetails struct {
 	TimedOut bool   `bson:"timed_out"`
@@ -78,6 +83,7 @@ type TestHistoryResult struct {
 	TaskTimedOut    bool    `bson:"to"`
 	TaskDetailsType string  `bson:"tdt"`
 	LogId           string  `bson:"lid"`
+	Order           int     `bson:"order"`
 }
 
 // TestHistoryResult bson tags
@@ -104,19 +110,66 @@ var (
 // TestHistoryParameters are the parameters that are used
 // to retrieve Test Results.
 type TestHistoryParameters struct {
+	Sort  int `json:"sort"`
+	Limit int `json:"limit"`
+
+	// task parameters
 	Project         string    `json:"project"`
-	TestNames       []string  `json:"test_names"`
 	TaskNames       []string  `json:"task_names"`
 	BuildVariants   []string  `json:"variants"`
 	TaskStatuses    []string  `json:"task_statuses"`
-	TestStatuses    []string  `json:"test_statuses"`
 	BeforeRevision  string    `json:"before_revision"`
 	AfterRevision   string    `json:"after_revision"`
 	TaskRequestType string    `json:"task_request"`
 	BeforeDate      time.Time `json:"before_date"`
 	AfterDate       time.Time `json:"after_date"`
-	Sort            int       `json:"sort"`
-	Limit           int       `json:"limit"`
+
+	// test result parameters
+	TestNames    []string `json:"test_names"`
+	TestStatuses []string `json:"test_statuses"`
+}
+
+func (t TestHistoryParameters) QueryString() string {
+	out := []string{
+		"testStatuses=" + strings.Join(t.TestStatuses, ","),
+		"taskStatuses=" + strings.Join(t.TaskStatuses, ","),
+	}
+
+	if t.TaskRequestType != "" {
+		out = append(out, "buildType="+t.TaskRequestType)
+	}
+
+	if len(t.TaskNames) > 0 {
+		out = append(out, "tasks="+strings.Join(t.TaskNames, ","))
+	}
+
+	if len(t.TestNames) > 0 {
+		out = append(out, "tests="+strings.Join(t.TestNames, ","))
+	}
+
+	if len(t.BuildVariants) > 0 {
+		out = append(out, "variants="+strings.Join(t.BuildVariants, ","))
+	}
+
+	if t.BeforeRevision != "" {
+		out = append(out, "beforeRevision="+t.BeforeRevision)
+	}
+
+	if t.AfterRevision != "" {
+		out = append(out, "afterRevision="+t.AfterRevision)
+	}
+	if !util.IsZeroTime(t.BeforeDate) {
+		out = append(out, "beforeDate="+t.BeforeDate.Format(time.RFC3339))
+	}
+	if !util.IsZeroTime(t.AfterDate) {
+		out = append(out, "afterDate="+t.AfterDate.Format(time.RFC3339))
+	}
+
+	if t.Limit != 0 {
+		out = append(out, fmt.Sprintf("limit=%d", t.Limit))
+	}
+
+	return strings.Join(out, "&")
 }
 
 type TaskHistoryIterator interface {
@@ -301,8 +354,28 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 			},
 			{"$sort": bson.D{{Name: task.RevisionOrderNumberKey, Value: -1}}},
 			{"$limit": numCommits},
-			{"$unwind": fmt.Sprintf("$%v", task.TestResultsKey)},
-			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", task.TestResultsKey, task.TestResultTestFileKey)}},
+			{"$lookup": bson.M{
+				"from":         testresult.Collection,
+				"localField":   task.IdKey,
+				"foreignField": testresult.TaskIDKey,
+				"as":           testResultsKey},
+			},
+			{"$project": bson.M{
+				testResultsKey: bson.M{
+					"$filter": bson.M{
+						// Filter off non-matching executions. This should be replaced once
+						// multi-key $lookups are supported in 3.6
+						"input": "$" + testResultsKey,
+						"as":    "tr",
+						"cond": bson.M{
+							"$eq": []string{"$$tr.task_execution", "$execution"}},
+					},
+				},
+				task.IdKey:                 1,
+				task.TestResultTestFileKey: 1,
+			}},
+			{"$unwind": fmt.Sprintf("$%v", testResultsKey)},
+			{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", testResultsKey, task.TestResultTestFileKey)}},
 		},
 	)
 
@@ -345,7 +418,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 
 	// find all the relevant failed tests
 	failedTestsMap := make(map[string][]task.TestResult)
-	tasks, err := task.Find(task.ByIds(failedTaskIds).WithFields(task.IdKey, task.TestResultsKey))
+	tasks, err := task.Find(task.ByIds(failedTaskIds))
 	if err != nil {
 		return nil, err
 	}
@@ -355,8 +428,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 		if err := task.MergeNewTestResults(); err != nil {
 			return nil, err
 		}
-
-		for _, test := range task.TestResults {
+		for _, test := range task.LocalTestResults {
 			if test.Status == evergreen.TestFailedStatus {
 				failedTestsMap[task.Id] = append(failedTestsMap[task.Id], test)
 			}
@@ -409,6 +481,10 @@ func (t *TestHistoryParameters) validate() []string {
 
 	if t.Sort != -1 && t.Sort != 1 {
 		validationErrors = append(validationErrors, "sort parameter can only be -1 or 1")
+	}
+
+	if t.BeforeRevision == "" && t.AfterRevision == "" && t.Limit == 0 {
+		validationErrors = append(validationErrors, "must specify a range of revisions *or* a limit")
 	}
 	return validationErrors
 }
@@ -476,7 +552,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 
 	// construct the test match query
 	testMatchQuery := bson.M{
-		task.TestResultsKey + "." + task.TestResultStatusKey: bson.M{"$in": testHistoryParameters.TestStatuses},
+		testResultsKey + "." + testresult.StatusKey: bson.M{"$in": testHistoryParameters.TestStatuses},
 	}
 
 	// separate out pass/fail from timeouts and system failures
@@ -536,8 +612,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		taskMatchQuery[task.BuildVariantKey] = bson.M{"$in": testHistoryParameters.BuildVariants}
 	}
 	if len(testHistoryParameters.TestNames) > 0 {
-		taskMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
-		testMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
+		testMatchQuery[testResultsKey+"."+testresult.TestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
 	}
 
 	// add in date to  task query if necessary
@@ -605,11 +680,26 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	}
 
 	pipeline = append(pipeline,
+		bson.M{"$lookup": bson.M{
+			"from":         testresult.Collection,
+			"localField":   task.IdKey,
+			"foreignField": testresult.TaskIDKey,
+			"as":           testResultsKey},
+		},
 		bson.M{"$project": bson.M{
+			testResultsKey: bson.M{
+				"$filter": bson.M{
+					// Filter off non-matching executions. This should be replaced once
+					// multi-key $lookups are supported in 3.6
+					"input": "$" + testResultsKey,
+					"as":    "tr",
+					"cond": bson.M{
+						"$eq": []string{"$$tr.task_execution", "$execution"}},
+				},
+			},
 			task.DisplayNameKey:         1,
 			task.BuildVariantKey:        1,
 			task.StatusKey:              1,
-			task.TestResultsKey:         1,
 			task.RevisionKey:            1,
 			task.IdKey:                  1,
 			task.ExecutionKey:           1,
@@ -619,37 +709,248 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.ProjectKey:             1,
 			task.DetailsKey:             1,
 		}},
-		bson.M{"$unwind": "$" + task.TestResultsKey},
-		bson.M{"$match": testMatchQuery})
+		bson.M{"$unwind": "$test_results"},
+		bson.M{"$match": testMatchQuery},
+		bson.M{"$sort": bson.D{
+			{Name: task.RevisionOrderNumberKey, Value: testHistoryParameters.Sort},
+			{Name: testResultsKey + "." + testresult.TaskIDKey, Value: testHistoryParameters.Sort},
+			{Name: testResultsKey + "." + testresult.TestFileKey, Value: testHistoryParameters.Sort},
+		}})
 	if testHistoryParameters.Limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
 	}
 	pipeline = append(pipeline,
-		bson.M{"$sort": bson.D{
-			{Name: task.RevisionOrderNumberKey, Value: testHistoryParameters.Sort},
-			{Name: task.TestResultsKey + "." + task.TestResultTestFileKey, Value: testHistoryParameters.Sort},
-		}},
 		bson.M{"$project": bson.M{
-			TestFileKey:        "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
+			TestFileKey:        "$" + testResultsKey + "." + task.TestResultTestFileKey,
 			TaskIdKey:          "$" + task.IdKey,
-			TestStatusKey:      "$" + task.TestResultsKey + "." + task.TestResultStatusKey,
+			TestStatusKey:      "$" + testResultsKey + "." + task.TestResultStatusKey,
 			TaskStatusKey:      "$" + task.StatusKey,
 			RevisionKey:        "$" + task.RevisionKey,
 			ProjectKey:         "$" + task.ProjectKey,
 			TaskNameKey:        "$" + task.DisplayNameKey,
 			BuildVariantKey:    "$" + task.BuildVariantKey,
-			StartTimeKey:       "$" + task.TestResultsKey + "." + task.TestResultStartTimeKey,
-			EndTimeKey:         "$" + task.TestResultsKey + "." + task.TestResultEndTimeKey,
+			StartTimeKey:       "$" + testResultsKey + "." + task.TestResultStartTimeKey,
+			EndTimeKey:         "$" + testResultsKey + "." + task.TestResultEndTimeKey,
 			ExecutionKey:       "$" + task.ExecutionKey + "." + task.ExecutionKey,
 			OldTaskIdKey:       "$" + task.OldTaskIdKey,
-			UrlKey:             "$" + task.TestResultsKey + "." + task.TestResultURLKey,
-			UrlRawKey:          "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
-			LogIdKey:           "$" + task.TestResultsKey + "." + task.TestResultLogIdKey,
+			UrlKey:             "$" + testResultsKey + "." + task.TestResultURLKey,
+			UrlRawKey:          "$" + testResultsKey + "." + task.TestResultURLRawKey,
+			LogIdKey:           "$" + testResultsKey + "." + task.TestResultLogIdKey,
 			TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
 			TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
 		}})
 
 	return pipeline, nil
+}
+
+func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
+	if params == nil {
+		return nil, errors.New("unable to determine parameters for test history query")
+	}
+	// run just the part of the query on the tasks collection to form our starting result set
+	tasksQuery, err := formQueryFromTasks(params)
+	if err != nil {
+		return nil, err
+	}
+	projection := bson.M{
+		task.DisplayNameKey:         1,
+		task.BuildVariantKey:        1,
+		task.StatusKey:              1,
+		task.RevisionKey:            1,
+		task.IdKey:                  1,
+		task.ExecutionKey:           1,
+		task.RevisionOrderNumberKey: 1,
+		task.OldTaskIdKey:           1,
+		task.StartTimeKey:           1,
+		task.FinishTimeKey:          1,
+		task.ProjectKey:             1,
+		task.DetailsKey:             1,
+	}
+	tasks, err := task.Find(db.Query(tasksQuery).Project(projection))
+	if err != nil {
+		return nil, err
+	}
+	oldTasks, err := task.FindOld(db.Query(tasksQuery).Project(projection))
+	if err != nil {
+		return nil, err
+	}
+	tasks = append(tasks, oldTasks...)
+
+	// to join the test results, merge test results for all the tasks
+	out := []task.Task{}
+	taskChan := make(chan task.Task, len(tasks))
+	for _, t := range tasks {
+		taskChan <- t
+	}
+	close(taskChan)
+	wg := sync.WaitGroup{}
+	wg.Add(numQueryThreads)
+	resultChan := make(chan task.Task)
+	catcher := grip.NewSimpleCatcher()
+	for i := 0; i < numQueryThreads; i++ {
+		go func() {
+			defer wg.Done()
+			for t := range taskChan {
+				err := t.MergeNewTestResults() //nolint
+				if err != nil {
+					catcher.Add(errors.Wrapf(err, "error merging test results for task %s", t.Id))
+					continue
+				}
+				// strip out any test results that don't match input params
+				for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
+					result := t.LocalTestResults[j]
+					if (len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status)) ||
+						(len(params.TestNames) > 0 && !util.StringSliceContains(params.TestNames, result.TestFile)) {
+						t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
+					}
+				}
+				resultChan <- t
+			}
+		}()
+	}
+	doneChan := make(chan bool)
+	go func() {
+		defer close(doneChan)
+		for t := range resultChan {
+			out = append(out, t)
+		}
+	}()
+	wg.Wait()
+	close(resultChan)
+	<-doneChan
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return out, nil
+}
+
+func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
+	query := bson.M{}
+	if len(params.TaskNames) > 0 {
+		query[task.DisplayNameKey] = bson.M{"$in": params.TaskNames}
+	}
+	if len(params.Project) > 0 {
+		query[task.ProjectKey] = params.Project
+	}
+	if len(params.TaskRequestType) > 0 {
+		query[task.RequesterKey] = params.TaskRequestType
+	}
+	if !util.IsZeroTime(params.BeforeDate) || !util.IsZeroTime(params.AfterDate) {
+		startTimeClause := bson.M{}
+		if !util.IsZeroTime(params.BeforeDate) {
+			startTimeClause["$lte"] = params.BeforeDate
+		}
+		if !util.IsZeroTime(params.AfterDate) {
+			startTimeClause["$gte"] = params.AfterDate
+		}
+		query[task.StartTimeKey] = startTimeClause
+	}
+	if len(params.BuildVariants) > 0 {
+		query[task.BuildVariantKey] = bson.M{"$in": params.BuildVariants}
+	}
+	statusQuery := formTaskStatusQuery(params)
+	if len(statusQuery) > 0 {
+		query["$or"] = statusQuery
+	}
+	revisionQuery, err := formRevisionQuery(params)
+	if err != nil {
+		return bson.M{}, err
+	}
+	if revisionQuery != nil {
+		query[task.RevisionOrderNumberKey] = *revisionQuery
+	}
+
+	return query, nil
+}
+
+func formQueryFromTests(params *TestHistoryParameters) bson.M {
+	query := bson.M{}
+	if len(params.TestNames) > 0 {
+		query[testresult.TestFileKey] = bson.M{"$in": params.TestNames}
+	}
+	if len(params.TestStatuses) > 0 {
+		query[testresult.StatusKey] = bson.M{"$in": params.TestStatuses}
+	}
+
+	return query
+}
+
+func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
+	// separate out pass/fail from timeouts and system failures
+	isTimeout := false
+	isSysFail := false
+	taskStatuses := []string{}
+	for _, status := range params.TaskStatuses {
+		switch status {
+		case TaskTimeout:
+			isTimeout = true
+		case TaskSystemFailure:
+			isSysFail = true
+		default:
+			taskStatuses = append(taskStatuses, status)
+		}
+	}
+	statusQuery := []bson.M{}
+
+	// if there are any pass/fail tasks create a query that isn't a timeout or a system failure.
+	if len(taskStatuses) > 0 {
+		statusQuery = append(statusQuery,
+			bson.M{
+				task.StatusKey: bson.M{"$in": taskStatuses},
+				task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
+					"$ne": true,
+				},
+				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+					"$ne": "system",
+				},
+			})
+	}
+
+	if isTimeout {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey:                                     evergreen.TaskFailed,
+			task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
+		})
+	}
+	if isSysFail {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey:                                 evergreen.TaskFailed,
+			task.DetailsKey + "." + task.TaskEndDetailType: "system",
+		})
+	}
+
+	return statusQuery
+}
+
+func formRevisionQuery(params *TestHistoryParameters) (*bson.M, error) {
+	if params.BeforeRevision == "" && params.AfterRevision == "" {
+		return nil, nil
+	}
+	revisionOrderNumberClause := bson.M{}
+	if params.BeforeRevision != "" {
+		v, err := version.FindOne(version.ByProjectIdAndRevision(params.Project,
+			params.BeforeRevision).WithFields(version.RevisionOrderNumberKey))
+		if err != nil {
+			return nil, err
+		}
+		if v == nil {
+			return nil, errors.Errorf("invalid revision : %v", params.BeforeRevision)
+		}
+		revisionOrderNumberClause["$lte"] = v.RevisionOrderNumber
+	}
+
+	if params.AfterRevision != "" {
+		v, err := version.FindOne(version.ByProjectIdAndRevision(params.Project,
+			params.AfterRevision).WithFields(version.RevisionOrderNumberKey))
+		if err != nil {
+			return nil, err
+		}
+		if v == nil {
+			return nil, errors.Errorf("invalid revision : %v", params.AfterRevision)
+		}
+		revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
+	}
+	return &revisionOrderNumberClause, nil
 }
 
 // GetTestHistory takes in test history parameters, validates them, and returns the test results according to those parameters.
@@ -671,4 +972,69 @@ func GetTestHistory(testHistoryParameters *TestHistoryParameters) ([]TestHistory
 		return nil, err
 	}
 	return mergeResults(aggTestResults, aggOldTestResults), nil
+}
+
+func GetTestHistoryV2(testHistoryParameters *TestHistoryParameters) ([]TestHistoryResult, error) {
+	var results []TestHistoryResult
+	tasks, err := testHistoryV2Results(testHistoryParameters)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range tasks {
+		for _, result := range t.LocalTestResults {
+			results = append(results, TestHistoryResult{
+				TaskId:          t.Id,
+				TaskName:        t.DisplayName,
+				TaskStatus:      t.Status,
+				Revision:        t.Revision,
+				Order:           t.RevisionOrderNumber,
+				Project:         t.Project,
+				BuildVariant:    t.BuildVariant,
+				Execution:       t.Execution,
+				OldTaskId:       t.OldTaskId,
+				TaskTimedOut:    t.Details.TimedOut,
+				TaskDetailsType: t.Details.Type,
+				TestFile:        result.TestFile,
+				TestStatus:      result.Status,
+				Url:             result.URL,
+				UrlRaw:          result.URLRaw,
+				LogId:           result.LogId,
+				StartTime:       result.StartTime,
+				EndTime:         result.EndTime,
+			})
+		}
+	}
+
+	sort.Sort(historyResultSorter(results))
+	limit := testHistoryParameters.Limit
+	var out []TestHistoryResult
+	if limit == 0 {
+		limit = len(results)
+	}
+	for i := range results {
+		index := i
+		if testHistoryParameters.Sort < 0 {
+			index = len(results) - i - 1
+		}
+		out = append(out, results[index])
+		if i >= limit-1 {
+			break
+		}
+	}
+
+	return out, nil
+}
+
+type historyResultSorter []TestHistoryResult
+
+func (h historyResultSorter) Len() int      { return len(h) }
+func (h historyResultSorter) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h historyResultSorter) Less(i, j int) bool {
+	if h[i].Order == h[j].Order {
+		if h[i].TaskId == h[j].TaskId {
+			return h[i].TestFile < h[j].TestFile
+		}
+		return h[i].TaskId < h[j].TaskId
+	}
+	return h[i].Order < h[j].Order
 }

@@ -376,6 +376,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 							"message":  "failed storing stub version in project",
 							"project":  ref.Identifier,
 							"revision": revision,
+							"runner":   RunnerName,
 							"version":  v.Id,
 						}))
 						return nil, err
@@ -389,6 +390,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 					"message":  "could not store project stub",
 					"project":  ref.Identifier,
 					"revision": revision,
+					"runner":   RunnerName,
 					"version":  v.Id,
 				}))
 				return nil, err
@@ -510,7 +512,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 		}
 
 		grip.Notice(message.Fields{
-			"runner":      "repotracker",
+			"runner":      RunnerName,
 			"operation":   "project config validation",
 			"warnings":    projectWarnings,
 			"errors":      projectErrors,
@@ -563,14 +565,19 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		if buildvariant.Disabled {
 			continue
 		}
-		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil)
+
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIds, buildvariant.Name, false, nil, nil)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
 		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
 		if err != nil {
-			grip.Errorln("Error getting activation time for variant", buildvariant.Name)
+			grip.Error(message.WrapError(err, message.Fields{
+				"message": "problem getting activatation time for variant",
+				"variant": buildvariant.Name,
+				"project": ref.Identifier,
+			}))
 			return errors.WithStack(err)
 		}
 
@@ -591,8 +598,15 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		} else {
 			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
 		}
-		grip.Infof("Going to activate bv %s for project %s, version %s at %s",
-			buildvariant.Name, ref.Identifier, v.Id, activateAt)
+
+		grip.Info(message.Fields{
+			"message": "activating build",
+			"name":    buildvariant.Name,
+			"project": ref.Identifier,
+			"version": v.Id,
+			"time":    activateAt,
+			"runner":  RunnerName,
+		})
 
 		v.BuildIds = append(v.BuildIds, buildId)
 		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{

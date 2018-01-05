@@ -1,1 +1,0 @@
-{"_id":"localhost","arch":"linux_amd64","work_dir":"/Users/brian/go/src/github.com/evergreen-ci/evergreen/smoke","provider":"static","settings":{"hosts":[{"name":"localhost"}]},"user":"brian","spawn_allowed":false}

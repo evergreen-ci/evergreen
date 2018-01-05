@@ -23,7 +23,7 @@ type Base struct {
 // Collect records the time, process name, and hostname. Useful in the
 // context of a Raw() method.
 func (b *Base) Collect() error {
-	if !b.Time.IsZero() {
+	if b.Pid > 0 {
 		return nil
 	}
 

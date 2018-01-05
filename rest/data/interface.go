@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
 )
@@ -40,7 +41,7 @@ type Connector interface {
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
 	FindTasksByIds([]string) ([]task.Task, error)
-	SetTaskPriority(*task.Task, int64) error
+	SetTaskPriority(*task.Task, string, int64) error
 	SetTaskActivated(string, string, bool) error
 	ResetTask(string, string, *model.Project) error
 	AbortTask(string, string) error
@@ -131,6 +132,9 @@ type Connector interface {
 
 	// AbortPatch aborts the patch corresponding to the input patch ID and deletes if not finalized.
 	AbortPatch(string, string) error
+	// AbortPatchesFromPullRequest aborts patches with the same PR Number,
+	// in the same repository, at the pull request's close time
+	AbortPatchesFromPullRequest(*github.PullRequestEvent) error
 
 	// RestartVersion restarts all completed tasks of a version given its ID and the caller.
 	RestartVersion(string, string) error
@@ -159,7 +163,7 @@ type Connector interface {
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
 
-	AddPatchIntent(patch.Intent) error
+	AddPatchIntent(patch.Intent, amboy.Queue) error
 
 	SetHostStatus(*host.Host, string) error
 	SetHostExpirationTime(*host.Host, time.Time) error
