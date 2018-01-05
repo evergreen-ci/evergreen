@@ -1173,6 +1173,10 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
+// MergeTestResultsBulk takes a slice of task structs and returns the slice with
+// test results populated. Note that the order may change. The second parameter
+// can be used to use a specific test result filtering query, otherwise all test
+// results for the passed in tasks will be merged
 func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	out := []Task{}
 	if query == nil {
