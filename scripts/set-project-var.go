@@ -17,7 +17,7 @@ func main() {
 		value   string
 	)
 
-	flag.StringVar(&dbName, "dbName", "mci", "database name for directory")
+	flag.StringVar(&dbName, "dbName", "mci_smoke", "database name for directory")
 	flag.StringVar(&project, "project", "evergreen", "name of project")
 	flag.StringVar(&key, "key", "", "key to set")
 	flag.StringVar(&value, "value", "", "value of key")
