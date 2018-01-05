@@ -131,6 +131,8 @@ variables:
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "set-project-var" }
+      - func: run-make
+        vars: { target: "load-smoke-data" }
       - command: shell.exec
         params:
           silent: true
@@ -138,11 +140,9 @@ variables:
           script: |
             set -o errexit
 
+            cd gopath/src/github.com/evergreen-ci/evergreen
             ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
             ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
-
-            # matches agent_revision in hosts.json
-            echo "foo" >| gopath/src/github.com/evergreen-ci/evergreen/clients/version
       - func: run-make
         vars:
           target: "${task_name}"

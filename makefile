@@ -93,7 +93,7 @@ $(buildDir)/load-smoke-data:scripts/load-smoke-data.go
 	go build -o $@ $<
 $(buildDir)/set-project-var:scripts/set-project-var.go
 	go build -o $@ $<
-set-project-var:$(buildDir)/load-smoke-data
+set-project-var:$(buildDir)/set-project-var
 load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 	./$<
