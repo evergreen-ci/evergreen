@@ -247,9 +247,10 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 						if err != nil {
 							m["error"] = err.Error()
+							grip.Error(m)
+						} else {
+							grip.Info(m)
 						}
-
-						grip.Info(m)
 						continue
 					}
 
