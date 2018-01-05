@@ -20,7 +20,7 @@ func TestOutputOptions(t *testing.T) {
 	assert := assert.New(t) // nolint
 
 	opts := OutputOptions{}
-	assert.Error(opts.Validate())
+	assert.NoError(opts.Validate())
 
 	stdout := bytes.NewBuffer([]byte{})
 	stderr := bytes.NewBuffer([]byte{})
@@ -60,5 +60,9 @@ func TestOutputOptions(t *testing.T) {
 	opts.Output = stdout
 	assert.NoError(opts.Validate())
 	opts.SuppressOutput = false
+	assert.NoError(opts.Validate())
+
+	// but should be valid if you suppress both
+	opts = OutputOptions{SuppressError: true, SuppressOutput: true}
 	assert.NoError(opts.Validate())
 }
