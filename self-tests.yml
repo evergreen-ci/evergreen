@@ -146,6 +146,18 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
+  - &run-lint
+    name: test
+    stepback: false
+    tags: ["lint"]
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-credentials
+      - func: run-make
+        vars: { target: "${task_name}" }
   - &version-constants
     nodejs_version: "6.11.1"
 
@@ -605,158 +617,82 @@ tasks:
     name: race-migrations
 
   # lint tasks
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-agent
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-alerts
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-auth
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-operations
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-cloud
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-command
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-db
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-evergreen
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-hostinit
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-hostutil
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-migrations
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-artifact
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-build
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-event
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-host
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-patch
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-model-task
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-monitor
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-notify
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin-builtin-buildbaron
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin-builtin-manifest
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-plugin-builtin-perfdash
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-repotracker
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-client
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-data
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-model
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-rest-route
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-scheduler
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-service
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-spawn
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-subprocess
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-taskrunner
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-thirdparty
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-units
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-util
-    stepback: false
-  - <<: *run-go-test-suite
-    tags: ["lint"]
+  - <<: *run-lint
     name: lint-validator
-    stepback: false
 
   # cross compiled test suites
   - <<: *run-xc-test-suite
