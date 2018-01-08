@@ -28,12 +28,12 @@ type Command interface {
 // OutputOptions provides a common way to define and represent the
 // output behavior of a evergreen/subprocess.Command operation.
 type OutputOptions struct {
-	Output            io.Writer
-	Error             io.Writer
-	SuppressOutput    bool
-	SuppressError     bool
-	SendOutputToError bool
-	SendErrorToOutput bool
+	Output            io.Writer `json:"-"`
+	Error             io.Writer `json:"-"`
+	SuppressOutput    bool      `json:"suppress_output"`
+	SuppressError     bool      `json:"suppress_error"`
+	SendOutputToError bool      `json:"redirect_output_to_error"`
+	SendErrorToOutput bool      `json:"redirect_error_to_output"`
 }
 
 func (o OutputOptions) outputIsNull() bool {

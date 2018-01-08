@@ -7,6 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -39,7 +41,20 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 		append([]string{"-p", hostInfo.Port}, sshOptions...),
 		false, // logging disabled
 	)
-	if err = remoteCommand.SetOutput(subprocess.OutputOptions{SuppressOutput: true, SuppressError: true}); err != nil {
+
+	output := subprocess.OutputOptions{SuppressOutput: true, SuppressError: true}
+
+	if err = remoteCommand.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"operation": "reachability check",
+			"message":   "configuring output for reachability check",
+			"hostname":  hostInfo.Hostname,
+			"distro":    hostObject.Distro.Id,
+			"host_id":   hostObject.Id,
+			"cause":     "programmer error",
+			"output":    output,
+		}))
+
 		return false, errors.Wrap(err, "problem configuring output")
 	}
 

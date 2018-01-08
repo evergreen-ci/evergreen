@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -65,4 +67,31 @@ func TestOutputOptions(t *testing.T) {
 	// but should be valid if you suppress both
 	opts = OutputOptions{SuppressError: true, SuppressOutput: true}
 	assert.NoError(opts.Validate())
+}
+
+func TestOutputOptionsIntegrationTableTest(t *testing.T) {
+	buf := &bytes.Buffer{}
+	shouldFail := []OutputOptions{
+		{Output: buf, Error: buf},
+		{Output: buf, SendErrorToOutput: true},
+	}
+
+	shouldPass := []OutputOptions{
+		{SuppressError: true, SuppressOutput: true},
+		{Output: buf, SendErrorToOutput: true},
+		{Output: &util.CappedWriter{Buffer: buf, MaxBytes: 1024 * 1024}, SendErrorToOutput: true},
+	}
+
+	assert := assert.New(t) // nolint
+
+	for _, opt := range shouldFail {
+		assert.Error(opt.Validate(), "%+v", opt)
+		grip.Debug(opt)
+	}
+
+	for _, opt := range shouldPass {
+		assert.NoError(opt.Validate(), "%+v", opt)
+		grip.Debug(opt)
+	}
+
 }

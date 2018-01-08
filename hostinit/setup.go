@@ -504,6 +504,14 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		append([]string{"-P", hostInfo.Port}, sshOptions...))
 
 	if err = scpCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "setting up copy script command",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
 		return errors.Wrap(err, "problem configuring output")
 	}
 
@@ -523,6 +531,14 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 			}))
 			return errors.Wrap(err, "scp-ing script timed out")
 		}
+
+		grip.Notice(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"command": scpCmd,
+			"distro":  target.Distro.Id,
+			"host":    target.Host,
+		}))
+
 		return errors.Wrapf(err, "error (%v) copying script to remote machine",
 			scpCmdOut.String())
 	}
@@ -832,6 +848,15 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		append([]string{"-P", hostSSHInfo.Port}, sshOptions...))
 
 	if err = scpYmlCommand.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "setting up copy script command",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
+
 		return nil, errors.Wrap(err, "problem configuring output")
 	}
 
@@ -878,6 +903,16 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 
 	output := subprocess.OutputOptions{Output: cmdOutput, SendErrorToOutput: true}
 	if err := makeShellCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"operation": "fetch command",
+			"message":   "configuring output for fetch command",
+			"hostname":  hostSSHInfo.Hostname,
+			"distro":    target.Distro.Id,
+			"host_id":   target.Id,
+			"cause":     "programmer error",
+			"output":    output,
+		}))
+
 		return errors.Wrap(err, "problem configuring output for fetch command")
 	}
 

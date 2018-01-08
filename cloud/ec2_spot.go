@@ -167,7 +167,7 @@ func (cloudManager *ec2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 	reachable, err := hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 	grip.Debugf("Checking host '%v' ssh reachability: %t", host.Id, reachable)
 
-	return reachable, err
+	return reachable, errors.WithStack(err)
 }
 
 //GetInstanceStatus returns an mci-universal status code for the status of

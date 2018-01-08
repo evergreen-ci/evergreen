@@ -93,9 +93,12 @@ func (cloudManager *ec2OnDemandManager) GetSSHOptions(h *host.Host, keyPath stri
 func (cloudManager *ec2OnDemandManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, keyPath)
 	if err != nil {
-		return false, err
+		return false, errors.WithStack(err)
 	}
-	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
+
+	var result bool
+	result, err = hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
+	return result, errors.WithStack(err)
 }
 
 func (cloudManager *ec2OnDemandManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
