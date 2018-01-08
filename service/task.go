@@ -170,7 +170,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			projCtx.Task = taskFromDb
 			archived = true
 		} else if execution != projCtx.Task.Execution {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding old task"))
+			uis.LoggedError(w, r, http.StatusNotFound, errors.New("Error finding task or execution"))
 			return
 		}
 	}

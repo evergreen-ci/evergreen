@@ -26,7 +26,7 @@ func List() cli.Command {
 
 	return cli.Command{
 		Name:  "list",
-		Usage: "",
+		Usage: "displays requested information about evergreen",
 		Flags: addPathFlag(addProjectFlag(
 			cli.BoolFlag{
 				Name:  projectsFlagName,

@@ -92,7 +92,7 @@ func makeTaskMigrationFunction(database, collection string) db.MigrationOperatio
 	}
 }
 
-func addExecutionToTasksGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+func addExecutionToTasksGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) { //nolint
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
