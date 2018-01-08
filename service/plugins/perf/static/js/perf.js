@@ -19,7 +19,9 @@ function average (arr){
 }
 
 
-mciModule.controller('PerfController', function PerfController($scope, $window, $http, $location){
+mciModule.controller('PerfController', function PerfController(
+  $scope, $window, $http, $location, PerfChartService
+) {
     /* for debugging
     $sce, $compile){
 
@@ -397,7 +399,14 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
 
   $scope.redrawGraphs = function(){
       setTimeout(function(){
-        drawTrendGraph($scope.trendSamples, $scope.perfSample.testNames(), $scope, $scope.task.id, $scope.comparePerfSamples);
+        drawTrendGraph(
+          $scope.trendSamples,
+          $scope.perfSample.testNames(),
+          $scope,
+          $scope.task.id,
+          $scope.comparePerfSamples,
+          PerfChartService
+        );
         drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
       }, 0)
   }
@@ -439,7 +448,15 @@ mciModule.controller('PerfController', function PerfController($scope, $window, 
           function(resp){
             var d = resp.data;
             $scope.trendSamples = new TrendSamples(d);
-            setTimeout(function(){drawTrendGraph($scope.trendSamples, $scope.perfSample.testNames(), $scope, $scope.task.id,  $scope.comparePerfSamples)},0);
+            setTimeout(function() {
+              drawTrendGraph(
+                $scope.trendSamples,
+                $scope.perfSample.testNames(),
+                $scope, $scope.task.id,
+                $scope.comparePerfSamples,
+                PerfChartService
+              )
+            }, 0);
           });
       });
 
@@ -488,13 +505,14 @@ function TrendSamples(samples){
         this.seriesByName[rec.name] = [];
       }
 
-      var sorted = _.chain(rec.results)
-        .values()
-        .filter(function(d) { return typeof(d) == 'object' })
-        .sortBy('ops_per_sec')
-        .value()
+      var maxOpsPerSecItem = _.max(rec.results, function(d) {
+        return d.ops_per_sec
+      })
 
-      var last = _.last(sorted);
+      // Skip invalid items
+      if (rec.start == undefined) {
+        continue
+      }
 
       this.seriesByName[rec.name].push({
         revision: sample.revision,
@@ -502,9 +520,8 @@ function TrendSamples(samples){
         ops_per_sec: maxOpsPerSecItem.ops_per_sec,
         ops_per_sec_values: maxOpsPerSecItem.ops_per_sec_values,
         order: sample.order,
-        threadResults: threadResults,
         startedAt: rec.start * 1000,
-        threadResultsD: threadResultsD,
+        threadResults: rec.results,
       });
     }
   }
@@ -630,15 +647,27 @@ function TestSample(sample){
   }
 }
 
-var drawTrendGraph = function(trendSamples, tests, scope, taskId, compareSamples) {
+var drawTrendGraph = function(
+  trendSamples, tests, scope, taskId, compareSamples, PerfChartService
+) {
   scope.locked = false;
 
   for (var i = 0; i < tests.length; i++) {
+    //if (i > 0) continue;
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
-    drawSingleTrendChart(
-      series, key, scope, taskId, compareSamples,
-      i, scope.threadLevelsRadio.value
-    );
+    var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
+    // Skip corrupted items
+    if (series == undefined) continue;
+
+    drawSingleTrendChart({
+      config: PerfChartService.cfg, 
+      series: series,
+      key: key,
+      scope: scope,
+      containerId: containerId,
+      compareSamples: compareSamples,
+      threadMode: scope.threadLevelsRadio.value
+    });
   }
 }

@@ -1,15 +1,9 @@
-// TODO Add basic encapsulation to the module
-// TODO Create AngularJS directive
+// Helper function
+function d3Translate(x, y) {
+  return 'translate(' + x + ',' + y + ')';
+}
 
-var drawSingleTrendChart = function(
-  // TODO idx should be passed in different manner
-  // TODO Use object instead of positional args
-  series, key, scope, taskId, compareSamples, idx, threadMode
-) {
-  var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + idx;
-
-  document.getElementById(containerId).innerHTML = '';
-
+mciModule.factory('PerfChartService', function() {
   var cfg = {
     container: {
       width: 960,
@@ -22,12 +16,9 @@ var drawSingleTrendChart = function(
       left: 80
     },
     points: {
-      defaultR: 2,
       focusedR: 4.5,
     },
-    chart: {
-      yValueAttr: 'ops_per_sec'
-    },
+    valueAttr: 'ops_per_sec',
     yAxis: {
       ticks: 5,
       gap: 10 // White space between axis and chart
@@ -40,7 +31,8 @@ var drawSingleTrendChart = function(
     focus: {
       labelOffset: {
         x: 6,
-        y: -5
+        y: -5,
+        between: 15, // Minimal vertical space between ops labels
       }
     },
     format: {
@@ -67,7 +59,29 @@ var drawSingleTrendChart = function(
     cfg.container.height - cfg.legend.yOffset
     - cfg.legend.itemHeight - cfg.legend.textOverRectOffset
   )
+
   cfg.legend.step = cfg.legend.itemWidth + cfg.legend.gap
+
+  return {
+    cfg: cfg,
+  }
+})
+
+// TODO Add basic encapsulation to the module
+// TODO Create AngularJS directive
+var drawSingleTrendChart = function(params) {
+  var MAXONLY = 'maxonly';
+
+  // Extract params
+  var cfg = params.config,
+      series = params.series,
+      key = params.key,
+      scope = params.scope,
+      containerId = params.containerId,
+      compareSamples = params.compareSamples,
+      threadMode = params.threadMode;
+
+  document.getElementById(containerId).innerHTML = '';
 
   var svg = d3.select('#' + containerId)
     .append('svg')
@@ -77,49 +91,40 @@ var drawSingleTrendChart = function(
       height: cfg.container.height,
     })
 
-  var ops = _.pluck(series, 'ops_per_sec');
+  var ops = _.pluck(series, cfg.valueAttr);
   var opsValues = _.pluck(series, 'ops_per_sec_values');
   var avgOpsPerSec = d3.mean(ops)
 
-  var levels = _.keys(series[0].threadResultsD)
-  if (threadMode == 'maxonly') {
-    levels = [''+_.max(levels, function(d) { return +d })]
-  }
+  var allLevels = _.keys(series[0].threadResults)
+  var levels = threadMode == MAXONLY
+    ? [d3.max(allLevels)]
+    : allLevels
+
+  // Calculate legend x pos based on levels
+  cfg.legend.xPos = (cfg.container.width - levels.length * cfg.legend.step) / 2
 
   // When there are more than one value in opsValues item
   var hasValues = _.all(opsValues, function(d) {
     return d != undefined && d.length > 1
   })
 
-  var multiSeriesAvg = d3.mean(
-    _.flatten(
-      _.map(series, function(d) {
-        return _.map(d.threadResultsD, function(d) {
-          return d.ops_per_sec
+  var flatOpsValues = _.flatten(
+    _.map(series, function(d) {
+      if (threadMode == MAXONLY) {
+        // In maxonly mode levels contain single (max) item
+        // Extract just one ops item
+        return d.threadResults[levels[0]][cfg.valueAttr]
+      } else {
+        return _.map(d.threadResults, function(d) {
+          return d[cfg.valueAttr]
         })
-      })
-    )
+      }
+    })
   )
 
-  var multiSeriesMin = _.min(
-    _.flatten(
-      _.map(series, function(d) {
-        return _.map(d.threadResultsD, function(d) {
-          return d.ops_per_sec
-        })
-      })
-    )
-  )
-
-  var multiSeriesMax = _.max(
-    _.flatten(
-      _.map(series, function(d) {
-        return _.map(d.threadResultsD, function(d) {
-          return d.ops_per_sec
-        })
-      })
-    )
-  )
+  var multiSeriesAvg = d3.mean(flatOpsValues)
+  var multiSeriesMin = d3.min(flatOpsValues)
+  var multiSeriesMax = d3.max(flatOpsValues)
 
   var compareMax = 0
   if (compareSamples) {
@@ -158,15 +163,7 @@ var drawSingleTrendChart = function(
 
   // ## CHART STRUCTURE ##
 
-  // Main chart line
-  //var line = d3.svg.line()
-  //  .x(function(d, i) {
-  //    return xScale(i);
-  //  })
-  //  .y(function(d) {
-  //    return yScale(d[cfg.chart.yValueAttr]);
-  //  });
-
+  // multi line
   var mline = d3.svg.line()
     .x(function(d, i) {
       return xScale(i);
@@ -174,9 +171,6 @@ var drawSingleTrendChart = function(
     .y(function(d, i) {
       return yScale(d);
     });
-
-  // Calculate legend x pos based on levels
-  cfg.legend.xPos = (cfg.container.width - levels.length * cfg.legend.step) / 2
 
   if (hasValues) {
     var maxline = d3.svg.line()
@@ -192,9 +186,7 @@ var drawSingleTrendChart = function(
   svg.append('svg:g')
     .attr({
       class: 'axis',
-      transform: 'translate(' +
-        (cfg.margin.left - cfg.yAxis.gap) + ',' + cfg.margin.top +
-      ')'
+      transform: d3Translate(cfg.margin.left - cfg.yAxis.gap, cfg.margin.top)
     })
     .call(yAxis);
 
@@ -202,18 +194,14 @@ var drawSingleTrendChart = function(
 
   var xTicks = svg.append('svg:g')
     .attr({
-      transform: 'translate(' +
-        cfg.margin.left + ',' + cfg.margin.top +
-      ')'
+      transform: d3Translate(cfg.margin.left, cfg.margin.top)
     })
     .selectAll('g')
     .data(xTicksData)
     .enter()
     .append('svg:g')
     .attr({
-      transform: function(d) {
-        return 'translate(' + xScale(getIdx(d)) + ',0)'
-      }
+      transform: function(d) { return d3Translate(xScale(getIdx(d)), 0) }
     })
 
   // X Tick date text
@@ -240,10 +228,7 @@ var drawSingleTrendChart = function(
   var legendG = svg.append('svg:g')
     .attr({
       class: 'legend',
-      transform: 'translate(' +
-        cfg.legend.xPos + ',' +
-        cfg.legend.yPos +
-      ')'
+      transform: d3Translate(cfg.legend.xPos, cfg.legend.yPos)
     })
 
   var legendIter = legendG.selectAll('g')
@@ -252,7 +237,7 @@ var drawSingleTrendChart = function(
     .append('svg:g')
     .attr({
       transform: function(d, i) {
-        return 'translate(' + i * cfg.legend.step + ',0)'
+        return d3Translate(i * cfg.legend.step, 0)
       }
     })
 
@@ -274,7 +259,7 @@ var drawSingleTrendChart = function(
 
   // Chart draw area group
   var chartG = svg.append('svg:g')
-    .attr('transform', 'translate(' + cfg.margin.left + ',' + cfg.margin.top + ')')
+    .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top))
 
   var lines = chartG.selectAll('path')
     .data(levels)
@@ -283,20 +268,13 @@ var drawSingleTrendChart = function(
     .attr({
       d: function(level) {
         return mline(_.map(series, function(d) {
-          return d.threadResultsD[level].ops_per_sec
+          return d.threadResults[level][cfg.valueAttr]
         }))
       },
     })
     .style({
       stroke: function(d, i) { return colors(i) },
     })
-
-  //chartG.append('path')
-  //  .data([series])
-  //  .attr({
-  //    class: 'line',
-  //    d: line
-  //  });
 
   if (hasValues) {
     chartG.append('path')
@@ -313,30 +291,6 @@ var drawSingleTrendChart = function(
         d: minline
       })
   }
-
-  // Adds little dots over the line
-  //chartG.selectAll('.point')
-  //  .data(series)
-  //  .enter()
-  //  .append('svg:circle')
-  //  .attr({
-  //    class: function(d) {
-  //      if (d.task_id == scope.task.id) {
-  //        return 'point current';
-  //      } else if (
-  //        !!scope.comparePerfSample &&
-  //        d.revision == scope.comparePerfSample.sample.revision
-  //      ) {
-  //        return 'point compare';
-  //      }
-  //      return 'point'
-  //    },
-  //    cx: function(d, i) { return xScale(i) },
-  //    cy: function(d) { return yScale(d[cfg.chart.yValueAttr]) },
-  //    r: function(d) {
-  //      return d.task_id == scope.task.id ? 5 : cfg.points.defaultR;
-  //    }
-  //  })
 
   if (compareSamples) {
     for(var j=0; j < compareSamples.length; j++) {
@@ -432,32 +386,13 @@ var drawSingleTrendChart = function(
     }
   }
 
-  function focusPoint(hash) {
-    var idx = _.findIndex(series, function(d) {
-      return d && d.revision == hash
-    })
-    if (!idx) return;
-    var item = series[idx]
-    if (!item) return;
-    // | 0 for fast Math.floor
-    // Just for conveniece
-    var x = xScale(idx) | 0
-
-    var y = yScale(item[cfg.chart.yValueAttr]) | 0
-
-    var toolTipY = cfg.focus.labelOffset.y * ((y > cfg.margin.top) ? 1 : -1.5)
-
-    // List of per thread level value for selected item
-    var values;
-    if (threadMode == 'maxonly') {
-      values = [item.threadResultsD[levels[0]].ops_per_sec];
-    } else {
-      values = _.pluck(item.threadResultsD, 'ops_per_sec');
-    }
-    var maxOps = _.max(values);
-    // List of dot Y positions
-    var yScaledValues = _.map(values, yScale);
-
+  // Returns list of y-positions of ops labels for given
+  // yScaledValues list.
+  function getOpsLabelYPosition(yScaledValues) {
+    // The function assumes that ops/second for threads is always
+    // 16 > 8 > 4 > 1. This assumption should be correct in regular cases
+    // Calculate the most top (the last) label position.
+    // Also checks top margin overlap
     var prevPos = _.last(yScaledValues) + cfg.focus.labelOffset.y;
     if (prevPos < cfg.margin.top) {
       prevPos = cfg.margin.top + 5
@@ -465,34 +400,56 @@ var drawSingleTrendChart = function(
     var textPosList = [prevPos];
     var pos;
 
-    for(var i = yScaledValues.length - 2; i >= 0; i--) {
+    // Calculate all other items positions, based on previous item position
+    // Loop skips the last item (see code above)
+    for (var i = yScaledValues.length - 2; i >= 0; i--) {
       var currentPos = yScaledValues[i] + cfg.focus.labelOffset.y;
       var delta = prevPos - currentPos;
-      var sign = delta >= 0 ? 1 : -1;
-      var abs = delta * sign;
-      if (delta > -15) {
-        var newPos = prevPos + 15;
-      } else { 
-        var newPos = currentPos;
-      }
+      // If labels overlapping, move the label below previous label
+      var newPos = (delta > -cfg.focus.labelOffset.between)
+        ? prevPos + cfg.focus.labelOffset.between
+        : currentPos;
       prevPos = newPos;
       textPosList.push(newPos);
     }
 
+    // Resotre original order
     textPosList.reverse()
+    return textPosList;
+  }
 
-    focusG.attr('transform', 'translate(' + x +',0)')
+  function focusPoint(hash) {
+    var idx = _.findIndex(series, function(d) {
+      return d && d.revision == hash
+    })
+    if (!idx) return;
+    var item = series[idx]
+    if (!item) return;
+
+    var x = xScale(idx)
+
+    // List of per thread level values for selected item
+    var values;
+    if (threadMode == MAXONLY) {
+      values = [item.threadResults[levels[0]][cfg.valueAttr]];
+    } else {
+      values = _.pluck(item.threadResults, cfg.valueAttr);
+    }
+
+    var maxOps = _.max(values);
+    // List of dot Y positions
+    var yScaledValues = _.map(values, yScale);
+    var opsLabelsY = getOpsLabelYPosition(yScaledValues);
+
+    focusG.attr('transform', d3Translate(x, 0))
 
     focusedPoints.attr({
       cy: function(d, i) { return yScaledValues[i] },
     })
 
     focusedText
-      .attr('y', function(d, i) { return textPosList[i] })
+      .attr('y', function(d, i) { return opsLabelsY[i] })
       .text(function (d, i) { return d3.format(',.0f')(values[i])})
-
-    // DATETIME
-    //moment(item.startedAt).format(cfg.format.date)
 
     focusedLine.attr({
       y2: yScale(maxOps),
