@@ -70,7 +70,7 @@ func TestOutputOptions(t *testing.T) {
 }
 
 func TestOutputOptionsIntegrationTableTest(t *testing.T) {
-	// these are integration tests
+	// these are integration tests to test various output configurations used throughout the code base
 	assert := assert.New(t) // nolint
 
 	buf := &bytes.Buffer{}
