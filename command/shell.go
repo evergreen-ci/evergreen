@@ -112,11 +112,16 @@ func (c *shellExec) Execute(ctx context.Context,
 	defer logWriterErr.Close()
 
 	opts := subprocess.OutputOptions{
-		Output:            logWriterInfo,
-		Error:             logWriterErr,
 		SuppressOutput:    c.IgnoreStandardOutput,
 		SuppressError:     c.IgnoreStandardError,
 		SendOutputToError: c.RedirectStandardErrorToOutput,
+	}
+
+	if !opts.SuppressOutput {
+		opts.Output = logWriterInfo
+	}
+	if !opts.SuppressError {
+		opts.Error = logWriterErr
 	}
 
 	env := append(os.Environ(),
