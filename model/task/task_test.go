@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -879,4 +880,77 @@ func TestDisplayTaskUpdates(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(dbTask)
 	assert.Equal(evergreen.TaskStarted, dbTask.Status)
+}
+
+func TestMergeTestResultsBulk(t *testing.T) {
+	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "error clearing collections")
+	assert := assert.New(t) //nolint
+
+	tasks := []Task{
+		{
+			Id:        "task1",
+			Execution: 0,
+		},
+		{
+			Id:        "task2",
+			Execution: 0,
+		},
+		{
+			Id:        "task3",
+			Execution: 0,
+		},
+	}
+
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task1",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task2",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task3",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task1",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 1,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task4",
+		Status:    evergreen.TestFailedStatus,
+		Execution: 0,
+	}).Insert())
+	assert.NoError((&testresult.TestResult{
+		TaskID:    "task1",
+		Status:    evergreen.TestSucceededStatus,
+		Execution: 0,
+	}).Insert())
+
+	out, err := MergeTestResultsBulk(tasks, nil)
+	assert.NoError(err)
+	count := 0
+	for _, t := range out {
+		count += len(t.LocalTestResults)
+	}
+	assert.Equal(4, count)
+
+	query := db.Query(bson.M{
+		testresult.StatusKey: evergreen.TestFailedStatus,
+	})
+	out, err = MergeTestResultsBulk(tasks, &query)
+	assert.NoError(err)
+	count = 0
+	for _, t := range out {
+		count += len(t.LocalTestResults)
+		for _, result := range t.LocalTestResults {
+			assert.Equal(evergreen.TestFailedStatus, result.Status)
+		}
+	}
+	assert.Equal(3, count)
 }

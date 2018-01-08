@@ -61,6 +61,14 @@ func FindByTaskIDAndExecution(taskID string, execution int) ([]TestResult, error
 	return Find(q)
 }
 
+func ByTaskIDs(ids []string) db.Q {
+	return db.Query(bson.M{
+		TaskIDKey: bson.M{
+			"$in": ids,
+		},
+	})
+}
+
 // InsertByTaskIDAndExecution adds task metadata to a TestResult and then writes it to the database.
 func (t *TestResult) InsertByTaskIDAndExecution(taskID string, execution int) error {
 	if taskID == "" {
