@@ -89,6 +89,10 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudMa
 		provider = &ec2OnDemandManager{}
 	case evergreen.ProviderNameEc2Spot:
 		provider = &ec2SpotManager{}
+	case evergreen.ProviderNameEc2OnDemandNew:
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider})
+	case evergreen.ProviderNameEc2SpotNew:
+		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider})
 	case evergreen.ProviderNameDocker:
 		provider = &dockerManager{}
 	case evergreen.ProviderNameOpenstack:
