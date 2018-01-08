@@ -94,7 +94,7 @@ func CollectAllProcesses() []Composer {
 		numThreads = len(procs)
 	}
 
-	results := make([]Composer, len(procs))
+	results := []Composer{}
 	procChan := make(chan *process.Process, len(procs))
 	for _, p := range procs {
 		procChan <- p
