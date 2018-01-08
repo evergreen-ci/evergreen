@@ -850,7 +850,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	if err = scpYmlCommand.SetOutput(output); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
 			"runner":    RunnerName,
-			"operation": "setting up copy script command",
+			"operation": "setting up copy cli config command",
 			"distro":    target.Distro.Id,
 			"host":      target.Host,
 			"output":    output,

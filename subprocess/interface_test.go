@@ -70,10 +70,13 @@ func TestOutputOptions(t *testing.T) {
 }
 
 func TestOutputOptionsIntegrationTableTest(t *testing.T) {
+	// these are integration tests
+	assert := assert.New(t) // nolint
+
 	buf := &bytes.Buffer{}
 	shouldFail := []OutputOptions{
 		{Output: buf, Error: buf},
-		{Output: buf, SendErrorToOutput: true},
+		{Output: buf, SendOutputToError: true},
 	}
 
 	shouldPass := []OutputOptions{
@@ -82,15 +85,13 @@ func TestOutputOptionsIntegrationTableTest(t *testing.T) {
 		{Output: &util.CappedWriter{Buffer: buf, MaxBytes: 1024 * 1024}, SendErrorToOutput: true},
 	}
 
-	assert := assert.New(t) // nolint
-
-	for _, opt := range shouldFail {
-		assert.Error(opt.Validate(), "%+v", opt)
+	for idx, opt := range shouldFail {
+		assert.Error(opt.Validate(), "%d: %+v", idx, opt)
 		grip.Debug(opt)
 	}
 
-	for _, opt := range shouldPass {
-		assert.NoError(opt.Validate(), "%+v", opt)
+	for idx, opt := range shouldPass {
+		assert.NoError(opt.Validate(), "%d: %+v", idx, opt)
 		grip.Debug(opt)
 	}
 
