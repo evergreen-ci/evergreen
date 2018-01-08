@@ -134,30 +134,44 @@ func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subpr
 
 	var output io.WriteCloser
 	var error io.WriteCloser
-	var closer func()
-
-	if c.SystemLog {
-		output = logger.SystemWriter(level.Info)
-		error = logger.SystemWriter(level.Error)
-	} else {
-		output = logger.TaskWriter(level.Info)
-		error = logger.TaskWriter(level.Error)
-	}
 
 	opts := subprocess.OutputOptions{
-		Output:            output,
-		Error:             error,
 		SuppressOutput:    c.IgnoreStandardOutput,
 		SuppressError:     c.IgnoreStandardError,
 		SendOutputToError: c.RedirectStandardErrorToOutput,
 	}
 
-	if err = proc.SetOutput(opts); err != nil {
-		return proc, nil, err
+	if !opts.SuppressOutput {
+		if c.SystemLog {
+			output = logger.SystemWriter(level.Info)
+		} else {
+			output = logger.TaskWriter(level.Info)
+		}
+		opts.Output = output
+
 	}
-	closer = func() {
-		_ = output.Close()
-		_ = error.Close()
+
+	if !opts.SuppressError {
+		if c.SystemLog {
+			error = logger.SystemWriter(level.Error)
+		} else {
+			error = logger.TaskWriter(level.Error)
+		}
+		opts.Error = error
+	}
+
+	closer := func() {
+		if output != nil {
+			_ = output.Close()
+		}
+
+		if error != nil {
+			_ = error.Close()
+		}
+	}
+
+	if err = proc.SetOutput(opts); err != nil {
+		return proc, closer, err
 	}
 
 	return proc, closer, nil
