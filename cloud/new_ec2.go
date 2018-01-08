@@ -72,9 +72,6 @@ type ec2ProviderType int
 const (
 	onDemandProvider ec2ProviderType = iota
 	spotProvider
-
-	// TODO EVG-2415
-	autoProvider
 )
 
 // EC2ManagerOptions are used to construct a new ec2Manager.
