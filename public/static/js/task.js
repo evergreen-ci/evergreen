@@ -435,10 +435,13 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
 
   // Returns URL to task history page with a filter on the particular test
   // and test status enabled.
-  $scope.getTestHistoryUrl = function(project, task, test) {
+  $scope.getTestHistoryUrl = function(project, task, test, taskName) {
+    if (!taskName || taskName === "") {
+      taskName = task.display_name;
+    }
     var url = '/task_history/' +
       encodeURIComponent(project) + '/' +
-      encodeURIComponent(task.display_name) + '?revision=' +
+      encodeURIComponent(taskName) + '?revision=' +
       encodeURIComponent(task.gitspec);
     if (test) {
       url += '#' + encodeURIComponent(test.display_name) + '=' +

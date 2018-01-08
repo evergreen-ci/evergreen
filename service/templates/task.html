@@ -341,7 +341,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     </i>
                   </div>
                   <div class="test-result-name one-liner">
-                    <a ng-href="[[getTestHistoryUrl(project, task, test.test_result)]]">
+                    <a ng-href="[[getTestHistoryUrl(project, task, test.test_result, test.task_name)]]">
                       [[test.test_result.display_name]]
                     </a>
                   </div>
