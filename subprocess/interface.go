@@ -71,6 +71,10 @@ func (o OutputOptions) Validate() error {
 		catcher.Add(errors.New("cannot suppress error if error is defined"))
 	}
 
+	if o.Error == o.Output && !o.errorIsNull() {
+		catcher.Add(errors.New("cannot specify the same value for error and output"))
+	}
+
 	if o.SuppressOutput && o.SendOutputToError {
 		catcher.Add(errors.New("cannot suppress output and redirect it to error"))
 	}
@@ -85,10 +89,6 @@ func (o OutputOptions) Validate() error {
 
 	if o.SendErrorToOutput && o.Output == nil {
 		catcher.Add(errors.New("cannot redirect error to output without a defined output writer"))
-	}
-
-	if o.Error == o.Output && o.Error != ioutil.Discard {
-		catcher.Add(errors.New("cannot specify the same value for error and output"))
 	}
 
 	return catcher.Resolve()
