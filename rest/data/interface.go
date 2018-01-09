@@ -176,5 +176,5 @@ type Connector interface {
 
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
-	TriggerRepotracker(amboy.Queue, *github.PushEvent) error
+	TriggerRepotracker(amboy.Queue, string, *github.PushEvent) error
 }

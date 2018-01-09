@@ -45,7 +45,7 @@ func makeRepotrackerJob() *repotrackerJob {
 
 // NewGithubStatusUpdateJobForBuild creates a job to update github's API from a Build.
 // Status will be reported as 'evergreen-[build variant name]'
-func NewRepotrackerJob(owner, repo, msgID string) amboy.Job {
+func NewRepotrackerJob(msgID, owner, repo string) amboy.Job {
 	job := makeRepotrackerJob()
 	job.Owner = owner
 	job.Repo = repo

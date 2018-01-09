@@ -86,7 +86,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntent() {
 	s.NoError(err)
 
 	s.h.event = event
-	s.h.msgId = "1"
+	s.h.msgID = "1"
 
 	ctx := context.Background()
 	resp, err := s.h.Execute(ctx, s.sc)
@@ -159,7 +159,7 @@ func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
 	s.NoError(err)
 
 	s.h.event = event
-	s.h.msgId = "1"
+	s.h.msgID = "1"
 
 	ctx := context.Background()
 	resp, err := s.h.Execute(ctx, s.sc)

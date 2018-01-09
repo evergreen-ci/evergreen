@@ -33,7 +33,7 @@ func (s *repotrackerJobSuite) TearDownTest() {
 }
 
 func (s *repotrackerJobSuite) TestRepotrackerJob() {
-	j := NewRepotrackerJob("evergreen-ci", "evergreen", "1").(*repotrackerJob)
+	j := NewRepotrackerJob("1", "evergreen-ci", "evergreen").(*repotrackerJob)
 	s.Equal("evergreen-ci", j.Owner)
 	s.Equal("evergreen", j.Repo)
 	s.Equal("repotracker:evergreen-ci/evergreen-1", j.ID())

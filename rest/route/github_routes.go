@@ -24,7 +24,7 @@ type githubHookApi struct {
 	secret []byte
 
 	event interface{}
-	msgId string
+	msgID string
 }
 
 func getGithubHooksRouteManager(queue amboy.Queue, secret []byte) routeManagerFactory {
@@ -61,7 +61,7 @@ func (gh *githubHookApi) Handler() RequestHandler {
 
 func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	eventType := r.Header.Get("X-Github-Event")
-	gh.msgId = r.Header.Get("X-Github-Delivery")
+	gh.msgID = r.Header.Get("X-Github-Delivery")
 
 	if len(gh.secret) == 0 || gh.queue == nil {
 		return rest.APIError{
@@ -111,7 +111,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 
 		if *event.Action == githubActionOpened || *event.Action == githubActionSynchronize ||
 			*event.Action == githubActionReopened {
-			ghi, err := patch.NewGithubIntent(gh.msgId, event)
+			ghi, err := patch.NewGithubIntent(gh.msgID, event)
 			if err != nil {
 				return ResponseData{}, &rest.APIError{
 					StatusCode: http.StatusBadRequest,
@@ -131,7 +131,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 		}
 
 	case *github.PushEvent:
-		return ResponseData{}, sc.TriggerRepotracker(gh.queue, event)
+		return ResponseData{}, sc.TriggerRepotracker(gh.queue, gh.msgID, event)
 	}
 
 	return ResponseData{}, nil
