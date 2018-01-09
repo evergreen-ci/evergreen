@@ -345,10 +345,13 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		b2 := &build.Build{
 			Id: "testBuild2",
 		}
+		b3 := &build.Build{
+			Id: "testBuild3",
+		}
 		dt1 := &task.Task{
 			Id:                  "displayTaskOld",
 			DisplayName:         "displayTask",
-			RevisionOrderNumber: 1,
+			RevisionOrderNumber: 5,
 			Priority:            1,
 			Activated:           true,
 			ActivatedBy:         "user",
@@ -361,7 +364,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		et1 := &task.Task{
 			Id:                  "execTaskOld",
 			DisplayName:         "execTask",
-			RevisionOrderNumber: 1,
+			RevisionOrderNumber: 5,
 			Priority:            1,
 			Activated:           true,
 			ActivatedBy:         "user",
@@ -372,7 +375,7 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		dt2 := &task.Task{
 			Id:                  "displayTaskNew",
 			DisplayName:         "displayTask",
-			RevisionOrderNumber: 2,
+			RevisionOrderNumber: 10,
 			Status:              evergreen.TaskSucceeded,
 			Priority:            1,
 			Activated:           true,
@@ -384,12 +387,46 @@ func TestDeactivatePreviousTask(t *testing.T) {
 		et2 := &task.Task{
 			Id:                  "execTaskNew",
 			DisplayName:         "execTask",
-			RevisionOrderNumber: 2,
+			RevisionOrderNumber: 10,
 			Priority:            1,
 			Activated:           true,
 			ActivatedBy:         "user",
 			BuildId:             b2.Id,
 			Status:              evergreen.TaskSucceeded,
+			Project:             "sample",
+		}
+		dt3 := &task.Task{
+			Id:                  "displayTaskMulti",
+			DisplayName:         "displayTask",
+			RevisionOrderNumber: 4,
+			Status:              evergreen.TaskStarted,
+			Priority:            1,
+			Activated:           true,
+			BuildId:             b3.Id,
+			Project:             "sample",
+			DisplayOnly:         true,
+			ExecutionTasks:      []string{"execTask1", "execTask2"},
+		}
+		et3 := &task.Task{
+			Id:                  "execTask1",
+			DisplayName:         "execTask1",
+			RevisionOrderNumber: 4,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b3.Id,
+			Status:              evergreen.TaskUndispatched,
+			Project:             "sample",
+		}
+		et4 := &task.Task{
+			Id:                  "execTask2",
+			DisplayName:         "execTask2",
+			RevisionOrderNumber: 4,
+			Priority:            1,
+			Activated:           true,
+			ActivatedBy:         "user",
+			BuildId:             b3.Id,
+			Status:              evergreen.TaskStarted,
 			Project:             "sample",
 		}
 		b1.Tasks = []build.TaskCache{
@@ -406,12 +443,23 @@ func TestDeactivatePreviousTask(t *testing.T) {
 				Activated:   true,
 			},
 		}
+		b3.Tasks = []build.TaskCache{
+			{
+				DisplayName: dt3.DisplayName,
+				Id:          dt3.Id,
+				Activated:   true,
+			},
+		}
 		So(b1.Insert(), ShouldBeNil)
 		So(b2.Insert(), ShouldBeNil)
+		So(b3.Insert(), ShouldBeNil)
 		So(dt1.Insert(), ShouldBeNil)
 		So(dt2.Insert(), ShouldBeNil)
+		So(dt3.Insert(), ShouldBeNil)
 		So(et1.Insert(), ShouldBeNil)
 		So(et2.Insert(), ShouldBeNil)
+		So(et3.Insert(), ShouldBeNil)
+		So(et4.Insert(), ShouldBeNil)
 		Convey("deactivating a display task should deactivate its child tasks", func() {
 			So(DeactivatePreviousTasks(dt2.Id, userName), ShouldBeNil)
 			dbTask, err := task.FindOne(task.ById(dt1.Id))
@@ -423,6 +471,22 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			dbBuild, err := build.FindOne(build.ById(b1.Id))
 			So(err, ShouldBeNil)
 			So(dbBuild.Tasks[0].Activated, ShouldBeFalse)
+			Convey("but should not touch any tasks that have started", func() {
+				dbTask, err = task.FindOne(task.ById(dt3.Id))
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				dbTask, err = task.FindOne(task.ById(et3.Id))
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				So(dbTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+				dbTask, err = task.FindOne(task.ById(et4.Id))
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				So(dbTask.Status, ShouldEqual, evergreen.TaskStarted)
+				dbBuild, err := build.FindOne(build.ById(b3.Id))
+				So(err, ShouldBeNil)
+				So(dbBuild.Tasks[0].Activated, ShouldBeTrue)
+			})
 		})
 	})
 }

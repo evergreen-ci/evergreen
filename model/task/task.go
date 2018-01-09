@@ -624,7 +624,7 @@ func (t *Task) UpdateDisplayTask() error {
 
 		if IsFinished(execTask) {
 			hasFinishedTasks = true
-		} else {
+		} else if execTask.IsDispatchable() {
 			hasUnfinishedTasks = true
 		}
 

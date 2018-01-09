@@ -253,12 +253,10 @@ func ByBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVar
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
-func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayNames []string, project string) db.Q {
+func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
-		DisplayNameKey: bson.M{
-			"$in": displayNames,
-		},
+		DisplayNameKey:  displayName,
 		RevisionOrderNumberKey: bson.M{
 			"$lt": revisionOrder,
 		},
