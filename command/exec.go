@@ -170,11 +170,7 @@ func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subpr
 		}
 	}
 
-	if err = proc.SetOutput(opts); err != nil {
-		return proc, closer, err
-	}
-
-	return proc, closer, nil
+	return proc, closer, proc.SetOutput(opts)
 }
 
 func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
