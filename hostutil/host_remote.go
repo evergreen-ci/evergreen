@@ -90,6 +90,15 @@ func RunSSHCommand(ctx context.Context, cmd string, sshOptions []string, host ho
 	)
 
 	if err = proc.SetOutput(opts); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"function":  "RunSSHCommand",
+			"operation": "setting up command output",
+			"distro":    host.Distro.Id,
+			"host":      host.Id,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
+
 		return "", errors.Wrap(err, "problem setting up command output")
 	}
 

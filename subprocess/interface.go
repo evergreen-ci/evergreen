@@ -95,6 +95,10 @@ func (o OutputOptions) Validate() error {
 }
 
 func (o OutputOptions) GetOutput() io.Writer {
+	if o.SendOutputToError {
+		return o.GetError()
+	}
+
 	if o.outputIsNull() {
 		return ioutil.Discard
 	}
@@ -103,6 +107,10 @@ func (o OutputOptions) GetOutput() io.Writer {
 }
 
 func (o OutputOptions) GetError() io.Writer {
+	if o.SendErrorToOutput {
+		return o.GetOutput()
+	}
+
 	if o.errorIsNull() {
 		return ioutil.Discard
 	}
