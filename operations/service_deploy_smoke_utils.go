@@ -159,6 +159,9 @@ func checkTaskByCommit(username, key, commit string) error {
 			return errors.Wrap(err, "error unmarshaling json")
 		}
 
+		if task.Status == evergreen.TaskFailed {
+			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
+		}
 		if task.Status != evergreen.TaskSucceeded {
 			grip.Infof("found task is status %s", task.Status)
 			task = apimodels.APITask{}

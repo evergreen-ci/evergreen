@@ -141,6 +141,16 @@ variables:
             set -o errexit
 
             cd gopath/src/github.com/evergreen-ci/evergreen
+            mkdir -p clients
+            echo "foo" >| clients/version
+
+            cat >> testdata/smoke_config.yml <<EOF
+            log_path: "STDOUT"
+            credentials: {
+              github: "${github_token}",
+            }
+            EOF
+
             ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
             ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
       - func: run-make
@@ -280,13 +290,6 @@ functions:
         github_pr_creator_org: "10gen"
         EOF
 
-        cat >> gopath/src/github.com/evergreen-ci/evergreen/testdata/smoke_config.yml <<EOF
-        log_path: "STDOUT"
-        credentials: {
-          github: "${github_token}",
-        }
-        EOF
-
   set-up-mongodb:
     - command: shell.exec
       type: system
@@ -371,6 +374,9 @@ tasks:
           content_type: application/x-gzip
           permissions: public-read
           display_name: dist-test-${distro_id}.tar.gz
+  - <<: *run-smoke-test
+    name: smoke-test-task
+    tags: ["smoke"]
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
