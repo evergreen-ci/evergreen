@@ -108,8 +108,9 @@ type uiDep struct {
 }
 
 type uiExecTask struct {
-	Id   string `json:"id"`
-	Name string `json:"display_name"`
+	Id     string `json:"id"`
+	Name   string `json:"display_name"`
+	Status string `json:"status"`
 }
 
 type uiTestResult struct {
@@ -286,7 +287,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 				uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				return
 			}
-			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName})
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName, Status: et.ResultStatus()})
 			for _, tr := range et.LocalTestResults {
 				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: &et.Id, TaskName: &et.DisplayName})
 			}
