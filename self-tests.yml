@@ -783,7 +783,6 @@ buildvariants:
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
-      - name: "dist"
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
