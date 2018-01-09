@@ -372,9 +372,6 @@ tasks:
           permissions: public-read
           display_name: dist-test-${distro_id}.tar.gz
   - <<: *run-smoke-test
-    name: smoke-test-task
-    tags: ["smoke"]
-  - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
 

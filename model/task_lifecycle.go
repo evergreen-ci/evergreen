@@ -214,6 +214,13 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 	if err != nil {
 		return err
 	}
+	if t.IsPartOfDisplay() {
+		grip.Error(message.Fields{
+			"message": "attempted to deactivate an execution task",
+			"task":    t.Id,
+			"stack":   message.NewStack(1, "").Raw(),
+		})
+	}
 	displayNames := []string{t.DisplayName}
 	if t.DisplayOnly {
 		var execTasks []task.Task

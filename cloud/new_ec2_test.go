@@ -33,11 +33,13 @@ func (s *EC2Suite) SetupSuite() {
 func (s *EC2Suite) SetupTest() {
 	s.Require().NoError(db.Clear(host.Collection))
 	s.onDemandOpts = &EC2ManagerOptions{
-		client: &awsClientMock{},
+		client:   &awsClientMock{},
+		provider: onDemandProvider,
 	}
 	s.onDemandManager = NewEC2Manager(s.onDemandOpts)
 	s.spotOpts = &EC2ManagerOptions{
-		client: &awsClientMock{},
+		client:   &awsClientMock{},
+		provider: spotProvider,
 	}
 	s.spotManager = NewEC2Manager(s.spotOpts)
 	var ok bool

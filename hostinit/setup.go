@@ -41,11 +41,6 @@ var (
 	ErrHostAlreadyInitializing = errors.New("Host already initializing")
 )
 
-// Longest duration allowed for running setup script.
-var (
-	SSHTimeoutSeconds = int64(120) // 2 minutes
-)
-
 // HostInit is responsible for running setup scripts on Evergreen hosts.
 type HostInit struct {
 	Settings *evergreen.Settings
@@ -173,18 +168,6 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func (init *HostInit) setupReadyHosts(ctx context.Context) error {
-	// set SSH timeout duration
-	if timeoutSecs := init.Settings.HostInit.SSHTimeoutSeconds; timeoutSecs <= 0 {
-		grip.Warning(message.Fields{
-			"message":      "ssh timeout has invalid value",
-			"GUID":         init.GUID,
-			"runner":       RunnerName,
-			"timeout_secs": timeoutSecs,
-		})
-	} else {
-		SSHTimeoutSeconds = timeoutSecs
-	}
-
 	// find all hosts in the uninitialized state
 	uninitializedHosts, err := host.Find(host.IsStarting)
 	if err != nil {
@@ -229,6 +212,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					grip.Info(message.Fields{
 						"GUID":    init.GUID,
 						"message": "attempting to setup host",
+						"distro":  h.Distro.Id,
 						"hostid":  h.Id,
 						"DNS":     h.Host,
 						"runner":  RunnerName,
@@ -242,12 +226,12 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 							"message": "host not ready for setup",
 							"hostid":  h.Id,
 							"DNS":     h.Host,
+							"distro":  h.Distro.Id,
 							"runner":  RunnerName,
 						}
 
 						if err != nil {
-							m["error"] = err.Error()
-							grip.Error(m)
+							grip.Error(message.WrapError(err, m))
 						} else {
 							grip.Info(m)
 						}
@@ -264,6 +248,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						"GUID":    init.GUID,
 						"message": "provisioning host",
 						"runner":  RunnerName,
+						"distro":  h.Distro.Id,
 						"hostid":  h.Id,
 						"DNS":     h.Host,
 					})
@@ -276,6 +261,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 							"message": "provisioning host encountered error",
 							"runner":  RunnerName,
 							"error":   err.Error(),
+							"distro":  h.Distro.Id,
 							"hostid":  h.Id,
 						})
 
@@ -296,6 +282,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						"message": "successfully finished provisioning host",
 						"hostid":  h.Id,
 						"DNS":     h.Host,
+						"distro":  h.Distro.Id,
 						"runner":  RunnerName,
 						"runtime": time.Since(setupStartTime),
 					})
@@ -330,7 +317,8 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	grip.Debug(message.Fields{
 		"message":      "checking host readiness",
 		"runner":       RunnerName,
-		"host":         host.Host,
+		"host_id":      host.Host,
+		"distro":       host.Distro.Id,
 		"id":           host.Id,
 		"local_status": host.Status,
 		"cloud_status": hostStatus,
@@ -504,6 +492,14 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		append([]string{"-P", hostInfo.Port}, sshOptions...))
 
 	if err = scpCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "setting up copy script command",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
 		return errors.Wrap(err, "problem configuring output")
 	}
 
@@ -523,6 +519,14 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 			}))
 			return errors.Wrap(err, "scp-ing script timed out")
 		}
+
+		grip.Notice(message.WrapError(err, message.Fields{
+			"runner":  RunnerName,
+			"command": scpCmd,
+			"distro":  target.Distro.Id,
+			"host":    target.Host,
+		}))
+
 		return errors.Wrapf(err, "error (%v) copying script to remote machine",
 			scpCmdOut.String())
 	}
@@ -832,6 +836,15 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		append([]string{"-P", hostSSHInfo.Port}, sshOptions...))
 
 	if err = scpYmlCommand.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "setting up copy cli config command",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
+
 		return nil, errors.Wrap(err, "problem configuring output")
 	}
 
@@ -878,6 +891,16 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 
 	output := subprocess.OutputOptions{Output: cmdOutput, SendErrorToOutput: true}
 	if err := makeShellCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"operation": "fetch command",
+			"message":   "configuring output for fetch command",
+			"hostname":  hostSSHInfo.Hostname,
+			"distro":    target.Distro.Id,
+			"host_id":   target.Id,
+			"cause":     "programmer error",
+			"output":    output,
+		}))
+
 		return errors.Wrap(err, "problem configuring output for fetch command")
 	}
 

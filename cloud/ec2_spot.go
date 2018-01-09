@@ -21,6 +21,7 @@ import (
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -162,12 +163,24 @@ func (cloudManager *ec2SpotManager) OnUp(host *host.Host) error {
 func (cloudManager *ec2SpotManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, keyPath)
 	if err != nil {
-		return false, err
+		return false, errors.WithStack(err)
 	}
-	reachable, err := hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
-	grip.Debugf("Checking host '%v' ssh reachability: %t", host.Id, reachable)
 
-	return reachable, err
+	m := message.Fields{
+		"host_id":   host.Id,
+		"distro":    host.Distro.Id,
+		"operation": "reachability check",
+	}
+
+	reachable, err := hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
+	if err != nil {
+		grip.Notice(message.WrapError(err, m))
+	} else {
+		m["reachable"] = reachable
+		grip.Debug(m)
+	}
+
+	return reachable, errors.WithStack(err)
 }
 
 //GetInstanceStatus returns an mci-universal status code for the status of

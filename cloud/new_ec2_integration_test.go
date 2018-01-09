@@ -21,7 +21,8 @@ func TestSpotInstanceIntegration(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 	require.NoError(db.Clear(host.Collection))
 	opts := &EC2ManagerOptions{
-		client: &awsClientImpl{},
+		client:   &awsClientImpl{},
+		provider: spotProvider,
 	}
 	m := NewEC2Manager(opts).(*ec2Manager)
 	require.NoError(m.Configure(testConfig))

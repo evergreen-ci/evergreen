@@ -75,8 +75,9 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 	if c.session == nil {
 		c.httpClient = util.GetHttpClient()
 		s, err := session.NewSession(&aws.Config{
-			HTTPClient: c.httpClient,
-			Region:     makeStringPtr(defaultRegion),
+			HTTPClient:  c.httpClient,
+			Region:      makeStringPtr(defaultRegion),
+			Credentials: creds,
 		})
 		if err != nil {
 			return errors.Wrap(err, "error creating session")
