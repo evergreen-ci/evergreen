@@ -21,6 +21,10 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 	}
 	token, err := conf.GetGithubOauthToken()
 	if err != nil {
+		grip.Warning(message.Fields{
+			"runner":  RunnerName,
+			"message": "Github credentials not specified in Evergreen credentials file",
+		})
 		return err
 	}
 
