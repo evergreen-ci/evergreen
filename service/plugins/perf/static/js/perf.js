@@ -648,7 +648,6 @@ var drawTrendGraph = function(
   scope.locked = false;
 
   for (var i = 0; i < tests.length; i++) {
-    //if (i > 0) continue;
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
     var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;

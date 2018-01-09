@@ -168,7 +168,7 @@ var drawSingleTrendChart = function(params) {
     .x(function(d, i) {
       return xScale(i);
     })
-    .y(function(d, i) {
+    .y(function(d) {
       return yScale(d);
     });
 
@@ -429,12 +429,9 @@ var drawSingleTrendChart = function(params) {
     var x = xScale(idx)
 
     // List of per thread level values for selected item
-    var values;
-    if (threadMode == MAXONLY) {
-      values = [item.threadResults[levels[0]][cfg.valueAttr]];
-    } else {
-      values = _.pluck(item.threadResults, cfg.valueAttr);
-    }
+    var values = threadMode == MAXONLY
+      ? [item.threadResults[levels[0]][cfg.valueAttr]]
+      : _.pluck(item.threadResults, cfg.valueAttr);
 
     var maxOps = _.max(values);
     // List of dot Y positions
