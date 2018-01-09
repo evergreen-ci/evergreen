@@ -173,4 +173,8 @@ type Connector interface {
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.PatchDefinition, error)
+
+	// TriggerRepotracker creates an amboy job to get the commits from a
+	// Github Push Event
+	TriggerRepotracker(amboy.Queue, *github.PushEvent) error
 }
