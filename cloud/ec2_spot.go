@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	awssdk "github.com/aws/aws-sdk-go/aws"
@@ -464,10 +463,7 @@ func (cloudManager *ec2SpotManager) CostForDuration(h *host.Host, start, end tim
 	if err != nil {
 		return 0, err
 	}
-	os := osLinux
-	if strings.Contains(h.Distro.Arch, "windows") {
-		os = osWindows
-	}
+	os := getOsName(h)
 	ebsCost, err := blockDeviceCosts(ec2Handle, instance.BlockDevices, end.Sub(start))
 	if err != nil {
 		return 0, errors.Wrap(err, "calculating block device costs")

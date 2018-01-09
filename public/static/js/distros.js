@@ -20,6 +20,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     'id': 'ec2-spot-new',
     'display': 'EC2 Spot (Beta)'
   }, {
+    'id': 'ec2-auto',
+    'display': 'EC2 Auto (Beta)'
+  }, {
     'id': 'static',
     'display': 'Static IP/VM'
   }, {
