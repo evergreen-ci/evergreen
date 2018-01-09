@@ -25,7 +25,7 @@ tasks:
       - command: simple.exec
         params: 
           working_dir: archive
-          binary: /usr/bin/bash
+          binary: /bin/bash
           args: 
             - "-c"
             - "touch foo"
