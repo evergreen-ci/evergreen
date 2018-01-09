@@ -349,7 +349,7 @@ func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []st
 	}
 	return append(patchCommands, []string{
 		fmt.Sprintf("git apply --stat '%v' || true", patchPath),
-		fmt.Sprintf("git apply --binary --whitespace=fix < '%v'", patchPath),
+		fmt.Sprintf("git apply --binary --whitespace=fix --index < '%v'", patchPath),
 	}...)
 }
 
