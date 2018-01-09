@@ -509,11 +509,6 @@ function TrendSamples(samples){
         return d.ops_per_sec
       })
 
-      // Skip invalid items
-      if (rec.start == undefined) {
-        continue
-      }
-
       this.seriesByName[rec.name].push({
         revision: sample.revision,
         task_id: sample.task_id,
@@ -657,8 +652,6 @@ var drawTrendGraph = function(
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
     var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
-    // Skip corrupted items
-    if (series == undefined) continue;
 
     drawSingleTrendChart({
       config: PerfChartService.cfg, 

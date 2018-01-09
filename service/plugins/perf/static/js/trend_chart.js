@@ -97,7 +97,7 @@ var drawSingleTrendChart = function(params) {
 
   var allLevels = _.keys(series[0].threadResults)
   var levels = threadMode == MAXONLY
-    ? [d3.max(allLevels)]
+    ? [''+_.max(allLevels, function(d) { return +d })]
     : allLevels
 
   // Calculate legend x pos based on levels
@@ -422,7 +422,7 @@ var drawSingleTrendChart = function(params) {
     var idx = _.findIndex(series, function(d) {
       return d && d.revision == hash
     })
-    if (!idx) return;
+    if (idx == undefined) return;
     var item = series[idx]
     if (!item) return;
 
