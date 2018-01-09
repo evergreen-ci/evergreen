@@ -129,6 +129,9 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 		} else if *event.Action == githubActionClosed {
 			return ResponseData{}, sc.AbortPatchesFromPullRequest(event)
 		}
+
+	case *github.PushEvent:
+		return ResponseData{}, sc.TriggerRepotracker(gh.queue, event)
 	}
 
 	return ResponseData{}, nil
