@@ -88,10 +88,11 @@ func (s *shellExecuteCommandSuite) TestCancellingContextShouldCancelCommand() {
 		Script:     "sleep 60",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
-	ctx, cancel := context.WithTimeout(s.ctx, time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Nanosecond)
+	time.Sleep(time.Millisecond)
 	defer cancel()
 
 	err := cmd.Execute(ctx, s.comm, s.logger, s.conf)
-	s.Contains("shell command interrupted", err.Error())
+	s.Contains("context deadline exceeded", err.Error())
 	s.NotContains("error while stopping process", err.Error())
 }
