@@ -214,35 +214,39 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 	if err != nil {
 		return err
 	}
-	if t.IsPartOfDisplay() {
-		grip.Error(message.Fields{
-			"message": "attempted to deactivate an execution task",
-			"task":    t.Id,
-			"stack":   message.NewStack(1, "").Raw(),
-		})
-	}
-	displayNames := []string{t.DisplayName}
-	if t.DisplayOnly {
-		var execTasks []task.Task
-		execTasks, err = task.Find(task.ByIds(t.ExecutionTasks))
-		if err != nil {
-			return errors.Wrapf(err, "error retrieving execution task for %s", t.Id)
-		}
-		for _, et := range execTasks {
-			displayNames = append(displayNames, et.DisplayName)
-		}
-	}
 	statuses := []string{evergreen.TaskUndispatched}
 	allTasks, err := task.FindWithDisplayTasks(task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
-		displayNames,
+		t.DisplayName,
 		t.Project,
 	))
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error finding tasks to deactivate for task %s", t.Id)
 	}
+	extraTasks := []task.Task{}
+	if t.DisplayOnly {
+		for _, dt := range allTasks {
+			var execTasks []task.Task
+			execTasks, err = task.FindWithDisplayTasks(task.ByIds(dt.ExecutionTasks))
+			if err != nil {
+				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
+			}
+			canDeactivate := true
+			for _, et := range execTasks {
+				if task.IsFinished(et) || task.IsAbortable(et) {
+					canDeactivate = false
+					break
+				}
+			}
+			if canDeactivate {
+				extraTasks = append(extraTasks, execTasks...)
+			}
+		}
+	}
+	allTasks = append(allTasks, extraTasks...)
+
 	for _, t := range allTasks {
 		if evergreen.IsPatchRequester(t.Requester) {
 			// EVG-948, the query depends on patches not
