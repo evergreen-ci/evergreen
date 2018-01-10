@@ -20,6 +20,7 @@ type ServiceFlags struct {
 	RepotrackerDisabled     bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
 	SchedulerDisabled       bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
 	GithubPRTestingDisabled bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
+	GithubPushEventDisabled bool `bson:"github_push_event_disabled" json:"github_push_event_disabled"`
 }
 
 // supported banner themes in Evergreen
