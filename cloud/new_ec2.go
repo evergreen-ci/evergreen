@@ -72,6 +72,7 @@ type ec2ProviderType int
 const (
 	onDemandProvider ec2ProviderType = iota
 	spotProvider
+	autoProvider
 )
 
 // EC2ManagerOptions are used to construct a new ec2Manager.
@@ -281,7 +282,11 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	defer m.client.Close()
 
 	var resources []*string
-	if m.provider == onDemandProvider {
+	provider, err := m.getProvider(h, ec2Settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid provider")
+	}
+	if provider == onDemandProvider {
 		resources, err = m.spawnOnDemandHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning on-demand host"
@@ -293,7 +298,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 			}))
 			return nil, errors.Wrap(err, msg)
 		}
-	} else if m.provider == spotProvider {
+	} else if provider == spotProvider {
 		resources, err = m.spawnSpotHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning spot host"
@@ -304,8 +309,6 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 				"distro":        h.Distro.Id,
 			}))
 		}
-	} else {
-		return nil, errors.New("can only spawn on-demand or spot")
 	}
 
 	tags := makeTags(h)

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -24,16 +25,17 @@ type timeRange struct {
 type cachingPriceFetcher struct {
 	ec2Prices map[odInfo]float64
 	ebsPrices map[string]float64
-	m         sync.Mutex
+	sync.Mutex
 }
 
 var pkgCachingPriceFetcher *cachingPriceFetcher
 
+func init() {
+	pkgCachingPriceFetcher = new(cachingPriceFetcher)
+}
+
 func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
-	os := osLinux
-	if strings.Contains(h.Distro.Arch, "windows") {
-		os = osWindows
-	}
+	os := getOsName(h)
 	if isHostOnDemand(h) {
 		instance, err := client.GetInstanceInfo(h.Id)
 		if err != nil {
@@ -61,8 +63,8 @@ func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t tim
 }
 
 func (cpf *cachingPriceFetcher) getEC2OnDemandCost(os osType, instance, region string) (float64, error) {
-	cpf.m.Lock()
-	defer cpf.m.Unlock()
+	cpf.Lock()
+	defer cpf.Unlock()
 	if cpf.ec2Prices == nil {
 		if err := cpf.cacheEc2Prices(); err != nil {
 			return 0, errors.Wrap(err, "loading On Demand price data")
@@ -93,7 +95,7 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 	if err != nil {
 		return errors.Wrapf(err, "fetching %v", endpoint)
 	}
-	grip.Debug("Parsing On Demand pricing")
+	grip.Debug("Parsing on-demand pricing")
 	details := struct {
 		Terms    Terms
 		Products map[string]struct {
@@ -128,10 +130,76 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 			}] = price
 		}
 	}
+	grip.Debug("Finished parsing on-demand pricing")
 	return nil
 }
 
+func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSClient, settings *NewEC2ProviderSettings, os osType) (float64, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
+	osName := string(os)
+	if settings.IsVpc {
+		osName += " (Amazon VPC)"
+	}
+	grip.Debug(message.Fields{
+		"message":       "getting spot history",
+		"instance_type": settings.InstanceType,
+		"os_name":       osName,
+	})
+	prices, err := client.DescribeSpotPriceHistory(&ec2.DescribeSpotPriceHistoryInput{
+		// passing a future start time gets the latest price only
+		StartTime:           makeTimePtr(time.Now().UTC().Add(24 * time.Hour)),
+		InstanceTypes:       []*string{makeStringPtr(settings.InstanceType)},
+		ProductDescriptions: []*string{makeStringPtr(osName)},
+	})
+	if err != nil {
+		return 0, errors.Wrap(err, "error getting spot price history")
+	}
+	if len(prices.SpotPriceHistory) == 0 {
+		return 0, errors.New("no prices found")
+	}
+	var min float64
+	for i := range prices.SpotPriceHistory {
+		p, err := strconv.ParseFloat(*prices.SpotPriceHistory[i].SpotPrice, 0)
+		if err != nil {
+			return 0, errors.Wrap(err, "error parsing spot price")
+		}
+		if min == 0 || p < min {
+			min = p
+		}
+	}
+	return min, nil
+}
+
+func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettings) (ec2ProviderType, error) {
+	if m.provider == spotProvider {
+		return spotProvider, nil
+	}
+	if m.provider == onDemandProvider {
+		return onDemandProvider, nil
+	}
+	if m.provider == autoProvider {
+		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
+		if err != nil {
+			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
+		}
+
+		spotPrice, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(m.client, ec2settings, getOsName(h))
+		if err != nil {
+			return 0, errors.Wrap(err, "error getting latest lowest spot price")
+		}
+		if spotPrice < onDemandPrice {
+			ec2settings.BidPrice = onDemandPrice
+			return spotProvider, nil
+		}
+		return onDemandProvider, nil
+	}
+	return 0, errors.Errorf("provider is %d, expected %d, %d, or %d", m.provider, onDemandProvider, spotProvider, autoProvider)
+}
+
 func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
 	instance, err := client.GetInstanceInfo(h.Id)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
@@ -166,8 +234,6 @@ func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t tim
 // ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
 // EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.
 func (cpf *cachingPriceFetcher) ebsCost(region string, size int64, duration time.Duration) (float64, error) {
-	cpf.m.Lock()
-	defer cpf.m.Unlock()
 	if cpf.ebsPrices == nil {
 		if err := cpf.cacheEBSPrices(); err != nil {
 			return 0, errors.Wrap(err, "error fetching EBS prices")
@@ -337,4 +403,11 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(client AWSClient,
 		}
 	}
 	return prices, nil
+}
+
+func getOsName(h *host.Host) osType {
+	if strings.Contains(h.Distro.Arch, "windows") {
+		return osWindows
+	}
+	return osLinux
 }

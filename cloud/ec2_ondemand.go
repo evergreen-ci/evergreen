@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -358,10 +357,7 @@ func (cloudManager *ec2OnDemandManager) CostForDuration(h *host.Host, start, end
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
-	os := osLinux
-	if strings.Contains(h.Distro.Arch, "windows") {
-		os = osWindows
-	}
+	os := getOsName(h)
 	dur := end.Sub(start)
 	region := azToRegion(instance.AvailabilityZone)
 	iType := instance.InstanceType
