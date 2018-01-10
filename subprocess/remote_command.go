@@ -63,23 +63,7 @@ func (rc *remoteCmd) Run(ctx context.Context) error {
 		grip.Warningf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 
-	errChan := make(chan error)
-	go func() {
-		select {
-		case errChan <- rc.Cmd.Wait():
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err = rc.Cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"operation '%s' was canceled and terminated.",
-			rc.CmdString)
-	case err = <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(rc.Cmd.Wait())
 }
 
 func (rc *remoteCmd) SetOutput(opts OutputOptions) error {

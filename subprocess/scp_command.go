@@ -64,23 +64,7 @@ func (self *scpCommand) Run(ctx context.Context) error {
 		grip.Warningf("SCPCommand(%s) has nil Cmd or Cmd.Process in Run()", self.Id)
 	}
 
-	errChan := make(chan error)
-	go func() {
-		select {
-		case errChan <- errors.WithStack(self.Cmd.Wait()):
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err := self.Cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"scp operation '%s=>%s' was canceled and terminated.",
-			self.Source, self.Dest)
-	case err := <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(self.Cmd.Wait())
 }
 
 func (self *scpCommand) Wait() error {

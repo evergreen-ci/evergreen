@@ -43,23 +43,7 @@ func (lc *localCmd) Run(ctx context.Context) error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
-	errChan := make(chan error)
-	go func() {
-		select {
-		case errChan <- lc.cmd.Wait():
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err = lc.cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"operation '%s' was canceled and terminated.",
-			lc.CmdString)
-	case err = <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(lc.cmd.Wait())
 }
 
 func (lc *localCmd) SetOutput(opts OutputOptions) error {
