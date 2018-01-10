@@ -59,13 +59,12 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	}
 
 	if err = remoteCommand.Run(ctx); err != nil {
-		grip.Debug(message.WrapError(err, message.Field{
+		grip.Debug(message.WrapError(err, message.Fields{
 			"message":  "problem running check ssh response",
 			"command":  "echo hi",
 			"host_id":  hostObject.Id,
 			"hostname": hostInfo.Hostname,
 			"distro":   hostObject.Distro.Id,
-			"host_id":  hostObject.Id,
 			"canceled": ctx.Err() != nil,
 		}))
 
