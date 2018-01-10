@@ -313,6 +313,7 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
 	provider, err := s.m.getProvider(h, settings)
+	s.NoError(err)
 	if m4LargeSpot < m4LargeOnDemand {
 		s.Equal(spotProvider, provider)
 	} else {
@@ -322,6 +323,7 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
 	provider, err = s.m.getProvider(h, settings)
+	s.NoError(err)
 	if t2MicroSpot < t2MicroOnDemand {
 		s.Equal(spotProvider, provider)
 	} else {
@@ -331,6 +333,7 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	settings.InstanceType = "t1.micro"
 	settings.IsVpc = false
 	provider, err = s.m.getProvider(h, settings)
+	s.NoError(err)
 	if t1MicroSpot < t1MicroOnDemand {
 		s.Equal(spotProvider, provider)
 	} else {

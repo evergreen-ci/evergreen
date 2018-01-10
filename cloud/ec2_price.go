@@ -154,6 +154,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSCli
 		"os_name":       osName,
 	})
 	prices, err := client.DescribeSpotPriceHistory(&ec2.DescribeSpotPriceHistoryInput{
+		// passing a future start time gets the latest price only
 		StartTime:           makeTimePtr(time.Now().UTC().Add(24 * time.Hour)),
 		InstanceTypes:       []*string{makeStringPtr(settings.InstanceType)},
 		ProductDescriptions: []*string{makeStringPtr(osName)},
@@ -193,6 +194,9 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 		}
 
 		spotPrice, err := fetcher.getLatestLowestSpotCostForInstance(m.client, ec2settings, getOsName(h))
+		if err != nil {
+			return 0, errors.Wrap(err, "error getting latest lowest spot price")
+		}
 		if spotPrice < onDemandPrice {
 			ec2settings.BidPrice = onDemandPrice
 			return spotProvider, nil
