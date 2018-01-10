@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	nrgorilla "github.com/newrelic/go-agent/_integrations/nrgorilla/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/urfave/negroni"
@@ -74,6 +75,19 @@ func startWebService() cli.Command {
 				uiHandler = csrf.Protect([]byte(settings.Ui.CsrfKey), errorHandler)(uiHandler)
 			}
 			uiServer := service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
+
+			newRelic, err := settings.NewRelic.SetUp()
+			if newRelic == nil || err != nil {
+				grip.Debug(message.WrapError(err, message.Fields{
+					"message": "skipping new relic setup",
+				}))
+			} else {
+				grip.Info(message.Fields{
+					"message":          "successfully set up new relic",
+					"application_name": settings.NewRelic.ApplicationName,
+				})
+				nrgorilla.InstrumentRoutes(router, newRelic)
+			}
 
 			catcher := grip.NewBasicCatcher()
 			apiWait := make(chan struct{})
