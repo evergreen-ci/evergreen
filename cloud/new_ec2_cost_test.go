@@ -275,40 +275,41 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	settings := &NewEC2ProviderSettings{}
 	s.m.provider = autoProvider
 
-	fetcher := getPkgCachingPriceFetcher()
+	if pkgCachingPriceFetcher == nil {
+		pkgCachingPriceFetcher = new(cachingPriceFetcher)
+	}
+	pkgCachingPriceFetcher.Lock()
+	defer pkgCachingPriceFetcher.Unlock()
 
-	m4LargeOnDemand, err := fetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
+	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
 	s.InDelta(.1, m4LargeOnDemand, .05)
 	s.NoError(err)
 
-	t2MicroOnDemand, err := fetcher.getEC2OnDemandCost(getOsName(h), "t2.micro", defaultRegion)
+	t2MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "t2.micro", defaultRegion)
 	s.InDelta(.0116, t2MicroOnDemand, .01)
 	s.NoError(err)
 
-	t1MicroOnDemand, err := fetcher.getEC2OnDemandCost(getOsName(h), "t1.micro", defaultRegion)
+	t1MicroOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "t1.micro", defaultRegion)
 	s.InDelta(.0116, t1MicroOnDemand, .01)
 	s.NoError(err)
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
-	m4LargeSpot, err := fetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	m4LargeSpot, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
 	s.True(m4LargeSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
-	t2MicroSpot, err := fetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	t2MicroSpot, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
 	s.True(t2MicroSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t1.micro"
 	settings.IsVpc = false
-	t1MicroSpot, err := fetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	t1MicroSpot, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
 	s.True(t1MicroSpot > 0)
 	s.NoError(err)
-
-	// getProvider() will use the pkgCachingPriceFetcher, so we release the resource here
-	putPkgCachingPriceFetcher(fetcher)
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true

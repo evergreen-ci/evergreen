@@ -30,21 +30,6 @@ type cachingPriceFetcher struct {
 
 var pkgCachingPriceFetcher *cachingPriceFetcher
 
-func getPkgCachingPriceFetcher() *cachingPriceFetcher {
-	if pkgCachingPriceFetcher == nil {
-		pkgCachingPriceFetcher = new(cachingPriceFetcher)
-	}
-	pkgCachingPriceFetcher.Lock()
-	return pkgCachingPriceFetcher
-}
-
-func putPkgCachingPriceFetcher(fetcher *cachingPriceFetcher) {
-	defer fetcher.Unlock()
-	if fetcher != pkgCachingPriceFetcher {
-		grip.EmergencyPanic("fetcher passed to putPkgCachingPriceFetcher is not package fetcher")
-	}
-}
-
 func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	os := getOsName(h)
 	if isHostOnDemand(h) {
@@ -186,14 +171,17 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
-		fetcher := getPkgCachingPriceFetcher()
-		defer putPkgCachingPriceFetcher(fetcher)
-		onDemandPrice, err := fetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
+		if pkgCachingPriceFetcher == nil {
+			pkgCachingPriceFetcher = new(cachingPriceFetcher)
+		}
+		pkgCachingPriceFetcher.Lock()
+		defer pkgCachingPriceFetcher.Unlock()
+		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}
 
-		spotPrice, err := fetcher.getLatestLowestSpotCostForInstance(m.client, ec2settings, getOsName(h))
+		spotPrice, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(m.client, ec2settings, getOsName(h))
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting latest lowest spot price")
 		}
