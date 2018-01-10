@@ -52,7 +52,7 @@ func (s *AdminSuite) TestServiceFlags() {
 		TaskrunnerDisabled:      true,
 		RepotrackerDisabled:     true,
 		SchedulerDisabled:       true,
-		GithubWebhookPushEvent:  true,
+		GithubPRTestingDisabled: false,
 		GithubPushEventDisabled: true,
 	}
 
@@ -79,7 +79,7 @@ func (s *AdminSuite) TestUpsert() {
 			TaskrunnerDisabled:      false,
 			RepotrackerDisabled:     false,
 			SchedulerDisabled:       false,
-			GithubWebhookPushEvent:  false,
+			GithubPRTestingDisabled: false,
 			GithubPushEventDisabled: false,
 		},
 	}

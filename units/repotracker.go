@@ -5,12 +5,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +59,21 @@ func NewRepotrackerJob(msgID, owner, repo string) amboy.Job {
 func (j *repotrackerJob) Run() {
 	defer j.MarkComplete()
 
-	settings := evergreen.GetEnvironment().Settings()
+	adminSettings, err := admin.GetSettings()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		return
+	}
+	if adminSettings.ServiceFlags.GithubPushEventDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     repotrackerJobName,
+			"message": "github push events triggering repotracker is disabled",
+		})
+		j.AddError(errors.New("github push events triggering repotracker is disabled"))
+		return
+	}
+
+	settings := j.env.Settings()
 	if settings == nil {
 		j.AddError(errors.New("settings is empty"))
 		return
@@ -68,7 +84,7 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
-	ref, err := fetchRef(j.Owner, j.Repo)
+	ref, err := fetchProjectRefByRepo(j.Owner, j.Repo)
 	if err != nil {
 		j.AddError(err)
 		return
@@ -83,14 +99,15 @@ func (j *repotrackerJob) Run() {
 
 	if err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
-			"source": "repotracker-hook",
+			"job":    repotrackerJobName,
+			"job_id": j.ID(),
 			"repo":   fmt.Sprintf("%s/%s", j.Owner, j.Repo),
 		}))
 		j.AddError(err)
 	}
 }
 
-func fetchRef(owner, repo string) (*model.ProjectRef, error) {
+func fetchProjectRefByRepo(owner, repo string) (*model.ProjectRef, error) {
 	ref, err := model.FindOneProjectRefByRepo(owner, repo)
 	if err != nil {
 		return nil, err

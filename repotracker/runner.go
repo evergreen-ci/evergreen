@@ -87,7 +87,7 @@ func runRepoTracker(config *evergreen.Settings) error {
 			"runner":  RunnerName,
 			"message": "Github credentials not specified in Evergreen credentials file",
 		}))
-		return err
+		return errors.WithStack(err)
 	}
 	if !CheckGithubAPIResources(token) {
 		return errors.New("github API is is not ready to run the repotracker")

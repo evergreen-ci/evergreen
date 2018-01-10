@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -32,7 +34,7 @@ func (s *repotrackerJobSuite) TearDownTest() {
 	evergreen.ResetEnvironment()
 }
 
-func (s *repotrackerJobSuite) TestRepotrackerJob() {
+func (s *repotrackerJobSuite) TestJob() {
 	j := NewRepotrackerJob("1", "evergreen-ci", "evergreen").(*repotrackerJob)
 	s.Equal("evergreen-ci", j.Owner)
 	s.Equal("evergreen", j.Repo)
@@ -41,4 +43,20 @@ func (s *repotrackerJobSuite) TestRepotrackerJob() {
 	s.Error(j.Error())
 	s.Equal("not found", j.Error().Error())
 	s.True(j.Status().Completed)
+}
+
+func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
+	s.NoError(db.Clear(admin.Collection))
+
+	flags := admin.ServiceFlags{
+		GithubPushEventDisabled: true,
+	}
+	s.NoError(admin.SetServiceFlags(flags))
+
+	job := NewRepotrackerJob("1", "evergreen-ci", "evergreen")
+	job.Run()
+
+	s.Error(job.Error())
+	s.Contains(job.Error().Error(), "github push events triggering repotracker is disabled")
+	s.NoError(db.Clear(admin.Collection))
 }
