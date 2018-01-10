@@ -445,16 +445,16 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 	return "", errors.New("no github token in settings")
 }
 
-func (s *Settings) SetUpNewRelic() (*newrelic.Application, error) {
-	if s.NewRelic.ApplicationName == "" || s.NewRelic.LicenseKey == "" {
+func (n *NewRelicConfig) SetUp() (newrelic.Application, error) {
+	if n.ApplicationName == "" || n.LicenseKey == "" {
 		return nil, nil
 	}
-	config := newrelic.NewConfig(s.NewRelic.ApplicationName, s.NewRelic.LicenseKey)
+	config := newrelic.NewConfig(n.ApplicationName, n.LicenseKey)
 	app, err := newrelic.NewApplication(config)
 	if err != nil || app == nil {
 		return nil, errors.Wrap(err, "error creating New Relic application")
 	}
-	return &app, err
+	return app, err
 }
 
 // ConfigValidator is a type of function that checks the settings

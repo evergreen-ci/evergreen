@@ -76,7 +76,7 @@ func startWebService() cli.Command {
 			}
 			uiServer := service.GetServer(settings.Ui.HttpListenAddr, uiHandler)
 
-			newRelic, err := settings.SetUpNewRelic()
+			newRelic, err := settings.NewRelic.SetUp()
 			if newRelic == nil || err != nil {
 				grip.Debug(message.WrapError(err, message.Fields{
 					"message": "skipping new relic setup",
@@ -86,7 +86,7 @@ func startWebService() cli.Command {
 					"message":          "successfully set up new relic",
 					"application_name": settings.NewRelic.ApplicationName,
 				})
-				nrgorilla.InstrumentRoutes(router, *newRelic)
+				nrgorilla.InstrumentRoutes(router, newRelic)
 			}
 
 			catcher := grip.NewBasicCatcher()
