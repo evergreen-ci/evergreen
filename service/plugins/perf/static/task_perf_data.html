@@ -234,15 +234,14 @@
         <h4> <i ng-class="isGraphHidden(k) ? 'fa fa-caret-right' : 'fa fa-caret-down'" ng-click="toggleGraph(k)"></i>&nbsp;[[k]]</h4>
         <div class="row" ng-show="!isGraphHidden(k)">
           <div class="col-lg-1">
-            <div>
-              <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
-              <div>ops per sec: <b>[[hoverSamples[k].ops_per_sec | number:0]]</b> </div>
-              <div ng-show="!comparePerfSample">
-                <button ng-click="addComparisonHash(hoverSamples[k].revision)">Compare</button>
-              </div>
-              <div ng-repeat="compareSamp in comparePerfSamples" ng-show="hoverSamples">
-                <b class="hover-compare-metrics" ng-style="{backgroundColor:percentToColor(100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)))}">[[100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)) | number:1]]% vs [[compareSamp.getLegendName()]] </b>
-              </div>
+            <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
+            <div>ops per sec:</div>
+            <div><b>[[hoverSamples[k].ops_per_sec | number:0]]</b></div>
+            <div ng-show="!comparePerfSample">
+              <button ng-click="addComparisonHash(hoverSamples[k].revision)">Compare</button>
+            </div>
+            <div ng-repeat="compareSamp in comparePerfSamples" ng-show="hoverSamples">
+              <b class="hover-compare-metrics" ng-style="{backgroundColor:percentToColor(100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)))}">[[100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)) | number:1]]% vs [[compareSamp.getLegendName()]] </b>
             </div>
           </div>
           <div class="col-lg-3 perf-trendchart" id="perf-trendchart-[[cleanId(task.id)]]-[[$index]]"></div>

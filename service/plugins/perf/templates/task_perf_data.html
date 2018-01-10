@@ -2,7 +2,6 @@
   <style>
     .line {
       fill: none;
-      stroke: steelblue;
       stroke-width: 1.5px;
     }
 
@@ -14,11 +13,6 @@
 
     .perf-chart-wrapper{
       display:inline-block;
-    }
-
-    .focus circle {
-      fill: none;
-      stroke: steelblue;
     }
 
     .perf-panel{
@@ -57,8 +51,9 @@
     }
 
     .perf-chart {
-      margin-top:5px;
-      display:inline-block;
+      margin-top: 5px;
+      display: inline-block;
+      width: auto;
     }
 
     .perf-trendchart .x-tick-label {
@@ -78,6 +73,10 @@
 
     .perf-trendchart .focus-text {
       font-weight: bold;
+    }
+
+    .perf-trendchart-sidebar {
+      width: 150px;
     }
 
     .perf-table {
@@ -249,14 +248,28 @@
       </table>
     </div>
     <div ng-show="perftab==2">
+      <h5>Thread Levels:</h5>
+      <div>
+        <div ng-repeat="option in threadLevelsRadio.options">
+          <label>
+            <input
+              type="radio"
+              ng-model="threadLevelsRadio.value"
+              value="[[option.key]]"
+              name="threadlevels"
+            />&nbsp;[[option.val]]
+          </label>
+        </div>
+      </div>
       <div class="muted" ng-show="!locked">click on a graph to lock to a commit</div>
       <div class="perf-trendchart-wrapper" ng-repeat="k in perfSample.testNames()">
         <h4> <i class="fa" ng-class="isGraphHidden(k) ? 'fa-caret-right' : 'fa-caret-down'" ng-click="toggleGraph(k)"></i>&nbsp;[[k]]</h4>
         <div class="row" ng-show="!isGraphHidden(k)">
-          <div class="col-lg-1">
-            <div>
+          <div class="col-lg-1 perf-trendchart-sidebar">
               <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
-              <div>ops per sec: <b>[[hoverSamples[k].ops_per_sec | number:0]]</b> </div>
+              <div>[[dateLabel]]</div>
+              <div>ops per sec:</div>
+              <div><b>[[hoverSamples[k].ops_per_sec | number:0]]</b> </div>
               <div ng-show="!comparePerfSample">
                 <button ng-click="addComparisonHash(hoverSamples[k].revision)">Compare</button>
               </div>
@@ -264,7 +277,6 @@
                 <b class="hover-compare-metrics" ng-style="{backgroundColor:percentToColor(100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)))}">[[100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)) | number:1]]% vs [[compareSamp.getLegendName()]] </b>
               </div>
             </div>
-          </div>
           <div class="col-lg-3 perf-trendchart" id="perf-trendchart-[[cleanId(task.id)]]-[[$index]]"></div>
         </div>
       </div>

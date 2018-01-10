@@ -1,54 +1,121 @@
-// TODO Add basic encapsulation to the module
-// TODO Create AngularJS directive
+// Helper function
+function d3Translate(x, y) {
+  return 'translate(' + x + ',' + y + ')';
+}
 
-var drawSingleTrendChart = function(
-  // TODO idx should be passed in different manner
-  // TODO Use object instead of positional args
-  series, key, scope, taskId, compareSamples, idx
-) {
-  var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + idx;
-
-  document.getElementById(containerId).innerHTML = '';
-
+mciModule.factory('PerfChartService', function() {
   var cfg = {
     container: {
       width: 960,
-      height: 200
+      height: 222
     },
     margin: {
-      top: 20,
+      top: 12,
       right: 50,
-      bottom: 30,
+      bottom: 60,
       left: 80
     },
     points: {
-      defaultR: 2,
-      focusedR: 4.5
+      focusedR: 4.5,
     },
-    chart: {
-      yValueAttr: 'ops_per_sec'
-    },
+    valueAttr: 'ops_per_sec',
     yAxis: {
       ticks: 5,
       gap: 10 // White space between axis and chart
     },
     xAxis: {
       maxTicks: 10,
-      format: 'MMM DD'
+      format: 'MMM DD',
+      labelYOffset: 20,
     },
     focus: {
       labelOffset: {
-        x: 0,
-        y: -15
+        x: 6,
+        y: -5,
+        between: 15, // Minimal vertical space between ops labels
       }
     },
     format: {
       date: 'll'
+    },
+    legend: {
+      itemHeight: 20,
+      itemWidth: 30,
+      gap: 10, // between legen items
+      yOffset: 10, // To bootom
+      textOverRectOffset: -15, // Aligns legend item with the text label
+      yPos: undefined, // To be calculated
+      xPos: undefined, // To be calculated
+      step: undefined, // to e calculated. Step between legend items
     }
   };
 
+  // Chart are real size
   cfg.effectiveWidth = cfg.container.width - cfg.margin.left - cfg.margin.right;
   cfg.effectiveHeight = cfg.container.height - cfg.margin.top - cfg.margin.bottom;
+
+  // Legend y pos
+  cfg.legend.yPos = (
+    cfg.container.height - cfg.legend.yOffset
+    - cfg.legend.itemHeight - cfg.legend.textOverRectOffset
+  )
+
+  cfg.legend.step = cfg.legend.itemWidth + cfg.legend.gap
+
+  // Returns list of y-positions of ops labels for given
+  // yScaledValues list.
+  function getOpsLabelYPosition(yScaledValues, cfg) {
+    // The function assumes that ops/second for threads is always
+    // 16 > 8 > 4 > 1. This assumption should be correct in regular cases
+    // Calculate the most top (the last) label position.
+    // Also checks top margin overlap
+    var prevPos = _.last(yScaledValues) + cfg.focus.labelOffset.y;
+    if (prevPos < cfg.margin.top) {
+      prevPos = cfg.margin.top + 5
+    }
+    var textPosList = [prevPos];
+    var pos;
+
+    // Calculate all other items positions, based on previous item position
+    // Loop skips the last item (see code above)
+    for (var i = yScaledValues.length - 2; i >= 0; i--) {
+      var currentPos = yScaledValues[i] + cfg.focus.labelOffset.y;
+      var delta = prevPos - currentPos;
+      // If labels overlapping, move the label below previous label
+      var newPos = (delta > -cfg.focus.labelOffset.between)
+        ? prevPos + cfg.focus.labelOffset.between
+        : currentPos;
+      prevPos = newPos;
+      textPosList.push(newPos);
+    }
+
+    // Resotre original order
+    textPosList.reverse()
+    return textPosList;
+  }
+
+  return {
+    cfg: cfg,
+    getOpsLabelYPosition: getOpsLabelYPosition,
+  }
+})
+
+// TODO Add basic encapsulation to the module
+// TODO Create AngularJS directive
+var drawSingleTrendChart = function(params) {
+  var MAXONLY = 'maxonly';
+
+  // Extract params
+  var PerfChartService = params.PerfChartService,
+      series = params.series,
+      key = params.key,
+      scope = params.scope,
+      containerId = params.containerId,
+      compareSamples = params.compareSamples,
+      threadMode = params.threadMode;
+
+  var cfg = PerfChartService.cfg;
+  document.getElementById(containerId).innerHTML = '';
 
   var svg = d3.select('#' + containerId)
     .append('svg')
@@ -58,14 +125,40 @@ var drawSingleTrendChart = function(
       height: cfg.container.height,
     })
 
-  var ops = _.pluck(series, 'ops_per_sec');
+  var ops = _.pluck(series, cfg.valueAttr);
   var opsValues = _.pluck(series, 'ops_per_sec_values');
   var avgOpsPerSec = d3.mean(ops)
 
-  var hasValues = !_.contains(opsValues, undefined)
+  var allLevels = _.keys(series[0].threadResults)
+  var levels = threadMode == MAXONLY
+    ? [_.max(allLevels, function(d) { return +d })]
+    : allLevels
 
-  var seriesMax = _.max(ops)
-  var seriesAvg = d3.mean(ops)
+  // Calculate legend x pos based on levels
+  cfg.legend.xPos = (cfg.container.width - levels.length * cfg.legend.step) / 2
+
+  // When there are more than one value in opsValues item
+  var hasValues = _.all(opsValues, function(d) {
+    return d && d.length > 1
+  })
+
+  var flatOpsValues = _.flatten(
+    _.map(series, function(d) {
+      if (threadMode == MAXONLY) {
+        // In maxonly mode levels contain single (max) item
+        // Extract just one ops item
+        return d.threadResults[levels[0]][cfg.valueAttr]
+      } else {
+        return _.map(d.threadResults, function(d) {
+          return d[cfg.valueAttr]
+        })
+      }
+    })
+  )
+
+  var multiSeriesAvg = d3.mean(flatOpsValues)
+  var multiSeriesMin = d3.min(flatOpsValues)
+  var multiSeriesMax = d3.max(flatOpsValues)
 
   var compareMax = 0
   if (compareSamples) {
@@ -77,8 +170,8 @@ var drawSingleTrendChart = function(
 
   // If the upper and lower y-axis values are very close to the average
   // (within 10%) add extra padding to the upper and lower bounds of the graph for display
-  var yAxisUpperBound = d3.max([compareMax, seriesMax, seriesAvg * 1.1])
-  var yAxisLowerBound = d3.min([d3.min(ops), seriesAvg * .9])
+  var yAxisUpperBound = d3.max([compareMax, multiSeriesMax, multiSeriesAvg * 1.1])
+  var yAxisLowerBound = d3.min([multiSeriesMin, multiSeriesAvg * .9])
 
   // Calculate X Ticks values
   var idxStep = (series.length / cfg.xAxis.maxTicks + 2) | 0
@@ -104,13 +197,13 @@ var drawSingleTrendChart = function(
 
   // ## CHART STRUCTURE ##
 
-  // Main chart line
-  var line = d3.svg.line()
+  // multi line
+  var mline = d3.svg.line()
     .x(function(d, i) {
       return xScale(i);
     })
     .y(function(d) {
-      return yScale(d[cfg.chart.yValueAttr]);
+      return yScale(d);
     });
 
   if (hasValues) {
@@ -127,9 +220,7 @@ var drawSingleTrendChart = function(
   svg.append('svg:g')
     .attr({
       class: 'axis',
-      transform: 'translate(' +
-        (cfg.margin.left - cfg.yAxis.gap) + ',' + cfg.margin.top +
-      ')'
+      transform: d3Translate(cfg.margin.left - cfg.yAxis.gap, cfg.margin.top)
     })
     .call(yAxis);
 
@@ -137,25 +228,21 @@ var drawSingleTrendChart = function(
 
   var xTicks = svg.append('svg:g')
     .attr({
-      transform: 'translate(' +
-        cfg.margin.left + ',' + cfg.margin.top +
-      ')'
+      transform: d3Translate(cfg.margin.left, cfg.margin.top)
     })
     .selectAll('g')
     .data(xTicksData)
     .enter()
     .append('svg:g')
     .attr({
-      transform: function(d) {
-        return 'translate(' + xScale(getIdx(d)) + ',0)'
-      }
+      transform: function(d) { return d3Translate(xScale(getIdx(d)), 0) }
     })
 
   // X Tick date text
   xTicks
     .append('svg:text')
     .attr({
-      y: (cfg.effectiveHeight + cfg.margin.bottom / 2),
+      y: cfg.effectiveHeight + cfg.xAxis.labelYOffset,
       class: 'x-tick-label',
       'text-anchor': 'middle'
     })
@@ -172,16 +259,56 @@ var drawSingleTrendChart = function(
       y2: cfg.effectiveHeight
     })
 
+  var legendG = svg.append('svg:g')
+    .attr({
+      class: 'legend',
+      transform: d3Translate(cfg.legend.xPos, cfg.legend.yPos)
+    })
+
+  var legendIter = legendG.selectAll('g')
+    .data(levels)
+    .enter()
+    .append('svg:g')
+    .attr({
+      transform: function(d, i) {
+        return d3Translate(i * cfg.legend.step, 0)
+      }
+    })
+
+  legendIter.append('svg:rect')
+    .attr({
+      y: cfg.legend.textOverRectOffset,
+      width: cfg.legend.itemWidth,
+      height: cfg.legend.itemHeight,
+      fill: function(d, i) { return colors(i) }
+    })
+
+  legendIter.append('svg:text')
+    .text(_.identity)
+    .attr({
+      x: 15,
+      fill: 'white',
+      'text-anchor': 'middle',
+    })
+
   // Chart draw area group
   var chartG = svg.append('svg:g')
-    .attr('transform', 'translate(' + cfg.margin.left + ',' + cfg.margin.top + ')')
+    .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top))
 
-  chartG.append('path')
-    .data([series])
+  var lines = chartG.selectAll('path')
+    .data(levels)
+    .enter()
+    .append('path')
     .attr({
-      class: 'line',
-      d: line
-    });
+      d: function(level) {
+        return mline(_.map(series, function(d) {
+          return d.threadResults[level][cfg.valueAttr]
+        }))
+      },
+    })
+    .style({
+      stroke: function(d, i) { return colors(i) },
+    })
 
   if (hasValues) {
     chartG.append('path')
@@ -198,30 +325,6 @@ var drawSingleTrendChart = function(
         d: minline
       })
   }
-
-  // Adds little dots over the line
-  chartG.selectAll('.point')
-    .data(series)
-    .enter()
-    .append('svg:circle')
-    .attr({
-      class: function(d) {
-        if (d.task_id == scope.task.id) {
-          return 'point current';
-        } else if (
-          !!scope.comparePerfSample &&
-          d.revision == scope.comparePerfSample.sample.revision
-        ) {
-          return 'point compare';
-        }
-        return 'point'
-      },
-      cx: function(d, i) { return xScale(i) },
-      cy: function(d) { return yScale(d[cfg.chart.yValueAttr]) },
-      r: function(d) {
-        return d.task_id == scope.task.id ? 5 : cfg.points.defaultR;
-      }
-    })
 
   if (compareSamples) {
     for(var j=0; j < compareSamples.length; j++) {
@@ -254,19 +357,28 @@ var drawSingleTrendChart = function(
       class: 'focus-line',
       x1: 0,
       x2: 0,
-      y1: 0,
+      y1: cfg.effectiveHeight,
     })
 
-  var focusedPoint = focusG.append('svg:circle')
+  var focusedPoints = focusG.selectAll('circle')
+    .data(levels)
+    .enter()
+    .append('svg:circle')
     .attr({
-      r: cfg.points.focusedR
+      class: 'focus-point',
+      r: cfg.points.focusedR,
+      fill: function(d, i) { return d3.rgb(colors(i)).darker() },
     })
 
-  var focusedText = focusG.append('svg:text')
+  var focusedText = focusG.selectAll('text')
+    .data(levels)
+    .enter()
+    .append('svg:text')
     .attr({
       class: 'focus-text',
       x: cfg.focus.labelOffset.x,
-      'text-anchor': 'middle'
+      fill: function(d, i) { return d3.rgb(colors(i)).darker(2) },
+      //'text-anchor': 'middle'
     })
 
   // This function could be called just once
@@ -301,30 +413,47 @@ var drawSingleTrendChart = function(
     // Reduce number of calls if hash didn't changed
     if (hash != scope.currentHash) {
       scope.currentHash = hash;
+      scope.currentHashDate = d.startedAt
       scope.$emit('hashChanged', hash)
       // FIXME This slowdowns the chart dramatically
       scope.$digest()
     }
   }
 
+
   function focusPoint(hash) {
     var idx = _.findIndex(series, function(d) {
       return d && d.revision == hash
     })
-    if (!idx) return;
-    var d = series[idx]
-    if (!d) return;
-    // | 0 for fast Math.floor
-    // Just for conveniece
-    var x = xScale(idx) | 0
-    var y = yScale(d[cfg.chart.yValueAttr]) | 0
-    var toolTipY = cfg.focus.labelOffset.y * ((y > cfg.margin.top) ? 1 : -1.5)
+    if (idx == undefined) return;
+    var item = series[idx]
+    if (!item) return;
 
-    focusG.attr('transform', 'translate(' + x +',' + y + ')')
+    var x = xScale(idx)
+
+    // List of per thread level values for selected item
+    var values = threadMode == MAXONLY
+      ? [item.threadResults[levels[0]][cfg.valueAttr]]
+      : _.pluck(item.threadResults, cfg.valueAttr);
+
+    var maxOps = _.max(values);
+    // List of dot Y positions
+    var yScaledValues = _.map(values, yScale);
+    var opsLabelsY = PerfChartService.getOpsLabelYPosition(yScaledValues, cfg);
+
+    focusG.attr('transform', d3Translate(x, 0))
+
+    focusedPoints.attr({
+      cy: function(d, i) { return yScaledValues[i] },
+    })
+
     focusedText
-      .attr('y', toolTipY)
-      .text(moment(d.startedAt).format(cfg.format.date))
-    focusedLine.attr('y2', cfg.effectiveHeight - y)
+      .attr('y', function(d, i) { return opsLabelsY[i] })
+      .text(function (d, i) { return d3.format(',.0f')(values[i])})
+
+    focusedLine.attr({
+      y2: yScale(maxOps),
+    })
   }
 
   scope.$on('hashChanged', function(e, hash) {
