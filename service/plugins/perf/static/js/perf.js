@@ -399,14 +399,7 @@ mciModule.controller('PerfController', function PerfController(
 
   $scope.redrawGraphs = function(){
       setTimeout(function(){
-        drawTrendGraph(
-          $scope.trendSamples,
-          $scope.perfSample.testNames(),
-          $scope,
-          $scope.task.id,
-          $scope.comparePerfSamples,
-          PerfChartService
-        );
+        drawTrendGraph($scope, PerfChartService);
         drawDetailGraph($scope.perfSample, $scope.comparePerfSamples, $scope.task.id);
       }, 0)
   }
@@ -449,13 +442,7 @@ mciModule.controller('PerfController', function PerfController(
             var d = resp.data;
             $scope.trendSamples = new TrendSamples(d);
             setTimeout(function() {
-              drawTrendGraph(
-                $scope.trendSamples,
-                $scope.perfSample.testNames(),
-                $scope, $scope.task.id,
-                $scope.comparePerfSamples,
-                PerfChartService
-              )
+              drawTrendGraph($scope, PerfChartService)
             }, 0);
           });
       });
@@ -642,10 +629,13 @@ function TestSample(sample){
   }
 }
 
-var drawTrendGraph = function(
-  trendSamples, tests, scope, taskId, compareSamples, PerfChartService
-) {
+var drawTrendGraph = function(scope, PerfChartService) {
   scope.locked = false;
+  // Extract params
+  var trendSamples = scope.trendSamples,
+      tests = scope.perfSample.testNames(),
+      taskId = scope.task.id,
+      compareSamples = scope.comparePerfSamples;
 
   for (var i = 0; i < tests.length; i++) {
     var key = tests[i];
@@ -653,7 +643,7 @@ var drawTrendGraph = function(
     var containerId = 'perf-trendchart-' + cleanId(taskId) + '-' + i;
 
     drawSingleTrendChart({
-      config: PerfChartService.cfg, 
+      PerfChartService: PerfChartService,
       series: series,
       key: key,
       scope: scope,

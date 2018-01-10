@@ -62,8 +62,41 @@ mciModule.factory('PerfChartService', function() {
 
   cfg.legend.step = cfg.legend.itemWidth + cfg.legend.gap
 
+  // Returns list of y-positions of ops labels for given
+  // yScaledValues list.
+  function getOpsLabelYPosition(yScaledValues, cfg) {
+    // The function assumes that ops/second for threads is always
+    // 16 > 8 > 4 > 1. This assumption should be correct in regular cases
+    // Calculate the most top (the last) label position.
+    // Also checks top margin overlap
+    var prevPos = _.last(yScaledValues) + cfg.focus.labelOffset.y;
+    if (prevPos < cfg.margin.top) {
+      prevPos = cfg.margin.top + 5
+    }
+    var textPosList = [prevPos];
+    var pos;
+
+    // Calculate all other items positions, based on previous item position
+    // Loop skips the last item (see code above)
+    for (var i = yScaledValues.length - 2; i >= 0; i--) {
+      var currentPos = yScaledValues[i] + cfg.focus.labelOffset.y;
+      var delta = prevPos - currentPos;
+      // If labels overlapping, move the label below previous label
+      var newPos = (delta > -cfg.focus.labelOffset.between)
+        ? prevPos + cfg.focus.labelOffset.between
+        : currentPos;
+      prevPos = newPos;
+      textPosList.push(newPos);
+    }
+
+    // Resotre original order
+    textPosList.reverse()
+    return textPosList;
+  }
+
   return {
     cfg: cfg,
+    getOpsLabelYPosition: getOpsLabelYPosition,
   }
 })
 
@@ -73,7 +106,7 @@ var drawSingleTrendChart = function(params) {
   var MAXONLY = 'maxonly';
 
   // Extract params
-  var cfg = params.config,
+  var PerfChartService = params.PerfChartService,
       series = params.series,
       key = params.key,
       scope = params.scope,
@@ -81,6 +114,7 @@ var drawSingleTrendChart = function(params) {
       compareSamples = params.compareSamples,
       threadMode = params.threadMode;
 
+  var cfg = PerfChartService.cfg;
   document.getElementById(containerId).innerHTML = '';
 
   var svg = d3.select('#' + containerId)
@@ -97,7 +131,7 @@ var drawSingleTrendChart = function(params) {
 
   var allLevels = _.keys(series[0].threadResults)
   var levels = threadMode == MAXONLY
-    ? [''+_.max(allLevels, function(d) { return +d })]
+    ? [_.max(allLevels, function(d) { return +d })]
     : allLevels
 
   // Calculate legend x pos based on levels
@@ -105,7 +139,7 @@ var drawSingleTrendChart = function(params) {
 
   // When there are more than one value in opsValues item
   var hasValues = _.all(opsValues, function(d) {
-    return d != undefined && d.length > 1
+    return d && d.length > 1
   })
 
   var flatOpsValues = _.flatten(
@@ -386,37 +420,6 @@ var drawSingleTrendChart = function(params) {
     }
   }
 
-  // Returns list of y-positions of ops labels for given
-  // yScaledValues list.
-  function getOpsLabelYPosition(yScaledValues) {
-    // The function assumes that ops/second for threads is always
-    // 16 > 8 > 4 > 1. This assumption should be correct in regular cases
-    // Calculate the most top (the last) label position.
-    // Also checks top margin overlap
-    var prevPos = _.last(yScaledValues) + cfg.focus.labelOffset.y;
-    if (prevPos < cfg.margin.top) {
-      prevPos = cfg.margin.top + 5
-    }
-    var textPosList = [prevPos];
-    var pos;
-
-    // Calculate all other items positions, based on previous item position
-    // Loop skips the last item (see code above)
-    for (var i = yScaledValues.length - 2; i >= 0; i--) {
-      var currentPos = yScaledValues[i] + cfg.focus.labelOffset.y;
-      var delta = prevPos - currentPos;
-      // If labels overlapping, move the label below previous label
-      var newPos = (delta > -cfg.focus.labelOffset.between)
-        ? prevPos + cfg.focus.labelOffset.between
-        : currentPos;
-      prevPos = newPos;
-      textPosList.push(newPos);
-    }
-
-    // Resotre original order
-    textPosList.reverse()
-    return textPosList;
-  }
 
   function focusPoint(hash) {
     var idx = _.findIndex(series, function(d) {
@@ -436,7 +439,7 @@ var drawSingleTrendChart = function(params) {
     var maxOps = _.max(values);
     // List of dot Y positions
     var yScaledValues = _.map(values, yScale);
-    var opsLabelsY = getOpsLabelYPosition(yScaledValues);
+    var opsLabelsY = PerfChartService.getOpsLabelYPosition(yScaledValues, cfg);
 
     focusG.attr('transform', d3Translate(x, 0))
 
