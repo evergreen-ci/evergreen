@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
+	newrelic "github.com/newrelic/go-agent"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/yaml.v2"
@@ -255,6 +256,11 @@ type SlackConfig struct {
 	Level   string             `yaml:"level"`
 }
 
+type NewRelicConfig struct {
+	ApplicationName string `yaml:"application_name"`
+	LicenseKey      string `yaml:"license_key"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	Database            DBSettings                `yaml:"database"`
@@ -286,6 +292,7 @@ type Settings struct {
 	LogPath             string                    `yaml:"log_path"`
 	PprofPort           string                    `yaml:"pprof_port"`
 	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org"`
+	NewRelic            NewRelicConfig            `yaml:"new_relic"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -436,6 +443,18 @@ func (s *Settings) GetGithubOauthToken() (string, error) {
 	}
 
 	return "", errors.New("no github token in settings")
+}
+
+func (s *Settings) SetUpNewRelic() (*newrelic.Application, error) {
+	if s.NewRelic.ApplicationName == "" || s.NewRelic.LicenseKey == "" {
+		return nil, nil
+	}
+	config := newrelic.NewConfig(s.NewRelic.ApplicationName, s.NewRelic.LicenseKey)
+	app, err := newrelic.NewApplication(config)
+	if err != nil || app == nil {
+		return nil, errors.Wrap(err, "error creating New Relic application")
+	}
+	return &app, err
 }
 
 // ConfigValidator is a type of function that checks the settings

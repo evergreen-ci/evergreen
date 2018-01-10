@@ -120,3 +120,5 @@ imports:
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+  - name: github.com/newrelic/go-agent
+    version: f5bce3387232559bcbe6a5f8227c4bf508dac1ba
