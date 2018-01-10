@@ -621,8 +621,6 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 	}
 
 	t := timeRange{start: start, end: end}
-	pkgCachingPriceFetcher.Lock()
-	defer pkgCachingPriceFetcher.Unlock()
 	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(m.client, h, t)
 	if err != nil {
 		return 0, errors.Wrap(err, "error fetching ec2 cost")

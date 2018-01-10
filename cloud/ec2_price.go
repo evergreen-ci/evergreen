@@ -63,6 +63,8 @@ func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t tim
 }
 
 func (cpf *cachingPriceFetcher) getEC2OnDemandCost(os osType, instance, region string) (float64, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
 	if cpf.ec2Prices == nil {
 		if err := cpf.cacheEc2Prices(); err != nil {
 			return 0, errors.Wrap(err, "loading On Demand price data")
@@ -133,6 +135,8 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 }
 
 func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSClient, settings *NewEC2ProviderSettings, os osType) (float64, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
 	osName := string(os)
 	if settings.IsVpc {
 		osName += " (Amazon VPC)"
@@ -175,8 +179,6 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
-		pkgCachingPriceFetcher.Lock()
-		defer pkgCachingPriceFetcher.Unlock()
 		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
@@ -196,6 +198,8 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 }
 
 func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
+	cpf.Lock()
+	defer cpf.Unlock()
 	instance, err := client.GetInstanceInfo(h.Id)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
