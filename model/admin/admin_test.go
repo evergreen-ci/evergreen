@@ -54,6 +54,7 @@ func (s *AdminSuite) TestServiceFlags() {
 		SchedulerDisabled:            true,
 		GithubPRTestingDisabled:      true,
 		RepotrackerPushEventDisabled: true,
+		DisableCLIUpdates:            true,
 	}
 
 	err := SetServiceFlags(testFlags)
@@ -81,6 +82,7 @@ func (s *AdminSuite) TestUpsert() {
 			SchedulerDisabled:            false,
 			GithubPRTestingDisabled:      false,
 			RepotrackerPushEventDisabled: false,
+			DisableCLIUpdates:            false,
 		},
 	}
 	err := Upsert(settings)
