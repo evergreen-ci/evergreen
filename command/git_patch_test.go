@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPatchPluginAPI(t *testing.T) {
@@ -135,31 +136,24 @@ func TestPatchPlugin(t *testing.T) {
 }
 
 func TestGetPatchCommands(t *testing.T) {
-	Convey("With a patch that has modules", t, func() {
-		testPatch := patch.Patch{
-			Patches: []patch.ModulePatch{
-				patch.ModulePatch{
-					ModuleName: "",
-					PatchSet: patch.PatchSet{
-						Patch: "",
-					},
-				},
-				patch.ModulePatch{
-					ModuleName: "anotherOne",
-					PatchSet: patch.PatchSet{
-						Patch: "these are words",
-					},
-				},
-			},
-		}
+	assert := assert.New(t) //nolint
 
-		Convey("on an empty patch module, a set of commands that does not apply the patch should be returned", func() {
-			commands := getPatchCommands(testPatch.Patches[0], "", "")
-			So(len(commands), ShouldEqual, 5)
-		})
-		Convey("on a patch with content, the set of commands should apply the patch", func() {
-			commands := getPatchCommands(testPatch.Patches[1], "", "")
-			So(len(commands), ShouldEqual, 7)
-		})
-	})
+	modulePatch := patch.ModulePatch{
+		Githash: "a4aa03d0472d8503380479b76aef96c044182822",
+		PatchSet: patch.PatchSet{
+			Patch: "",
+		},
+	}
+
+	cmds := getPatchCommands(modulePatch, "/teapot", "/tmp/bestest.patch")
+
+	assert.Len(cmds, 5)
+	assert.Equal("cd '/teapot'", cmds[3])
+	assert.Equal("git reset --hard 'a4aa03d0472d8503380479b76aef96c044182822'", cmds[4])
+
+	modulePatch.PatchSet.Patch = "bestest code"
+	cmds = getPatchCommands(modulePatch, "/teapot", "/tmp/bestest.patch")
+	assert.Len(cmds, 7)
+	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[5])
+	assert.Equal("git apply --binary --whitespace=fix --index < '/tmp/bestest.patch'", cmds[6])
 }
