@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 
 	"github.com/mongodb/grip"
@@ -70,23 +69,7 @@ func (c *localExec) Run(ctx context.Context) error {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	errChan := make(chan error)
-	go func() {
-		select {
-		case errChan <- c.cmd.Wait():
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err := c.cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"operation '%s %s' was canceled and terminated.",
-			c.binary, strings.Join(c.args, " "))
-	case err := <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(c.cmd.Wait())
 }
 
 func (c *localExec) Wait() error {
