@@ -59,6 +59,16 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	}
 
 	if err = remoteCommand.Run(ctx); err != nil {
+		grip.Debug(message.WrapError(err, message.Field{
+			"message":  "encoutnered error running check response",
+			"command":  "echo hi",
+			"host_id":  hostObject.Id,
+			"hostname": hostInfo.Hostname,
+			"distro":   hostObject.Distro.Id,
+			"host_id":  hostObject.Id,
+			"canceled": ctx.Err() != nil,
+		}))
+
 		return false, errors.Wrapf(err, "reachability command encountered error for %s", hostObject.Id)
 	}
 
