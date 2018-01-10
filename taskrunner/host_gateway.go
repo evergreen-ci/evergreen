@@ -242,7 +242,17 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		false, // loggingDisabled
 	)
 	cmdOutBuff := &bytes.Buffer{}
-	if err = startAgentCmd.SetOutput(subprocess.OutputOptions{Output: cmdOutBuff, SendErrorToOutput: true}); err != nil {
+	output := subprocess.OutputOptions{Output: cmdOutBuff, SendErrorToOutput: true}
+	if err = startAgentCmd.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "setting up copy cli config command",
+			"distro":    hostObj.Distro.Id,
+			"host":      hostObj.Host,
+			"output":    output,
+			"cause":     "programmer error",
+		}))
+
 		return errors.Wrap(err, "problem configuring command output")
 	}
 
@@ -257,9 +267,6 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 	}))
 
 	if err != nil {
-		if err == util.ErrTimedOut {
-			return errors.Errorf("starting agent timed out on %s", hostObj.Id)
-		}
 		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, cmdOutBuff.String())
 	}
 

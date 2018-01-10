@@ -55,7 +55,7 @@ func (self *scpCommand) Run(ctx context.Context) error {
 	grip.Debugf("SCPCommand(%s) beginning Run()", self.Id)
 
 	if err := self.Start(ctx); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	if self.Cmd != nil && self.Cmd.Process != nil {
@@ -66,7 +66,10 @@ func (self *scpCommand) Run(ctx context.Context) error {
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- self.Cmd.Wait()
+		select {
+		case errChan <- errors.WithStack(self.Cmd.Wait()):
+		case <-ctx.Done():
+		}
 	}()
 
 	select {
@@ -81,7 +84,7 @@ func (self *scpCommand) Run(ctx context.Context) error {
 }
 
 func (self *scpCommand) Wait() error {
-	return self.Cmd.Wait()
+	return errors.WithStack(self.Cmd.Wait())
 }
 
 func (self *scpCommand) GetPid() int {
@@ -93,7 +96,6 @@ func (self *scpCommand) GetPid() int {
 }
 
 func (self *scpCommand) Start(ctx context.Context) error {
-
 	// build the remote side of the connection, in user@host: format
 	remote := self.RemoteHostName
 	if self.User != "" {
@@ -120,7 +122,7 @@ func (self *scpCommand) Start(ctx context.Context) error {
 	// cache the command running
 	self.Cmd = cmd
 
-	return cmd.Start()
+	return errors.WithStack(cmd.Start())
 }
 
 func (self *scpCommand) Stop() error {

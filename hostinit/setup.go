@@ -256,14 +256,13 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 					if err := init.ProvisionHost(ctx, &h); err != nil {
 						event.LogHostProvisionError(h.Id)
 
-						grip.Error(message.Fields{
+						grip.Error(message.WrapError(err, message.Fields{
 							"GUID":    init.GUID,
 							"message": "provisioning host encountered error",
 							"runner":  RunnerName,
-							"error":   err.Error(),
 							"distro":  h.Distro.Id,
 							"hostid":  h.Id,
-						})
+						}))
 
 						// notify the admins of the failure
 						subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
@@ -414,15 +413,15 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	if targetHost.Distro.Setup != "" {
 		err = init.copyScript(ctx, targetHost, evergreen.SetupScriptName, targetHost.Distro.Setup)
 		if err != nil {
-			return "", errors.Errorf("error copying script %v to host %v: %v",
-				evergreen.SetupScriptName, targetHost.Id, err)
+			return "", errors.Wrapf(err, "error copying setup script %v to host %v",
+				evergreen.SetupScriptName, targetHost.Id)
 		}
 	}
 
 	if targetHost.Distro.Teardown != "" {
 		err = init.copyScript(ctx, targetHost, evergreen.TeardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
-			return "", errors.Wrapf(err, "error copying script %v to host %v",
+			return "", errors.Wrapf(err, "error copying teardown script %v to host %v",
 				evergreen.TeardownScriptName, targetHost.Id)
 		}
 	}
@@ -456,6 +455,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		errCtx := message.Fields{
 			"runner":    RunnerName,
 			"operation": "cleaning up after script copy",
+			"GUID":      init.GUID,
 			"file":      file.Name(),
 			"distro":    target.Distro.Id,
 			"host":      target.Host,
@@ -483,16 +483,18 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	}
 
 	scpCmdOut := &bytes.Buffer{}
+
 	output := subprocess.OutputOptions{Output: scpCmdOut, SendErrorToOutput: true}
 	scpCmd := subprocess.NewSCPCommand(
 		file.Name(),
 		filepath.Join("~", name),
 		hostInfo.Hostname,
 		user,
-		append([]string{"-P", hostInfo.Port}, sshOptions...))
+		append([]string{"-vvv", "-P", hostInfo.Port}, sshOptions...))
 
 	if err = scpCmd.SetOutput(output); err != nil {
 		grip.Alert(message.WrapError(err, message.Fields{
+			"GUID":      init.GUID,
 			"runner":    RunnerName,
 			"operation": "setting up copy script command",
 			"distro":    target.Distro.Id,
@@ -508,23 +510,14 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 	ctx, cancel = context.WithTimeout(ctx, SCPTimeout)
 	defer cancel()
 	if err = scpCmd.Run(ctx); err != nil {
-		if err == util.ErrTimedOut {
-			stopErr := scpCmd.Stop()
-			grip.Warning(message.WrapError(stopErr, message.Fields{
-				"runner":    RunnerName,
-				"command":   scpCmd,
-				"distro":    target.Distro.Id,
-				"host":      target.Host,
-				"run_error": err.Error(),
-			}))
-			return errors.Wrap(err, "scp-ing script timed out")
-		}
-
 		grip.Notice(message.WrapError(err, message.Fields{
+			"message": "problem copying script to host",
+			"GUID":    init.GUID,
 			"runner":  RunnerName,
 			"command": scpCmd,
 			"distro":  target.Distro.Id,
 			"host":    target.Host,
+			"output":  scpCmdOut.String(),
 		}))
 
 		return errors.Wrapf(err, "error (%v) copying script to remote machine",
@@ -796,6 +789,15 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	)
 
 	if err = curlSetupCmd.SetOutput(opts); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"runner":    RunnerName,
+			"operation": "command to fetch the evergreen binary on the host",
+			"distro":    target.Distro.Id,
+			"host":      target.Host,
+			"output":    opts,
+			"cause":     "programmer error",
+		}))
+
 		return nil, errors.Wrap(err, "problem setting up output")
 	}
 
