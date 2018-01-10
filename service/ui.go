@@ -291,12 +291,12 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
 
 		// set up a fileserver in plugin's static root, if one is provided
-		pluginStaticPath := filepath.Join(uis.Home, "service", "plugins", pl.Name(), "static")
+		pluginAssetsPath := filepath.Join(uis.Home, "public", "static", "plugins", pl.Name())
 
-		grip.Infof("Registering static path for plugin '%s' in %s", pl.Name(), pluginStaticPath)
+		grip.Infof("Registering assets path for plugin '%s' in %s", pl.Name(), pluginAssetsPath)
 		plRouter.PathPrefix("/static/").Handler(
 			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
-				http.FileServer(http.Dir(pluginStaticPath))),
+				http.FileServer(http.Dir(pluginAssetsPath))),
 		)
 
 		pluginUIhandler := pl.GetUIHandler()

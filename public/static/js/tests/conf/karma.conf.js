@@ -7,7 +7,7 @@ module.exports = function(config) {
   config.set({
 
     // base path, that will be used to resolve files and exclude
-    basePath: '../../',
+    basePath: '../../../',
 
 
     // frameworks to use
@@ -16,16 +16,17 @@ module.exports = function(config) {
 
     // list of files / patterns to load in the browser
     files: [
-      'angular.min.js',
-      'angular-*.js',
-      'md-*.js',
-      'underscore-min.js',
-      'filters/*',
-      'directives/*',
-      'mci_module.js',
-      'services/*.js',
-      'build.js',
-      'tests/*.js'
+      'js/angular.min.js',
+      'js/angular-*.js',
+      'js/md-*.js',
+      'js/underscore-min.js',
+      'js/filters/*',
+      'js/directives/*',
+      'js/mci_module.js',
+      'js/services/*.js',
+      'js/build.js',
+      'js/tests/*.js',
+      'plugins/*/js/*.js'
     ],
 
 
@@ -55,7 +56,7 @@ module.exports = function(config) {
     autoWatch: true,
 
     junitReporter: {
-      outputDir: '../../../bin/jstests', // results will be saved as $outputDir/$browserName.xml
+      outputDir: '../../bin/jstests', // results will be saved as $outputDir/$browserName.xml
       outputFile: undefined, // if included, results will be saved as $outputDir/$browserName/$outputFile
       suite: '', // suite will become the package name attribute in xml testsuite element
       useBrowserName: false, // add browser name to report and classes names
