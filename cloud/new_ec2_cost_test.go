@@ -275,12 +275,6 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	settings := &NewEC2ProviderSettings{}
 	s.m.provider = autoProvider
 
-	if pkgCachingPriceFetcher == nil {
-		pkgCachingPriceFetcher = new(cachingPriceFetcher)
-	}
-	pkgCachingPriceFetcher.Lock()
-	defer pkgCachingPriceFetcher.Unlock()
-
 	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
 	s.InDelta(.1, m4LargeOnDemand, .05)
 	s.NoError(err)

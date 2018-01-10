@@ -30,6 +30,10 @@ type cachingPriceFetcher struct {
 
 var pkgCachingPriceFetcher *cachingPriceFetcher
 
+func init() {
+	pkgCachingPriceFetcher = new(cachingPriceFetcher)
+}
+
 func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	os := getOsName(h)
 	if isHostOnDemand(h) {
@@ -171,9 +175,6 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
-		if pkgCachingPriceFetcher == nil {
-			pkgCachingPriceFetcher = new(cachingPriceFetcher)
-		}
 		pkgCachingPriceFetcher.Lock()
 		defer pkgCachingPriceFetcher.Unlock()
 		onDemandPrice, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), ec2settings.InstanceType, defaultRegion)
