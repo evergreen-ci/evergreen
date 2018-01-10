@@ -454,7 +454,7 @@ func (n *NewRelicConfig) SetUp() (newrelic.Application, error) {
 	if err != nil || app == nil {
 		return nil, errors.Wrap(err, "error creating New Relic application")
 	}
-	return app, err
+	return app, nil
 }
 
 // ConfigValidator is a type of function that checks the settings
