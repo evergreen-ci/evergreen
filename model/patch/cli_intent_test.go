@@ -150,3 +150,33 @@ func findCliIntents(processed bool) ([]*cliIntent, error) {
 	}
 	return intents, nil
 }
+
+func (s *CliIntentSuite) TestNewPatch() {
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias)
+	s.NoError(err)
+	s.NotNil(intent)
+
+	patchDoc := intent.NewPatch()
+	s.NotNil(patchDoc)
+	s.Zero(patchDoc.Id)
+	s.Equal(s.description, patchDoc.Description)
+	s.Equal(s.projectID, patchDoc.Project)
+	s.Equal(s.hash, patchDoc.Githash)
+	s.Zero(patchDoc.PatchNumber)
+	s.Empty(patchDoc.Version)
+	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Zero(patchDoc.CreateTime)
+	s.Zero(patchDoc.StartTime)
+	s.Zero(patchDoc.FinishTime)
+	s.Equal(s.variants, patchDoc.BuildVariants)
+	s.Equal(s.tasks, patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
+	s.Len(patchDoc.Patches, 1)
+	s.Equal(s.module, patchDoc.Patches[0].ModuleName)
+	s.Equal(s.hash, patchDoc.Patches[0].Githash)
+	s.Zero(patchDoc.Patches[0].PatchSet)
+	s.False(patchDoc.Activated)
+	s.Empty(patchDoc.PatchedConfig)
+	s.Equal(s.alias, patchDoc.Alias)
+	s.Zero(patchDoc.GithubPatchData)
+}

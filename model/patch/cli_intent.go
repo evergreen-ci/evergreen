@@ -144,6 +144,7 @@ func (c *cliIntent) NewPatch() *Patch {
 		Githash:       c.BaseHash,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: c.BuildVariants,
+		Alias:         c.Alias,
 		Tasks:         c.Tasks,
 		Patches: []ModulePatch{
 			{

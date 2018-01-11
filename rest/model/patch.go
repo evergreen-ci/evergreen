@@ -25,6 +25,7 @@ type APIPatch struct {
 	Tasks           []APIString   `json:"tasks"`
 	VariantsTasks   []variantTask `json:"variants_tasks"`
 	Activated       bool          `json:"activated"`
+	Alias           APIString     `json:"alias,omitempty"`
 	GithubPatchData githubPatch   `json:"github_patch_data,omitempty"`
 }
 type variantTask struct {
