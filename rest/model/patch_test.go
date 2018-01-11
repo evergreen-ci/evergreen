@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -77,7 +76,6 @@ func TestAPIPatch(t *testing.T) {
 	for i, task := range a.Tasks {
 		assert.Equal(p.Tasks[i], string(task))
 	}
-	pp.Println(p.VariantsTasks, a.VariantsTasks)
 	for i, vt := range a.VariantsTasks {
 		assert.Equal(p.VariantsTasks[i].Variant, string(vt.Name))
 
