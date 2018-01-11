@@ -196,6 +196,7 @@ func ByOrderNumbersForNameAndVariant(revisionOrder []int, displayName, buildVari
 		},
 		DisplayNameKey:  displayName,
 		BuildVariantKey: buildVariant,
+		RequesterKey:    evergreen.RepotrackerVersionRequester,
 	})
 }
 
