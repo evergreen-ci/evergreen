@@ -118,7 +118,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  RunnerName,
-				"host":    hostObj.Id,
+				"host_id": hostObj.Id,
 				"message": "unprovisioning host failed",
 			}))
 		}
@@ -167,11 +167,15 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 	// run the setup script with the agent
 	if logs, err := hostutil.RunSSHCommand(ctx, hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
-		grip.Error(message.Fields{
-			"host":    hostObj.Id,
+
+		grip.Error(message.WrapError(err, message.Fields{
 			"message": "error running setup script",
+			"host_id": hostObj.Id,
+			"distro":  hostObj.Distro.Id,
 			"runner":  RunnerName,
-		})
+			"logs":    logs,
+		}))
+
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
 		if err = hostObj.DisablePoisonedHost(); err != nil {
 			return "", errors.Wrapf(err, "error terminating host %s", hostObj.Id)
