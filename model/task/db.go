@@ -189,10 +189,10 @@ func ByStatusAndActivation(status string, active bool) db.Q {
 	})
 }
 
-func ByOrderNumbersForNameAndVariant(revisionOrder []int, displayName, buildVariant string) db.Q {
+func ByVersionsForNameAndVariant(versions []string, displayName, buildVariant string) db.Q {
 	return db.Query(bson.M{
-		RevisionOrderNumberKey: bson.M{
-			"$in": revisionOrder,
+		VersionKey: bson.M{
+			"$in": versions,
 		},
 		DisplayNameKey:  displayName,
 		BuildVariantKey: buildVariant,
