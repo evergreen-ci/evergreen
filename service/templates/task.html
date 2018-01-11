@@ -152,14 +152,23 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   </td>
               </tr>
               <tr>
-                <td ng-hide="task.expected_duration == 0"><i class="fa fa-clock-o"></i></td>
+                <td ng-hide="task.expected_duration === 0 && task.status === 'undispatched'"><i class="fa fa-clock-o"></i></td>
                 <td>
                   <span ng-hide="task.status == 'undispatched'">
                     <span ng-show="timeTaken>0"> [[timeTaken | stringifyNanoseconds]] </span>
+                    <span ng-show="task.display_only && task.finish_time > 0">(cumulative)</span>
                     <span ng-show="timeTaken==0"> Not Started </span>
                   </span>
                   <span ng-show="(task.status == 'started' || task.status == 'dispatched') && !task.display_only"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
                  <span ng-show="task.status == 'undispatched' && task.expected_duration > 0"> Estimated Runtime: [[timeToCompletion | stringifyNanoseconds]]</span>
+                </td>
+              </tr>
+              <tr ng-show="task.display_only && task.finish_time > 0">
+                <td>
+                  <i class="fa fa-clock-o"></i>
+                </td>
+                <td>
+                  <span> [[task.finish_time - task.start_time | stringifyNanoseconds]] (wall clock) </span>
                 </td>
               </tr>
               <tr ng-show="baseTimeTaken">
@@ -220,25 +229,29 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td>Blacklisted</td>
               </tr>
               <tr ng-show="task.display_only">
-                <table class="table table-condensed" ng-show="task.display_only" style="width: 50%">
-                  <tr> <div ng-show="task.display_only"> This task contains [[task.execution_tasks.length]] execution tasks: </div> </tr>
-                  <thead>
-                    <tr>
-                      <td>Name</td>
-                      <td>Status</td>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr ng-repeat="et in task.execution_tasks">
-                      <td>
-                        <a ng-href="[[execTaskUrl(et.id)]]">[[et.display_name]]</a>
-                      </td>
-                      <td>
-                        [[et.status]]
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                <td colspan="2">
+                  <div class="execTaskTable">
+                    <table id="execTaskTable" class="table table-condensed" ng-show="task.display_only">
+                      <tr> <div ng-show="task.display_only"> This task contains [[task.execution_tasks.length]] execution tasks: </div> </tr>
+                      <thead>
+                        <tr>
+                          <td>Name</td>
+                          <td>Status</td>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr ng-repeat="et in task.execution_tasks">
+                          <td>
+                            <a ng-href="[[execTaskUrl(et.id)]]">[[et.display_name]]</a>
+                          </td>
+                          <td>
+                            [[et.status]]
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
               </tr>
             </table>
           </div>

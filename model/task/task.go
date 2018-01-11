@@ -616,6 +616,8 @@ func (t *Task) UpdateDisplayTask() error {
 	}
 	hasFinishedTasks := false
 	hasUnfinishedTasks := false
+	startTime := time.Unix(1<<62, 0)
+	endTime := util.ZeroTime
 	for _, execTask := range execTasks {
 		// if any of the execution tasks are scheduled, the display task is too
 		if execTask.Activated {
@@ -631,8 +633,16 @@ func (t *Task) UpdateDisplayTask() error {
 		// the display task's status will be the highest priority of its exec tasks
 		statuses = append(statuses, execTask.ResultStatus())
 
-		// add up the duration of the execution tasks
+		// add up the duration of the execution tasks as the cumulative time taken
 		timeTaken += execTask.TimeTaken
+
+		// set the start/end time of the display task as the earliest/latest task
+		if execTask.StartTime.Before(startTime) {
+			startTime = execTask.StartTime
+		}
+		if execTask.FinishTime.After(endTime) {
+			endTime = execTask.FinishTime
+		}
 	}
 
 	if hasFinishedTasks && hasUnfinishedTasks {
@@ -646,16 +656,24 @@ func (t *Task) UpdateDisplayTask() error {
 		status = statuses[0]
 	}
 
+	update := bson.M{
+		StatusKey:    status,
+		ActivatedKey: t.Activated,
+		TimeTakenKey: timeTaken,
+	}
+	if startTime != time.Unix(1<<62, 0) {
+		update[StartTimeKey] = startTime
+	}
+	if endTime != util.ZeroTime {
+		update[FinishTimeKey] = endTime
+	}
+
 	err = UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
-			"$set": bson.M{
-				StatusKey:    status,
-				ActivatedKey: t.Activated,
-				TimeTakenKey: timeTaken,
-			},
+			"$set": update,
 		})
 	if err != nil {
 		return errors.Wrap(err, "error updating display task")
