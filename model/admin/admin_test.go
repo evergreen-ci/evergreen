@@ -44,16 +44,16 @@ func (s *AdminSuite) TestBanner() {
 
 func (s *AdminSuite) TestServiceFlags() {
 	testFlags := ServiceFlags{
-		TaskDispatchDisabled:    true,
-		HostinitDisabled:        true,
-		MonitorDisabled:         true,
-		NotificationsDisabled:   true,
-		AlertsDisabled:          true,
-		TaskrunnerDisabled:      true,
-		RepotrackerDisabled:     true,
-		SchedulerDisabled:       true,
-		GithubPRTestingDisabled: false,
-		GithubPushEventDisabled: true,
+		TaskDispatchDisabled:         true,
+		HostinitDisabled:             true,
+		MonitorDisabled:              true,
+		NotificationsDisabled:        true,
+		AlertsDisabled:               true,
+		TaskrunnerDisabled:           true,
+		RepotrackerDisabled:          true,
+		SchedulerDisabled:            true,
+		GithubPRTestingDisabled:      true,
+		RepotrackerPushEventDisabled: true,
 	}
 
 	err := SetServiceFlags(testFlags)
@@ -71,16 +71,16 @@ func (s *AdminSuite) TestUpsert() {
 		Banner: "",
 
 		ServiceFlags: ServiceFlags{
-			TaskDispatchDisabled:    false,
-			HostinitDisabled:        false,
-			MonitorDisabled:         false,
-			NotificationsDisabled:   false,
-			AlertsDisabled:          false,
-			TaskrunnerDisabled:      false,
-			RepotrackerDisabled:     false,
-			SchedulerDisabled:       false,
-			GithubPRTestingDisabled: false,
-			GithubPushEventDisabled: false,
+			TaskDispatchDisabled:         false,
+			HostinitDisabled:             false,
+			MonitorDisabled:              false,
+			NotificationsDisabled:        false,
+			AlertsDisabled:               false,
+			TaskrunnerDisabled:           false,
+			RepotrackerDisabled:          false,
+			SchedulerDisabled:            false,
+			GithubPRTestingDisabled:      false,
+			RepotrackerPushEventDisabled: false,
 		},
 	}
 	err := Upsert(settings)

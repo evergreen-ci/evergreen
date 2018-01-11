@@ -72,8 +72,14 @@ Admin Settings
                       </md-radio-group></td>
                     </tr>
                     <tr>
-                      <td>Repo Tracker</td>
+                      <td>Repo Tracker (Runner)</td>
                       <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_disabled">
+                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                      </md-radio-group></td>
+                    </tr>
+                    <tr>
+                      <td>Repo Tracker (Github Push Event)</td>
+                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_push_event_disabled">
                         <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
                       </md-radio-group></td>
                     </tr>
@@ -86,12 +92,6 @@ Admin Settings
                     <tr>
                       <td>Github PR Testing</td>
                       <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_pr_testing_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Github Push Event Triggers Repotracker</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_push_event_disabled">
                         <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
                       </md-radio-group></td>
                     </tr>

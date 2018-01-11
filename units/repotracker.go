@@ -64,7 +64,7 @@ func (j *repotrackerJob) Run() {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.GithubPushEventDisabled {
+	if adminSettings.ServiceFlags.RepotrackerPushEventDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     repotrackerJobName,
 			"message": "github push events triggering repotracker is disabled",

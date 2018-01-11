@@ -49,7 +49,7 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	s.NoError(db.Clear(admin.Collection))
 
 	flags := admin.ServiceFlags{
-		GithubPushEventDisabled: true,
+		RepotrackerPushEventDisabled: true,
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
