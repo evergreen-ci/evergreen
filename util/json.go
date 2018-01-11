@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"reflect"
 
 	"github.com/pkg/errors"
 )
@@ -16,7 +15,7 @@ func ReadJSONInto(r io.ReadCloser, data interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "error reading JSON")
 	}
-	return errors.Wrapf(json.Unmarshal(bytes, data), "error attempting to unmarshal into %s: %s", reflect.TypeOf(data), string(bytes[:]))
+	return errors.Wrapf(json.Unmarshal(bytes, data), "error attempting to unmarshal into %T: %s", data, string(bytes[:]))
 }
 
 func WriteJSONInto(fn string, data interface{}) error {
