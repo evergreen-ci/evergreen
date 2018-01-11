@@ -12,8 +12,8 @@ import (
 )
 
 func TestAPIPatch(t *testing.T) {
-	baseTime := time.Now().Round(0).Truncate(0)
 	assert := assert.New(t) //nolint
+	baseTime := time.Now()
 	p := patch.Patch{
 		Id:            bson.NewObjectId(),
 		Description:   "test",
