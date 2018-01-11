@@ -28,6 +28,7 @@ type GithubWebhookRouteSuite struct {
 	canceler context.CancelFunc
 	conf     *evergreen.Settings
 	prBody   []byte
+	pushBody []byte
 	h        *githubHookApi
 	queue    amboy.Queue
 	suite.Suite
@@ -65,6 +66,9 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 
 	s.NoError(err)
 	s.Len(s.prBody, 24743)
+	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
+	s.NoError(err)
+	s.Len(s.prBody, 24743)
 
 	var ok bool
 	s.h, ok = s.rm.Methods[0].Handler().(*githubHookApi)
@@ -82,7 +86,7 @@ func (s *GithubWebhookRouteSuite) TestAddIntent() {
 	s.NoError(err)
 
 	s.h.event = event
-	s.h.msgId = "1"
+	s.h.msgID = "1"
 
 	ctx := context.Background()
 	resp, err := s.h.Execute(ctx, s.sc)
@@ -147,4 +151,18 @@ func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
 	req.Header.Add("X-GitHub-Delivery", uid)
 	req.Header.Add("X-Hub-Signature", signature)
 	return req, nil
+}
+
+func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
+	event, err := github.ParseWebHook("push", s.pushBody)
+	s.NotNil(event)
+	s.NoError(err)
+
+	s.h.event = event
+	s.h.msgID = "1"
+
+	ctx := context.Background()
+	resp, err := s.h.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.Empty(resp.Result)
 }

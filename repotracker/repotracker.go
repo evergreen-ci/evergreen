@@ -151,7 +151,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"message": "problem storting revisions for repository",
+				"message": "problem sorting revisions for repository",
 				"runner":  RunnerName,
 				"project": projectRef,
 			}))
