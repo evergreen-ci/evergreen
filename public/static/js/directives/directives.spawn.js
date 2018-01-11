@@ -169,11 +169,15 @@ directives.spawn.directive('equals', function() {
 // http://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
 var passwordRegexps =
 [
-	/[\p{Ll}]/, // lowercase letter
-	/[\p{Lu}]/, // uppercase letter
+        // XXX: This is technically wrong, however even ES6 does
+        // not support unicode character classes (\p{...}). In spite of this,
+        // this should work with the vast majority of users. The server
+        // will also back this up with the correct validation
+	/[a-z]/, // should be \p{Lowercase_Letter}
+	/[A-Z]/, // should be \p{Uppercase_Letter}
 	/[0-9]/,
 	/[~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?\/`]/,
-	/[\p{Lo}]/, // letters without upper/lower variants (ex: Japanese)
+	/[^A-Za-z~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?\/`]/, // should be \p{Lo}, for characters without upper/lower case variants
 ]
 
 directives.spawn.directive('complexity', function() {
