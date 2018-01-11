@@ -1610,6 +1610,19 @@ textarea {
 .fullWidth {
   width: 100%;
 }
+#task-info-elements td:nth-child(1) {
+  width: 35px;
+}
+.execTaskTable {
+  width: 50%;
+  max-height: 400px;
+  overflow: auto;
+  padding-top: 10px;
+  padding-right: 12px;
+}
+#execTaskTable td:nth-child(1) {
+  width: 100%;
+}
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;
   padding-left: 58px;
@@ -2318,7 +2331,7 @@ th {
   padding-top: 12px;
   overflow: auto;
   max-height: 45px;
-  padding-right: 10px;
+  padding-right: 15px;
 }
 .banner-icon-announcement {
   background-color: rgba(61, 195, 4, 0.62);
