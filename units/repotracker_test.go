@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -27,9 +28,12 @@ func (s *repotrackerJobSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	s.NoError(db.ClearCollections(model.ProjectRefCollection))
+
 }
 
 func (s *repotrackerJobSuite) TearDownTest() {
+	s.NoError(db.ClearCollections(admin.Collection))
 	s.cancel()
 	evergreen.ResetEnvironment()
 }
@@ -46,8 +50,6 @@ func (s *repotrackerJobSuite) TestJob() {
 }
 
 func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
-	s.NoError(db.Clear(admin.Collection))
-
 	flags := admin.ServiceFlags{
 		RepotrackerPushEventDisabled: true,
 	}
@@ -58,5 +60,4 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "github push events triggering repotracker is disabled")
-	s.NoError(db.Clear(admin.Collection))
 }
