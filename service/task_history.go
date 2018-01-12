@@ -501,9 +501,9 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 // descending.
 func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, versions []version.Version) ([]taskDrawerItem, error) {
 
-	orderNumbers := make([]int, 0, len(versions))
+	versionIds := []string{}
 	for _, v := range versions {
-		orderNumbers = append(orderNumbers, v.RevisionOrderNumber)
+		versionIds = append(versionIds, v.Id)
 	}
 
 	revisionSort := task.RevisionOrderNumberKey
@@ -511,7 +511,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 		revisionSort = "-" + revisionSort
 	}
 
-	tasks, err := task.Find(task.ByOrderNumbersForNameAndVariant(orderNumbers, displayName, variant).Sort([]string{revisionSort}))
+	tasks, err := task.Find(task.ByVersionsForNameAndVariant(versionIds, displayName, variant).Sort([]string{revisionSort}))
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting sibling tasks")
