@@ -1,8 +1,6 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/pkg/errors"
 )
@@ -37,7 +35,7 @@ type variantTask struct {
 func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	v, ok := h.(patch.Patch)
 	if !ok {
-		return fmt.Errorf("incorrect type when fetching converting patch type")
+		return errors.New("incorrect type when fetching converting patch type")
 	}
 	apiPatch.Id = APIString(v.Id.Hex())
 	apiPatch.Description = APIString(v.Description)
@@ -75,8 +73,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = v.Activated
 	apiPatch.GithubPatchData = githubPatch{}
-	err := apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData)
-	return err
+	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
 
 // ToService converts a service layer patch using the data from APIPatch
@@ -99,7 +96,7 @@ type githubPatch struct {
 func (g *githubPatch) BuildFromService(h interface{}) error {
 	v, ok := h.(patch.GithubPatch)
 	if !ok {
-		return fmt.Errorf("incorrect type when fetching converting github patch type")
+		return errors.New("incorrect type when fetching converting github patch type")
 	}
 	g.PRNumber = v.PRNumber
 	g.BaseOwner = APIString(v.BaseOwner)
