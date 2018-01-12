@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -44,14 +45,9 @@ func Update() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			client := conf.GetRestCommunicator(ctx)
 
-			ac, _, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
-
-			update, err := checkUpdate(ac, false)
+			update, err := checkUpdate(client, false)
 			if err != nil {
 				return err
 			}
@@ -199,8 +195,8 @@ func prepareUpdate(url, newVersion string) (string, error) {
 }
 
 // Silently check if an update is available, and print a notification message if it is.
-func notifyUserUpdate(ac *legacyClient) {
-	update, err := checkUpdate(ac, true)
+func notifyUserUpdate(client client.Communicator) {
+	update, err := checkUpdate(client, true)
 	if update.needsUpdate && err == nil {
 		if runtime.GOOS == "windows" {
 			fmt.Printf("A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
@@ -216,7 +212,7 @@ type updateStatus struct {
 	newVersion  string
 }
 
-func checkUpdate(ac *legacyClient, silent bool) (updateStatus, error) {
+func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) {
 	var outLog io.Writer = os.Stdout
 	if silent {
 		outLog = ioutil.Discard
@@ -224,27 +220,34 @@ func checkUpdate(ac *legacyClient, silent bool) (updateStatus, error) {
 
 	// This version of the cli has been built with a version, so we can compare it with what the
 	// server says is the latest
-	clients, err := ac.CheckUpdates()
+	cliUpdate, err := client.GetCLIVersion(context.Background())
 	if err != nil {
 		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
 		return updateStatus{nil, false, ""}, err
 	}
 
+	remoteVersion := string(cliUpdate.ClientConfig.LatestRevision)
 	// No update needed
-	if clients.LatestRevision == evergreen.ClientVersion {
+	if remoteVersion == evergreen.ClientVersion {
 		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.ClientVersion)
-		return updateStatus{nil, false, clients.LatestRevision}, nil
+		return updateStatus{nil, false, remoteVersion}, nil
 	}
 
-	binarySource := findClientUpdate(*clients)
+	clients, err := cliUpdate.ClientConfig.ToService()
+	if err != nil {
+		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
+		return updateStatus{nil, false, ""}, err
+	}
+
+	binarySource := findClientUpdate(clients.(evergreen.ClientConfig))
 	if binarySource == nil {
 		// Client is out of date but no update available
 		fmt.Fprintf(outLog, "Client is out of date (version %v) but update is unavailable.\n", evergreen.ClientVersion)
-		return updateStatus{nil, true, clients.LatestRevision}, nil
+		return updateStatus{nil, true, remoteVersion}, nil
 	}
 
-	fmt.Fprintf(outLog, "Update to version %v found at %v\n", clients.LatestRevision, binarySource.URL)
-	return updateStatus{binarySource, true, clients.LatestRevision}, nil
+	fmt.Fprintf(outLog, "Update to version %v found at %v\n", remoteVersion, binarySource.URL)
+	return updateStatus{binarySource, true, remoteVersion}, nil
 }
 
 // Searches a ClientConfig for a ClientBinary with a non-empty URL, whose architecture and OS

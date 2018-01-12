@@ -36,14 +36,14 @@ func LastGreen() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			client := conf.GetRestCommunicator(ctx)
 
-			ac, rc, err := conf.getLegacyClients()
+			_, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
+			notifyUserUpdate(client)
 
 			v, err := rc.GetLastGreen(project, variants)
 			if err != nil {

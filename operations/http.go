@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -401,24 +400,6 @@ func (ac *legacyClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, e
 	}
 
 	return reply.Patch, nil
-}
-
-// CheckUpdates fetches information about available updates to client binaries from the server.
-func (ac *legacyClient) CheckUpdates() (*evergreen.ClientConfig, error) {
-	resp, err := ac.get("update", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, NewAPIError(resp)
-	}
-
-	reply := evergreen.ClientConfig{}
-	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
-		return nil, err
-	}
-	return &reply, nil
 }
 
 func (ac *legacyClient) GetTask(taskId string) (*service.RestTask, error) {

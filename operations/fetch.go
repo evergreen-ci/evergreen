@@ -103,14 +103,14 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			client := conf.GetRestCommunicator(ctx)
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
+			notifyUserUpdate(client)
 
 			if doFetchSource {
 				if err = fetchSource(ac, rc, wd, taskID, noPatch); err != nil {
