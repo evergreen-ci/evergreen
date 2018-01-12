@@ -164,23 +164,40 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Equal(GithubIntentType, intents[0].GetType())
 }
 
-func (s *GithubSuite) FindUnprocessedGithubIntents() {
+func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
 		githubIntent{
-			Processed: true,
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+			Processed:  true,
 		},
 		githubIntent{
-			Processed: true,
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+			Processed:  true,
 		},
 		githubIntent{
-			Processed: true,
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+			Processed:  true,
 		},
 		githubIntent{
-			Processed: true,
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+			Processed:  true,
 		},
-		githubIntent{},
-		githubIntent{},
-		githubIntent{},
+		githubIntent{
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+		},
+		githubIntent{
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+		},
+		githubIntent{
+			DocumentID: bson.NewObjectId(),
+			IntentType: GithubIntentType,
+		},
 	}
 
 	for _, intent := range intents {
@@ -190,4 +207,38 @@ func (s *GithubSuite) FindUnprocessedGithubIntents() {
 	found, err := FindUnprocessedGithubIntents()
 	s.NoError(err)
 	s.Len(found, 3)
+}
+
+func (s *GithubSuite) TestNewPatch() {
+	intent, err := NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
+	s.NoError(err)
+	s.NotNil(intent)
+
+	patchDoc := intent.NewPatch()
+	s.NotNil(patchDoc)
+	s.NotZero(patchDoc.Id)
+	s.Equal("'evergreen-ci/evergreen' pull request #5 by octocat: Art of Pull Requests (https://github.com/evergreen-ci/evergreen/pull/5)", patchDoc.Description)
+	s.Empty(patchDoc.Project)
+	s.Empty(patchDoc.Githash)
+	s.Zero(patchDoc.PatchNumber)
+	s.Empty(patchDoc.Version)
+	s.Equal(evergreen.PatchCreated, patchDoc.Status)
+	s.Zero(patchDoc.CreateTime)
+	s.Zero(patchDoc.StartTime)
+	s.Zero(patchDoc.FinishTime)
+	s.Empty(patchDoc.BuildVariants)
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
+	s.Empty(patchDoc.Patches)
+	s.False(patchDoc.Activated)
+	s.Empty(patchDoc.PatchedConfig)
+	s.Equal(GithubAlias, patchDoc.Alias)
+	s.Equal(5, patchDoc.GithubPatchData.PRNumber)
+	s.Equal("evergreen-ci", patchDoc.GithubPatchData.BaseOwner)
+	s.Equal("evergreen", patchDoc.GithubPatchData.BaseRepo)
+	s.Equal("octocat", patchDoc.GithubPatchData.HeadOwner)
+	s.Equal("evergreen", patchDoc.GithubPatchData.HeadRepo)
+	s.Equal("67da19930b1b18d346477e99a8e18094a672f48a", patchDoc.GithubPatchData.HeadHash)
+	s.Equal("octocat", patchDoc.GithubPatchData.Author)
+	s.Equal("https://www.example.com/1.diff", patchDoc.GithubPatchData.DiffURL)
 }

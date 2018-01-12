@@ -245,6 +245,7 @@ func (g *githubIntent) NewPatch() *Patch {
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
 		Id:          bson.NewObjectId(),
+		Alias:       GithubAlias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
 		Status:      evergreen.PatchCreated,
