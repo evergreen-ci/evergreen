@@ -38,7 +38,7 @@ auth:
 
 plugins:
   perf:
-      projects: ["sys-perf"]
+      projects: ["sys-perf", "performance"]
   buildbaron:
           host: "jira.example.com"
           username: "foo"
