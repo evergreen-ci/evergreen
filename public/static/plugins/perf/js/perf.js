@@ -496,6 +496,16 @@ function TrendSamples(samples){
         return d.ops_per_sec
       })
 
+      // Sort items by thread level
+      // Change dict to array
+      var threadResults = _.chain(rec.results)
+        .map(function(v, k) {
+          v.threadLevel = k
+          return v
+        })
+        .sortBy('-threadLevel')
+        .value()
+
       this.seriesByName[rec.name].push({
         revision: sample.revision,
         task_id: sample.task_id,
@@ -503,7 +513,7 @@ function TrendSamples(samples){
         ops_per_sec_values: maxOpsPerSecItem.ops_per_sec_values,
         order: sample.order,
         startedAt: rec.start * 1000,
-        threadResults: rec.results,
+        threadResults: threadResults,
       });
     }
   }
@@ -612,9 +622,9 @@ function TestSample(sample){
   }
 
   this.resultForTest = function(testName){
-      return _.findWhere(
-        this.sample.data.results, {name: testName}
-      );
+    return _.findWhere(
+      this.sample.data.results, {name: testName}
+    );
   }
 
   this.maxThroughputForTest = function(testName){
@@ -623,7 +633,13 @@ function TestSample(sample){
       if(!d){
         return;
       }
-      this._maxes[testName] = _.max(_.filter(_.pluck(_.values(d.results), 'ops_per_sec'), numericFilter));
+      this._maxes[testName] = _.max(
+        _.filter(
+          _.pluck(
+            _.values(d.results), 'ops_per_sec'
+          ), numericFilter
+        )
+      );
     }
     return this._maxes[testName];
   }

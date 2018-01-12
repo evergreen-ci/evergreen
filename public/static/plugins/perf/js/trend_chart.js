@@ -1,4 +1,5 @@
 // Helper function
+// TODO Make it accept (d, i) and return function (FP)
 function d3Translate(x, y) {
   return 'translate(' + x + ',' + y + ')';
 }
@@ -47,8 +48,17 @@ mciModule.factory('PerfChartService', function() {
       yPos: undefined, // To be calculated
       xPos: undefined, // To be calculated
       step: undefined, // to e calculated. Step between legend items
+    },
+    knownLevels: {
+      1: { colorId: 0 },
+      4: { colorId: 1 },
+      8: { colorId: 2 },
+      16: { colorId: 3 },
     }
   };
+
+  // Non-persistent color id offset for unusual thread level
+  cfg.knownLevelsCount = _.keys(cfg.knownLevels).length
 
   // Chart are real size
   cfg.effectiveWidth = cfg.container.width - cfg.margin.left - cfg.margin.right;
@@ -129,10 +139,24 @@ var drawSingleTrendChart = function(params) {
   var opsValues = _.pluck(series, 'ops_per_sec_values');
   var avgOpsPerSec = d3.mean(ops)
 
-  var allLevels = _.keys(series[0].threadResults)
+  var allLevels = _.pluck(series[0].threadResults, 'threadLevel')
   var levels = threadMode == MAXONLY
     ? [_.max(allLevels, function(d) { return +d })]
     : allLevels
+
+  var levelsMeta = _.map(levels, function(d, i) {
+    var data = {
+      name: d,
+      idx: _.indexOf(allLevels, d),
+    };
+
+    var match = cfg.knownLevels[d];
+
+    data.colorId = match
+      ? match.colorId
+      : cfg.knownLevelsCount + i
+    return data
+  })
 
   // Calculate legend x pos based on levels
   cfg.legend.xPos = (cfg.container.width - levels.length * cfg.legend.step) / 2
@@ -147,7 +171,7 @@ var drawSingleTrendChart = function(params) {
       if (threadMode == MAXONLY) {
         // In maxonly mode levels contain single (max) item
         // Extract just one ops item
-        return d.threadResults[levels[0]][cfg.valueAttr]
+        return d.threadResults[levelsMeta[0].idx][cfg.valueAttr]
       } else {
         return _.map(d.threadResults, function(d) {
           return d[cfg.valueAttr]
@@ -189,6 +213,10 @@ var drawSingleTrendChart = function(params) {
     .range([0, cfg.effectiveWidth]);
 
   var colors = d3.scale.category10();
+  // FIXME Force color range 'initialization'. Might be a bug in d3 3.5.3
+  // For some reason, d3 will not give you, let's say, the third color
+  // unless you requested 0, 1 and 2 before.
+  for (var i = 0; i < allLevels.length; i++) colors(i);
 
   var yAxis = d3.svg.axis()
     .scale(yScale)
@@ -266,7 +294,7 @@ var drawSingleTrendChart = function(params) {
     })
 
   var legendIter = legendG.selectAll('g')
-    .data(levels)
+    .data(levelsMeta)
     .enter()
     .append('svg:g')
     .attr({
@@ -280,11 +308,11 @@ var drawSingleTrendChart = function(params) {
       y: cfg.legend.textOverRectOffset,
       width: cfg.legend.itemWidth,
       height: cfg.legend.itemHeight,
-      fill: function(d, i) { return colors(i) }
+      fill: function(d) { return colors(d.colorId) }
     })
 
   legendIter.append('svg:text')
-    .text(_.identity)
+    .text(function(d) { return d.name })
     .attr({
       x: 15,
       fill: 'white',
@@ -296,18 +324,20 @@ var drawSingleTrendChart = function(params) {
     .attr('transform', d3Translate(cfg.margin.left, cfg.margin.top))
 
   var lines = chartG.selectAll('path')
-    .data(levels)
+    .data(levelsMeta)
     .enter()
     .append('path')
     .attr({
       d: function(level) {
         return mline(_.map(series, function(d) {
-          return d.threadResults[level][cfg.valueAttr]
+          return d.threadResults[level.idx][cfg.valueAttr]
         }))
       },
     })
     .style({
-      stroke: function(d, i) { return colors(i) },
+      stroke: function(d) {
+        return colors(d.colorId)
+      },
     })
 
   if (hasValues) {
@@ -328,20 +358,37 @@ var drawSingleTrendChart = function(params) {
 
   if (compareSamples) {
     for(var j=0; j < compareSamples.length; j++) {
+      var g = chartG.append('g')
       var compareSample = compareSamples[j]
       var compareMax = compareSample.maxThroughputForTest(key)
-      if (compareMax && !_.isNaN(compareMax)) {
 
-        var meanValue = yScale(compareMax)
-        chartG.append('svg:line')
+      var values;
+      if (threadMode == MAXONLY) {
+        var values = [yScale(compareSample.maxThroughputForTest(key))]
+      } else {
+        var testResult = compareSample.resultForTest(key)
+        if (testResult) {
+          var values = _.map(testResult.results, function(d) {
+            return yScale(d[cfg.valueAttr])
+          })
+        }
+      }
+
+      values = _.filter(values)
+
+      if (values && values.length) {
+        g.selectAll('.mean-line')
+          .data(values)
+          .enter()
+          .append('svg:line')
           .attr({
             class: 'mean-line',
             x1: 0,
             x2: cfg.effectiveWidth,
-            y1: meanValue,
-            y2: meanValue,
-            stroke: function(d, i) { return colors(j + 1) },
-            'stroke-width': '1',
+            y1: _.identity,
+            y2: _.identity,
+            stroke: function() { return d3.rgb(colors(j + 1)).brighter() },
+            'stroke-width': '2',
             'stroke-dasharray': '5,5'
           })
       }
@@ -361,24 +408,23 @@ var drawSingleTrendChart = function(params) {
     })
 
   var focusedPoints = focusG.selectAll('circle')
-    .data(levels)
+    .data(levelsMeta)
     .enter()
     .append('svg:circle')
     .attr({
       class: 'focus-point',
       r: cfg.points.focusedR,
-      fill: function(d, i) { return d3.rgb(colors(i)).darker() },
+      fill: function(d) { return d3.rgb(colors(d.colorId)).darker() },
     })
 
   var focusedText = focusG.selectAll('text')
-    .data(levels)
+    .data(levelsMeta)
     .enter()
     .append('svg:text')
     .attr({
       class: 'focus-text',
       x: cfg.focus.labelOffset.x,
-      fill: function(d, i) { return d3.rgb(colors(i)).darker(2) },
-      //'text-anchor': 'middle'
+      fill: function(d) { return d3.rgb(colors(d.colorId)).darker(2) },
     })
 
   // This function could be called just once
@@ -433,7 +479,7 @@ var drawSingleTrendChart = function(params) {
 
     // List of per thread level values for selected item
     var values = threadMode == MAXONLY
-      ? [item.threadResults[levels[0]][cfg.valueAttr]]
+      ? [item.threadResults[levelsMeta[0].idx][cfg.valueAttr]]
       : _.pluck(item.threadResults, cfg.valueAttr);
 
     var maxOps = _.max(values);
