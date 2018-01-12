@@ -431,3 +431,26 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	}
 	return patchAliases, nil
 }
+
+func (c *communicatorImpl) GetCLIVersion(ctx context.Context) (*model.APICLIUpdate, error) {
+	info := requestInfo{
+		path:    "/status/cli_version",
+		method:  get,
+		version: apiVersion2,
+	}
+
+	resp, err := c.retryRequest(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch update manifest from server")
+	}
+	defer resp.Body.Close()
+	update := &model.APICLIUpdate{}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Wrapf(err, "expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+	}
+	if err = util.ReadJSONInto(resp.Body, update); err != nil {
+		return nil, errors.Wrap(err, "failed to parse update manifest from server")
+	}
+
+	return update, nil
+}

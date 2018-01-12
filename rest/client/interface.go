@@ -140,4 +140,6 @@ type Communicator interface {
 
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.PatchDefinition, error)
+
+	GetCLIVersion(context.Context) (*restmodel.APICLIUpdate, error)
 }
