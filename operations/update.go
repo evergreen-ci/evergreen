@@ -228,7 +228,7 @@ func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) 
 
 	remoteVersion := string(cliUpdate.ClientConfig.LatestRevision)
 	// No update needed
-	if remoteVersion == evergreen.ClientVersion {
+	if cliUpdate.IgnoreUpdate || remoteVersion == evergreen.ClientVersion {
 		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.ClientVersion)
 		return updateStatus{nil, false, remoteVersion}, nil
 	}
