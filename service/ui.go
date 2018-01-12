@@ -89,7 +89,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (
 	}
 	uis.UserManager = userManager
 
-	clientConfig, err := getClientConfig(settings)
+	clientConfig, err := evergreen.GetClientConfig(settings)
 	if err != nil {
 		return nil, err
 	}

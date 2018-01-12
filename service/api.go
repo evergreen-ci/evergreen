@@ -65,7 +65,7 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 		return nil, errors.WithStack(err)
 	}
 
-	clientConfig, err := getClientConfig(settings)
+	clientConfig, err := evergreen.GetClientConfig(settings)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
