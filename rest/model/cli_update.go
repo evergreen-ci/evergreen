@@ -46,7 +46,19 @@ func (a *APIClientConfig) BuildFromService(h interface{}) error {
 }
 
 func (a *APIClientConfig) ToService() (interface{}, error) {
-	return nil, errors.New("(*APIClientConfig) not implemented for read-only route")
+	c := evergreen.ClientConfig{}
+	c.LatestRevision = string(a.LatestRevision)
+	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
+	for i := range c.ClientBinaries {
+		var err error
+		bin, err := a.ClientBinaries[i].ToService()
+		c.ClientBinaries[i] = bin.(evergreen.ClientBinary)
+		if err != nil {
+			return c, err
+		}
+	}
+
+	return c, nil
 }
 
 type APIClientBinary struct {
@@ -67,5 +79,9 @@ func (a *APIClientBinary) BuildFromService(h interface{}) error {
 }
 
 func (a *APIClientBinary) ToService() (interface{}, error) {
-	return nil, errors.New("(*APIClientBinary) not implemented for read-only route")
+	b := evergreen.ClientBinary{}
+	b.Arch = string(a.Arch)
+	b.OS = string(a.OS)
+	b.URL = string(a.URL)
+	return b, nil
 }
