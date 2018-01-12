@@ -594,6 +594,9 @@ func onDemandCost(pf onDemandPriceFetcher, os osType, instance, region string, d
 }
 
 func newMakeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
+	if len(mounts) == 0 {
+		return nil, nil
+	}
 	mappings := []*ec2aws.BlockDeviceMapping{}
 	for i, mount := range mounts {
 		if mount.DeviceName == "" {
@@ -605,6 +608,9 @@ func newMakeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMappi
 		mappings = append(mappings, &ec2aws.BlockDeviceMapping{
 			DeviceName:  &mounts[i].DeviceName,
 			VirtualName: &mounts[i].VirtualName,
+			Ebs: &ec2aws.EbsBlockDevice{
+				DeleteOnTermination: makeBoolPtr(true),
+			},
 		})
 	}
 	return mappings, nil

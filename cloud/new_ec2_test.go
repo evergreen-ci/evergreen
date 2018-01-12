@@ -167,7 +167,7 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -220,7 +220,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -274,7 +274,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -325,7 +325,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -382,12 +382,12 @@ func (s *EC2Suite) TestCanSpawn() {
 
 func (s *EC2Suite) TestGetInstanceStatus() {
 	h := &host.Host{}
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 	status, err := s.onDemandManager.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 
-	h.Distro.Provider = evergreen.ProviderNameEc2Spot
+	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
 	status, err = s.onDemandManager.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
