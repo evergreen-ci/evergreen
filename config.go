@@ -24,7 +24,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2017-12-29"
+	ClientVersion = "2017-01-12"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
