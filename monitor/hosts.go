@@ -126,11 +126,10 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
 
 				func() { // use a function so that the defer works
-					var cancel context.CancelFunc
-					ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
+					funcCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 					defer cancel()
 
-					if err := terminateHost(ctx, hostToTerminate, settings); err != nil {
+					if err := terminateHost(funcCtx, hostToTerminate, settings); err != nil {
 						if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
 							err = hostToTerminate.Terminate()
 							if err != nil {
