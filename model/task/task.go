@@ -664,7 +664,7 @@ func (t *Task) UpdateDisplayTask() error {
 	if startTime != time.Unix(1<<62, 0) {
 		update[StartTimeKey] = startTime
 	}
-	if endTime != util.ZeroTime {
+	if endTime != util.ZeroTime && !hasUnfinishedTasks {
 		update[FinishTimeKey] = endTime
 	}
 
