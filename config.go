@@ -78,8 +78,8 @@ type ClientBinary struct {
 }
 
 type ClientConfig struct {
-	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"client_binaries"`
-	LatestRevision string         `yaml:"latest_revision" json:"latest_revision"`
+	ClientBinaries []ClientBinary `yaml:"client_binaries"`
+	LatestRevision string         `yaml:"latest_revision"`
 }
 
 // APIConfig holds relevant log and listener settings for the API server.
