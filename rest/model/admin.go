@@ -32,7 +32,6 @@ type APIServiceFlags struct {
 	SchedulerDisabled            bool `json:"scheduler_disabled"`
 	GithubPRTestingDisabled      bool `json:"github_pr_testing_disabled"`
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
-	GithubPRTestingDisabled      bool `json:"github_pr_testing_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
 }
 

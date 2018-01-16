@@ -220,34 +220,27 @@ func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) 
 
 	// This version of the cli has been built with a version, so we can compare it with what the
 	// server says is the latest
-	cliUpdate, err := client.GetCLIVersion(context.Background())
+	clients, err := client.GetCLIVersion(context.Background())
 	if err != nil {
 		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
 		return updateStatus{nil, false, ""}, err
 	}
 
-	remoteVersion := string(cliUpdate.ClientConfig.LatestRevision)
 	// No update needed
-	if cliUpdate.IgnoreUpdate || remoteVersion == evergreen.ClientVersion {
+	if clients.LatestRevision == evergreen.ClientVersion {
 		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.ClientVersion)
-		return updateStatus{nil, false, remoteVersion}, nil
+		return updateStatus{nil, false, clients.LatestRevision}, nil
 	}
 
-	clients, err := cliUpdate.ClientConfig.ToService()
-	if err != nil {
-		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
-		return updateStatus{nil, false, ""}, err
-	}
-
-	binarySource := findClientUpdate(clients.(evergreen.ClientConfig))
+	binarySource := findClientUpdate(*clients)
 	if binarySource == nil {
 		// Client is out of date but no update available
 		fmt.Fprintf(outLog, "Client is out of date (version %v) but update is unavailable.\n", evergreen.ClientVersion)
-		return updateStatus{nil, true, remoteVersion}, nil
+		return updateStatus{nil, true, clients.LatestRevision}, nil
 	}
 
-	fmt.Fprintf(outLog, "Update to version %v found at %v\n", remoteVersion, binarySource.URL)
-	return updateStatus{binarySource, true, remoteVersion}, nil
+	fmt.Fprintf(outLog, "Update to version %v found at %v\n", clients.LatestRevision, binarySource.URL)
+	return updateStatus{binarySource, true, clients.LatestRevision}, nil
 }
 
 // Searches a ClientConfig for a ClientBinary with a non-empty URL, whose architecture and OS

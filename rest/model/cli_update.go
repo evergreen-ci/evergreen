@@ -36,7 +36,7 @@ func (a *APIClientConfig) BuildFromService(h interface{}) error {
 		return fmt.Errorf("incorrect type when fetching converting client config")
 	}
 	a.ClientBinaries = make([]APIClientBinary, len(c.ClientBinaries))
-	catcher := grip.NewSimpleCatcher()
+	catcher := grip.NewBasicCatcher()
 	for i := range a.ClientBinaries {
 		catcher.Add(a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i]))
 	}
@@ -48,16 +48,18 @@ func (a *APIClientConfig) ToService() (interface{}, error) {
 	c := evergreen.ClientConfig{}
 	c.LatestRevision = string(a.LatestRevision)
 	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
+
+	catcher := grip.NewBasicCatcher()
 	for i := range c.ClientBinaries {
 		var err error
 		bin, err := a.ClientBinaries[i].ToService()
 		c.ClientBinaries[i] = bin.(evergreen.ClientBinary)
 		if err != nil {
-			return c, err
+			catcher.Add(err)
 		}
 	}
 
-	return c, nil
+	return c, catcher.Resolve()
 }
 
 type APIClientBinary struct {

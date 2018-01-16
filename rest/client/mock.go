@@ -472,18 +472,15 @@ func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.
 	return nil, errors.New("(c *Mock) ListAliases not implemented")
 }
 
-func (c *Mock) GetCLIVersion(ctx context.Context) (*model.APICLIUpdate, error) {
-	return &model.APICLIUpdate{
-		ClientConfig: model.APIClientConfig{
-			ClientBinaries: []model.APIClientBinary{
-				model.APIClientBinary{
-					Arch: "amd64",
-					OS:   "darwin",
-					URL:  "localhost/clients/darwin_amd64/evergreen",
-				},
+func (c *Mock) GetCLIVersion(ctx context.Context) (*evergreen.ClientConfig, error) {
+	return &evergreen.ClientConfig{
+		ClientBinaries: []evergreen.ClientBinary{
+			evergreen.ClientBinary{
+				Arch: "amd64",
+				OS:   "darwin",
+				URL:  "http://example.com/clients/darwin_amd64/evergreen",
 			},
-			LatestRevision: "2017-12-29",
 		},
-		IgnoreUpdate: false,
+		LatestRevision: "2017-12-29",
 	}, nil
 }
