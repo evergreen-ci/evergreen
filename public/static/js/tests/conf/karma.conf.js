@@ -20,6 +20,7 @@ module.exports = function(config) {
       'js/angular-*.js',
       'js/md-*.js',
       'js/underscore-min.js',
+      'js/d3.min.js',
       'js/filters/*',
       'js/directives/*',
       'js/mci_module.js',

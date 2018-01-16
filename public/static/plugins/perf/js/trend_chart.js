@@ -466,7 +466,6 @@ var drawSingleTrendChart = function(params) {
     }
   }
 
-
   function focusPoint(hash) {
     var idx = _.findIndex(series, function(d) {
       return d && d.revision == hash

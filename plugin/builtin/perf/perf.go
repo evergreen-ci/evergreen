@@ -17,9 +17,6 @@ func init() {
 }
 
 var includes = []template.HTML{
-	`<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.min.js"></script>`,
-	`<script src="//cdnjs.cloudflare.com/ajax/libs/rickshaw/1.5.1/rickshaw.js"></script>`,
-	`<link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/rickshaw/1.5.1/rickshaw.css">`,
 	`<script type="text/javascript" src="/plugin/perf/static/js/trend_chart.js"></script>`,
 	`<script type="text/javascript" src="/plugin/perf/static/js/perf.js"></script>`,
 }
