@@ -21,8 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const ec2ProviderName = "ec2"
-
 func isHostSpot(h *host.Host) bool {
 	return h.Distro.Provider == evergreen.ProviderNameEc2SpotNew
 }
@@ -141,40 +139,36 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 	}
 
 	grip.Debug(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "starting on-demand instance",
-		"args":           input,
-		"host":           h.Id,
-		"host_provider":  h.Distro.Provider,
-		"distro":         h.Distro.Id,
+		"message":       "starting on-demand instance",
+		"args":          input,
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
 	})
 	reservation, err := m.client.RunInstances(input)
 	if err != nil || reservation == nil {
 		msg := "RunInstances API call returned an error"
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        msg,
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       msg,
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		grip.Error(message.WrapError(h.Remove(), message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error removing intent host",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error removing intent host",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		if err != nil {
 			return nil, errors.Wrap(err, msg)
 		}
 		msg = "reservation was nil"
 		grip.Error(message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        msg,
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       msg,
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		})
 		return nil, errors.New(msg)
 	}
@@ -185,10 +179,10 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 
 	instance := reservation.Instances[0]
 	grip.Debug(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "started ec2 instance",
-		"host":           *instance.InstanceId,
-		"distro":         h.Distro.Id,
+		"message":       "started ec2 instance",
+		"host":          *instance.InstanceId,
+		"distro":        h.Distro.Id,
+		"host_provider": h.Distro.Provider,
 	})
 
 	resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
@@ -196,20 +190,20 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 	})
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"host":           h.Id,
-			"distro":         h.Distro.Id,
-			"message":        "error describing instance",
+			"host_provider": h.Distro.Provider,
+			"host":          h.Id,
+			"distro":        h.Distro.Id,
+			"message":       "error describing instance",
 		}))
 		return nil, errors.Wrap(err, "error describing instance")
 	}
 
 	grip.Debug(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "describe instances returned data",
-		"host":           h.Id,
-		"distro":         h.Distro.Id,
-		"response":       resp,
+		"message":       "describe instances returned data",
+		"host_provider": h.Distro.Provider,
+		"host":          h.Id,
+		"distro":        h.Distro.Id,
+		"response":      resp,
 	})
 
 	if len(resp.Reservations) < 1 {
@@ -256,12 +250,11 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSett
 	}
 
 	grip.Debug(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "starting spot instance",
-		"args":           spotRequest,
-		"host":           h.Id,
-		"host_provider":  h.Distro.Provider,
-		"distro":         h.Distro.Id,
+		"message":       "starting spot instance",
+		"args":          spotRequest,
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
 	})
 	spotResp, err := m.client.RequestSpotInstances(spotRequest)
 	if err != nil {
@@ -313,11 +306,10 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	if err != nil {
 		msg := "error getting provider"
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        msg,
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       msg,
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		return nil, errors.Wrap(err, msg)
 	}
@@ -326,49 +318,44 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		if err != nil {
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
-				"cloud_provider": ec2ProviderName,
-				"message":        msg,
-				"host":           h.Id,
-				"host_provider":  h.Distro.Provider,
-				"distro":         h.Distro.Id,
+				"message":       msg,
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
 			}))
 			return nil, errors.Wrap(err, msg)
 		}
 		grip.Debug(message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "spawned on-demand host",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "spawned on-demand host",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		})
 	} else if provider == spotProvider {
 		resources, err = m.spawnSpotHost(h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning spot host"
 			grip.Error(message.WrapError(err, message.Fields{
-				"cloud_provider": ec2ProviderName,
-				"message":        msg,
-				"host":           h.Id,
-				"host_provider":  h.Distro.Provider,
-				"distro":         h.Distro.Id,
+				"message":       msg,
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
 			}))
 			return nil, errors.Wrap(err, msg)
 		}
 		grip.Debug(message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "spawned spot host",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "spawned spot host",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		})
 	}
 
 	grip.Debug(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "attaching tags for host",
-		"host":           h.Id,
-		"host_provider":  h.Distro.Provider,
-		"distro":         h.Distro.Id,
+		"message":       "attaching tags for host",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
 	})
 	tags := makeTags(h)
 	tagSlice := []*ec2.Tag{}
@@ -382,22 +369,20 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		Tags:      tagSlice,
 	}); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error attaching tags",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
 		return nil, err
 	}
 
 	grip.Debug(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "attached tags for host",
-		"host":           h.Id,
-		"host_provider":  h.Distro.Provider,
-		"distro":         h.Distro.Id,
+		"message":       "attached tags for host",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
 	})
 	event.LogHostStarted(h.Id)
 
@@ -419,11 +404,10 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 		info, err := m.client.GetInstanceInfo(h.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"cloud_provider": ec2ProviderName,
-				"message":        "error getting instance info",
-				"host":           h.Id,
-				"host_provider":  h.Distro.Provider,
-				"distro":         h.Distro.Id,
+				"message":       "error getting instance info",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
 			}))
 			return StatusUnknown, err
 		}
@@ -453,11 +437,10 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 		instanceId, err := m.cancelSpotRequest(h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"cloud_provider": ec2ProviderName,
-				"message":        "error canceling spot request",
-				"host":           h.Id,
-				"host_provider":  h.Distro.Provider,
-				"distro":         h.Distro.Id,
+				"message":       "error canceling spot request",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
 			}))
 			return errors.Wrap(err, "error canceling spot request")
 		}
@@ -472,22 +455,21 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	})
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error terminating instance",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error terminating instance",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		return err
 	}
 
 	for _, stateChange := range resp.TerminatingInstances {
 		grip.Info(message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "terminated instance",
-			"instance_id":    *stateChange.InstanceId,
-			"host":           h.Id,
-			"distro":         h.Distro.Id,
+			"message":       "terminated instance",
+			"host_provider": h.Distro.Provider,
+			"instance_id":   *stateChange.InstanceId,
+			"host":          h.Id,
+			"distro":        h.Distro.Id,
 		})
 	}
 
@@ -505,39 +487,35 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
 			}
 		}
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error getting spot request info",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error getting spot request info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 	}
 	grip.Info(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "canceling spot request",
-		"host":           h.Id,
-		"host_provider":  h.Distro.Provider,
-		"distro":         h.Distro.Id,
+		"message":       "canceling spot request",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
 	})
 	if _, err = m.client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
 		grip.Error(message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "failed to cancel spot request",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "failed to cancel spot request",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		})
 		return "", errors.Wrapf(err, "Failed to cancel spot request for host %s", h.Id)
 	}
 	grip.Info(message.Fields{
-		"cloud_provider": ec2ProviderName,
-		"message":        "canceled spot request",
-		"host":           h.Id,
-		"host_provider":  h.Distro.Provider,
-		"distro":         h.Distro.Id,
+		"message":       "canceled spot request",
+		"host":          h.Id,
+		"host_provider": h.Distro.Provider,
+		"distro":        h.Distro.Id,
 	})
 
 	if spotDetails.SpotInstanceRequests[0].InstanceId != nil {
@@ -555,11 +533,10 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 	info, err := m.client.GetInstanceInfo(h.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error getting instance info",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error getting instance info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		return false, err
 	}
@@ -580,11 +557,10 @@ func (m *ec2Manager) IsSSHReachable(h *host.Host, keyName string) (bool, error) 
 	opts, err := m.GetSSHOptions(h, keyName)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error getting ssh options",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error getting ssh options",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		return false, err
 	}
@@ -596,11 +572,10 @@ func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 	info, err := m.client.GetInstanceInfo(h.Id)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "error getting instance info",
-			"host":           h.Id,
-			"host_provider":  h.Distro.Provider,
-			"distro":         h.Distro.Id,
+			"message":       "error getting instance info",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
 		}))
 		return "", errors.Wrap(err, "error getting instance info")
 	}
@@ -677,10 +652,9 @@ func cloudStatusFromSpotStatus(id, state string) CloudStatus {
 		return StatusFailed
 	default:
 		grip.Error(message.Fields{
-			"cloud_provider": ec2ProviderName,
-			"message":        "Unexpected status code in spot request",
-			"code":           state,
-			"id":             id,
+			"message": "Unexpected status code in spot request",
+			"code":    state,
+			"id":      id,
 		})
 		return StatusUnknown
 	}
