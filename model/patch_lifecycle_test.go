@@ -110,15 +110,15 @@ func TestIncludePatchDependencies(t *testing.T) {
 		p := &Project{
 			Tasks: []ProjectTask{
 				{Name: "t1"},
-				{Name: "t2", DependsOn: []TaskDependency{{Name: "t1"}}},
+				{Name: "t2", DependsOn: []TaskUnitDependency{{Name: "t1"}}},
 				{Name: "t3"},
 				{Name: "t4", Patchable: new(bool)},
-				{Name: "t5", DependsOn: []TaskDependency{{Name: "t4"}}},
+				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: "t4"}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTask{{Name: "t1"}, {Name: "t2"}}},
-				{Name: "v2", Tasks: []BuildVariantTask{
-					{Name: "t3", DependsOn: []TaskDependency{{Name: "t2", Variant: "v1"}}}}},
+				{Name: "v1", TaskUnits: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}}},
+				{Name: "v2", TaskUnits: []BuildVariantTaskUnit{
+					{Name: "t3", DependsOn: []TaskUnitDependency{{Name: "t2", Variant: "v1"}}}}},
 			},
 		}
 
@@ -154,15 +154,15 @@ func TestIncludePatchDependencies(t *testing.T) {
 			Tasks: []ProjectTask{
 				{Name: "t1"},
 				{Name: "t2"},
-				{Name: "t3", DependsOn: []TaskDependency{{Name: AllDependencies}}},
-				{Name: "t4", DependsOn: []TaskDependency{{Name: "t3", Variant: AllVariants}}},
-				{Name: "t5", DependsOn: []TaskDependency{{Name: AllDependencies, Variant: AllVariants}}},
+				{Name: "t3", DependsOn: []TaskUnitDependency{{Name: AllDependencies}}},
+				{Name: "t4", DependsOn: []TaskUnitDependency{{Name: "t3", Variant: AllVariants}}},
+				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: AllDependencies, Variant: AllVariants}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTask{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v2", Tasks: []BuildVariantTask{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v3", Tasks: []BuildVariantTask{{Name: "t4"}}},
-				{Name: "v4", Tasks: []BuildVariantTask{{Name: "t5"}}},
+				{Name: "v1", TaskUnits: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v2", TaskUnits: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v3", TaskUnits: []BuildVariantTaskUnit{{Name: "t4"}}},
+				{Name: "v4", TaskUnits: []BuildVariantTaskUnit{{Name: "t5"}}},
 			},
 		}
 
@@ -206,16 +206,16 @@ func TestIncludePatchDependencies(t *testing.T) {
 	})
 
 	Convey("With a project task config with required tasks", t, func() {
-		all := []BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"},
+		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"},
 			{Name: "before"}, {Name: "after"}}
-		beforeDep := []TaskDependency{{Name: "before"}}
+		beforeDep := []TaskUnitDependency{{Name: "before"}}
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "before", Requires: []TaskRequirement{{Name: "after"}}},
+				{Name: "before", Requires: []TaskUnitRequirement{{Name: "after"}}},
 				{Name: "1", DependsOn: beforeDep},
 				{Name: "2", DependsOn: beforeDep},
 				{Name: "3", DependsOn: beforeDep},
-				{Name: "after", DependsOn: []TaskDependency{
+				{Name: "after", DependsOn: []TaskUnitDependency{
 					{Name: "before"},
 					{Name: "1", PatchOptional: true},
 					{Name: "2", PatchOptional: true},
@@ -223,8 +223,8 @@ func TestIncludePatchDependencies(t *testing.T) {
 				}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: all},
-				{Name: "v2", Tasks: all},
+				{Name: "v1", TaskUnits: all},
+				{Name: "v2", TaskUnits: all},
 			},
 		}
 
@@ -255,16 +255,16 @@ func TestIncludePatchDependencies(t *testing.T) {
 		})
 	})
 	Convey("With a project task config with cyclical requirements", t, func() {
-		all := []BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"}}
+		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"}}
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskRequirement{{Name: "2"}, {Name: "3"}}},
-				{Name: "2", Requires: []TaskRequirement{{Name: "1"}, {Name: "3"}}},
-				{Name: "3", Requires: []TaskRequirement{{Name: "2"}, {Name: "1"}}},
+				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "3"}}},
+				{Name: "2", Requires: []TaskUnitRequirement{{Name: "1"}, {Name: "3"}}},
+				{Name: "3", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "1"}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: all},
-				{Name: "v2", Tasks: all},
+				{Name: "v1", TaskUnits: all},
+				{Name: "v2", TaskUnits: all},
 			},
 		}
 		Convey("all tasks should be scheduled no matter which is initially added", func() {
@@ -297,11 +297,11 @@ func TestIncludePatchDependencies(t *testing.T) {
 	Convey("With a project task config that requires a non-patchable task", t, func() {
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskRequirement{{Name: "2"}}},
+				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}}},
 				{Name: "2", Patchable: new(bool)},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTask{{Name: "1"}, {Name: "2"}}},
+				{Name: "v1", TaskUnits: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
 			},
 		}
 		Convey("the non-patchable task should not be added", func() {
@@ -356,7 +356,7 @@ func TestAddNewPatch(t *testing.T) {
 		BuildVariants: []BuildVariant{
 			BuildVariant{
 				Name: "variant",
-				Tasks: []BuildVariantTask{
+				TaskUnits: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
 				DisplayTasks: []DisplayTask{

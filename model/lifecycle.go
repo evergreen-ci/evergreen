@@ -517,11 +517,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
-	tasksToCreate := []BuildVariantTask{}
+	tasksToCreate := []BuildVariantTaskUnit{}
 	createAll := len(taskNames) == 0
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
-	for _, task := range buildVariant.Tasks {
+	for _, task := range buildVariant.TaskUnits {
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
 
@@ -728,7 +728,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 }
 
 // createOneTask is a helper to create a single task.
-func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
+func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
 	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
 	return &task.Task{
 		Id:                  id,

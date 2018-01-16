@@ -113,7 +113,7 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 			So(buildVariant, ShouldNotBeNil)
 
 			// check buildvariant tasks
-			So(len(buildVariant.Tasks), ShouldEqual, 3)
+			So(len(buildVariant.TaskUnits), ShouldEqual, 3)
 		})
 
 		Reset(func() {

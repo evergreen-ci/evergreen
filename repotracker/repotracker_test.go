@@ -439,7 +439,7 @@ func createTestProject(override1, override2 *int) *model.Project {
 				Name:        "bv1",
 				DisplayName: "bv1",
 				BatchTime:   override1,
-				Tasks: []model.BuildVariantTask{
+				Tasks: []model.BuildVariantTaskUnit{
 					{
 						Name:    "Unabhaengigkeitserklaerungen",
 						Distros: []string{"test-distro-one"},
@@ -450,7 +450,7 @@ func createTestProject(override1, override2 *int) *model.Project {
 				Name:        "bv2",
 				DisplayName: "bv2",
 				BatchTime:   override2,
-				Tasks: []model.BuildVariantTask{
+				Tasks: []model.BuildVariantTaskUnit{
 					{
 						Name:    "Unabhaengigkeitserklaerungen",
 						Distros: []string{"test-distro-one"},

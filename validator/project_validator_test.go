@@ -26,11 +26,11 @@ func TestVerifyTaskDependencies(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile"},
 							{Name: "compile"},
 						},
@@ -46,11 +46,11 @@ func TestVerifyTaskDependencies(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile", Variant: "v1"},
 							{Name: "compile", Variant: "v2"},
 						},
@@ -67,11 +67,11 @@ func TestVerifyTaskDependencies(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "bad"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "bad"}},
 					},
 				},
 			}
@@ -84,15 +84,15 @@ func TestVerifyTaskDependencies(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "compile", Status: "flibbertyjibbit"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile", Status: "flibbertyjibbit"}},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: "compile", Status: evergreen.TaskSucceeded}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile", Status: evergreen.TaskSucceeded}},
 					},
 				},
 			}
@@ -105,15 +105,15 @@ func TestVerifyTaskDependencies(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "compile"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: "compile"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 					},
 				},
 			}
@@ -129,21 +129,21 @@ func TestCheckDependencyGraph(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{{Name: "testOne"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "testOne"}},
 					},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "compile"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: "compile"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
 					},
 				},
@@ -158,17 +158,17 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{Name: "compile"},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "compile"}, {Name: "testTwo"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}, {Name: "testTwo"}},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: model.AllDependencies}},
+						DependsOn: []model.TaskUnitDependency{{Name: model.AllDependencies}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
 					},
 				},
@@ -183,13 +183,13 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{Name: "compile"},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "compile"}, {Name: "hamSteak"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}, {Name: "hamSteak"}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 				},
@@ -206,25 +206,25 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile"},
 							{Name: "testSpecial", Variant: "bv2"},
 						},
 					},
 					{
 						Name:      "testSpecial",
-						DependsOn: []model.TaskDependency{{Name: "testOne", Variant: "bv1"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: "bv1"}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
 						Name:  "bv2",
-						Tasks: []model.BuildVariantTask{{Name: "testSpecial"}}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "testSpecial"}}},
 				},
 			}
 			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
@@ -239,7 +239,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile"},
 						},
 					},
@@ -247,8 +247,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
-							{Name: "compile", DependsOn: []model.TaskDependency{{Name: "testOne"}}},
+						Tasks: []model.BuildVariantTaskUnit{
+							{Name: "compile", DependsOn: []model.TaskUnitDependency{{Name: "testOne"}}},
 							{Name: "testOne"},
 						},
 					},
@@ -258,11 +258,11 @@ func TestCheckDependencyGraph(t *testing.T) {
 			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
 
 			project.BuildVariants[0].Tasks[0].DependsOn = nil
-			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskDependency{{Name: "NOPE"}}
+			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskUnitDependency{{Name: "NOPE"}}
 			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 
-			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskDependency{{Name: "compile", Variant: "bvNOPE"}}
+			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskUnitDependency{{Name: "compile", Variant: "bvNOPE"}}
 			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 		})
@@ -275,35 +275,35 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile"},
 							{Name: "testSpecial", Variant: "bv2"},
 						},
 					},
 					{
 						Name:      "testSpecial",
-						DependsOn: []model.TaskDependency{{Name: "testOne", Variant: model.AllVariants}},
+						DependsOn: []model.TaskUnitDependency{{Name: "testOne", Variant: model.AllVariants}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
 						Name: "bv2",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "testSpecial"}},
 					},
 					{
 						Name: "bv3",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
 						Name: "bv4",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 				},
@@ -318,14 +318,14 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{Name: "compile"},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile", Variant: model.AllVariants},
 							{Name: "testTwo"},
 						},
 					},
 					{
 						Name: "testTwo",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: model.AllDependencies, Variant: model.AllVariants},
 						},
 					},
@@ -333,12 +333,12 @@ func TestCheckDependencyGraph(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
 						Name: "bv2",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
 					},
 				},
@@ -354,17 +354,17 @@ func TestCheckDependencyGraph(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "testOne"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "testOne"}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "bv",
-						Tasks: []model.BuildVariantTask{{Name: "compile"}, {Name: "testOne"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "compile"}, {Name: "testOne"}},
 					},
 				},
 			}
@@ -378,19 +378,19 @@ func TestCheckDependencyGraph(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name:      "compile",
-						DependsOn: []model.TaskDependency{},
+						DependsOn: []model.TaskUnitDependency{},
 					},
 					{
 						Name:      "testOne",
-						DependsOn: []model.TaskDependency{{Name: "compile"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: "compile"}},
+						DependsOn: []model.TaskUnitDependency{{Name: "compile"}},
 					},
 					{
 						Name: "push",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "testOne"},
 							{Name: "testTwo"},
 						},
@@ -399,7 +399,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
 					},
 				},
@@ -414,13 +414,13 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{Name: "compile"},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile", Variant: "bv2"},
 						},
 					},
 					{
 						Name: "testSpecial",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile"},
 							{Name: "testOne", Variant: "bv1"}},
 					},
@@ -428,12 +428,12 @@ func TestCheckDependencyGraph(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "testOne"}},
 					},
 					{
 						Name: "bv2",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testSpecial"}},
 					},
 				},
@@ -448,24 +448,24 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{Name: "compile"},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile", Variant: model.AllVariants},
 						},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: model.AllDependencies}},
+						DependsOn: []model.TaskUnitDependency{{Name: model.AllDependencies}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
 						Name: "bv2",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testTwo"}},
 					},
 				},
@@ -480,24 +480,24 @@ func TestCheckDependencyGraph(t *testing.T) {
 					{Name: "compile"},
 					{
 						Name: "testOne",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "compile", Variant: model.AllVariants},
 						},
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: model.AllDependencies, Variant: model.AllVariants}},
+						DependsOn: []model.TaskUnitDependency{{Name: model.AllDependencies, Variant: model.AllVariants}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "bv1",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
 						Name: "bv2",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
 					},
 				},
@@ -514,13 +514,13 @@ func TestVerifyTaskRequirements(t *testing.T) {
 		Convey("projects with requirements for non-existing tasks should error", func() {
 			p := &model.Project{
 				Tasks: []model.ProjectTask{
-					{Name: "1", Requires: []model.TaskRequirement{{Name: "2"}}},
+					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "2"}}},
 					{Name: "X"},
 				},
 				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTask{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{
 						{Name: "1"},
-						{Name: "X", Requires: []model.TaskRequirement{{Name: "2"}}}},
+						{Name: "X", Requires: []model.TaskUnitRequirement{{Name: "2"}}}},
 					},
 				},
 			}
@@ -530,13 +530,13 @@ func TestVerifyTaskRequirements(t *testing.T) {
 		Convey("projects with requirements for non-existing variants should error", func() {
 			p := &model.Project{
 				Tasks: []model.ProjectTask{
-					{Name: "1", Requires: []model.TaskRequirement{{Name: "X", Variant: "$"}}},
+					{Name: "1", Requires: []model.TaskUnitRequirement{{Name: "X", Variant: "$"}}},
 					{Name: "X"},
 				},
 				BuildVariants: []model.BuildVariant{
-					{Name: "v1", Tasks: []model.BuildVariantTask{
+					{Name: "v1", Tasks: []model.BuildVariantTaskUnit{
 						{Name: "1"},
-						{Name: "X", Requires: []model.TaskRequirement{{Name: "1", Variant: "$"}}}},
+						{Name: "X", Requires: []model.TaskUnitRequirement{{Name: "1", Variant: "$"}}}},
 					},
 				},
 			}
@@ -544,16 +544,16 @@ func TestVerifyTaskRequirements(t *testing.T) {
 			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
 		})
 		Convey("projects with requirements for a normal project configuration should pass", func() {
-			all := []model.BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"},
+			all := []model.BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"},
 				{Name: "before"}, {Name: "after"}}
-			beforeDep := []model.TaskDependency{{Name: "before"}}
+			beforeDep := []model.TaskUnitDependency{{Name: "before"}}
 			p := &model.Project{
 				Tasks: []model.ProjectTask{
-					{Name: "before", Requires: []model.TaskRequirement{{Name: "after"}}},
+					{Name: "before", Requires: []model.TaskUnitRequirement{{Name: "after"}}},
 					{Name: "1", DependsOn: beforeDep},
 					{Name: "2", DependsOn: beforeDep},
 					{Name: "3", DependsOn: beforeDep},
-					{Name: "after", DependsOn: []model.TaskDependency{
+					{Name: "after", DependsOn: []model.TaskUnitDependency{
 						{Name: "before"},
 						{Name: "1", PatchOptional: true},
 						{Name: "2", PatchOptional: true},
@@ -643,7 +643,7 @@ func TestValidateBVTaskNames(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "linux",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"},
 							{Name: "compile"},
 						},
@@ -660,7 +660,7 @@ func TestValidateBVTaskNames(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "linux",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"},
 							{Name: "compile"},
 							{Name: "test"},
@@ -679,7 +679,7 @@ func TestValidateBVTaskNames(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "linux",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"},
 							{Name: "test"},
 						},
@@ -700,7 +700,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					Tasks: []model.ProjectTask{
 						{
 							Name: "compile",
-							DependsOn: []model.TaskDependency{
+							DependsOn: []model.TaskUnitDependency{
 								{Name: model.AllDependencies},
 								{Name: "testOne"},
 							},
@@ -717,7 +717,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name: "compile",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: model.AllDependencies},
 						},
 					},
@@ -731,7 +731,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 				Tasks: []model.ProjectTask{
 					{
 						Name: "compile",
-						DependsOn: []model.TaskDependency{
+						DependsOn: []model.TaskUnitDependency{
 							{Name: "hello"},
 						},
 					},
@@ -839,7 +839,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "linux",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "test"},
 						},
 					},
@@ -859,7 +859,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "linux",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{Name: "compile"},
 						},
 					},
@@ -1369,7 +1369,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						RunOn: []string{"mongo"},
-						Tasks: []model.BuildVariantTask{{Name: "db"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
 			}
@@ -1400,7 +1400,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 					{
 						Name:  "import",
 						RunOn: []string{"export"},
-						Tasks: []model.BuildVariantTask{{Name: "db"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
 			}
@@ -1415,7 +1415,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name:  "import",
-						Tasks: []model.BuildVariantTask{{Name: "db"}},
+						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
 			}
@@ -1432,7 +1432,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				BuildVariants: []model.BuildVariant{
 					{
 						Name: "import",
-						Tasks: []model.BuildVariantTask{
+						Tasks: []model.BuildVariantTaskUnit{
 							{
 								Name: "silhouettes",
 								Distros: []string{

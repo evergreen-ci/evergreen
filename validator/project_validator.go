@@ -140,14 +140,14 @@ func checkAllDependenciesSpec(project *model.Project) []ValidationError {
 func checkDependencyGraph(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 
-	// map of task name and variant -> BuildVariantTask
-	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTask{}
+	// map of task name and variant -> BuildVariantTaskUnit
+	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTaskUnit{}
 
 	// generate task nodes for every task and variant combination
 	visited := map[model.TVPair]bool{}
 	allNodes := []model.TVPair{}
 	for _, bv := range project.BuildVariants {
-		for _, t := range bv.Tasks {
+		for _, t := range bv.TaskUnits {
 			t.Populate(project.GetSpecForTask(t.Name))
 			node := model.TVPair{bv.Name, t.Name}
 
@@ -175,7 +175,7 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 
 // Helper for checking the dependency graph for cycles.
 func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
-	tasksByNameAndVariant map[model.TVPair]model.BuildVariantTask) error {
+	tasksByNameAndVariant map[model.TVPair]model.BuildVariantTaskUnit) error {
 
 	v, ok := visited[node]
 	// if the node does not exist, the deps are broken
@@ -270,7 +270,7 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 				},
 			)
 		}
-		if len(buildVariant.Tasks) == 0 {
+		if len(buildVariant.TaskUnits) == 0 {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%v' in project '%v' "+
@@ -279,7 +279,7 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 				},
 			)
 		}
-		for _, task := range buildVariant.Tasks {
+		for _, task := range buildVariant.TaskUnits {
 			if len(task.Distros) == 0 {
 				hasTaskWithoutDistro = true
 				break
@@ -353,7 +353,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) []Va
 
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
-		for _, task := range buildVariant.Tasks {
+		for _, task := range buildVariant.TaskUnits {
 			if _, ok := allTaskNames[task.Name]; !ok {
 				if task.Name == "" {
 					errs = append(errs,
@@ -474,7 +474,7 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
-		for _, task := range buildVariant.Tasks {
+		for _, task := range buildVariant.TaskUnits {
 			if _, ok := buildVariantTasks[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{
