@@ -3,6 +3,7 @@ package evergreen
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,6 +65,10 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 
 func (s *EnvironmentSuite) TestGetClientConfig() {
 	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
+	if err := os.Mkdir(root, os.ModeDir|os.ModePerm); err != nil {
+		s.True(os.IsExist(err))
+	}
+
 	folders := []string{
 		"darwin_amd64_obviouslynotherealone",
 		"linux_z80_obviouslynotherealone",
@@ -86,11 +91,19 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Require().NotNil(client)
 
 	s.Equal(ClientVersion, client.LatestRevision)
-	s.Require().Len(client.ClientBinaries, 2)
-	s.Equal("amd64", client.ClientBinaries[0].Arch)
-	s.Equal("darwin", client.ClientBinaries[0].OS)
-	s.Equal("https://example.com/clients/darwin_amd64_obviouslynotherealone/evergreen", client.ClientBinaries[0].URL)
-	s.Equal("z80", client.ClientBinaries[1].Arch)
-	s.Equal("linux", client.ClientBinaries[1].OS)
-	s.Equal("https://example.com/clients/linux_z80_obviouslynotherealone/evergreen", client.ClientBinaries[1].URL)
+
+	cb := []ClientBinary{}
+	for _, b := range client.ClientBinaries {
+		if strings.Contains(b.URL, "_obviouslynotherealone/") {
+			cb = append(cb, b)
+		}
+	}
+
+	s.Require().Len(cb, 2)
+	s.Equal("amd64", cb[0].Arch)
+	s.Equal("darwin", cb[0].OS)
+	s.Equal("https://example.com/clients/darwin_amd64_obviouslynotherealone/evergreen", cb[0].URL)
+	s.Equal("z80", cb[1].Arch)
+	s.Equal("linux", cb[1].OS)
+	s.Equal("https://example.com/clients/linux_z80_obviouslynotherealone/evergreen", cb[1].URL)
 }

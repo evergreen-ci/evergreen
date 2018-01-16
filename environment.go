@@ -98,7 +98,7 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
-	if catcher.HasErrors() {
+	if !catcher.HasErrors() {
 		var err error
 		e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
 		catcher.Add(err)

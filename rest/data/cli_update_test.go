@@ -32,8 +32,9 @@ func TestUpdateConnector(t *testing.T) {
 		s.NoError(db.ClearCollections(admin.Collection))
 	}
 	s.degrade = func() {
-		flags := admin.ServiceFlags{}
-		flags.CLIUpdatesDisabled = true
+		flags := admin.ServiceFlags{
+			CLIUpdatesDisabled: true,
+		}
 		s.NoError(admin.SetServiceFlags(flags))
 	}
 	suite.Run(t, s)
@@ -44,9 +45,6 @@ func TestMockUpdateConnector(t *testing.T) {
 		ctx: &MockConnector{},
 	}
 	s.setup = func() {
-		ctx, cancel := context.WithCancel(context.Background())
-		s.cancel = cancel
-		s.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
 	}
 	s.degrade = func() {
 		s.ctx.(*MockConnector).MockCLIUpdateConnector.degradedModeOn = true
@@ -59,7 +57,9 @@ func (s *cliUpdateConnectorSuite) SetupSuite() {
 	s.setup()
 }
 func (s *cliUpdateConnectorSuite) TearDownSuite() {
-	s.cancel()
+	if s.cancel != nil {
+		s.cancel()
+	}
 }
 
 func (s *cliUpdateConnectorSuite) Test() {
@@ -72,5 +72,8 @@ func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	s.degrade()
 	v, err := s.ctx.GetCLIUpdate()
 	s.NoError(err)
+	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)
+	s.NotEmpty(v.ClientConfig.LatestRevision)
+	s.NotEmpty(v.ClientConfig.ClientBinaries)
 }
