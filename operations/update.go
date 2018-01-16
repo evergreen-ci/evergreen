@@ -220,7 +220,7 @@ func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) 
 
 	// This version of the cli has been built with a version, so we can compare it with what the
 	// server says is the latest
-	clients, err := client.GetCLIVersion(context.Background())
+	clients, err := client.GetClientConfig(context.Background())
 	if err != nil {
 		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
 		return updateStatus{nil, false, ""}, err

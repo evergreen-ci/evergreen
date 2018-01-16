@@ -472,7 +472,7 @@ func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.
 	return nil, errors.New("(c *Mock) ListAliases not implemented")
 }
 
-func (c *Mock) GetCLIVersion(ctx context.Context) (*evergreen.ClientConfig, error) {
+func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
 	return &evergreen.ClientConfig{
 		ClientBinaries: []evergreen.ClientBinary{
 			evergreen.ClientBinary{

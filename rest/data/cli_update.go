@@ -11,7 +11,7 @@ import (
 
 type CLIUpdateConnector struct{}
 
-func (c *CLIUpdateConnector) GetCLIVersion() (*model.APICLIUpdate, error) {
+func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
 	config, err := evergreen.GetClientConfig(evergreen.GetEnvironment().Settings())
 	if err != nil {
@@ -47,7 +47,7 @@ type MockCLIUpdateConnector struct {
 	degradedModeOn bool
 }
 
-func (c *MockCLIUpdateConnector) GetCLIVersion() (*model.APICLIUpdate, error) {
+func (c *MockCLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{
 		ClientConfig: model.APIClientConfig{
 			ClientBinaries: []model.APIClientBinary{
@@ -59,9 +59,8 @@ func (c *MockCLIUpdateConnector) GetCLIVersion() (*model.APICLIUpdate, error) {
 			},
 			LatestRevision: "2017-12-29",
 		},
-		IgnoreUpdate: false,
+		IgnoreUpdate: c.degradedModeOn,
 	}
-	update.IgnoreUpdate = c.degradedModeOn
 
 	return update, nil
 }

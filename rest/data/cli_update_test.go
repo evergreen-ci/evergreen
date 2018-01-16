@@ -63,14 +63,14 @@ func (s *cliUpdateConnectorSuite) TearDownSuite() {
 }
 
 func (s *cliUpdateConnectorSuite) Test() {
-	v, err := s.ctx.GetCLIVersion()
+	v, err := s.ctx.GetCLIUpdate()
 	s.NoError(err)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	s.degrade()
-	v, err := s.ctx.GetCLIVersion()
+	v, err := s.ctx.GetCLIUpdate()
 	s.NoError(err)
 	s.True(v.IgnoreUpdate)
 }

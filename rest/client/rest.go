@@ -433,7 +433,7 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	return patchAliases, nil
 }
 
-func (c *communicatorImpl) GetCLIVersion(ctx context.Context) (*evergreen.ClientConfig, error) {
+func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
 	info := requestInfo{
 		path:    "/status/cli_version",
 		method:  get,

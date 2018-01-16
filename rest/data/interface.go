@@ -178,6 +178,6 @@ type Connector interface {
 	// Github Push Event
 	TriggerRepotracker(amboy.Queue, string, *github.PushEvent) error
 
-	// GetCLIVersion fetches the current cli version and the urls to download
-	GetCLIVersion() (*restModel.APICLIUpdate, error)
+	// GetCLIUpdate fetches the current cli version and the urls to download
+	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 }

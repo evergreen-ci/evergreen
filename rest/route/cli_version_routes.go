@@ -33,7 +33,7 @@ func (gh *cliVersion) ParseAndValidate(ctx context.Context, r *http.Request) err
 }
 
 func (gh *cliVersion) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	version, err := sc.GetCLIVersion()
+	version, err := sc.GetCLIUpdate()
 	resp := ResponseData{}
 	if err == nil && version != nil {
 		resp.Result = append(resp.Result, version)

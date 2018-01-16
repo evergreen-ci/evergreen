@@ -142,5 +142,6 @@ type Communicator interface {
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.PatchDefinition, error)
 
-	GetCLIVersion(context.Context) (*evergreen.ClientConfig, error)
+	// GetClientConfig fetches the ClientConfig for the evergreen server
+	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
 }
