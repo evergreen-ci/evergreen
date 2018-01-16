@@ -100,7 +100,7 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 	var output *ec2.Reservation
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running RunInstances",
 		"args":           input,
 	})
@@ -110,7 +110,7 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running RunInstances",
 						"args":           input,
 					}))
@@ -130,7 +130,7 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 	var output *ec2.DescribeInstancesOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running DescribeInstances",
 		"args":           input,
 	})
@@ -140,7 +140,7 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running DescribeInstances",
 						"args":           input,
 					}))
@@ -160,7 +160,7 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 	var output *ec2.CreateTagsOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running CreateTags",
 		"args":           input,
 	})
@@ -170,7 +170,7 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running CreateTags",
 						"args":           input,
 					}))
@@ -190,7 +190,7 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 	var output *ec2.TerminateInstancesOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running TerminateInstances",
 		"args":           input,
 	})
@@ -200,7 +200,7 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running TerminateInstances",
 						"args":           input,
 					}))
@@ -220,7 +220,7 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running RequestSpotInstances",
 		"args":           input,
 	})
@@ -230,7 +230,7 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running RequestSpotInstances",
 						"args":           input,
 					}))
@@ -250,7 +250,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running DescribeSpotInstanceRequests",
 		"args":           input,
 	})
@@ -260,7 +260,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running DescribeSpotInstanceRequests",
 						"args":           input,
 					}))
@@ -280,7 +280,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 	var output *ec2.CancelSpotInstanceRequestsOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running CancelSpotInstanceRequests",
 		"args":           input,
 	})
@@ -290,7 +290,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running CancelSpotInstanceRequests",
 						"args":           input,
 					}))
@@ -310,7 +310,7 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 	var output *ec2.DescribeVolumesOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running DescribeVolumes",
 		"args":           input,
 	})
@@ -320,7 +320,7 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running DescribeVolumes",
 						"args":           input,
 					}))
@@ -340,7 +340,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 	var output *ec2.DescribeSpotPriceHistoryOutput
 	var err error
 	grip.Debug(message.Fields{
-		"cloud_provider": "ec2",
+		"cloud_provider": providerName,
 		"message":        "running DescribeSpotPriceHistory",
 		"args":           input,
 	})
@@ -350,7 +350,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
-						"cloud_provider": "ec2",
+						"cloud_provider": providerName,
 						"message":        "error running DescribeSpotPriceHistory",
 						"args":           input,
 					}))
