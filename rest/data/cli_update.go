@@ -13,16 +13,9 @@ type CLIUpdateConnector struct{}
 
 func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 	update := &model.APICLIUpdate{}
-	config, err := evergreen.GetClientConfig(evergreen.GetEnvironment().Settings())
-	if err != nil {
-		return nil, &rest.APIError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    err.Error(),
-		}
-	}
+	config := evergreen.GetEnvironment().ClientConfig()
 	if config != nil {
-		err = update.BuildFromService(*config)
-		if err != nil {
+		if err := update.BuildFromService(*config); err != nil {
 			return nil, &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

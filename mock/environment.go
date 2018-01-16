@@ -73,7 +73,7 @@ func (e *Environment) Settings() *evergreen.Settings {
 	return e.EvergreenSettings
 }
 
-func (e *Environment) Settings() clientConfig {
+func (e *Environment) ClientConfig() clientConfig {
 	return evergreen.ClientConfig{
 		LatestRevision: evergreen.ClientVersion,
 		ClientBinaries: []evergreen.ClientBinary{

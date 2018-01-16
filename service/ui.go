@@ -89,11 +89,7 @@ func NewUIServer(settings *evergreen.Settings, queue amboy.Queue, home string) (
 	}
 	uis.UserManager = userManager
 
-	clientConfig, err := evergreen.GetClientConfig(settings)
-	if err != nil {
-		return nil, err
-	}
-	uis.clientConfig = clientConfig
+	uis.clientConfig = evergreen.GetEnvironment().ClientConfig()
 
 	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
 

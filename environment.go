@@ -65,9 +65,9 @@ type Environment interface {
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
 
-	// ClientVersions provides access to a list of evergreen clients,
+	// ClientConfig provides access to a list of evergreen clients,
 	// for different platforms
-	ClientVersions() *ClientConfig
+	ClientConfig() *ClientConfig
 }
 
 type envState struct {
@@ -210,7 +210,7 @@ func (e *envState) Session() db.Session {
 	return db.WrapSession(e.session.Copy())
 }
 
-func (e *envState) ClientVersions() *ClientConfig {
+func (e *envState) ClientConfig() *ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
