@@ -481,6 +481,6 @@ func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, er
 				URL:  "http://example.com/clients/darwin_amd64/evergreen",
 			},
 		},
-		LatestRevision: "2017-12-29",
+		LatestRevision: evergreen.ClientVersion,
 	}, nil
 }

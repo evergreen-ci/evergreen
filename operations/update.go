@@ -194,18 +194,6 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	return tempPath, nil
 }
 
-// Silently check if an update is available, and print a notification message if it is.
-func notifyUserUpdate(client client.Communicator) {
-	update, err := checkUpdate(client, true)
-	if update.needsUpdate && err == nil {
-		if runtime.GOOS == "windows" {
-			fmt.Printf("A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
-		} else {
-			fmt.Printf("A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
-		}
-	}
-}
-
 type updateStatus struct {
 	binary      *evergreen.ClientBinary
 	needsUpdate bool

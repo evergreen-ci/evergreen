@@ -26,14 +26,12 @@ func PatchFinalize() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
+			_ = conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
-
-			notifyUserUpdate(client)
 
 			if err = ac.FinalizePatch(patchID); err != nil {
 				return err

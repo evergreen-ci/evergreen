@@ -41,14 +41,12 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
+			_ = conf.GetRestCommunicator(ctx)
 
 			ac, rc, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
-
-			notifyUserUpdate(client)
 
 			proj, err := rc.GetPatchedConfig(patchID)
 			if err != nil {
@@ -135,14 +133,12 @@ func PatchRemoveModule() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			client := conf.GetRestCommunicator(ctx)
+			_ = conf.GetRestCommunicator(ctx)
 
 			ac, _, err := conf.getLegacyClients()
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
-
-			notifyUserUpdate(client)
 
 			err = ac.DeletePatchModule(patchID, module)
 			if err != nil {

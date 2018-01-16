@@ -71,8 +71,6 @@ func Patch() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(comm)
-
 			ref, err := params.validatePatchCommand(ctx, conf, ac, comm)
 			if err != nil {
 				return err
@@ -137,8 +135,6 @@ func PatchFile() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
-
-			notifyUserUpdate(comm)
 
 			if _, err = params.validatePatchCommand(ctx, conf, ac, comm); err != nil {
 				return err
