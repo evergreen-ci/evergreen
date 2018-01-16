@@ -18,8 +18,7 @@ func (a *APICLIUpdate) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting client config")
 	}
-	a.ClientConfig.BuildFromService(c)
-	return nil
+	return a.ClientConfig.BuildFromService(c)
 }
 
 func (a *APICLIUpdate) ToService() (interface{}, error) {

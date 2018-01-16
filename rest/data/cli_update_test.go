@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -16,7 +15,6 @@ import (
 type cliUpdateConnectorSuite struct {
 	suite.Suite
 	ctx     Connector
-	env     *mock.Environment
 	setup   func()
 	degrade func()
 	cancel  func()
@@ -64,11 +62,10 @@ func (s *cliUpdateConnectorSuite) TearDownSuite() {
 	s.cancel()
 }
 
-func (s *cliUpdateConnectorSuite) TestDoesThings() {
+func (s *cliUpdateConnectorSuite) Test() {
 	v, err := s.ctx.GetCLIVersion()
 	s.NoError(err)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
-	s.NotEmpty(v.ClientConfig.ClientBinaries)
 }
 
 func (s *cliUpdateConnectorSuite) TestDegradedMode() {
