@@ -2,6 +2,10 @@ package evergreen
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
@@ -60,14 +64,19 @@ type Environment interface {
 	// between process restarts.
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
+
+	// ClientVersions provides access to a list of evergreen clients,
+	// for different platforms
+	ClientVersions() *ClientConfig
 }
 
 type envState struct {
-	remoteQueue amboy.Queue
-	localQueue  amboy.Queue
-	settings    *Settings
-	session     *mgo.Session
-	mu          sync.RWMutex
+	remoteQueue  amboy.Queue
+	localQueue   amboy.Queue
+	settings     *Settings
+	session      *mgo.Session
+	mu           sync.RWMutex
+	clientConfig *ClientConfig
 }
 
 func (e *envState) Configure(ctx context.Context, confPath string) error {
@@ -89,6 +98,14 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 
+	if catcher.HasErrors() {
+		var err error
+		e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
+		catcher.Add(err)
+		if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
+			grip.Warning("No clients are available for this server")
+		}
+	}
 	return catcher.Resolve()
 }
 
@@ -191,4 +208,57 @@ func (e *envState) Session() db.Session {
 	defer e.mu.RUnlock()
 
 	return db.WrapSession(e.session.Copy())
+}
+
+func (e *envState) ClientVersions() *ClientConfig {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	return e.clientConfig
+}
+
+// getClientConfig should be called once at startup and looks at the
+// current environment and loads all currently available client
+// binaries for use by the API server in presenting the settings page.
+//
+// If there are no built clients, this returns an empty config
+// version, but does *not* error.
+func getClientConfig(baseURL string) (*ClientConfig, error) {
+	c := &ClientConfig{}
+	c.LatestRevision = ClientVersion
+
+	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
+
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		grip.Warningf("client directory '%s' does not exist, creating empty "+
+			"directory and continuing with caution", root)
+		grip.Error(os.MkdirAll(root, 0755))
+	}
+
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() || info.Name() == "version" {
+			return nil
+		}
+
+		parts := strings.Split(path, string(filepath.Separator))
+		buildInfo := strings.Split(parts[len(parts)-2], "_")
+
+		c.ClientBinaries = append(c.ClientBinaries, ClientBinary{
+			URL: fmt.Sprintf("%s/%s/%s", baseURL, ClientDirectory,
+				strings.Join(parts[len(parts)-2:], "/")),
+			OS:   buildInfo[0],
+			Arch: buildInfo[1],
+		})
+
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "problem finding client binaries")
+	}
+
+	return c, nil
 }

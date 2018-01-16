@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"runtime"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -70,4 +71,17 @@ func (e *Environment) Settings() *evergreen.Settings {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	return e.EvergreenSettings
+}
+
+func (e *Environment) Settings() clientConfig {
+	return evergreen.ClientConfig{
+		LatestRevision: evergreen.ClientVersion,
+		ClientBinaries: []evergreen.ClientBinary{
+			evergreen.ClientBinary{
+				URL:  "https://example.com/clients/evergreen",
+				OS:   runtime.GOOS,
+				Arch: runtime.GOARCH,
+			},
+		},
+	}
 }

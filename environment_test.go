@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -59,4 +60,37 @@ func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
 	err := s.env.initSettings("")
 	s.Error(err)
 	s.Contains(err.Error(), "validating settings")
+}
+
+func (s *EnvironmentSuite) TestGetClientConfig() {
+	root := filepath.Join(FindEvergreenHome(), ClientDirectory)
+	folders := []string{
+		"darwin_amd64_obviouslynotherealone",
+		"linux_z80_obviouslynotherealone",
+	}
+	for _, folder := range folders {
+		path := root + "/" + folder
+		s.NoError(os.Mkdir(path, os.ModeDir|os.ModePerm))
+
+		file := path + "/evergreen"
+		_, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+		s.NoError(err)
+		defer func() {
+			os.Remove(file)
+			os.Remove(path)
+		}()
+	}
+
+	client, err := getClientConfig("https://example.com")
+	s.NoError(err)
+	s.Require().NotNil(client)
+
+	s.Equal(ClientVersion, client.LatestRevision)
+	s.Require().Len(client.ClientBinaries, 2)
+	s.Equal("amd64", client.ClientBinaries[0].Arch)
+	s.Equal("darwin", client.ClientBinaries[0].OS)
+	s.Equal("https://example.com/clients/darwin_amd64_obviouslynotherealone/evergreen", client.ClientBinaries[0].URL)
+	s.Equal("z80", client.ClientBinaries[1].Arch)
+	s.Equal("linux", client.ClientBinaries[1].OS)
+	s.Equal("https://example.com/clients/linux_z80_obviouslynotherealone/evergreen", client.ClientBinaries[1].URL)
 }
