@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -99,12 +100,18 @@ func (c *awsClientImpl) Close() {
 func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	var output *ec2.Reservation
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running RunInstances",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.RunInstances(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running RunInstances",
 						"args":    input,
 					}))
@@ -123,12 +130,18 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	var output *ec2.DescribeInstancesOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running DescribeInstances",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeInstances(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running DescribeInstances",
 						"args":    input,
 					}))
@@ -147,12 +160,18 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	var output *ec2.CreateTagsOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running CreateTags",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.CreateTags(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running CreateTags",
 						"args":    input,
 					}))
@@ -171,12 +190,18 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	var output *ec2.TerminateInstancesOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running TerminateInstances",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.TerminateInstances(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running TerminateInstances",
 						"args":    input,
 					}))
@@ -195,12 +220,18 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running RequestSpotInstances",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.RequestSpotInstances(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running RequestSpotInstances",
 						"args":    input,
 					}))
@@ -219,12 +250,18 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running DescribeSpotInstanceRequests",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotInstanceRequests(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running DescribeSpotInstanceRequests",
 						"args":    input,
 					}))
@@ -243,12 +280,18 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	var output *ec2.CancelSpotInstanceRequestsOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running CancelSpotInstanceRequests",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.CancelSpotInstanceRequests(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running CancelSpotInstanceRequests",
 						"args":    input,
 					}))
@@ -267,12 +310,18 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	var output *ec2.DescribeVolumesOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running DescribeVolumes",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeVolumes(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running DescribeVolumes",
 						"args":    input,
 					}))
@@ -291,12 +340,18 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	var output *ec2.DescribeSpotPriceHistoryOutput
 	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running DescribeSpotPriceHistory",
+		"args":    input,
+	})
 	_, err = util.Retry(
 		func() (bool, error) {
 			output, err = c.EC2.DescribeSpotPriceHistory(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
 						"message": "error running DescribeSpotPriceHistory",
 						"args":    input,
 					}))

@@ -94,7 +94,7 @@ func (s *CostUnitSuite) TestOnDemandPriceAPITranslation() {
 func (s *CostUnitSuite) TestOnDemandPriceCalculation() {
 	client := &awsClientMock{}
 	h := &host.Host{}
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 	r, _ := regionFullname("us-east-1")
 	cpf := &cachingPriceFetcher{
 		ec2Prices: map[odInfo]float64{
