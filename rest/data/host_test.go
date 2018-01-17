@@ -225,7 +225,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 func (s *HostConnectorSuite) TestSetHostStatus() {
 	h, err := s.ctx.FindHostById("host1")
 	s.NoError(err)
-	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostTerminated))
+	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
 
 	for i := 1; i < 5; i++ {
 		h, err := s.ctx.FindHostById(fmt.Sprintf("host%d", i))

@@ -213,7 +213,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 		Convey("setting the host's status should update both the in-memory"+
 			" and database versions of the host", func() {
 
-			So(host.SetStatus(evergreen.HostRunning), ShouldBeNil)
+			So(host.SetStatus(evergreen.HostRunning, evergreen.User), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 			host, err = FindOne(ById(host.Id))
@@ -225,8 +225,8 @@ func TestUpdatingHostStatus(t *testing.T) {
 		Convey("if the host is terminated, the status update should fail"+
 			" with an error", func() {
 
-			So(host.SetStatus(evergreen.HostTerminated), ShouldBeNil)
-			So(host.SetStatus(evergreen.HostRunning), ShouldNotBeNil)
+			So(host.SetStatus(evergreen.HostTerminated, evergreen.User), ShouldBeNil)
+			So(host.SetStatus(evergreen.HostRunning, evergreen.User), ShouldNotBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 
 			host, err = FindOne(ById(host.Id))
@@ -258,7 +258,7 @@ func TestSetHostTerminated(t *testing.T) {
 			" termination time in both the in-memory and database copies of"+
 			" the host", func() {
 
-			So(host.Terminate(), ShouldBeNil)
+			So(host.Terminate(evergreen.User), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
