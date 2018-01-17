@@ -318,9 +318,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         "alias": $scope.patch_alias.alias,
         "variant": $scope.patch_alias.variant,
         "task": $scope.patch_alias.task,
-        "tags_temp": $scope.patch_alias.tags_temp,
-        "tags": $scope.patch_alias.tags_temp.split(',')
+        "tags_temp": $scope.patch_alias.tags_temp
       };
+      if ($scope.patch_alias.tags_temp) {
+        item.tags = $scope.patch_alias.tags_temp.split(',');
+      }
       $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
       $scope.patch_alias.alias = "";
       $scope.patch_alias.variant = "";
