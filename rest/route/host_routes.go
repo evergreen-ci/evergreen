@@ -380,7 +380,7 @@ func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (
 		}
 
 	} else if host.Status == evergreen.HostUninitialized {
-		if err := sc.SetHostStatus(host, evergreen.HostTerminated); err != nil {
+		if err := sc.SetHostStatus(host, evergreen.HostTerminated, u.Id); err != nil {
 			return ResponseData{}, &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),
@@ -388,7 +388,7 @@ func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (
 		}
 
 	} else {
-		if err := sc.TerminateHost(host); err != nil {
+		if err := sc.TerminateHost(host, u.Id); err != nil {
 			return ResponseData{}, &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

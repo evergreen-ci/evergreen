@@ -165,11 +165,11 @@ type Connector interface {
 
 	AddPatchIntent(patch.Intent, amboy.Queue) error
 
-	SetHostStatus(*host.Host, string) error
+	SetHostStatus(*host.Host, string, string) error
 	SetHostExpirationTime(*host.Host, time.Time) error
 
 	// TerminateHost terminates the given host via the cloud provider's API
-	TerminateHost(*host.Host) error
+	TerminateHost(*host.Host, string) error
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.PatchDefinition, error)

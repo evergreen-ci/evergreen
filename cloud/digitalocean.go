@@ -192,7 +192,7 @@ func (digoMgr *doManager) CanSpawn() (bool, error) {
 }
 
 //TerminateInstance destroys a droplet.
-func (digoMgr *doManager) TerminateInstance(host *host.Host) error {
+func (digoMgr *doManager) TerminateInstance(host *host.Host, user string) error {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
@@ -213,7 +213,7 @@ func (digoMgr *doManager) TerminateInstance(host *host.Host) error {
 		return err
 	}
 
-	return errors.WithStack(host.Terminate())
+	return errors.WithStack(host.Terminate(evergreen.User))
 }
 
 //Configure populates a doManager by reading relevant settings from the

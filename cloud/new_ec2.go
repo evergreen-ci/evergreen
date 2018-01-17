@@ -419,7 +419,7 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 }
 
 // TerminateInstance terminates the EC2 instance.
-func (m *ec2Manager) TerminateInstance(h *host.Host) error {
+func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
 	// terminate the instance
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as "+
@@ -440,13 +440,14 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 				"message":       "error canceling spot request",
 				"host":          h.Id,
 				"host_provider": h.Distro.Provider,
+				"user":          user,
 				"distro":        h.Distro.Id,
 			}))
 			return errors.Wrap(err, "error canceling spot request")
 		}
 		// the spot request wasn't fulfilled, so don't attempt to terminate in ec2
 		if instanceId == "" {
-			return errors.Wrap(h.Terminate(), "failed to terminate instance in db")
+			return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 		}
 	}
 
@@ -456,6 +457,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":       "error terminating instance",
+			"user":          user,
 			"host":          h.Id,
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
@@ -466,6 +468,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	for _, stateChange := range resp.TerminatingInstances {
 		grip.Info(message.Fields{
 			"message":       "terminated instance",
+			"user":          user,
 			"host_provider": h.Distro.Provider,
 			"instance_id":   *stateChange.InstanceId,
 			"host":          h.Id,
@@ -473,7 +476,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 		})
 	}
 
-	return errors.Wrap(h.Terminate(), "failed to terminate instance in db")
+	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 }
 
 func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
@@ -483,7 +486,7 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
 	if err != nil {
 		if ec2err, ok := err.(awserr.Error); ok {
 			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
-				return "", h.Terminate()
+				return "", h.Terminate(evergreen.User)
 			}
 		}
 		grip.Error(message.WrapError(err, message.Fields{

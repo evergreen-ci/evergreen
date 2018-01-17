@@ -149,7 +149,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 		event.LogHostTerminatedExternally(host.Id)
 
 		// the instance was terminated from outside our control
-		if err := host.SetTerminated(); err != nil {
+		if err := host.SetTerminated("external"); err != nil {
 			return errors.Wrapf(err, "error setting host %s terminated", host.Id)
 		}
 	}

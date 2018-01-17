@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
@@ -64,15 +65,17 @@ func (staticMgr *staticManager) CanSpawn() (bool, error) {
 }
 
 // terminate an instance
-func (staticMgr *staticManager) TerminateInstance(host *host.Host) error {
+func (staticMgr *staticManager) TerminateInstance(host *host.Host, user string) error {
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
+		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User)
 		grip.Debugf("Removing decommissioned %s static host (%s)", host.Distro, host.Host)
 		if err := host.Remove(); err != nil {
 			grip.Errorf("Error removing decommissioned %s static host (%s): %+v",
 				host.Distro, host.Host, err)
 		}
 	}
+
 	grip.Debugf("Not terminating static '%s' host: %s", host.Distro.Id, host.Host)
 	return nil
 }

@@ -177,7 +177,7 @@ func (*mockManager) GetInstanceName(d *distro.Distro) string {
 }
 
 // terminate an instance
-func (mockMgr *mockManager) TerminateInstance(host *host.Host) error {
+func (mockMgr *mockManager) TerminateInstance(host *host.Host, user string) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -192,7 +192,7 @@ func (mockMgr *mockManager) TerminateInstance(host *host.Host) error {
 	instance.Status = StatusTerminated
 	mockMgr.Instances[host.Id] = instance
 
-	return errors.WithStack(host.Terminate())
+	return errors.WithStack(host.Terminate(user))
 }
 
 func (mockMgr *mockManager) Configure(settings *evergreen.Settings) error {

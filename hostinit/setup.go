@@ -325,7 +325,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// if the host has failed, terminate it and return that this host is not ready
 	if hostStatus == cloud.StatusFailed {
-		err = errors.WithStack(cloudMgr.TerminateInstance(host))
+		err = errors.WithStack(cloudMgr.TerminateInstance(host, evergreen.User))
 		if err != nil {
 			return false, err
 		}

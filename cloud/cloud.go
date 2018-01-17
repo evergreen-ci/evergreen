@@ -37,7 +37,7 @@ type CloudManager interface {
 	GetInstanceStatus(*host.Host) (CloudStatus, error)
 
 	// TerminateInstances destroys the host in the underlying provider
-	TerminateInstance(*host.Host) error
+	TerminateInstance(*host.Host, string) error
 
 	//IsUp returns true if the underlying provider has not destroyed the
 	//host (in other words, if the host "should" be reachable. This does not
