@@ -111,3 +111,14 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
 }
+
+func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForSpotInstanceRequests() {
+	opts := &EC2ManagerOptions{
+		client:   &awsClientImpl{},
+		provider: spotProvider,
+	}
+	m := NewEC2Manager(opts).(*ec2Manager)
+	info, err := m.client.GetInstanceInfo("sir-123456")
+	s.Nil(info)
+	s.Errorf(err, "id appears to be a spot instance request ID, not a host ID (\"sir-123456\")")
+}

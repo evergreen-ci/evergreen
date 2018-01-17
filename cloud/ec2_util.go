@@ -603,14 +603,22 @@ func newMakeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMappi
 			return nil, errors.Errorf("missing 'device_name': %+v", mount)
 		}
 		if mount.VirtualName == "" {
-			return nil, errors.Errorf("missing 'virtual_name': %+v", mount)
+			if mount.Size <= 0 {
+				return nil, errors.Errorf("must provide either a virtual name or an EBS size")
+			}
+			// EBS - size but no virtual name
+			mappings = append(mappings, &ec2aws.BlockDeviceMapping{
+				DeviceName:  &mounts[i].DeviceName,
+				VirtualName: &mounts[i].VirtualName,
+				Ebs: &ec2aws.EbsBlockDevice{
+					DeleteOnTermination: makeBoolPtr(true),
+				},
+			})
 		}
+		// instance store - virtual name but no size
 		mappings = append(mappings, &ec2aws.BlockDeviceMapping{
 			DeviceName:  &mounts[i].DeviceName,
 			VirtualName: &mounts[i].VirtualName,
-			Ebs: &ec2aws.EbsBlockDevice{
-				DeleteOnTermination: makeBoolPtr(true),
-			},
 		})
 	}
 	return mappings, nil

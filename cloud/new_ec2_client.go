@@ -3,6 +3,7 @@ package cloud
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -367,6 +368,9 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 }
 
 func (c *awsClientImpl) GetInstanceInfo(id string) (*ec2.Instance, error) {
+	if strings.HasPrefix(id, "sir") {
+		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
+	}
 	resp, err := c.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{makeStringPtr(id)},
 	})
