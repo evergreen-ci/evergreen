@@ -28,6 +28,12 @@ type cachingPriceFetcher struct {
 	sync.Mutex
 }
 
+// spotRate is an internal type for simplifying Amazon's price history responses.
+type spotRate struct {
+	Time  time.Time
+	Price float64
+}
+
 var pkgCachingPriceFetcher *cachingPriceFetcher
 
 func init() {
@@ -134,7 +140,7 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 	return nil
 }
 
-func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSClient, settings *NewEC2ProviderSettings, os osType) (float64, string, error) {
+func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
 	osName := string(os)
@@ -173,17 +179,17 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSCli
 	return min, az, nil
 }
 
-func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettings) (ec2ProviderType, error) {
+func (m *ec2Manager) getProvider(h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
 	if h.UserHost {
-		h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		return onDemandProvider, nil
 	}
 	if m.provider == spotProvider {
-		h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+		h.Distro.Provider = evergreen.ProviderNameEc2Spot
 		return spotProvider, nil
 	}
 	if m.provider == onDemandProvider {
-		h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
@@ -205,10 +211,10 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 				}
 				ec2settings.SubnetId = subnetID
 			}
-			h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+			h.Distro.Provider = evergreen.ProviderNameEc2Spot
 			return spotProvider, nil
 		}
-		h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		return onDemandProvider, nil
 	}
 	return 0, errors.Errorf("provider is %d, expected %d, %d, or %d", m.provider, onDemandProvider, spotProvider, autoProvider)
@@ -474,4 +480,36 @@ func getOsName(h *host.Host) osType {
 		return osWindows
 	}
 	return osLinux
+}
+
+// spotCostForRange determines the price of a range of spot price history.
+// The hostRates parameter is expected to be a slice of (time, price) pairs
+// representing every hour billing cycle. The function iterates through billing
+// cycles, adding up the total cost of the time span across them.
+//
+// This problem, incidentally, may be a good algorithms interview question ;)
+func spotCostForRange(start, end time.Time, rates []spotRate) float64 {
+	cost := 0.0
+	cur := start
+	// this loop adds up the cost of a task over all the billing periods
+	// it ran within.
+	for i := range rates {
+		// if our start time is after the current billing range, keep skipping
+		// ahead until we find the starting range.
+		if i+1 < len(rates) && cur.After(rates[i+1].Time) {
+			continue
+		}
+		// if the task's end happens before the end of this billing period,
+		// we only want to calculate the cost between the billing start
+		// and task end, then exit; we also do this if we're in the last rate bucket.
+		if i+1 == len(rates) || end.Before(rates[i+1].Time) {
+			cost += end.Sub(cur).Hours() * rates[i].Price
+			break
+		}
+		// in the default case, we get the duration between our current time
+		// and the next billing period, and multiply that duration by the current price.
+		cost += rates[i+1].Time.Sub(cur).Hours() * rates[i].Price
+		cur = rates[i+1].Time
+	}
+	return cost
 }

@@ -22,14 +22,14 @@ import (
 )
 
 func isHostSpot(h *host.Host) bool {
-	return h.Distro.Provider == evergreen.ProviderNameEc2SpotNew
+	return h.Distro.Provider == evergreen.ProviderNameEc2Spot
 }
 func isHostOnDemand(h *host.Host) bool {
-	return h.Distro.Provider == evergreen.ProviderNameEc2OnDemandNew
+	return h.Distro.Provider == evergreen.ProviderNameEc2OnDemand
 }
 
-// NewEC2ProviderSettings describes properties of managed instances.
-type NewEC2ProviderSettings struct {
+// EC2ProviderSettings describes properties of managed instances.
+type EC2ProviderSettings struct {
 	// AMI is the AMI ID.
 	AMI string `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
 
@@ -57,8 +57,8 @@ type NewEC2ProviderSettings struct {
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 }
 
-// Validate that essential NewEC2ProviderSettings fields are not empty.
-func (s *NewEC2ProviderSettings) Validate() error {
+// Validate that essential EC2ProviderSettings fields are not empty.
+func (s *EC2ProviderSettings) Validate() error {
 	if s.AMI == "" || s.InstanceType == "" || s.SecurityGroup == "" || s.KeyName == "" {
 		return errors.New("AMI, instance type, security group, and key name must not be empty")
 	}
@@ -80,6 +80,16 @@ const (
 	onDemandProvider ec2ProviderType = iota
 	spotProvider
 	autoProvider
+)
+
+const (
+	SpotStatusOpen     = "open"
+	SpotStatusActive   = "active"
+	SpotStatusClosed   = "closed"
+	SpotStatusCanceled = "cancelled"
+	SpotStatusFailed   = "failed"
+
+	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 )
 
 // EC2ManagerOptions are used to construct a new ec2Manager.
@@ -104,7 +114,7 @@ func NewEC2Manager(opts *EC2ManagerOptions) CloudManager {
 
 // GetSettings returns a pointer to the manager's configuration settings struct.
 func (m *ec2Manager) GetSettings() ProviderSettings {
-	return &NewEC2ProviderSettings{}
+	return &EC2ProviderSettings{}
 }
 
 // Configure loads credentials or other settings from the config file.
@@ -121,7 +131,7 @@ func (m *ec2Manager) Configure(settings *evergreen.Settings) error {
 	return nil
 }
 
-func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
 		MinCount:            makeInt64Ptr(1),
 		MaxCount:            makeInt64Ptr(1),
@@ -229,7 +239,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 	return resources, nil
 }
 
-func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	spotRequest := &ec2.RequestSpotInstancesInput{
 		SpotPrice:     makeStringPtr(fmt.Sprintf("%v", ec2Settings.BidPrice)),
 		InstanceCount: makeInt64Ptr(1),
@@ -281,14 +291,14 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSett
 
 // SpawnHost spawns a new host.
 func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemandNew &&
-		h.Distro.Provider != evergreen.ProviderNameEc2SpotNew &&
+	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand &&
+		h.Distro.Provider != evergreen.ProviderNameEc2Spot &&
 		h.Distro.Provider != evergreen.ProviderNameEc2Auto {
 		return nil, errors.Errorf("Can't spawn instance for distro %s: provider is %s",
 			h.Distro.Id, h.Distro.Provider)
 	}
 
-	ec2Settings := &NewEC2ProviderSettings{}
+	ec2Settings := &EC2ProviderSettings{}
 	if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
 		return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
 	}

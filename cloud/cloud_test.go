@@ -12,18 +12,25 @@ import (
 func TestGetCloudManager(t *testing.T) {
 	Convey("GetCloudManager() should return non-nil for all valid provider names", t, func() {
 
-		Convey("EC2 should be returned for ec2 provider name", func() {
-			cloudMgr, err := GetCloudManager("ec2", testutil.TestConfig())
+		Convey("EC2Auto should be returned for ec2-auto provider name", func() {
+			cloudMgr, err := GetCloudManager("ec2-auto", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &ec2OnDemandManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
 		})
 
 		Convey("EC2Spot should be returned for ec2-spot provider name", func() {
 			cloudMgr, err := GetCloudManager("ec2-spot", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &ec2SpotManager{})
+			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
+		})
+
+		Convey("EC2 should be returned for ec2 provider name", func() {
+			cloudMgr, err := GetCloudManager("ec2-ondemand", testutil.TestConfig())
+			So(cloudMgr, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(cloudMgr, ShouldHaveSameTypeAs, &ec2Manager{})
 		})
 
 		Convey("Static should be returned for static provider name", func() {
