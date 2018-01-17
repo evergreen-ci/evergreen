@@ -39,7 +39,7 @@ func (s *execCmdSuite) TearDownTest() {
 }
 
 func (s *execCmdSuite) TestNoopExpansion() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		WorkingDir: "foo",
 		Binary:     "bar",
 		Args:       []string{"a", "b"},
@@ -54,7 +54,7 @@ func (s *execCmdSuite) TestNoopExpansion() {
 
 func (s *execCmdSuite) TestExpansionOfArgs() {
 
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Args: []string{
 			"${foo|a}", "${foo|b}",
 		},
@@ -71,7 +71,7 @@ func (s *execCmdSuite) TestExpansionOfArgs() {
 }
 
 func (s *execCmdSuite) TestExpansionOfEnvVarValues() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Env: map[string]string{
 			"${foo|a}": "${foo|a}",
 		},
@@ -84,7 +84,7 @@ func (s *execCmdSuite) TestExpansionOfEnvVarValues() {
 }
 
 func (s *execCmdSuite) TestWeirdAndBadExpansions() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		WorkingDir: "fo${o",
 		Binary:     "ba${sfdf${bar}f}}r",
 		Args:       []string{"${foo|a}", "${bar|b}"},
@@ -99,28 +99,28 @@ func (s *execCmdSuite) TestWeirdAndBadExpansions() {
 }
 
 func (s *execCmdSuite) TestParseParamsInitializesEnvMap() {
-	cmd := &simpleExec{}
+	cmd := &subprocessExec{}
 	s.Nil(cmd.Env)
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	s.NotNil(cmd.Env)
 }
 
 func (s *execCmdSuite) TestErrorToIgnoreAndRedirectToStdOut() {
-	cmd := &simpleExec{}
+	cmd := &subprocessExec{}
 
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	cmd.IgnoreStandardOutput = true
 	cmd.RedirectStandardErrorToOutput = true
 	s.Error(cmd.ParseParams(map[string]interface{}{}))
 
-	cmd = &simpleExec{}
+	cmd = &subprocessExec{}
 	cmd.Silent = true
 	cmd.RedirectStandardErrorToOutput = true
 	s.Error(cmd.ParseParams(map[string]interface{}{}))
 }
 
 func (s *execCmdSuite) TestCommandParsing() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command: "/bin/bash -c 'foo bar'",
 	}
 	s.Zero(cmd.Binary)
@@ -134,13 +134,13 @@ func (s *execCmdSuite) TestCommandParsing() {
 }
 
 func (s *execCmdSuite) TestParseErrorIfTypeMismatch() {
-	cmd := &simpleExec{}
+	cmd := &subprocessExec{}
 	s.Error(cmd.ParseParams(map[string]interface{}{"args": 1, "silent": "false"}))
 	s.False(cmd.Background)
 }
 
 func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command: "/bin/bash -c 'echo foo'",
 		Binary:  "bash",
 		Args: []string{
@@ -152,7 +152,7 @@ func (s *execCmdSuite) TestInvalidToSpecifyCommandInMultipleWays() {
 }
 
 func (s *execCmdSuite) TestGetProcErrorsIfCommandIsNotSet() {
-	cmd := &simpleExec{}
+	cmd := &subprocessExec{}
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
 	exec, closer, err := cmd.getProc("foo", s.logger)
 	s.Len(cmd.Env, 2)
@@ -162,7 +162,7 @@ func (s *execCmdSuite) TestGetProcErrorsIfCommandIsNotSet() {
 }
 
 func (s *execCmdSuite) TestGetProcEnvSetting() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Binary:    "bash",
 		SystemLog: true,
 	}
@@ -176,7 +176,7 @@ func (s *execCmdSuite) TestGetProcEnvSetting() {
 }
 
 func (s *execCmdSuite) TestRunCommand() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Binary: "bash",
 	}
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
@@ -187,7 +187,7 @@ func (s *execCmdSuite) TestRunCommand() {
 }
 
 func (s *execCmdSuite) TestRunCommandPropgatesError() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command: "bash -c 'exit 1'",
 	}
 	s.NoError(cmd.ParseParams(map[string]interface{}{}))
@@ -198,7 +198,7 @@ func (s *execCmdSuite) TestRunCommandPropgatesError() {
 }
 
 func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command:         "bash -c 'exit 1'",
 		ContinueOnError: true,
 	}
@@ -210,7 +210,7 @@ func (s *execCmdSuite) TestRunCommandContinueOnErrorNoError() {
 }
 
 func (s *execCmdSuite) TestRunCommandBackgroundAlwaysNil() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command:    "bash -c 'exit 1'",
 		Background: true,
 		Silent:     true,
@@ -227,7 +227,7 @@ func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {
 	// but should happen logicaly, but means if you don't specify
 	// a directory and there's not one configured on the distro,
 	// then you're in trouble.
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command: "bash -c 'echo hello world!'",
 	}
 
@@ -236,7 +236,7 @@ func (s *execCmdSuite) TestCommandFailsWithoutWorkingDirectorySet() {
 }
 
 func (s *execCmdSuite) TestCommandIntegrationSimple() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command:    "bash -c 'echo hello world!'",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
@@ -246,7 +246,7 @@ func (s *execCmdSuite) TestCommandIntegrationSimple() {
 }
 
 func (s *execCmdSuite) TestCommandIntegrationFailureExpansion() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command:    "bash -c 'echo hello wor${ld!'",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
@@ -259,7 +259,7 @@ func (s *execCmdSuite) TestCommandIntegrationFailureExpansion() {
 }
 
 func (s *execCmdSuite) TestCommandIntegrationFailureCase() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		// just set up enough so that we don't fail parse params
 		Env:        map[string]string{},
 		WorkingDir: testutil.GetDirectoryOfFile(),
@@ -270,7 +270,7 @@ func (s *execCmdSuite) TestCommandIntegrationFailureCase() {
 }
 
 func (s *execCmdSuite) TestExecuteErrorsIfCommandAborts() {
-	cmd := &simpleExec{
+	cmd := &subprocessExec{
 		Command:    "bash -c 'echo hello world!'",
 		WorkingDir: testutil.GetDirectoryOfFile(),
 	}
