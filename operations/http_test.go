@@ -16,7 +16,7 @@ type CliHttpTestSuite struct {
 const testFileName = ".evergreen_test.yml"
 const testUserName = "testUser"
 const testApiKey = "1234567890abcdef"
-const testApiServer = "testurl"
+const testApiServer = "http://example.invalid"
 
 func TestCliHttpTestSuite(t *testing.T) {
 	suite.Run(t, new(CliHttpTestSuite))

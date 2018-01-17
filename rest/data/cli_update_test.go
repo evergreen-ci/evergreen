@@ -75,5 +75,4 @@ func (s *cliUpdateConnectorSuite) TestDegradedMode() {
 	s.Require().NotNil(v)
 	s.True(v.IgnoreUpdate)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
-	s.NotEmpty(v.ClientConfig.ClientBinaries)
 }

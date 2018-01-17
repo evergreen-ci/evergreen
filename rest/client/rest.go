@@ -440,7 +440,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 		version: apiVersion2,
 	}
 
-	resp, err := c.retryRequest(ctx, info, nil)
+	resp, err := c.request(ctx, info, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch update manifest from server")
 	}
