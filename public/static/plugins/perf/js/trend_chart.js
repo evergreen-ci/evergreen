@@ -50,10 +50,16 @@ mciModule.factory('PerfChartService', function() {
       step: undefined, // to e calculated. Step between legend items
     },
     knownLevels: {
-      1: { colorId: 0 },
-      4: { colorId: 1 },
-      8: { colorId: 2 },
-      16: { colorId: 3 },
+        1: { colorId: 0 },
+        2: { colorId: 9 },
+        4: { colorId: 1 },
+        8: { colorId: 2 },
+       16: { colorId: 3 },
+       32: { colorId: 4 },
+       64: { colorId: 5 },
+      128: { colorId: 8 },
+      256: { colorId: 6 },
+      512: { colorId: 7 },
     }
   };
 
@@ -216,7 +222,7 @@ var drawSingleTrendChart = function(params) {
   // FIXME Force color range 'initialization'. Might be a bug in d3 3.5.3
   // For some reason, d3 will not give you, let's say, the third color
   // unless you requested 0, 1 and 2 before.
-  for (var i = 0; i < allLevels.length; i++) colors(i);
+  for (var i = 0; i < cfg.knownLevelsCount; i++) colors(i);
 
   var yAxis = d3.svg.axis()
     .scale(yScale)
