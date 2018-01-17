@@ -64,7 +64,8 @@ func (s *cliUpdateConnectorSuite) TearDownSuite() {
 
 func (s *cliUpdateConnectorSuite) Test() {
 	v, err := s.ctx.GetCLIUpdate()
-	s.NoError(err)
+	s.Require().NoError(err)
+	s.Require().NotNil(v)
 	s.NotEmpty(v.ClientConfig.LatestRevision)
 }
 

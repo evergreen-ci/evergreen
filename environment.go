@@ -67,7 +67,7 @@ type Environment interface {
 
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
-	ClientConfig() ClientConfig
+	ClientConfig() *ClientConfig
 }
 
 type envState struct {
@@ -214,11 +214,16 @@ func (e *envState) Session() db.Session {
 	return db.WrapSession(e.session.Copy())
 }
 
-func (e *envState) ClientConfig() ClientConfig {
+func (e *envState) ClientConfig() *ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return *e.clientConfig
+	if e.clientConfig == nil {
+		return nil
+	}
+
+	config := *e.clientConfig
+	return &config
 }
 
 // getClientConfig should be called once at startup and looks at the

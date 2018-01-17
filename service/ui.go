@@ -53,7 +53,7 @@ type UIServer struct {
 	Settings        evergreen.Settings
 	CookieStore     *sessions.CookieStore
 	PluginTemplates map[string]*htmlTemplate.Template
-	clientConfig    evergreen.ClientConfig
+	clientConfig    *evergreen.ClientConfig
 	plugin.PanelManager
 
 	queue amboy.Queue
