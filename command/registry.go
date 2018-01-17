@@ -37,7 +37,7 @@ func init() {
 		"shell.cleanup":         shellCleanupFactory,
 		"shell.exec":            shellExecFactory,
 		"shell.track":           shellTrackFactory,
-		"simple.exec":           simpleExecFactory,
+		"subprocess.exec":       subprocessExecFactory,
 		"setup.initial":         initialSetupFactory,
 	}
 

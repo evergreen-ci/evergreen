@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type simpleExec struct {
+type subprocessExec struct {
 	Binary  string            `mapstructure:"binary"`
 	Args    []string          `mapstructure:"args"`
 	Env     map[string]string `mapstructure:"env"`
@@ -59,10 +59,10 @@ type simpleExec struct {
 	base
 }
 
-func simpleExecFactory() Command   { return &simpleExec{} }
-func (c *simpleExec) Name() string { return "simple.exec" }
+func subprocessExecFactory() Command   { return &subprocessExec{} }
+func (c *subprocessExec) Name() string { return "subprocess.exec" }
 
-func (c *simpleExec) ParseParams(params map[string]interface{}) error {
+func (c *subprocessExec) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, c)
 	if err != nil {
 		return errors.Wrapf(err, "error decoding %s params", c.Name())
@@ -100,7 +100,7 @@ func (c *simpleExec) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (c *simpleExec) doExpansions(exp *util.Expansions) error {
+func (c *subprocessExec) doExpansions(exp *util.Expansions) error {
 	var err error
 	catcher := grip.NewBasicCatcher()
 
@@ -123,7 +123,7 @@ func (c *simpleExec) doExpansions(exp *util.Expansions) error {
 	return errors.Wrap(catcher.Resolve(), "problem expanding strings")
 }
 
-func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subprocess.Command, func(), error) {
+func (c *subprocessExec) getProc(taskID string, logger client.LoggerProducer) (subprocess.Command, func(), error) {
 	c.Env[subprocess.MarkerTaskID] = taskID
 	c.Env[subprocess.MarkerAgentPID] = strconv.Itoa(os.Getpid())
 
@@ -173,7 +173,7 @@ func (c *simpleExec) getProc(taskID string, logger client.LoggerProducer) (subpr
 	return proc, closer, proc.SetOutput(opts)
 }
 
-func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+func (c *subprocessExec) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	var err error
 
 	if err = c.doExpansions(conf.Expansions); err != nil {
@@ -202,13 +202,13 @@ func (c *simpleExec) Execute(ctx context.Context, comm client.Communicator, logg
 		logger.System().Debug(message.CollectAllProcesses())
 		logger.Execution().Notice(err)
 
-		return errors.New("simple.exec aborted")
+		return errors.Errorf("%s aborted", c.Name())
 	}
 
 	return err
 }
 
-func (c *simpleExec) runCommand(ctx context.Context, taskID string, proc subprocess.Command, logger client.LoggerProducer) error {
+func (c *subprocessExec) runCommand(ctx context.Context, taskID string, proc subprocess.Command, logger client.LoggerProducer) error {
 	if c.Silent {
 		logger.Execution().Info("executing command in silent mode")
 	}
