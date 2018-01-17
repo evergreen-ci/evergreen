@@ -8,20 +8,14 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   }
 
   $scope.providers = [{
-    'id': 'ec2',
-    'display': 'EC2 (On-Demand Instance)'
-  }, {
-    'id': 'ec2-spot',
-    'display': 'EC2 (Spot Instance)'
+    'id': 'ec2-auto',
+    'display': 'EC2 Auto'
   }, {
     'id': 'ec2-ondemand',
-    'display': 'EC2 On-Demand (Beta)'
+    'display': 'EC2 On-Demand'
   }, {
-    'id': 'ec2-spot-new',
-    'display': 'EC2 Spot (Beta)'
-  }, {
-    'id': 'ec2-auto',
-    'display': 'EC2 Auto (Beta)'
+    'id': 'ec2-spot',
+    'display': 'EC2 Spot'
   }, {
     'id': 'static',
     'display': 'Static IP/VM'

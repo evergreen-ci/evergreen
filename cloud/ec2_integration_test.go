@@ -43,7 +43,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	assert := assert.New(t)   // nolint
 	require := require.New(t) // nolint
 
-	testConfig = testutil.TestConfig()
+	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnEC2Instance")
 	require.NoError(db.Clear(host.Collection))
@@ -57,7 +57,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	require.NoError(m.client.Create(m.credentials))
 
 	d := fetchTestDistro()
-	d.Provider = evergreen.ProviderNameEc2OnDemandNew
+	d.Provider = evergreen.ProviderNameEc2OnDemand
 	h := NewIntent(*d, m.GetInstanceName(d), d.Provider, HostOptions{
 		UserName: evergreen.User,
 		UserHost: false,
@@ -83,7 +83,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	assert := assert.New(t)   // nolint
 	require := require.New(t) // nolint
 
-	testConfig = testutil.TestConfig()
+	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 	require.NoError(db.Clear(host.Collection))
@@ -95,7 +95,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	require.NoError(m.Configure(testConfig))
 	require.NoError(m.client.Create(m.credentials))
 	d := fetchTestDistro()
-	d.Provider = evergreen.ProviderNameEc2SpotNew
+	d.Provider = evergreen.ProviderNameEc2Spot
 	h := NewIntent(*d, m.GetInstanceName(d), d.Provider, HostOptions{
 		UserName: evergreen.User,
 		UserHost: false,
