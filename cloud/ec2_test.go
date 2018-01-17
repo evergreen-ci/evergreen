@@ -52,7 +52,7 @@ func (s *EC2Suite) TestConstructor() {
 }
 
 func (s *EC2Suite) TestValidateProviderSettings() {
-	p := &NewEC2ProviderSettings{
+	p := &EC2ProviderSettings{
 		AMI:           "ami",
 		InstanceType:  "type",
 		SecurityGroup: "sg-123456",
@@ -123,7 +123,7 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 }
 
 func (s *EC2Suite) TestGetSettings() {
-	s.Equal(&NewEC2ProviderSettings{}, s.onDemandManager.GetSettings())
+	s.Equal(&EC2ProviderSettings{}, s.onDemandManager.GetSettings())
 }
 
 func (s *EC2Suite) TestConfigure() {
@@ -167,7 +167,7 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -220,7 +220,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -274,7 +274,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -325,7 +325,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	h := &host.Host{}
 	h.Distro.Id = "distro_id"
-	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	h.Distro.ProviderSettings = &map[string]interface{}{
 		"ami":           "ami",
 		"instance_type": "instanceType",
@@ -382,12 +382,12 @@ func (s *EC2Suite) TestCanSpawn() {
 
 func (s *EC2Suite) TestGetInstanceStatus() {
 	h := &host.Host{}
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	status, err := s.onDemandManager.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 
-	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	status, err = s.onDemandManager.GetInstanceStatus(h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
@@ -406,12 +406,12 @@ func (s *EC2Suite) TestIsUp() {
 	h := &host.Host{
 		Distro: distro.Distro{},
 	}
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	up, err := s.onDemandManager.IsUp(h)
 	s.True(up)
 	s.NoError(err)
 
-	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+	h.Distro.Provider = evergreen.ProviderNameEc2Spot
 	up, err = s.onDemandManager.IsUp(h)
 	s.True(up)
 	s.NoError(err)

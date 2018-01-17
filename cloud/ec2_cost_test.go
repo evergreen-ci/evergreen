@@ -20,6 +20,11 @@ func TestCostUnitSuite(t *testing.T) {
 	suite.Run(t, new(CostUnitSuite))
 }
 
+// mins returns a time X minutes after UNIX epoch
+func mins(x int64) time.Time {
+	return time.Unix(60*x, 0)
+}
+
 func (s *CostUnitSuite) SetupTest() {
 	s.rates = []spotRate{
 		{Time: mins(0), Price: 1.0},
@@ -94,7 +99,7 @@ func (s *CostUnitSuite) TestOnDemandPriceAPITranslation() {
 func (s *CostUnitSuite) TestOnDemandPriceCalculation() {
 	client := &awsClientMock{}
 	h := &host.Host{}
-	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 	r, _ := regionFullname("us-east-1")
 	cpf := &cachingPriceFetcher{
 		ec2Prices: map[odInfo]float64{
@@ -245,7 +250,7 @@ func (s *CostIntegrationSuite) TestFetchOnDemandPricing() {
 
 func (s *CostIntegrationSuite) TestGetProviderStatic() {
 	h := &host.Host{}
-	settings := &NewEC2ProviderSettings{}
+	settings := &EC2ProviderSettings{}
 
 	s.m.provider = onDemandProvider
 	provider, err := s.m.getProvider(h, settings)
@@ -272,7 +277,7 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 			Arch: "linux",
 		},
 	}
-	settings := &NewEC2ProviderSettings{}
+	settings := &EC2ProviderSettings{}
 	s.m.provider = autoProvider
 
 	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
@@ -311,10 +316,10 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	s.NoError(err)
 	if m4LargeSpot < m4LargeOnDemand {
 		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2SpotNew, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemandNew, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	}
 
 	settings.InstanceType = "t2.micro"
@@ -323,10 +328,10 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	s.NoError(err)
 	if t2MicroSpot < t2MicroOnDemand {
 		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2SpotNew, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemandNew, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	}
 
 	settings.InstanceType = "t1.micro"
@@ -335,9 +340,9 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	s.NoError(err)
 	if t1MicroSpot < t1MicroOnDemand {
 		s.Equal(spotProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2SpotNew, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2Spot, h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
-		s.Equal(evergreen.ProviderNameEc2OnDemandNew, h.Distro.Provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemand, h.Distro.Provider)
 	}
 }
