@@ -185,7 +185,7 @@ func (e *envState) initClientConfig() (err error) {
 	if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
 		grip.Warning("No clients are available for this server")
 	}
-	return err
+	return errors.WithStack(err)
 }
 
 func (e *envState) Settings() *Settings {
