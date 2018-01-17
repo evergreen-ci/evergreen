@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"io/ioutil"
+	"strings"
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
@@ -200,6 +201,14 @@ type JiraConfig struct {
 	Username       string `yaml:"username"`
 	Password       string `yaml:"password"`
 	DefaultProject string `yaml:"default_project"`
+}
+
+func (j JiraConfig) GetHostURL() string {
+	if strings.HasPrefix("http", j.Host) {
+		return j.Host
+	}
+
+	return "https://" + j.Host
 }
 
 // PluginConfig holds plugin-specific settings, which are handled.

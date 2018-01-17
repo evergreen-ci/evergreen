@@ -108,6 +108,6 @@ func (j *JiraCommentSuite) TestCreateMethodChangesClientState() {
 	new := &jiraClientImpl{}
 
 	j.Equal(base, new)
-	j.NoError(new.CreateClient("foo"))
+	j.NoError(new.CreateClient(nil, "foo"))
 	j.NotEqual(base, new)
 }
