@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -430,4 +431,39 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 		patchAliases = []serviceModel.PatchDefinition{patchAlias}
 	}
 	return patchAliases, nil
+}
+
+func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
+	info := requestInfo{
+		path:    "/status/cli_version",
+		method:  get,
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch update manifest from server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Wrapf(err, "expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+	}
+	update := &model.APICLIUpdate{}
+	if err = util.ReadJSONInto(resp.Body, update); err != nil {
+		return nil, errors.Wrap(err, "failed to parse update manifest from server")
+	}
+
+	configInterface, err := update.ClientConfig.ToService()
+	if err != nil {
+		return nil, err
+	}
+	config, ok := configInterface.(evergreen.ClientConfig)
+	if !ok {
+		return nil, errors.New("received client configuration is invalid")
+	}
+	if update.IgnoreUpdate {
+		config.LatestRevision = evergreen.ClientVersion
+	}
+
+	return &config, nil
 }

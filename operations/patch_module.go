@@ -48,8 +48,6 @@ func PatchSetModule() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
-
 			proj, err := rc.GetPatchedConfig(patchID)
 			if err != nil {
 				return err
@@ -141,8 +139,6 @@ func PatchRemoveModule() cli.Command {
 			if err != nil {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
-
-			notifyUserUpdate(ac)
 
 			err = ac.DeletePatchModule(patchID, module)
 			if err != nil {

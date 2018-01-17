@@ -1310,3 +1310,69 @@ Delete A Specified Public Key from the Current User
  Bad Request will be returned.
 
  Any other code indicates that the public key was not deleted
+
+Status
+------
+
+Status
+
+Objects
+~~~~~~~
+
+.. list-table:: **APICLIUpdate**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - ``client_config``
+     - APIClientConfig
+     - Client version/URLs
+   * - ``ignore_update``
+     - bool
+     - If true, degraded mode for clients is enabled, and the client should
+       treat their version as up-to date
+
+.. list-table:: **APIClientConfig**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - latest_revision
+     - string
+     - a string representing the client version
+   * - client_binaries
+     - [APIClientBinary]
+     - Array of APIClientBinary objects
+
+.. list-table:: **APIClientBinary**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name
+     - Type
+     - Description
+   * - arch
+     - string
+     - architecture of the binary; must be a valid GOARCH
+   * - os
+     - string
+     - OS of the binary; must be a valid GOOS
+   * - url
+     - string
+     - URL where the binary can be fetched
+
+Endpoints
+~~~~~~~~~
+
+Fetch CLI Client Version
+````````````````````````
+
+::
+
+ GET /status/cli_version
+
+ Fetch the CLI update manifest from the server

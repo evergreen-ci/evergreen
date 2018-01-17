@@ -471,3 +471,16 @@ func (c *Mock) DeletePublicKey(ctx context.Context, keyName string) error {
 func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.PatchDefinition, error) {
 	return nil, errors.New("(c *Mock) ListAliases not implemented")
 }
+
+func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
+	return &evergreen.ClientConfig{
+		ClientBinaries: []evergreen.ClientBinary{
+			evergreen.ClientBinary{
+				Arch: "amd64",
+				OS:   "darwin",
+				URL:  "http://example.com/clients/darwin_amd64/evergreen",
+			},
+		},
+		LatestRevision: evergreen.ClientVersion,
+	}, nil
+}

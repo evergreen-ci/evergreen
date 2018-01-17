@@ -14,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/kardianos/osext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -44,14 +45,9 @@ func Update() cli.Command {
 				return errors.Wrap(err, "problem loading configuration")
 			}
 
-			_ = conf.GetRestCommunicator(ctx)
+			client := conf.GetRestCommunicator(ctx)
 
-			ac, _, err := conf.getLegacyClients()
-			if err != nil {
-				return errors.Wrap(err, "problem accessing evergreen service")
-			}
-
-			update, err := checkUpdate(ac, false)
+			update, err := checkUpdate(client, false)
 			if err != nil {
 				return err
 			}
@@ -198,25 +194,13 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	return tempPath, nil
 }
 
-// Silently check if an update is available, and print a notification message if it is.
-func notifyUserUpdate(ac *legacyClient) {
-	update, err := checkUpdate(ac, true)
-	if update.needsUpdate && err == nil {
-		if runtime.GOOS == "windows" {
-			fmt.Printf("A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
-		} else {
-			fmt.Printf("A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
-		}
-	}
-}
-
 type updateStatus struct {
 	binary      *evergreen.ClientBinary
 	needsUpdate bool
 	newVersion  string
 }
 
-func checkUpdate(ac *legacyClient, silent bool) (updateStatus, error) {
+func checkUpdate(client client.Communicator, silent bool) (updateStatus, error) {
 	var outLog io.Writer = os.Stdout
 	if silent {
 		outLog = ioutil.Discard
@@ -224,7 +208,7 @@ func checkUpdate(ac *legacyClient, silent bool) (updateStatus, error) {
 
 	// This version of the cli has been built with a version, so we can compare it with what the
 	// server says is the latest
-	clients, err := ac.CheckUpdates()
+	clients, err := client.GetClientConfig(context.Background())
 	if err != nil {
 		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
 		return updateStatus{nil, false, ""}, err

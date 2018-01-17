@@ -20,7 +20,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2017-12-29"
+	ClientVersion = "2017-01-16"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
@@ -74,8 +74,8 @@ type ClientBinary struct {
 }
 
 type ClientConfig struct {
-	ClientBinaries []ClientBinary `yaml:"client_binaries"`
-	LatestRevision string         `yaml:"latest_revision"`
+	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
+	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
 }
 
 // APIConfig holds relevant log and listener settings for the API server.

@@ -92,8 +92,6 @@ func listProjects(ctx context.Context, confPath string) error {
 		return errors.Wrap(err, "problem accessing evergreen service")
 	}
 
-	notifyUserUpdate(ac)
-
 	projs, err := ac.ListProjects()
 	if err != nil {
 		return err
@@ -136,7 +134,6 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 			return errors.Wrap(err, "problem accessing evergreen service")
 		}
 
-		notifyUserUpdate(ac)
 		variants, err = ac.ListVariants(project)
 		if err != nil {
 			return err
@@ -187,7 +184,6 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 			return errors.Wrap(err, "problem accessing evergreen service")
 		}
 
-		notifyUserUpdate(ac)
 		tasks, err = ac.ListTasks(project)
 		if err != nil {
 			return err
@@ -222,12 +218,6 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	var aliases []model.PatchDefinition
 
 	if project != "" {
-		ac, _, err := conf.getLegacyClients()
-		if err != nil {
-			return errors.Wrap(err, "problem accessing evergreen service")
-		}
-
-		notifyUserUpdate(ac)
 		aliases, err = comm.ListAliases(ctx, project)
 		if err != nil {
 			return err

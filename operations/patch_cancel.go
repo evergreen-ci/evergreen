@@ -33,8 +33,6 @@ func PatchCancel() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
-
 			if err = ac.CancelPatch(patchID); err != nil {
 				return err
 			}

@@ -63,6 +63,7 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
 		"/status/hosts/distros":                                getHostStatsByDistroManager,
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
+		"/status/cli_version":                                  getCLIVersionRouteManager,
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
 		"/hooks/github":                                        getGithubHooksRouteManager(queue, githubSecret),

@@ -35,8 +35,6 @@ func Validate() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
-
 			confFile, err := ioutil.ReadFile(path)
 			if err != nil {
 				return err

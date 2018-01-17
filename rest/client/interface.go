@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
@@ -140,4 +141,7 @@ type Communicator interface {
 
 	// List variant/task aliases
 	ListAliases(context.Context, string) ([]model.PatchDefinition, error)
+
+	// GetClientConfig fetches the ClientConfig for the evergreen server
+	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
 }

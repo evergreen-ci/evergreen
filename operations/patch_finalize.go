@@ -33,8 +33,6 @@ func PatchFinalize() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
-
 			if err = ac.FinalizePatch(patchID); err != nil {
 				return err
 			}

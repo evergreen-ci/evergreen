@@ -26,5 +26,17 @@ api:
     - "404"
   "/rest/v2/distros":
     - "localhost"
-  "/api/ref/evergreen":
-    - "evergreen-ci"
+  "/rest/v2/status/cli_version":
+    - "latest_revision"
+    - "client_binaries"
+    - '"arch":"amd64",'
+    - '"os":"linux",'
+    - '"url":"http://localhost:9090/clients/linux_amd64/evergreen"'
+  "/update":
+    - "LatestRevision"
+    - "ClientBinaries"
+    - '"arch": "amd64",'
+    - '"os": "linux",'
+    - '"url": "http://localhost:9090/clients/linux_amd64/evergreen"'
+  "/ref/evergreen":
+    - "evergreen"

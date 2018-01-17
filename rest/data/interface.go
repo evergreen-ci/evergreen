@@ -177,4 +177,7 @@ type Connector interface {
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event
 	TriggerRepotracker(amboy.Queue, string, *github.PushEvent) error
+
+	// GetCLIUpdate fetches the current cli version and the urls to download
+	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 }

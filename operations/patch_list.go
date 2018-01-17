@@ -47,8 +47,6 @@ func PatchList() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
-
 			patches, err := ac.GetPatches(number)
 			if err != nil {
 				return err

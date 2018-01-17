@@ -110,8 +110,6 @@ func Fetch() cli.Command {
 				return errors.Wrap(err, "problem accessing evergreen service")
 			}
 
-			notifyUserUpdate(ac)
-
 			if doFetchSource {
 				if err = fetchSource(ac, rc, wd, taskID, noPatch); err != nil {
 					return err

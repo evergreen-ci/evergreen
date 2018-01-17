@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -118,7 +119,19 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 	if err != nil {
 		grip.Debug(err)
 	} else {
-		grip.Notice(banner)
+		grip.Noticef("Banner: %s", banner)
+	}
+
+	update, err := checkUpdate(c, true)
+	if err != nil {
+		grip.Debug(err)
+	}
+	if update.needsUpdate {
+		if runtime.GOOS == "windows" {
+			fmt.Printf("A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
+		} else {
+			fmt.Printf("A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
+		}
 	}
 
 	return c
