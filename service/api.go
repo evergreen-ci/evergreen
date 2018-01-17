@@ -54,7 +54,7 @@ type APIServer struct {
 	*render.Render
 	UserManager  auth.UserManager
 	Settings     evergreen.Settings
-	clientConfig *evergreen.ClientConfig
+	clientConfig evergreen.ClientConfig
 	queue        amboy.Queue
 }
 

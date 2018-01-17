@@ -65,9 +65,9 @@ type Environment interface {
 	LocalQueue() amboy.Queue
 	RemoteQueue() amboy.Queue
 
-	// ClientConfig provides access to a list of evergreen clients,
-	// for different platforms
-	ClientConfig() *ClientConfig
+	// ClientConfig provides access to a list of the latest evergreen
+	// clients, that this server can serve to users
+	ClientConfig() ClientConfig
 }
 
 type envState struct {
@@ -97,15 +97,8 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	catcher.Add(e.initDB())
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
+	catcher.Add(e.initClientConfig())
 
-	if !catcher.HasErrors() {
-		var err error
-		e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
-		catcher.Add(err)
-		if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
-			grip.Warning("No clients are available for this server")
-		}
-	}
 	return catcher.Resolve()
 }
 
@@ -184,6 +177,17 @@ func (e *envState) initQueues(ctx context.Context) []error {
 	return catcher.Errors()
 }
 
+func (e *envState) initClientConfig() (err error) {
+	if e.settings == nil {
+		return errors.New("no settings object, cannot build client configuration")
+	}
+	e.clientConfig, err = getClientConfig(e.settings.Ui.Url)
+	if err == nil && len(e.clientConfig.ClientBinaries) == 0 {
+		grip.Warning("No clients are available for this server")
+	}
+	return err
+}
+
 func (e *envState) Settings() *Settings {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -210,11 +214,11 @@ func (e *envState) Session() db.Session {
 	return db.WrapSession(e.session.Copy())
 }
 
-func (e *envState) ClientConfig() *ClientConfig {
+func (e *envState) ClientConfig() ClientConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	return e.clientConfig
+	return *e.clientConfig
 }
 
 // getClientConfig should be called once at startup and looks at the
