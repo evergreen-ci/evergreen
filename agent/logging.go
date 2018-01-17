@@ -39,7 +39,7 @@ func GetSender(ctx context.Context, prefix, taskId string) (send.Sender, error) 
 	)
 
 	if os.Getenv(subprocess.MarkerAgentPID) == "" {
-		grip.Notice("agent loggger running within an agent; skipping eternal log configuration")
+		grip.Notice("agent loggger running within an agent; skipping external log configuration")
 	} else {
 		if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
 			sender, err = send.NewSplunkLogger("evergreen.agent", splunk, send.LevelInfo{Default: level.Info, Threshold: level.Alert})
