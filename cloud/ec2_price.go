@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -190,8 +191,10 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 		}
 		if spotPrice < onDemandPrice {
 			ec2settings.BidPrice = onDemandPrice
+			h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
 			return spotProvider, nil
 		}
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 		return onDemandProvider, nil
 	}
 	return 0, errors.Errorf("provider is %d, expected %d, %d, or %d", m.provider, onDemandProvider, spotProvider, autoProvider)
@@ -200,7 +203,17 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
-	instance, err := client.GetInstanceInfo(h.Id)
+	instanceID := h.Id
+	if isHostSpot(h) {
+		spotDetails, err := client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
+		})
+		if err != nil {
+			return 0, errors.Wrap(err, "error getting spot info")
+		}
+		instanceID = *spotDetails.SpotInstanceRequests[0].InstanceId
+	}
+	instance, err := client.GetInstanceInfo(instanceID)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}

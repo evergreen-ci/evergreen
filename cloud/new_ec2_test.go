@@ -161,7 +161,7 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 	spawned, err := s.onDemandManager.SpawnHost(h)
 	s.Nil(spawned)
 	s.Error(err)
-	s.EqualError(err, "Can't spawn instance of ec2 for distro id: provider is foo")
+	s.EqualError(err, "Can't spawn instance for distro id: provider is foo")
 }
 
 func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
@@ -247,9 +247,9 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	s.Equal("keyName", *runInput.KeyName)
 	s.Equal("virtual", *runInput.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *runInput.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *runInput.SecurityGroupIds[0])
+	s.Nil(runInput.SecurityGroupIds)
 	s.Nil(runInput.SecurityGroups)
-	s.Equal("subnet-123456", *runInput.SubnetId)
+	s.Nil(runInput.SubnetId)
 	describeInput := *mock.DescribeInstancesInput
 	s.Equal("instance_id", *describeInput.InstanceIds[0])
 	tagsInput := *mock.CreateTagsInput
@@ -352,9 +352,9 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal("keyName", *requestInput.LaunchSpecification.KeyName)
 	s.Equal("virtual", *requestInput.LaunchSpecification.BlockDeviceMappings[0].VirtualName)
 	s.Equal("device", *requestInput.LaunchSpecification.BlockDeviceMappings[0].DeviceName)
-	s.Equal("sg-123456", *requestInput.LaunchSpecification.SecurityGroupIds[0])
+	s.Nil(requestInput.LaunchSpecification.SecurityGroupIds)
 	s.Nil(requestInput.LaunchSpecification.SecurityGroups)
-	s.Equal("subnet-123456", *requestInput.LaunchSpecification.SubnetId)
+	s.Nil(requestInput.LaunchSpecification.SubnetId)
 	tagsInput := *mock.CreateTagsInput
 	s.Equal("instance_id", *tagsInput.Resources[0])
 	s.Len(tagsInput.Tags, 8)
@@ -403,9 +403,19 @@ func (s *EC2Suite) TestTerminateInstance() {
 }
 
 func (s *EC2Suite) TestIsUp() {
-	up, err := s.onDemandManager.IsUp(&host.Host{})
+	h := &host.Host{
+		Distro: distro.Distro{},
+	}
+	h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
+	up, err := s.onDemandManager.IsUp(h)
 	s.True(up)
 	s.NoError(err)
+
+	h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
+	up, err = s.onDemandManager.IsUp(h)
+	s.True(up)
+	s.NoError(err)
+
 }
 
 func (s *EC2Suite) TestOnUp() {

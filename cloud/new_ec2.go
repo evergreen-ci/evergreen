@@ -125,13 +125,12 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 	}
 
 	if ec2Settings.IsVpc {
-		input.SecurityGroupIds = []*string{&ec2Settings.SecurityGroup}
-		input.SubnetId = &ec2Settings.SubnetId
 		input.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
-				Groups:   []*string{&ec2Settings.SecurityGroup},
-				SubnetId: &ec2Settings.SubnetId,
+				DeviceIndex:              makeInt64Ptr(0),
+				Groups:                   []*string{&ec2Settings.SecurityGroup},
+				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
@@ -236,13 +235,12 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSett
 	}
 
 	if ec2Settings.IsVpc {
-		spotRequest.LaunchSpecification.SecurityGroupIds = []*string{&ec2Settings.SecurityGroup}
-		spotRequest.LaunchSpecification.SubnetId = &ec2Settings.SubnetId
 		spotRequest.LaunchSpecification.NetworkInterfaces = []*ec2.InstanceNetworkInterfaceSpecification{
 			&ec2.InstanceNetworkInterfaceSpecification{
 				AssociatePublicIpAddress: makeBoolPtr(true),
-				Groups:   []*string{&ec2Settings.SecurityGroup},
-				SubnetId: &ec2Settings.SubnetId,
+				DeviceIndex:              makeInt64Ptr(0),
+				Groups:                   []*string{&ec2Settings.SecurityGroup},
+				SubnetId:                 &ec2Settings.SubnetId,
 			},
 		}
 	} else {
@@ -276,9 +274,11 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *NewEC2ProviderSett
 
 // SpawnHost spawns a new host.
 func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
-	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemandNew && h.Distro.Provider != evergreen.ProviderNameEc2SpotNew {
-		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			evergreen.ProviderNameEc2OnDemand, h.Distro.Id, h.Distro.Provider)
+	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemandNew &&
+		h.Distro.Provider != evergreen.ProviderNameEc2SpotNew &&
+		h.Distro.Provider != evergreen.ProviderNameEc2Auto {
+		return nil, errors.Errorf("Can't spawn instance for distro %s: provider is %s",
+			h.Distro.Id, h.Distro.Provider)
 	}
 
 	ec2Settings := &NewEC2ProviderSettings{}
@@ -433,8 +433,9 @@ func (m *ec2Manager) TerminateInstance(h *host.Host) error {
 	defer m.client.Close()
 
 	instanceId := h.Id
+	var err error
 	if isHostSpot(h) {
-		instanceId, err := m.cancelSpotRequest(h)
+		instanceId, err = m.cancelSpotRequest(h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error canceling spot request",
@@ -526,21 +527,11 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
 
 // IsUp returns whether a host is up.
 func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
-	if err := m.client.Create(m.credentials); err != nil {
-		return false, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-	info, err := m.client.GetInstanceInfo(h.Id)
+	status, err := m.GetInstanceStatus(h)
 	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error getting instance info",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return false, err
+		return false, errors.Wrap(err, "error checking if instance is up")
 	}
-	if ec2StatusToEvergreenStatus(*info.State.Name).String() == EC2StatusRunning {
+	if status == StatusRunning {
 		return true, nil
 	}
 	return false, nil
@@ -569,17 +560,35 @@ func (m *ec2Manager) IsSSHReachable(h *host.Host, keyName string) (bool, error) 
 
 // GetDNSName returns the DNS name for the host.
 func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
-	info, err := m.client.GetInstanceInfo(h.Id)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error getting instance info",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return "", errors.Wrap(err, "error getting instance info")
+	var instance *ec2.Instance
+	var err error
+	if isHostOnDemand(h) {
+		instance, err = m.client.GetInstanceInfo(h.Id)
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error getting instance info",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+			return "", errors.Wrap(err, "error getting instance info")
+		}
+	} else {
+		spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
+		})
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+
+		if *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
+			instance, err = m.client.GetInstanceInfo(*spotDetails.SpotInstanceRequests[0].InstanceId)
+			if err != nil {
+				return "", errors.Wrap(err, "error getting instance info")
+			}
+		}
 	}
-	return *info.PublicDnsName, nil
+	return *instance.PublicDnsName, nil
 }
 
 // GetSSHOptions returns the command-line args to pass to SSH.

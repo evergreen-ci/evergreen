@@ -311,8 +311,10 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	s.NoError(err)
 	if m4LargeSpot < m4LargeOnDemand {
 		s.Equal(spotProvider, provider)
+		s.Equal(evergreen.ProviderNameEc2SpotNew, h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemandNew, h.Distro.Provider)
 	}
 
 	settings.InstanceType = "t2.micro"
@@ -321,8 +323,10 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	s.NoError(err)
 	if t2MicroSpot < t2MicroOnDemand {
 		s.Equal(spotProvider, provider)
+		s.Equal(evergreen.ProviderNameEc2SpotNew, h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemandNew, h.Distro.Provider)
 	}
 
 	settings.InstanceType = "t1.micro"
@@ -331,7 +335,9 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	s.NoError(err)
 	if t1MicroSpot < t1MicroOnDemand {
 		s.Equal(spotProvider, provider)
+		s.Equal(evergreen.ProviderNameEc2SpotNew, h.Distro.Provider)
 	} else {
 		s.Equal(onDemandProvider, provider)
+		s.Equal(evergreen.ProviderNameEc2OnDemandNew, h.Distro.Provider)
 	}
 }
