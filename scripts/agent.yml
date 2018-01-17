@@ -22,14 +22,14 @@ tasks:
             # file to s3.put
             mkdir upload
             echo ${task_name} > upload/s3
-      - command: simple.exec
+      - command: subprocess.exec
         params: 
           working_dir: archive
           binary: /bin/bash
           args: 
             - "-c"
             - "touch foo"
-      - command: simple.exec
+      - command: subprocess.exec
         params: 
           working_dir: archive
           command: "/usr/bin/touch bar"
