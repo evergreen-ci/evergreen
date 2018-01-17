@@ -31,6 +31,18 @@ const (
 	mciHostExpireDays   = 10
 )
 
+//Valid values for EC2 instance states:
+//pending | running | shutting-down | terminated | stopping | stopped
+//see http://goo.gl/3OrCGn
+const (
+	EC2StatusPending      = "pending"
+	EC2StatusRunning      = "running"
+	EC2StatusShuttingdown = "shutting-down"
+	EC2StatusTerminated   = "terminated"
+	EC2StatusStopped      = "stopped"
+	EC2ErrorNotFound      = "InvalidInstanceID.NotFound"
+)
+
 type MountPoint struct {
 	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
 	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
@@ -48,7 +60,7 @@ var (
 
 var (
 	// bson fields for the EC2SpotSettings struct
-	BidPriceKey = bsonutil.MustHaveTag(EC2SpotSettings{}, "BidPrice")
+	BidPriceKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "BidPrice")
 )
 
 var (
@@ -96,36 +108,6 @@ func osBillingName(os osType) string {
 		return "Linux"
 	}
 	return string(os)
-}
-
-//makeBlockDeviceMapping takes the mount_points settings defined in the distro,
-//and converts them to ec2.BlockDeviceMapping structs which are usable by goamz.
-//It returns a non-nil error if any of the fields appear invalid.
-func makeBlockDeviceMappings(mounts []MountPoint) ([]ec2.BlockDeviceMapping, error) {
-	mappings := []ec2.BlockDeviceMapping{}
-	for _, mount := range mounts {
-		if mount.DeviceName == "" {
-			return nil, errors.Errorf("missing 'device_name': %#v", mount)
-		}
-		if mount.VirtualName == "" {
-			if mount.Size <= 0 {
-				return nil, errors.Errorf("invalid 'size': %#v", mount)
-			}
-			// EBS Storage - device name but no virtual name
-			mappings = append(mappings, ec2.BlockDeviceMapping{
-				DeviceName:          mount.DeviceName,
-				VolumeSize:          int64(mount.Size),
-				DeleteOnTermination: true,
-			})
-		} else {
-			//Instance Storage - virtual name but no size
-			mappings = append(mappings, ec2.BlockDeviceMapping{
-				DeviceName:  mount.DeviceName,
-				VirtualName: mount.VirtualName,
-			})
-		}
-	}
-	return mappings, nil
 }
 
 //helper function for getting an EC2 handle at US east
