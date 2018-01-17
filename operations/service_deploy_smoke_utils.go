@@ -2,6 +2,7 @@ package operations
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -52,28 +53,14 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
 
 	// check endpoints
 	catcher := grip.NewSimpleCatcher()
+	grip.Info("Testing UI Endpoints")
 	for url, expected := range tests.UI {
-		grip.Infof("Getting endpoint '%s'", url)
-		resp, err := client.Get(smokeUrlPrefix + smokeUiPort + url)
-		if err != nil {
-			catcher.Add(errors.Errorf("error getting UI endpoint '%s'", url))
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "error reading response body")
-			grip.Error(err)
-			return err
-		}
-		page := string(body)
-		for _, text := range expected {
-			if strings.Contains(page, text) {
-				grip.Infof("found '%s' in UI endpoint '%s'", text, url)
-			} else {
-				grip.Infof("did not find '%s' in UI endpoint '%s'", text, url)
-				catcher.Add(errors.Errorf("'%s' not in UI endpoint '%s'", text, url))
-			}
-		}
+		catcher.Add(makeSmokeRequest(client, url, expected))
+	}
+
+	grip.Info("Testing API Endpoints")
+	for url, expected := range tests.API {
+		catcher.Add(makeSmokeRequest(client, "/api"+url, expected))
 	}
 
 	grip.InfoWhen(!catcher.HasErrors(), "success: all endpoints accessible")
@@ -190,4 +177,35 @@ func checkTaskByCommit(username, key, commit string) error {
 
 	grip.Info("Successfully checked task by commit")
 	return nil
+}
+
+func makeSmokeRequest(client *http.Client, url string, expected []string) error {
+	grip.Infof("Getting endpoint '%s'", url)
+	resp, err := client.Get(smokeUrlPrefix + smokeUiPort + url)
+	if err != nil {
+		return errors.Errorf("error getting endpoint '%s'", url)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = errors.Wrap(err, "error reading response body")
+		grip.Error(err)
+		return err
+	}
+	page := string(body)
+	catcher := grip.NewSimpleCatcher()
+	for _, text := range expected {
+		if strings.Contains(page, text) {
+			grip.Infof("found '%s' in endpoint '%s'", text, url)
+		} else {
+			text := fmt.Sprintf("did not find '%s' in endpoint '%s'", text, url)
+			grip.Info(text)
+			catcher.Add(errors.New(text))
+		}
+	}
+
+	if catcher.HasErrors() {
+		grip.Infof("Failure occured, endpoint returned: %s", body)
+	}
+	return catcher.Resolve()
 }
