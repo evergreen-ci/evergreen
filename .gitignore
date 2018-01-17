@@ -63,3 +63,4 @@ fabfile.py
 *.pyc
 .idea
 evergreen
+test-endpoints.pid
