@@ -181,12 +181,18 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 	defer wg.Done()
 
 	var (
-		disabled  []string
-		completed []string
-		errored   []string
+		disabled         []string
+		completed        []string
+		errored          []string
+		tracksPushEvents []string
 	)
 
 	for project := range projects {
+		if project.TracksPushEvents {
+			tracksPushEvents = append(tracksPushEvents, project.String())
+			continue
+		}
+
 		switch errors.Cause(CollectRevisionsForProject(conf, project, num)) {
 		case errProjectDisabled:
 			disabled = append(disabled, project.String())
@@ -198,11 +204,12 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 	}
 
 	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"operation": "repotracker runner complete",
-		"worker":    id,
-		"disabled":  disabled,
-		"errored":   errored,
-		"completed": completed,
+		"runner":             RunnerName,
+		"operation":          "repotracker runner complete",
+		"worker":             id,
+		"tracks_push_events": tracksPushEvents,
+		"disabled":           disabled,
+		"errored":            errored,
+		"completed":          completed,
 	})
 }

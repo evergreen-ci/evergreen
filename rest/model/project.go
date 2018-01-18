@@ -22,6 +22,7 @@ type APIProject struct {
 	DeactivatePrevious bool                     `json:"deactivate_previous"`
 	Admins             []APIString              `json:"admins"`
 	Vars               map[string]string        `json:"vars"`
+	TracksPushEvents   bool                     `json:"tracks_push_events"`
 }
 
 type alertConfig struct {
@@ -44,6 +45,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.RemotePath = APIString(v.RemotePath)
 	apiProject.Repo = APIString(v.Repo)
 	apiProject.Tracked = v.Tracked
+	apiProject.TracksPushEvents = v.TracksPushEvents
 
 	alertSettings := make(map[string][]alertConfig)
 	for k, v := range v.Alerts {
