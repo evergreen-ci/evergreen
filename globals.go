@@ -128,7 +128,7 @@ const (
 const (
 	ProviderNameEc2OnDemand    = "ec2"
 	ProviderNameEc2Spot        = "ec2-spot"
-	ProviderNameEc2OnDemandNew = "ec2-ondemand-new"
+	ProviderNameEc2OnDemandNew = "ec2-ondemand"
 	ProviderNameEc2SpotNew     = "ec2-spot-new"
 	ProviderNameEc2Auto        = "ec2-auto"
 	ProviderNameDigitalOcean   = "digitalocean"
