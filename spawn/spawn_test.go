@@ -14,7 +14,7 @@ func TestRDPPasswordValidation(t *testing.T) {
 	goodPasswords := []string{
 		"地火風水心CP!",
 		"V3ryStr0ng!",
-		`Aaaaa\`,
+		`Aaa\aa\`,
 	}
 	badPasswords := []string{"", "weak", "stilltooweak1", "火火火1"}
 

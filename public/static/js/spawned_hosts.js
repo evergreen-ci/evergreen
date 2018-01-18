@@ -171,7 +171,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           success: function (resp) {
             window.location.href = "/spawn";
           },
-          error: function (jqXHR, status, errorThrown) {
+          error: function (resp) {
             notificationService.pushNotification('Error setting host RDP password: ' + resp.data.error,'errorHeader');
           }
         }

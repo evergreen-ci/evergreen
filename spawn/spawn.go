@@ -215,9 +215,9 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
 	defer stdout.Close()
 
-	updatePwdCmd := fmt.Sprintf("net user %v %v && sc config "+
-		"sshd obj= '.\\%v' password= \"%v\"", hostObj.User, password,
-		hostObj.User, password)
+	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
+	updatePwdCmd := fmt.Sprintf(`net user %s "%s" && sc config sshd obj= '.\%s' password= "%s"`,
+		hostObj.User, escapedPassword, hostObj.User, escapedPassword)
 
 	// construct the required termination command
 	remoteCommand := subprocess.NewRemoteCommand(
