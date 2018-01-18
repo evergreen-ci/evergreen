@@ -131,7 +131,7 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 
 					if err := terminateHost(funcCtx, hostToTerminate, settings); err != nil {
 						if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
-							err = hostToTerminate.Terminate()
+							err = hostToTerminate.Terminate(evergreen.User)
 							if err != nil {
 								catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
 								return
@@ -211,7 +211,7 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 	}
 
 	// terminate the instance
-	if err := cloudHost.TerminateInstance(); err != nil {
+	if err := cloudHost.TerminateInstance(evergreen.User); err != nil {
 		return errors.Wrapf(err, "error terminating host %s", h.Id)
 	}
 

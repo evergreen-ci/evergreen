@@ -343,7 +343,7 @@ func (cloudManager *ec2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) 
 	return h, nil
 }
 
-func (cloudManager *ec2SpotManager) TerminateInstance(host *host.Host) error {
+func (cloudManager *ec2SpotManager) TerminateInstance(host *host.Host, user string) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s; already marked as terminated", host.Id)
@@ -359,7 +359,7 @@ func (cloudManager *ec2SpotManager) TerminateInstance(host *host.Host) error {
 			// terminated our spot instance
 			grip.Warningf("EC2 could not find spot instance '%s', marking as terminated: [%+v]",
 				host.Id, ec2err)
-			return errors.WithStack(host.Terminate())
+			return errors.WithStack(host.Terminate(user))
 		}
 		err = errors.Wrapf(err, "Couldn't terminate, failed to get spot request info for %s",
 			host.Id)
@@ -401,7 +401,7 @@ func (cloudManager *ec2SpotManager) TerminateInstance(host *host.Host) error {
 	}
 
 	// set the host status as terminated and update its termination time
-	return errors.WithStack(host.Terminate())
+	return errors.WithStack(host.Terminate(user))
 }
 
 // describeSpotRequest gets infomration about a spot request

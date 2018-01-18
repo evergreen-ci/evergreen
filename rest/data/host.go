@@ -85,8 +85,8 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userDat
 	return intentHost, nil
 }
 
-func (hc *DBHostConnector) SetHostStatus(host *host.Host, status string) error {
-	return host.SetStatus(status)
+func (hc *DBHostConnector) SetHostStatus(host *host.Host, status, user string) error {
+	return host.SetStatus(status, user)
 }
 
 func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {
@@ -97,8 +97,8 @@ func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Ti
 	return nil
 }
 
-func (hc *DBHostConnector) TerminateHost(host *host.Host) error {
-	return errors.WithStack(spawn.TerminateHost(host, evergreen.GetEnvironment().Settings()))
+func (hc *DBHostConnector) TerminateHost(host *host.Host, user string) error {
+	return errors.WithStack(spawn.TerminateHost(host, evergreen.GetEnvironment().Settings(), user))
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -219,7 +219,7 @@ func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userD
 	return intentHost, nil
 }
 
-func (hc *MockHostConnector) SetHostStatus(host *host.Host, status string) error {
+func (hc *MockHostConnector) SetHostStatus(host *host.Host, status, user string) error {
 	for i, _ := range hc.CachedHosts {
 		if hc.CachedHosts[i].Id == host.Id {
 			hc.CachedHosts[i].Status = status
@@ -243,7 +243,7 @@ func (hc *MockHostConnector) SetHostExpirationTime(host *host.Host, newExp time.
 	return errors.New("can't find host")
 }
 
-func (hc *MockHostConnector) TerminateHost(host *host.Host) error {
+func (hc *MockHostConnector) TerminateHost(host *host.Host, user string) error {
 	for _, h := range hc.CachedHosts {
 		if h.Id == host.Id {
 			return nil

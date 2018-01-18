@@ -169,7 +169,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
 			return
 		}
-		if err := spawn.TerminateHost(h, evergreen.GetEnvironment().Settings()); err != nil {
+		if err := spawn.TerminateHost(h, evergreen.GetEnvironment().Settings(), u.Id); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

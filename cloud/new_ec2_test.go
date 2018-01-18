@@ -396,7 +396,7 @@ func (s *EC2Suite) TestGetInstanceStatus() {
 func (s *EC2Suite) TestTerminateInstance() {
 	h := &host.Host{Id: "host_id"}
 	s.NoError(h.Insert())
-	s.NoError(s.onDemandManager.TerminateInstance(h))
+	s.NoError(s.onDemandManager.TerminateInstance(h, evergreen.User))
 	found, err := host.FindOne(host.ById("host_id"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)

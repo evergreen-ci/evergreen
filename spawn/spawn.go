@@ -238,18 +238,18 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	return remoteCommand, nil
 }
 
-func TerminateHost(host *host.Host, settings *evergreen.Settings) error {
+func TerminateHost(host *host.Host, settings *evergreen.Settings, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		return errors.New("Host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
-		return host.SetTerminated()
+		return host.SetTerminated(user)
 	}
 	cloudHost, err := cloud.GetCloudHost(host, settings)
 	if err != nil {
 		return err
 	}
-	if err = cloudHost.TerminateInstance(); err != nil {
+	if err = cloudHost.TerminateInstance(user); err != nil {
 		return err
 	}
 	return nil

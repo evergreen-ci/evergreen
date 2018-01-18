@@ -246,7 +246,7 @@ func (cloudManager *ec2OnDemandManager) GetDNSName(host *host.Host) (string, err
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *ec2OnDemandManager) TerminateInstance(host *host.Host) error {
+func (cloudManager *ec2OnDemandManager) TerminateInstance(host *host.Host, user string) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %v - already marked as "+
@@ -268,7 +268,7 @@ func (cloudManager *ec2OnDemandManager) TerminateInstance(host *host.Host) error
 	}
 
 	// set the host status as terminated and update its termination time
-	return host.Terminate()
+	return host.Terminate(user)
 }
 
 // determine how long until a payment is due for the host

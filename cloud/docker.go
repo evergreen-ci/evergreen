@@ -197,7 +197,7 @@ func (m *dockerManager) CanSpawn() (bool, error) {
 }
 
 //TerminateInstance destroys a container.
-func (m *dockerManager) TerminateInstance(h *host.Host) error {
+func (m *dockerManager) TerminateInstance(h *host.Host, user string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
@@ -214,7 +214,7 @@ func (m *dockerManager) TerminateInstance(h *host.Host) error {
 	})
 
 	// Set the host status as terminated and update its termination time
-	return h.Terminate()
+	return h.Terminate(user)
 }
 
 //Configure populates a dockerManager by reading relevant settings from the

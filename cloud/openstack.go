@@ -156,7 +156,7 @@ func (m *openStackManager) GetInstanceStatus(host *host.Host) (CloudStatus, erro
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *openStackManager) TerminateInstance(host *host.Host) error {
+func (m *openStackManager) TerminateInstance(host *host.Host, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -168,7 +168,7 @@ func (m *openStackManager) TerminateInstance(host *host.Host) error {
 	}
 
 	// Set the host status as terminated and update its termination time
-	return host.Terminate()
+	return errors.WithStack(host.Terminate(user))
 }
 
 // IsUp checks whether the provisioned host is running.

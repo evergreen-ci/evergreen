@@ -45,11 +45,11 @@ func TestSpawnSpotInstance(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(foundHosts), ShouldEqual, 1)
 			for _, h := range foundHosts {
-				err := provider.TerminateInstance(&h)
+				err := provider.TerminateInstance(&h, evergreen.User)
 				So(err, ShouldBeNil)
 			}
 			for _, h := range hosts {
-				err := provider.TerminateInstance(h)
+				err := provider.TerminateInstance(h, evergreen.User)
 				So(err, ShouldBeNil)
 			}
 		})

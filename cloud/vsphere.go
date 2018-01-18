@@ -145,7 +145,7 @@ func (m *vsphereManager) GetInstanceStatus(host *host.Host) (CloudStatus, error)
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *vsphereManager) TerminateInstance(host *host.Host) error {
+func (m *vsphereManager) TerminateInstance(host *host.Host, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -157,7 +157,7 @@ func (m *vsphereManager) TerminateInstance(host *host.Host) error {
 	}
 
 	// Set the host status as terminated and update its termination time
-	if err := host.Terminate(); err != nil {
+	if err := host.Terminate(user); err != nil {
 		return errors.Wrapf(err, "could not terminate host %s in db", host.Id)
 	}
 

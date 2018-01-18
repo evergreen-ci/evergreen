@@ -6,7 +6,7 @@
     <span ng-switch-when="HOST_PRIVISION_ERROR">Host encountered error during provisioning</span>
     <span ng-switch-when="HOST_AGENT_DEPLOY_FAILED">New agent deploy failed</span>
     <span ng-switch-when="HOST_AGENT_DEPLOYED">Agent Deployed with revision <b>[[eventLogObj.data.agent_revision]]</b></span>
-    <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> </span>
+    <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> by <b>[[eventLogObj.data.user]]</b>.</span>
     <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>
     <span ng-switch-when="HOST_PROVISIONED">Marked as <b>provisioned</b></span>
     <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>

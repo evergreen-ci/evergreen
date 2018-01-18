@@ -49,6 +49,7 @@ type HostEventData struct {
 	TaskStatus    string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
 	Execution     string        `bson:"execution,omitempty" json:"execution,omitempty"`
 	MonitorOp     string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	User          string        `bson:"usr" json:"user,omitempty"`
 	Successful    bool          `bson:"successful,omitempty" json:"successful"`
 	Duration      time.Duration `bson:"duration,omitempty" json:"duration"`
 }
@@ -101,12 +102,15 @@ func LogHostTerminatedExternally(hostId string) {
 	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
 }
 
-func LogHostStatusChanged(hostId string, oldStatus string, newStatus string) {
+func LogHostStatusChanged(hostId, oldStatus, newStatus, user string) {
 	if oldStatus == newStatus {
 		return
 	}
-	LogHostEvent(hostId, EventHostStatusChanged,
-		HostEventData{OldStatus: oldStatus, NewStatus: newStatus})
+	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{
+		OldStatus: oldStatus,
+		NewStatus: newStatus,
+		User:      user,
+	})
 }
 
 func LogHostDNSNameSet(hostId string, dnsName string) {

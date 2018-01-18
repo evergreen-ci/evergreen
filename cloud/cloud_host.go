@@ -49,8 +49,8 @@ func (cloudHost *CloudHost) IsUp() (bool, error) {
 	return cloudHost.CloudMgr.IsUp(cloudHost.Host)
 }
 
-func (cloudHost *CloudHost) TerminateInstance() error {
-	return cloudHost.CloudMgr.TerminateInstance(cloudHost.Host)
+func (cloudHost *CloudHost) TerminateInstance(user string) error {
+	return cloudHost.CloudMgr.TerminateInstance(cloudHost.Host, user)
 }
 
 func (cloudHost *CloudHost) GetInstanceStatus() (CloudStatus, error) {
