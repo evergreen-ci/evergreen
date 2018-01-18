@@ -87,12 +87,12 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(host.Insert(), ShouldBeNil)
 
-				build := &build.Build{
+				b := &build.Build{
 					Id:      "b1",
 					Tasks:   []build.TaskCache{{Id: "t1"}},
 					Version: "v1",
 				}
-				So(build.Insert(), ShouldBeNil)
+				So(b.Insert(), ShouldBeNil)
 
 				v := &version.Version{
 					Id: "v1",
@@ -108,6 +108,48 @@ func TestCleanupTask(t *testing.T) {
 				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(newTask.Restarts, ShouldEqual, 2)
 
+				Convey("a display task should reset all of its execution tasks", func() {
+					dt := &task.Task{
+						Id:             "dt",
+						Status:         evergreen.TaskStarted,
+						HostId:         "h1",
+						BuildId:        "b2",
+						Project:        "proj",
+						Restarts:       0,
+						DisplayOnly:    true,
+						ExecutionTasks: []string{"et"},
+					}
+					et := &task.Task{
+						Id:       "et",
+						Status:   evergreen.TaskStarted,
+						HostId:   "h1",
+						BuildId:  "b2",
+						Project:  "proj",
+						Restarts: 0,
+					}
+					So(dt.Insert(), ShouldBeNil)
+					So(et.Insert(), ShouldBeNil)
+					b := &build.Build{
+						Id:    "b2",
+						Tasks: []build.TaskCache{{Id: "dt"}},
+					}
+					So(b.Insert(), ShouldBeNil)
+					wrapper := doomedTaskWrapper{
+						reason: HeartbeatTimeout,
+						task:   *et,
+					}
+					projects := map[string]model.Project{
+						"proj": {
+							Identifier: "proj",
+							Stepback:   false,
+						},
+					}
+
+					So(cleanUpTask(wrapper, projects), ShouldBeNil)
+					dbTask, err := task.FindOne(task.ById(dt.Id))
+					So(err, ShouldBeNil)
+					So(dbTask.Status, ShouldEqual, evergreen.TaskUnstarted)
+				})
 			})
 
 			Convey("the running task field on the task's host should be"+
