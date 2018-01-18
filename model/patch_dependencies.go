@@ -38,7 +38,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 		return included
 	}
 
-	// we must load the BuildVariantTask for the task/variant pair,
+	// we must load the BuildVariantTaskUnit for the task/variant pair,
 	// since it contains the full scope of dependency information
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
 	if bvt == nil {
@@ -70,7 +70,7 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 }
 
 // expandRequirements finds all tasks required by the current task/variant pair.
-func (di *dependencyIncluder) expandRequirements(pair TVPair, reqs []TaskRequirement) []TVPair {
+func (di *dependencyIncluder) expandRequirements(pair TVPair, reqs []TaskUnitRequirement) []TVPair {
 	deps := []TVPair{}
 	for _, r := range reqs {
 		if r.Variant == AllVariants {
@@ -94,7 +94,7 @@ func (di *dependencyIncluder) expandRequirements(pair TVPair, reqs []TaskRequire
 }
 
 // expandRequirements finds all tasks depended on by the current task/variant pair.
-func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskDependency) []TVPair {
+func (di *dependencyIncluder) expandDependencies(pair TVPair, depends []TaskUnitDependency) []TVPair {
 	deps := []TVPair{}
 	for _, d := range depends {
 		// don't automatically add dependencies if they are marked patch_optional

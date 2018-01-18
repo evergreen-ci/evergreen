@@ -100,19 +100,19 @@ func TestGetVariantsWithTask(t *testing.T) {
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{
-					Name:  "bv1",
-					Tasks: []BuildVariantTask{{Name: "suite1"}},
+					Name:      "bv1",
+					TaskUnits: []BuildVariantTaskUnit{{Name: "suite1"}},
 				},
 				{
 					Name: "bv2",
-					Tasks: []BuildVariantTask{
+					TaskUnits: []BuildVariantTaskUnit{
 						{Name: "suite1"},
 						{Name: "suite2"},
 					},
 				},
 				{
-					Name:  "bv3",
-					Tasks: []BuildVariantTask{{Name: "suite2"}},
+					Name:      "bv3",
+					TaskUnits: []BuildVariantTaskUnit{{Name: "suite2"}},
 				},
 			},
 		}
@@ -162,7 +162,7 @@ func TestGetModuleRepoName(t *testing.T) {
 
 func TestPopulateBVT(t *testing.T) {
 
-	Convey("With a test Project and BuildVariantTask", t, func() {
+	Convey("With a test Project and BuildVariantTaskUnit", t, func() {
 
 		project := &Project{
 			Tasks: []ProjectTask{
@@ -170,21 +170,21 @@ func TestPopulateBVT(t *testing.T) {
 					Name:            "task1",
 					ExecTimeoutSecs: 500,
 					Stepback:        boolPtr(false),
-					DependsOn:       []TaskDependency{{Name: "other"}},
+					DependsOn:       []TaskUnitDependency{{Name: "other"}},
 					Priority:        1000,
 					Patchable:       boolPtr(false),
 				},
 			},
 			BuildVariants: []BuildVariant{
 				{
-					Name:  "test",
-					Tasks: []BuildVariantTask{{Name: "task1", Priority: 5}},
+					Name:      "test",
+					TaskUnits: []BuildVariantTaskUnit{{Name: "task1", Priority: 5}},
 				},
 			},
 		}
 
-		Convey("updating a BuildVariantTask with unset fields", func() {
-			bvt := project.BuildVariants[0].Tasks[0]
+		Convey("updating a BuildVariantTaskUnit with unset fields", func() {
+			bvt := project.BuildVariants[0].TaskUnits[0]
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
 			bvt.Populate(spec)
@@ -200,12 +200,12 @@ func TestPopulateBVT(t *testing.T) {
 			})
 		})
 
-		Convey("updating a BuildVariantTask with set fields", func() {
-			bvt := BuildVariantTask{
+		Convey("updating a BuildVariantTaskUnit with set fields", func() {
+			bvt := BuildVariantTaskUnit{
 				Name:            "task1",
 				ExecTimeoutSecs: 2,
 				Stepback:        boolPtr(true),
-				DependsOn:       []TaskDependency{{Name: "task2"}, {Name: "task3"}},
+				DependsOn:       []TaskUnitDependency{{Name: "task2"}, {Name: "task3"}},
 			}
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
@@ -314,7 +314,7 @@ func TestAliasResolution(t *testing.T) {
 		BuildVariants: []BuildVariant{
 			{
 				Name: "bv_1",
-				Tasks: []BuildVariantTask{
+				TaskUnits: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
 					},
@@ -331,7 +331,7 @@ func TestAliasResolution(t *testing.T) {
 			},
 			{
 				Name: "bv_2",
-				Tasks: []BuildVariantTask{
+				TaskUnits: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
 					},

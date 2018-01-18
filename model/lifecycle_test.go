@@ -544,7 +544,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar1 := BuildVariant{
 			Name:        "buildVar",
 			DisplayName: "Build Variant",
-			Tasks: []BuildVariantTask{
+			TaskUnits: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
 			DisplayTasks: []DisplayTask{
@@ -567,18 +567,18 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar2 := BuildVariant{
 			Name:        "buildVar2",
 			DisplayName: "Build Variant 2",
-			Tasks: []BuildVariantTask{
+			TaskUnits: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
 		buildVar3 := BuildVariant{
 			Name:        "buildVar3",
 			DisplayName: "Build Variant 3",
-			Tasks: []BuildVariantTask{
+			TaskUnits: []BuildVariantTaskUnit{
 				{
 					// wait for the first BV's taskA to complete
 					Name:      "taskA",
-					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
+					DependsOn: []TaskUnitDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 			},
 		}
@@ -589,17 +589,17 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Name:      "taskA",
 					Priority:  5,
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{},
+					DependsOn: []TaskUnitDependency{},
 				},
 				{
 					Name:      "taskB",
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
+					DependsOn: []TaskUnitDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 				{
 					Name: "taskC",
 					Tags: []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{
+					DependsOn: []TaskUnitDependency{
 						{Name: "taskA"},
 						{Name: "taskB"},
 					},
@@ -607,12 +607,12 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{
 					Name:      "taskD",
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{{Name: AllDependencies}},
+					DependsOn: []TaskUnitDependency{{Name: AllDependencies}},
 				},
 				{
 					Name: "taskE",
 					Tags: []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{
+					DependsOn: []TaskUnitDependency{
 						{
 							Name:    AllDependencies,
 							Variant: AllVariants,

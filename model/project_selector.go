@@ -275,10 +275,19 @@ func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 	return results, nil
 }
 
+func newTaskGroupSelectorEvaluator(groups []parserTaskGroup) *tagSelectorEvaluator {
+	var selectees []tagged
+	for i, _ := range groups {
+		selectees = append(selectees, &groups[i])
+	}
+
+	return newTagSelectorEvaluator(selectees)
+}
+
 // Display task selector
 func newDisplayTaskSelectorEvaluator(bv BuildVariant, tasks []parserTask) *tagSelectorEvaluator {
 	var selectees []tagged
-	for _, t := range bv.Tasks {
+	for _, t := range bv.TaskUnits {
 		selectees = append(selectees, &parserTask{Name: t.Name, Tags: getTags(tasks, t.Name)})
 	}
 

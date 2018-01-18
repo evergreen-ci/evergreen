@@ -38,7 +38,7 @@ func findRegularVariant(bvs []BuildVariant, id string) *BuildVariant {
 // taskNames returns list of task names give a variant definition.
 func taskNames(v *BuildVariant) []string {
 	var names []string
-	for _, t := range v.Tasks {
+	for _, t := range v.TaskUnits {
 		names = append(names, t.Name)
 	}
 	return names
@@ -126,12 +126,12 @@ func TestDepsMatrixIntegration(t *testing.T) {
 						"configuration": "standalone",
 					})
 					So(v, ShouldNotBeNil)
-					So(len(v.Tasks), ShouldEqual, 5)
+					So(len(v.TaskUnits), ShouldEqual, 5)
 					So(v.Tags, ShouldContain, "posix")
 					Convey("which should contain a compile", func() {
-						So(v.Tasks[4].Name, ShouldEqual, "compile")
-						So(v.Tasks[4].Distros, ShouldResemble, []string{"linux_big"})
-						So(v.Tasks[4].DependsOn[0], ShouldResemble, TaskDependency{
+						So(v.TaskUnits[4].Name, ShouldEqual, "compile")
+						So(v.TaskUnits[4].Distros, ShouldResemble, []string{"linux_big"})
+						So(v.TaskUnits[4].DependsOn[0], ShouldResemble, TaskUnitDependency{
 							Name:    "pre-task",
 							Variant: "analysis",
 						})
@@ -143,12 +143,12 @@ func TestDepsMatrixIntegration(t *testing.T) {
 						"configuration": "repl",
 					})
 					So(v, ShouldNotBeNil)
-					So(len(v.Tasks), ShouldEqual, 4)
+					So(len(v.TaskUnits), ShouldEqual, 4)
 					So(v.Tags, ShouldContain, "posix")
 					Convey("which should depend on another variant's compile", func() {
-						So(v.Tasks[0].Name, ShouldEqual, "test1")
-						So(v.Tasks[0].DependsOn[0].Name, ShouldEqual, "compile")
-						So(v.Tasks[0].DependsOn[0].Variant, ShouldNotEqual, "")
+						So(v.TaskUnits[0].Name, ShouldEqual, "test1")
+						So(v.TaskUnits[0].DependsOn[0].Name, ShouldEqual, "compile")
+						So(v.TaskUnits[0].DependsOn[0].Variant, ShouldNotEqual, "")
 					})
 				})
 			})
