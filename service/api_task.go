@@ -25,7 +25,7 @@ import (
 )
 
 // if a host encounters more than this number of system failures, then it should be disabled.
-const consecutiveSystemFailureThreshold = 3
+const consecutiveSystemFailureThreshold = 6
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
