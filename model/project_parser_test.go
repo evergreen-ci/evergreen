@@ -458,7 +458,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			}}
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 4)
+			So(len(errs), ShouldEqual, 2)
 		})
 	})
 }
