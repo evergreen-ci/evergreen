@@ -289,19 +289,22 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
-	m4LargeSpot, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	s.Contains(az, "us-east")
 	s.True(m4LargeSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
-	t2MicroSpot, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	s.Contains(az, "us-east")
 	s.True(t2MicroSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t1.micro"
 	settings.IsVpc = false
-	t1MicroSpot, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	t1MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	s.Contains(az, "us-east")
 	s.True(t1MicroSpot > 0)
 	s.NoError(err)
 

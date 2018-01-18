@@ -43,8 +43,12 @@ type NewEC2ProviderSettings struct {
 	MountPoints []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
 	// SecurityGroup is the security group name in EC2 classic and the security group ID in a VPC.
 	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
-	// SubnetId is only set in a VPC.
+
+	// SubnetId is only set in a VPC. Either subnet id or vpc name must set.
 	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
+
+	// VpcName is used to get the subnet ID automatically. Either subnet id or vpc name must set.
+	VpcName string `mapstructure:"vpc_name" json:"vpc_name,omitempty" bson:"vpc_name,omitempty"`
 
 	// IsVpc is set to true if the security group is part of a VPC.
 	IsVpc bool `mapstructure:"is_vpc" json:"is_vpc,omitempty" bson:"is_vpc,omitempty"`
@@ -60,6 +64,9 @@ func (s *NewEC2ProviderSettings) Validate() error {
 	}
 	if s.BidPrice < 0 {
 		return errors.New("Bid price must not be negative")
+	}
+	if s.IsVpc && s.SubnetId == "" {
+		return errors.New("must set a default subnet for a vpc")
 	}
 	if _, err := newMakeBlockDeviceMappings(s.MountPoints); err != nil {
 		return errors.Wrap(err, "block device mappings invalid")
@@ -144,6 +151,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
+	fmt.Println("input is ", input)
 	reservation, err := m.client.RunInstances(input)
 	if err != nil || reservation == nil {
 		msg := "RunInstances API call returned an error"

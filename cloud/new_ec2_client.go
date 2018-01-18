@@ -54,6 +54,12 @@ type AWSClient interface {
 	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
 	DescribeSpotPriceHistory(*ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
 
+	// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
+	DescribeSubnets(*ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
+
+	// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
+	DescribeVpcs(*ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
+
 	GetInstanceInfo(string) (*ec2.Instance, error)
 }
 
@@ -367,6 +373,66 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 	return output, nil
 }
 
+// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
+func (c *awsClientImpl) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+	var output *ec2.DescribeSubnetsOutput
+	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running DescribeSubnets",
+		"args":    input,
+	})
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DescribeSubnets(input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
+						"message": "error running DescribeSubnets",
+						"args":    input,
+					}))
+				}
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
+func (c *awsClientImpl) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
+	var output *ec2.DescribeVpcsOutput
+	var err error
+	grip.Debug(message.Fields{
+		"client":  fmt.Sprintf("%T", c),
+		"message": "running DescribeVpcs",
+		"args":    input,
+	})
+	_, err = util.Retry(
+		func() (bool, error) {
+			output, err = c.EC2.DescribeVpcs(input)
+			if err != nil {
+				if ec2err, ok := err.(awserr.Error); ok {
+					grip.Error(message.WrapError(ec2err, message.Fields{
+						"client":  fmt.Sprintf("%T", c),
+						"message": "error running DescribeVpcs",
+						"args":    input,
+					}))
+				}
+				return true, err
+			}
+			return false, nil
+		}, awsClientImplRetries, awsClientImplStartPeriod)
+	if err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 func (c *awsClientImpl) GetInstanceInfo(id string) (*ec2.Instance, error) {
 	if strings.HasPrefix(id, "sir") {
 		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
@@ -405,6 +471,8 @@ type awsClientMock struct { //nolint
 	*ec2.CancelSpotInstanceRequestsInput
 	*ec2.DescribeVolumesInput
 	*ec2.DescribeSpotPriceHistoryInput
+	*ec2.DescribeSubnetsInput
+	*ec2.DescribeVpcsInput
 }
 
 // Create a new mock client.
@@ -505,6 +573,18 @@ func (c *awsClientMock) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	c.DescribeSpotPriceHistoryInput = input
 	return &ec2.DescribeSpotPriceHistoryOutput{}, nil
+}
+
+// DescribeSubnets is a mock for ec2.DescribeSubnets.
+func (c *awsClientMock) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+	c.DescribeSubnetsInput = input
+	return &ec2.DescribeSubnetsOutput{}, nil
+}
+
+// DescribeVpcs is a mock for ec2.DescribeVpcs.
+func (c *awsClientMock) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
+	c.DescribeVpcsInput = input
+	return &ec2.DescribeVpcsOutput{}, nil
 }
 
 func (c *awsClientMock) GetInstanceInfo(id string) (*ec2.Instance, error) {

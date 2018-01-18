@@ -82,6 +82,11 @@ func (s *EC2Suite) TestValidateProviderSettings() {
 	s.Error(p.Validate())
 	p.BidPrice = 1
 	s.NoError(p.Validate())
+
+	p.IsVpc = true
+	s.Error(p.Validate())
+	p.SubnetId = "subnet-123456"
+	s.NoError(p.Validate())
 }
 
 func (s *EC2Suite) TestMakeDeviceMappings() {
