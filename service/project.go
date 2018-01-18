@@ -145,6 +145,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Owner              string                  `json:"owner_name"`
 		Repo               string                  `json:"repo_name"`
 		Admins             []string                `json:"admins"`
+		TracksPushEvents   bool                    `json:"tracks_push_events"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -197,6 +198,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.Identifier = id
+	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 
 	projectRef.Alerts = map[string][]model.AlertConfig{}
 	for triggerId, alerts := range responseRef.AlertConfig {
@@ -207,12 +209,6 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				Settings: bson.M(alert.Settings),
 			})
 		}
-	}
-
-	err = projectRef.Upsert()
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
 	}
 
 	projectVars, err := model.FindOneProjectVars(id)
@@ -236,6 +232,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			projectVars.GithubHookID = 0
+			projectRef.TracksPushEvents = false
 		}
 	}
 
@@ -243,6 +240,13 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectVars.Vars = responseRef.ProjVarsMap
 	projectVars.PrivateVars = responseRef.PrivateVars
 	projectVars.PatchDefinitions = responseRef.PatchDefinitions
+
+	err = projectRef.Upsert()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	_, err = projectVars.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
