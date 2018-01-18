@@ -190,15 +190,11 @@ var drawSingleTrendChart = function(params) {
   // Calculate legend x pos based on levels
   cfg.legend.xPos = (cfg.container.width - levelsMeta.length * cfg.legend.step) / 2
 
-  // Returns value extractor fn for given `level` and series `item`
-  // This function is curried, so you should call it as fn(level)(item)
-  var getValueFor = (function() {
-    if (threadMode == MAXONLY) {
-      return PerfChartService.getValueForMaxOnly
-    } else {
-      return PerfChartService.getValueForAllLevels
-    }
-  })()
+  // Obtains value extractor fn for given `level` and series `item`
+  // The obtained function is curried, so you should call it as fn(level)(item)
+  var getValueFor = threadMode == MAXONLY
+    ? PerfChartService.getValueForMaxOnly
+    : PerfChartService.getValueForAllLevels
 
   // When there are more than one value in opsValues item
   var hasValues = _.all(opsValues, function(d) {
