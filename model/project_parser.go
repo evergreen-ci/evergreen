@@ -532,6 +532,10 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 				evalErrs = append(evalErrs, fmt.Errorf("%s is used as a name for both a task and task group", t.Name))
 			}
 		}
+		// validate that there is at least 1 task
+		if len(tg.Tasks) < 1 {
+			evalErrs = append(evalErrs, fmt.Errorf("task group %s must have at least 1 task", tg.Name))
+		}
 		// validate that a task is not listed twice in a task group
 		counts := make(map[string]int)
 		for _, name := range tg.Tasks {
