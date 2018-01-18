@@ -90,6 +90,16 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
+	if !ref.TracksPushEvents {
+		err = errors.Errorf("PushEvent tracking is not enabled for project '%s'", ref.String())
+		j.AddError(err)
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.WrapError(err, message.Fields{
+			"job":  repotrackerJobName,
+			"repo": fmt.Sprintf("%s/%s", j.Owner, j.Repo),
+		}))
+		return
+	}
+
 	if !repotracker.CheckGithubAPIResources(token) {
 		j.AddError(errors.New("Github API is not ready"))
 		return
