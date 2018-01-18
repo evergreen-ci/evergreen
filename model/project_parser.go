@@ -526,32 +526,6 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			taskNames = append(taskNames, names...)
 		}
 		tg.Tasks = taskNames
-		// validate that the task group is not named the same as a task
-		for _, t := range tasks {
-			if t.Name == ptg.Name {
-				evalErrs = append(evalErrs, fmt.Errorf("%s is used as a name for both a task and task group", t.Name))
-			}
-		}
-		// validate that there is at least 1 task
-		if len(tg.Tasks) < 1 {
-			evalErrs = append(evalErrs, fmt.Errorf("task group %s must have at least 1 task", tg.Name))
-		}
-		// validate that a task is not listed twice in a task group
-		counts := make(map[string]int)
-		for _, name := range tg.Tasks {
-			counts[name]++
-		}
-		for name, count := range counts {
-			if count > 1 {
-				evalErrs = append(evalErrs, fmt.Errorf("%s is listed in task group %s more than once", name, tg.Name))
-			}
-		}
-		// validate that attach commands aren't used in the teardown_group phase
-		for _, cmd := range tg.TeardownGroup {
-			if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
-				evalErrs = append(evalErrs, fmt.Errorf("%s cannot be used in the group teardown stage", cmd.Command))
-			}
-		}
 		tg.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, ptg.DependsOn)
 		evalErrs = append(evalErrs, errs...)
 		tg.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, ptg.Requires)
