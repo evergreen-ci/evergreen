@@ -118,7 +118,8 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 	banner, err := c.GetBannerMessage(ctx)
 	if err != nil {
 		grip.Debug(err)
-	} else {
+
+	} else if len(banner) > 0 {
 		grip.Noticef("Banner: %s", banner)
 	}
 
