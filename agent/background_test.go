@@ -62,7 +62,7 @@ func (s *BackgroundSuite) TestStartHeartbeat() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 	heartbeat := make(chan string)
-	s.a.startHeartbeat(ctx, s.tc, heartbeat)
+	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
 	close(heartbeat)
 	for range heartbeat {
 		// There should be no values in the channel
