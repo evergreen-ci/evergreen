@@ -169,14 +169,15 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
-func FindOneProjectRefByRepo(owner, repoName string) (*ProjectRef, error) {
+func FindOneProjectRefByRepoAndBranch(owner, repoName, branch string) (*ProjectRef, error) {
 	projectRef := ProjectRef{}
 
 	err := db.FindOne(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefOwnerKey: owner,
-			ProjectRefRepoKey:  repoName,
+			ProjectRefOwnerKey:  owner,
+			ProjectRefRepoKey:   repoName,
+			ProjectRefBranchKey: branch,
 		},
 		db.NoProjection,
 		db.NoSort,

@@ -18,24 +18,30 @@ func init() {
 func TestValidatePushEvent(t *testing.T) {
 	assert := assert.New(t) //nolint
 
-	err := validatePushEvent(nil)
+	branch, err := validatePushEvent(nil)
 	assert.Error(err)
 	assert.IsType(new(rest.APIError), err)
 
 	event := github.PushEvent{}
-	err = validatePushEvent(&event)
+	branch, err = validatePushEvent(&event)
 	assert.Error(err)
 	assert.IsType(new(rest.APIError), err)
 
-	event.Ref = github.String("ref/heads/changes")
+	event.Ref = github.String("refs/heads/changes")
 	event.Repo = &github.PushEventRepository{}
 	event.Repo.Name = github.String("public-repo")
 	event.Repo.Owner = &github.PushEventRepoOwner{}
 	event.Repo.Owner.Name = github.String("baxterthehacker")
 	event.Repo.FullName = github.String("baxterthehacker/public-repo")
 
-	err = validatePushEvent(&event)
-	assert.Nil(err)
+	branch, err = validatePushEvent(&event)
+	assert.NoError(err)
+	assert.Equal("changes", branch)
+
+	event.Ref = github.String("refs/tags/v9001")
+	branch, err = validatePushEvent(&event)
+	assert.NoError(err)
+	assert.Empty(branch)
 }
 
 func TestValidateProjectRef(t *testing.T) {

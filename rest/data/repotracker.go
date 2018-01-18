@@ -1,7 +1,9 @@
 package data
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -13,10 +15,13 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
+const branchRefPrefix = "refs/heads/"
+
 type RepoTrackerConnector struct{}
 
 func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) error {
-	if err := validatePushEvent(event); err != nil {
+	branch, err := validatePushEvent(event)
+	if err != nil {
 		return err
 	}
 	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name)
@@ -55,16 +60,35 @@ func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, e
 	return nil
 }
 
-func validatePushEvent(event *github.PushEvent) error {
+func validatePushEvent(event *github.PushEvent) (string, error) {
 	if event == nil || event.Ref == nil || event.Repo == nil ||
 		event.Repo.Name == nil || event.Repo.Owner == nil ||
 		event.Repo.Owner.Name == nil || event.Repo.FullName == nil {
-		return &rest.APIError{
+		return "", &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "invalid PushEvent from github",
 		}
 	}
-	return nil
+
+	if !strings.HasPrefix(*event.Ref, branchRefPrefix) {
+		// Not an error, we're uninterested in tag pushes
+		return "", nil
+	}
+
+	refs := strings.Split(*event.Ref, "/")
+	if len(refs) != 3 {
+		msg := fmt.Sprintf("Unexpected Git ref format: %s", *event.Ref)
+		grip.Info(message.Fields{
+			"message": msg,
+			"source":  "/rest/v2/hooks/github",
+		})
+		return "", &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    msg,
+		}
+	}
+
+	return refs[2], nil
 }
 
 func validateProjectRef(owner, repo string) (*model.ProjectRef, error) {

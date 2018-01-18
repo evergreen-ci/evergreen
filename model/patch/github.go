@@ -72,6 +72,9 @@ type githubIntent struct {
 	// this PR will be merged into
 	BaseRepoName string `bson:"base_repo_name"`
 
+	// BaseBranch is the branch that this pull request was opened against
+	BaseBranch string `bson:"branch"`
+
 	// HeadRepoName is the full repository name that contains the changes
 	// to be merged
 	HeadRepoName string `bson:"head_repo_name"`
@@ -131,7 +134,8 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
 		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
 		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil ||
-		event.PullRequest.Title == nil {
+		event.PullRequest.Title == nil || event.PullRequest.Base == nil ||
+		event.PullRequest.Base.Ref == nil {
 		return nil, errors.New("pull request document is malformed/missing data")
 	}
 	if msgDeliveryID == "" {
@@ -142,6 +146,9 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 	}
 	if len(strings.Split(*event.PullRequest.Head.Repo.FullName, "/")) != 2 {
 		return nil, errors.New("Head repo name is invalid (expected [owner]/[repo])")
+	}
+	if *event.PullRequest.Base.Ref == "" {
+		return nil, errors.New("Base ref is empty")
 	}
 	if *event.Number == 0 {
 		return nil, errors.New("PR number must not be 0")
@@ -163,6 +170,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		DocumentID:   bson.NewObjectId(),
 		MsgID:        msgDeliveryID,
 		BaseRepoName: *event.Repo.FullName,
+		BaseBranch:   *event.PullRequest.Base.Ref,
 		HeadRepoName: *event.PullRequest.Head.Repo.FullName,
 		PRNumber:     *event.Number,
 		User:         *event.Sender.Login,

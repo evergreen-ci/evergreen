@@ -122,8 +122,8 @@ func (j *repotrackerJob) Run() {
 	}
 }
 
-func fetchProjectRefByRepo(owner, repo string) (*model.ProjectRef, error) {
-	ref, err := model.FindOneProjectRefByRepo(owner, repo)
+func fetchProjectRefByRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
+	ref, err := model.FindOneProjectRefByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, err
 	}
