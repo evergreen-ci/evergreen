@@ -784,7 +784,7 @@ tasks:
 	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
 }
 
-func TestTaskGroupValidation(t *testing.T) {
+func TestTaskGroupParsing(t *testing.T) {
 	assert := assert.New(t) //nolint
 
 	// check that yml with valid task group does not error and parses correctly
@@ -851,72 +851,6 @@ buildvariants:
 	assert.NotNil(proj)
 	assert.Len(errs, 1)
 	assert.Contains(errs[0].Error(), `nothing named 'example_task_3'`)
-
-	// check that yml with a task group with a duplicate task errors
-	duplicateYml := `
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  tasks:
-  - example_task_1
-  - example_task_2
-  - example_task_1
-buildvariants:
-- name: "bv"
-  tasks:
-  - name: example_task_group
-`
-	proj, errs = projectFromYAML([]byte(duplicateYml))
-	assert.NotNil(proj)
-	assert.Len(errs, 1)
-	assert.Contains(errs[0].Error(), `example_task_1 is listed in task group example_task_group more than once`)
-
-	// check that yml with a task group named the same as a task errors
-	duplicateTaskYml := `
-tasks:
-- name: foo
-- name: example_task_2
-task_groups:
-- name: foo
-  tasks:
-  - example_task_2
-buildvariants:
-- name: "bv"
-  tasks:
-  - name: foo
-`
-	proj, errs = projectFromYAML([]byte(duplicateTaskYml))
-	assert.NotNil(proj)
-	assert.Len(errs, 1)
-	assert.Contains(errs[0].Error(), `foo is used as a name for both a task and task group`)
-
-	// check that you can't have attach commands in the group teardown
-	attachInGroupTeardownYml := `
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  setup_group:
-  - command: shell.exec
-    params:
-      script: "echo setup_group"
-  teardown_group:
-  - command: attach.results
-  tasks:
-  - example_task_1
-  - example_task_2
-buildvariants:
-- name: "bv"
-  tasks:
-  - name: example_task_group
-`
-	proj, errs = projectFromYAML([]byte(attachInGroupTeardownYml))
-	assert.NotNil(proj)
-	assert.Len(errs, 1)
-	assert.Contains(errs[0].Error(), `attach.results cannot be used in the group teardown stage`)
 
 	// check that tasks listed in the task group yml maintain their order
 	orderedYml := `
