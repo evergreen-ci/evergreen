@@ -37,6 +37,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 			}
 		case <-ctx.Done():
 			grip.Info("Heartbeat ticker canceled")
+			heartbeat <- evergreen.TaskFailed
 			return
 		}
 	}
