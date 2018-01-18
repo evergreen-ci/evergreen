@@ -90,7 +90,7 @@ func (s *githubStatusUpdateSuite) TestFetchForBuildPopulatesRepoInfo() {
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	flags := admin.ServiceFlags{
-		GithubPRTestingDisabled: true,
+		GithubStatusAPIDisabled: true,
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
@@ -98,7 +98,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	job.Run()
 
 	s.Error(job.Error())
-	s.Contains(job.Error().Error(), "github pr testing is disabled, not updating status")
+	s.Contains(job.Error().Error(), "github status updates are disabled, not updating status")
 	s.NoError(db.Clear(admin.Collection))
 }
 
