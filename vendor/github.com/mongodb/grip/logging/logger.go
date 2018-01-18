@@ -81,12 +81,6 @@ func (g *Grip) sendFatal(m message.Composer) {
 	}
 }
 
-func (g *Grip) sendConditional(cond bool, m message.Composer) {
-	if cond {
-		g.send(m)
-	}
-}
-
 func (g *Grip) send(m message.Composer) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()

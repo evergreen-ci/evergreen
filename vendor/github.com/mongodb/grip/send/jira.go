@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -25,7 +26,8 @@ type JiraOptions struct {
 	Username string
 	Password string
 
-	client jiraClient
+	HTTPClient *http.Client
+	client     jiraClient
 }
 
 // MakeJiraLogger is the same as NewJiraLogger but uses a warning
@@ -46,7 +48,7 @@ func NewJiraLogger(opts *JiraOptions, l LevelInfo) (Sender, error) {
 		Base: NewBase(opts.Name),
 	}
 
-	if err := j.opts.client.CreateClient(opts.BaseURL); err != nil {
+	if err := j.opts.client.CreateClient(opts.HTTPClient, opts.BaseURL); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +177,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 ////////////////////////////////////////////////////////////////////////
 
 type jiraClient interface {
-	CreateClient(string) error
+	CreateClient(*http.Client, string) error
 	Authenticate(string, string) error
 	PostIssue(*jira.IssueFields) error
 	PostComment(string, string) error
@@ -185,9 +187,9 @@ type jiraClientImpl struct {
 	*jira.Client
 }
 
-func (c *jiraClientImpl) CreateClient(baseURL string) error {
+func (c *jiraClientImpl) CreateClient(client *http.Client, baseURL string) error {
 	var err error
-	c.Client, err = jira.NewClient(nil, baseURL)
+	c.Client, err = jira.NewClient(client, baseURL)
 	return err
 }
 

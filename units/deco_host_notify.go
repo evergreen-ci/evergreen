@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -85,13 +86,16 @@ func (j *decoHostNotifyJob) Run() {
 	}
 
 	// otherwise, it was a static host and we should create jira tickets for this.
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
 
 	conf := j.env.Settings()
 	opts := &send.JiraOptions{
-		Name:     "evergreen",
-		BaseURL:  conf.Jira.Host,
-		Username: conf.Jira.Username,
-		Password: conf.Jira.Password,
+		Name:       "evergreen",
+		BaseURL:    conf.Jira.GetHostURL(),
+		Username:   conf.Jira.Username,
+		Password:   conf.Jira.Password,
+		HTTPClient: client,
 	}
 	sender, err := send.MakeJiraLogger(opts)
 	if err != nil {

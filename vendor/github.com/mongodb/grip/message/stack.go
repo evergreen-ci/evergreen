@@ -26,7 +26,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
+
+	"github.com/mongodb/grip/level"
 )
 
 const maxLevels = 1024
@@ -34,11 +35,9 @@ const maxLevels = 1024
 // types are internal, and exposed only via the composer interface.
 
 type stackMessage struct {
-	message string
-	tagged  bool
-	args    []interface{}
-	trace   []StackFrame
-	Base
+	Composer
+	tagged bool
+	trace  []StackFrame
 }
 
 // StackFrame captures a single item in a stack trace, and is used
@@ -51,9 +50,8 @@ type StackFrame struct {
 
 // StackTrace structs are returned by the Raw method of the stackMessage type
 type StackTrace struct {
-	Message string       `bson:"message,omitempty" json:"message,omitempty" yaml:"message,omitempty"`
+	Context interface{}  `bson:"context,omitempty" json:"context,omitempty" yaml:"context,omitempty"`
 	Frames  []StackFrame `bson:"frames" json:"frames" yaml:"frames"`
-	Time    time.Time    `bson:"time" json:"time" yaml:"time"`
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -62,13 +60,23 @@ type StackTrace struct {
 //
 ////////////////////////////////////////////////////////////////////////
 
+// WrapStack annotates a message, converted to a composer using the
+// normal rules if needed, with a stack trace. Use the skip argument to
+// skip frames if your embedding this in your own wrapper or wrappers.
+func WrapStack(skip int, msg interface{}) Composer {
+	return &stackMessage{
+		trace:    captureStack(skip),
+		Composer: ConvertToComposer(level.Priority(0), msg),
+	}
+}
+
 // NewStack builds a Composer implementation that captures the current
 // stack trace with a single string message. Use the skip argument to
 // skip frames if your embedding this in your own wrapper or wrappers.
 func NewStack(skip int, message string) Composer {
 	return &stackMessage{
-		trace:   captureStack(skip),
-		message: message,
+		trace:    captureStack(skip),
+		Composer: NewString(message),
 	}
 }
 
@@ -77,8 +85,8 @@ func NewStack(skip int, message string) Composer {
 // skip frames if your embedding this in your own wrapper or wrappers.
 func NewStackLines(skip int, messages ...interface{}) Composer {
 	return &stackMessage{
-		trace: captureStack(skip),
-		args:  messages,
+		trace:    captureStack(skip),
+		Composer: NewLine(messages...),
 	}
 }
 
@@ -87,9 +95,8 @@ func NewStackLines(skip int, messages ...interface{}) Composer {
 // skip frames if your embedding this in your own wrapper or wrappers.
 func NewStackFormatted(skip int, message string, args ...interface{}) Composer {
 	return &stackMessage{
-		trace:   captureStack(skip),
-		message: message,
-		args:    args,
+		trace:    captureStack(skip),
+		Composer: NewFormatted(message, args...),
 	}
 }
 
@@ -99,28 +106,20 @@ func NewStackFormatted(skip int, message string, args ...interface{}) Composer {
 //
 ////////////////////////////////////////////////////////////////////////
 
-func (m *stackMessage) Loggable() bool { return m.message != "" || len(m.args) > 0 }
 func (m *stackMessage) String() string {
-	if len(m.args) > 0 && m.message == "" {
-		m.message = fmt.Sprintln(append([]interface{}{m.getTag()}, m.args...))
-		m.args = []interface{}{}
-	} else if len(m.args) > 0 && m.message != "" {
-		m.message = fmt.Sprintf(strings.Join([]string{m.getTag(), m.message}, " "), m.args...)
-		m.args = []interface{}{}
-	} else if !m.tagged {
-		m.message = strings.Join([]string{m.getTag(), m.message}, " ")
-	}
-
-	return m.message
+	return strings.Join([]string{m.getTag(), m.Composer.String()}, " ")
 }
 
 func (m *stackMessage) Raw() interface{} {
-	_ = m.Collect()
-
-	return StackTrace{
-		Message: m.String(),
-		Frames:  m.trace,
-		Time:    m.Time,
+	switch payload := m.Composer.(type) {
+	case *fieldMessage:
+		payload.fields["stack.frames"] = m.trace
+		return payload
+	default:
+		return StackTrace{
+			Context: payload,
+			Frames:  m.trace,
+		}
 	}
 }
 

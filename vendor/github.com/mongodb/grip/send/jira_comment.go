@@ -34,7 +34,7 @@ func NewJiraCommentLogger(id string, opts *JiraOptions, l LevelInfo) (Sender, er
 		Base:    NewBase(id),
 	}
 
-	if err := j.opts.client.CreateClient(opts.BaseURL); err != nil {
+	if err := j.opts.client.CreateClient(opts.HTTPClient, opts.BaseURL); err != nil {
 		return nil, err
 	}
 
