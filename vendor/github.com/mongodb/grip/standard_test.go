@@ -35,7 +35,7 @@ func TestLoggingMethodSuite(t *testing.T) {
 	suite.Run(t, new(LoggingMethodSuite))
 }
 
-func (s *LoggingMethodSuite) SetupSuite() {
+func (s *LoggingMethodSuite) SetupTest() {
 	s.logger = logging.NewGrip("test")
 
 	s.stdSender = send.MakeInternalLogger()
@@ -93,15 +93,21 @@ func (s *LoggingMethodSuite) TestWhenMethods() {
 		s.True(s.loggingSender.HasMessage())
 		s.True(s.stdSender.HasMessage())
 		lgrMsg := s.loggingSender.GetMessage()
+		s.True(lgrMsg.Logged)
 		stdMsg := s.stdSender.GetMessage()
+		s.True(stdMsg.Logged)
 
 		s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
 			fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
 
 		loggers[0](false, testMessage)
 		loggers[1](false, testMessage)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
+
+		lgrMsg = s.loggingSender.GetMessage()
+		s.False(lgrMsg.Logged)
+		stdMsg = s.stdSender.GetMessage()
+		s.False(stdMsg.Logged)
+
 	}
 }
 
@@ -128,15 +134,22 @@ func (s *LoggingMethodSuite) TestWhenlnMethods() {
 
 		s.True(s.loggingSender.HasMessage())
 		s.True(s.stdSender.HasMessage())
+
 		lgrMsg := s.loggingSender.GetMessage()
+		s.True(lgrMsg.Logged)
 		stdMsg := s.stdSender.GetMessage()
+		s.True(stdMsg.Logged)
+
 		s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
 			fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
 
 		loggers[0](false, testMessage, testMessage)
 		loggers[1](false, testMessage, testMessage)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
+
+		lgrMsg = s.loggingSender.GetMessage()
+		s.False(lgrMsg.Logged)
+		stdMsg = s.stdSender.GetMessage()
+		s.False(stdMsg.Logged)
 	}
 }
 
@@ -154,8 +167,8 @@ func (s *LoggingMethodSuite) TestWhenfMethods() {
 
 	for kind, loggers := range cases {
 		s.Len(loggers, 2)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
+		s.False(s.loggingSender.HasMessage(), kind)
+		s.False(s.stdSender.HasMessage(), kind)
 
 		loggers[0](true, "%s: %d", testMessage, 3)
 		loggers[1](true, "%s: %d", testMessage, 3)
@@ -163,14 +176,20 @@ func (s *LoggingMethodSuite) TestWhenfMethods() {
 		s.True(s.loggingSender.HasMessage())
 		s.True(s.stdSender.HasMessage())
 		lgrMsg := s.loggingSender.GetMessage()
+		s.True(lgrMsg.Logged)
 		stdMsg := s.stdSender.GetMessage()
+		s.True(stdMsg.Logged)
+
 		s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
 			fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
 
 		loggers[0](false, "%s: %d", testMessage, 3)
 		loggers[1](false, "%s: %d", testMessage, 3)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
+
+		lgrMsg = s.loggingSender.GetMessage()
+		s.False(lgrMsg.Logged)
+		stdMsg = s.stdSender.GetMessage()
+		s.False(stdMsg.Logged)
 	}
 }
 

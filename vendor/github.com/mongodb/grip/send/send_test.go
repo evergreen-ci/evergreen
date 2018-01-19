@@ -268,43 +268,23 @@ func TestBaseConstructor(t *testing.T) {
 	assert.NoError(err)
 	handler := ErrorHandlerFromSender(sink)
 	assert.Equal(0, sink.Len())
+	assert.False(sink.HasMessage())
 
-	for outterIdx, n := range []string{"logger", "grip", "sender"} {
+	for _, n := range []string{"logger", "grip", "sender"} {
 		made := MakeBase(n, func() {}, func() error { return nil })
 		newed := NewBase(n)
 		assert.Equal(made.name, newed.name)
 		assert.Equal(made.level, newed.level)
 		assert.Equal(made.closer(), newed.closer())
 
-		assert.Equal(0, sink.Len())
-
-		for innerIdx, s := range []*Base{made, newed} {
+		for _, s := range []*Base{made, newed} {
 			assert.Error(s.SetFormatter(nil))
 			assert.Error(s.SetErrorHandler(nil))
 			assert.NoError(s.SetErrorHandler(handler))
 			s.ErrorHandler(errors.New("failed"), message.NewString("fated"))
-			assert.True(sink.HasMessage())
-
-			assert.Equal(2, sink.Len(), "%d.%d", outterIdx, innerIdx)
-
-			errMsg := sink.GetMessage()
-			assert.Equal("failed", errMsg.Message.String())
-			assert.Equal("failed", errMsg.Rendered)
-			assert.Equal(level.Error, errMsg.Priority)
-			assert.True(errMsg.Logged)
-
-			msgMsg := sink.GetMessage()
-			assert.Equal("fated", msgMsg.Message.String())
-			assert.Equal("fated", msgMsg.Rendered)
-			assert.Equal(level.Invalid, msgMsg.Priority)
-			assert.False(msgMsg.Logged)
-
-			assert.Equal(0, sink.Len())
-			assert.False(sink.HasMessage())
-
-			s.ErrorHandler(nil, message.NewString("really-fated"))
-			assert.Equal(0, sink.Len())
-			assert.False(sink.HasMessage())
 		}
 	}
+
+	assert.Equal(6, sink.Len())
+	assert.True(sink.HasMessage())
 }

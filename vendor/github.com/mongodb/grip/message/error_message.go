@@ -40,7 +40,7 @@ func NewErrorWrap(err error, base string, args ...interface{}) Composer {
 }
 
 // WrapError wraps an error and creates a composer converting the
-// arguement into a composer in the same manner as the front end logging methods.
+// argument into a composer in the same manner as the front end logging methods.
 func WrapError(err error, m interface{}) Composer {
 	return NewErrorWrappedComposer(err, ConvertToComposer(level.Priority(0), m))
 }

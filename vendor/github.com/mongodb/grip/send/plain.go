@@ -22,6 +22,8 @@ func NewPlainErrorLogger(name string, l LevelInfo) (Sender, error) {
 	return setup(MakePlainErrorLogger(), name, l)
 }
 
+// NewPlainFileLogger creates a new configured logger that writes log
+// data to a file.
 func NewPlainFileLogger(name, file string, l LevelInfo) (Sender, error) {
 	s, err := MakePlainFileLogger(file)
 	if err != nil {
@@ -80,7 +82,7 @@ func MakePlainFileLogger(filePath string) (Sender, error) {
 	return s, nil
 }
 
-// MakePlainLogger returns an unconfigured sender without a prefix,
+// MakePlainErrorLogger returns an unconfigured sender without a prefix,
 // using the plain log formatter. This Sender writes all output to
 // standard error.
 func MakePlainErrorLogger() Sender {
