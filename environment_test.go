@@ -81,8 +81,8 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 		_, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 		s.NoError(err)
 		defer func() {
-			os.Remove(file)
-			os.Remove(path)
+			_ = os.Remove(file)
+			_ = os.Remove(path)
 		}()
 	}
 

@@ -198,14 +198,14 @@ func makeSmokeRequest(client *http.Client, url string, expected []string) error 
 		if strings.Contains(page, text) {
 			grip.Infof("found '%s' in endpoint '%s'", text, url)
 		} else {
-			text := fmt.Sprintf("did not find '%s' in endpoint '%s'", text, url)
-			grip.Info(text)
-			catcher.Add(errors.New(text))
+			logErr := fmt.Sprintf("did not find '%s' in endpoint '%s'", text, url)
+			grip.Info(logErr)
+			catcher.Add(errors.New(logErr))
 		}
 	}
 
 	if catcher.HasErrors() {
-		grip.Infof("Failure occured, endpoint returned: %s", body)
+		grip.Infof("Failure occurred, endpoint returned: %s", body)
 	}
 	return catcher.Resolve()
 }
