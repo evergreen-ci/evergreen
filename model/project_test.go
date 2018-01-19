@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -403,4 +404,56 @@ func TestAliasResolution(t *testing.T) {
 	for _, pair := range pairs {
 		assert.NotEqual("b_task_1", pair.TaskName)
 	}
+}
+
+func TestGetTaskGroup(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
+	tgName := "example_task_group"
+	projYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  max_hosts: 2
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_group:
+  - command: shell.exec
+    params:
+      script: "echo teardown_group"
+  setup_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+`
+	proj, errs := projectFromYAML([]byte(projYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	v := version.Version{
+		Id:     "v1",
+		Config: projYml,
+	}
+	assert.NoError(v.Insert())
+	t1 := task.Task{
+		Id:        "t1",
+		TaskGroup: task.FormTaskGroupId(tgName, v.Id),
+		Version:   v.Id,
+	}
+
+	tg, err := GetTaskGroup(&t1)
+	assert.NoError(err)
+	assert.Equal(tgName, tg.Name)
+	assert.Len(tg.Tasks, 2)
+	assert.Equal(2, tg.MaxHosts)
 }

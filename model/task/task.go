@@ -47,10 +47,11 @@ type Task struct {
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 
-	Version  string `bson:"version" json:"version,omitempty"`
-	Project  string `bson:"branch" json:"branch,omitempty"`
-	Revision string `bson:"gitspec" json:"gitspec"`
-	Priority int64  `bson:"priority" json:"priority"`
+	Version   string `bson:"version" json:"version,omitempty"`
+	Project   string `bson:"branch" json:"branch,omitempty"`
+	Revision  string `bson:"gitspec" json:"gitspec"`
+	Priority  int64  `bson:"priority" json:"priority"`
+	TaskGroup string `bson:"task_group" json:"task_group"` //format is taskGroup_version
 
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
@@ -230,6 +231,11 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 		}
 	}
 	return false
+}
+
+// FormTaskGroupId concatenates a task group and version to return a task group ID
+func FormTaskGroupId(tgName, version string) string {
+	return fmt.Sprintf("%s_%s", tgName, version)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.

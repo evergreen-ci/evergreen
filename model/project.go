@@ -62,8 +62,9 @@ type Project struct {
 type BuildVariantTaskUnit struct {
 	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
-	Name    string `yaml:"name,omitempty" bson:"name"`
-	IsGroup bool   `yaml:"-" bson:"-"`
+	Name      string `yaml:"name,omitempty" bson:"name"`
+	IsGroup   bool   `yaml:"-" bson:"-"`
+	GroupName string `yaml:"-" bson:"-"`
 
 	// fields to overwrite ProjectTask settings.
 	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
@@ -414,31 +415,29 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	displayTable := TaskIdTable{}
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
-
 		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		}
 		for _, t := range bv.TaskUnits {
-			// create a unique Id for each task
-			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
-				p.Identifier,
-				bv.Name,
-				t.Name,
-				rev,
-				v.CreateTime.Format(build.IdTimeLayout))
-
-			execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
+			if t.IsGroup {
+				tg := p.FindTaskGroup(t.Name)
+				if tg == nil {
+					continue
+				}
+				for _, groupTask := range tg.Tasks {
+					taskId := generateId(groupTask, p, &bv, rev, v)
+					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
+				}
+			} else {
+				// create a unique Id for each task
+				taskId := generateId(t.Name, p, &bv, rev, v)
+				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
+			}
 		}
 
 		for _, dt := range bv.DisplayTasks {
 			name := fmt.Sprintf("display_%s", dt.Name)
-			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
-				p.Identifier,
-				bv.Name,
-				name,
-				rev,
-				v.CreateTime.Format(build.IdTimeLayout))
-
+			taskId := generateId(name, p, &bv, rev, v)
 			displayTable[TVPair{bv.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
@@ -618,6 +617,53 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 	} else {
 		return ownersplit[0], ownersplit[1]
 	}
+}
+
+// FindTaskGroup returns a specific task group from a project
+func (p *Project) FindTaskGroup(name string) *TaskGroup {
+	for _, tg := range p.TaskGroups {
+		if tg.Name == name {
+			return &tg
+		}
+	}
+	return nil
+}
+
+// GetTaskGroup returns the task group for a given task from its project
+func GetTaskGroup(t *task.Task) (*TaskGroup, error) {
+	if t == nil {
+		return nil, errors.New("unable to get task group: task is nil")
+	}
+	tgName, versionId := parseTaskGroup(t.TaskGroup)
+	if tgName == "" || versionId == "" {
+		return nil, fmt.Errorf("invalid task group ID: %s", t.TaskGroup)
+	}
+	v, err := version.FindOne(version.ById(versionId))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find version for task group")
+	}
+	var p Project
+	if err = LoadProjectInto([]byte(v.Config), t.Project, &p); err != nil {
+		return nil, errors.Wrap(err, "error retrieving project for task group")
+	}
+	tg := p.FindTaskGroup(tgName)
+	if tg != nil {
+		return tg, nil
+	}
+
+	return nil, fmt.Errorf("task group %s not found in project config", tgName)
+}
+
+func parseTaskGroup(tg string) (string, string) {
+	temp := strings.Split(tg, "_")
+	index := len(temp) - 1
+	if index < 1 {
+		return "", ""
+	}
+	version := temp[len(temp)-1]
+	taskGroup := strings.Join(temp[:index], "_")
+
+	return taskGroup, version
 }
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {

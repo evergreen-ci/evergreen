@@ -508,6 +508,29 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	return b.Id, nil
 }
 
+func createTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariantTaskUnit {
+	tasks := []BuildVariantTaskUnit{}
+	if !in.IsGroup {
+		return tasks
+	}
+	tg := proj.FindTaskGroup(in.Name)
+	if tg == nil {
+		return tasks
+	}
+	for _, t := range tg.Tasks {
+		tasks = append(tasks, BuildVariantTaskUnit{
+			Name:            t,
+			IsGroup:         true,
+			Priority:        tg.Priority,
+			DependsOn:       tg.DependsOn,
+			Requires:        tg.Requires,
+			ExecTimeoutSecs: tg.ExecTimeoutSecs,
+			GroupName:       in.Name,
+		})
+	}
+	return tasks
+}
+
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a
 // slice of all of the tasks created, as well as an error if any occurs.
 // The slice of tasks will be in the same order as the project's specified tasks
@@ -526,7 +549,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		taskSpec := project.GetSpecForTask(task.Name)
 
 		// sanity check that the config isn't malformed
-		if taskSpec.Name == "" {
+		if taskSpec.Name == "" && !task.IsGroup {
 			return nil, errors.Errorf("config is malformed: variant '%v' runs "+
 				"task called '%v' but no such task exists for repo %v for "+
 				"version %v", buildVariant.Name, task.Name, project.Identifier, v.Id)
@@ -540,7 +563,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 			continue
 		}
 		if createAll || util.StringSliceContains(taskNames, task.Name) {
-			tasksToCreate = append(tasksToCreate, task)
+			if task.IsGroup {
+				tasksToCreate = append(tasksToCreate, createTasksFromGroup(task, project)...)
+			} else {
+				tasksToCreate = append(tasksToCreate, task)
+			}
 		}
 	}
 
@@ -730,7 +757,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
 	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
-	return &task.Task{
+	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
 		DisplayName:         buildVarTask.Name,
@@ -752,6 +779,10 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		Project:             project.Identifier,
 		Priority:            buildVarTask.Priority,
 	}
+	if buildVarTask.IsGroup {
+		t.TaskGroup = task.FormTaskGroupId(buildVarTask.GroupName, v.Id)
+	}
+	return t
 }
 
 func createDisplayTask(id string, displayName string, execTasks []string,
