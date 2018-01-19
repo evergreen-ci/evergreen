@@ -244,12 +244,12 @@ func (j *githubStatusUpdateJob) Run() {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.GithubPRTestingDisabled {
+	if adminSettings.ServiceFlags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
-			"message": "github pr testing is disabled, not updating status",
+			"message": "github status updates are disabled, not updating status",
 		})
-		j.AddError(errors.New("github pr testing is disabled, not updating status"))
+		j.AddError(errors.New("github status updates are disabled, not updating status"))
 		return
 	}
 

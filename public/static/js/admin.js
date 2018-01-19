@@ -60,7 +60,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     scheduler_disabled: "scheduler",
     github_pr_testing_disabled: "github_pr_testing",
     repotracker_push_event_disabled: "repotracker_push_event",
-    cli_updates_disabled: "cli_updates"
+    cli_updates_disabled: "cli_updates",
+    github_status_api_disabled: "github_status_api"
   }
 
   bannerChangeEventText = function(event) {

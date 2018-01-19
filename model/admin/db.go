@@ -27,6 +27,8 @@ var (
 	schedulerKey                    = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
 	githubPRTestingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubPRTestingDisabled")
 	repotrackerPushEventDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerPushEventDisabled")
+	cliUpdatesDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CLIUpdatesDisabled")
+	githubStatusAPIDisabled         = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 )
 
 var settingsQuery = db.Query(bson.M{idKey: systemSettingsDocID})

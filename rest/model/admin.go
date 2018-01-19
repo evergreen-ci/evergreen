@@ -33,6 +33,7 @@ type APIServiceFlags struct {
 	GithubPRTestingDisabled      bool `json:"github_pr_testing_disabled"`
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
+	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
 }
 
 // RestartTasksResponse is the response model returned from the /admin/restart route
@@ -107,6 +108,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 		as.RepotrackerPushEventDisabled = v.RepotrackerPushEventDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
+		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -127,6 +129,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		GithubPRTestingDisabled:      as.GithubPRTestingDisabled,
 		RepotrackerPushEventDisabled: as.RepotrackerPushEventDisabled,
 		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
+		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
 	}
 	return serviceFlags, nil
 }
