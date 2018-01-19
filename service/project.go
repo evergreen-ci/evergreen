@@ -236,16 +236,16 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//modify project vars if necessary
-	projectVars.Vars = responseRef.ProjVarsMap
-	projectVars.PrivateVars = responseRef.PrivateVars
-	projectVars.PatchDefinitions = responseRef.PatchDefinitions
-
 	err = projectRef.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+
+	//modify project vars if necessary
+	projectVars.Vars = responseRef.ProjVarsMap
+	projectVars.PrivateVars = responseRef.PrivateVars
+	projectVars.PatchDefinitions = responseRef.PatchDefinitions
 
 	_, err = projectVars.Upsert()
 	if err != nil {
