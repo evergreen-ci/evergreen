@@ -208,7 +208,6 @@ func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, 
 
 	} else if l == 0 {
 		return nil, nil
-
 	}
 
 	return &projectRefs[0], nil
