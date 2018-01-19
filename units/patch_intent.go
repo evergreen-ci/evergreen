@@ -307,12 +307,14 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	projectRef, err := model.FindOneProjectRefByRepoAndBranch(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 	if err != nil {
-		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s'",
-			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo)
+		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.BaseBranch)
 	}
 	if projectRef == nil {
-		return errors.Errorf("Could not find project ref for repo '%s/%s'",
-			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo)
+		return errors.Errorf("Could not find project ref for repo '%s/%s' with branch '%s'",
+			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
+			patchDoc.GithubPatchData.BaseBranch)
 	}
 
 	projectVars, err := model.FindOneProjectVars(projectRef.Identifier)

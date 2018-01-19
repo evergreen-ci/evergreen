@@ -121,15 +121,3 @@ func (j *repotrackerJob) Run() {
 		j.AddError(err)
 	}
 }
-
-func fetchProjectRefByRepoAndBranch(owner, repo, branch string) (*model.ProjectRef, error) {
-	ref, err := model.FindOneProjectRefByRepoAndBranch(owner, repo, branch)
-	if err != nil {
-		return nil, err
-	}
-	if ref == nil {
-		return nil, errors.New("can't find project ref for project")
-	}
-
-	return ref, nil
-}
