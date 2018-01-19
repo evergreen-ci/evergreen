@@ -32,6 +32,9 @@ func (s *MetricsSuite) SetupTest() {
 }
 
 func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("skipping on windows")
+	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -73,6 +76,9 @@ func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
 }
 
 func (s *MetricsSuite) TestCollectSubProcesses() {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("skipping on windows")
+	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
 	s.NoError(cmd.Start())
@@ -95,7 +101,7 @@ func (s *MetricsSuite) TestCollectSubProcesses() {
 		time.Sleep(time.Second)
 	}
 	if !pass {
-		s.Fail("TestRunForIntervalAndSendMessages: incorrect process info length after stopping")
+		s.Fail("TestCollectSubProcesses: incorrect process info length")
 	}
 }
 
