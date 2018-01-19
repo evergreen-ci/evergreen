@@ -140,6 +140,7 @@ func (j *decoHostNotifyJob) Run() {
 		Summary:     fmt.Sprintf("investigate automatically decommissioned host '%s'", j.Host.Id),
 		Type:        "Incident",
 		Description: strings.Join(descParts, "\n"),
+		Components:  []string{"Evergreen"},
 	}
 
 	msg := message.MakeJiraMessage(issue)

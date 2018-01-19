@@ -17,6 +17,7 @@ type JiraIssue struct {
 	Reporter    string
 	Assignee    string
 	Type        string
+	Components  []string
 	Labels      []string
 	// ... other fields
 	Fields map[string]string
@@ -59,6 +60,8 @@ func NewJiraMessage(project, summary string, fields ...JiraField) Composer {
 			issue.Type = f.Value.(string)
 		case "labels", "Labels":
 			issue.Labels = f.Value.([]string)
+		case "component", "Component":
+			issue.Components = f.Value.([]string)
 		default:
 			issue.Fields[f.Key] = f.Value.(string)
 		}

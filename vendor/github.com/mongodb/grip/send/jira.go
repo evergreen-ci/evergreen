@@ -3,6 +3,7 @@ package send
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -128,6 +129,7 @@ func getFields(m message.Composer) *jira.IssueFields {
 			Project:     jira.Project{Key: msg.Project},
 			Summary:     msg.Summary,
 			Description: msg.Description,
+			Components:  []*jira.Component{},
 		}
 		if len(msg.Fields) != 0 {
 			unknownsMap := tcontainer.NewMarshalMap()
@@ -148,7 +150,12 @@ func getFields(m message.Composer) *jira.IssueFields {
 		if len(msg.Labels) > 0 {
 			issueFields.Labels = msg.Labels
 		}
-
+		for _, component := range msg.Components {
+			issueFields.Components = append(issueFields.Components,
+				&jira.Component{
+					Name: component,
+				})
+		}
 	case message.Fields:
 		issueFields = &jira.IssueFields{
 			Summary: fmt.Sprintf("%s", msg[message.FieldsMsgName]),
@@ -194,8 +201,12 @@ func (c *jiraClientImpl) CreateClient(client *http.Client, baseURL string) error
 }
 
 func (c *jiraClientImpl) Authenticate(username string, password string) error {
-	c.Client.Authentication.SetBasicAuth(username, password)
-	if !c.Client.Authentication.Authenticated() {
+	authed, err := c.Client.Authentication.AcquireSessionCookie(username, password)
+	if err != nil {
+		return fmt.Errorf("problem authenticating to jira as '%s' [%s]", username, err.Error())
+	}
+
+	if !authed {
 		return fmt.Errorf("problem authenticating to jira as '%s'", username)
 	}
 	return nil
@@ -203,8 +214,20 @@ func (c *jiraClientImpl) Authenticate(username string, password string) error {
 
 func (c *jiraClientImpl) PostIssue(issueFields *jira.IssueFields) error {
 	i := jira.Issue{Fields: issueFields}
-	_, _, err := c.Client.Issue.Create(&i)
-	return err
+	_, resp, err := c.Client.Issue.Create(&i)
+
+	if err != nil {
+		if resp != nil {
+			defer resp.Body.Close()
+			data, _ := ioutil.ReadAll(resp.Body)
+			return fmt.Errorf("encountered error logging to jira: %s [%s]",
+				err.Error(), string(data))
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 // todo: allow more parameters than just body?
