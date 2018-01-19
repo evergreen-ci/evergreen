@@ -32,9 +32,6 @@ func (s *MetricsSuite) SetupTest() {
 }
 
 func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
-	if runtime.GOOS == "windows" {
-		s.T().Skip("skipping on windows")
-	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -42,19 +39,40 @@ func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
 	time.Sleep(time.Second)
 	cancel()
 
-	firstLen := s.comm.GetProcessInfoLength(s.id)
-	s.True(firstLen >= 1)
+	// since the process metrics collector takes some time to collect metrics, only fail if
+	// the assert doesn't pass for 20 secs
+	pass := false
+	var firstLen int
+	for i := 0; i < 20; i++ {
+		firstLen = s.comm.GetProcessInfoLength(s.id)
+		if firstLen >= 1 {
+			pass = true
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if !pass {
+		s.Fail("TestRunForIntervalAndSendMessages: incorrect initial process info length")
+	}
 
 	// after stopping it shouldn't continue to collect stats
 	time.Sleep(time.Second)
 
-	s.Equal(firstLen, s.comm.GetProcessInfoLength(s.id))
+	pass = false
+	for i := 0; i < 20; i++ {
+		temp := s.comm.GetProcessInfoLength(s.id)
+		if temp == firstLen {
+			pass = true
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if !pass {
+		s.Fail("TestRunForIntervalAndSendMessages: incorrect process info length after stopping")
+	}
 }
 
 func (s *MetricsSuite) TestCollectSubProcesses() {
-	if runtime.GOOS == "windows" {
-		s.T().Skip("skipping on windows")
-	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
 	s.NoError(cmd.Start())
@@ -67,7 +85,18 @@ func (s *MetricsSuite) TestCollectSubProcesses() {
 
 	s.NoError(cmd.Process.Kill())
 
-	s.True(s.comm.GetProcessInfoLength(s.id) >= 2)
+	pass := false
+	for i := 0; i < 20; i++ {
+		temp := s.comm.GetProcessInfoLength(s.id)
+		if temp >= 2 {
+			pass = true
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if !pass {
+		s.Fail("TestRunForIntervalAndSendMessages: incorrect process info length after stopping")
+	}
 }
 
 func (s *MetricsSuite) TestPersistSystemStats() {
