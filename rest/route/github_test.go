@@ -12,8 +12,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
@@ -54,6 +56,8 @@ func (s *GithubWebhookRouteSuite) TearDownSuite() {
 
 func (s *GithubWebhookRouteSuite) SetupTest() {
 	grip.Critical(s.conf.Api)
+
+	s.NoError(db.Clear(model.ProjectRefCollection))
 
 	s.queue = evergreen.GetEnvironment().LocalQueue()
 	s.rm = getGithubHooksRouteManager(s.queue, []byte(s.conf.Api.GithubWebhookSecret))("", 2)
@@ -154,6 +158,14 @@ func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
 }
 
 func (s *GithubWebhookRouteSuite) TestPushEventTriggersRepoTracker() {
+	ref := &model.ProjectRef{
+		Identifier: "meh",
+		Enabled:    true,
+		Owner:      "baxterthehacker",
+		Repo:       "public-repo",
+		Branch:     "changes",
+	}
+	s.Require().NoError(ref.Insert())
 	event, err := github.ParseWebHook("push", s.pushBody)
 	s.NotNil(event)
 	s.NoError(err)
