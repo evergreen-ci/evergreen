@@ -19,6 +19,8 @@ type EC2Suite struct {
 	onDemandManager CloudManager
 	spotOpts        *EC2ManagerOptions
 	spotManager     CloudManager
+	autoOpts        *EC2ManagerOptions
+	autoManager     CloudManager
 	impl            *ec2Manager
 }
 
@@ -42,6 +44,11 @@ func (s *EC2Suite) SetupTest() {
 		provider: spotProvider,
 	}
 	s.spotManager = NewEC2Manager(s.spotOpts)
+	s.autoOpts = &EC2ManagerOptions{
+		client:   &awsClientMock{},
+		provider: autoProvider,
+	}
+	s.autoManager = NewEC2Manager(s.autoOpts)
 	var ok bool
 	s.impl, ok = s.onDemandManager.(*ec2Manager)
 	s.Require().True(ok)
@@ -478,4 +485,33 @@ func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
 func (s *EC2Suite) TestGetInstanceName() {
 	id := s.onDemandManager.GetInstanceName(&distro.Distro{Id: "foo"})
 	s.True(strings.HasPrefix(id, "evg-foo-"))
+}
+
+func (s *EC2Suite) TestGetProvider() {
+	h := &host.Host{
+		Distro: distro.Distro{
+			Arch: "Linux/Unix",
+		},
+	}
+	pkgCachingPriceFetcher.ec2Prices = map[odInfo]float64{
+		odInfo{
+			os:       "Linux",
+			instance: "instance",
+			region:   "US East (N. Virginia)",
+		}: 23.2,
+	}
+	ec2Settings := &NewEC2ProviderSettings{
+		InstanceType: "instance",
+		IsVpc:        true,
+		SubnetId:     "subnet-123456",
+		VpcName:      "vpc_name",
+	}
+	manager, ok := s.autoManager.(*ec2Manager)
+	s.True(ok)
+	provider, err := manager.getProvider(h, ec2Settings)
+	s.NoError(err)
+	s.Equal(spotProvider, provider)
+	// subnet should be set based on vpc name
+	s.Equal("subnet-654321", ec2Settings.SubnetId)
+	s.Equal(h.Distro.Provider, evergreen.ProviderNameEc2SpotNew)
 }

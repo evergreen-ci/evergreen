@@ -572,19 +572,36 @@ func (c *awsClientMock) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 // DescribeSpotPriceHistory is a mock for ec2.DescribeSpotPriceHistory.
 func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	c.DescribeSpotPriceHistoryInput = input
-	return &ec2.DescribeSpotPriceHistoryOutput{}, nil
+	return &ec2.DescribeSpotPriceHistoryOutput{
+		SpotPriceHistory: []*ec2.SpotPrice{
+			&ec2.SpotPrice{
+				SpotPrice:        makeStringPtr("1.0"),
+				AvailabilityZone: makeStringPtr("us-east-1a"),
+			},
+		},
+	}, nil
 }
 
 // DescribeSubnets is a mock for ec2.DescribeSubnets.
 func (c *awsClientMock) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	c.DescribeSubnetsInput = input
-	return &ec2.DescribeSubnetsOutput{}, nil
+	return &ec2.DescribeSubnetsOutput{
+		Subnets: []*ec2.Subnet{
+			&ec2.Subnet{
+				SubnetId: makeStringPtr("subnet-654321"),
+			},
+		},
+	}, nil
 }
 
 // DescribeVpcs is a mock for ec2.DescribeVpcs.
 func (c *awsClientMock) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
 	c.DescribeVpcsInput = input
-	return &ec2.DescribeVpcsOutput{}, nil
+	return &ec2.DescribeVpcsOutput{
+		Vpcs: []*ec2.Vpc{
+			&ec2.Vpc{VpcId: makeStringPtr("vpc-123456")},
+		},
+	}, nil
 }
 
 func (c *awsClientMock) GetInstanceInfo(id string) (*ec2.Instance, error) {

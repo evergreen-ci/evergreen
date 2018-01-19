@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -346,7 +345,6 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 	if err != nil {
 		return errors.Wrap(err, "parsing price JSON")
 	}
-	fmt.Printf("%+v\n", prices)
 
 	pricePerRegion := map[string]float64{}
 	for _, r := range prices.Config.Regions {

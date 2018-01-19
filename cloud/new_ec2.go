@@ -151,7 +151,6 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *NewEC2Provider
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
-	fmt.Println("input is ", input)
 	reservation, err := m.client.RunInstances(input)
 	if err != nil || reservation == nil {
 		msg := "RunInstances API call returned an error"
