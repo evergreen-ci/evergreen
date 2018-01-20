@@ -1044,6 +1044,82 @@ func TestCreateBuildFromVersion(t *testing.T) {
 	})
 }
 
+func TestCreateTaskGroup(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t, "Error clearing collection")
+	projYml := `
+  tasks:
+  - name: example_task_1
+  - name: example_task_2
+  - name: example_task_3
+  task_groups:
+  - name: example_task_group
+    max_hosts: 2
+    priority: 50
+    setup_group:
+    - command: shell.exec
+      params:
+        script: "echo setup_group"
+    teardown_group:
+    - command: shell.exec
+      params:
+        script: "echo teardown_group"
+    setup_task:
+    - command: shell.exec
+      params:
+        script: "echo setup_group"
+    teardown_task:
+    - command: shell.exec
+      params:
+        script: "echo setup_group"
+    tasks:
+    - example_task_1
+    - example_task_2
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: example_task_group
+    - name: example_task_3
+  `
+	proj, errs := projectFromYAML([]byte(projYml))
+	proj.Identifier = "test"
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	v := &version.Version{
+		Id:                  "versionId",
+		CreateTime:          time.Now(),
+		Revision:            "foobar",
+		RevisionOrderNumber: 500,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []version.BuildStatus{
+			{
+				BuildVariant: "bv",
+				Activated:    false,
+			},
+		},
+	}
+	table := NewTaskIdTable(proj, v)
+
+	buildId, err := CreateBuildFromVersion(proj, v, table, "bv", true, nil, nil)
+	assert.NoError(err)
+	dbBuild, err := build.FindOne(build.ById(buildId))
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.Len(dbBuild.Tasks, 3)
+	dbTasks, err := task.Find(task.ByBuildId(buildId))
+	assert.NoError(err)
+	assert.Len(dbTasks, 3)
+	for _, t := range dbTasks {
+		if t.DisplayName == "example_task_3" {
+			assert.Equal("", t.TaskGroup)
+			assert.EqualValues(0, t.Priority)
+		} else {
+			assert.Equal(task.FormTaskGroupId("example_task_group", v.Id), t.TaskGroup)
+			assert.EqualValues(50, t.Priority)
+		}
+	}
+}
+
 func TestDeletingBuild(t *testing.T) {
 
 	Convey("With a build", t, func() {
