@@ -63,11 +63,7 @@ func (s *BackgroundSuite) TestStartHeartbeat() {
 	defer cancel()
 	heartbeat := make(chan string)
 	go s.a.startHeartbeat(ctx, s.tc, heartbeat)
-	close(heartbeat)
-	for range heartbeat {
-		// There should be no values in the channel
-		s.True(false)
-	}
+	s.Equal(evergreen.TaskFailed, <-heartbeat)
 }
 
 func (s *BackgroundSuite) TestTaskAbort() {
