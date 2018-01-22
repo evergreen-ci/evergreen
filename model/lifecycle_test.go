@@ -1371,7 +1371,7 @@ func TestSortTasks(t *testing.T) {
 }
 
 func TestVersionRestart(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) //nolint
 	assert.NoError(resetTaskData())
 
 	// test that restarting a version restarts its tasks

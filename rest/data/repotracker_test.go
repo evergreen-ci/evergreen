@@ -21,11 +21,13 @@ func TestValidatePushEvent(t *testing.T) {
 	branch, err := validatePushEvent(nil)
 	assert.Error(err)
 	assert.IsType(new(rest.APIError), err)
+	assert.Empty(branch)
 
 	event := github.PushEvent{}
 	branch, err = validatePushEvent(&event)
 	assert.Error(err)
 	assert.IsType(new(rest.APIError), err)
+	assert.Empty(branch)
 
 	event.Ref = github.String("refs/heads/changes")
 	event.Repo = &github.PushEventRepository{}
@@ -54,15 +56,16 @@ func TestValidateProjectRef(t *testing.T) {
 		Owner:      "baxterthehacker",
 		Repo:       "public-repo",
 		Branch:     "changes",
+		Enabled:    true,
 	}
 
-	ref, err := validateProjectRef("baxterthehacker", "public-repo")
+	ref, err := validateProjectRef("baxterthehacker", "public-repo", "changes")
 	assert.Error(err)
 	assert.Equal("can't find project ref", err.Error())
 	assert.Nil(ref)
 	assert.NoError(doc.Insert())
 
-	ref, err = validateProjectRef("baxterthehacker", "public-repo")
+	ref, err = validateProjectRef("baxterthehacker", "public-repo", "changes")
 	assert.NoError(err)
 	assert.NotNil(ref)
 }

@@ -55,11 +55,8 @@ func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, e
 
 	_, err = validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
 		branch)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func validatePushEvent(event *github.PushEvent) (string, error) {
