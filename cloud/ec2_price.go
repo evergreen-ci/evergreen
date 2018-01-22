@@ -174,6 +174,9 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSCli
 }
 
 func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettings) (ec2ProviderType, error) {
+	if h.UserHost {
+		return onDemandProvider, nil
+	}
 	if m.provider == spotProvider {
 		return spotProvider, nil
 	}

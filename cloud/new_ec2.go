@@ -548,8 +548,63 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 }
 
 // OnUp is called when the host is up.
-func (m *ec2Manager) OnUp(*host.Host) error {
-	// Unused since we set tags in SpawnHost()
+func (m *ec2Manager) OnUp(h *host.Host) error {
+	if isHostSpot(h) {
+		grip.Debug(message.Fields{
+			"message":       "spot host is up, attaching tags",
+			"host":          h.Id,
+			"host_provider": h.Distro.Provider,
+			"distro":        h.Distro.Id,
+		})
+		spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
+		})
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error getting spot request info",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
+		}
+		tags := makeTags(h)
+		tags["spot"] = "true" // mark this as a spot instance
+		resources := []*string{
+			spotDetails.SpotInstanceRequests[0].InstanceId,
+		}
+		tagSlice := []*ec2.Tag{}
+		for tag := range tags {
+			key := tag
+			val := tags[tag]
+			tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
+		}
+
+		resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
+			InstanceIds: []*string{spotDetails.SpotInstanceRequests[0].InstanceId},
+		})
+		instance := resp.Reservations[0].Instances[0]
+		for _, vol := range instance.BlockDeviceMappings {
+			if *vol.DeviceName == "" {
+				continue
+			}
+			resources = append(resources, vol.Ebs.VolumeId)
+		}
+
+		if _, err = m.client.CreateTags(&ec2.CreateTagsInput{
+			Resources: resources,
+			Tags:      tagSlice,
+		}); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error attaching tags",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+			err = errors.Wrapf(err, "failed to attach tags for %s", h.Id)
+			return err
+		}
+	}
 	return nil
 }
 

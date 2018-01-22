@@ -3,6 +3,7 @@ package cloud
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -68,6 +69,32 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	foundHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
+	assert.NoError(m.OnUp(h))
+	foundHost := foundHosts[0]
+	out, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
+		InstanceIds: []*string{makeStringPtr(foundHost.Id)},
+	})
+	tags := out.Reservations[0].Instances[0].Tags
+	requiredTags := map[string]string{
+		"start-time":        "",
+		"expire-on":         "",
+		"owner":             "",
+		"mode":              "",
+		"name":              "",
+		"evergreen-service": "",
+		"distro":            "",
+		"username":          "",
+	}
+	for i := range tags {
+		key := *tags[i].Key
+		val := *tags[i].Value
+		requiredTags[key] = val
+	}
+	assert.Equal("test_distro", requiredTags["distro"])
+	assert.Equal("mci", requiredTags["owner"])
+	for _, requiredValue := range requiredTags {
+		assert.NotEmpty(requiredValue)
+	}
 	assert.NoError(m.TerminateInstance(h, evergreen.User))
 	foundHosts, err = host.Find(host.IsTerminated)
 	assert.NoError(err)

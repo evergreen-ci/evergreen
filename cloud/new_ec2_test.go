@@ -431,7 +431,7 @@ func (s *EC2Suite) TestIsUp() {
 }
 
 func (s *EC2Suite) TestOnUp() {
-	s.NoError(s.onDemandManager.OnUp(nil))
+	s.NoError(s.onDemandManager.OnUp(&host.Host{}))
 }
 
 func (s *EC2Suite) TestGetDNSName() {
@@ -514,4 +514,8 @@ func (s *EC2Suite) TestGetProvider() {
 	// subnet should be set based on vpc name
 	s.Equal("subnet-654321", ec2Settings.SubnetId)
 	s.Equal(h.Distro.Provider, evergreen.ProviderNameEc2SpotNew)
+
+	h.UserHost = true
+	provider, err = manager.getProvider(h, ec2Settings)
+	s.Equal(onDemandProvider, provider)
 }
