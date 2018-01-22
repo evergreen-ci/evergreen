@@ -170,7 +170,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	const (
 		frequentRunInterval   = 20 * time.Second
 		defaultRunInterval    = 60 * time.Second
-		infrequentRunInterval = 180 * time.Second
+		infrequentRunInterval = 300 * time.Second
 	)
 
 	wg := &sync.WaitGroup{}
