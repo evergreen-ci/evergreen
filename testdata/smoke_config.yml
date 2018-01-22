@@ -47,3 +47,11 @@ plugins:
                   "logkeeper":
                           ticket_create_project: "foo"
                           ticket_search_projects: ["foo"]
+
+providers:
+    aws:
+        aws_id: "foo"
+        aws_secret: "bar"
+
+keys:
+      test: "/dev/null"
