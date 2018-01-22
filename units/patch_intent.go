@@ -103,7 +103,7 @@ func (j *patchIntentProcessor) Run() {
 			"intent_id":          j.Intent.ID(),
 		}))
 
-		j.AddError(model.CancelPatchesWithGithubPatchData(patchDoc.CreateTime,
+		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
 			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.PRNumber))
 	}

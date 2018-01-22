@@ -97,16 +97,16 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 		return err
 	}
 
-	err = model.CancelPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
+	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
 		owner, repo, *event.Number)
 	if err != nil {
 		grip.Error(message.Fields{
-			"message": "error cancelling patches",
+			"message": "error aborting patches",
 			"error":   err.Error(),
 		})
 		return &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
-			Message:    "error cancelling patches",
+			Message:    "error aborting patches",
 		}
 	}
 
