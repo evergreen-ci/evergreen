@@ -162,9 +162,13 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">Security group for EC2 VPC must be the id (starts with 'sg-')</div>
               </div>
               <div ng-show="activeDistro.settings.is_vpc">
-                <label class="distro-label"> Subnet Id</label>
+                <label class="distro-label">Default VPC Subnet Id:</label>
                 <input type="text" name="subnet_id" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.subnet_id" placeholder="EC2 subnet id (must already exist) e.g subnet-xxxx" ng-required="activeDistro.settings.is_vpc">
                 <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.subnet_id.$error.required || form.subnet_id.$invalid || !validSubnetId()"> Subnet Id is required for EC2 VPC (must start with 'subnet-')</div>
+              </div>
+              <div ng-show="activeDistro.settings.is_vpc">
+                <label class="distro-label">VPC Subnet Prefix:</label>
+                <input type="text" name="vpc_name" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.vpc_name" placeholder="will look for subnets like <prefix>.subnet_1a, <prefix>.subnet_1b, etc.">
               </div>
               <div ng-show="activeDistro.provider.startsWith('ec2')">
                 <div id="mounts-table" class="distro-table-scroll">
