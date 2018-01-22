@@ -21,6 +21,9 @@ func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, 
 					FullName: github.String(headRepoName),
 				},
 			},
+			Base: &github.PullRequestBranch{
+				Ref: github.String("master"),
+			},
 		},
 	}
 }

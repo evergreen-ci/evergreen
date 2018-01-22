@@ -51,14 +51,15 @@ var (
 	GitSummaryDeletionsKey = bsonutil.MustHaveTag(Summary{}, "Deletions")
 
 	// BSON fields for GithubPatch
-	githubPatchPRNumberKey  = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
-	githubPatchBaseOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
-	githubPatchBaseRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
-	githubPatchHeadOwnerKey = bsonutil.MustHaveTag(GithubPatch{}, "HeadOwner")
-	githubPatchHeadRepoKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
-	githubPatchHeadHashKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
-	githubPatchAuthorKey    = bsonutil.MustHaveTag(GithubPatch{}, "Author")
-	githubPatchDiffURLKey   = bsonutil.MustHaveTag(GithubPatch{}, "DiffURL")
+	githubPatchPRNumberKey   = bsonutil.MustHaveTag(GithubPatch{}, "PRNumber")
+	githubPatchBaseOwnerKey  = bsonutil.MustHaveTag(GithubPatch{}, "BaseOwner")
+	githubPatchBaseRepoKey   = bsonutil.MustHaveTag(GithubPatch{}, "BaseRepo")
+	githubPatchBaseBranchKey = bsonutil.MustHaveTag(GithubPatch{}, "BaseBranch")
+	githubPatchHeadOwnerKey  = bsonutil.MustHaveTag(GithubPatch{}, "HeadOwner")
+	githubPatchHeadRepoKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
+	githubPatchHeadHashKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
+	githubPatchAuthorKey     = bsonutil.MustHaveTag(GithubPatch{}, "Author")
+	githubPatchDiffURLKey    = bsonutil.MustHaveTag(GithubPatch{}, "DiffURL")
 )
 
 // Query Validation
