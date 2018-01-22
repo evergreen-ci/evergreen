@@ -28,8 +28,7 @@ type repotrackerJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 
-	Owner string `bson:"owner" json:"owner" yaml:"owner"`
-	Repo  string `bson:"repo" json:"repo" yaml:"repo"`
+	ProjectID string `bson:"project_id" json:"project_id" yaml:"project_id"`
 }
 
 func makeRepotrackerJob() *repotrackerJob {
@@ -45,14 +44,14 @@ func makeRepotrackerJob() *repotrackerJob {
 	}
 }
 
-// NewGithubStatusUpdateJobForBuild creates a job to update github's API from a Build.
-// Status will be reported as 'evergreen-[build variant name]'
-func NewRepotrackerJob(msgID, owner, repo string) amboy.Job {
+// NewRepotrackerJob creates a job to run repotracker against a repository.
+// The code creating this job is responsible for verifying that the project
+// should track push events
+func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 	job := makeRepotrackerJob()
-	job.Owner = owner
-	job.Repo = repo
+	job.ProjectID = projectID
 
-	job.SetID(fmt.Sprintf("%s:%s/%s-%s", repotrackerJobName, owner, repo, msgID))
+	job.SetID(fmt.Sprintf("%s:%s:%s", repotrackerJobName, msgID, projectID))
 	return job
 }
 
@@ -84,9 +83,25 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
-	ref, err := fetchProjectRefByRepo(j.Owner, j.Repo)
+	ref, err := model.FindOneProjectRef(j.ProjectID)
 	if err != nil {
 		j.AddError(err)
+		return
+	}
+	if ref == nil {
+		j.AddError(errors.New("can't find project ref for project"))
+		return
+	}
+
+	if !ref.TracksPushEvents {
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":     repotrackerJobName,
+			"job_id":  j.ID(),
+			"project": ref.Identifier,
+			"error":   "programmer error",
+		}))
+		j.AddError(errors.New("programmer error: repotrackerJobs should" +
+			" not be created for projects that don't track push events"))
 		return
 	}
 
@@ -99,9 +114,9 @@ func (j *repotrackerJob) Run() {
 
 	if err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
-			"job":    repotrackerJobName,
-			"job_id": j.ID(),
-			"repo":   fmt.Sprintf("%s/%s", j.Owner, j.Repo),
+			"job":     repotrackerJobName,
+			"job_id":  j.ID(),
+			"project": j.ProjectID,
 		}))
 		j.AddError(err)
 	}

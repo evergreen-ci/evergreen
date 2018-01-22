@@ -217,6 +217,25 @@ Evergreen Projects
               <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
             </div>
           </div>
+          <div ng-show="githubHookId !== 0">
+            <div class="h3">Repotracker Settings</div>
+            <div class="form-group">
+                <div class="col-lg-5 col-header">
+                    <div class="radio">
+                        <label class="control-label">
+                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
+                        </label> <br>
+                        <label class="muted col-lg-offset-1">Repotracker will be automatically run every few minutes</label>
+                    </div>
+                    <div class="radio">
+                        <label class="control-label">
+                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="true"> <strong> Trigger Repotracker via PushEvents</strong>
+                        </label> <br>
+                        <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
+                    </div>
+                </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">

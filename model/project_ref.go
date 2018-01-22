@@ -27,6 +27,11 @@ type ProjectRef struct {
 	DisplayName        string `bson:"display_name" json:"display_name" yaml:"display_name"`
 	LocalConfig        string `bson:"local_config" json:"local_config" yaml:"local_config"`
 	DeactivatePrevious bool   `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+
+	// TracksPushEvents, if true indicates that Repotracker is triggered by
+	// Github PushEvents for this project, instead of the Repotracker runner
+	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
+
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 
@@ -88,6 +93,7 @@ var (
 	ProjectRefAlertsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
+	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 )
 
 const (
@@ -253,6 +259,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAlertsKey:             projectRef.Alerts,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefAdminsKey:             projectRef.Admins,
+				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 			},
 		},
 	)

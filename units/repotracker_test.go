@@ -39,13 +39,12 @@ func (s *repotrackerJobSuite) TearDownTest() {
 }
 
 func (s *repotrackerJobSuite) TestJob() {
-	j := NewRepotrackerJob("1", "evergreen-ci", "evergreen").(*repotrackerJob)
-	s.Equal("evergreen-ci", j.Owner)
-	s.Equal("evergreen", j.Repo)
-	s.Equal("repotracker:evergreen-ci/evergreen-1", j.ID())
+	j := NewRepotrackerJob("1", "mci").(*repotrackerJob)
+	s.Equal("mci", j.ProjectID)
+	s.Equal("repotracker:1:mci", j.ID())
 	j.Run()
 	s.Error(j.Error())
-	s.Equal("not found", j.Error().Error())
+	s.Contains(j.Error().Error(), "can't find project ref for project")
 	s.True(j.Status().Completed)
 }
 
@@ -55,7 +54,7 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	job := NewRepotrackerJob("1", "evergreen-ci", "evergreen")
+	job := NewRepotrackerJob("1", "mci")
 	job.Run()
 
 	s.Error(job.Error())
