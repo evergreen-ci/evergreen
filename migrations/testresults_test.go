@@ -265,6 +265,7 @@ func TestAddExecutionMigration(t *testing.T) {
 	defer cancel()
 
 	// setup the migration environment and get a database session
+	anser.ResetEnvironment()
 	env := anser.GetEnvironment()
 	mgoSession, database, err := evg.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)
