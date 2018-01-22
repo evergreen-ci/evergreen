@@ -12,7 +12,6 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const branchRefPrefix = "refs/heads/"
@@ -24,7 +23,8 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	if err != nil {
 		return err
 	}
-	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name)
+	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
+		branch)
 	if err != nil {
 		return err
 	}
@@ -48,11 +48,13 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 type MockRepoTrackerConnector struct{}
 
 func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, event *github.PushEvent) error {
-	if err := validatePushEvent(event); err != nil {
+	branch, err := validatePushEvent(event)
+	if err != nil {
 		return err
 	}
 
-	_, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name)
+	_, err = validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
+		branch)
 	if err != nil {
 		return err
 	}
@@ -91,18 +93,19 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	return refs[2], nil
 }
 
-func validateProjectRef(owner, repo string) (*model.ProjectRef, error) {
-	ref, err := model.FindOneProjectRefByRepo(owner, repo)
+func validateProjectRef(owner, repo, branch string) (*model.ProjectRef, error) {
+	ref, err := model.FindOneProjectRefByRepoAndBranch(owner, repo, branch)
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil, &rest.APIError{
-				StatusCode: http.StatusBadRequest,
-				Message:    "can't find project ref",
-			}
-		}
 		return nil, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
+		}
+	}
+
+	if ref == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "can't find project ref",
 		}
 	}
 
