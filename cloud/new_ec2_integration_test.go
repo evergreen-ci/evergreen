@@ -74,6 +74,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	out, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
 		InstanceIds: []*string{makeStringPtr(foundHost.Id)},
 	})
+	assert.NoError(err)
 	tags := out.Reservations[0].Instances[0].Tags
 	requiredTags := map[string]string{
 		"start-time":        "",

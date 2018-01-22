@@ -517,5 +517,6 @@ func (s *EC2Suite) TestGetProvider() {
 
 	h.UserHost = true
 	provider, err = manager.getProvider(h, ec2Settings)
+	s.NoError(err)
 	s.Equal(onDemandProvider, provider)
 }

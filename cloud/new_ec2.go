@@ -583,6 +583,14 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 		resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
 			InstanceIds: []*string{spotDetails.SpotInstanceRequests[0].InstanceId},
 		})
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":       "error running describe instances",
+				"host":          h.Id,
+				"host_provider": h.Distro.Provider,
+				"distro":        h.Distro.Id,
+			}))
+		}
 		instance := resp.Reservations[0].Instances[0]
 		for _, vol := range instance.BlockDeviceMappings {
 			if *vol.DeviceName == "" {
