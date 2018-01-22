@@ -42,6 +42,7 @@ func TestAPIPatch(t *testing.T) {
 		},
 		Activated:     true,
 		PatchedConfig: "config",
+		Alias:         "__github",
 		GithubPatchData: patch.GithubPatch{
 			PRNumber:  123,
 			BaseOwner: "evergreen-ci",
@@ -83,6 +84,7 @@ func TestAPIPatch(t *testing.T) {
 			assert.Equal(a.Tasks[i2], task)
 		}
 	}
+	assert.Equal("__github", string(a.Alias))
 	assert.NotZero(a.GithubPatchData)
 }
 

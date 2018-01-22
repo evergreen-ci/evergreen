@@ -72,6 +72,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	}
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = v.Activated
+	apiPatch.Alias = APIString(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
