@@ -232,82 +232,25 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprintf("Error in filter: %v", err.Error()), http.StatusBadRequest)
 		return
 	}
-	buildVariants := project.GetVariantsWithTask(taskName)
 
 	onlyMatchingTasks := (r.FormValue("only_matching_tasks") == "true")
 
-	// If there are no build variants, use all of them for the given task name.
-	// Need this because without the build_variant specified, no amount of hinting
-	// will get sort to use the proper index
-	query := bson.M{
-		"build_variant": bson.M{
-			"$in": buildVariants,
-		},
-		"display_name": taskName,
-		"order": bson.M{
-			"$gte": lowOrder,
-			"$lte": highOrder,
-		},
-		"branch": project.Identifier,
+	params := model.PickaxeParams{
+		Project:           project,
+		TaskName:          taskName,
+		NewestOrder:       highOrder,
+		OldestOrder:       lowOrder,
+		BuildVariants:     filter.BuildVariants,
+		Tests:             filter.Tests,
+		OnlyMatchingTasks: onlyMatchingTasks,
 	}
-
-	// If there are build variants, use them instead
-	if len(filter.BuildVariants) > 0 {
-		query["build_variant"] = bson.M{
-			"$in": filter.BuildVariants,
-		}
-	}
-
-	projection := bson.M{
-		"_id":           1,
-		"status":        1,
-		"activated":     1,
-		"time_taken":    1,
-		"build_variant": 1,
-	}
-
-	last, err := task.Find(db.Query(query).Project(projection))
-
+	tasks, err := model.TaskHistoryPickaxe(params)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error querying tasks: `%s`", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error finding tasks: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	for i := range last {
-		if err := last[i].MergeNewTestResults(); err != nil {
-			http.Error(w, fmt.Sprintf("Error merging test results: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// do filtering of test results after we found the tasks that are requested
-	for i := len(last) - 1; i >= 0; i-- {
-		t := last[i]
-		foundTest := false
-		for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
-			result := t.LocalTestResults[j]
-			// go through the test results and remove any that don't match the ones we care about
-			status, exists := filter.Tests[result.TestFile]
-			if !exists {
-				// this test is not one we care about
-				t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-				continue
-			}
-			if status != "ran" && status != result.Status {
-				// this test is not in a status we care about
-				t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-				continue
-			}
-			// we found the test in the correct status, so keep it
-			foundTest = true
-		}
-		if !foundTest && onlyMatchingTasks {
-			// if only want matching tasks and didn't find a match, remove the task
-			last = append(last[:i], last[i+1:]...)
-		}
-	}
-
-	uis.WriteJSON(w, http.StatusOK, last)
+	uis.WriteJSON(w, http.StatusOK, tasks)
 }
 
 func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request) {

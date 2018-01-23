@@ -26,6 +26,10 @@ const (
 	TaskSystemFailure = "sysfail"
 	testResultsKey    = "test_results"
 	numQueryThreads   = 16
+
+	// this regex either matches against the exact 'test' string, or
+	// against the 'test' string at the end of some kind of filepath.
+	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
 )
 
 type taskHistoryIterator struct {
@@ -1025,4 +1029,92 @@ func (h historyResultSorter) Less(i, j int) bool {
 		return h[i].TaskId < h[j].TaskId
 	}
 	return h[i].Order < h[j].Order
+}
+
+type PickaxeParams struct {
+	Project           *Project
+	TaskName          string
+	NewestOrder       int64
+	OldestOrder       int64
+	BuildVariants     []string
+	Tests             map[string]string
+	OnlyMatchingTasks bool
+}
+
+func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
+	// If there are no build variants, use all of them for the given task name.
+	// Need this because without the build_variant specified, no amount of hinting
+	// will get sort to use the proper index
+	query := bson.M{
+		"build_variant": bson.M{
+			"$in": params.Project.GetVariantsWithTask(params.TaskName),
+		},
+		"display_name": params.TaskName,
+		"order": bson.M{
+			"$gte": params.OldestOrder,
+			"$lte": params.NewestOrder,
+		},
+		"branch": params.Project.Identifier,
+	}
+	// If there are build variants in the filter, use them instead
+	if len(params.BuildVariants) > 0 {
+		query["build_variant"] = bson.M{
+			"$in": params.BuildVariants,
+		}
+	}
+	projection := bson.M{
+		"_id":           1,
+		"status":        1,
+		"activated":     1,
+		"time_taken":    1,
+		"build_variant": 1,
+	}
+	last, err := task.Find(db.Query(query).Project(projection))
+	if err != nil {
+		return nil, errors.Wrap(err, "Error querying tasks")
+	}
+
+	taskIds := []string{}
+	for _, t := range last {
+		taskIds = append(taskIds, t.Id)
+	}
+
+	elemMatchOr := []bson.M{}
+	for test, result := range params.Tests {
+		regexp := fmt.Sprintf(testMatchRegex, test, test)
+		if result == "ran" {
+			// Special case: if asking for tasks where the test ran, don't care
+			// about the test status
+			elemMatchOr = append(elemMatchOr, bson.M{
+				"test_file": bson.RegEx{Pattern: regexp},
+			})
+		} else {
+			elemMatchOr = append(elemMatchOr, bson.M{
+				"test_file": bson.RegEx{Pattern: regexp},
+				"status":    result,
+			})
+		}
+	}
+	testQuery := db.Query(bson.M{
+		"$or": elemMatchOr,
+		testresult.TaskIDKey: bson.M{
+			"$in": taskIds,
+		},
+	})
+	last, err = task.MergeTestResultsBulk(last, &testQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error merging test results")
+	}
+	// if only want matching tasks, remove any tasks that have no test results merged
+	if params.OnlyMatchingTasks {
+		for i := len(last) - 1; i >= 0; i-- {
+			t := last[i]
+			if len(t.LocalTestResults) == 0 {
+				// if only want matching tasks and didn't find a match, remove the task
+				last = append(last[:i], last[i+1:]...)
+			}
+		}
+	}
+
+	return last, nil
 }
