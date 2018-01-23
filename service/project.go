@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -240,8 +241,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 
 	if projectVars.GithubHookID != 0 && projectRef.TracksPushEvents &&
 		responseRef.ForceRepotrackerRun {
-		job := units.NewRepotrackerJob(util.RandomString(), projectRef.Identifier)
-		if err := uis.queue.Put(job); err != nil {
+		j := units.NewRepotrackerJob(fmt.Sprintf("%d", job.GetNumber()), projectRef.Identifier)
+		if err := uis.queue.Put(j); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
