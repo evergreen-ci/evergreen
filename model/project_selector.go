@@ -287,7 +287,7 @@ func newTaskGroupSelectorEvaluator(groups []parserTaskGroup) *tagSelectorEvaluat
 // Display task selector
 func newDisplayTaskSelectorEvaluator(bv BuildVariant, tasks []parserTask) *tagSelectorEvaluator {
 	var selectees []tagged
-	for _, t := range bv.TaskUnits {
+	for _, t := range bv.Tasks {
 		selectees = append(selectees, &parserTask{Name: t.Name, Tags: getTags(tasks, t.Name)})
 	}
 

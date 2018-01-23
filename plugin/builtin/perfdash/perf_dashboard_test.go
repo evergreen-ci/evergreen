@@ -51,21 +51,21 @@ func TestGetVariantsWithCommand(t *testing.T) {
 		// build variants
 		bv1 := model.BuildVariant{
 			Name: "bv1",
-			TaskUnits: []model.BuildVariantTaskUnit{
+			Tasks: []model.BuildVariantTaskUnit{
 				{Name: "test task"},
 				{Name: "nope"},
 			},
 		}
 		bv2 := model.BuildVariant{
 			Name: "bv2",
-			TaskUnits: []model.BuildVariantTaskUnit{
+			Tasks: []model.BuildVariantTaskUnit{
 				{Name: "nope"},
 			},
 		}
 
 		bv3 := model.BuildVariant{
 			Name: "bv3",
-			TaskUnits: []model.BuildVariantTaskUnit{
+			Tasks: []model.BuildVariantTaskUnit{
 				{Name: "test task"},
 			},
 		}
@@ -93,7 +93,7 @@ func TestGetVariantsWithCommand(t *testing.T) {
 			// build variants
 			bv := model.BuildVariant{
 				Name: "bv1",
-				TaskUnits: []model.BuildVariantTaskUnit{
+				Tasks: []model.BuildVariantTaskUnit{
 					{Name: "functionsTask"},
 					{Name: "nope"},
 				},

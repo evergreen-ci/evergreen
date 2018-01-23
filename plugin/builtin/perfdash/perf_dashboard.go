@@ -205,7 +205,7 @@ func getVariantsWithCommand(commandName string, project *model.Project) map[stri
 	taskCache := createTaskCacheForCommand(commandName, project)
 	buildVariants := map[string][]string{}
 	for _, bv := range project.BuildVariants {
-		for _, t := range bv.TaskUnits {
+		for _, t := range bv.Tasks {
 			if _, ok := taskCache[t.Name]; ok {
 				variants, ok := buildVariants[t.Name]
 				if !ok {

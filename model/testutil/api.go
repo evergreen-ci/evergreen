@@ -62,7 +62,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	// create a build variant for this project
 	bv := model.BuildVariant{
 		Name: variant,
-		TaskUnits: []model.BuildVariantTaskUnit{{
+		Tasks: []model.BuildVariantTaskUnit{{
 			Name: taskDisplayName,
 		}},
 	}

@@ -544,7 +544,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar1 := BuildVariant{
 			Name:        "buildVar",
 			DisplayName: "Build Variant",
-			TaskUnits: []BuildVariantTaskUnit{
+			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
 			DisplayTasks: []DisplayTask{
@@ -567,14 +567,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar2 := BuildVariant{
 			Name:        "buildVar2",
 			DisplayName: "Build Variant 2",
-			TaskUnits: []BuildVariantTaskUnit{
+			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
 		buildVar3 := BuildVariant{
 			Name:        "buildVar3",
 			DisplayName: "Build Variant 3",
-			TaskUnits: []BuildVariantTaskUnit{
+			Tasks: []BuildVariantTaskUnit{
 				{
 					// wait for the first BV's taskA to complete
 					Name:      "taskA",

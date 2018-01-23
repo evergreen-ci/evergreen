@@ -606,7 +606,7 @@ func TestRulesEvaluation(t *testing.T) {
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
-			So(len(v1.TaskUnits), ShouldEqual, 2)
+			So(len(v1.Tasks), ShouldEqual, 2)
 		})
 		Convey("a variant with an 'add' rule should add the given tasks", func() {
 			bvs := []parserBV{{
@@ -626,7 +626,7 @@ func TestRulesEvaluation(t *testing.T) {
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
-			So(len(v1.TaskUnits), ShouldEqual, 7)
+			So(len(v1.Tasks), ShouldEqual, 7)
 		})
 		Convey("a series of add and remove rules should execute in order", func() {
 			bvs := []parserBV{{
@@ -648,7 +648,7 @@ func TestRulesEvaluation(t *testing.T) {
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
-			So(len(v1.TaskUnits), ShouldEqual, 4)
+			So(len(v1.Tasks), ShouldEqual, 4)
 		})
 		Convey("conflicting added tasks should fail", func() {
 			bvs := []parserBV{{

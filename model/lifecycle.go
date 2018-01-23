@@ -544,7 +544,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	createAll := len(taskNames) == 0
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
-	for _, task := range buildVariant.TaskUnits {
+	for _, task := range buildVariant.Tasks {
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
 
