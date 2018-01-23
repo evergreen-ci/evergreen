@@ -197,7 +197,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
           setup_github_hook: $scope.githubHookId != 0,
-          tracks_push_events: data.ProjectRef.tracks_push_events || false
+          tracks_push_events: data.ProjectRef.tracks_push_events || false,
+          force_repotracker_run: false
         };
         for (var i = 0; i < $scope.settingsFormData.patch_aliases.length; i++) {
           var alias = $scope.settingsFormData.patch_aliases[i];
@@ -278,6 +279,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.saveMessage = "Settings Saved.";
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
+        $scope.settingsFormData.force_repotracker_run = false;
         $scope.isDirty = false;
       },
       function(resp) {

@@ -12,9 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -150,7 +152,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
-		SetupGithubHook bool `json:"setup_github_hook"`
+		SetupGithubHook     bool `json:"setup_github_hook"`
+		ForceRepotrackerRun bool `json:"force_repotracker_run"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
@@ -233,6 +236,15 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			}
 			projectVars.GithubHookID = 0
 			projectRef.TracksPushEvents = false
+		}
+	}
+
+	if projectVars.GithubHookID != 0 && projectRef.TracksPushEvents &&
+		responseRef.ForceRepotrackerRun {
+		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
+		if err := uis.queue.Put(j); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 	}
 

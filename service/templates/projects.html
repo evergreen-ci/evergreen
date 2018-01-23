@@ -234,6 +234,12 @@ Evergreen Projects
                         <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
                     </div>
                 </div>
+                <br />
+                <div class="col-lg-8 col-header" ng-show="settingsFormData.tracks_push_events === true">
+                    <label class="control-label">Run Repotracker on Save&nbsp;&nbsp;
+                        <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" />
+                    </label>
+                </div>
             </div>
           </div>
         </div>
