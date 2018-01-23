@@ -171,6 +171,11 @@ var drawSingleTrendChart = function(params) {
   var opsValues = _.pluck(series, 'ops_per_sec_values');
   var avgOpsPerSec = d3.mean(ops)
 
+  // Currently selcted revision item index
+  var currentItemIdx = _.findIndex(series, function(d) {
+    return d.task_id == scope.task.id
+  })
+
   var allLevels = _.pluck(series[0].threadResults, 'threadLevel')
 
   var levelsMeta = threadMode == MAXONLY
@@ -419,6 +424,23 @@ var drawSingleTrendChart = function(params) {
       }
     }
   }
+
+  // Current revision marker
+  chartG.append('g')
+    .attr('class', 'g-current-commit')
+    .selectAll('circle')
+    .data(levelsMeta)
+    .enter()
+    .append('circle')
+      .attr({
+        class: 'point current',
+        cx: xScale(currentItemIdx),
+        cy: function(level) {
+          return yScale(getValueFor(level)(series[currentItemIdx]))
+        },
+        r: cfg.points.focusedR + 0.5,
+        stroke: function(d) { return d.color },
+      })
 
   // Contains elements for hover behavior
   var focusG = chartG.append('svg:g')
