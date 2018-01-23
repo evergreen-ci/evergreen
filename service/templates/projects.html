@@ -214,7 +214,7 @@ Evergreen Projects
               <label class="control-label">Unschedule old tasks on success&nbsp;&nbsp;
                 <input type="checkbox" name="deactivate_previous" ng-model="settingsFormData.deactivate_previous"/>
               </label>
-              <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
+              <div class="muted small">when checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
             </div>
           </div>
           <div ng-show="githubHookId !== 0">
@@ -233,6 +233,12 @@ Evergreen Projects
                         </label> <br>
                         <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
                     </div>
+                </div>
+                <br />
+                <div class="col-lg-8 col-header" ng-show="settingsFormData.tracks_push_events === true">
+                    <label class="control-label">Run Repotracker on Save&nbsp;&nbsp;
+                        <input type="checkbox" name="deactivate_previous" ng-model="settingsFormData.force_repotracker_run"/>
+                    </label>
                 </div>
             </div>
           </div>
