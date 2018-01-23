@@ -33,7 +33,7 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 
 	// construct a command to check reachability
 	remoteCommand := subprocess.NewRemoteCommand(
-		"echo hi",
+		"echo hi >| reachability_check.txt",
 		hostInfo.Hostname,
 		hostInfo.User,
 		nil,   // env
