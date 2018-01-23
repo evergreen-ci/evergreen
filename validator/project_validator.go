@@ -149,7 +149,7 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 	visited := map[model.TVPair]bool{}
 	allNodes := []model.TVPair{}
 	for _, bv := range project.BuildVariants {
-		for _, t := range bv.TaskUnits {
+		for _, t := range bv.Tasks {
 			t.Populate(project.GetSpecForTask(t.Name))
 			node := model.TVPair{bv.Name, t.Name}
 
@@ -272,7 +272,7 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 				},
 			)
 		}
-		if len(buildVariant.TaskUnits) == 0 {
+		if len(buildVariant.Tasks) == 0 {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%v' in project '%v' "+
@@ -281,7 +281,7 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 				},
 			)
 		}
-		for _, task := range buildVariant.TaskUnits {
+		for _, task := range buildVariant.Tasks {
 			if len(task.Distros) == 0 {
 				hasTaskWithoutDistro = true
 				break
@@ -355,7 +355,7 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) []Va
 
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
-		for _, task := range buildVariant.TaskUnits {
+		for _, task := range buildVariant.Tasks {
 			if _, ok := allTaskNames[task.Name]; !ok {
 				if task.Name == "" {
 					errs = append(errs,
@@ -476,7 +476,7 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
-		for _, task := range buildVariant.TaskUnits {
+		for _, task := range buildVariant.Tasks {
 			if _, ok := buildVariantTasks[task.Name]; ok {
 				errs = append(errs,
 					ValidationError{

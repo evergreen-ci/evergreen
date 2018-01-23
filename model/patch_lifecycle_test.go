@@ -116,8 +116,8 @@ func TestIncludePatchDependencies(t *testing.T) {
 				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: "t4"}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", TaskUnits: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}}},
-				{Name: "v2", TaskUnits: []BuildVariantTaskUnit{
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}}},
+				{Name: "v2", Tasks: []BuildVariantTaskUnit{
 					{Name: "t3", DependsOn: []TaskUnitDependency{{Name: "t2", Variant: "v1"}}}}},
 			},
 		}
@@ -159,10 +159,10 @@ func TestIncludePatchDependencies(t *testing.T) {
 				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: AllDependencies, Variant: AllVariants}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", TaskUnits: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v2", TaskUnits: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v3", TaskUnits: []BuildVariantTaskUnit{{Name: "t4"}}},
-				{Name: "v4", TaskUnits: []BuildVariantTaskUnit{{Name: "t5"}}},
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v2", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v3", Tasks: []BuildVariantTaskUnit{{Name: "t4"}}},
+				{Name: "v4", Tasks: []BuildVariantTaskUnit{{Name: "t5"}}},
 			},
 		}
 
@@ -223,8 +223,8 @@ func TestIncludePatchDependencies(t *testing.T) {
 				}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", TaskUnits: all},
-				{Name: "v2", TaskUnits: all},
+				{Name: "v1", Tasks: all},
+				{Name: "v2", Tasks: all},
 			},
 		}
 
@@ -263,8 +263,8 @@ func TestIncludePatchDependencies(t *testing.T) {
 				{Name: "3", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "1"}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", TaskUnits: all},
-				{Name: "v2", TaskUnits: all},
+				{Name: "v1", Tasks: all},
+				{Name: "v2", Tasks: all},
 			},
 		}
 		Convey("all tasks should be scheduled no matter which is initially added", func() {
@@ -301,7 +301,7 @@ func TestIncludePatchDependencies(t *testing.T) {
 				{Name: "2", Patchable: new(bool)},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", TaskUnits: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
 			},
 		}
 		Convey("the non-patchable task should not be added", func() {
@@ -356,7 +356,7 @@ func TestAddNewPatch(t *testing.T) {
 		BuildVariants: []BuildVariant{
 			BuildVariant{
 				Name: "variant",
-				TaskUnits: []BuildVariantTaskUnit{
+				Tasks: []BuildVariantTaskUnit{
 					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
 				},
 				DisplayTasks: []DisplayTask{

@@ -176,7 +176,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var suites []string
-	for _, task := range bv.TaskUnits {
+	for _, task := range bv.Tasks {
 		suites = append(suites, task.Name)
 	}
 

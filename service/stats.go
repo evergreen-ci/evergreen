@@ -75,7 +75,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	// populate buildVariants by iterating over the build variants tasks
 	for _, bv := range project.BuildVariants {
 		newBv := UIBuildVariant{bv.Name, []string{}}
-		for _, task := range bv.TaskUnits {
+		for _, task := range bv.Tasks {
 			newBv.TaskNames = append(newBv.TaskNames, task.Name)
 		}
 		currentProject.BuildVariants = append(currentProject.BuildVariants, newBv)
@@ -165,7 +165,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	} else {
 		foundTask := false
 
-		for _, t := range bv.TaskUnits {
+		for _, t := range bv.Tasks {
 			if t.Name == taskName {
 				foundTask = true
 				break

@@ -439,7 +439,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
-			bvts := out.BuildVariants[0].TaskUnits
+			bvts := out.BuildVariants[0].Tasks
 			So(bvts[0].Name, ShouldEqual, "t1")
 			So(bvts[1].Name, ShouldEqual, "t2")
 			So(bvts[2].Name, ShouldEqual, "t3")
@@ -913,9 +913,9 @@ buildvariants:
 	tg = proj.TaskGroups[0]
 	assert.Len(tg.DependsOn, 1)
 	assert.Equal("example_task_0", tg.DependsOn[0].Name)
-	assert.Len(proj.BuildVariants[0].TaskUnits, 2)
-	assert.True(proj.BuildVariants[0].TaskUnits[0].IsGroup)
-	assert.False(proj.BuildVariants[0].TaskUnits[1].IsGroup)
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
+	assert.True(proj.BuildVariants[0].Tasks[0].IsGroup)
+	assert.False(proj.BuildVariants[0].Tasks[1].IsGroup)
 
 	// check that tags select the correct tasks
 	tagYml := `

@@ -156,8 +156,8 @@ type BuildVariant struct {
 	// provided for the task
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
-	// all of the tasks to be run on the build variant, compile through tests.
-	TaskUnits    []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
+	// all of the tasks/groups to be run on the build variant, compile through tests.
+	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
 	DisplayTasks []DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
@@ -418,7 +418,7 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 		if evergreen.IsPatchRequester(v.Requester) {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		}
-		for _, t := range bv.TaskUnits {
+		for _, t := range bv.Tasks {
 			if t.IsGroup {
 				tg := p.FindTaskGroup(t.Name)
 				if tg == nil {
@@ -482,7 +482,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks T
 	if v.Requester == evergreen.PatchVersionRequester {
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
-	for _, t := range projBV.TaskUnits {
+	for _, t := range projBV.Tasks {
 		// create Ids for each task that can run on the variant and is requested by the patch.
 		if util.StringSliceContains(taskNamesForVariant, t.Name) {
 			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
@@ -571,7 +571,7 @@ func (p *Project) GetVariantMappings() map[string]string {
 func (p *Project) GetVariantsWithTask(taskName string) []string {
 	var variantsList []string
 	for _, buildVariant := range p.BuildVariants {
-		for _, task := range buildVariant.TaskUnits {
+		for _, task := range buildVariant.Tasks {
 			if task.Name == taskName {
 				variantsList = append(variantsList, buildVariant.Name)
 			}
@@ -729,7 +729,7 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	if bv == nil {
 		return nil
 	}
-	for _, bvt := range bv.TaskUnits {
+	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
 			bvt.Populate(*p.FindProjectTask(task))
 			return &bvt
@@ -768,8 +768,8 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 func (p *Project) FindTasksForVariant(build string) []string {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {
-			tasks := make([]string, 0, len(b.TaskUnits))
-			for _, task := range b.TaskUnits {
+			tasks := make([]string, 0, len(b.Tasks))
+			for _, task := range b.Tasks {
 				tasks = append(tasks, task.Name)
 			}
 			return tasks
@@ -795,7 +795,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	}
 	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
-		for _, t := range b.TaskUnits {
+		for _, t := range b.Tasks {
 			if pTask := tasksByName[t.Name]; pTask != nil {
 				t.Populate(*pTask)
 				allBVTs = append(allBVTs, t)
@@ -810,7 +810,7 @@ func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 func (p *Project) FindVariantsWithTask(task string) []string {
 	variants := make([]string, 0, len(p.BuildVariants))
 	for _, b := range p.BuildVariants {
-		for _, t := range b.TaskUnits {
+		for _, t := range b.Tasks {
 			if t.Name == task {
 				variants = append(variants, b.Name)
 			}

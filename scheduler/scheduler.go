@@ -468,7 +468,7 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 
 		// get the task specification for the build variant
 		var taskSpec model.BuildVariantTaskUnit
-		for _, tSpec := range buildVariant.TaskUnits {
+		for _, tSpec := range buildVariant.Tasks {
 			if tSpec.Name == task.DisplayName {
 				taskSpec = tSpec
 				break

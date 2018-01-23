@@ -554,7 +554,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			RunOn:       pbv.RunOn,
 			Tags:        pbv.Tags,
 		}
-		bv.TaskUnits, errs = evaluateBVTasks(tse, tgse, vse, pbv.Tasks)
+		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv.Tasks)
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.matrixRules {
 			// remove_tasks removes all tasks with matching names
@@ -569,19 +569,19 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 					}
 					toRemove = append(toRemove, removed...)
 				}
-				for _, t := range bv.TaskUnits {
+				for _, t := range bv.Tasks {
 					if !util.StringSliceContains(toRemove, t.Name) {
 						prunedTasks = append(prunedTasks, t)
 					}
 				}
-				bv.TaskUnits = prunedTasks
+				bv.Tasks = prunedTasks
 			}
 			// add_tasks adds the given BuildVariantTasks, returning errors for any collisions
 			if len(r.AddTasks) > 0 {
 				// cache existing tasks so we can check for duplicates
 				existing := map[string]*BuildVariantTaskUnit{}
-				for i, t := range bv.TaskUnits {
-					existing[t.Name] = &bv.TaskUnits[i]
+				for i, t := range bv.Tasks {
+					existing[t.Name] = &bv.Tasks[i]
 				}
 
 				var added []BuildVariantTaskUnit
@@ -595,7 +595,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 								"conflicting definitions of added tasks '%v': %v != %v", t.Name, t, old))
 						}
 					} else {
-						bv.TaskUnits = append(bv.TaskUnits, t)
+						bv.Tasks = append(bv.Tasks, t)
 						existing[t.Name] = &t
 					}
 				}
@@ -619,7 +619,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		// check that display tasks contain real tasks that are not duplicated
 		bvTasks := make(map[string]string)          // map of all execution tasks
 		displayTaskContents := make(map[string]int) // map of execution tasks in a display task
-		for _, t := range bv.TaskUnits {
+		for _, t := range bv.Tasks {
 			bvTasks[t.Name] = ""
 		}
 		for _, dt := range pbv.DisplayTasks {

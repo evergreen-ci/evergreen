@@ -102,18 +102,18 @@ func TestGetVariantsWithTask(t *testing.T) {
 			BuildVariants: []BuildVariant{
 				{
 					Name:      "bv1",
-					TaskUnits: []BuildVariantTaskUnit{{Name: "suite1"}},
+					Tasks: []BuildVariantTaskUnit{{Name: "suite1"}},
 				},
 				{
 					Name: "bv2",
-					TaskUnits: []BuildVariantTaskUnit{
+					Tasks: []BuildVariantTaskUnit{
 						{Name: "suite1"},
 						{Name: "suite2"},
 					},
 				},
 				{
 					Name:      "bv3",
-					TaskUnits: []BuildVariantTaskUnit{{Name: "suite2"}},
+					Tasks: []BuildVariantTaskUnit{{Name: "suite2"}},
 				},
 			},
 		}
@@ -179,13 +179,13 @@ func TestPopulateBVT(t *testing.T) {
 			BuildVariants: []BuildVariant{
 				{
 					Name:      "test",
-					TaskUnits: []BuildVariantTaskUnit{{Name: "task1", Priority: 5}},
+					Tasks: []BuildVariantTaskUnit{{Name: "task1", Priority: 5}},
 				},
 			},
 		}
 
 		Convey("updating a BuildVariantTaskUnit with unset fields", func() {
-			bvt := project.BuildVariants[0].TaskUnits[0]
+			bvt := project.BuildVariants[0].Tasks[0]
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
 			bvt.Populate(spec)
@@ -315,7 +315,7 @@ func TestAliasResolution(t *testing.T) {
 		BuildVariants: []BuildVariant{
 			{
 				Name: "bv_1",
-				TaskUnits: []BuildVariantTaskUnit{
+				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
 					},
@@ -332,7 +332,7 @@ func TestAliasResolution(t *testing.T) {
 			},
 			{
 				Name: "bv_2",
-				TaskUnits: []BuildVariantTaskUnit{
+				Tasks: []BuildVariantTaskUnit{
 					{
 						Name: "a_task_1",
 					},
