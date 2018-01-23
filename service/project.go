@@ -436,8 +436,9 @@ func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) 
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNotFound {
-		return errors.New("unexpected data from github")
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
+		return errors.Wrapf("unexpected data from github: status code was %d %s",
+			resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	return nil
