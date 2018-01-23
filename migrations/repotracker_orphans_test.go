@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
@@ -71,25 +70,25 @@ func (s *testOrphanDeletion) TestOrphanedBuildCleanupGenerator() {
 	gen.Run()
 	s.NoError(gen.Error())
 
-	b, err := build.Find(evgdb.Q{})
-	s.NoError(err)
-
 	for j := range gen.Jobs() {
 		j.Run()
 		s.NoError(j.Error())
 	}
 
-	b, err = build.Find(evgdb.Query(bson.M{}))
-	pp.Println(b)
+	b, err := build.Find(evgdb.Query(bson.M{}))
 	s.NoError(err)
 	s.Require().Len(b, 2)
 	s.Equal("b1", b[0].Id)
 	s.Len(b[0].Tasks, 1)
-	s.Equal("t1", b[0].Tasks[0])
+	s.Equal("t1", b[0].Tasks[0].Id)
 
-	s.Equal("b4", b[1].Id)
+	s.Equal("b5", b[1].Id)
 	s.Require().Len(b[1].Tasks, 1)
 	s.Equal("t3", b[1].Tasks[0].Id)
+
+	t, err := build.Find(evgdb.Query(bson.M{}))
+	s.NoError(err)
+	s.Require().Len(t, 2)
 }
 
 func (s *testOrphanDeletion) TestOrphanedVersionCleanupGenerator() {
@@ -130,15 +129,11 @@ func (s *testOrphanDeletion) SetupTest() {
 			BuildIds:  []string{"b1", "o-b2"},
 			BuildVariants: []version.BuildStatus{
 				{
-					BuildVariant: "test",
-					Activated:    true,
-					ActivateAt:   time.Now(),
+					BuildVariant: "test1",
 					BuildId:      "b1",
 				},
 				{
-					BuildVariant: "test",
-					Activated:    false,
-					ActivateAt:   time.Time{},
+					BuildVariant: "test2",
 					BuildId:      "o-b2",
 				},
 			},
@@ -151,8 +146,6 @@ func (s *testOrphanDeletion) SetupTest() {
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: "test",
-					Activated:    false,
-					ActivateAt:   time.Time{},
 					BuildId:      "o-b3",
 				},
 			},
@@ -205,7 +198,7 @@ func (s *testOrphanDeletion) SetupTest() {
 			Id:        "b5",
 			Requester: evergreen.RepotrackerVersionRequester,
 			Status:    evergreen.BuildCreated,
-			Version:   "v4",
+			Version:   "v3",
 			Tasks: []build.TaskCache{
 				{
 					Id: "t3",
@@ -225,7 +218,7 @@ func (s *testOrphanDeletion) SetupTest() {
 		{
 			Id:        "t3",
 			Requester: evergreen.RepotrackerVersionRequester,
-			BuildId:   "b2",
+			BuildId:   "b5",
 			Version:   "v4",
 		},
 		{

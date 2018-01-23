@@ -2,7 +2,6 @@ package migrations
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	evgdb "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -124,7 +123,7 @@ func orphanedVersionCleanup(session db.Session, rawD bson.RawD) error {
 func orphanedBuildCleanupGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
 	const migrationName = "clean_orphaned_builds"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, orphanedBuildCleanup); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeOrphanedBuildCleanup(db)); err != nil {
 		return nil, err
 	}
 
@@ -148,79 +147,86 @@ func orphanedBuildCleanupGenerator(env anser.Environment, db string, limit int) 
 // 1. If it's version doesn't exist, remove the build and it's tasks
 // 2. Check it's task cache, and ensure that all listed tasks exist, removing
 //    any that do not exist
-func orphanedBuildCleanup(session db.Session, rawD bson.RawD) error {
-	defer session.Close()
+func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
+	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
 
-	cachedTasks := []build.TaskCache{}
-	versionID := ""
-	buildID := ""
+		cachedTasks := []build.TaskCache{}
+		versionID := ""
+		buildID := ""
 
-	for i := range rawD {
-		switch rawD[i].Name {
-		case build.IdKey:
-			if err := rawD[i].Value.Unmarshal(&buildID); err != nil {
-				return errors.Wrap(err, "error unmarshaling id")
-			}
+		for i := range rawD {
+			switch rawD[i].Name {
+			case build.IdKey:
+				if err := rawD[i].Value.Unmarshal(&buildID); err != nil {
+					return errors.Wrap(err, "error unmarshaling id")
+				}
 
-		case build.TasksKey:
-			if err := rawD[i].Value.Unmarshal(&cachedTasks); err != nil {
-				return errors.Wrap(err, "error unmarshaling tasks")
-			}
+			case build.TasksKey:
+				if err := rawD[i].Value.Unmarshal(&cachedTasks); err != nil {
+					return errors.Wrap(err, "error unmarshaling tasks")
+				}
 
-		case build.VersionKey:
-			if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
-				return errors.Wrap(err, "error unmarshaling version")
+			case build.VersionKey:
+				if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
+					return errors.Wrap(err, "error unmarshaling version")
+				}
 			}
 		}
-	}
 
-	v, err := version.FindOne(version.ById(versionID))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if v == nil {
-		if err := task.RemoveAllWithBuild(buildID); err != nil && err != mgo.ErrNotFound {
-			return errors.Wrap(err, "error deleting tasks for build")
+		query := session.DB(database).C(version.Collection).FindId(versionID)
+		v := version.Version{}
+		err := query.One(&v)
+
+		if err == mgo.ErrNotFound {
+			if err := session.DB(database).C(task.Collection).Remove(bson.M{task.BuildIdKey: buildID}); err != nil {
+				return errors.Wrap(err, "error deleting tasks for build")
+			}
+
+			return session.DB(database).C(build.Collection).Remove(bson.M{build.IdKey: buildID})
 		}
-		return build.RemoveOne(build.ById(buildID))
-	}
-
-	cachedTaskIDs := []string{}
-	cachedTasksMap := map[string]*build.TaskCache{}
-	for i := range cachedTasks {
-		cachedTaskIDs = append(cachedTaskIDs, cachedTasks[i].Id)
-		cachedTasksMap[cachedTasks[i].Id] = &cachedTasks[i]
-	}
-
-	tasks, err := task.Find(evgdb.Query(bson.M{
-		task.IdKey: bson.M{
-			"$in": cachedTaskIDs,
-		},
-	}))
-	if err != nil {
-		return err
-	}
-	if len(tasks) == len(cachedTasks) {
-		return nil
-	}
-	if len(tasks) == 0 {
-		return build.RemoveOne(build.ById(buildID))
-	}
-
-	newTasksCache := []build.TaskCache{}
-	// TODO?: this does not deal with tasks that weren't listed in
-	// the task cache, but were found by the query.
-	for i := range tasks {
-		if tc, ok := cachedTasksMap[tasks[i].Id]; ok {
-			newTasksCache = append(newTasksCache, *tc)
+		if err != nil {
+			return errors.WithStack(err)
 		}
-	}
 
-	update := bson.M{
-		"$set": bson.D{
-			bson.DocElem{build.TasksKey, newTasksCache},
-		},
-	}
+		cachedTaskIDs := []string{}
+		cachedTasksMap := map[string]*build.TaskCache{}
+		for i := range cachedTasks {
+			cachedTaskIDs = append(cachedTaskIDs, cachedTasks[i].Id)
+			cachedTasksMap[cachedTasks[i].Id] = &cachedTasks[i]
+		}
 
-	return build.UpdateOne(build.ById(buildID), update)
+		tasks := []task.Task{}
+		query = session.DB(database).C(task.Collection).Find(bson.M{
+			task.IdKey: bson.M{
+				"$in": cachedTaskIDs,
+			},
+		})
+		if err := query.All(&tasks); err != nil {
+			return err
+		}
+		if len(tasks) == 0 {
+			return session.DB(database).C(build.Collection).Remove(bson.M{build.IdKey: buildID})
+		}
+		if len(tasks) == len(cachedTasks) {
+			return nil
+		}
+
+		newTasksCache := []build.TaskCache{}
+		// TODO?: this does not deal with tasks that weren't listed in
+		// the task cache, but were found by the query.
+		for i := range tasks {
+			if tc, ok := cachedTasksMap[tasks[i].Id]; ok {
+				newTasksCache = append(newTasksCache, *tc)
+			}
+		}
+
+		update := bson.M{
+			"$set": bson.M{
+				build.TasksKey: newTasksCache,
+			},
+		}
+
+		return session.DB(database).C(build.Collection).Update(bson.M{build.IdKey: buildID}, update)
+	}
 }

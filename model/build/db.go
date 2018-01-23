@@ -240,10 +240,10 @@ func UpdateAllBuilds(query interface{}, update interface{}) (*mgo.ChangeInfo, er
 	)
 }
 
-// RemoveOne deletes one build matching the given query
-func RemoveOne(query db.Q) error {
+// Remove deletes the build of the given id from the database
+func Remove(id string) error {
 	return db.Remove(
 		Collection,
-		query,
+		ById(id),
 	)
 }
