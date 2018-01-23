@@ -32,10 +32,6 @@ const (
 	// Number of revisions to return on subsequent requests
 	NoRevisions     = 0
 	MaxNumRevisions = 50
-
-	// this regex either matches against the exact 'test' string, or
-	// against the 'test' string at the end of some kind of filepath.
-	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
 )
 
 // Representation of a group of tasks with the same display name and revision,
@@ -236,90 +232,25 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprintf("Error in filter: %v", err.Error()), http.StatusBadRequest)
 		return
 	}
-	buildVariants := project.GetVariantsWithTask(taskName)
 
 	onlyMatchingTasks := (r.FormValue("only_matching_tasks") == "true")
 
-	// If there are no build variants, use all of them for the given task name.
-	// Need this because without the build_variant specified, no amount of hinting
-	// will get sort to use the proper index
-	query := bson.M{
-		"build_variant": bson.M{
-			"$in": buildVariants,
-		},
-		"display_name": taskName,
-		"order": bson.M{
-			"$gte": lowOrder,
-			"$lte": highOrder,
-		},
-		"branch": project.Identifier,
+	params := model.PickaxeParams{
+		Project:           project,
+		TaskName:          taskName,
+		NewestOrder:       highOrder,
+		OldestOrder:       lowOrder,
+		BuildVariants:     filter.BuildVariants,
+		Tests:             filter.Tests,
+		OnlyMatchingTasks: onlyMatchingTasks,
 	}
-
-	// If there are build variants, use them instead
-	if len(filter.BuildVariants) > 0 {
-		query["build_variant"] = bson.M{
-			"$in": filter.BuildVariants,
-		}
-	}
-
-	projection := bson.M{
-		"_id":           1,
-		"status":        1,
-		"activated":     1,
-		"time_taken":    1,
-		"build_variant": 1,
-	}
-
-	last, err := task.Find(db.Query(query).Project(projection))
+	tasks, err := model.TaskHistoryPickaxe(params)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error querying tasks: `%s`", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	taskIds := []string{}
-	for _, t := range last {
-		taskIds = append(taskIds, t.Id)
-	}
-
-	elemMatchOr := []bson.M{}
-	for test, result := range filter.Tests {
-		regexp := fmt.Sprintf(testMatchRegex, test, test)
-		if result == "ran" {
-			// Special case: if asking for tasks where the test ran, don't care
-			// about the test status
-			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": bson.RegEx{Pattern: regexp},
-			})
-		} else {
-			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": bson.RegEx{Pattern: regexp},
-				"status":    result,
-			})
-		}
-	}
-	testQuery := db.Query(bson.M{
-		"$or": elemMatchOr,
-		testresult.TaskIDKey: bson.M{
-			"$in": taskIds,
-		},
-	})
-	last, err = task.MergeTestResultsBulk(last, &testQuery)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error merging test results: %s", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error finding tasks: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	// if only want matching tasks, remove any tasks that have no test results merged
-	if onlyMatchingTasks {
-		for i := len(last) - 1; i >= 0; i-- {
-			t := last[i]
-			if len(t.LocalTestResults) == 0 {
-				// if only want matching tasks and didn't find a match, remove the task
-				last = append(last[:i], last[i+1:]...)
-			}
-		}
-	}
-
-	uis.WriteJSON(w, http.StatusOK, last)
+	uis.WriteJSON(w, http.StatusOK, tasks)
 }
 
 func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request) {

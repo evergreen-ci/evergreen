@@ -1176,3 +1176,116 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
 		t, "Error clearing collections")
 }
+
+func TestTaskHistoryPickaxe(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t, "error clearing collections")
+	assert := assert.New(t)
+	proj := Project{
+		Identifier: "proj",
+	}
+	t1 := task.Task{
+		Id:                  "t1",
+		Project:             proj.Identifier,
+		DisplayName:         "matchingName",
+		BuildVariant:        "bv",
+		RevisionOrderNumber: 1,
+	}
+	t2 := task.Task{
+		Id:                  "t2",
+		Project:             proj.Identifier,
+		DisplayName:         "notMatchingName",
+		BuildVariant:        "bv",
+		RevisionOrderNumber: 2,
+	}
+	t3 := task.Task{
+		Id:                  "t3",
+		Project:             proj.Identifier,
+		DisplayName:         "matchingName",
+		BuildVariant:        "bv",
+		RevisionOrderNumber: 3,
+	}
+	t4 := task.Task{
+		Id:                  "t4",
+		Project:             proj.Identifier,
+		DisplayName:         "matchingName",
+		BuildVariant:        "bv",
+		RevisionOrderNumber: 4,
+	}
+	assert.NoError(t1.Insert())
+	assert.NoError(t2.Insert())
+	assert.NoError(t3.Insert())
+	assert.NoError(t4.Insert())
+	r1 := testresult.TestResult{
+		TaskID:   t1.Id,
+		TestFile: "test",
+		Status:   evergreen.TestFailedStatus,
+	}
+	r2 := testresult.TestResult{
+		TaskID:   t2.Id,
+		TestFile: "test",
+		Status:   evergreen.TestFailedStatus,
+	}
+	r3 := testresult.TestResult{
+		TaskID:   t3.Id,
+		TestFile: "test",
+		Status:   evergreen.TestFailedStatus,
+	}
+	r4 := testresult.TestResult{
+		TaskID:   t4.Id,
+		TestFile: "test",
+		Status:   evergreen.TestFailedStatus,
+	}
+	assert.NoError(r1.Insert())
+	assert.NoError(r2.Insert())
+	assert.NoError(r3.Insert())
+	assert.NoError(r4.Insert())
+
+	// test that a basic case returns the correct results
+	params := PickaxeParams{
+		Project:       &proj,
+		TaskName:      "matchingName",
+		NewestOrder:   4,
+		OldestOrder:   1,
+		BuildVariants: []string{"bv"},
+		Tests:         make(map[string]string),
+	}
+	params.Tests["test"] = evergreen.TestFailedStatus
+	results, err := TaskHistoryPickaxe(params)
+	assert.NoError(err)
+	assert.Len(results, 3)
+	for _, r := range results {
+		assert.Equal("test", r.LocalTestResults[0].TestFile)
+		assert.Equal(evergreen.TestFailedStatus, r.LocalTestResults[0].Status)
+	}
+
+	// test that a suite-style test result is found
+	r5 := testresult.TestResult{
+		TaskID:   t4.Id,
+		TestFile: "foo/bar/test",
+		Status:   evergreen.TestFailedStatus,
+	}
+	assert.NoError(r5.Insert())
+	results, err = TaskHistoryPickaxe(params)
+	assert.NoError(err)
+	assert.Len(results, 3)
+	for _, r := range results {
+		if r.Id == t4.Id {
+			assert.Len(r.LocalTestResults, 2)
+		}
+	}
+
+	// test that the only matching tasks param works
+	t5 := task.Task{
+		Id:                  "t5",
+		Project:             proj.Identifier,
+		DisplayName:         "matchingName",
+		BuildVariant:        "bv",
+		RevisionOrderNumber: 5,
+	}
+	assert.NoError(t5.Insert())
+	params.NewestOrder = 5
+	params.OnlyMatchingTasks = true
+	results, err = TaskHistoryPickaxe(params)
+	assert.NoError(err)
+	assert.Len(results, 3)
+}
