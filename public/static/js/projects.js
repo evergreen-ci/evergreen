@@ -279,6 +279,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.saveMessage = "Settings Saved.";
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
+        $scope.settingsFormData.force_repotracker_run = false;
         $scope.isDirty = false;
       },
       function(resp) {
