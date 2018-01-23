@@ -11,13 +11,14 @@ import (
 	evgmock "github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -31,6 +32,7 @@ type testOrphanDeletion struct {
 	dbName    string
 	migration db.MigrationOperation
 	session   db.Session
+	cancel    func()
 }
 
 func TestCleanupOrphans(t *testing.T) {
@@ -44,13 +46,13 @@ func TestCleanupOrphans(t *testing.T) {
 	defer session.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	s := &testOrphanDeletion{
 		env:       &evgmock.Environment{},
 		dbName:    database.Name,
 		migration: orphanedVersionCleanup,
 		session:   session,
+		cancel:    cancel,
 	}
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
@@ -69,12 +71,16 @@ func (s *testOrphanDeletion) TestOrphanedBuildCleanupGenerator() {
 	gen.Run()
 	s.NoError(gen.Error())
 
+	b, err := build.Find(evgdb.Q{})
+	s.NoError(err)
+
 	for j := range gen.Jobs() {
 		j.Run()
 		s.NoError(j.Error())
 	}
 
-	b, err := build.Find(evgdb.Q{})
+	b, err = build.Find(evgdb.Query(bson.M{}))
+	pp.Println(b)
 	s.NoError(err)
 	s.Require().Len(b, 2)
 	s.Equal("b1", b[0].Id)
@@ -108,18 +114,19 @@ func (s *testOrphanDeletion) TestOrphanedVersionCleanupGenerator() {
 
 	s.Equal("v3", v[1].Id)
 	s.Require().Len(v[1].BuildVariants, 1)
-	s.Equal("b4", v[1].BuildVariants[0].BuildId)
+	s.Equal("b5", v[1].BuildVariants[0].BuildId)
 	s.Require().Len(v[1].BuildIds, 1)
-	s.Equal("b4", v[1].BuildIds[0])
+	s.Equal("b5", v[1].BuildIds[0])
 }
 
 func (s *testOrphanDeletion) SetupTest() {
-	s.NoError(evgdb.ClearCollections(version.Collection, build.Collection, task.Collection, testresult.Collection))
+	s.NoError(evgdb.ClearCollections(version.Collection, build.Collection, task.Collection))
 
 	versions := []version.Version{
 		{
 			Id:        "v1",
 			Requester: evergreen.RepotrackerVersionRequester,
+			Status:    evergreen.VersionCreated,
 			BuildIds:  []string{"b1", "o-b2"},
 			BuildVariants: []version.BuildStatus{
 				{
@@ -139,6 +146,7 @@ func (s *testOrphanDeletion) SetupTest() {
 		{
 			Id:        "v2",
 			Requester: evergreen.RepotrackerVersionRequester,
+			Status:    evergreen.VersionCreated,
 			BuildIds:  []string{"o-b3"},
 			BuildVariants: []version.BuildStatus{
 				{
@@ -152,13 +160,14 @@ func (s *testOrphanDeletion) SetupTest() {
 		{
 			Id:        "v3",
 			Requester: evergreen.RepotrackerVersionRequester,
-			BuildIds:  []string{"b4"},
+			Status:    evergreen.VersionCreated,
+			BuildIds:  []string{"b5"},
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: "test",
 					Activated:    true,
 					ActivateAt:   time.Now(),
-					BuildId:      "b4",
+					BuildId:      "b5",
 				},
 			},
 		},
@@ -168,6 +177,7 @@ func (s *testOrphanDeletion) SetupTest() {
 		{
 			Id:        "b1",
 			Requester: evergreen.RepotrackerVersionRequester,
+			Status:    evergreen.BuildCreated,
 			Version:   "v1",
 			Tasks: []build.TaskCache{
 				{
@@ -180,24 +190,25 @@ func (s *testOrphanDeletion) SetupTest() {
 			Project: "test",
 		},
 		{
-			Id:        "b2",
+			Id:        "b4",
 			Requester: evergreen.RepotrackerVersionRequester,
-			Version:   "v4",
+			Status:    evergreen.BuildCreated,
+			Version:   "o-v5",
 			Tasks: []build.TaskCache{
 				{
-					Id: "t3",
+					Id: "t4",
 				},
 			},
 			Project: "test",
 		},
-
 		{
-			Id:        "b4",
+			Id:        "b5",
 			Requester: evergreen.RepotrackerVersionRequester,
-			Version:   "o-v5",
+			Status:    evergreen.BuildCreated,
+			Version:   "v4",
 			Tasks: []build.TaskCache{
 				{
-					Id: "o-t4",
+					Id: "t3",
 				},
 			},
 			Project: "test",
@@ -214,8 +225,14 @@ func (s *testOrphanDeletion) SetupTest() {
 		{
 			Id:        "t3",
 			Requester: evergreen.RepotrackerVersionRequester,
-			BuildId:   "b4",
+			BuildId:   "b2",
 			Version:   "v4",
+		},
+		{
+			Id:        "t4",
+			Requester: evergreen.RepotrackerVersionRequester,
+			BuildId:   "b4",
+			Version:   "o-v5",
 		},
 	}
 
@@ -228,5 +245,8 @@ func (s *testOrphanDeletion) SetupTest() {
 	for _, t := range tasks {
 		s.NoError(t.Insert())
 	}
+}
 
+func (s *testOrphanDeletion) TearDownSuite() {
+	s.cancel()
 }

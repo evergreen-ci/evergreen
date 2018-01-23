@@ -74,8 +74,9 @@ func orphanedVersionCleanup(session db.Session, rawD bson.RawD) error {
 			if err != nil {
 				return errors.Wrapf(err, "error fetching build %s", buildID)
 			}
-
-			buildMap[buildID] = b
+			if b != nil {
+				buildMap[buildID] = b
+			}
 		}
 
 		if b != nil {
@@ -93,10 +94,14 @@ func orphanedVersionCleanup(session db.Session, rawD bson.RawD) error {
 				return errors.Wrapf(err, "error fetching build %s", bstatus.BuildId)
 			}
 
-			buildMap[bstatus.BuildId] = b
+			if b != nil {
+				buildMap[bstatus.BuildId] = b
+			}
 		}
 
-		newBuildStatuses = append(newBuildStatuses, bstatus)
+		if b != nil {
+			newBuildStatuses = append(newBuildStatuses, bstatus)
+		}
 	}
 
 	selector := bson.M{
@@ -175,9 +180,9 @@ func orphanedBuildCleanup(session db.Session, rawD bson.RawD) error {
 	}
 	if v == nil {
 		if err := task.RemoveAllWithBuild(buildID); err != nil && err != mgo.ErrNotFound {
-			return errors.Wrap(err, "error deleting tasks for nonexistant build")
+			return errors.Wrap(err, "error deleting tasks for build")
 		}
-		return build.Remove(buildID)
+		return build.RemoveOne(build.ById(buildID))
 	}
 
 	cachedTaskIDs := []string{}
@@ -199,7 +204,7 @@ func orphanedBuildCleanup(session db.Session, rawD bson.RawD) error {
 		return nil
 	}
 	if len(tasks) == 0 {
-		return build.Remove(buildID)
+		return build.RemoveOne(build.ById(buildID))
 	}
 
 	newTasksCache := []build.TaskCache{}
@@ -211,14 +216,11 @@ func orphanedBuildCleanup(session db.Session, rawD bson.RawD) error {
 		}
 	}
 
-	selector := bson.M{
-		build.IdKey: buildID,
-	}
 	update := bson.M{
-		"$set": bson.M{
-			build.TasksKey: newTasksCache,
+		"$set": bson.D{
+			bson.DocElem{build.TasksKey, newTasksCache},
 		},
 	}
 
-	return build.UpdateOne(selector, update)
+	return build.UpdateOne(build.ById(buildID), update)
 }
