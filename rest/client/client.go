@@ -56,10 +56,22 @@ func NewCommunicator(serverURL string) Communicator {
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
-		httpClient:   util.GetHttpClient(),
 	}
-	c.httpClient.Timeout = heartbeatTimeout
+
+	c.resetClient()
 	return c
+}
+
+func (c *communicatorImpl) resetClient() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.httpClient != nil {
+		util.PutHttpClient(c.httpClient)
+	}
+
+	c.httpClient = util.GetHttpClient()
+	c.httpClient.Timeout = heartbeatTimeout
 }
 
 func (c *communicatorImpl) Close() { util.PutHttpClient(c.httpClient) }

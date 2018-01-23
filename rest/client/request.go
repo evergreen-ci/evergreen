@@ -79,14 +79,6 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 	return r, nil
 }
 
-func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
-	r, err := c.createRequest(info, data)
-	if err != nil {
-		return nil, err
-	}
-	return c.doRequest(ctx, c.httpClient, r)
-}
-
 func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
 	if info.method == post && data == nil {
 		return nil, errors.New("Attempting to post a nil body")
@@ -107,10 +99,35 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	return r, nil
 }
 
-func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *http.Request) (*http.Response, error) {
-	r = r.WithContext(ctx)
-	response, err := c.httpClient.Do(r)
+func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+	r, err := c.createRequest(info, data)
 	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	resp, err := c.doRequest(ctx, r)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return resp, nil
+}
+
+func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*http.Response, error) {
+	var (
+		response *http.Response
+		err      error
+	)
+
+	r = r.WithContext(ctx)
+
+	func() {
+		c.mutex.RLock()
+		defer c.mutex.RUnlock()
+		response, err = c.httpClient.Do(r)
+	}()
+
+	if err != nil {
+		c.resetClient()
 		return nil, err
 	}
 	if response == nil {
@@ -121,7 +138,6 @@ func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *h
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
-
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
@@ -142,7 +158,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			resp, err := c.doRequest(ctx, &data, r)
+			resp, err := c.doRequest(ctx, r)
 			if err != nil {
 				// for an error, don't return, just retry
 				grip.Warningf("error response from api server: %v (attempt %d of %d)", err, i, c.maxAttempts)
