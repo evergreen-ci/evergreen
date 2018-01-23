@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/jpillora/backoff"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -84,7 +85,7 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 		return nil, errors.New("Attempting to post a nil body")
 	}
 	if err := info.validateRequestInfo(); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	secret := ""
@@ -128,8 +129,9 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 
 	if err != nil {
 		c.resetClient()
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
+
 	if response == nil {
 		return nil, errors.New("received nil response")
 	}
@@ -161,7 +163,13 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			resp, err := c.doRequest(ctx, r)
 			if err != nil {
 				// for an error, don't return, just retry
-				grip.Warningf("error response from api server: %v (attempt %d of %d)", err, i, c.maxAttempts)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"message":   "error response from api server",
+					"attempt":   i,
+					"max":       c.maxAttempts,
+					"path":      info.path,
+					"wait_secs": backoff.ForAttempt(i).Seconds(),
+				}))
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
 			} else if resp.StatusCode == http.StatusConflict {
