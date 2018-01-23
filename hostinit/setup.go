@@ -28,6 +28,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 )
@@ -198,6 +199,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	for i := 0; i < numThreads; i++ {
 		wg.Add(1)
 		go func() {
+			defer recovery.LogStackTraceAndContinue("setupReadyHosts")
 			defer wg.Done()
 			for {
 				select {
