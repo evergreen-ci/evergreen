@@ -32,6 +32,10 @@ const (
 	// Number of revisions to return on subsequent requests
 	NoRevisions     = 0
 	MaxNumRevisions = 50
+
+	// this regex either matches against the exact 'test' string, or
+	// against the 'test' string at the end of some kind of filepath.
+	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
 )
 
 // Representation of a group of tasks with the same display name and revision,
@@ -267,43 +271,51 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 	}
 
 	last, err := task.Find(db.Query(query).Project(projection))
-
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error querying tasks: `%s`", err.Error()), http.StatusInternalServerError)
 		return
 	}
-
-	for i := range last {
-		if err := last[i].MergeNewTestResults(); err != nil {
-			http.Error(w, fmt.Sprintf("Error merging test results: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+	taskIds := []string{}
+	for _, t := range last {
+		taskIds = append(taskIds, t.Id)
 	}
 
-	// do filtering of test results after we found the tasks that are requested
-	for i := len(last) - 1; i >= 0; i-- {
-		t := last[i]
-		foundTest := false
-		for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
-			result := t.LocalTestResults[j]
-			// go through the test results and remove any that don't match the ones we care about
-			status, exists := filter.Tests[result.TestFile]
-			if !exists {
-				// this test is not one we care about
-				t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-				continue
-			}
-			if status != "ran" && status != result.Status {
-				// this test is not in a status we care about
-				t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-				continue
-			}
-			// we found the test in the correct status, so keep it
-			foundTest = true
+	elemMatchOr := []bson.M{}
+	for test, result := range filter.Tests {
+		regexp := fmt.Sprintf(testMatchRegex, test, test)
+		if result == "ran" {
+			// Special case: if asking for tasks where the test ran, don't care
+			// about the test status
+			elemMatchOr = append(elemMatchOr, bson.M{
+				"test_file": bson.RegEx{Pattern: regexp},
+			})
+		} else {
+			elemMatchOr = append(elemMatchOr, bson.M{
+				"test_file": bson.RegEx{Pattern: regexp},
+				"status":    result,
+			})
 		}
-		if !foundTest && onlyMatchingTasks {
-			// if only want matching tasks and didn't find a match, remove the task
-			last = append(last[:i], last[i+1:]...)
+	}
+	testQuery := db.Query(bson.M{
+		"$or": elemMatchOr,
+		testresult.TaskIDKey: bson.M{
+			"$in": taskIds,
+		},
+	})
+	last, err = task.MergeTestResultsBulk(last, &testQuery)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error merging test results: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// if only want matching tasks, remove any tasks that have no test results merged
+	if onlyMatchingTasks {
+		for i := len(last) - 1; i >= 0; i-- {
+			t := last[i]
+			if len(t.LocalTestResults) == 0 {
+				// if only want matching tasks and didn't find a match, remove the task
+				last = append(last[:i], last[i+1:]...)
+			}
 		}
 	}
 
