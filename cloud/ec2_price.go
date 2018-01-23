@@ -175,12 +175,15 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSCli
 
 func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettings) (ec2ProviderType, error) {
 	if h.UserHost {
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 		return onDemandProvider, nil
 	}
 	if m.provider == spotProvider {
+		h.Distro.Provider = evergreen.ProviderNameEc2SpotNew
 		return spotProvider, nil
 	}
 	if m.provider == onDemandProvider {
+		h.Distro.Provider = evergreen.ProviderNameEc2OnDemandNew
 		return onDemandProvider, nil
 	}
 	if m.provider == autoProvider {
@@ -213,7 +216,14 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *NewEC2ProviderSettin
 
 func (m *ec2Manager) getSubnetForAZ(azName, vpcName string) (string, error) {
 	vpcs, err := m.client.DescribeVpcs(&ec2.DescribeVpcsInput{
-		VpcIds: []*string{makeStringPtr(vpcName)},
+		Filters: []*ec2.Filter{
+			&ec2.Filter{
+				Name: makeStringPtr("tag:Name"),
+				Values: []*string{
+					makeStringPtr(vpcName),
+				},
+			},
+		},
 	})
 	if err != nil {
 		return "", errors.Wrap(err, "error finding vpc id")
