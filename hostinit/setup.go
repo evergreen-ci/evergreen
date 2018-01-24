@@ -244,7 +244,6 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						catcher.Add(errors.New("hostinit run canceled"))
 						return
 					}
-					time.Sleep(5 * time.Second)
 
 					setupStartTime := time.Now()
 					grip.Info(message.Fields{
@@ -367,13 +366,20 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get cloud host for %s", host.Id)
 	}
-	reachable, err := cloudHost.IsSSHReachable()
-	if err != nil {
-		return false, errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
+	reachableTimes := 0
+	for {
+		reachable, err := cloudHost.IsSSHReachable()
+		if err != nil {
+			return false, errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
+		}
+		if reachable && reachableTimes < 3 {
+			reachableTimes++
+			time.Sleep(time.Second)
+			continue
+		}
+		time.Sleep(time.Second)
+		return reachable, nil
 	}
-
-	// at this point, we can run the setup if the host is reachable
-	return reachable, nil
 }
 
 // setupHost runs the specified setup script for an individual host. Returns
