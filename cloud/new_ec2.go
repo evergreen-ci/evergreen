@@ -556,6 +556,10 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 			"host_provider": h.Distro.Provider,
 			"distro":        h.Distro.Id,
 		})
+		if err := m.client.Create(m.credentials); err != nil {
+			return errors.Wrap(err, "error creating client")
+		}
+		defer m.client.Close()
 		spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 		})
