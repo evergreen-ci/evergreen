@@ -372,7 +372,10 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		if err != nil {
 			return false, errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
 		}
-		if reachable && reachableTimes < 3 {
+		if !reachable {
+			return reachable, nil
+		}
+		if reachableTimes < 3 {
 			reachableTimes++
 			time.Sleep(time.Second)
 			continue
