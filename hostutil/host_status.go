@@ -67,12 +67,7 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 			"distro":   hostObject.Distro.Id,
 			"canceled": ctx.Err() != nil,
 		}))
-
-		// if we timed out, do not return an error, since the host is not reachable
-		if ctx.Err() != nil {
-			return false, nil
-		}
-		return false, errors.Wrapf(err, "reachability command encountered error for %s", hostObject.Id)
+		return false, nil
 	}
 
 	return true, nil
