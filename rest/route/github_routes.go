@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 const (
@@ -71,7 +72,12 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 
 	body, err := github.ValidatePayload(r, gh.secret)
 	if err != nil {
-		grip.Errorf("Rejecting Github webhook POST: %+v", err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"message": "rejecting github webhook",
+			"msg_id":  gh.msgID,
+			"event":   eventType,
+		}))
 		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "failed to read request body",
@@ -80,6 +86,12 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 
 	gh.event, err = github.ParseWebHook(eventType, body)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"message": "rejecting github webhook",
+			"msg_id":  gh.msgID,
+			"event":   eventType,
+		}))
 		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    err.Error(),
@@ -99,7 +111,12 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			}
 
 		}
-		grip.Infof("Received Github Webhook Ping for hook: %s", *event.Hook.URL)
+		grip.Info(message.Fields{
+			"source":   "github hook",
+			"msg_id":   gh.msgID,
+			"event":    "ping_event",
+			"hook_url": *event.Hook.URL,
+		})
 
 	case *github.PullRequestEvent:
 		if event.Action == nil {
@@ -118,6 +135,17 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 					Message:    err.Error(),
 				}
 			}
+			grip.Info(message.Fields{
+				"source":    "github hook",
+				"msg_id":    gh.msgID,
+				"event":     "pull_request",
+				"action":    *event.Action,
+				"repo":      *event.Repo.FullName,
+				"ref":       *event.PullRequest.Base.Ref,
+				"pr_number": *event.Number,
+				"creator":   *event.Sender.Login,
+				"hash":      *event.PullRequest.Head.SHA,
+			})
 
 			if err := sc.AddPatchIntent(ghi, gh.queue); err != nil {
 				return ResponseData{}, &rest.APIError{
@@ -127,6 +155,12 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			}
 
 		} else if *event.Action == githubActionClosed {
+			grip.Info(message.Fields{
+				"source":  "github hook",
+				"msg_id":  gh.msgID,
+				"event":   "pull_request",
+				"message": "pull request closed; aborting patch",
+			})
 			return ResponseData{}, sc.AbortPatchesFromPullRequest(event)
 		}
 
