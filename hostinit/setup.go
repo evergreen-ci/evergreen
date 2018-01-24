@@ -366,13 +366,21 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get cloud host for %s", host.Id)
 	}
-	reachable, err := cloudHost.IsSSHReachable()
-	if err != nil {
-		return false, errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
-	}
 
-	// at this point, we can run the setup if the host is reachable
-	return reachable, nil
+	var reachable bool
+	for i := 0; i < 3; i++ {
+		reachable, err = cloudHost.IsSSHReachable()
+		if err != nil {
+			err = errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
+			break
+		}
+		if !reachable {
+			break
+		}
+		sleep := time.Duration(rand.Float64() * 2 * float64(time.Second))
+		time.Sleep(sleep)
+	}
+	return reachable, err
 }
 
 // setupHost runs the specified setup script for an individual host. Returns
