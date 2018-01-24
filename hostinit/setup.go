@@ -377,7 +377,8 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		if !reachable {
 			break
 		}
-		time.Sleep(time.Second)
+		sleep := time.Duration(rand.Float64() * 2 * float64(time.Second))
+		time.Sleep(sleep)
 	}
 	return reachable, err
 }
