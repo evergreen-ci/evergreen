@@ -43,6 +43,7 @@ type ExpansionVars map[string]string
 type NextTaskResponse struct {
 	TaskId     string `json:"task_id,omitempty"`
 	TaskSecret string `json:"task_secret,omitempty"`
+	TaskGroup  string `json:"task_group,omitempty"`
 	ShouldExit bool   `json:"should_exit,omitempty"`
 	Message    string `json:"message,omitempty"`
 }
