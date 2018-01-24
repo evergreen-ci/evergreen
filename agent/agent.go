@@ -38,16 +38,16 @@ type Options struct {
 }
 
 type taskContext struct {
-	currentCommand      command.Command
-	logger              client.LoggerProducer
-	statsCollector      *StatsCollector
-	task                client.TaskData
-	taskGroup           string
-	shouldSetupTeardown bool
-	taskConfig          *model.TaskConfig
-	taskDirectory       string
-	timeout             time.Duration
-	timedOut            bool
+	currentCommand           command.Command
+	logger                   client.LoggerProducer
+	statsCollector           *StatsCollector
+	task                     client.TaskData
+	taskGroup                string
+	runGroupSetupAndTeardown bool
+	taskConfig               *model.TaskConfig
+	taskDirectory            string
+	timeout                  time.Duration
+	timedOut                 bool
 	sync.RWMutex
 }
 
@@ -139,8 +139,8 @@ func makeTaskContext(nextTask *apimodels.NextTaskResponse, tc *taskContext) task
 			ID:     nextTask.TaskId,
 			Secret: nextTask.TaskSecret,
 		},
-		taskGroup:           nextTask.TaskGroup,
-		shouldSetupTeardown: setupTeardownGroup,
+		taskGroup:                nextTask.TaskGroup,
+		runGroupSetupAndTeardown: setupTeardownGroup,
 	}
 }
 
