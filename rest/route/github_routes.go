@@ -105,18 +105,17 @@ func (gh *githubHookApi) ParseAndValidate(ctx context.Context, r *http.Request) 
 func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	switch event := gh.event.(type) {
 	case *github.PingEvent:
-		if event.Hook == nil || event.Hook.URL == nil {
+		if event.HookID == nil {
 			return ResponseData{}, rest.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "malformed ping event",
 			}
-
 		}
 		grip.Info(message.Fields{
-			"source":   "github hook",
-			"msg_id":   gh.msgID,
-			"event":    gh.eventType,
-			"hook_url": *event.Hook.URL,
+			"source":  "github hook",
+			"msg_id":  gh.msgID,
+			"event":   gh.eventType,
+			"hook_id": *event.HookID,
 		})
 
 	case *github.PullRequestEvent:
@@ -138,7 +137,7 @@ func (gh *githubHookApi) Execute(ctx context.Context, sc data.Connector) (Respon
 			*event.Action == githubActionReopened {
 			ghi, err := patch.NewGithubIntent(gh.msgID, event)
 			if err != nil {
-				grip.Info(message.WrapError(err, message.Fields{
+				grip.Error(message.WrapError(err, message.Fields{
 					"source":  "github hook",
 					"msg_id":  gh.msgID,
 					"event":   gh.eventType,
