@@ -321,37 +321,40 @@ var drawSingleTrendChart = function(params) {
       y2: cfg.effectiveHeight
     })
 
-  var legendG = svg.append('svg:g')
-    .attr({
-      class: 'legend',
-      transform: d3Translate(cfg.legend.xPos, cfg.legend.yPos)
-    })
+  // Show legend for 'all levels' mode only
+  if (threadMode != MAXONLY) {
+    var legendG = svg.append('svg:g')
+      .attr({
+        class: 'legend',
+        transform: d3Translate(cfg.legend.xPos, cfg.legend.yPos)
+      })
 
-  var legendIter = legendG.selectAll('g')
-    .data(levelsMeta)
-    .enter()
-    .append('svg:g')
-    .attr({
-      transform: function(d, i) {
-        return d3Translate(i * cfg.legend.step, 0)
-      }
-    })
+    var legendIter = legendG.selectAll('g')
+      .data(levelsMeta)
+      .enter()
+      .append('svg:g')
+      .attr({
+        transform: function(d, i) {
+          return d3Translate(i * cfg.legend.step, 0)
+        }
+      })
 
-  legendIter.append('svg:rect')
-    .attr({
-      y: cfg.legend.textOverRectOffset,
-      width: cfg.legend.itemWidth,
-      height: cfg.legend.itemHeight,
-      fill: function(d) { return d.color }
-    })
+    legendIter.append('svg:rect')
+      .attr({
+        y: cfg.legend.textOverRectOffset,
+        width: cfg.legend.itemWidth,
+        height: cfg.legend.itemHeight,
+        fill: function(d) { return d.color }
+      })
 
-  legendIter.append('svg:text')
-    .text(function(d) { return d.name })
-    .attr({
-      x: cfg.legend.itemWidth / 2,
-      fill: 'white',
-      'text-anchor': 'middle',
-    })
+    legendIter.append('svg:text')
+      .text(function(d) { return d.name })
+      .attr({
+        x: cfg.legend.itemWidth / 2,
+        fill: 'white',
+        'text-anchor': 'middle',
+      })
+    }
 
   // Chart draw area group
   var chartG = svg.append('svg:g')
