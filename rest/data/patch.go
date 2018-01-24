@@ -10,8 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/google/go-github/github"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -100,10 +98,6 @@ func (p *DBPatchConnector) AbortPatchesFromPullRequest(event *github.PullRequest
 	err = model.AbortPatchesWithGithubPatchData(*event.PullRequest.ClosedAt,
 		owner, repo, *event.Number)
 	if err != nil {
-		grip.Error(message.Fields{
-			"message": "error aborting patches",
-			"error":   err.Error(),
-		})
 		return &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "error aborting patches",
