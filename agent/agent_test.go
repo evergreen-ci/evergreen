@@ -361,6 +361,26 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	s.False(s.tc.hadTimedOut())
 }
 
+func (s *AgentSuite) TestMakeTaskContext() {
+	nextTask := &apimodels.NextTaskResponse{}
+	tc := taskContext{}
+	tc = makeTaskContext(nextTask, &tc)
+	s.True(tc.shouldSetupTeardown, "if the next task is not in a group, setupTeardownGroup should be true")
+	s.Equal("", tc.taskGroup)
+
+	nextTask.TaskGroup = "foo"
+	tc.taskGroup = "foo"
+	tc = makeTaskContext(nextTask, &tc)
+	s.False(tc.shouldSetupTeardown, "if the next task is in the same group as the previous task, setupTeardownGroup should be false")
+	s.Equal("foo", tc.taskGroup)
+
+	nextTask.TaskGroup = "bar"
+	tc.taskGroup = "foo"
+	tc = makeTaskContext(nextTask, &tc)
+	s.True(tc.shouldSetupTeardown, "if the next task is in a different group from the previous task, setupTeardownGroup should be true")
+	s.Equal("bar", tc.taskGroup)
+}
+
 func TestAgentConstructorSetsHostData(t *testing.T) {
 	assert := assert.New(t) // nolint
 	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
