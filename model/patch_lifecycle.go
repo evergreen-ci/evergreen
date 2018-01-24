@@ -20,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -425,10 +426,27 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 	if err != nil {
 		return errors.Wrap(err, "initial patch fetch failed")
 	}
+	grip.Info(message.Fields{
+		"source":         "github hook",
+		"created_before": createdBefore.String(),
+		"owner":          owner,
+		"repo":           repo,
+		"message":        "fetched patches to abort",
+		"num_patches":    len(patches),
+	})
 
 	for i, _ := range patches {
 		if patches[i].Version != "" {
 			if err = AbortVersion(patches[i].Version); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"source":         "github hook",
+					"created_before": createdBefore.String(),
+					"owner":          owner,
+					"repo":           repo,
+					"message":        "failed to abort patch's version",
+					"patch_id":       patches[i].Id,
+					"version":        patches[i].Version,
+				}))
 				return errors.Wrap(err, "error aborting patch")
 			}
 		}

@@ -72,7 +72,7 @@ func (s *GithubWebhookRouteSuite) SetupTest() {
 	s.Len(s.prBody, 24743)
 	s.pushBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "push_event.json"))
 	s.NoError(err)
-	s.Len(s.prBody, 24743)
+	s.Len(s.pushBody, 7603)
 
 	var ok bool
 	s.h, ok = s.rm.Methods[0].Handler().(*githubHookApi)
@@ -107,7 +107,6 @@ func (s *GithubWebhookRouteSuite) TestAddDuplicateIntentFails() {
 	resp, err := s.h.Execute(ctx, s.sc)
 	s.Error(err)
 	s.Empty(resp.Result)
-
 	s.Len(s.sc.MockPatchIntentConnector.CachedIntents, 1)
 }
 
@@ -118,7 +117,8 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidateFailsWithoutSignature() {
 	s.NoError(err)
 	req.Header.Del("X-Hub-Signature")
 
-	err = s.rm.Methods[0].RequestHandler.ParseAndValidate(ctx, req)
+	err = s.h.ParseAndValidate(ctx, req)
+	s.Equal("pull_request", s.h.eventType)
 	s.Error(err)
 }
 
@@ -128,8 +128,23 @@ func (s *GithubWebhookRouteSuite) TestParseAndValidate() {
 	req, err := makeRequest("1", s.prBody, secret)
 	s.NoError(err)
 
-	err = s.rm.Methods[0].RequestHandler.ParseAndValidate(ctx, req)
+	err = s.h.ParseAndValidate(ctx, req)
 	s.NoError(err)
+	s.NotNil(s.h.event)
+	s.Equal("pull_request", s.h.eventType)
+	s.Equal("1", s.h.msgID)
+
+	req, err = makeRequest("2", s.pushBody, secret)
+	s.NoError(err)
+	s.NotNil(req)
+	req.Header.Del("X-Github-Event")
+	req.Header.Add("X-Github-Event", "push")
+
+	err = s.h.ParseAndValidate(ctx, req)
+	s.NoError(err)
+	s.NotNil(s.h.event)
+	s.Equal("push", s.h.eventType)
+	s.Equal("2", s.h.msgID)
 }
 
 func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
