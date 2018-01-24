@@ -244,6 +244,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						catcher.Add(errors.New("hostinit run canceled"))
 						return
 					}
+					time.Sleep(5 * time.Second)
 
 					setupStartTime := time.Now()
 					grip.Info(message.Fields{
