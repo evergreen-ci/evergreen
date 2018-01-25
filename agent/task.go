@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -228,8 +229,23 @@ func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.Task
 		return nil, errors.New("agent retrieved an empty project ref")
 	}
 
+	var confPatch *patch.Patch
+	if confVersion.Requester == evergreen.GithubPRRequester {
+		tc.logger.Execution().Info("Fetching patch.")
+		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
+		if err != nil {
+			return nil, err
+		}
+		if confPatch == nil {
+			return nil, errors.New("agent retrieved an empty patch")
+		}
+
+	} else {
+		tc.logger.Execution().Info("skipping patch fetch (not a github pr patch)")
+	}
+
 	tc.logger.Execution().Info("Constructing TaskConfig.")
-	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef)
+	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef, confPatch)
 }
 
 func (a *Agent) getExecTimeoutSecs(taskConfig *model.TaskConfig) time.Duration {
