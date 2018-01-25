@@ -419,8 +419,10 @@ func CancelPatch(p *patch.Patch, caller string) error {
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }
 
-// AbortPatchesWithGithubPatchData runs AbortPatch on patches created before
-// the given time, with the same pr number, and base repository
+// AbortPatchesWithGithubPatchData runs CancelPatch on patches created before
+// the given time, with the same pr number, and base repository. Tasks which
+// are abortable (see model/task.IsAbortable()) will be aborted, while
+// dispatched/running/completed tasks will not be affected
 func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string, prNumber int) error {
 	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
 	if err != nil {
