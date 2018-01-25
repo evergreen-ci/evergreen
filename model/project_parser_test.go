@@ -831,6 +831,8 @@ buildvariants:
 	assert.Len(tg.SetupGroup, 1)
 	assert.Len(tg.TeardownTask, 1)
 	assert.Len(tg.TeardownGroup, 1)
+	assert.Nil(tg.Patchable)
+	assert.Nil(tg.Stepback)
 
 	// check that yml with a task group that contains a nonexistent task errors
 	wrongTaskYml := `
@@ -865,6 +867,8 @@ tasks:
 - name: 1
 task_groups:
 - name: example_task_group
+  patchable: false
+  stepback: false
   tasks:
   - 1
   - 2
@@ -885,6 +889,8 @@ buildvariants:
 	for i, t := range proj.TaskGroups[0].Tasks {
 		assert.Equal(strconv.Itoa(i+1), t)
 	}
+	assert.Equal(false, *proj.TaskGroups[0].Patchable)
+	assert.Equal(false, *proj.TaskGroups[0].Stepback)
 
 	// check that dependencies parse correctly
 	dependencyYml := `
@@ -894,6 +900,8 @@ tasks:
 - name: example_task_2
 task_groups:
 - name: example_task_group
+  patchable: true
+  stepback: true
   depends_on:
   - name: example_task_0
     variant: bv
@@ -916,6 +924,8 @@ buildvariants:
 	assert.Len(proj.BuildVariants[0].Tasks, 2)
 	assert.True(proj.BuildVariants[0].Tasks[0].IsGroup)
 	assert.False(proj.BuildVariants[0].Tasks[1].IsGroup)
+	assert.Equal(true, *tg.Patchable)
+	assert.Equal(true, *tg.Stepback)
 
 	// check that tags select the correct tasks
 	tagYml := `
