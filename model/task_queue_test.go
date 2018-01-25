@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,8 +9,7 @@ import (
 )
 
 var (
-	_                 fmt.Stringer = nil
-	taskQueueTestConf              = testutil.TestConfig()
+	taskQueueTestConf = testutil.TestConfig()
 )
 
 func init() {
@@ -64,7 +62,8 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 			// make sure the db representation was updated
-			taskQueue, err := FindTaskQueueForDistro(distroId)
+			tq, err := LoadTaskQueue(distroId)
+			taskQueue := tq.(*TaskQueue)
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])

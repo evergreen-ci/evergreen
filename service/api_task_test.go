@@ -146,9 +146,9 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "task1")
 
-			currentTq, err := model.FindTaskQueueForDistro(distroId)
+			currentTq, err := model.LoadTaskQueue(distroId)
 			So(err, ShouldBeNil)
-			So(len(currentTq.Queue), ShouldEqual, 1)
+			So(currentTq.Length(), ShouldEqual, 1)
 
 			h, err := host.FindOne(host.ById(sampleHost.Id))
 			So(err, ShouldBeNil)
@@ -169,9 +169,9 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(t.Id, ShouldEqual, "task2")
 
-				currentTq, err := model.FindTaskQueueForDistro(distroId)
+				currentTq, err := model.LoadTaskQueue(distroId)
 				So(err, ShouldBeNil)
-				So(len(currentTq.Queue), ShouldEqual, 0)
+				So(currentTq.Length(), ShouldEqual, 0)
 			})
 			Convey("an empty task queue should return a nil task", func() {
 				tq.Queue = []model.TaskQueueItem{}
