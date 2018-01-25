@@ -449,7 +449,6 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 				}))
 				return errors.Wrap(err, "error aborting patch")
 			}
-
 		}
 	}
 
