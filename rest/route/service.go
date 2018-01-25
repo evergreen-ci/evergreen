@@ -5,30 +5,31 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/amboy"
 )
 
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a Connector then attaches each of the main functions for
 // the api to the router.
-func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) http.Handler {
+func AttachHandler(root *mux.Router, queue amboy.Queue, URL, prefix string, superUsers []string, githubSecret []byte) http.Handler {
 	sc := &data.DBConnector{}
 
 	sc.SetURL(URL)
 	sc.SetPrefix(prefix)
 	sc.SetSuperUsers(superUsers)
-	return GetHandler(root, sc)
+	return GetHandler(root, sc, queue, githubSecret)
 }
 
 // GetHandler builds each of the functions that this api implements and then
 // registers them on the given router. It then returns the given router as an
 // http handler which can be given more functions.
-func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
+func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecret []byte) http.Handler {
 	routes := map[string]routeManagerFactory{
 		"/":                                                    getPlaceHolderManger,
 		"/admin":                                               getAdminSettingsManager,
 		"/admin/banner":                                        getBannerRouteManager,
 		"/admin/service_flags":                                 getServiceFlagsRouteManager,
-		"/admin/restart":                                       getRestartRouteManager,
+		"/admin/restart":                                       getRestartRouteManager(queue),
 		"/builds/{build_id}":                                   getBuildByIdRouteManager,
 		"/builds/{build_id}/abort":                             getBuildAbortRouteManager,
 		"/builds/{build_id}/restart":                           getBuildRestartManager,
@@ -36,6 +37,9 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/distros":                                             getDistroRouteManager,
 		"/hosts":                                               getHostRouteManager,
 		"/hosts/{host_id}":                                     getHostIDRouteManager,
+		"/hosts/{host_id}/change_password":                     getHostChangeRDPPasswordRouteManager,
+		"/hosts/{host_id}/extend_expiration":                   getHostExtendExpirationRouteManager,
+		"/hosts/{host_id}/terminate":                           getHostTerminateRouteManager,
 		"/patches/{patch_id}":                                  getPatchByIdManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
 		"/users/{user_id}/hosts":                               getHostsByUserManager,
@@ -59,8 +63,11 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
 		"/status/hosts/distros":                                getHostStatsByDistroManager,
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
+		"/status/cli_version":                                  getCLIVersionRouteManager,
 		"/keys":                                                getKeysRouteManager,
 		"/keys/{key_name}":                                     getKeysDeleteRouteManager,
+		"/hooks/github":                                        getGithubHooksRouteManager(queue, githubSecret),
+		"/alias/{name}":                                        getAliasRouteManager,
 	}
 
 	for path, getManager := range routes {

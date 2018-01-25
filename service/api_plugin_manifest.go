@@ -58,7 +58,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		Id:          task.Version,
 		Revision:    task.Revision,
 		ProjectName: task.Project,
-		Branch:      project.Branch,
+		Branch:      projectRef.Branch,
 	}
 
 	// populate modules

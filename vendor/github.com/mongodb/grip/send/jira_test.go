@@ -108,7 +108,7 @@ func (j *JiraSuite) TestCreateMethodChangesClientState() {
 	new := &jiraClientImpl{}
 
 	j.Equal(base, new)
-	_ = new.CreateClient("foo")
+	_ = new.CreateClient(nil, "foo")
 	j.NotEqual(base, new)
 }
 

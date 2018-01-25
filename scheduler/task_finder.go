@@ -20,7 +20,7 @@ func RunnableTasksPipeline() ([]task.Task, error) {
 // instead of using $graphLookup
 func LegacyFindRunnableTasks() ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.Find(task.IsUndispatched)
+	undispatchedTasks, err := task.FindSchedulable()
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 }
 
 func AlternateTaskFinder() ([]task.Task, error) {
-	undispatchedTasks, err := task.Find(task.IsUndispatched)
+	undispatchedTasks, err := task.FindSchedulable()
 	if err != nil {
 		return nil, err
 	}
@@ -150,13 +150,16 @@ func AlternateTaskFinder() ([]task.Task, error) {
 		runnabletasks = append(runnabletasks, t)
 
 	}
-	grip.Info(catcher.Resolve())
+	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+		"runner":             RunnerName,
+		"scheduleable_tasks": len(undispatchedTasks),
+	}))
 
 	return runnabletasks, nil
 }
 
 func ParallelTaskFinder() ([]task.Task, error) {
-	undispatchedTasks, err := task.Find(task.IsUndispatched)
+	undispatchedTasks, err := task.FindSchedulable()
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +248,10 @@ func ParallelTaskFinder() ([]task.Task, error) {
 
 		runnabletasks = append(runnabletasks, t)
 	}
-	grip.Info(catcher.Resolve())
+	grip.Info(message.WrapError(catcher.Resolve(), message.Fields{
+		"runner":             RunnerName,
+		"scheduleable_tasks": len(undispatchedTasks),
+	}))
 
 	return runnabletasks, nil
 }

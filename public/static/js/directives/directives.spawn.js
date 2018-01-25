@@ -161,10 +161,24 @@ directives.spawn.directive('equals', function() {
   }
 });
 
-// the regex below is used to ensure that a string meets the windows
+// XXX: if modifying any of the password validation logic, you changes must
+// also be ported into spawn/spawn.go
+
+// the regexes below is used to ensure that a string meets the windows
 // password complexity requirements as described at:
 // http://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
-var passwordRegex = /(?=^.{6,255}$)((?=.*\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*/;
+var passwordRegexps =
+[
+        // XXX: This is technically wrong, however even ES6 does
+        // not support unicode character classes (\p{...}). In spite of this,
+        // this should work with the vast majority of users. The server
+        // will also back this up with the correct validation
+	/[a-z]/, // should be \p{Lowercase_Letter}
+	/[A-Z]/, // should be \p{Uppercase_Letter}
+	/[0-9]/,
+	/[~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?\/`]/,
+	/[^A-Za-z~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?\/`]/, // should be \p{Lo}, for characters without upper/lower case variants
+]
 
 directives.spawn.directive('complexity', function() {
   return {
@@ -172,7 +186,19 @@ directives.spawn.directive('complexity', function() {
     link: function(scope, elm, attrs, ctrl) {
       ctrl.$parsers.unshift(function(viewValue) {
         // validate the password requirements
-        ctrl.$setValidity('complexity', passwordRegex.test(viewValue));
+        var glyphs = Array.from(viewValue)
+        if(glyphs.length < 6 || glyphs.length > 255) {
+          ctrl.$setValidity('complexity', false);
+          return viewValue;
+        }
+
+        var matches = 0
+        for(var i = 0; i < passwordRegexps.length; i++) {
+            if(passwordRegexps[i].test(viewValue)) {
+                matches++
+            }
+        }
+        ctrl.$setValidity('complexity', matches >= 3);
         return viewValue;
       });
     }

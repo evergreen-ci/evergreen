@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -25,6 +25,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -54,19 +55,17 @@ type APIServer struct {
 	UserManager  auth.UserManager
 	Settings     evergreen.Settings
 	clientConfig *evergreen.ClientConfig
+	queue        amboy.Queue
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
+func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	clientConfig, err := getClientConfig(settings)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
+	clientConfig := evergreen.GetEnvironment().ClientConfig()
 
 	if err := settings.Validate(); err != nil {
 		return nil, errors.WithStack(err)
@@ -77,6 +76,7 @@ func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
 		UserManager:  authManager,
 		Settings:     *settings,
 		clientConfig: clientConfig,
+		queue:        queue,
 	}
 
 	return as, nil
@@ -361,6 +361,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		TaskId:          t.Id,
 		TaskDisplayName: t.DisplayName,
 		BuildId:         t.BuildId,
+		Execution:       t.Execution,
 	}
 
 	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)
@@ -550,7 +551,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cloudManager, err := providers.GetCloudManager(hostObj.Provider, &as.Settings)
+	cloudManager, err := cloud.GetCloudManager(hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",
@@ -609,7 +610,7 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 	// zero out the depends on and commands fields because they are
 	// unnecessary and may not get marshaled properly
 	for i := range project.Tasks {
-		project.Tasks[i].DependsOn = []model.TaskDependency{}
+		project.Tasks[i].DependsOn = []model.TaskUnitDependency{}
 		project.Tasks[i].Commands = []model.PluginCommandConf{}
 
 	}
@@ -694,7 +695,7 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	AttachRESTHandler(root, as)
 	// attaches /rest/v2 routes
 	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
-	route.AttachHandler(root, as.Settings.SuperUsers, as.Settings.ApiUrl, APIV2Prefix)
+	route.AttachHandler(root, as.queue, as.Settings.ApiUrl, APIV2Prefix, as.Settings.SuperUsers, []byte(as.Settings.Api.GithubWebhookSecret))
 
 	r := root.PathPrefix("/api/2/").Subrouter()
 	r.HandleFunc("/", home)

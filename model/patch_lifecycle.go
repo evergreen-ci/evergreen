@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -19,20 +20,32 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
+type TaskVariantPairs struct {
+	ExecTasks    TVPairSet
+	DisplayTasks TVPairSet
+}
+
 // VariantTasksToTVPairs takes a set of variants and tasks (from both the old and new
 // request formats) and builds a universal set of pairs
 // that can be used to expand the dependency tree.
-func VariantTasksToTVPairs(in []patch.VariantTasks) []TVPair {
-	out := []TVPair{}
+func VariantTasksToTVPairs(in []patch.VariantTasks) TaskVariantPairs {
+	out := TaskVariantPairs{}
 	for _, vt := range in {
 		for _, t := range vt.Tasks {
-			out = append(out, TVPair{vt.Variant, t})
+			out.ExecTasks = append(out.ExecTasks, TVPair{vt.Variant, t})
+		}
+		for _, dt := range vt.DisplayTasks {
+			out.DisplayTasks = append(out.DisplayTasks, TVPair{vt.Variant, dt.Name})
+			for _, et := range dt.ExecTasks {
+				out.ExecTasks = append(out.ExecTasks, TVPair{vt.Variant, et})
+			}
 		}
 	}
 	return out
@@ -41,13 +54,19 @@ func VariantTasksToTVPairs(in []patch.VariantTasks) []TVPair {
 // TVPairsToVariantTasks takes a list of TVPairs (task/variant pairs), groups the tasks
 // for the same variant together under a single list, and return all the variant groups
 // as a set of patch.VariantTasks.
-func TVPairsToVariantTasks(in []TVPair) []patch.VariantTasks {
+func (tvp *TaskVariantPairs) TVPairsToVariantTasks() []patch.VariantTasks {
 	vtMap := map[string]patch.VariantTasks{}
-	for _, pair := range in {
+	for _, pair := range tvp.ExecTasks {
 		vt := vtMap[pair.Variant]
 		vt.Variant = pair.Variant
 		vt.Tasks = append(vt.Tasks, pair.TaskName)
 		vtMap[pair.Variant] = vt
+	}
+	for _, dt := range tvp.DisplayTasks {
+		variant := vtMap[dt.Variant]
+		variant.Variant = dt.Variant
+		variant.DisplayTasks = append(variant.DisplayTasks, patch.DisplayTask{Name: dt.TaskName})
+		vtMap[dt.Variant] = variant
 	}
 	vts := []patch.VariantTasks{}
 	for _, vt := range vtMap {
@@ -70,8 +89,8 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // Given a patch version and a list of variant/task pairs, creates the set of new builds that
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
-	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, tasks TaskVariantPairs) error {
+	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
@@ -85,17 +104,15 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 		variantsProcessed[b.BuildVariant] = true
 	}
 
-	for _, pair := range pairs {
+	for _, pair := range tasks.ExecTasks {
 		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
 			continue
 		}
 		variantsProcessed[pair.Variant] = true
 		// Extract the unique set of task names for the variant we're about to create
-		taskNames := pairs.TaskNames(pair.Variant)
-		if len(taskNames) == 0 {
-			continue
-		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, pair.Variant, p.Activated, taskNames)
+		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
+		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, taskIds, pair.Variant, p.Activated, taskNames, displayNames)
 		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			patchVersion.Id, pair.Variant, p.Activated)
 		if err != nil {
@@ -124,7 +141,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
-func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
+func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TaskVariantPairs) error {
 	builds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey))
 	if err != nil {
 		return err
@@ -147,17 +164,24 @@ func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project 
 		// build a list of tasks that haven't been created yet for the given variant, but have
 		// a record in the TVPairSet indicating that it should exist
 		tasksToAdd := []string{}
-		for _, taskname := range pairs.TaskNames(b.BuildVariant) {
+		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
 			if _, ok := existingTasksIndex[taskname]; ok {
 				continue
 			}
 			tasksToAdd = append(tasksToAdd, taskname)
 		}
+		displayTasksToAdd := []string{}
+		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
+			if _, ok := existingTasksIndex[taskname]; ok {
+				continue
+			}
+			displayTasksToAdd = append(displayTasksToAdd, taskname)
+		}
 		if len(tasksToAdd) == 0 { // no tasks to add, so we do nothing.
 			continue
 		}
 		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, project, patchVersion, tasksToAdd); err != nil {
+		if _, err = AddTasksToBuild(&b, project, patchVersion, tasksToAdd, displayTasksToAdd); err != nil {
 			return err
 		}
 	}
@@ -183,11 +207,32 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		if patchPart.ModuleName != "" {
 			continue
 		}
-		// write patch file
-		patchFilePath, err := util.WriteToTempFile(patchPart.PatchSet.Patch)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not write patch file")
+
+		var patchFilePath string
+		var err error
+		if patchPart.PatchSet.Patch == "" {
+			reader, err := db.GetGridFile(patch.GridFSPrefix, patchPart.PatchSet.PatchFileId)
+			if err != nil {
+				return nil, errors.Wrap(err, "Can't fetch patch file from gridfs")
+			}
+			defer reader.Close()
+			bytes, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return nil, errors.Wrap(err, "Can't read patch file contents from gridfs")
+			}
+
+			patchFilePath, err = util.WriteToTempFile(string(bytes))
+			if err != nil {
+				return nil, errors.Wrap(err, "could not write temporary patch file")
+			}
+
+		} else {
+			patchFilePath, err = util.WriteToTempFile(patchPart.PatchSet.Patch)
+			if err != nil {
+				return nil, errors.Wrap(err, "could not write temporary patch file")
+			}
 		}
+
 		defer os.Remove(patchFilePath)
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
@@ -235,13 +280,17 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		defer stderr.Close()
 		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
 		defer stdout.Close()
+		output := subprocess.OutputOptions{Output: stdout, Error: stderr}
 
-		patchCmd := &subprocess.LocalCommand{
-			CmdString:        strings.Join(patchCommandStrings, "\n"),
-			WorkingDirectory: workingDirectory,
-			Stdout:           stdout,
-			Stderr:           stderr,
-			ScriptMode:       true,
+		patchCmd := subprocess.NewLocalCommand(
+			strings.Join(patchCommandStrings, "\n"),
+			workingDirectory,
+			"bash",
+			nil,
+			true)
+
+		if err = patchCmd.SetOutput(output); err != nil {
+			return nil, errors.Wrap(err, "problem configuring command output")
 		}
 
 		ctx := context.TODO()
@@ -266,7 +315,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Version, error) {
+func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
 	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
@@ -281,10 +330,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		return nil, errors.WithStack(err)
 	}
 
-	gitCommit, err := thirdparty.GetCommitEvent(
-		settings.Credentials["github"],
-		projectRef.Owner, projectRef.Repo, p.Githash,
-	)
+	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
@@ -303,28 +349,31 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		BuildVariants:       []version.BuildStatus{},
 		Config:              p.PatchedConfig,
 		Status:              evergreen.PatchCreated,
-		Requester:           evergreen.PatchVersionRequester,
+		Requester:           requester,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
 	}
 
-	var pairs []TVPair
+	tasks := TaskVariantPairs{}
 	if len(p.VariantsTasks) > 0 {
-		pairs = VariantTasksToTVPairs(p.VariantsTasks)
+		tasks = VariantTasksToTVPairs(p.VariantsTasks)
 	} else {
 		// handle case where the patch is being finalized but only has the old schema tasks/variants
 		// instead of the new one.
 		for _, v := range p.BuildVariants {
 			for _, t := range p.Tasks {
 				if project.FindTaskForVariant(t, v) != nil {
-					pairs = append(pairs, TVPair{v, t})
+					tasks.ExecTasks = append(tasks.ExecTasks, TVPair{v, t})
 				}
 			}
 		}
-		p.VariantsTasks = TVPairsToVariantTasks(pairs)
+		p.VariantsTasks = (&TaskVariantPairs{
+			ExecTasks:    tasks.ExecTasks,
+			DisplayTasks: tasks.DisplayTasks,
+		}).TVPairsToVariantTasks()
 	}
 
-	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
+	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
 	variantsProcessed := map[string]bool{}
 	for _, vt := range p.VariantsTasks {
 		if _, ok := variantsProcessed[vt.Variant]; ok {
@@ -332,7 +381,11 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		}
 
 		var buildId string
-		buildId, err = CreateBuildFromVersion(project, patchVersion, tt, vt.Variant, true, vt.Tasks)
+		var displayNames []string
+		for _, dt := range vt.DisplayTasks {
+			displayNames = append(displayNames, dt.Name)
+		}
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks, displayNames)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -364,4 +417,40 @@ func CancelPatch(p *patch.Patch, caller string) error {
 	}
 
 	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
+}
+
+// AbortPatchesWithGithubPatchData runs AbortPatch on patches created before
+// the given time, with the same pr number, and base repository
+func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string, prNumber int) error {
+	patches, err := patch.Find(patch.ByGithubPRAndCreatedBefore(createdBefore, owner, repo, prNumber))
+	if err != nil {
+		return errors.Wrap(err, "initial patch fetch failed")
+	}
+	grip.Info(message.Fields{
+		"source":         "github hook",
+		"created_before": createdBefore.String(),
+		"owner":          owner,
+		"repo":           repo,
+		"message":        "fetched patches to abort",
+		"num_patches":    len(patches),
+	})
+
+	for i, _ := range patches {
+		if patches[i].Version != "" {
+			if err = AbortVersion(patches[i].Version); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"source":         "github hook",
+					"created_before": createdBefore.String(),
+					"owner":          owner,
+					"repo":           repo,
+					"message":        "failed to abort patch's version",
+					"patch_id":       patches[i].Id,
+					"version":        patches[i].Version,
+				}))
+				return errors.Wrap(err, "error aborting patch")
+			}
+		}
+	}
+
+	return nil
 }

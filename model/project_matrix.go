@@ -39,7 +39,7 @@ type matrix struct {
 	BatchTime   *int              `yaml:"batchtime"`
 	Stepback    *bool             `yaml:"stepback"`
 	RunOn       parserStringSlice `yaml:"run_on"`
-	Tasks       parserBVTasks     `yaml:"tasks"`
+	Tasks       parserBVTaskUnits     `yaml:"tasks"`
 	Rules       []matrixRule      `yaml:"rules"`
 }
 
@@ -403,7 +403,7 @@ type matrixRule struct {
 type ruleAction struct {
 	Set         *axisValue        `yaml:"set"`
 	RemoveTasks parserStringSlice `yaml:"remove_tasks"`
-	AddTasks    parserBVTasks     `yaml:"add_tasks"`
+	AddTasks    parserBVTaskUnits     `yaml:"add_tasks"`
 }
 
 // mergeAxisValue overwrites a parserBV's fields based on settings
@@ -481,31 +481,31 @@ func expandExpansions(in, exp util.Expansions) (util.Expansions, error) {
 }
 
 // expandParserBVTask expands strings inside parserBVTs.
-func expandParserBVTask(pbvt parserBVTask, exp util.Expansions) (parserBVTask, error) {
+func expandParserBVTask(pbvt parserBVTaskUnit, exp util.Expansions) (parserBVTaskUnit, error) {
 	var err error
 	newTask := pbvt
 	newTask.Name, err = exp.ExpandString(pbvt.Name)
 	if err != nil {
-		return parserBVTask{}, errors.Wrap(err, "expanding name")
+		return parserBVTaskUnit{}, errors.Wrap(err, "expanding name")
 	}
 	newTask.RunOn, err = expandStrings(pbvt.RunOn, exp)
 	if err != nil {
-		return parserBVTask{}, errors.Wrap(err, "expanding run_on")
+		return parserBVTaskUnit{}, errors.Wrap(err, "expanding run_on")
 	}
 	newTask.Distros, err = expandStrings(pbvt.Distros, exp)
 	if err != nil {
-		return parserBVTask{}, errors.Wrap(err, "expanding distros")
+		return parserBVTaskUnit{}, errors.Wrap(err, "expanding distros")
 	}
 	var newDeps parserDependencies
 	for i, d := range pbvt.DependsOn {
 		newDep := d
 		newDep.Status, err = exp.ExpandString(d.Status)
 		if err != nil {
-			return parserBVTask{}, errors.Wrapf(err, "expanding depends_on[%d/%d].status", i, len(pbvt.DependsOn))
+			return parserBVTaskUnit{}, errors.Wrapf(err, "expanding depends_on[%d/%d].status", i, len(pbvt.DependsOn))
 		}
 		newDep.taskSelector, err = expandTaskSelector(d.taskSelector, exp)
 		if err != nil {
-			return parserBVTask{}, errors.Wrapf(err, "expanding depends_on[%d/%d]", i, len(pbvt.DependsOn))
+			return parserBVTaskUnit{}, errors.Wrapf(err, "expanding depends_on[%d/%d]", i, len(pbvt.DependsOn))
 		}
 		newDeps = append(newDeps, newDep)
 	}
@@ -514,7 +514,7 @@ func expandParserBVTask(pbvt parserBVTask, exp util.Expansions) (parserBVTask, e
 	for i, r := range pbvt.Requires {
 		newReq, err := expandTaskSelector(r, exp)
 		if err != nil {
-			return parserBVTask{}, errors.Wrapf(err, "expanding requires[%d/%d]", i, len(pbvt.Requires))
+			return parserBVTaskUnit{}, errors.Wrapf(err, "expanding requires[%d/%d]", i, len(pbvt.Requires))
 		}
 		newReqs = append(newReqs, newReq)
 	}

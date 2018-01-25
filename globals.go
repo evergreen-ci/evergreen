@@ -13,7 +13,8 @@ type (
 )
 
 const (
-	User = "mci"
+	User            = "mci"
+	GithubPatchUser = "github_pull_request"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -80,8 +81,11 @@ const (
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
-	EvergreenHome        = "EVGHOME"
-	LocalLoggingOverride = "LOCAL"
+	EvergreenHome = "EVGHOME"
+
+	// Special logging output targets
+	LocalLoggingOverride          = "LOCAL"
+	StandardOutputLoggingOverride = "STDOUT"
 
 	DefaultTaskActivator   = ""
 	StepbackTaskActivator  = "stepback"
@@ -99,6 +103,8 @@ const (
 
 	SetupScriptName    = "setup.sh"
 	TeardownScriptName = "teardown.sh"
+
+	RoutePaginatorNextPageHeaderKey = "Link"
 )
 
 // evergreen package names
@@ -120,22 +126,30 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2OnDemand  = "ec2"
-	ProviderNameEc2Spot      = "ec2-spot"
-	ProviderNameDigitalOcean = "digitalocean"
-	ProviderNameDocker       = "docker"
-	ProviderNameGce          = "gce"
-	ProviderNameStatic       = "static"
-	ProviderNameOpenstack    = "openstack"
+	ProviderNameEc2OnDemand    = "ec2"
+	ProviderNameEc2Spot        = "ec2-spot"
+	ProviderNameEc2OnDemandNew = "ec2-ondemand"
+	ProviderNameEc2SpotNew     = "ec2-spot-new"
+	ProviderNameEc2Auto        = "ec2-auto"
+	ProviderNameDigitalOcean   = "digitalocean"
+	ProviderNameDocker         = "docker"
+	ProviderNameGce            = "gce"
+	ProviderNameStatic         = "static"
+	ProviderNameOpenstack      = "openstack"
+	ProviderNameVsphere        = "vsphere"
+	ProviderNameMock           = "mock"
 )
 
 const (
+	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
+
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"
 	ClientDirectory   = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"
+	GithubPRRequester           = "github_pull_request"
 	RepotrackerVersionRequester = "gitter_request"
 )
 
@@ -147,6 +161,9 @@ const (
 	defaultAmboyQueueName        = "evg.service"
 	defaultAmboyDBName           = "amboy"
 )
+
+// NameTimeFormat is the format in which to log times like instance start time.
+const NameTimeFormat = "20060102150405"
 
 var (
 	// UphostStatus is a list of all hostb statuses that are considered "up."
@@ -179,4 +196,8 @@ func FindEvergreenHome() string {
 // IsSystemActivator returns true when the task activator is Evergreen.
 func IsSystemActivator(caller string) bool {
 	return caller == DefaultTaskActivator || caller == APIServerTaskActivator
+}
+
+func IsPatchRequester(requester string) bool {
+	return requester == PatchVersionRequester || requester == GithubPRRequester
 }

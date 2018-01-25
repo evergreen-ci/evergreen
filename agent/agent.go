@@ -34,17 +34,20 @@ type Options struct {
 	WorkingDirectory   string
 	HeartbeatInterval  time.Duration
 	AgentSleepInterval time.Duration
+	Cleanup            bool
 }
 
 type taskContext struct {
-	currentCommand command.Command
-	logger         client.LoggerProducer
-	statsCollector *StatsCollector
-	task           client.TaskData
-	taskConfig     *model.TaskConfig
-	taskDirectory  string
-	timeout        time.Duration
-	timedOut       bool
+	currentCommand           command.Command
+	logger                   client.LoggerProducer
+	statsCollector           *StatsCollector
+	task                     client.TaskData
+	taskGroup                string
+	runGroupSetupAndTeardown bool
+	taskConfig               *model.TaskConfig
+	taskDirectory            string
+	timeout                  time.Duration
+	timedOut                 bool
 	sync.RWMutex
 }
 
@@ -65,7 +68,9 @@ func New(opts Options, comm client.Communicator) *Agent {
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(ctx, a.opts.StatusPort)
-	tryCleanupDirectory(a.opts.WorkingDirectory)
+	if a.opts.Cleanup {
+		tryCleanupDirectory(a.opts.WorkingDirectory)
+	}
 	return errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 }
 
@@ -91,6 +96,7 @@ func (a *Agent) loop(ctx context.Context) error {
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
+	var tc taskContext
 	for {
 		select {
 		case <-ctx.Done():
@@ -105,12 +111,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				if nextTask.TaskSecret == "" {
 					return errors.New("task response missing secret")
 				}
-				tc := taskContext{
-					task: client.TaskData{
-						ID:     nextTask.TaskId,
-						Secret: nextTask.TaskSecret,
-					},
-				}
+				tc = makeTaskContext(nextTask, &tc)
 				if err := a.resetLogging(lgrCtx, &tc); err != nil {
 					return errors.WithStack(err)
 				}
@@ -127,10 +128,26 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
+func makeTaskContext(nextTask *apimodels.NextTaskResponse, tc *taskContext) taskContext {
+	setupTeardownGroup := false
+	if nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup {
+		setupTeardownGroup = true
+	}
+	tc.taskGroup = nextTask.TaskGroup
+	return taskContext{
+		task: client.TaskData{
+			ID:     nextTask.TaskId,
+			Secret: nextTask.TaskSecret,
+		},
+		taskGroup:                nextTask.TaskGroup,
+		runGroupSetupAndTeardown: setupTeardownGroup,
+	}
+}
+
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
 	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
 
-	sender, err := GetSender(a.opts.LogPrefix, tc.task.ID)
+	sender, err := GetSender(ctx, a.opts.LogPrefix, tc.task.ID)
 	if err != nil {
 		return errors.Wrap(err, "problem getting sender")
 	}
@@ -291,13 +308,15 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 }
 
 func (a *Agent) killProcs(tc *taskContext) {
-	grip.Infof("cleaning up processes for task: %s", tc.task.ID)
+	if a.opts.Cleanup {
+		grip.Infof("cleaning up processes for task: %s", tc.task.ID)
 
-	if tc.task.ID != "" {
-		if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
-			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
-			grip.Critical(msg)
+		if tc.task.ID != "" {
+			if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
+				msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
+				grip.Critical(msg)
+			}
 		}
+		grip.Infof("processes cleaned up for task %s", tc.task.ID)
 	}
-	grip.Infof("processes cleaned up for task %s", tc.task.ID)
 }

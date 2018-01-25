@@ -1,15 +1,22 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/amboy/job"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -126,27 +133,60 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string            `json:"id"`
-		DisplayName        string            `json:"display_name"`
-		RemotePath         string            `json:"remote_path"`
-		BatchTime          int               `json:"batch_time"`
-		DeactivatePrevious bool              `json:"deactivate_previous"`
-		Branch             string            `json:"branch_name"`
-		ProjVarsMap        map[string]string `json:"project_vars"`
-		PrivateVars        map[string]bool   `json:"private_vars"`
-		Enabled            bool              `json:"enabled"`
-		Private            bool              `json:"private"`
-		Owner              string            `json:"owner_name"`
-		Repo               string            `json:"repo_name"`
-		Admins             []string          `json:"admins"`
+		Identifier         string                  `json:"id"`
+		DisplayName        string                  `json:"display_name"`
+		RemotePath         string                  `json:"remote_path"`
+		BatchTime          int                     `json:"batch_time"`
+		DeactivatePrevious bool                    `json:"deactivate_previous"`
+		Branch             string                  `json:"branch_name"`
+		ProjVarsMap        map[string]string       `json:"project_vars"`
+		PatchDefinitions   []model.PatchDefinition `json:"patch_definitions"`
+		PrivateVars        map[string]bool         `json:"private_vars"`
+		Enabled            bool                    `json:"enabled"`
+		Private            bool                    `json:"private"`
+		Owner              string                  `json:"owner_name"`
+		Repo               string                  `json:"repo_name"`
+		Admins             []string                `json:"admins"`
+		TracksPushEvents   bool                    `json:"tracks_push_events"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
+		SetupGithubHook     bool `json:"setup_github_hook"`
+		ForceRepotrackerRun bool `json:"force_repotracker_run"`
 	}{}
 
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	errs := []string{}
+	for i, pd := range responseRef.PatchDefinitions {
+		if strings.TrimSpace(pd.Alias) == "" {
+			errs = append(errs, fmt.Sprintf("alias name #%d can't be empty string", i+1))
+		}
+		if strings.TrimSpace(pd.Variant) == "" {
+			errs = append(errs, fmt.Sprintf("variant regex #%d can't be empty string", i+1))
+		}
+		if strings.TrimSpace(pd.Task) == "" && len(pd.Tags) == 0 {
+			errs = append(errs, fmt.Sprintf("must specify either task regex or tags on line #%d ", i+1))
+		}
+
+		if _, err := regexp.Compile(pd.Variant); err != nil {
+			errs = append(errs, fmt.Sprintf("variant regex #%d is invalid", i+1))
+		}
+		if _, err := regexp.Compile(pd.Task); err != nil {
+			errs = append(errs, fmt.Sprintf("task regex #%d is invalid", i+1))
+		}
+	}
+	if len(errs) > 0 {
+		errMsg := ""
+		for _, err := range errs {
+			errMsg += err + ", "
+		}
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New(errMsg))
+
 		return
 	}
 
@@ -161,6 +201,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Repo = responseRef.Repo
 	projectRef.Admins = responseRef.Admins
 	projectRef.Identifier = id
+	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 
 	projectRef.Alerts = map[string][]model.AlertConfig{}
 	for triggerId, alerts := range responseRef.AlertConfig {
@@ -173,17 +214,52 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = projectRef.Upsert()
+	projectVars, err := model.FindOneProjectVars(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
 
+	if responseRef.SetupGithubHook {
+		if projectVars.GithubHookID == 0 {
+			if projectVars.GithubHookID, err = uis.setupGithubHook(projectRef); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+		}
+
+	} else {
+		if projectVars.GithubHookID != 0 {
+			if err = uis.deleteGithubHook(projectRef, projectVars.GithubHookID); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			projectVars.GithubHookID = 0
+			projectRef.TracksPushEvents = false
+		}
+	}
+
+	if projectVars.GithubHookID != 0 && projectRef.TracksPushEvents &&
+		responseRef.ForceRepotrackerRun {
+		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
+		if err := uis.queue.Put(j); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	err = projectRef.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars}
-	_, err = projectVars.Upsert()
+	projectVars.Vars = responseRef.ProjVarsMap
+	projectVars.PrivateVars = responseRef.PrivateVars
+	projectVars.PatchDefinitions = responseRef.PatchDefinitions
 
+	_, err = projectVars.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -304,4 +380,78 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) {
+	token, err := uis.Settings.GetGithubOauthToken()
+	if err != nil {
+		return 0, err
+	}
+
+	if uis.Settings.Api.GithubWebhookSecret == "" {
+		return 0, errors.New("Evergreen is not configured for Github Webhooks")
+	}
+
+	httpClient, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return 0, err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+	newHook := github.Hook{
+		Name:   github.String("web"),
+		Active: github.Bool(true),
+		Events: []string{"*"},
+		Config: map[string]interface{}{
+			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.ApiUrl)),
+			"content_type": github.String("json"),
+			"secret":       github.String(uis.Settings.Api.GithubWebhookSecret),
+			"insecure_ssl": github.String("0"),
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	hook, resp, err := client.Repositories.CreateHook(ctx, projectRef.Owner, projectRef.Repo, &newHook)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated || hook == nil || hook.ID == nil {
+		return 0, errors.New("unexpected data from github")
+	}
+
+	return *hook.ID, nil
+}
+
+func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) error {
+	token, err := uis.Settings.GetGithubOauthToken()
+	if err != nil {
+		return err
+	}
+
+	if uis.Settings.Api.GithubWebhookSecret == "" {
+		return errors.New("Evergreen is not configured for Github Webhooks")
+	}
+
+	httpClient, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return err
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := client.Repositories.DeleteHook(ctx, projectRef.Owner, projectRef.Repo, hookID)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
+		return errors.Errorf("unexpected data from github: status code was %d %s",
+			resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	return nil
 }

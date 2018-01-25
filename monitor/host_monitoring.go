@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
@@ -98,7 +97,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 	})
 
 	// get a cloud version of the host
-	cloudHost, err := providers.GetCloudHost(&host, settings)
+	cloudHost, err := cloud.GetCloudHost(&host, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud host for host %v: %v", host.Id)
 	}
@@ -143,13 +142,14 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 		grip.Info(message.Fields{
 			"runner":    RunnerName,
 			"operation": "monitorReachability",
-			"message":   "Host terminated externally; updating db status to terminated",
+			"message":   "host terminated externally",
 			"host":      host.Id,
+			"distro":    host.Distro.Id,
 		})
 		event.LogHostTerminatedExternally(host.Id)
 
 		// the instance was terminated from outside our control
-		if err := host.SetTerminated(); err != nil {
+		if err := host.SetTerminated("external"); err != nil {
 			return errors.Wrapf(err, "error setting host %s terminated", host.Id)
 		}
 	}

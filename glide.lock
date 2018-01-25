@@ -66,19 +66,18 @@ imports:
 
   - name: github.com/urfave/negroni
     version: c262547a5086067ebe455c81db5cc52eb298ac3c
+  - name: github.com/urfave/cli
+    version: 01857ac33766ce0c93856370626f9799281c14f4
+
 
   - name: github.com/evergreen-ci/render
     version: efb1df5f8dc1036d747e92e7b875ebb7557f0173
   - name: github.com/evergreen-ci/crowd
     version: dd8ffe015fd8950a70330076037c3d979b7ff548
-  - name: github.com/jessevdk/go-flags
-    version: 5e118789801496c93ba210d34ef1f2ce5a9173bd
   - name: github.com/kardianos/osext
     version: 6e7f843663477789fac7c02def0d0909e969b4e5
   - name: github.com/sabhiram/go-git-ignore
     version: 228fcfa2a06e870a3ef238d54c45ea847f492a37
-  - name: github.com/tylerb/graceful
-    version: d72b0151351a13d0421b763b88f791469c4f5dc7
   - name: github.com/dustin/go-humanize
     version: f3565c9525600a911af3bd34f8b535ea81b2a9e0
   - name: github.com/mitchellh/go-homedir
@@ -88,7 +87,7 @@ imports:
   - name: github.com/go-ini/ini
     version: 6e4869b434bd001f6983749881c7ead3545887d8
   - name: github.com/aws/aws-sdk-go
-    version: 87a2cff6c2601f69429f336067d1deb7f713d1c6
+    version: 1cb9ce3dbddddab4a70e25ec1a5a60f1647b7e0b
 
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
@@ -108,9 +107,18 @@ imports:
   - name: golang.org/x/sys
     version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
 
+  - name: github.com/google/shlex
+    version: 6f45313302b9c56850fc17f99e40caebce98c716
+
   - name: github.com/mongodb/grip
-    version: e8ecb4be02168a2960c75f698f7030101e7f10d1
+    version: 79f9ca49e45f128fb1cf4e7b61aa5b92f969cbf0
   - name: github.com/mongodb/anser
-    version: 32a2ae0409baabaf30b9bf42d774f0f142f0ec64
+    version: bd4fe7221ab54dbda35d2346cc2fe92a8dc87a8a
   - name: github.com/mongodb/amboy
-    version: 9e3f4bcf531e52e0574ad1116c7511b344a76134
+    version: 43b882a3e85aac0822a276ab8bb365e878b039a4
+  - name: github.com/google/go-github
+    version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
+  - name: github.com/google/go-querystring
+    version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
+  - name: github.com/newrelic/go-agent
+    version: f5bce3387232559bcbe6a5f8227c4bf508dac1ba

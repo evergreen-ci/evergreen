@@ -4,10 +4,13 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFindProject(t *testing.T) {
@@ -98,19 +101,19 @@ func TestGetVariantsWithTask(t *testing.T) {
 		project := &Project{
 			BuildVariants: []BuildVariant{
 				{
-					Name:  "bv1",
-					Tasks: []BuildVariantTask{{Name: "suite1"}},
+					Name:      "bv1",
+					Tasks: []BuildVariantTaskUnit{{Name: "suite1"}},
 				},
 				{
 					Name: "bv2",
-					Tasks: []BuildVariantTask{
+					Tasks: []BuildVariantTaskUnit{
 						{Name: "suite1"},
 						{Name: "suite2"},
 					},
 				},
 				{
-					Name:  "bv3",
-					Tasks: []BuildVariantTask{{Name: "suite2"}},
+					Name:      "bv3",
+					Tasks: []BuildVariantTaskUnit{{Name: "suite2"}},
 				},
 			},
 		}
@@ -160,7 +163,7 @@ func TestGetModuleRepoName(t *testing.T) {
 
 func TestPopulateBVT(t *testing.T) {
 
-	Convey("With a test Project and BuildVariantTask", t, func() {
+	Convey("With a test Project and BuildVariantTaskUnit", t, func() {
 
 		project := &Project{
 			Tasks: []ProjectTask{
@@ -168,20 +171,20 @@ func TestPopulateBVT(t *testing.T) {
 					Name:            "task1",
 					ExecTimeoutSecs: 500,
 					Stepback:        boolPtr(false),
-					DependsOn:       []TaskDependency{{Name: "other"}},
+					DependsOn:       []TaskUnitDependency{{Name: "other"}},
 					Priority:        1000,
 					Patchable:       boolPtr(false),
 				},
 			},
 			BuildVariants: []BuildVariant{
 				{
-					Name:  "test",
-					Tasks: []BuildVariantTask{{Name: "task1", Priority: 5}},
+					Name:      "test",
+					Tasks: []BuildVariantTaskUnit{{Name: "task1", Priority: 5}},
 				},
 			},
 		}
 
-		Convey("updating a BuildVariantTask with unset fields", func() {
+		Convey("updating a BuildVariantTaskUnit with unset fields", func() {
 			bvt := project.BuildVariants[0].Tasks[0]
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
@@ -198,12 +201,12 @@ func TestPopulateBVT(t *testing.T) {
 			})
 		})
 
-		Convey("updating a BuildVariantTask with set fields", func() {
-			bvt := BuildVariantTask{
+		Convey("updating a BuildVariantTaskUnit with set fields", func() {
+			bvt := BuildVariantTaskUnit{
 				Name:            "task1",
 				ExecTimeoutSecs: 2,
 				Stepback:        boolPtr(true),
-				DependsOn:       []TaskDependency{{Name: "task2"}, {Name: "task3"}},
+				DependsOn:       []TaskUnitDependency{{Name: "task2"}, {Name: "task3"}},
 			}
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
@@ -270,4 +273,187 @@ func TestIgnoresAllFiles(t *testing.T) {
 
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+func TestAliasResolution(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(ProjectVarsCollection), t, "Error clearing collection")
+	vars := ProjectVars{
+		Id: "project",
+		PatchDefinitions: []PatchDefinition{
+			{
+				Alias:   "all",
+				Variant: ".*",
+				Task:    ".*",
+			},
+			{
+				Alias:   "bv2",
+				Variant: ".*_2",
+				Task:    ".*",
+			},
+			{
+				Alias:   "2tasks",
+				Variant: ".*",
+				Task:    ".*_2",
+			},
+			{
+				Alias:   "aTags",
+				Variant: ".*",
+				Tags:    []string{"a"},
+			},
+			{
+				Alias:   "aTags_2tasks",
+				Variant: ".*",
+				Task:    ".*_2",
+				Tags:    []string{"a"},
+			},
+		},
+	}
+	assert.NoError(vars.Insert())
+	p := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv_1",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "a_task_1",
+					},
+					{
+						Name: "a_task_2",
+					},
+					{
+						Name: "b_task_1",
+					},
+					{
+						Name: "b_task_2",
+					},
+				},
+			},
+			{
+				Name: "bv_2",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "a_task_1",
+					},
+					{
+						Name: "a_task_2",
+					},
+					{
+						Name: "b_task_1",
+					},
+					{
+						Name: "b_task_2",
+					},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{
+				Name: "a_task_1",
+				Tags: []string{"a", "1"},
+			},
+			{
+				Name: "a_task_2",
+				Tags: []string{"a", "2"},
+			},
+			{
+				Name: "b_task_1",
+				Tags: []string{"b", "1"},
+			},
+			{
+				Name: "b_task_2",
+				Tags: []string{"b", "2"},
+			},
+		},
+	}
+
+	// test that .* on variants and tasks selects everything
+	pairs, err := p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[0].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 8)
+
+	// test that the .*_2 regex on variants selects just bv_2
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[1].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 4)
+	for _, pair := range pairs {
+		assert.Equal("bv_2", pair.Variant)
+	}
+
+	// test that the .*_2 regex on tasks selects just the _2 tasks
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[2].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 4)
+	for _, pair := range pairs {
+		assert.Contains(pair.TaskName, "task_2")
+	}
+
+	// test that the 'a' tag only selects 'a' tasks
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[3].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 4)
+	for _, pair := range pairs {
+		assert.Contains(pair.TaskName, "a_task")
+	}
+
+	// test that the 'a' tag and .*_2 regex selects the union of both
+	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[4].Alias)
+	assert.NoError(err)
+	assert.Len(pairs, 6)
+	for _, pair := range pairs {
+		assert.NotEqual("b_task_1", pair.TaskName)
+	}
+}
+
+func TestGetTaskGroup(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
+	tgName := "example_task_group"
+	projYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  max_hosts: 2
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_group:
+  - command: shell.exec
+    params:
+      script: "echo teardown_group"
+  setup_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+`
+	proj, errs := projectFromYAML([]byte(projYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	v := version.Version{
+		Id:     "v1",
+		Config: projYml,
+	}
+	assert.NoError(v.Insert())
+	t1 := task.Task{
+		Id:        "t1",
+		TaskGroup: task.FormTaskGroupId(tgName, v.Id),
+		Version:   v.Id,
+	}
+
+	tg, err := GetTaskGroup(&t1)
+	assert.NoError(err)
+	assert.Equal(tgName, tg.Name)
+	assert.Len(tg.Tasks, 2)
+	assert.Equal(2, tg.MaxHosts)
 }

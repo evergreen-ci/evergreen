@@ -10,7 +10,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     return revision.revision === $scope.task.gitspec;
   }
 
-  if (window.hasBanner) {
+  if (window.hasBanner && !isDismissed(bannerText())) {
     $("#drawer").addClass("bannerMargin");
     $("#page-content").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
@@ -244,7 +244,11 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   // Returns true if 'testResult' represents a test failure, and returns false otherwise.
   $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
     var failureStatuses = ['fail', 'silentfail'];
-    return failureStatuses.indexOf(testResult.status) >= 0;
+    return failureStatuses.indexOf(testResult.test_result.status) >= 0;
+  };
+
+  $scope.isSuccessful = function(testResult) {
+    return testResult.test_result.status === 'pass';
   };
 
   $scope.getURL = function(testResult, isRaw) {
@@ -263,6 +267,10 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     }
 
     return url;
+  };
+
+  $scope.execTaskUrl = function(taskId) {
+    return '/task/' + taskId;
   };
 
   $scope.hideURL = function(testResult, isRaw) {
@@ -312,31 +320,32 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     /**
      * Defines the sort order for a test's status.
      */
-    function ordinalForTestStatus(testResult) {
+    function ordinalForTestStatus(task) {
       var orderedTestStatuses = ['fail', 'silentfail', 'pass', 'skip'];
-      return orderedTestStatuses.indexOf(testResult.status);
+      return orderedTestStatuses.indexOf(task.test_result.status);
     }
 
     $scope.sortOrders = [{
       name: 'Status',
-      by: [ordinalForTestStatus, 'display_name'],
+      by: [ordinalForTestStatus, 'test_result.display_name'],
       reverse: false
     }, {
       name: 'Name',
-      by: ['display_name'],
+      by: ['test_result.display_name'],
       reverse: false
     }, {
       name: 'Time Taken',
-      by: ['time_taken', 'display_name'],
+      by: ['test_result.time_taken', 'test_result.display_name'],
       reverse: true
     }, {
       name: 'Sequence',
-      by: [''],
+      by: ['test_result'],
       reverse: true
     }];
 
     var totalTestTime = 0;
-    (task.test_results || []).forEach(function(testResult) {
+    (task.test_results || []).forEach(function(t) {
+      var testResult = t.test_result;
       testResult.time_taken = testResult.end - testResult.start;
       totalTestTime += testResult.time_taken;
       testResult.display_name = $filter('endOfPath')(testResult.test_file);
@@ -426,10 +435,13 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
 
   // Returns URL to task history page with a filter on the particular test
   // and test status enabled.
-  $scope.getTestHistoryUrl = function(project, task, test) {
+  $scope.getTestHistoryUrl = function(project, task, test, taskName) {
+    if (!taskName || taskName === "") {
+      taskName = task.display_name;
+    }
     var url = '/task_history/' +
       encodeURIComponent(project) + '/' +
-      encodeURIComponent(task.display_name) + '?revision=' +
+      encodeURIComponent(taskName) + '?revision=' +
       encodeURIComponent(task.gitspec);
     if (test) {
       url += '#' + encodeURIComponent(test.display_name) + '=' +
@@ -490,7 +502,7 @@ mciModule.directive('testResults', function() {
       scope.$watch(attrs.testResults, function(testResults) {
         if (testResults) {
           for (var i = 0; i < testResults.length; i++) {
-            var timeTaken = testResults[i].end - testResults[i].start;
+            var timeTaken = testResults[i].test_result.end - testResults[i].test_result.start;
             if (scope.maxTestTime < timeTaken) {
               scope.maxTestTime = timeTaken;
             }

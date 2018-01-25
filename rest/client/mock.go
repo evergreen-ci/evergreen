@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -20,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
@@ -52,6 +52,8 @@ type Mock struct {
 	HeartbeatShouldErr     bool
 	TaskExecution          int
 
+	AttachedFiles map[string][]*artifact.File
+
 	// metrics collection
 	ProcInfo map[string][]*message.ProcessInfo
 	SysInfo  map[string]*message.SystemInfo
@@ -74,17 +76,20 @@ type endTaskResult struct {
 // NewMock returns a Communicator for testing.
 func NewMock(serverURL string) *Mock {
 	return &Mock{
-		maxAttempts:  defaultMaxAttempts,
-		timeoutStart: defaultTimeoutStart,
-		timeoutMax:   defaultTimeoutMax,
-		logMessages:  make(map[string][]apimodels.LogMessage),
-		PatchFiles:   make(map[string]string),
-		keyVal:       make(map[string]*serviceModel.KeyVal),
-		ProcInfo:     make(map[string][]*message.ProcessInfo),
-		SysInfo:      make(map[string]*message.SystemInfo),
-		serverURL:    serverURL,
+		maxAttempts:   defaultMaxAttempts,
+		timeoutStart:  defaultTimeoutStart,
+		timeoutMax:    defaultTimeoutMax,
+		logMessages:   make(map[string][]apimodels.LogMessage),
+		PatchFiles:    make(map[string]string),
+		keyVal:        make(map[string]*serviceModel.KeyVal),
+		ProcInfo:      make(map[string][]*message.ProcessInfo),
+		SysInfo:       make(map[string]*message.SystemInfo),
+		AttachedFiles: make(map[string][]*artifact.File),
+		serverURL:     serverURL,
 	}
 }
+
+func (c *Mock) Close() {}
 
 func (c *Mock) LastMessageAt() time.Time {
 	c.mu.RLock()
@@ -308,7 +313,7 @@ func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName strin
 		HostURL: model.APIString("mock_url"),
 		Distro: model.DistroInfo{
 			Id:       model.APIString(distroID),
-			Provider: mock.ProviderName,
+			Provider: evergreen.ProviderNameMock,
 		},
 		Type:        model.APIString("mock_type"),
 		Status:      model.APIString(evergreen.HostUninitialized),
@@ -317,6 +322,18 @@ func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName strin
 		Provisioned: false,
 	}
 	return mockHost, nil
+}
+
+func (*Mock) TerminateSpawnHost(ctx context.Context, hostID string) error {
+	return errors.New("(*Mock) TerminateSpawnHost is not implemented")
+}
+
+func (*Mock) ChangeSpawnHostPassword(context.Context, string, string) error {
+	return errors.New("(*Mock) ChangeSpawnHostPassword is not implemented")
+}
+
+func (*Mock) ExtendSpawnHostExpiration(context.Context, string, int) error {
+	return errors.New("(*Mock) ExtendSpawnHostExpiration is not implemented")
 }
 
 // GetHosts will return an array with a single mock host
@@ -343,6 +360,12 @@ func (c *Mock) SendTestResults(ctx context.Context, td TaskData, results *task.L
 
 // SendFiles attaches task files.
 func (c *Mock) AttachFiles(ctx context.Context, td TaskData, taskFiles []*artifact.File) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	grip.Info("attaching files")
+	c.AttachedFiles[td.ID] = append(c.AttachedFiles[td.ID], taskFiles...)
+
 	return nil
 }
 
@@ -443,4 +466,21 @@ func (c *Mock) AddPublicKey(ctx context.Context, keyName, keyValue string) error
 
 func (c *Mock) DeletePublicKey(ctx context.Context, keyName string) error {
 	return errors.New("(c *Mock) DeletePublicKey not implemented")
+}
+
+func (c *Mock) ListAliases(ctx context.Context, keyName string) ([]serviceModel.PatchDefinition, error) {
+	return nil, errors.New("(c *Mock) ListAliases not implemented")
+}
+
+func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
+	return &evergreen.ClientConfig{
+		ClientBinaries: []evergreen.ClientBinary{
+			evergreen.ClientBinary{
+				Arch: "amd64",
+				OS:   "darwin",
+				URL:  "http://example.com/clients/darwin_amd64/evergreen",
+			},
+		},
+		LatestRevision: evergreen.ClientVersion,
+	}, nil
 }

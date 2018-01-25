@@ -144,7 +144,11 @@ func cleanUpTimedOutHeartbeat(t task.Task, project model.Project) error {
 	}
 
 	// try to reset the task
-	if err := model.TryResetTask(t.Id, "", RunnerName, &project, detail); err != nil {
+	taskId := t.Id
+	if t.IsPartOfDisplay() {
+		taskId = t.DisplayTask.Id
+	}
+	if err := model.TryResetTask(taskId, "", RunnerName, &project, detail); err != nil {
 		return errors.Wrapf(err, "error trying to reset task %s", t.Id)
 	}
 	// success

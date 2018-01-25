@@ -57,7 +57,7 @@ func TestScpCommand(t *testing.T) {
 				" remote and remote to local)", func() {
 
 				// scp the file from local to remote
-				scpCommand := &ScpCommand{
+				scpCmd := &scpCommand{
 					Source:         fileToScp,
 					Dest:           targetDirectory,
 					Stdout:         ioutil.Discard,
@@ -67,7 +67,7 @@ func TestScpCommand(t *testing.T) {
 					Options:        []string{"-i", TestRemoteKey},
 					SourceIsRemote: false,
 				}
-				So(scpCommand.Run(ctx), ShouldBeNil)
+				So(scpCmd.Run(ctx), ShouldBeNil)
 
 				// make sure the file was scp-ed over
 				newFileContents, err := ioutil.ReadFile(
@@ -80,7 +80,7 @@ func TestScpCommand(t *testing.T) {
 					"copy_me_please.txt")), ShouldBeNil)
 
 				// scp the file from remote to local
-				scpCommand = &ScpCommand{
+				scpCmd = &scpCommand{
 					Source:         fileToScp,
 					Dest:           targetDirectory,
 					Stdout:         ioutil.Discard,
@@ -90,7 +90,7 @@ func TestScpCommand(t *testing.T) {
 					Options:        []string{"-i", TestRemoteKey},
 					SourceIsRemote: true,
 				}
-				So(scpCommand.Run(ctx), ShouldBeNil)
+				So(scpCmd.Run(ctx), ShouldBeNil)
 
 				// make sure the file was scp-ed over
 				newFileContents, err = ioutil.ReadFile(
@@ -104,7 +104,7 @@ func TestScpCommand(t *testing.T) {
 				" command", func() {
 
 				// scp recursively, using the -r flag
-				scpCommand := &ScpCommand{
+				scpCmd := &scpCommand{
 					Source:         directoryToScp,
 					Dest:           targetDirectory,
 					Stdout:         ioutil.Discard,
@@ -114,7 +114,7 @@ func TestScpCommand(t *testing.T) {
 					Options:        []string{"-i", TestRemoteKey, "-r"},
 					SourceIsRemote: false,
 				}
-				So(scpCommand.Run(ctx), ShouldBeNil)
+				So(scpCmd.Run(ctx), ShouldBeNil)
 
 				// make sure the entire directory was scp-ed over
 				nestedFileContents, err := ioutil.ReadFile(

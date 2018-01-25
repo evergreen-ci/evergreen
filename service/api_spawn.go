@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -95,13 +95,13 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status == evergreen.HostStatusSuccess {
-		if err = h.SetRunning(); err != nil {
+		if err = h.SetRunning(evergreen.User); err != nil {
 			grip.Errorf("Error marking host id %s as %s: %+v",
 				instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
 		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(h)))
-		if err = h.SetDecommissioned(); err != nil {
+		if err = h.SetDecommissioned(evergreen.User); err != nil {
 			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",
 				h.Host, h.StartedBy, err)
 		}
@@ -206,12 +206,12 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cloudHost, err := providers.GetCloudHost(h, &as.Settings)
+		cloudHost, err := cloud.GetCloudHost(h, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if err = cloudHost.TerminateInstance(); err != nil {
+		if err = cloudHost.TerminateInstance(user.Id); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Failed to terminate spawn host"))
 			return
 		}

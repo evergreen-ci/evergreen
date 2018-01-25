@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -117,12 +116,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 				// untar the file
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
-				untarCmd := &subprocess.LocalCommand{
-					CmdString:        "tar xvf ../target.tgz",
-					WorkingDirectory: outputDir,
-					Stdout:           ioutil.Discard,
-					Stderr:           ioutil.Discard,
-				}
+				untarCmd := subprocess.NewLocalCommand("tar xvf ../target.tgz", outputDir, "bash", nil, false)
 				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included

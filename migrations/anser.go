@@ -7,6 +7,9 @@ import (
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
+	"github.com/mongodb/anser/db"
+	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -14,9 +17,10 @@ type Options struct {
 	Limit    int
 	Target   int
 	Workers  int
+	DryRun   bool
 	Period   time.Duration
 	Database string
-	URI      string
+	Session  db.Session
 }
 
 // Setup configures the migration environment, configuring the backing
@@ -42,12 +46,14 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	if err = env.Setup(q, opts.URI); err != nil {
+	if err = env.Setup(q, opts.Session); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	return env, nil
 }
+
+type migrationGeneratorFactory func(anser.Environment, string, int) (anser.Generator, error)
 
 // Application is where the migrations are registered and defined,
 // before being handed off to another calling environment for
@@ -55,14 +61,30 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 // anser/example_test.go for an example.
 func (opts Options) Application(env anser.Environment) (*anser.Application, error) {
 	app := &anser.Application{
-		Limit: opts.Limit,
+		Options: model.ApplicationOptions{
+			Limit:  opts.Limit,
+			DryRun: opts.DryRun,
+		},
 	}
 
-	if err := registerTestResultsMigrationOperations(env); err != nil {
-		return nil, errors.Wrap(err, "error registering test results migration operations")
+	generatorFactories := []migrationGeneratorFactory{
+		// addExecutionToTasksGenerator,
+		oldTestResultsGenerator,
+		testResultsGenerator,
 	}
 
-	app.Generators = append(app.Generators, testResultsGeneratorFactory(env, opts.Database, opts.Limit)...)
+	catcher := grip.NewBasicCatcher()
+	for _, factory := range generatorFactories {
+		generator, err := factory(env, opts.Database, opts.Limit)
+		catcher.Add(err)
+		if generator != nil {
+			app.Generators = append(app.Generators, generator)
+		}
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
 
 	if err := app.Setup(env); err != nil {
 		return nil, errors.WithStack(err)

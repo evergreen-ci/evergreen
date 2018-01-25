@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -46,9 +47,9 @@ func (c *xunitResults) expandParams(conf *model.TaskConfig) error {
 		c.Files = append(c.Files, c.File)
 	}
 
-	var err error
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 
+	var err error
 	for idx, f := range c.Files {
 		c.Files[idx], err = conf.Expansions.ExpandString(f)
 		catcher.Add(err)
@@ -83,7 +84,7 @@ func (c *xunitResults) Execute(ctx context.Context,
 // getFilePaths is a helper function that returns a slice of all absolute paths
 // which match the given file path parameters.
 func getFilePaths(workDir string, files []string) ([]string, error) {
-	catcher := grip.NewCatcher()
+	catcher := grip.NewBasicCatcher()
 	out := []string{}
 
 	for _, fileSpec := range files {
@@ -135,7 +136,19 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		}
 
 		// go through all the tests
-		for _, suite := range testSuites {
+		for idx, suite := range testSuites {
+			if len(suite.TestCases) == 0 && suite.Error != nil {
+				// if no test cases but an error, generate a default test case
+				tc := testCase{
+					Name:  suite.Name,
+					Time:  suite.Time,
+					Error: suite.Error,
+				}
+				if tc.Name == "" {
+					tc.Name = fmt.Sprintf("Unamed Test-%d", idx)
+				}
+				suite.TestCases = append(suite.TestCases, tc)
+			}
 			for _, tc := range suite.TestCases {
 				// logs are only created when a test case does not succeed
 				test, log := tc.toModelTestResultAndLog(conf.Task)

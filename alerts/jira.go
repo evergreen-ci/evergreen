@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -92,13 +93,28 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	if err != nil {
 		return errors.Wrap(err, "error creating description")
 	}
-	grip.Infof("Creating '%v' JIRA ticket in %v for failure %v in project %s",
-		jd.issueType, jd.project, ctx.Task.Id, ctx.ProjectRef.Identifier)
+	grip.Info(message.Fields{
+		"message":      "creating jira ticket for failure",
+		"type":         jd.issueType,
+		"jira_project": jd.project,
+		"task":         ctx.Task.Id,
+		"project":      ctx.ProjectRef.Identifier,
+		"runner":       RunnerName,
+	})
+
 	result, err := jd.handler.CreateTicket(request)
 	if err != nil {
 		return errors.Wrap(err, "error creating JIRA ticket")
 	}
-	grip.Infof("Created JIRA ticket %v successfully", result.Key)
+
+	grip.Info(message.Fields{
+		"message": "creating jira ticket for failure",
+		"task":    ctx.Task.Id,
+		"project": ctx.ProjectRef.Identifier,
+		"key":     result.Key,
+		"runner":  RunnerName,
+	})
+
 	return nil
 }
 

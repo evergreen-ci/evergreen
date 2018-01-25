@@ -15,8 +15,14 @@ const SizeLimit = 1024 * 1024 * 100
 
 // VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
 type VariantTasks struct {
-	Variant string
-	Tasks   []string
+	Variant      string
+	Tasks        []string
+	DisplayTasks []DisplayTask
+}
+
+type DisplayTask struct {
+	Name      string
+	ExecTasks []string
 }
 
 // Patch stores all details related to a patch request
@@ -38,15 +44,21 @@ type Patch struct {
 	Patches         []ModulePatch  `bson:"patches"`
 	Activated       bool           `bson:"activated"`
 	PatchedConfig   string         `bson:"patched_config"`
+	Alias           string         `bson:"alias"`
 	GithubPatchData GithubPatch    `bson:"github_patch_data,omitempty"`
 }
 
 // GithubPatch stores patch data for patches create from GitHub pull requests
 type GithubPatch struct {
-	PRNumber     int    `bson:"pr_number"`
-	Organization string `bson:"organization"`
-	Repository   string `bson:"repository"`
-	Author       string `bson:"author"`
+	PRNumber   int    `bson:"pr_number"`
+	BaseOwner  string `bson:"base_owner"`
+	BaseRepo   string `bson:"base_repo"`
+	BaseBranch string `bson:"base_branch"`
+	HeadOwner  string `bson:"head_owner"`
+	HeadRepo   string `bson:"head_repo"`
+	HeadHash   string `bson:"head_hash"`
+	Author     string `bson:"author"`
+	DiffURL    string `bson:"diff_url"`
 }
 
 // ModulePatch stores request details for a patch
@@ -204,11 +216,7 @@ func TryMarkStarted(versionId string, startTime time.Time) error {
 			StatusKey:    evergreen.PatchStarted,
 		},
 	}
-	err := UpdateOne(filter, update)
-	if err == mgo.ErrNotFound {
-		return nil
-	}
-	return err
+	return UpdateOne(filter, update)
 }
 
 // TryMarkFinished attempts to mark a patch of a given version as finished.

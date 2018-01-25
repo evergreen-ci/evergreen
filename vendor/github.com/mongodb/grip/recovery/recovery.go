@@ -42,7 +42,7 @@ func LogStackTraceAndExit(opDetails ...string) {
 
 		// check this env var so that we can avoid exiting in the test.
 		if os.Getenv(killOverrideVarName) == "" {
-			grip.GetSender().Close()
+			_ = grip.GetSender().Close()
 			grip.EmergencyFatal(m)
 		} else {
 			grip.Emergency(m)
@@ -50,7 +50,7 @@ func LogStackTraceAndExit(opDetails ...string) {
 	}
 }
 
-// LogStacktraceAndContinue recovers from a panic, and then logs the
+// LogStackTraceAndContinue recovers from a panic, and then logs the
 // captures a stack trace and logs a structured message at "Alert"
 // level without further action.
 //

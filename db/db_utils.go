@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/mongodb/grip"
@@ -269,6 +270,10 @@ func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
 		return nil, errors.WithStack(err)
 	}
 	return &sessionBackedGridFile{file, session}, nil
+}
+
+func ClearGridCollections(fsPrefix string) error {
+	return ClearCollections(fmt.Sprintf("%s.files", fsPrefix), fmt.Sprintf("%s.chunks", fsPrefix))
 }
 
 // Aggregate runs an aggregation pipeline on a collection and unmarshals

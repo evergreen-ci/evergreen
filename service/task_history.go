@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
@@ -31,10 +32,6 @@ const (
 	// Number of revisions to return on subsequent requests
 	NoRevisions     = 0
 	MaxNumRevisions = 50
-
-	// this regex either matches against the exact 'test' string, or
-	// against the 'test' string at the end of some kind of filepath.
-	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
 )
 
 // Representation of a group of tasks with the same display name and revision,
@@ -235,94 +232,25 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprintf("Error in filter: %v", err.Error()), http.StatusBadRequest)
 		return
 	}
-	buildVariants := project.GetVariantsWithTask(taskName)
 
 	onlyMatchingTasks := (r.FormValue("only_matching_tasks") == "true")
 
-	// If there are no build variants, use all of them for the given task name.
-	// Need this because without the build_variant specified, no amount of hinting
-	// will get sort to use the proper index
-	query := bson.M{
-		"build_variant": bson.M{
-			"$in": buildVariants,
-		},
-		"display_name": taskName,
-		"order": bson.M{
-			"$gte": lowOrder,
-			"$lte": highOrder,
-		},
-		"branch": project.Identifier,
+	params := model.PickaxeParams{
+		Project:           project,
+		TaskName:          taskName,
+		NewestOrder:       highOrder,
+		OldestOrder:       lowOrder,
+		BuildVariants:     filter.BuildVariants,
+		Tests:             filter.Tests,
+		OnlyMatchingTasks: onlyMatchingTasks,
 	}
-
-	// If there are build variants, use them instead
-	if len(filter.BuildVariants) > 0 {
-		query["build_variant"] = bson.M{
-			"$in": filter.BuildVariants,
-		}
-	}
-
-	// If there are tests to filter by, create a big $elemMatch $or in the
-	// projection to make sure we only get the tests we care about.
-	elemMatchOr := make([]bson.M, 0)
-	for test, result := range filter.Tests {
-		regexp := fmt.Sprintf(testMatchRegex, test, test)
-		if result == "ran" {
-			// Special case: if asking for tasks where the test ran, don't care
-			// about the test status
-			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": bson.RegEx{regexp, ""},
-			})
-		} else {
-			elemMatchOr = append(elemMatchOr, bson.M{
-				"test_file": bson.RegEx{regexp, ""},
-				"status":    result,
-			})
-		}
-	}
-
-	elemMatch := bson.M{"$or": elemMatchOr}
-
-	// Special case: if only one test filter, don't need to use a $or
-	if 1 == len(elemMatchOr) {
-		elemMatch = elemMatchOr[0]
-	}
-
-	projection := bson.M{
-		"_id":           1,
-		"status":        1,
-		"activated":     1,
-		"time_taken":    1,
-		"build_variant": 1,
-	}
-
-	if len(elemMatchOr) > 0 {
-		projection["test_results"] = bson.M{
-			"$elemMatch": elemMatch,
-		}
-
-		// If we only care about matching tasks, put the elemMatch in the query too
-		if onlyMatchingTasks {
-			query["test_results"] = bson.M{
-				"$elemMatch": elemMatch,
-			}
-		}
-	}
-
-	last, err := task.Find(db.Query(query).Project(projection))
-
+	tasks, err := model.TaskHistoryPickaxe(params)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error querying tasks: `%s`", err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error finding tasks: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	for i := range last {
-		if err := last[i].MergeNewTestResults(); err != nil {
-			http.Error(w, fmt.Sprintf("Error merging test results: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	uis.WriteJSON(w, http.StatusOK, last)
+	uis.WriteJSON(w, http.StatusOK, tasks)
 }
 
 func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request) {
@@ -516,9 +444,9 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 // descending.
 func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, versions []version.Version) ([]taskDrawerItem, error) {
 
-	orderNumbers := make([]int, 0, len(versions))
+	versionIds := []string{}
 	for _, v := range versions {
-		orderNumbers = append(orderNumbers, v.RevisionOrderNumber)
+		versionIds = append(versionIds, v.Id)
 	}
 
 	revisionSort := task.RevisionOrderNumberKey
@@ -526,16 +454,25 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 		revisionSort = "-" + revisionSort
 	}
 
-	tasks, err := task.Find(task.ByOrderNumbersForNameAndVariant(orderNumbers, displayName, variant).Sort([]string{revisionSort}))
+	tasks, err := task.Find(task.ByVersionsForNameAndVariant(versionIds, displayName, variant).Sort([]string{revisionSort}))
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting sibling tasks")
 	}
 
-	for i := range tasks {
-		if err := tasks[i].MergeNewTestResults(); err != nil {
-			return nil, errors.Wrap(err, "error merging test results")
-		}
+	taskIds := []string{}
+	for _, t := range tasks {
+		taskIds = append(taskIds, t.Id)
+	}
+	query := db.Query(bson.M{
+		testresult.TaskIDKey: bson.M{
+			"$in": taskIds,
+		},
+		testresult.StatusKey: evergreen.TestFailedStatus,
+	})
+	tasks, err = task.MergeTestResultsBulk(tasks, &query)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results")
 	}
 
 	return createSiblingTaskGroups(tasks, versions), nil

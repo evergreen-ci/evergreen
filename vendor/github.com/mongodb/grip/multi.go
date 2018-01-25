@@ -60,18 +60,26 @@ type baseCatcher struct {
 // documentation for the Catcher interface for most implementations.
 func NewCatcher() Catcher { return NewExtendedCatcher() }
 
+// NewBasicCatcher collects error messages and formats them using a
+// new-line separated string of the output of error.Error()
 func NewBasicCatcher() Catcher {
 	c := &baseCatcher{}
 	c.Stringer = &basicCatcher{c}
 	return c
 }
 
+// NewSimpleCatcher collects error messages and formats them using a
+// new-line separated string of the string format of the error message
+// (e.g. %s).
 func NewSimpleCatcher() Catcher {
 	c := &baseCatcher{}
 	c.Stringer = &simpleCatcher{c}
 	return c
 }
 
+// NewExtendedCatcher collects error messages and formats them using a
+// new-line separated string of the extended string format of the
+// error message (e.g. %+v).
 func NewExtendedCatcher() Catcher {
 	c := &baseCatcher{}
 	c.Stringer = &extendedCatcher{c}
@@ -129,9 +137,8 @@ func (c *baseCatcher) Errors() []error {
 	defer c.mutex.RUnlock()
 
 	out := make([]error, len(c.errs))
-	for idx, e := range c.errs {
-		out[idx] = e
-	}
+
+	copy(out, c.errs)
 
 	return out
 }
@@ -149,7 +156,7 @@ func (c *baseCatcher) Resolve() error {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// seperate implementations of grip.Catcher with different string formatting options.
+// separate implementations of grip.Catcher with different string formatting options.
 
 type extendedCatcher struct{ *baseCatcher }
 

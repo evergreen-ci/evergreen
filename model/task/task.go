@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -18,6 +20,9 @@ import (
 const (
 	edgesKey = "edges"
 	taskKey  = "task"
+
+	// tasks should be unscheduled after ~2 weeks
+	unschedulableThreshold = 2 * 7 * 24 * time.Hour
 )
 
 var (
@@ -42,10 +47,11 @@ type Task struct {
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 
-	Version  string `bson:"version" json:"version,omitempty"`
-	Project  string `bson:"branch" json:"branch,omitempty"`
-	Revision string `bson:"gitspec" json:"gitspec"`
-	Priority int64  `bson:"priority" json:"priority"`
+	Version   string `bson:"version" json:"version,omitempty"`
+	Project   string `bson:"branch" json:"branch,omitempty"`
+	Revision  string `bson:"gitspec" json:"gitspec"`
+	Priority  int64  `bson:"priority" json:"priority"`
+	TaskGroup string `bson:"task_group" json:"task_group"` //format is taskGroup_version
 
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
@@ -99,6 +105,11 @@ type Task struct {
 
 	// test results embedded from the testresults collection
 	LocalTestResults []TestResult `bson:"-" json:"test_results"`
+
+	// display task fields
+	DisplayOnly    bool     `bson:"display_only,omitempty" json:"display_only,omitempty"`
+	ExecutionTasks []string `bson:"execution_tasks,omitempty" json:"execution_tasks,omitempty"`
+	DisplayTask    *Task    `bson:"-" json:"-"` // this is a local pointer from an exec to display task
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -191,7 +202,11 @@ func IsAbortable(t Task) bool {
 func IsFinished(t Task) bool {
 	return t.Status == evergreen.TaskFailed ||
 		t.Status == evergreen.TaskSucceeded ||
-		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime)
+		(t.Status == evergreen.TaskUndispatched && !util.IsZeroTime(t.DispatchTime)) ||
+		t.Status == evergreen.TaskSystemFailed ||
+		t.Status == evergreen.TaskSystemTimedOut ||
+		t.Status == evergreen.TaskSystemUnresponse ||
+		t.Status == evergreen.TaskTestTimedOut
 }
 
 // IsDispatchable return true if the task should be dispatched
@@ -216,6 +231,11 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 		}
 	}
 	return false
+}
+
+// FormTaskGroupId concatenates a task group and version to return a task group ID
+func FormTaskGroupId(tgName, version string) string {
+	return fmt.Sprintf("%s_%s", tgName, version)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.
@@ -455,6 +475,31 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 }
 
+// Removes tasks older than the unscheduable threshold (e.g. two
+// weeks) from the scheduler queue.
+func UnscheduleStaleUnderwaterTasks() (int, error) {
+	query := scheduleableTasksQuery()
+	query[PriorityKey] = 0
+	query["$and"] = []bson.M{
+		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
+		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			PriorityKey:  -1,
+			ActivatedKey: false,
+		},
+	}
+
+	info, err := UpdateAll(query, update)
+	if err != nil {
+		return 0, errors.Wrap(err, "problem unscheduling stale underwater tasks")
+	}
+
+	return info.Updated, nil
+}
+
 // MarkFailed changes the state of the task to failed.
 func (t *Task) MarkFailed() error {
 	t.Status = evergreen.TaskFailed
@@ -533,6 +578,13 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		if timedOutStart.Before(t.CreateTime) {
 			t.StartTime = t.CreateTime
 		}
+		grip.Warning(message.Fields{
+			"message":      "Task is missing start time",
+			"task_id":      t.Id,
+			"execution":    t.Execution,
+			"requester":    t.Requester,
+			"activated_by": t.ActivatedBy,
+		})
 	}
 
 	t.TimeTaken = finishTime.Sub(t.StartTime)
@@ -556,9 +608,142 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 
 }
 
+func (t *Task) UpdateDisplayTask() error {
+	if !t.DisplayOnly {
+		return fmt.Errorf("%s is not a display task", t.Id)
+	}
+
+	statuses := []string{}
+	var timeTaken time.Duration
+	var status string
+	execTasks, err := Find(ByIds(t.ExecutionTasks))
+	if err != nil {
+		return errors.Wrap(err, "error retrieving execution tasks")
+	}
+	hasFinishedTasks := false
+	hasUnfinishedTasks := false
+	startTime := time.Unix(1<<62, 0)
+	endTime := util.ZeroTime
+	for _, execTask := range execTasks {
+		// if any of the execution tasks are scheduled, the display task is too
+		if execTask.Activated {
+			t.Activated = true
+		}
+
+		if IsFinished(execTask) {
+			hasFinishedTasks = true
+		} else if execTask.IsDispatchable() {
+			hasUnfinishedTasks = true
+		}
+
+		// the display task's status will be the highest priority of its exec tasks
+		statuses = append(statuses, execTask.ResultStatus())
+
+		// add up the duration of the execution tasks as the cumulative time taken
+		timeTaken += execTask.TimeTaken
+
+		// set the start/end time of the display task as the earliest/latest task
+		if execTask.StartTime.Before(startTime) {
+			startTime = execTask.StartTime
+		}
+		if execTask.FinishTime.After(endTime) {
+			endTime = execTask.FinishTime
+		}
+	}
+
+	if hasFinishedTasks && hasUnfinishedTasks {
+		// if the display task has a mix of finished and unfinished tasks, the status
+		// will be "started"
+		status = evergreen.TaskStarted
+	} else if len(statuses) > 0 {
+		// the status of the display task will be the status of its constituent task
+		// that is logically the most exclusive
+		sort.Sort(byPriority(statuses))
+		status = statuses[0]
+	}
+
+	update := bson.M{
+		StatusKey:    status,
+		ActivatedKey: t.Activated,
+		TimeTakenKey: timeTaken,
+	}
+	if startTime != time.Unix(1<<62, 0) {
+		update[StartTimeKey] = startTime
+	}
+	if endTime != util.ZeroTime && !hasUnfinishedTasks {
+		update[FinishTimeKey] = endTime
+	}
+
+	err = UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": update,
+		})
+	if err != nil {
+		return errors.Wrap(err, "error updating display task")
+	}
+
+	t.Status = status
+	t.TimeTaken = timeTaken
+	return nil
+}
+
+type byPriority []string
+
+func (p byPriority) Len() int {
+	return len(p)
+}
+
+func (p byPriority) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func (p byPriority) Less(i, j int) bool {
+	return displayTaskPriority(p[i]) < displayTaskPriority(p[j])
+}
+
+func displayTaskPriority(status string) int {
+	switch status {
+	case evergreen.TaskStarted:
+		return 10
+	case evergreen.TaskInactive:
+		return 20
+	case evergreen.TaskUndispatched:
+		return 40
+	case evergreen.TaskFailed:
+		return 50
+	case evergreen.TaskTestTimedOut:
+		return 60
+	case evergreen.TaskSystemFailed:
+		return 70
+	case evergreen.TaskSystemTimedOut:
+		return 80
+	case evergreen.TaskSystemUnresponse:
+		return 90
+	case evergreen.TaskSucceeded:
+		return 100
+	}
+	return 1000
+}
+
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func (t *Task) Reset() error {
+
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = execTask.Reset(); err != nil {
+				return errors.Wrap(err, "error resetting execution task")
+			}
+		}
+	}
+
 	t.Activated = true
 	t.Secret = util.RandomString()
 	t.DispatchTime = util.ZeroTime
@@ -591,6 +776,16 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
+	tasks, err := Find(ByIds(taskIds))
+	if err != nil {
+		return err
+	}
+	for _, t := range tasks {
+		if t.DisplayOnly {
+			taskIds = append(taskIds, t.Id)
+		}
+	}
+
 	reset := bson.M{
 		"$set": bson.M{
 			ActivatedKey:     true,
@@ -606,7 +801,7 @@ func ResetTasks(taskIds []string) error {
 		},
 	}
 
-	_, err := UpdateAll(
+	_, err = UpdateAll(
 		bson.M{
 			IdKey: bson.M{"$in": taskIds},
 		},
@@ -632,7 +827,7 @@ func (t *Task) UpdateHeartbeat() error {
 }
 
 // SetPriority sets the priority of the tasks and the tasks that they depend on
-func (t *Task) SetPriority(priority int64) error {
+func (t *Task) SetPriority(priority int64, user string) error {
 	t.Priority = priority
 	modifier := bson.M{PriorityKey: priority}
 
@@ -654,7 +849,11 @@ func (t *Task) SetPriority(priority int64) error {
 		}},
 		bson.M{"$set": modifier},
 	)
+
+	event.LogTaskPriority(t.Id, user, priority)
+
 	return errors.WithStack(err)
+
 }
 
 // getRecursiveDependencies creates a slice containing t.Id and the Ids of all recursive dependencies.
@@ -726,6 +925,21 @@ func (t TestResult) convertToNewStyleTestResult() testresult.TestResult {
 	}
 }
 
+func ConvertToOld(in *testresult.TestResult) TestResult {
+	return TestResult{
+		Status:    in.Status,
+		TestFile:  in.TestFile,
+		URL:       in.URL,
+		URLRaw:    in.URLRaw,
+		LogId:     in.LogID,
+		LineNum:   in.LineNum,
+		ExitCode:  in.ExitCode,
+		StartTime: in.StartTime,
+		EndTime:   in.EndTime,
+		LogRaw:    in.LogRaw,
+	}
+}
+
 // MarkUnscheduled marks the task as undispatched and updates it in the database
 func (t *Task) MarkUnscheduled() error {
 	t.Status = evergreen.TaskUndispatched
@@ -793,6 +1007,18 @@ func (t *Task) Insert() error {
 // Inserts the task into the old_tasks collection
 func (t *Task) Archive() error {
 	var update bson.M
+
+	if t.DisplayOnly {
+		for _, et := range t.ExecutionTasks {
+			execTask, err := FindOne(ById(et))
+			if err != nil {
+				return errors.Wrap(err, "error retrieving execution task")
+			}
+			if err = execTask.Archive(); err != nil {
+				return errors.Wrap(err, "error archiving execution task")
+			}
+		}
+	}
 
 	// only increment restarts if have a current restarts
 	// this way restarts will never be set for new tasks but will be
@@ -971,16 +1197,46 @@ func (t *Task) MergeNewTestResults() error {
 	return nil
 }
 
+// MergeTestResultsBulk takes a slice of task structs and returns the slice with
+// test results populated. Note that the order may change. The second parameter
+// can be used to use a specific test result filtering query, otherwise all test
+// results for the passed in tasks will be merged
+func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
+	out := []Task{}
+	if query == nil {
+		taskIds := []string{}
+		for _, t := range tasks {
+			taskIds = append(taskIds, t.Id)
+		}
+		q := testresult.ByTaskIDs(taskIds)
+		query = &q
+	}
+	results, err := testresult.Find(*query)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, t := range tasks {
+		for _, result := range results {
+			if result.TaskID == t.Id && result.Execution == t.Execution {
+				t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&result))
+			}
+		}
+		out = append(out, t)
+	}
+
+	return out, nil
+}
+
+func FindSchedulable() ([]Task, error) {
+	return Find(db.Query(scheduleableTasksQuery()))
+}
+
 func FindRunnable() ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
 	matchActivatedUndispatchedTasks := bson.M{
-		"$match": bson.M{
-			ActivatedKey: true,
-			StatusKey:    evergreen.TaskUndispatched,
-			//Filter out blacklisted tasks
-			PriorityKey: bson.M{"$gte": 0},
-		},
+		"$match": scheduleableTasksQuery(),
 	}
 
 	graphLookupTaskDeps := bson.M{
@@ -1071,4 +1327,25 @@ func FindRunnable() ([]Task, error) {
 	}
 
 	return runnableTasks, nil
+}
+
+func (t *Task) IsPartOfDisplay() bool {
+	dt, err := t.GetDisplayTask()
+	if err != nil {
+		grip.Error(err)
+		return false
+	}
+	return dt != nil
+}
+
+func (t *Task) GetDisplayTask() (*Task, error) {
+	if t.DisplayTask != nil {
+		return t, nil
+	}
+	dt, err := FindOne(ByExecutionTask(t.Id))
+	if err != nil {
+		return nil, err
+	}
+	t.DisplayTask = dt
+	return dt, nil
 }

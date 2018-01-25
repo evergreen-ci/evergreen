@@ -21,7 +21,7 @@ func TestRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 	name := uuid.NewV4().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	d := NewMongoDBDriver(name, opts)
-	q := NewRemoteUnordered(3).(*remoteSimpleOrdered)
+	q := NewRemoteUnordered(3).(*remoteUnordered)
 
 	defer cleanupMongoDB(name, opts)
 	defer cancel()

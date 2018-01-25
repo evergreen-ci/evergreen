@@ -44,6 +44,7 @@ command/testdata/tmp/
 plugin/builtin/archive/testdata/output/
 plugin/builtin/archive/testdata/target.tgz
 plugin/builtin/s3Plugin/testdata/
+artifacts-*
 
 # directory for gvp
 .godeps
@@ -61,3 +62,5 @@ creds.yml
 fabfile.py
 *.pyc
 .idea
+evergreen
+test-endpoints.pid

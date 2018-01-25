@@ -3,7 +3,10 @@ package distro
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen"
 )
 
 // UserData validation formats
@@ -11,8 +14,6 @@ const (
 	UserDataFormatFormURLEncoded = "x-www-form-urlencoded"
 	UserDataFormatJSON           = "json"
 	UserDataFormatYAML           = "yaml"
-	// NameTimeFormat is the format in which to log times like instance start time.
-	NameTimeFormat = "20060102150405"
 )
 
 type Distro struct {
@@ -54,5 +55,11 @@ func init() {
 
 // GenerateName generates a unique instance name for a distro.
 func (d *Distro) GenerateName() string {
-	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(NameTimeFormat), rand.Int())
+	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
+}
+
+func (d *Distro) IsWindows() bool {
+	// XXX: if this is-windows check is updated, make sure to also update
+	// public/static/js/spawned_hosts.js as well
+	return strings.Contains(d.Arch, "win")
 }

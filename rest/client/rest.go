@@ -2,10 +2,14 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -79,6 +83,79 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string,
 		return nil, fmt.Errorf("Error forming response body response: %v", err)
 	}
 	return &spawnHostResp, nil
+}
+
+func (c *communicatorImpl) TerminateSpawnHost(ctx context.Context, hostID string) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/terminate", hostID),
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to terminate host")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := rest.APIError{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem terminating host and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem terminating host")
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, rdpPassword string) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/change_password", hostID),
+		version: apiVersion2,
+	}
+	body := model.APISpawnHostModify{
+		RDPPwd: model.APIString(rdpPassword),
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to change host RDP password")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := rest.APIError{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem changing host RDP password and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem changing host RDP password")
+	}
+	return nil
+}
+
+func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID string, addHours int) error {
+	info := requestInfo{
+		method:  post,
+		path:    fmt.Sprintf("hosts/%s/extend_expiration", hostID),
+		version: apiVersion2,
+	}
+	body := model.APISpawnHostModify{
+		AddHours: model.APIString(fmt.Sprintf("%d", addHours)),
+	}
+	resp, err := c.request(ctx, info, body)
+	if err != nil {
+		return errors.Wrapf(err, "error sending request to extend host expiration")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		errMsg := rest.APIError{}
+		if err := util.ReadJSONInto(resp.Body, &errMsg); err != nil {
+			return errors.Wrap(err, "problem changing host expiration and parsing error message")
+		}
+		return errors.Wrap(errMsg, "problem changing host expiration")
+	}
+	return nil
 }
 
 // GetHosts gathers all active hosts and invokes a function on them
@@ -322,4 +399,71 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	}
 
 	return nil
+}
+
+func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.PatchDefinition, error) {
+	path := fmt.Sprintf("alias/%s", project)
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    path,
+	}
+	resp, err := c.request(ctx, info, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
+	}
+	patchAliases := []serviceModel.PatchDefinition{}
+
+	// use io.ReadAll and json.Unmarshal instead of util.ReadJSONInto since we may read the results twice
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "error reading JSON")
+	}
+	if err := json.Unmarshal(bytes, &patchAliases); err != nil {
+		patchAlias := serviceModel.PatchDefinition{}
+		if err := json.Unmarshal(bytes, &patchAlias); err != nil {
+			return nil, errors.Wrap(err, "error reading json")
+		}
+		patchAliases = []serviceModel.PatchDefinition{patchAlias}
+	}
+	return patchAliases, nil
+}
+
+func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, error) {
+	info := requestInfo{
+		path:    "/status/cli_version",
+		method:  get,
+		version: apiVersion2,
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch update manifest from server")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Wrapf(err, "expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+	}
+	update := &model.APICLIUpdate{}
+	if err = util.ReadJSONInto(resp.Body, update); err != nil {
+		return nil, errors.Wrap(err, "failed to parse update manifest from server")
+	}
+
+	configInterface, err := update.ClientConfig.ToService()
+	if err != nil {
+		return nil, err
+	}
+	config, ok := configInterface.(evergreen.ClientConfig)
+	if !ok {
+		return nil, errors.New("received client configuration is invalid")
+	}
+	if update.IgnoreUpdate {
+		config.LatestRevision = evergreen.ClientVersion
+	}
+
+	return &config, nil
 }

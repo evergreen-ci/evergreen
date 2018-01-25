@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"math"
+	"net/url"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
@@ -26,6 +27,11 @@ type ProjectRef struct {
 	DisplayName        string `bson:"display_name" json:"display_name" yaml:"display_name"`
 	LocalConfig        string `bson:"local_config" json:"local_config" yaml:"local_config"`
 	DeactivatePrevious bool   `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
+
+	// TracksPushEvents, if true indicates that Repotracker is triggered by
+	// Github PushEvents for this project, instead of the Repotracker runner
+	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
+
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 
@@ -87,6 +93,7 @@ var (
 	ProjectRefAlertsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
+	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 )
 
 const (
@@ -162,6 +169,50 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{
+			ProjectRefOwnerKey:   owner,
+			ProjectRefRepoKey:    repoName,
+			ProjectRefBranchKey:  branch,
+			ProjectRefEnabledKey: true,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return projectRefs, err
+}
+
+func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+	projectRefs, err := FindProjectRefsByRepoAndBranch(owner, repo, branch)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
+			owner, repo, branch)
+	}
+	l := len(projectRefs)
+	if l > 1 {
+		err = errors.Errorf("attempt to fetch project ref for "+
+			"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
+			owner, repo, branch, l)
+		return nil, err
+
+	} else if l == 0 {
+		return nil, nil
+	}
+
+	return &projectRefs[0], nil
+}
+
 // FindProjectRefs returns limit refs starting at project identifier key
 // in the sortDir direction
 func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
@@ -232,6 +283,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAlertsKey:             projectRef.Alerts,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefAdminsKey:             projectRef.Admins,
+				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 			},
 		},
 	)
@@ -269,4 +321,20 @@ func (projectRef *ProjectRef) Location() (string, error) {
 		return "", errors.Errorf("No repo in project ref: %v", projectRef.Identifier)
 	}
 	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
+}
+
+// HTTPLocation creates a url.URL for HTTPS checkout of a Github repository
+func (projectRef *ProjectRef) HTTPLocation() (*url.URL, error) {
+	if projectRef.Owner == "" {
+		return nil, errors.Errorf("No owner in project ref: %s", projectRef.Identifier)
+	}
+	if projectRef.Repo == "" {
+		return nil, errors.Errorf("No repo in project ref: %s", projectRef.Identifier)
+	}
+
+	return &url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   fmt.Sprintf("/%s/%s.git", projectRef.Owner, projectRef.Repo),
+	}, nil
 }

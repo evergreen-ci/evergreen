@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -502,4 +503,25 @@ func TestDBUtils(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestClearGridFSCollections(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	assert.NoError(WriteGridFile("testfiles", "test.txt", strings.NewReader("lorem ipsum")))
+
+	reader, err := GetGridFile("testfiles", "test.txt")
+	assert.NoError(err)
+	defer reader.Close()
+
+	var bytes []byte
+	bytes, err = ioutil.ReadAll(reader)
+	assert.NoError(err)
+	assert.Equal("lorem ipsum", string(bytes))
+
+	assert.NoError(ClearGridCollections("testfiles"))
+
+	reader, err = GetGridFile("testfiles", "test.txt")
+	assert.Error(err)
+	assert.Nil(reader)
 }

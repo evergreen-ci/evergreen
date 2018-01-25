@@ -123,7 +123,7 @@ func (h *Host) IdleTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
-func (h *Host) SetStatus(status string) error {
+func (h *Host) SetStatus(status, user string) error {
 	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+
 			" %v because it is already terminated", h.Id, status)
@@ -131,7 +131,7 @@ func (h *Host) SetStatus(status string) error {
 		return errors.New(msg)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status)
+	event.LogHostStatusChanged(h.Id, h.Status, status, user)
 
 	h.Status = status
 	return UpdateOne(
@@ -176,24 +176,24 @@ func (h *Host) SetStarting() error {
 	)
 }
 
-func (h *Host) SetDecommissioned() error {
-	return h.SetStatus(evergreen.HostDecommissioned)
+func (h *Host) SetDecommissioned(user string) error {
+	return h.SetStatus(evergreen.HostDecommissioned, user)
 }
 
-func (h *Host) SetUninitialized() error {
-	return h.SetStatus(evergreen.HostUninitialized)
+func (h *Host) SetUninitialized(user string) error {
+	return h.SetStatus(evergreen.HostUninitialized, user)
 }
 
-func (h *Host) SetRunning() error {
-	return h.SetStatus(evergreen.HostRunning)
+func (h *Host) SetRunning(user string) error {
+	return h.SetStatus(evergreen.HostRunning, user)
 }
 
-func (h *Host) SetTerminated() error {
-	return h.SetStatus(evergreen.HostTerminated)
+func (h *Host) SetTerminated(user string) error {
+	return h.SetStatus(evergreen.HostTerminated, user)
 }
 
-func (h *Host) SetUnreachable() error {
-	return h.SetStatus(evergreen.HostUnreachable)
+func (h *Host) SetUnreachable(user string) error {
+	return h.SetStatus(evergreen.HostUnreachable, user)
 }
 
 func (h *Host) SetUnprovisioned() error {
@@ -210,8 +210,8 @@ func (h *Host) SetUnprovisioned() error {
 	)
 }
 
-func (h *Host) SetQuarantined() error {
-	return h.SetStatus(evergreen.HostQuarantined)
+func (h *Host) SetQuarantined(user string) error {
+	return h.SetStatus(evergreen.HostQuarantined, user)
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -255,8 +255,8 @@ func (h *Host) ResetLastCommunicated() error {
 	return nil
 }
 
-func (h *Host) Terminate() error {
-	err := h.SetTerminated()
+func (h *Host) Terminate(user string) error {
+	err := h.SetTerminated(user)
 	if err != nil {
 		return err
 	}
@@ -520,7 +520,7 @@ func (h *Host) UpdateReachability(reachable bool) error {
 	}
 	update["$set"] = setUpdate
 
-	event.LogHostStatusChanged(h.Id, h.Status, status)
+	event.LogHostStatusChanged(h.Id, h.Status, status, evergreen.User)
 
 	h.Status = status
 
@@ -636,6 +636,13 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	}
 
 	return host, nil
+}
+
+func (h *Host) DisablePoisonedHost() error {
+	if h.Provider == evergreen.ProviderNameStatic {
+		return errors.WithStack(h.SetQuarantined(evergreen.User))
+	}
+	return errors.WithStack(h.SetDecommissioned(evergreen.User))
 }
 
 // GetStatsByDistro returns counts of up hosts broken down by distro

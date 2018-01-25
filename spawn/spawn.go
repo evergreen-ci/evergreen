@@ -1,25 +1,43 @@
 package spawn
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
+// each regex matches one of the 5 categories listed here:
+// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+var passwordRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`[\p{Ll}]`), // lowercase letter
+	regexp.MustCompile(`[\p{Lu}]`), // uppercase letter
+	regexp.MustCompile(`[0-9]`),
+	regexp.MustCompile(`[~!@#$%^&*_\-+=|\\\(\){}\[\]:;"'<>,.?/` + "`]"),
+	regexp.MustCompile(`[\p{Lo}]`), // letters without upper/lower variants (ex: Japanese)
+}
+
 const (
-	MaxPerUser        = 3
-	DefaultExpiration = time.Duration(24 * time.Hour)
+	MaxPerUser                 = 3
+	DefaultExpiration          = 24 * time.Hour
+	MaxExpirationDurationHours = 24 * time.Hour * 7 // 7 days
 )
 
 // Options holds the required parameters for spawning a host.
@@ -135,8 +153,8 @@ func CreateHost(so Options) (*host.Host, error) {
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
 	// fake out replacing spot instances with on-demand equivalents
-	if d.Provider == ec2.SpotProviderName {
-		d.Provider = ec2.OnDemandProviderName
+	if d.Provider == evergreen.ProviderNameEc2Spot {
+		d.Provider = evergreen.ProviderNameEc2OnDemand
 	}
 
 	// spawn the host
@@ -159,4 +177,111 @@ func CreateHost(so Options) (*host.Host, error) {
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}
 	return intentHost, errors.WithStack(err)
+}
+
+func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) error {
+	pwdUpdateCmd, err := constructPwdUpdateCommand(evergreen.GetEnvironment().Settings(), host, password)
+	if err != nil {
+		return errors.Wrap(err, "Error constructing host RDP password")
+	}
+
+	// update RDP and sshd password
+	if err = pwdUpdateCmd.Run(ctx); err != nil {
+		return errors.Wrap(err, "Error updating host RDP password")
+	}
+	return nil
+}
+
+// constructPwdUpdateCommand returns a RemoteCommand struct used to
+// set the RDP password on a remote windows machine.
+func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host, password string) (subprocess.Command, error) {
+	cloudHost, err := cloud.GetCloudHost(hostObj, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
+	defer stderr.Close()
+	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
+	defer stdout.Close()
+
+	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
+	updatePwdCmd := fmt.Sprintf(`net user %s "%s" && sc config sshd obj= '.\%s' password= "%s"`,
+		hostObj.User, escapedPassword, hostObj.User, escapedPassword)
+
+	// construct the required termination command
+	remoteCommand := subprocess.NewRemoteCommand(
+		updatePwdCmd,
+		hostInfo.Hostname,
+		hostObj.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostInfo.Port}, sshOptions...),
+		true, // logging disabled
+	)
+
+	opts := subprocess.OutputOptions{Error: stderr, Output: stdout}
+	if err = remoteCommand.SetOutput(opts); err != nil {
+		return nil, err
+	}
+
+	return remoteCommand, nil
+}
+
+func TerminateHost(host *host.Host, settings *evergreen.Settings, user string) error {
+	if host.Status == evergreen.HostTerminated {
+		return errors.New("Host is already terminated")
+	}
+	if host.Status == evergreen.HostUninitialized {
+		return host.SetTerminated(user)
+	}
+	cloudHost, err := cloud.GetCloudHost(host, settings)
+	if err != nil {
+		return err
+	}
+	if err = cloudHost.TerminateInstance(user); err != nil {
+		return err
+	}
+	return nil
+}
+
+func MakeExtendedHostExpiration(host *host.Host, extendBy time.Duration) (time.Time, error) {
+	newExp := host.ExpirationTime.Add(extendBy)
+	remainingDuration := newExp.Sub(time.Now()) //nolint
+	if remainingDuration > MaxExpirationDurationHours {
+		return time.Time{}, errors.Errorf("Can not extend host '%s' expiration by '%s'. Maximum host duration is limited to %s", host.Id, extendBy.String(), MaxExpirationDurationHours.String())
+	}
+
+	return newExp, nil
+}
+
+// XXX: if modifying any of the password validation logic, you changes must
+// also be ported into public/static/js/directives/directives.spawn.js
+func ValidateRDPPassword(password string) bool {
+	// Golang regex doesn't support lookarounds, so we can't use
+	// the regex as found in public/static/js/directives/directives.spawn.js
+	if len([]rune(password)) < 6 || len([]rune(password)) > 255 {
+		return false
+	}
+
+	// valid passwords need to match 3 of 5 categories listed on:
+	// https://technet.microsoft.com/en-us/library/cc786468(v=ws.10).aspx
+	matchedCategories := 0
+	for _, regex := range passwordRegexps {
+		if regex.MatchString(password) {
+			matchedCategories++
+		}
+	}
+
+	return matchedCategories >= 3
 }

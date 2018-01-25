@@ -49,6 +49,7 @@ func (j *simpleMigrationJob) Run() {
 		"migration": j.Definition.Migration,
 		"target":    j.Definition.ID,
 		"id":        j.ID(),
+		"ns":        j.Definition.Namespace,
 	})
 
 	defer j.FinishMigration(j.Definition.Migration, &j.Base)

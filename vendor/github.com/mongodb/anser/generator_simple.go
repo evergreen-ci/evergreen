@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -20,7 +21,7 @@ func init() {
 
 func NewSimpleMigrationGenerator(e Environment, opts model.GeneratorOptions, update map[string]interface{}) Generator {
 	j := makeSimpleGenerator()
-	j.SetDependency(generatorDependency(opts))
+	j.SetDependency(generatorDependency(e, opts))
 	j.SetID(opts.JobID)
 	j.MigrationHelper = NewMigrationHelper(e)
 	j.NS = opts.NS
@@ -55,7 +56,7 @@ type simpleMigrationGenerator struct {
 }
 
 func (j *simpleMigrationGenerator) Run() {
-	defer j.MarkComplete()
+	defer j.FinishMigration(j.ID(), &j.Base)
 
 	env := j.Env()
 
@@ -73,7 +74,11 @@ func (j *simpleMigrationGenerator) Run() {
 	defer session.Close()
 
 	coll := session.DB(j.NS.DB).C(j.NS.Collection)
-	iter := coll.Find(j.Query).Select(bson.M{"_id": 1}).Iter()
+	query := coll.Find(j.Query).Select(bson.M{"_id": 1})
+	if j.Limit > 0 {
+		query = query.Limit(j.Limit)
+	}
+	iter := query.Iter()
 
 	network.AddGroup(j.ID(), j.generateJobs(env, iter))
 
@@ -101,10 +106,17 @@ func (j *simpleMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 			Namespace: j.NS,
 		}).(*simpleMigrationJob)
 
-		m.SetDependency(env.NewDependencyManager(j.ID(), j.NS))
+		m.SetDependency(env.NewDependencyManager(j.ID()))
 		m.SetID(fmt.Sprintf("%s.%v.%d", j.ID(), doc.ID, len(ids)))
 		ids = append(ids, m.ID())
 		j.Migrations = append(j.Migrations, m)
+
+		grip.Debug(message.Fields{
+			"ns":  j.NS,
+			"id":  m.ID(),
+			"doc": doc.ID,
+			"num": count,
+		})
 
 		if j.Limit > 0 && count >= j.Limit {
 			break

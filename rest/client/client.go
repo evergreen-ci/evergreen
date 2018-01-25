@@ -2,12 +2,12 @@ package client
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
@@ -51,26 +51,30 @@ type TaskData struct {
 // the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
 // and SetMaxAttempts methods.
 func NewCommunicator(serverURL string) Communicator {
-	evergreen := &communicatorImpl{
+	c := &communicatorImpl{
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
 	}
-	evergreen.httpClient = &http.Client{
-		Transport: &http.Transport{
-			Proxy:             http.ProxyFromEnvironment,
-			DisableKeepAlives: true,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 10 * time.Second,
-		},
-		Timeout: heartbeatTimeout,
-	}
-	return evergreen
+
+	c.resetClient()
+	return c
 }
+
+func (c *communicatorImpl) resetClient() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.httpClient != nil {
+		util.PutHttpClient(c.httpClient)
+	}
+
+	c.httpClient = util.GetHttpClient()
+	c.httpClient.Timeout = heartbeatTimeout
+}
+
+func (c *communicatorImpl) Close() { util.PutHttpClient(c.httpClient) }
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {

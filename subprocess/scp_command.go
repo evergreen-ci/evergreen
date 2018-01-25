@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ScpCommand struct {
+type scpCommand struct {
 	Id     string
 	Source string
 	Dest   string
@@ -30,11 +30,32 @@ type ScpCommand struct {
 	Cmd *exec.Cmd
 }
 
-func (self *ScpCommand) Run(ctx context.Context) error {
+func NewSCPCommand(src, dest, hostname, user string, options []string) Command {
+	return &scpCommand{
+		Source:         src,
+		Dest:           dest,
+		RemoteHostName: hostname,
+		User:           user,
+		Options:        options,
+	}
+}
+
+func (self *scpCommand) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	self.Stderr = opts.GetError()
+	self.Stdout = opts.GetOutput()
+
+	return nil
+}
+
+func (self *scpCommand) Run(ctx context.Context) error {
 	grip.Debugf("SCPCommand(%s) beginning Run()", self.Id)
 
-	if err := self.Start(); err != nil {
-		return err
+	if err := self.Start(ctx); err != nil {
+		return errors.WithStack(err)
 	}
 
 	if self.Cmd != nil && self.Cmd.Process != nil {
@@ -43,24 +64,22 @@ func (self *ScpCommand) Run(ctx context.Context) error {
 		grip.Warningf("SCPCommand(%s) has nil Cmd or Cmd.Process in Run()", self.Id)
 	}
 
-	errChan := make(chan error)
-	go func() {
-		errChan <- self.Cmd.Wait()
-	}()
-
-	select {
-	case <-ctx.Done():
-		err := self.Cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"scp operation '%s=>%s' was canceled and terminated.",
-			self.Source, self.Dest)
-	case err := <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(self.Cmd.Wait())
 }
 
-func (self *ScpCommand) Start() error {
+func (self *scpCommand) Wait() error {
+	return errors.WithStack(self.Cmd.Wait())
+}
 
+func (self *scpCommand) GetPid() int {
+	if self.Cmd == nil {
+		return -1
+	}
+
+	return self.Cmd.Process.Pid
+}
+
+func (self *scpCommand) Start(ctx context.Context) error {
 	// build the remote side of the connection, in user@host: format
 	remote := self.RemoteHostName
 	if self.User != "" {
@@ -80,17 +99,17 @@ func (self *ScpCommand) Start() error {
 	cmdArray := append(self.Options, source, dest)
 
 	// set up execution
-	cmd := exec.Command("scp", cmdArray...)
+	cmd := exec.CommandContext(ctx, "scp", cmdArray...)
 	cmd.Stdout = self.Stdout
 	cmd.Stderr = self.Stderr
 
 	// cache the command running
 	self.Cmd = cmd
 
-	return cmd.Start()
+	return errors.WithStack(cmd.Start())
 }
 
-func (self *ScpCommand) Stop() error {
+func (self *scpCommand) Stop() error {
 	if self.Cmd != nil && self.Cmd.Process != nil {
 		grip.Debugf("SCPCommand(%s) killing process %d", self.Id, self.Cmd.Process.Pid)
 		return self.Cmd.Process.Kill()

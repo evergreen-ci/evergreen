@@ -28,7 +28,7 @@ func (s *ApplicationSuite) SetupSuite()    {}
 func (s *ApplicationSuite) TearDownSuite() {}
 func (s *ApplicationSuite) SetupTest() {
 	s.app = &Application{}
-	s.env = &mock.Environment{}
+	s.env = mock.NewEnvironment()
 }
 func (s *ApplicationSuite) TearDownTest() {}
 
@@ -83,7 +83,7 @@ func (s *ApplicationSuite) TestRunDoesNotErrorWithDryRun() {
 	s.NoError(s.app.Setup(s.env))
 
 	ctx := context.Background()
-	s.app.DryRun = true
+	s.app.Options.DryRun = true
 	s.NoError(s.app.Run(ctx))
 }
 
@@ -111,7 +111,7 @@ func (s *ApplicationSuite) TestLimitIsRespected() {
 	s.NoError(s.env.Queue.Start(ctx))
 	s.NoError(s.env.Queue.Put(job))
 	s.Equal(1, s.env.Queue.Stats().Total)
-	amboy.WaitCtxInterval(ctx, s.env.Queue, 100*time.Millisecond)
+	amboy.WaitCtxInterval(ctx, s.env.Queue, 10*time.Millisecond)
 
 	num, err := addMigrationJobs(ctx, s.env.Queue, false, 2)
 	s.NoError(err)

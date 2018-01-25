@@ -7,6 +7,13 @@ credentials:  {
         github: "token xxx",
 }
 
+amboy:
+  name: test_queue
+  database: amboy_test
+  pool_size_local: 2
+  pool_size_remote: 2
+  local_storage_size: 2048
+
 agentexecutablesdir: "agent/testdata/executables"
 
 api_url: "https://localhost:8443"
@@ -33,6 +40,7 @@ repotracker:
     logfile: "/tmp/repotracker_test.log"
 
 api:
+    github_webhook_secret: "test"
     logfile: "/tmp/api_test.log"
     httplistenaddr: ":8080"
     httpslistenaddr: ":8443"
@@ -133,3 +141,5 @@ expansions:
         -----END RSA PRIVATE KEY-----
     github_public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOKHeJ/AfWWTnwhiZYSPQ4HRSe84sf4qUgyAGGU+rJkq6Pwuk064/wh+D2vx1dOMQMETAcV4xB3AYw3S04ZHKwz61SLJSyjvJ3NItU7SKa8dNxr1EJywfk63tTAudleH4DjAFzHdRMqZT1penOhEJtKruyzxVuSpwFjkjJY/3vhawu9oNiolGhGvm/QzbxF8CjhWsLk/oAT8poWCsbvz5WlU6ttSMc6dkPLIB4kj0nlq8QDHdK6GnB9DRIGActa6fJaDRxGqgmnYIk5W44nFTGqIcfvqBC7LM83rnVeaseVWytSlbAQL11b+ZDw+UaQeT4CZ9Ft9Wi2MNuqU+NHu4f slave@10gen.com
     api_httpscert_path: "/data/api_httpscert_path.pem"
+
+github_pr_creator_org: "10gen"

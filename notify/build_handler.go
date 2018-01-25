@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -47,14 +48,25 @@ func (self *BuildNotificationHandler) getRecentlyFinishedBuildsWithStatus(key *N
 		// Copy by value to make pointer safe
 		curr := currentBuild
 		if status == "" || curr.Status == status {
-			grip.Debugf("Adding '%s' on %s %s notification", curr.Id, key.Project,
-				key.NotificationName)
+			grip.Debug(message.Fields{
+				"message":      "adding notification",
+				"notification": self.Type,
+				"id":           curr.Id,
+				"project":      curr.Project,
+				"runner":       RunnerName,
+				"name":         key.NotificationName,
+			})
 
 			// get the build's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(curr.Project); err != nil {
-				grip.Warningf("Unable to find project ref for build '%s': %+v",
-					curr.Id, err)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"notification": self.Type,
+					"id":           curr.Id,
+					"runner":       RunnerName,
+					"project":      curr.Project,
+					"message":      "unable to find project ref",
+				}))
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
 			}
@@ -74,6 +86,7 @@ func (self *BuildNotificationHandler) getRecentlyFinishedBuildsWithStatus(key *N
 
 func (self *BuildNotificationHandler) templateNotification(ae *web.App,
 	notification *TriggeredBuildNotification, changeInfo []ChangeInfo) (email Email, err error) {
+
 	current := notification.Current
 
 	// add change information to notification

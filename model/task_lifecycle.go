@@ -14,7 +14,13 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 )
+
+type StatusChanges struct {
+	PatchNewStatus string
+	BuildNewStatus string
+}
 
 func SetActiveState(taskId string, caller string, active bool) error {
 	t, err := task.FindOne(task.ById(taskId))
@@ -64,6 +70,11 @@ func SetActiveState(taskId string, caller string, active bool) error {
 	} else {
 		event.LogTaskDeactivated(taskId, caller)
 	}
+
+	if t.IsPartOfDisplay() {
+		return updateDisplayTask(t)
+	}
+
 	return errors.WithStack(build.SetCachedTaskActivated(t.BuildId, taskId, active))
 }
 
@@ -97,6 +108,9 @@ func resetTask(taskId string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	if t.IsPartOfDisplay() {
+		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
+	}
 	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
@@ -110,7 +124,8 @@ func resetTask(taskId string) error {
 		return errors.WithStack(err)
 	}
 
-	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t.Id))
+	updates := StatusChanges{}
+	return errors.WithStack(UpdateBuildAndVersionStatusForTask(t.Id, &updates))
 }
 
 // TryResetTask resets a task
@@ -118,6 +133,9 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
+	}
+	if t.IsPartOfDisplay() {
+		return fmt.Errorf("cannot restart execution task %s because it is part of a display task", t.Id)
 	}
 	// if we've reached the max number of executions for this task, mark it as finished and failed
 	if t.Execution >= evergreen.MaxTaskExecution {
@@ -128,7 +146,8 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 		} else {
 			grip.Debugln(message, "marking as failed")
 			if detail != nil {
-				return errors.WithStack(MarkEnd(t.Id, origin, time.Now(), detail, p, false))
+				updates := StatusChanges{}
+				return errors.WithStack(MarkEnd(t.Id, origin, time.Now(), detail, p, false, &updates))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -152,12 +171,17 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 		}
 	}
 
-	if err = resetTask(t.Id); err == nil {
-		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
-			event.LogTaskRestarted(t.Id, user)
-		} else {
-			event.LogTaskRestarted(t.Id, origin)
-		}
+	if err = resetTask(t.Id); err != nil {
+		return err
+	}
+	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
+		event.LogTaskRestarted(t.Id, user)
+	} else {
+		event.LogTaskRestarted(t.Id, origin)
+	}
+
+	if t.DisplayOnly {
+		return t.UpdateDisplayTask()
 	}
 	return errors.WithStack(err)
 }
@@ -191,7 +215,7 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		return err
 	}
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.Find(task.ByActivatedBeforeRevisionWithStatuses(
+	allTasks, err := task.FindWithDisplayTasks(task.ByActivatedBeforeRevisionWithStatuses(
 		t.RevisionOrderNumber,
 		statuses,
 		t.BuildVariant,
@@ -199,10 +223,32 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		t.Project,
 	))
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "error finding tasks to deactivate for task %s", t.Id)
 	}
+	extraTasks := []task.Task{}
+	if t.DisplayOnly {
+		for _, dt := range allTasks {
+			var execTasks []task.Task
+			execTasks, err = task.FindWithDisplayTasks(task.ByIds(dt.ExecutionTasks))
+			if err != nil {
+				return errors.Wrapf(err, "error finding execution tasks to deactivate for task %s", t.Id)
+			}
+			canDeactivate := true
+			for _, et := range execTasks {
+				if task.IsFinished(et) || task.IsAbortable(et) {
+					canDeactivate = false
+					break
+				}
+			}
+			if canDeactivate {
+				extraTasks = append(extraTasks, execTasks...)
+			}
+		}
+	}
+	allTasks = append(allTasks, extraTasks...)
+
 	for _, t := range allTasks {
-		if t.Requester == evergreen.PatchVersionRequester {
+		if evergreen.IsPatchRequester(t.Requester) {
 			// EVG-948, the query depends on patches not
 			// having the revision order number, which they
 			// got as part of 948. as we expect to add more
@@ -217,8 +263,10 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		}
 		event.LogTaskDeactivated(t.Id, caller)
 		// update the cached version of the task, in its build document to be deactivated
-		if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
-			return err
+		if !t.IsPartOfDisplay() {
+			if err = build.SetCachedTaskActivated(t.BuildId, t.Id, false); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -259,6 +307,20 @@ func getStepback(taskId string, project *Project) (bool, error) {
 
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
 func doStepback(t *task.Task) error {
+	if t.DisplayOnly {
+		execTasks, err := task.Find(task.ByIds(t.ExecutionTasks))
+		if err != nil {
+			return errors.Wrapf(err, "error finding tasks for stepback of %s", t.Id)
+		}
+		catcher := grip.NewSimpleCatcher()
+		for _, et := range execTasks {
+			catcher.Add(doStepback(&et))
+		}
+		if catcher.HasErrors() {
+			return catcher.Resolve()
+		}
+	}
+
 	//See if there is a prior success for this particular task.
 	//If there isn't, we should not activate the previous task because
 	//it could trigger stepping backwards ad infinitum.
@@ -276,7 +338,7 @@ func doStepback(t *task.Task) error {
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	p *Project, deactivatePrevious bool) error {
+	p *Project, deactivatePrevious bool, updates *StatusChanges) error {
 
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
@@ -288,6 +350,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
+		detail.Type = TestCommandType
 	}
 
 	t.Details = *detail
@@ -304,20 +367,46 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	status := t.ResultStatus()
 	event.LogTaskFinished(t.Id, t.HostId, status)
 
-	// update the cached version of the task, in its build document
-	err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, t.TimeTaken)
-	if err != nil {
-		return errors.Wrap(err, "error updating build")
+	if t.IsPartOfDisplay() {
+		if err = t.DisplayTask.UpdateDisplayTask(); err != nil {
+			return err
+		}
+		if err = build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, t.TimeTaken); err != nil {
+			return err
+		}
+	} else {
+		err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail.Status, detail, t.TimeTaken)
+		if err != nil {
+			return errors.Wrap(err, "error updating build")
+		}
 	}
 
 	// no need to activate/deactivate other task if this is a patch request's task
-	if t.Requester == evergreen.PatchVersionRequester {
-		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id),
+	if evergreen.IsPatchRequester(t.Requester) {
+		return errors.Wrap(UpdateBuildAndVersionStatusForTask(t.Id, updates),
 			"Error updating build status (1)")
 	}
-	if detail.Status == evergreen.TaskFailed && detail.Type != "system" {
+	if t.IsPartOfDisplay() {
+		err = evalStepback(t.DisplayTask, p, caller, t.DisplayTask.Status, deactivatePrevious)
+	} else {
+		err = evalStepback(t, p, caller, status, deactivatePrevious)
+	}
+	if err != nil {
+		return err
+	}
+
+	// update the build
+	if err := UpdateBuildAndVersionStatusForTask(t.Id, updates); err != nil {
+		return errors.Wrap(err, "Error updating build status (2)")
+	}
+
+	return nil
+}
+
+func evalStepback(t *task.Task, p *Project, caller, status string, deactivatePrevious bool) error {
+	if status == evergreen.TaskFailed {
 		var shouldStepBack bool
-		shouldStepBack, err = getStepback(t.Id, p)
+		shouldStepBack, err := getStepback(t.Id, p)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -328,18 +417,14 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		} else {
 			grip.Debugln("Not stepping backwards on task failure:", t.Id)
 		}
-	} else if deactivatePrevious {
+
+	} else if deactivatePrevious && status == evergreen.TaskSucceeded {
 		// if the task was successful, ignore running previous
 		// activated tasks for this buildvariant
 
-		if err = DeactivatePreviousTasks(t.Id, caller); err != nil {
+		if err := DeactivatePreviousTasks(t.Id, caller); err != nil {
 			return errors.Wrap(err, "Error deactivating previous task")
 		}
-	}
-
-	// update the build
-	if err := UpdateBuildAndVersionStatusForTask(t.Id); err != nil {
-		return errors.Wrap(err, "Error updating build status (2)")
 	}
 
 	return nil
@@ -359,7 +444,7 @@ func updateMakespans(b *build.Build) error {
 
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
 // status of the build based on the task's status.
-func UpdateBuildAndVersionStatusForTask(taskId string) error {
+func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) error {
 	// retrieve the task by the task id
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
@@ -388,24 +473,42 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	failedTask := false
 	pushSuccess := true
 	pushCompleted := false
+	buildComplete := false
 	finishedTasks := 0
 
 	// update the build's status based on tasks for this build
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
+			var displayTask *task.Task
+			status := ""
 			finishedTasks++
+
+			displayTask, err = t.GetDisplayTask()
+			if err != nil {
+				return err
+			}
+			if displayTask != nil {
+				err = displayTask.UpdateDisplayTask()
+				if err != nil {
+					return err
+				}
+				t = *displayTask
+				status = t.Status
+			}
 
 			// if it was a compile task, mark the build status accordingly
 			if t.DisplayName == evergreen.CompileStage {
 				if t.Status != evergreen.TaskSucceeded {
 					failedTask = true
 					finishedTasks = -1
+					buildComplete = true
 					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
 						err = errors.Wrap(err, "Error marking build as finished")
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 					break
 				}
 			} else if t.DisplayName == evergreen.PushStage {
@@ -418,6 +521,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 					pushSuccess = false
 				}
 			} else {
@@ -429,15 +533,18 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 					failedTask = true
 				}
 
 				// update the cached version of the task, in its build document
-				err = build.SetCachedTaskFinished(t.BuildId, t.Id, &t.Details, t.TimeTaken)
+				if status == "" {
+					status = t.Details.Status
+				}
+				err = build.SetCachedTaskFinished(t.BuildId, t.Id, status, &t.Details, t.TimeTaken)
 				if err != nil {
 					return fmt.Errorf("error updating build: %v", err.Error())
 				}
-
 			}
 		}
 	}
@@ -449,6 +556,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 			grip.Error(err)
 			return err
 		}
+		updates.BuildNewStatus = evergreen.BuildStarted
+	}
+
+	if finishedTasks >= len(buildTasks) {
+		buildComplete = true
 	}
 
 	// if a compile task didn't fail, then the
@@ -456,8 +568,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	// and test tasks are completed or when those are
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
-	if finishedTasks >= len(buildTasks)-1 {
-
+	if buildComplete {
 		if !failedTask {
 			if pushTaskExists { // this build has a push task associated with it.
 				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.
@@ -467,6 +578,8 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildSucceeded
+
 				} else if pushCompleted && !pushSuccess { // the push failed, mark build failed.
 					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
@@ -474,6 +587,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
+					updates.BuildNewStatus = evergreen.BuildFailed
 				}
 
 				// Otherwise, this build does have a "push" task, but it hasn't finished yet
@@ -490,8 +604,10 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 					grip.Error(err)
 					return err
 				}
-				if b.Requester == evergreen.PatchVersionRequester {
-					if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
+				updates.BuildNewStatus = evergreen.BuildSucceeded
+
+				if evergreen.IsPatchRequester(b.Requester) {
+					if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
 						err = errors.Wrap(err, "Error marking patch as finished")
 						grip.Error(err)
 						return err
@@ -510,8 +626,9 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				grip.Error(err)
 				return err
 			}
-			if b.Requester == evergreen.PatchVersionRequester {
-				if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
+			updates.BuildNewStatus = evergreen.BuildFailed
+			if evergreen.IsPatchRequester(b.Requester) {
+				if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
 					err = errors.Wrap(err, "Error marking patch as finished")
 					grip.Error(err)
 					return err
@@ -535,6 +652,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
 		err = b.UpdateStatus(evergreen.BuildCreated)
+		updates.BuildNewStatus = evergreen.BuildCreated
 		if err != nil {
 			err = errors.Wrap(err, "Error updating build status")
 			grip.Error(err)
@@ -546,7 +664,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 }
 
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
-func MarkStart(taskId string) error {
+func MarkStart(taskId string, updates *StatusChanges) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
@@ -568,10 +686,18 @@ func MarkStart(taskId string) error {
 	}
 
 	// if it's a patch, mark the patch as started if necessary
-	if t.Requester == evergreen.PatchVersionRequester {
-		if err = patch.TryMarkStarted(t.Version, startTime); err != nil {
+	if evergreen.IsPatchRequester(t.Requester) {
+		err := patch.TryMarkStarted(t.Version, startTime)
+		if err == nil {
+			updates.PatchNewStatus = evergreen.PatchStarted
+
+		} else if err != mgo.ErrNotFound {
 			return errors.WithStack(err)
 		}
+	}
+
+	if t.IsPartOfDisplay() {
+		return updateDisplayTask(t)
 	}
 
 	// update the cached version of the task, in its build document
@@ -585,6 +711,10 @@ func MarkTaskUndispatched(t *task.Task) error {
 	}
 	// the task was successfully dispatched, log the event
 	event.LogTaskUndispatched(t.Id, t.HostId)
+
+	if t.IsPartOfDisplay() {
+		return updateDisplayTask(t)
+	}
 
 	// update the cached version of the task in its related build document
 	if err := build.SetCachedTaskUndispatched(t.BuildId, t.Id); err != nil {
@@ -602,6 +732,10 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 	// the task was successfully dispatched, log the event
 	event.LogTaskDispatched(t.Id, hostId)
 
+	if t.IsPartOfDisplay() {
+		return updateDisplayTask(t)
+	}
+
 	// update the cached version of the task in its related build document
 	if err := build.SetCachedTaskDispatched(t.BuildId, t.Id); err != nil {
 		return errors.Wrapf(err, "error updating task cache in build %s", t.BuildId)
@@ -609,10 +743,21 @@ func MarkTaskDispatched(t *task.Task, hostId, distroId string) error {
 	return nil
 }
 
+func updateDisplayTask(t *task.Task) error {
+	err := t.DisplayTask.UpdateDisplayTask()
+	if err != nil {
+		return errors.Wrap(err, "error updating display task")
+	}
+	return build.UpdateCachedTask(t.DisplayTask.BuildId, t.DisplayTask.Id, t.DisplayTask.Status, 0)
+}
+
 type RestartTaskOptions struct {
-	DryRun     bool
-	OnlyRed    bool
-	OnlyPurple bool
+	DryRun     bool      `bson:"dry_run" json:"dry_run" yaml:"dry_run"`
+	OnlyRed    bool      `bson:"only_red" json:"only_red" yaml:"only_red"`
+	OnlyPurple bool      `bson:"only_purple" json:"only_purple" yaml:"only_purple"`
+	StartTime  time.Time `bson:"start_time" json:"start_time" yaml:"start_time"`
+	EndTime    time.Time `bson:"end_time" json:"end_time" yaml:"end_time"`
+	User       string    `bson:"user" json:"user" yaml:"user"`
 }
 
 type RestartTaskResults struct {
@@ -626,13 +771,13 @@ type RestartTaskResults struct {
 // opts.dryRun will return the tasks that will be restarted if sent true
 // opts.red and opts.purple will only restart tasks that were failed due to the test
 // or due to the system, respectively
-func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartTaskOptions) (RestartTaskResults, error) {
+func RestartFailedTasks(opts RestartTaskOptions) (RestartTaskResults, error) {
 	results := RestartTaskResults{}
 	if opts.OnlyRed && opts.OnlyPurple {
 		opts.OnlyRed = false
 		opts.OnlyPurple = false
 	}
-	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(startTime, endTime))
+	tasksToRestart, err := task.Find(task.ByTimeStartedAndFailed(opts.StartTime, opts.EndTime))
 	if err != nil {
 		return results, err
 	}
@@ -654,7 +799,7 @@ func RestartFailedTasks(startTime, endTime time.Time, user string, opts RestartT
 		return results, nil
 	}
 
-	return doRestartFailedTasks(tasksToRestart, user, results), nil
+	return doRestartFailedTasks(tasksToRestart, opts.User, results), nil
 }
 
 func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskResults) RestartTaskResults {

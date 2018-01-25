@@ -1,6 +1,7 @@
 package taskrunner
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,7 +28,7 @@ func (self *MockHostGateway) GetAgentRevision() (string, error) {
 	return agtRevision, nil
 }
 
-func (self *MockHostGateway) StartAgentOnHost(settings *evergreen.Settings,
+func (self *MockHostGateway) StartAgentOnHost(ctx context.Context, settings *evergreen.Settings,
 	targetHost host.Host) error {
 	return nil
 }

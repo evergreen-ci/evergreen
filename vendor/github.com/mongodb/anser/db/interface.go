@@ -1,5 +1,7 @@
 package db
 
+import "time"
+
 // Session provides a subset of the functionality of the *mgo.Session
 // type.
 type Session interface {
@@ -7,6 +9,7 @@ type Session interface {
 	Copy() Session
 	Close()
 	DB(string) Database
+	SetSocketTimeout(time.Duration)
 }
 
 // Database provides a very limited subset of the mgo.DB type.

@@ -34,11 +34,11 @@ func NewJiraCommentLogger(id string, opts *JiraOptions, l LevelInfo) (Sender, er
 		Base:    NewBase(id),
 	}
 
-	if err := j.opts.client.CreateClient(opts.BaseURL); err != nil {
+	if err := j.opts.client.CreateClient(opts.HTTPClient, opts.BaseURL); err != nil {
 		return nil, err
 	}
 
-	if _, err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
+	if err := j.opts.client.Authenticate(opts.Username, opts.Password); err != nil {
 		return nil, fmt.Errorf("jira authentication error: %v", err)
 	}
 

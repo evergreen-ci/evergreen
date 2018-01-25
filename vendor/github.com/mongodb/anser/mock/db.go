@@ -9,14 +9,16 @@ package mock
 import (
 	"errors"
 	"reflect"
+	"time"
 
 	"github.com/mongodb/anser/db"
 )
 
 type Session struct {
-	DBs    map[string]*Database
-	URI    string
-	Closed bool
+	DBs           map[string]*Database
+	URI           string
+	Closed        bool
+	SocketTimeout time.Duration
 }
 
 func NewSession() *Session {
@@ -37,6 +39,8 @@ func (s *Session) DB(n string) db.Database {
 	}
 	return s.DBs[n]
 }
+
+func (s *Session) SetSocketTimeout(d time.Duration) { s.SocketTimeout = d }
 
 type Database struct {
 	Collections map[string]*Collection

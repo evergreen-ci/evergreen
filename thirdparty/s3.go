@@ -3,7 +3,6 @@ package thirdparty
 import (
 	"crypto/hmac"
 	"crypto/sha1"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
@@ -162,7 +161,10 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 	}
 	defer localFileReader.Close()
 
-	session := NewS3Session(pushAuth, aws.USEast)
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
+	session := NewS3Session(pushAuth, aws.USEast, client)
 	bucket := session.Bucket(urlParsed.Host)
 	// options for the header
 	options := s3.Options{}
@@ -175,7 +177,10 @@ func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	session := NewS3Session(auth, aws.USEast)
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
+	session := NewS3Session(auth, aws.USEast, client)
 
 	bucket := session.Bucket(urlParsed.Host)
 	return bucket.GetReader(urlParsed.Path)
@@ -267,7 +272,7 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 // certificates on darwin machines. Note that the client
 // returned can only connect successfully to the
 // supplied s3's region.
-func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
+func NewS3Session(auth *aws.Auth, region aws.Region, client *http.Client) *s3.S3 {
 	var s3Session *s3.S3
 	cert := x509.Certificate{}
 	// go's systemVerify panics with no verify options set
@@ -279,15 +284,14 @@ func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
 		s3Session.ConnectTimeout = S3ConnectTimeout
 		return s3Session
 	}
+
 	// no verify options so system root ca will be used
 	_, err := cert.Verify(x509.VerifyOptions{})
 	rootsError := x509.SystemRootsError{}
 	if err != nil && err.Error() == rootsError.Error() {
 		// create a Transport which includes our TLSConfig with InsecureSkipVerify
 		// and client timeouts.
-		client := util.GetHttpClient()
-		client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
+		client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
 		s3Session = s3.New(*auth, region, client)
 	} else {
 		s3Session = s3.New(*auth, region)

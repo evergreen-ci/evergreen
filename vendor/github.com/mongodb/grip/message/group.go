@@ -43,6 +43,9 @@ func (g *GroupComposer) String() string {
 
 	out := []string{}
 	for _, m := range g.messages {
+		if m == nil {
+			continue
+		}
 		if m.Loggable() {
 			out = append(out, m.String())
 		}
@@ -60,6 +63,9 @@ func (g *GroupComposer) Raw() interface{} {
 
 	out := []interface{}{}
 	for _, m := range g.messages {
+		if m == nil {
+			continue
+		}
 		if m.Loggable() {
 			out = append(out, m.Raw())
 		}
@@ -72,6 +78,9 @@ func (g *GroupComposer) Raw() interface{} {
 // is loggable.
 func (g *GroupComposer) Loggable() bool {
 	for _, m := range g.messages {
+		if m == nil {
+			continue
+		}
 		if m.Loggable() {
 			return true
 		}
@@ -85,6 +94,9 @@ func (g *GroupComposer) Priority() level.Priority {
 	var highest level.Priority
 
 	for _, m := range g.messages {
+		if m == nil {
+			continue
+		}
 		pri := m.Priority()
 		if pri > highest {
 			highest = pri
@@ -98,6 +110,9 @@ func (g *GroupComposer) Priority() level.Priority {
 // returning an error after encountering a single error.
 func (g *GroupComposer) SetPriority(l level.Priority) error {
 	for _, m := range g.messages {
+		if m == nil {
+			continue
+		}
 		if m.Priority() == 0 {
 			_ = m.SetPriority(l)
 		}

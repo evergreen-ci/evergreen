@@ -137,20 +137,19 @@ func (r *processRegistry) removeJob(taskId string) error {
 // job object, which can later be used by "cleanup" to terminate all members of the job object at
 // once. If a job object doesn't already exist, it will create one automatically, scoped by the
 // task ID for which the shell process was started.
-func TrackProcess(taskId string, pid int, logger grip.Journaler) error {
+func TrackProcess(taskId string, pid int, logger grip.Journaler) {
 	job, err := processMapping.getJob(taskId)
 	if err != nil {
 		logger.Errorf("failed creating job object: %v", err)
-		return errors.WithStack(err)
+		return
 	}
 
 	logger.Infof("tracking process with pid %d", pid)
 
 	if err = job.AssignProcess(uint(pid)); err != nil {
 		logger.Errorf("failed assigning process %d to job object: %v", pid, err)
+		return
 	}
-
-	return err
 }
 
 // cleanup() has a windows-specific implementation which finds the job object associated with the

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
@@ -39,6 +40,9 @@ type Communicator interface {
 	GetHostID() string
 	// GetHostSecret returns the host secret.
 	GetHostSecret() string
+
+	// Method to release resources used by the communicator.
+	Close()
 
 	// Updates the clients local concept of it's last updated
 	// time; used by agents to determine timeouts.
@@ -119,6 +123,9 @@ type Communicator interface {
 	// Spawnhost methods
 	//
 	CreateSpawnHost(context.Context, string, string) (*restmodel.APIHost, error)
+	TerminateSpawnHost(context.Context, string) error
+	ChangeSpawnHostPassword(context.Context, string, string) error
+	ExtendSpawnHostExpiration(context.Context, string, int) error
 	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
 
 	// Fetch list of distributions evergreen can spawn
@@ -131,4 +138,10 @@ type Communicator interface {
 
 	// Delete a key with specified name from the current authenticated user
 	DeletePublicKey(context.Context, string) error
+
+	// List variant/task aliases
+	ListAliases(context.Context, string) ([]model.PatchDefinition, error)
+
+	// GetClientConfig fetches the ClientConfig for the evergreen server
+	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)
 }

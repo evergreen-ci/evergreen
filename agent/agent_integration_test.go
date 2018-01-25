@@ -55,7 +55,7 @@ func (s *AgentIntegrationSuite) SetupTest() {
 	dbutil.SetGlobalSessionProvider(s.testConfig.SessionFactory())
 
 	s.Require().NoError(modelutil.CleanupAPITestData())
-	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "print_dir_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
+	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "print_dir_task", "linux-64", filepath.Join(s.testDirectory, "testdata", "agent-integration.yml"), modelutil.NoPatch)
 	s.Require().NoError(err)
 
 	s.testServer, err = service.CreateTestServer(s.testConfig, nil)

@@ -26,7 +26,10 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	as, err := NewAPIServer(testutil.TestConfig())
+	conf := testutil.TestConfig()
+	queue := evergreen.GetEnvironment().LocalQueue()
+
+	as, err := NewAPIServer(conf, queue)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
@@ -51,7 +54,10 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	as, err := NewAPIServer(testutil.TestConfig())
+	conf := testutil.TestConfig()
+	queue := evergreen.GetEnvironment().LocalQueue()
+
+	as, err := NewAPIServer(conf, queue)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}

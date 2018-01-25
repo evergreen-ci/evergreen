@@ -55,7 +55,7 @@ type uiTaskData struct {
 	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	LocalTestResults      []task.TestResult       `json:"test_results"`
+	TestResults      []uiTestResult          `json:"test_results"`
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
 	DependsOn        []uiDep                 `json:"depends_on"`
@@ -88,6 +88,11 @@ type uiTaskData struct {
 	Archived bool `json:"archived"`
 
 	PatchInfo *uiPatch `json:"patch_info"`
+
+	// display task info
+	DisplayOnly    bool         `json:"display_only"`
+	ExecutionTasks []uiExecTask `json:"execution_tasks"`
+	PartOfDisplay  bool         `json:"in_display"`
 }
 
 type uiDep struct {
@@ -100,6 +105,18 @@ type uiDep struct {
 	Details        apimodels.TaskEndDetail `json:"task_end_details"`
 	Recursive      bool                    `json:"recursive"`
 	TaskWaiting    string                  `json:"task_waiting"`
+}
+
+type uiExecTask struct {
+	Id     string `json:"id"`
+	Name   string `json:"display_name"`
+	Status string `json:"status"`
+}
+
+type uiTestResult struct {
+	TestResult task.TestResult `json:"test_result"`
+	TaskId     *string         `json:"task_id"`
+	TaskName   *string         `json:"task_name"`
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +171,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			projCtx.Task = taskFromDb
 			archived = true
 		} else if execution != projCtx.Task.Execution {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding old task"))
+			uis.LoggedError(w, r, http.StatusNotFound, errors.New("Error finding task or execution"))
 			return
 		}
 	}
@@ -175,8 +192,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		}
 		totalExecutions = mostRecentExecution.Execution
 	}
+	if totalExecutions < 1 {
+		totalExecutions = 1
+	}
 
-	task := uiTaskData{
+	uiTask := uiTaskData{
 		Id:                  tId,
 		DisplayName:         projCtx.Task.DisplayName,
 		Revision:            projCtx.Task.Revision,
@@ -196,8 +216,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PushTime:            projCtx.Task.PushTime,
 		TimeTaken:           projCtx.Task.TimeTaken,
 		Priority:            projCtx.Task.Priority,
-		LocalTestResults:         projCtx.Task.LocalTestResults,
 		Aborted:             projCtx.Task.Aborted,
+		DisplayOnly:         projCtx.Task.DisplayOnly,
 		CurrentTime:         time.Now().UnixNano(),
 		BuildVariantDisplay: projCtx.Build.DisplayName,
 		Message:             projCtx.Version.Message,
@@ -209,6 +229,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Repo:                projCtx.ProjectRef.Repo,
 		Archived:            archived,
 		TotalExecutions:     totalExecutions,
+		PartOfDisplay:       projCtx.Task.IsPartOfDisplay(),
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
@@ -217,21 +238,21 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task.DependsOn = deps
-	task.TaskWaiting = taskWaiting
-	task.MinQueuePos, err = model.FindMinimumQueuePositionForTask(task.Id)
+	uiTask.DependsOn = deps
+	uiTask.TaskWaiting = taskWaiting
+	uiTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(uiTask.Id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	if task.MinQueuePos < 0 {
-		task.MinQueuePos = 0
+	if uiTask.MinQueuePos < 0 {
+		uiTask.MinQueuePos = 0
 	}
 
 	var taskHost *host.Host
 	if projCtx.Task.HostId != "" {
-		task.HostDNS = projCtx.Task.HostId
-		task.HostId = projCtx.Task.HostId
+		uiTask.HostDNS = projCtx.Task.HostId
+		uiTask.HostId = projCtx.Task.HostId
 		var err error
 		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
 		if err != nil {
@@ -239,7 +260,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if taskHost != nil {
-			task.HostDNS = taskHost.Host
+			uiTask.HostDNS = taskHost.Host
 		}
 	}
 
@@ -255,7 +276,26 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			taskPatch.BaseTimeTaken = taskOnBaseCommit.TimeTaken
 		}
 		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, projCtx.Task).Tests
-		task.PatchInfo = taskPatch
+		uiTask.PatchInfo = taskPatch
+	}
+
+	if uiTask.DisplayOnly {
+		uiTask.TestResults = []uiTestResult{}
+		for _, t := range projCtx.Task.ExecutionTasks {
+			et, err := task.FindOneIdOldOrNew(t, executionStr)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				return
+			}
+			uiTask.ExecutionTasks = append(uiTask.ExecutionTasks, uiExecTask{Id: et.Id, Name: et.DisplayName, Status: et.ResultStatus()})
+			for _, tr := range et.LocalTestResults {
+				uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr, TaskId: &et.Id, TaskName: &et.DisplayName})
+			}
+		}
+	} else {
+		for _, tr := range projCtx.Context.Task.LocalTestResults {
+			uiTask.TestResults = append(uiTask.TestResults, uiTestResult{TestResult: tr})
+		}
 	}
 
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
@@ -267,7 +307,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		PluginContent pluginData
 		JiraHost      string
 		ViewData
-	}{task, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
+	}{uiTask, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"task.html", "base_angular.html", "menu.html")
 }
 
@@ -616,7 +656,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case "set_active":
 		active := putParams.Active
-		if err = model.SetActiveState(projCtx.Task.Id, authName, active); err != nil {
+		if err = model.SetActiveState(projCtx.Task.Id, authUser.Username(), active); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
@@ -645,10 +685,11 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Cannot set a negative priority. If this task should not run, it should be unscheduled.", http.StatusBadRequest)
 			return
 		}
-		if err = projCtx.Task.SetPriority(priority); err != nil {
+		if err = projCtx.Task.SetPriority(priority, authUser.Username()); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
+
 		// Reload the task from db, send it back
 		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
 		if err != nil {

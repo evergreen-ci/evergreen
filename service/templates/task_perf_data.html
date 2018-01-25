@@ -1,0 +1,316 @@
+<span ng-controller="PerfController">
+  <style>
+    .line {
+      fill: none;
+      stroke-width: 1.5px;
+    }
+
+    .error-line {
+      fill: none;
+      stroke: pink;
+      stroke-width: 1px;
+    }
+
+    .perf-chart-wrapper{
+      display:inline-block;
+    }
+
+    .perf-panel{
+      padding:10px;
+    }
+
+    .current {
+      fill: palegoldenrod;
+      stroke-width: 1
+    }
+
+    .center-text{
+      text-align:center;
+    }
+
+    .compare {
+      fill: paleturquoise;
+      stroke:black;
+    }
+
+    .compareColumn {
+      background-color: paleturquoise !important;
+      font-weight:bold;
+    }
+
+    .thisTaskColumn {
+      background-color: palegoldenrod !important;
+      font-weight:bold;
+    }
+
+    .currentrev{
+      font-weight:bold;
+    }
+
+    svg {
+      border:1px solid #eee;
+    }
+
+    .perf-chart {
+      margin-top: 5px;
+      display: inline-block;
+      width: auto;
+    }
+
+    .perf-trendchart .x-tick-label {
+      fill: #777;
+    }
+
+    .perf-trendchart .x-tick-line {
+      stroke: #CCC;
+      shape-rendering: crispEdges;
+      stroke-dasharray: 2,2;
+    }
+
+    .perf-trendchart .focus-line {
+      stroke: #AAA;
+      stroke-dasharray: 2,2;
+    }
+
+    .perf-trendchart .focus-text {
+      font-weight: bold;
+    }
+
+    .perf-trendchart-sidebar {
+      width: 150px;
+    }
+
+    .perf-table {
+      border: 1px solid #ccc;
+    }
+
+    .overlay {
+      fill:none;
+      stroke-width:1px;
+      pointer-events: all;
+    }
+
+    .perf-table th {
+      text-align:center;
+      padding-left:10px;
+      padding-right:10px;
+    }
+
+    .perf-table td {
+      padding: 3px;
+      text-align:right;
+      border: 1px solid #888;
+    }
+
+    .perf-table tr.odd{
+      background-color: #eee;
+    }
+
+    .bar-highlighted {
+      color: green;
+    }
+
+    .domain{
+      fill: none; 
+      stroke: black; 
+      stroke-width: 1; 
+    }
+    .comparison-table-header{
+      font-weight:bold;
+      text-align:right;
+      padding-right:10px;
+      margin-right:10px;
+    }
+    .chart-testname{
+      font-size:.8em;
+    }
+    .sample-cell {
+      font-size:.7em;
+    }
+    .mono {
+      font-family:monospace;
+    }
+
+    .compare-well {
+      margin-left:30px;
+    }
+
+    .compare-list{
+      list-style:none;
+      display:inline;
+    }
+    .compare-list li{
+      display:inline;
+    }
+    .compare-remove{
+      cursor:pointer;
+    }
+
+    .compare-label {
+      margin-right:10px;
+    }
+    .compare-link{
+      color:white;
+    }
+    .compare-link:hover {
+      color:white;
+      text-decoration:underline;
+    }
+    .hover-compare-metrics {
+      white-space: nowrap;
+      font-size:.8em;
+    }
+
+  </style>
+  <div class="panel perf-panel" ng-if="conf.enabled && !!perfSample">
+    <div class="pull-right text-right">
+      <div ng-show="!!perfTagData.tag"><i class="fa fa-tag"></i>&nbsp;Tagged as&nbsp;<div class="label label-primary">[[perfTagData.tag]]</div><i class="fa fa-times" ng-click="deleteTag()"></i></div>
+      <div ng-show="!perfTagData.tag">
+        <a href="" ng-show="!showTagForm" ng-click="showTagForm=true">Tag this data&hellip;</a>
+        <div ng-show="showTagForm">
+          <input type="text" ng-model="perfTagData.input" ng-keypress="setTaskTag($event)"/>
+          <i class="fa fa-times" ng-click="showTagForm=false"></i>
+        </div>
+      </div>
+      <div><a href="/plugin/json/task/[[task.id]]/perf/">Raw data</a>&nbsp;<i class="fa fa-download"></i></div>
+      <div><a href="/plugin/json/history/[[task.id]]/perf">Historical data</a>&nbsp;<i class="fa fa-download"></i></div>
+    </div>
+    <div ng-show="comparePerfSamples.length > 0">
+      <span>Comparing to:&nbsp;&nbsp;</span>
+      <ul class="compare-list">
+        <li class="label label-primary compare-label" ng-repeat="item in comparePerfSamples"> <i class="fa fa-times compare-remove" ng-click="removeCompareItem($index)"></i> <a href="/task/[[item.sample.task_id]]" class="compare-link">[[item.getLegendName()]]</a> </li>&nbsp;
+      </ul>
+    </div>
+    <a ng-click="showingCompareForm = true" href="" ng-show="!showingCompareForm">Add comparison...</a>
+    <div class="compare-input row">
+      <div ng-show="!!showingCompareForm" class="well well-sm compare-well col-lg-3">
+        <div class="col-lg-8 text-center" style="border-right:1px solid #ccc">
+          <h5>Add comparison to</h5>
+          <div class="center-text"><input type="text" placeholder="githash" ng-model="compareForm.hash"></input></div>
+          <div class="center-text" ng-show="!!tags"><strong>or</strong></div>
+          <div class="center-text" ng-show="!!tags">
+            <select ng-options="d.tag for d in tags" ng-model="compareForm.tag">
+              <option value="">--select a tag--</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div>&nbsp;</div>
+          <div class="center-text"> 
+            <button class="btn btn-primary btn-xs" ng-click="addComparisonForm(compareForm, true)">add</button>
+            <div>&nbsp;</div>
+            <button class="btn btn-default btn-xs" ng-click="showingCompareForm=false">cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="clearfix">
+    </div>
+    <ul class="nav nav-tabs">
+      <li ng-class="{active:perftab==0}"><a href="#" ng-click="perftab=0; syncHash(0)">Graph</a></li>
+      <li ng-class="{active:perftab==1}"><a href="#" ng-click="perftab=1; syncHash(1)">Table</a></li>
+      <li ng-class="{active:perftab==2}"><a href="#" ng-click="perftab=2; syncHash(2)">Trend</a></li>
+      <li ng-class="{active:perftab==3}"><a href="#" ng-click="perftab=3; syncHash(3)">Trend Table</a></li>
+    </ul>
+    <div class="compare-about" ng-show="!!comparePerfSample">
+      <br/>
+      <div>Comparing to <a ng-href="/task/[[comparePerfSample.sample.task_id]]">[[comparePerfSample.sample.revision | limitTo:7]]</a> &nbsp;<button ng-click="clearCompare()" class="btn btn-primary btn-small">Clear</button></div>
+      <br/>
+    </div>
+
+    <div ng-show="perftab==0">
+      <div class="perf-chart-wrapper col-lg-5" ng-repeat="testName in perfSample.testNames()">
+        <span class="chart-testname">[[testName]]</span>
+        <div id="y_axis-{{$index}}" class="y-axis"></div>
+        <div class="perf-chart" id="chart-[[cleanId(task.id)]]-[[$index]]"></div>
+      </div>
+      <div class="row">
+        <div id="legend"></div>
+      </div>
+    </div>
+    <div ng-show="perftab==1">
+      <table class="perf-table">
+        <tr>
+          <th>Test</th>
+          <th ng-repeat="k in perfSample.threads()">[[k]]</th>
+          <th>Max</th>
+          <th ng-repeat="comparison in comparePerfSamples">max @<span class="mono">[[comparison.getLegendName()]]</span></th>
+          <th ng-repeat="comparison in comparePerfSamples">vs <span class="mono">[[comparison.getLegendName()]]</span></th>
+        </tr>
+        <tr ng-repeat="test in perfSample.testNames()" ng-class="{odd:$odd}">
+          <td>[[test]]</td>
+          <td ng-repeat="k in perfSample.threads()">[[perfSample.resultForTest(test).results[k].ops_per_sec | number:0]]</td>
+          <td>[[perfSample.maxThroughputForTest(test) | number:0]]</td>
+          <td ng-repeat="comparison in comparePerfSamples">[[comparison.maxThroughputForTest(test) | number:0]]</td>
+          <td ng-repeat="comparison in comparePerfSamples" ng-style="{backgroundColor:percentToColor(100*percentDiff(perfSample.maxThroughputForTest(test),comparison.maxThroughputForTest(test)))}">
+            [[100*percentDiff(perfSample.maxThroughputForTest(test),comparison.maxThroughputForTest(test)) | number:2]]%
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div ng-show="perftab==2">
+      <h5>Thread Levels:</h5>
+      <div>
+        <div ng-repeat="option in threadLevelsRadio.options">
+          <label>
+            <input
+              type="radio"
+              ng-model="threadLevelsRadio.value"
+              value="[[option.key]]"
+              name="threadlevels"
+            />&nbsp;[[option.val]]
+          </label>
+        </div>
+      </div>
+      <div class="muted" ng-show="!locked">click on a graph to lock to a commit</div>
+      <div class="perf-trendchart-wrapper" ng-repeat="k in perfSample.testNames()">
+        <h4> <i class="fa" ng-class="isGraphHidden(k) ? 'fa-caret-right' : 'fa-caret-down'" ng-click="toggleGraph(k)"></i>&nbsp;[[k]]</h4>
+        <div class="row" ng-show="!isGraphHidden(k)">
+          <div class="col-lg-1 perf-trendchart-sidebar">
+              <div class="mono"><a ng-href="/task/[[hoverSamples[k].task_id]]">[[hoverSamples[k].revision | limitTo : 7]]</a></div>
+              <div>[[dateLabel]]</div>
+              <div>ops per sec:</div>
+              <div><b>[[hoverSamples[k].ops_per_sec | number:0]]</b> </div>
+              <div ng-show="!comparePerfSample">
+                <button ng-click="addComparisonHash(hoverSamples[k].revision)">Compare</button>
+              </div>
+              <div ng-repeat="compareSamp in comparePerfSamples" ng-show="hoverSamples">
+                <b class="hover-compare-metrics" ng-style="{backgroundColor:percentToColor(100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)))}">[[100*percentDiff(hoverSamples[k].ops_per_sec, compareSamp.maxThroughputForTest(k)) | number:1]]% vs [[compareSamp.getLegendName()]] </b>
+              </div>
+            </div>
+          <div class="col-lg-3 perf-trendchart" id="perf-trendchart-[[cleanId(task.id)]]-[[$index]]"></div>
+        </div>
+      </div>
+    </div>
+    <div ng-show="perftab==3">
+      <h5>In each cell, display:</h5>
+      <div>
+        <div><label><input type="radio" ng-model="tablemode" value="maxthroughput" checked/>&nbsp;Max throughput</label></div>
+        <div><label><input type="radio" ng-model="tablemode" value="noise"/>&nbsp;Noisiness in samples</label></div>
+        <div><label ng-class="{muted:!comparePerfSample}">&nbsp;<input type="radio" ng-model="tablemode" value="percentdiff" ng-disabled="!comparePerfSample"/>&nbsp;Percent difference in throughput vs. <span class="mono compareColumn">[[compareHash]]</span></label></div>
+      </div>
+      <div style="overflow-x:scroll">
+        <table class="perf-table">
+          <tr>
+            <th>Test</th>
+            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="mono" ng-class="{currentrev:t.revision==task.gitspec}" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}" >
+              <a href="/task/[[t.task_id]]">[[t.revision | limitTo:7]]</a>
+            </td>
+          </tr>
+          <tr ng-repeat="k in trendSamples.testNames">
+            <td>[[k]]</td>
+            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="sample-cell" ng-show="tablemode=='maxthroughput'" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}" >
+              [[trendSamples.sampleInSeriesAtCommit(k, t.revision).ops_per_sec | number:0]]
+            </td>
+            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="sample-cell" ng-show="tablemode=='noise'" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}" >
+              [[trendSamples.noiseAtCommit(k, t.revision)*100 | number:2]]%
+            </td>
+            <td ng-repeat="t in trendSamples.tasksByCommitOrder() track by $index" class="sample-cell" ng-show="tablemode=='percentdiff'" ng-class="{thisTaskColumn : t.task_id == task.id, compareColumn: t.revision == comparePerfSample.sample.revision}"
+              ng-style="{backgroundColor:percentToColor(100*percentDiff(trendSamples.sampleInSeriesAtCommit(k,t.revision).ops_per_sec, comparePerfSample.maxThroughputForTest(k)))}">
+              [[100*percentDiff(trendSamples.sampleInSeriesAtCommit(k,t.revision).ops_per_sec, comparePerfSample.maxThroughputForTest(k)) | number:2]]</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div> 
+</span>

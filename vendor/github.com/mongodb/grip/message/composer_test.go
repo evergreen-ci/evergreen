@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"testing"
-
 	"strings"
+	"testing"
 
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +27,8 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		NewErrorWrapMessage(level.Error, errors.New(testMsg), ""):              testMsg,
 		NewFormatted(string(testMsg[0])+"%s", testMsg[1:]):                     testMsg,
 		NewFormattedMessage(level.Error, string(testMsg[0])+"%s", testMsg[1:]): testMsg,
+		WrapError(errors.New(testMsg), ""):                                     testMsg,
+		WrapErrorf(errors.New(testMsg), ""):                                    testMsg,
 		NewLine(testMsg, ""):                                                   testMsg,
 		NewLineMessage(level.Error, testMsg, ""):                               testMsg,
 		NewLine(testMsg):                                                       testMsg,
@@ -41,6 +42,9 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		MakeFieldsMessage(testMsg, Fields{}):                                   fmt.Sprintf("[message='%s']", testMsg),
 		MakeFields(Fields{"test": testMsg}):                                    fmt.Sprintf("[test='%s']", testMsg),
 		NewErrorWrappedComposer(errors.New("hello"), NewString("world")):       "world: hello",
+		When(true, testMsg):                                                    testMsg,
+		Whenf(true, testMsg):                                                   testMsg,
+		Whenln(true, testMsg):                                                  testMsg,
 	}
 
 	for msg, output := range cases {
@@ -56,8 +60,8 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 
 		} else {
 			// run the string test to make sure it doesn't change:
-			assert.Equal(msg.String(), output)
-			assert.Equal(msg.String(), output)
+			assert.Equal(msg.String(), output, "%T", msg)
+			assert.Equal(msg.String(), output, "%T", msg)
 		}
 
 		if msg.Priority() != level.Invalid {
@@ -67,7 +71,7 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 }
 
 func TestUnpopulatedMessageComposers(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	// map objects to output
 	cases := []Composer{
 		&stringMessage{},
@@ -84,22 +88,24 @@ func TestUnpopulatedMessageComposers(t *testing.T) {
 		&formatMessenger{},
 		NewFormatted(""),
 		NewFormattedMessage(level.Error, ""),
-		&stackMessage{},
 		NewStack(1, ""),
 		NewStackLines(1),
 		NewStackFormatted(1, ""),
 		MakeGroupComposer(),
 		&GroupComposer{},
+		When(false, ""),
+		Whenf(false, "", ""),
+		Whenln(false, "", ""),
 	}
 
-	for _, msg := range cases {
-		assert.False(msg.Loggable())
+	for idx, msg := range cases {
+		assert.False(msg.Loggable(), "%d:%T", idx, msg)
 	}
 }
 
 func TestDataCollecterComposerConstructors(t *testing.T) {
 	const testMsg = "hello"
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	// map objects to output (prefix)
 	cases := map[Composer]string{
 		NewProcessInfo(level.Error, int32(os.Getpid()), testMsg): "",
@@ -116,7 +122,7 @@ func TestDataCollecterComposerConstructors(t *testing.T) {
 		assert.NotNil(msg.Raw())
 		assert.Implements((*Composer)(nil), msg)
 		assert.True(msg.Loggable())
-		assert.True(strings.HasPrefix(msg.String(), prefix), fmt.Sprintf("%T: %s", msg, msg))
+		assert.True(strings.HasPrefix(msg.String(), prefix), "%T: %s", msg, msg)
 	}
 
 	multiCases := [][]Composer{
@@ -144,7 +150,7 @@ func TestStackMessages(t *testing.T) {
 		stackMsg = strings.Replace(stackMsg, "/", "\\", 1)
 	}
 
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	// map objects to output (prefix)
 	cases := map[Composer]string{
 		NewStack(1, testMsg):                                       testMsg,
@@ -177,7 +183,7 @@ func TestStackMessages(t *testing.T) {
 
 func TestComposerConverter(t *testing.T) {
 	const testMsg = "hello world"
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	cases := []interface{}{
 		NewLine(testMsg),
@@ -192,7 +198,7 @@ func TestComposerConverter(t *testing.T) {
 	for _, msg := range cases {
 		comp := ConvertToComposer(level.Error, msg)
 		assert.True(comp.Loggable())
-		assert.Equal(testMsg, comp.String(), fmt.Sprintf("%T", msg))
+		assert.Equal(testMsg, comp.String(), "%T", msg)
 	}
 
 	cases = []interface{}{
@@ -208,7 +214,7 @@ func TestComposerConverter(t *testing.T) {
 	for _, msg := range cases {
 		comp := ConvertToComposer(level.Error, msg)
 		assert.False(comp.Loggable())
-		assert.Equal("", comp.String(), fmt.Sprintf("%T", msg))
+		assert.Equal("", comp.String(), "%T", msg)
 	}
 
 	outputCases := map[string]interface{}{
@@ -228,7 +234,7 @@ func TestComposerConverter(t *testing.T) {
 
 func TestJiraMessageComposerConstructor(t *testing.T) {
 	const testMsg = "hello"
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	reporterField := JiraField{Key: "Reporter", Value: "Annie"}
 	assigneeField := JiraField{Key: "Assignee", Value: "Sejin"}
 	typeField := JiraField{Key: "Type", Value: "Bug"}
@@ -247,7 +253,7 @@ func TestJiraMessageComposerConstructor(t *testing.T) {
 }
 
 func TestProcessTreeDoesNotHaveDuplicates(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	procs := CollectProcessInfoWithChildren(1)
 	seen := make(map[int32]struct{})

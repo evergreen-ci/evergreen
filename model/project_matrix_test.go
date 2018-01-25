@@ -114,7 +114,7 @@ buildvariants:
 			m1 := *p.BuildVariants[0].matrix
 			So(m1.Id, ShouldEqual, "test")
 			So(p.BuildVariants[1].Name, ShouldEqual, "single_variant")
-			So(p.BuildVariants[1].Tasks, ShouldResemble, parserBVTasks{parserBVTask{Name: "*"}})
+			So(p.BuildVariants[1].Tasks, ShouldResemble, parserBVTaskUnits{parserBVTaskUnit{Name: "*"}})
 		})
 	})
 }
@@ -592,7 +592,7 @@ func TestRulesEvaluation(t *testing.T) {
 		Convey("a variant with a 'remove' rule should remove the given tasks", func() {
 			bvs := []parserBV{{
 				Name: "test",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: "blue"},
 					{Name: ".special"},
 					{Name: ".tertiary"},
@@ -602,7 +602,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{RemoveTasks: []string{"brown"}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, bvs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -611,18 +611,18 @@ func TestRulesEvaluation(t *testing.T) {
 		Convey("a variant with an 'add' rule should add the given tasks", func() {
 			bvs := []parserBV{{
 				Name: "test",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: ".special"},
 				},
 				matrixRules: []ruleAction{
-					{AddTasks: []parserBVTask{{Name: ".primary"}}},
-					{AddTasks: []parserBVTask{{Name: ".warm"}}},
-					{AddTasks: []parserBVTask{{Name: "green", DependsOn: []parserDependency{{
+					{AddTasks: []parserBVTaskUnit{{Name: ".primary"}}},
+					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}}},
+					{AddTasks: []parserBVTaskUnit{{Name: "green", DependsOn: []parserDependency{{
 						taskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, bvs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -631,20 +631,20 @@ func TestRulesEvaluation(t *testing.T) {
 		Convey("a series of add and remove rules should execute in order", func() {
 			bvs := []parserBV{{
 				Name: "test",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: ".secondary"},
 				},
 				matrixRules: []ruleAction{
-					{AddTasks: []parserBVTask{{Name: ".primary"}}},
+					{AddTasks: []parserBVTaskUnit{{Name: ".primary"}}},
 					{RemoveTasks: []string{".secondary"}},
-					{AddTasks: []parserBVTask{{Name: ".warm"}}},
+					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}}},
 					{RemoveTasks: []string{"orange"}},
-					{AddTasks: []parserBVTask{{Name: "orange", DependsOn: []parserDependency{{
+					{AddTasks: []parserBVTaskUnit{{Name: "orange", DependsOn: []parserDependency{{
 						taskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, bvs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -654,32 +654,32 @@ func TestRulesEvaluation(t *testing.T) {
 			bvs := []parserBV{{
 				// case where conflicts take place against existing tasks
 				Name: "test1",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: ".warm"},
 				},
 				matrixRules: []ruleAction{
-					{AddTasks: []parserBVTask{{Name: "orange", DependsOn: []parserDependency{{
+					{AddTasks: []parserBVTaskUnit{{Name: "orange", DependsOn: []parserDependency{{
 						taskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}, {
 				// case where conflicts are within the same rule
 				Name:  "test2",
-				Tasks: parserBVTasks{},
+				Tasks: parserBVTaskUnits{},
 				matrixRules: []ruleAction{
-					{AddTasks: []parserBVTask{{Name: ".warm"}, {Name: "orange", DependsOn: []parserDependency{{
+					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}, {Name: "orange", DependsOn: []parserDependency{{
 						taskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, bvs)
+			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
 			So(errs, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 3)
 		})
 		Convey("a 'remove' rule for an unknown task should fail", func() {
 			bvs := []parserBV{{
 				Name: "test",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: "blue"},
 					{Name: ".special"},
 					{Name: ".tertiary"},
@@ -689,7 +689,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{RemoveTasks: []string{"rainbow"}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, bvs)
+			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
 			So(errs, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 2)
 		})

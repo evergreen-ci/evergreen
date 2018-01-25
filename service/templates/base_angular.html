@@ -23,6 +23,9 @@
         <!-- underscore.js js v1.4.4 js -->
         <script type="text/javascript" src="/static/js/underscore-min.js"></script>
 
+        <!-- d3.js v3.5.3 -->
+        <script type="text/javascript" src="/static/js/d3.min.js"></script>
+
         <!-- angular.js v1.2.18 js -->
         <script type="text/javascript" src="/static/js/angular{{if IsProd }}.min{{end}}.js"></script>
         <script type="text/javascript" src="/static/js/angular-sanitize.min.js"></script>
@@ -52,9 +55,11 @@
         <script type="text/javascript" src="/static/js/controllers/project_controller.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="{{Static "js" "login.js"}}?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="{{Static "js" "notifybox.js"}}?hash={{ StaticsMD5 }}"></script>
+
         <style type="text/css">
           #footer{ font-size:.8em; color:#888; }
         </style>
+
         <script type="text/javascript">
         {{if .ProjectData}}
             {{if .ProjectData.ProjectRef}}

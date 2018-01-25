@@ -6,11 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMakePatchedConfig(t *testing.T) {
@@ -103,15 +110,15 @@ func TestIncludePatchDependencies(t *testing.T) {
 		p := &Project{
 			Tasks: []ProjectTask{
 				{Name: "t1"},
-				{Name: "t2", DependsOn: []TaskDependency{{Name: "t1"}}},
+				{Name: "t2", DependsOn: []TaskUnitDependency{{Name: "t1"}}},
 				{Name: "t3"},
 				{Name: "t4", Patchable: new(bool)},
-				{Name: "t5", DependsOn: []TaskDependency{{Name: "t4"}}},
+				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: "t4"}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTask{{Name: "t1"}, {Name: "t2"}}},
-				{Name: "v2", Tasks: []BuildVariantTask{
-					{Name: "t3", DependsOn: []TaskDependency{{Name: "t2", Variant: "v1"}}}}},
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}}},
+				{Name: "v2", Tasks: []BuildVariantTaskUnit{
+					{Name: "t3", DependsOn: []TaskUnitDependency{{Name: "t2", Variant: "v1"}}}}},
 			},
 		}
 
@@ -147,15 +154,15 @@ func TestIncludePatchDependencies(t *testing.T) {
 			Tasks: []ProjectTask{
 				{Name: "t1"},
 				{Name: "t2"},
-				{Name: "t3", DependsOn: []TaskDependency{{Name: AllDependencies}}},
-				{Name: "t4", DependsOn: []TaskDependency{{Name: "t3", Variant: AllVariants}}},
-				{Name: "t5", DependsOn: []TaskDependency{{Name: AllDependencies, Variant: AllVariants}}},
+				{Name: "t3", DependsOn: []TaskUnitDependency{{Name: AllDependencies}}},
+				{Name: "t4", DependsOn: []TaskUnitDependency{{Name: "t3", Variant: AllVariants}}},
+				{Name: "t5", DependsOn: []TaskUnitDependency{{Name: AllDependencies, Variant: AllVariants}}},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTask{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v2", Tasks: []BuildVariantTask{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
-				{Name: "v3", Tasks: []BuildVariantTask{{Name: "t4"}}},
-				{Name: "v4", Tasks: []BuildVariantTask{{Name: "t5"}}},
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v2", Tasks: []BuildVariantTaskUnit{{Name: "t1"}, {Name: "t2"}, {Name: "t3"}}},
+				{Name: "v3", Tasks: []BuildVariantTaskUnit{{Name: "t4"}}},
+				{Name: "v4", Tasks: []BuildVariantTaskUnit{{Name: "t5"}}},
 			},
 		}
 
@@ -199,16 +206,16 @@ func TestIncludePatchDependencies(t *testing.T) {
 	})
 
 	Convey("With a project task config with required tasks", t, func() {
-		all := []BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"},
+		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"},
 			{Name: "before"}, {Name: "after"}}
-		beforeDep := []TaskDependency{{Name: "before"}}
+		beforeDep := []TaskUnitDependency{{Name: "before"}}
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "before", Requires: []TaskRequirement{{Name: "after"}}},
+				{Name: "before", Requires: []TaskUnitRequirement{{Name: "after"}}},
 				{Name: "1", DependsOn: beforeDep},
 				{Name: "2", DependsOn: beforeDep},
 				{Name: "3", DependsOn: beforeDep},
-				{Name: "after", DependsOn: []TaskDependency{
+				{Name: "after", DependsOn: []TaskUnitDependency{
 					{Name: "before"},
 					{Name: "1", PatchOptional: true},
 					{Name: "2", PatchOptional: true},
@@ -248,12 +255,12 @@ func TestIncludePatchDependencies(t *testing.T) {
 		})
 	})
 	Convey("With a project task config with cyclical requirements", t, func() {
-		all := []BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"}}
+		all := []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}, {Name: "3"}}
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskRequirement{{Name: "2"}, {Name: "3"}}},
-				{Name: "2", Requires: []TaskRequirement{{Name: "1"}, {Name: "3"}}},
-				{Name: "3", Requires: []TaskRequirement{{Name: "2"}, {Name: "1"}}},
+				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "3"}}},
+				{Name: "2", Requires: []TaskUnitRequirement{{Name: "1"}, {Name: "3"}}},
+				{Name: "3", Requires: []TaskUnitRequirement{{Name: "2"}, {Name: "1"}}},
 			},
 			BuildVariants: []BuildVariant{
 				{Name: "v1", Tasks: all},
@@ -290,11 +297,11 @@ func TestIncludePatchDependencies(t *testing.T) {
 	Convey("With a project task config that requires a non-patchable task", t, func() {
 		p := &Project{
 			Tasks: []ProjectTask{
-				{Name: "1", Requires: []TaskRequirement{{Name: "2"}}},
+				{Name: "1", Requires: []TaskUnitRequirement{{Name: "2"}}},
 				{Name: "2", Patchable: new(bool)},
 			},
 			BuildVariants: []BuildVariant{
-				{Name: "v1", Tasks: []BuildVariantTask{{Name: "1"}, {Name: "2"}}},
+				{Name: "v1", Tasks: []BuildVariantTaskUnit{{Name: "1"}, {Name: "2"}}},
 			},
 		}
 		Convey("the non-patchable task should not be added", func() {
@@ -304,4 +311,93 @@ func TestIncludePatchDependencies(t *testing.T) {
 		})
 	})
 
+}
+
+func TestVariantTasksToTVPairs(t *testing.T) {
+	assert := assert.New(t)
+
+	input := []patch.VariantTasks{
+		patch.VariantTasks{
+			Variant: "variant",
+			Tasks:   []string{"task1", "task2", "task3"},
+			DisplayTasks: []patch.DisplayTask{
+				patch.DisplayTask{
+					Name: "displaytask1",
+				},
+			},
+		},
+	}
+	output := VariantTasksToTVPairs(input)
+	assert.Len(output.ExecTasks, 3)
+	assert.Len(output.DisplayTasks, 1)
+
+	original := output.TVPairsToVariantTasks()
+	assert.Equal(input, original)
+}
+
+func TestAddNewPatch(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, version.Collection, build.Collection, task.Collection), t, "problem clearing collections")
+	p := &patch.Patch{
+		Activated: true,
+	}
+	v := &version.Version{
+		Id:         "version",
+		Revision:   "1234",
+		Requester:  evergreen.PatchVersionRequester,
+		CreateTime: time.Now(),
+	}
+	assert.NoError(p.Insert())
+	assert.NoError(v.Insert())
+
+	proj := &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			BuildVariant{
+				Name: "variant",
+				Tasks: []BuildVariantTaskUnit{
+					{Name: "task1"}, {Name: "task2"}, {Name: "task3"},
+				},
+				DisplayTasks: []DisplayTask{
+					DisplayTask{
+						Name:           "displaytask1",
+						ExecutionTasks: []string{"task1", "task2"},
+					},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			ProjectTask{Name: "task1"}, ProjectTask{Name: "task2"}, ProjectTask{Name: "task3"},
+		},
+	}
+	tasks := VariantTasksToTVPairs([]patch.VariantTasks{
+		patch.VariantTasks{
+			Variant: "variant",
+			Tasks:   []string{"task1", "task2", "task3"},
+			DisplayTasks: []patch.DisplayTask{
+				patch.DisplayTask{
+					Name: "displaytask1",
+				},
+			},
+		},
+	})
+
+	assert.NoError(AddNewBuildsForPatch(p, v, proj, tasks))
+	dbBuild, err := build.FindOne(db.Q{})
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.Len(dbBuild.Tasks, 2)
+	assert.Equal(dbBuild.Tasks[0].DisplayName, "displaytask1")
+	assert.Equal(dbBuild.Tasks[1].DisplayName, "task3")
+
+	assert.NoError(AddNewTasksForPatch(p, v, proj, tasks))
+	dbTasks, err := task.FindWithDisplayTasks(task.ByBuildId(dbBuild.Id))
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.Len(dbTasks, 4)
+	assert.Equal(dbTasks[0].DisplayName, "displaytask1")
+	assert.Equal(dbTasks[1].DisplayName, "task1")
+	assert.Equal(dbTasks[2].DisplayName, "task2")
+	assert.Equal(dbTasks[3].DisplayName, "task3")
 }

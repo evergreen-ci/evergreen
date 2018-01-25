@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // Handler for build failure notifications. Implements NotificationHandler from
@@ -17,7 +18,7 @@ type BuildFailureHandler struct {
 func (self *BuildFailureHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciFailurePreface
-	if key.NotificationRequester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(key.NotificationRequester) {
 		preface = patchFailurePreface
 	}
 
@@ -31,8 +32,12 @@ func (self *BuildFailureHandler) GetNotifications(ae *web.App, key *Notification
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, &triggered)
 		if err != nil {
-			grip.Noticef("template error with build failure notification for '%s': %s",
-				triggered.Current.Id, err.Error())
+			grip.Warning(message.WrapError(err, message.Fields{
+				"message":      "template error",
+				"id":           triggered.Current.Id,
+				"notification": self.Name,
+				"runner":       RunnerName,
+			}))
 			continue
 		}
 

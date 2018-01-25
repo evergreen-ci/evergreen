@@ -24,10 +24,8 @@ func init() {
 }
 
 type migrationDependency struct {
-	MigrationID string                 `bson:"migration" json:"migration" yaml:"migration"`
-	Query       map[string]interface{} `bson:"query" json:"query" yaml:"query"`
-	NS          model.Namespace        `bson:"namespace" json:"namespace" yaml:"namespace"`
-	T           dependency.TypeInfo    `bson:"type" json:"type" yaml:"type"`
+	MigrationID string              `bson:"migration" json:"migration" yaml:"migration"`
+	T           dependency.TypeInfo `bson:"type" json:"type" yaml:"type"`
 
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 	*dependency.JobEdges

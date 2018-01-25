@@ -3,7 +3,6 @@ package data
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
@@ -12,9 +11,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/google/go-github/github"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/message"
 )
 
@@ -39,7 +41,7 @@ type Connector interface {
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
 	FindTasksByIds([]string) ([]task.Task, error)
-	SetTaskPriority(*task.Task, int64) error
+	SetTaskPriority(*task.Task, string, int64) error
 	SetTaskActivated(string, string, bool) error
 	ResetTask(string, string, *model.Project) error
 	AbortTask(string, string) error
@@ -76,7 +78,7 @@ type Connector interface {
 	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testName to start from, test status to filter,
 	// limit, and sort to provide additional control over the results.
-	FindTestsByTaskId(string, string, string, int, int) ([]task.TestResult, error)
+	FindTestsByTaskId(string, string, string, int, int, int) ([]testresult.TestResult, error)
 
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (auth.APIUser, error)
@@ -85,6 +87,12 @@ type Connector interface {
 	// start from.
 	FindHostsById(string, string, string, int, int) ([]host.Host, error)
 	FindHostById(string) (*host.Host, error)
+
+	// FindHostByIdWithOwner finds a host with given host ID that was
+	// started by the given user. If the given user is a super-user,
+	// the host will also be returned regardless of who the host was
+	// started by
+	FindHostByIdWithOwner(string, auth.User) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
 	NewIntentHost(string, string, string, string, *user.DBUser) (*host.Host, error)
@@ -124,6 +132,9 @@ type Connector interface {
 
 	// AbortPatch aborts the patch corresponding to the input patch ID and deletes if not finalized.
 	AbortPatch(string, string) error
+	// AbortPatchesFromPullRequest aborts patches with the same PR Number,
+	// in the same repository, at the pull request's close time
+	AbortPatchesFromPullRequest(*github.PullRequestEvent) error
 
 	// RestartVersion restarts all completed tasks of a version given its ID and the caller.
 	RestartVersion(string, string) error
@@ -140,7 +151,7 @@ type Connector interface {
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
-	RestartFailedTasks(evergreen.Environment, time.Time, time.Time, string, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
+	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 
@@ -151,4 +162,22 @@ type Connector interface {
 
 	AddPublicKey(*user.DBUser, string, string) error
 	DeletePublicKey(*user.DBUser, string) error
+
+	AddPatchIntent(patch.Intent, amboy.Queue) error
+
+	SetHostStatus(*host.Host, string, string) error
+	SetHostExpirationTime(*host.Host, time.Time) error
+
+	// TerminateHost terminates the given host via the cloud provider's API
+	TerminateHost(*host.Host, string) error
+
+	// FindProjectAliases queries the database to find all aliases.
+	FindProjectAliases(string) ([]model.PatchDefinition, error)
+
+	// TriggerRepotracker creates an amboy job to get the commits from a
+	// Github Push Event
+	TriggerRepotracker(amboy.Queue, string, *github.PushEvent) error
+
+	// GetCLIUpdate fetches the current cli version and the urls to download
+	GetCLIUpdate() (*restModel.APICLIUpdate, error)
 }

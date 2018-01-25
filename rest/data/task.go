@@ -135,8 +135,8 @@ func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
-func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, priority int64) error {
-	err := t.SetPriority(priority)
+func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, user string, priority int64) error {
+	err := t.SetPriority(priority, user)
 	return err
 }
 
@@ -276,7 +276,7 @@ func (mtc *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status st
 
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
-func (mtc *MockTaskConnector) SetTaskPriority(it *task.Task, priority int64) error {
+func (mtc *MockTaskConnector) SetTaskPriority(it *task.Task, user string, priority int64) error {
 	for ix, t := range mtc.CachedTasks {
 		if t.Id == it.Id {
 			mtc.CachedTasks[ix].Priority = priority

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -85,9 +85,9 @@ func TestHostDocumentConsistency(t *testing.T) {
 
 	staticTestDistro := &distro.Distro{
 		Id:       distroName,
-		Provider: static.ProviderName,
+		Provider: evergreen.ProviderNameStatic,
 		ProviderSettings: &map[string]interface{}{
-			"hosts": []static.Host{static.Host{Name: hostName}},
+			"hosts": []cloud.StaticHost{cloud.StaticHost{Name: hostName}},
 		},
 	}
 

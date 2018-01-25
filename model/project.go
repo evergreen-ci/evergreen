@@ -2,16 +2,19 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 )
@@ -47,6 +50,7 @@ type Project struct {
 	Modules         []Module                   `yaml:"modules,omitempty" bson:"modules"`
 	BuildVariants   []BuildVariant             `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
 	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 
@@ -54,29 +58,36 @@ type Project struct {
 	Private bool `yaml:"private,omitempty" bson:"private"`
 }
 
-// Unmarshalled from the "tasks" list in an individual build variant
-type BuildVariantTask struct {
-	// Name has to match the name field of one of the tasks specified at
+// Unmarshalled from the "tasks" list in an individual build variant. Can be either a task or task group
+type BuildVariantTaskUnit struct {
+	// Name has to match the name field of one of the tasks or groups specified at
 	// the project level, or an error will be thrown
-	Name string `yaml:"name,omitempty" bson:"name"`
+	Name      string `yaml:"name,omitempty" bson:"name"`
+	IsGroup   bool   `yaml:"-" bson:"-"`
+	GroupName string `yaml:"-" bson:"-"`
 
-	// fields to overwrite ProjectTask settings
-	Patchable *bool             `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	Priority  int64             `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn []TaskDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires  []TaskRequirement `yaml:"requires,omitempty" bson:"requires"`
+	// fields to overwrite ProjectTask settings.
+	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	Priority  int64                 `yaml:"priority,omitempty" bson:"priority"`
+	DependsOn []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Requires  []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
+
+	// the distros that the task can be run on
+	Distros []string `yaml:"distros,omitempty" bson:"distros"`
 
 	// currently unsupported (TODO EVG-578)
 	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-
-	// the distros that the task can be run on
-	Distros []string `yaml:"distros,omitempty" bson:"distros"`
 }
 
-// Populate updates the base fields of the BuildVariantTask with
+type DisplayTask struct {
+	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
+	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
+}
+
+// Populate updates the base fields of the BuildVariantTaskUnit with
 // fields from the project task definition.
-func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
+func (bvt *BuildVariantTaskUnit) Populate(pt ProjectTask) {
 	// We never update "Name" or "Commands"
 	if len(bvt.DependsOn) == 0 {
 		bvt.DependsOn = pt.DependsOn
@@ -101,8 +112,8 @@ func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
-// and then falling back to the BuildVariantTask struct.
-func (bvt *BuildVariantTask) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// and then falling back to the BuildVariantTaskUnit struct.
+func (bvt *BuildVariantTaskUnit) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -111,13 +122,13 @@ func (bvt *BuildVariantTask) UnmarshalYAML(unmarshal func(interface{}) error) er
 	}
 	// we define a new type so that we can grab the yaml struct tags without the struct methods,
 	// preventing infinte recursion on the UnmarshalYAML() method.
-	type bvtCopyType BuildVariantTask
+	type bvtCopyType BuildVariantTaskUnit
 	var bvtc bvtCopyType
 	err := unmarshal(&bvtc)
 	if err != nil {
 		return err
 	}
-	*bvt = BuildVariantTask(bvtc)
+	*bvt = BuildVariantTaskUnit(bvtc)
 	return nil
 }
 
@@ -145,8 +156,9 @@ type BuildVariant struct {
 	// provided for the task
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
-	// all of the tasks to be run on the build variant, compile through tests.
-	Tasks []BuildVariantTask `yaml:"tasks,omitempty" bson:"tasks"`
+	// all of the tasks/groups to be run on the build variant, compile through tests.
+	Tasks        []BuildVariantTaskUnit `yaml:"tasks,omitempty" bson:"tasks"`
+	DisplayTasks []DisplayTask          `yaml:"display_tasks,omitempty" bson:"display_tasks,omitempty"`
 }
 
 type Module struct {
@@ -227,26 +239,26 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return err1
 }
 
-// TaskDependency holds configuration information about a task that must finish before
-// the task that contains the dependency can run.
-type TaskDependency struct {
+// TaskUnitDependency holds configuration information about a task/group that must finish before
+// the task/group that contains the dependency can run.
+type TaskUnitDependency struct {
 	Name          string `yaml:"name,omitempty" bson:"name"`
 	Variant       string `yaml:"variant,omitempty" bson:"variant,omitempty"`
 	Status        string `yaml:"status,omitempty" bson:"status,omitempty"`
 	PatchOptional bool   `yaml:"patch_optional,omitempty" bson:"patch_optional,omitempty"`
 }
 
-// TaskRequirement represents tasks that must exist along with
+// TaskUnitRequirement represents tasks/groups that must exist along with
 // the requirement's holder. This is only used when configuring patches.
-type TaskRequirement struct {
+type TaskUnitRequirement struct {
 	Name    string `yaml:"name,omitempty" bson:"name"`
 	Variant string `yaml:"variant,omitempty" bson:"variant,omitempty"`
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
-// and then falling back to the TaskDependency struct.
-func (td *TaskDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
+// and then falling back to the TaskUnitDependency struct.
+func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -255,25 +267,48 @@ func (td *TaskDependency) UnmarshalYAML(unmarshal func(interface{}) error) error
 	}
 	// we define a new type so that we can grab the yaml struct tags without the struct methods,
 	// preventing infinte recursion on the UnmarshalYAML() method.
-	type tdCopyType TaskDependency
+	type tdCopyType TaskUnitDependency
 	var tdc tdCopyType
 	err := unmarshal(&tdc)
 	if err != nil {
 		return err
 	}
-	*td = TaskDependency(tdc)
+	*td = TaskUnitDependency(tdc)
 	return nil
+}
+
+type TaskGroup struct {
+	Name string `yaml:"name" bson:"name"`
+
+	// fields that will be copied to all tasks
+	Priority  int64                 `yaml:"priority,omitempty" bson:"priority"`
+	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	DependsOn []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Requires  []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
+	// currently unsupported (TODO EVG-578)
+	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+
+	// data about the task group
+	MaxHosts      int                 `yaml:"max_hosts" bson:"max_hosts"`
+	SetupGroup    []PluginCommandConf `yaml:"setup_group" bson:"setup_group"`
+	TeardownGroup []PluginCommandConf `yaml:"teardown_group" bson:"teardown_group"`
+	SetupTask     []PluginCommandConf `yaml:"setup_task" bson:"setup_task"`
+	TeardownTask  []PluginCommandConf `yaml:"teardown_task" bson:"teardown_task"`
+	Timeout       *YAMLCommandSet     `yaml:"timeout,omitempty" bson:"timeout"`
+	Tasks         []string            `yaml:"tasks" bson:"tasks"`
+	Tags          []string            `yaml:"tags,omitempty" bson:"tags"`
 }
 
 // Unmarshalled from the "tasks" list in the project file
 type ProjectTask struct {
-	Name            string              `yaml:"name,omitempty" bson:"name"`
-	Priority        int64               `yaml:"priority,omitempty" bson:"priority"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	DependsOn       []TaskDependency    `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires        []TaskRequirement   `yaml:"requires,omitempty" bson:"requires"`
-	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands"`
-	Tags            []string            `yaml:"tags,omitempty" bson:"tags"`
+	Name            string                `yaml:"name,omitempty" bson:"name"`
+	Priority        int64                 `yaml:"priority,omitempty" bson:"priority"`
+	ExecTimeoutSecs int                   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	DependsOn       []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Requires        []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
+	Commands        []PluginCommandConf   `yaml:"commands,omitempty" bson:"commands"`
+	Tags            []string              `yaml:"tags,omitempty" bson:"tags"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -283,19 +318,13 @@ type ProjectTask struct {
 	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
-type TaskConfig struct {
-	Distro       *distro.Distro
-	Version      *version.Version
-	ProjectRef   *ProjectRef
-	Project      *Project
-	Task         *task.Task
-	BuildVariant *BuildVariant
-	Expansions   *util.Expansions
-	WorkDir      string
-}
-
 // TaskIdTable is a map of [variant, task display name]->[task id].
 type TaskIdTable map[TVPair]string
+
+type TaskIdConfig struct {
+	ExecutionTasks TaskIdTable
+	DisplayTasks   TaskIdTable
+}
 
 // TVPair is a helper type for mapping bv/task pairs to ids.
 type TVPair struct {
@@ -387,67 +416,102 @@ func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []strin
 }
 
 // TaskIdTable builds a TaskIdTable for the given version and project
-func NewTaskIdTable(p *Project, v *version.Version) TaskIdTable {
+func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	// init the variant map
-	table := TaskIdTable{}
+	execTable := TaskIdTable{}
+	displayTable := TaskIdTable{}
 	for _, bv := range p.BuildVariants {
+		rev := v.Revision
+		if evergreen.IsPatchRequester(v.Requester) {
+			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+		}
 		for _, t := range bv.Tasks {
-
-			rev := v.Revision
-			if v.Requester == evergreen.PatchVersionRequester {
-				rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+			if t.IsGroup {
+				tg := p.FindTaskGroup(t.Name)
+				if tg == nil {
+					continue
+				}
+				for _, groupTask := range tg.Tasks {
+					taskId := generateId(groupTask, p, &bv, rev, v)
+					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
+				}
+			} else {
+				// create a unique Id for each task
+				taskId := generateId(t.Name, p, &bv, rev, v)
+				execTable[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
 			}
+		}
 
-			// create a unique Id for each task
-			taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
-				p.Identifier,
-				bv.Name,
-				t.Name,
-				rev,
-				v.CreateTime.Format(build.IdTimeLayout))
-
-			table[TVPair{bv.Name, t.Name}] = util.CleanName(taskId)
+		for _, dt := range bv.DisplayTasks {
+			name := fmt.Sprintf("display_%s", dt.Name)
+			taskId := generateId(name, p, &bv, rev, v)
+			displayTable[TVPair{bv.Name, dt.Name}] = util.CleanName(taskId)
 		}
 	}
-	return table
+	return TaskIdConfig{ExecutionTasks: execTable, DisplayTasks: displayTable}
 }
 
-// NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task id])
-func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSet) TaskIdTable {
-	table := TaskIdTable{}
+// NewPatchTaskIdTable constructs a new TaskIdTable (map of [variant, task display name]->[task  id])
+func NewPatchTaskIdTable(proj *Project, v *version.Version, tasks TaskVariantPairs) TaskIdConfig {
+	config := TaskIdConfig{}
 	processedVariants := map[string]bool{}
-	for _, vt := range patchConfig {
+	for _, vt := range tasks.ExecTasks {
 		// don't hit the same variant more than once
 		if _, ok := processedVariants[vt.Variant]; ok {
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		// we must track the project's variants definitions as well,
-		// so that we don't create Ids for variants that don't exist.
-		projBV := proj.FindBuildVariant(vt.Variant)
-		taskNamesForVariant := patchConfig.TaskNames(vt.Variant)
-		for _, t := range projBV.Tasks {
-			// create Ids for each task that can run on the variant and is requested by the patch.
-			if util.StringSliceContains(taskNamesForVariant, t.Name) {
+		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks)
+	}
+	processedVariants = map[string]bool{}
+	for _, vt := range tasks.DisplayTasks {
+		// don't hit the same variant more than once
+		if _, ok := processedVariants[vt.Variant]; ok {
+			continue
+		}
+		processedVariants[vt.Variant] = true
+		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks)
+	}
+	return config
+}
 
-				rev := v.Revision
-				if v.Requester == evergreen.PatchVersionRequester {
-					rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
-				}
+func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks TVPairSet, table TaskIdTable) TaskIdTable {
+	if table == nil {
+		table = map[TVPair]string{}
+	}
 
-				// create a unique Id for each task
-				taskId := fmt.Sprintf("%s_%s_%s_%s_%s",
-					proj.Identifier,
-					projBV.Name,
-					t.Name,
-					rev,
-					v.CreateTime.Format(build.IdTimeLayout))
+	// we must track the project's variants definitions as well,
+	// so that we don't create Ids for variants that don't exist.
+	projBV := proj.FindBuildVariant(vt.Variant)
+	taskNamesForVariant := tasks.TaskNames(vt.Variant)
 
-				table[TVPair{vt.Variant, t.Name}] = util.CleanName(taskId)
-			}
+	rev := v.Revision
+	if v.Requester == evergreen.PatchVersionRequester {
+		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+	}
+	for _, t := range projBV.Tasks {
+		// create Ids for each task that can run on the variant and is requested by the patch.
+		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
 		}
 	}
+	for _, t := range projBV.DisplayTasks {
+		// create Ids for each task that can run on the variant and is requested by the patch.
+		if util.StringSliceContains(taskNamesForVariant, t.Name) {
+			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(fmt.Sprintf("display_%s", t.Name), proj, projBV, rev, v))
+		}
+	}
+
 	return table
+}
+
+func generateId(name string, proj *Project, projBV *BuildVariant, rev string, v *version.Version) string {
+	return fmt.Sprintf("%s_%s_%s_%s_%s",
+		proj.Identifier,
+		projBV.Name,
+		name,
+		rev,
+		v.CreateTime.Format(build.IdTimeLayout))
 }
 
 var (
@@ -461,26 +525,6 @@ var (
 	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
-
-func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
-	// do a check on if the project is empty
-	if p == nil {
-		return nil, errors.Errorf("project for task with branch %v is empty", t.Project)
-	}
-
-	// check on if the project ref is empty
-	if r == nil {
-		return nil, errors.Errorf("Project ref with identifier: %v was empty", p.Identifier)
-	}
-
-	bv := p.FindBuildVariant(t.BuildVariant)
-	if bv == nil {
-		return nil, errors.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
-	}
-
-	e := populateExpansions(d, v, bv, t)
-	return &TaskConfig{d, v, r, p, t, bv, e, d.WorkDir}, nil
-}
 
 func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *util.Expansions {
 	expansions := util.NewExpansions(map[string]string{})
@@ -498,7 +542,7 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 	expansions.Put("distro_id", d.Id)
 	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
 
-	if t.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 	} else {
@@ -582,6 +626,53 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 	}
 }
 
+// FindTaskGroup returns a specific task group from a project
+func (p *Project) FindTaskGroup(name string) *TaskGroup {
+	for _, tg := range p.TaskGroups {
+		if tg.Name == name {
+			return &tg
+		}
+	}
+	return nil
+}
+
+// GetTaskGroup returns the task group for a given task from its project
+func GetTaskGroup(t *task.Task) (*TaskGroup, error) {
+	if t == nil {
+		return nil, errors.New("unable to get task group: task is nil")
+	}
+	tgName, versionId := parseTaskGroup(t.TaskGroup)
+	if tgName == "" || versionId == "" {
+		return nil, fmt.Errorf("invalid task group ID: %s", t.TaskGroup)
+	}
+	v, err := version.FindOne(version.ById(versionId))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to find version for task group")
+	}
+	var p Project
+	if err = LoadProjectInto([]byte(v.Config), t.Project, &p); err != nil {
+		return nil, errors.Wrap(err, "error retrieving project for task group")
+	}
+	tg := p.FindTaskGroup(tgName)
+	if tg != nil {
+		return tg, nil
+	}
+
+	return nil, fmt.Errorf("task group %s not found in project config", tgName)
+}
+
+func parseTaskGroup(tg string) (string, string) {
+	temp := strings.Split(tg, "_")
+	index := len(temp) - 1
+	if index < 1 {
+		return "", ""
+	}
+	version := temp[len(temp)-1]
+	taskGroup := strings.Join(temp[:index], "_")
+
+	return taskGroup, version
+}
+
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if projectRef == nil {
 		return nil, errors.New("projectRef given is nil")
@@ -640,7 +731,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	return project, nil
 }
 
-func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTask {
+func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit {
 	bv := p.FindBuildVariant(variant)
 	if bv == nil {
 		return nil
@@ -702,14 +793,14 @@ func (p *Project) FindAllVariants() []string {
 	return variants
 }
 
-// FindAllBuildVariantTasks returns every BuildVariantTask, fully populated,
+// FindAllBuildVariantTasks returns every BuildVariantTaskUnit, fully populated,
 // for all variants of a project.
-func (p *Project) FindAllBuildVariantTasks() []BuildVariantTask {
+func (p *Project) FindAllBuildVariantTasks() []BuildVariantTaskUnit {
 	tasksByName := map[string]*ProjectTask{}
 	for i, t := range p.Tasks {
 		tasksByName[t.Name] = &p.Tasks[i]
 	}
-	allBVTs := []BuildVariantTask{}
+	allBVTs := []BuildVariantTaskUnit{}
 	for _, b := range p.BuildVariants {
 		for _, t := range b.Tasks {
 			if pTask := tasksByName[t.Name]; pTask != nil {
@@ -749,4 +840,107 @@ func (p *Project) IgnoresAllFiles(files []string) bool {
 		}
 	}
 	return true
+}
+
+func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
+	//expand tasks and build variants and include dependencies
+	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
+		patchDoc.BuildVariants = []string{}
+		for _, buildVariant := range p.BuildVariants {
+			if buildVariant.Disabled {
+				continue
+			}
+			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
+		}
+	}
+
+	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
+		patchDoc.Tasks = []string{}
+		for _, t := range p.Tasks {
+			if t.Patchable != nil && !(*t.Patchable) {
+				continue
+			}
+			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
+		}
+	}
+
+	var pairs []TVPair
+	for _, v := range patchDoc.BuildVariants {
+		for _, t := range patchDoc.Tasks {
+			if p.FindTaskForVariant(t, v) != nil {
+				pairs = append(pairs, TVPair{v, t})
+			}
+		}
+	}
+
+	if alias != "" {
+		aliasPairs, err := p.BuildProjectTVPairsWithAlias(alias)
+		if err != nil {
+			grip.Error(errors.Wrap(err, "failed to get task/variant pairs for alias"))
+		} else {
+			pairs = append(pairs, aliasPairs...)
+		}
+	}
+
+	tasks := extractDisplayTasks(pairs, patchDoc.Tasks, patchDoc.BuildVariants, p)
+
+	// update variant and tasks to include dependencies
+	tasks.ExecTasks = IncludePatchDependencies(p, tasks.ExecTasks)
+
+	patchDoc.SyncVariantsTasks(tasks.TVPairsToVariantTasks())
+}
+
+func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
+	displayTasks := []TVPair{}
+	for _, bv := range p.BuildVariants {
+		if !util.StringSliceContains(variants, bv.Name) {
+			continue
+		}
+		for _, dt := range bv.DisplayTasks {
+			if util.StringSliceContains(tasks, dt.Name) {
+				displayTasks = append(displayTasks, TVPair{Variant: bv.Name, TaskName: dt.Name})
+				for _, et := range dt.ExecutionTasks {
+					pairs = append(pairs, TVPair{Variant: bv.Name, TaskName: et})
+				}
+			}
+		}
+	}
+
+	return TaskVariantPairs{ExecTasks: pairs, DisplayTasks: displayTasks}
+}
+
+// BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
+func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
+	var pairs []TVPair
+	var err error
+	var vars []PatchDefinition
+	vars, err = FindOneProjectAlias(p.Identifier, alias)
+	if err != nil || vars == nil {
+		return pairs, err
+	}
+	for _, v := range vars {
+		var variantRegex *regexp.Regexp
+		variantRegex, err = regexp.Compile(v.Variant)
+		if err != nil {
+			return pairs, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
+		}
+		var taskRegex *regexp.Regexp
+		taskRegex, err = regexp.Compile(v.Task)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Error compiling regex: %s", v.Task)
+		}
+
+		for _, variant := range p.BuildVariants {
+			if variantRegex.MatchString(variant.Name) {
+				for _, task := range p.Tasks {
+					if ((v.Task != "" && taskRegex.MatchString(task.Name)) ||
+						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) &&
+						(p.FindTaskForVariant(task.Name, variant.Name) != nil) {
+						pairs = append(pairs, TVPair{variant.Name, task.Name})
+					}
+				}
+			}
+		}
+	}
+	return pairs, err
 }

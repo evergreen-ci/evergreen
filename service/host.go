@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -93,7 +92,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
-	_ = MustHaveUser(r)
+	u := MustHaveUser(r)
 
 	vars := mux.Vars(r)
 	id := vars["host_id"]
@@ -126,12 +125,12 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if h.Provider == static.ProviderName && newStatus == evergreen.HostDecommissioned {
+		if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
 			http.Error(w, "cannot decommission static hosts", http.StatusBadRequest)
 			return
 		}
 
-		err := h.SetStatus(newStatus)
+		err := h.SetStatus(newStatus, u.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
 			return
@@ -145,7 +144,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
-	_ = MustHaveUser(r)
+	user := MustHaveUser(r)
 
 	opts := &uiParams{}
 
@@ -183,7 +182,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		numHostsUpdated := 0
 
 		for _, host := range hosts {
-			err := host.SetStatus(newStatus)
+			err := host.SetStatus(newStatus, user.Id)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
 				return

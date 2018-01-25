@@ -53,6 +53,7 @@ var projectSyntaxValidators = []projectValidator{
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
+	validateTaskGroups,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -60,6 +61,7 @@ var projectSyntaxValidators = []projectValidator{
 // suggested corrections are applied.
 var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
+	checkTaskGroups,
 }
 
 func (vr ValidationError) Error() string {
@@ -140,8 +142,8 @@ func checkAllDependenciesSpec(project *model.Project) []ValidationError {
 func checkDependencyGraph(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 
-	// map of task name and variant -> BuildVariantTask
-	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTask{}
+	// map of task name and variant -> BuildVariantTaskUnit
+	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTaskUnit{}
 
 	// generate task nodes for every task and variant combination
 	visited := map[model.TVPair]bool{}
@@ -175,7 +177,7 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 
 // Helper for checking the dependency graph for cycles.
 func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
-	tasksByNameAndVariant map[model.TVPair]model.BuildVariantTask) error {
+	tasksByNameAndVariant map[model.TVPair]model.BuildVariantTaskUnit) error {
 
 	v, ok := visited[node]
 	// if the node does not exist, the deps are broken
@@ -700,6 +702,66 @@ func verifyTaskDependencies(project *model.Project) []ValidationError {
 					},
 				)
 			}
+		}
+	}
+	return errs
+}
+
+func validateTaskGroups(p *model.Project) []ValidationError {
+	errs := []ValidationError{}
+
+	for _, tg := range p.TaskGroups {
+		// validate that there is at least 1 task
+		if len(tg.Tasks) < 1 {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group %s must have at least 1 task", tg.Name),
+				Level:   Error,
+			})
+		}
+		// validate that the task group is not named the same as a task
+		for _, t := range p.Tasks {
+			if t.Name == tg.Name {
+				errs = append(errs, ValidationError{
+					Message: fmt.Sprintf("%s is used as a name for both a task and task group", t.Name),
+					Level:   Error,
+				})
+			}
+		}
+		// validate that a task is not listed twice in a task group
+		counts := make(map[string]int)
+		for _, name := range tg.Tasks {
+			counts[name]++
+		}
+		for name, count := range counts {
+			if count > 1 {
+				errs = append(errs, ValidationError{
+					Message: fmt.Sprintf("%s is listed in task group %s more than once", name, tg.Name),
+					Level:   Error,
+				})
+			}
+		}
+		// validate that attach commands aren't used in the teardown_group phase
+		for _, cmd := range tg.TeardownGroup {
+			if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
+				errs = append(errs, ValidationError{
+					Message: fmt.Sprintf("%s cannot be used in the group teardown stage", cmd.Command),
+					Level:   Error,
+				})
+			}
+		}
+	}
+
+	return errs
+}
+
+func checkTaskGroups(p *model.Project) []ValidationError {
+	errs := []ValidationError{}
+	for _, tg := range p.TaskGroups {
+		if tg.MaxHosts > (len(tg.Tasks) / 2) {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group %s has max number of hosts greater than half the number of tasks", tg.Name),
+				Level:   Warning,
+			})
 		}
 	}
 	return errs

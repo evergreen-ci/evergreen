@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite errors="1" failures="0" hostname="ip-10-154-243-173.ec2.internal" name="com.xgen.svc.mms.svc.deployment.DeploymentDiffSvcUnitTests" skipped="0" tests="1" time="0.0" timestamp="2017-11-28T19:26:35">
+  <properties>
+    <property name="java.home.ivy.instance" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre" />
+    <property name="dir.src.java.features" value="src/features" />
+    <property name="env.SSH_CLIENT" value="34.192.42.101 56544 22" />
+    <property name="npm.executable" value="npm" />
+    <property name="ant.home.ivy.instance" value="/opt/ant" />
+    <property name="java.awt.graphicsenv.ivy.instance" value="sun.awt.X11GraphicsEnvironment" />
+    <property name="http-test-port" value="8060" />
+    <property name="java.awt.printerjob.ivy.instance" value="sun.print.PSPrinterJob" />
+    <property name="npm.retry_count" value="0" />
+    <property name="ant.library.dir" value="/opt/ant/lib" />
+    <property name="dir.data.unit" value="data/unit" />
+    <property name="ant.core.lib" value="/opt/ant/lib/ant.jar" />
+    <property name="java.vm.info.ivy.instance" value="mixed mode" />
+    <property name="env.rvm_bin_path" value="/root/.rvm/bin" />
+    <property name="ivy.report.output.pattern.ivy.instance" value="[organisation]-[module]-[conf].[ext]" />
+    <property name="user.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="java.vm.version" value="25.151-b12" />
+    <property name="jvm.debug.string" value="-Ddummy" />
+    <property name="ivy.lib.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib" />
+    <property name="path.separator.ivy.instance" value=":" />
+    <property name="logback.configurationFile" value="conf/logback/logback-test.xml" />
+    <property name="git.version.exit.code" value="0" />
+    <property name="java.library.path.ivy.instance" value="/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib" />
+    <property name="gitVersionFound" value="true" />
+    <property name="env.GRIP_SPLUNK_CLIENT_TOKEN" value="49157979-622A-5801-BF4F-BC5FD63D37E4" />
+    <property name="ivy.resolve.default.type.filter.ivy.instance" value="*" />
+    <property name="java.version.ivy.instance" value="1.8.0_151" />
+    <property name="sun.os.patch.level" value="unknown" />
+    <property name="java.vm.specification.name" value="Java Virtual Machine Specification" />
+    <property name="build.conf.jfreechart.version" value="1.0.13" />
+    <property name="file.separator.ivy.instance" value="/" />
+    <property name="os.name" value="Linux" />
+    <property name="ivy.status" value="integration" />
+    <property name="ivy.settings.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module" />
+    <property name="java.vendor.url.bug" value="http://bugreport.sun.com/bugreport/" />
+    <property name="ant.file.cloud" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/build.xml" />
+    <property name="os.arch" value="amd64" />
+    <property name="user.name" value="root" />
+    <property name="ivy.retrieve.pattern.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="dir.src.webapp.base" value="src/webapp-" />
+    <property name="sun.java.command" value="org.apache.tools.ant.taskdefs.optional.junit.JUnitTestRunner testsfile=/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/junittestcases3867975717804790964.properties skipNonTests=false filtertrace=true haltOnError=false haltOnFailure=false formatter=org.apache.tools.ant.taskdefs.optional.junit.SummaryJUnitResultFormatter showoutput=false outputtoformatters=true logfailedtests=true threadid=0 logtestlistenerevents=false formatter=org.apache.tools.ant.taskdefs.optional.junit.XMLJUnitResultFormatter,/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/build/test-reports/IGNORETHIS.xml crashfile=/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/junitvmwatcher4723503546442248573.properties propsfile=/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/junit1090894155872137057.properties" />
+    <property name="env.USER" value="root" />
+    <property name="env.SSH_CONNECTION" value="34.192.42.101 56544 10.154.243.173 22" />
+    <property name="env.XDG_SESSION_ID" value="5" />
+    <property name="dir.src.java" value="src/main" />
+    <property name="env.LOGNAME" value="root" />
+    <property name="sun.arch.data.model.ivy.instance" value="64" />
+    <property name="dir.src.java.unit" value="src/unit" />
+    <property name="ivy.default.conf.dir" value="jar:file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib-local/ivy-2.4.0.jar!/org/apache/ivy/core/settings" />
+    <property name="user.country" value="US" />
+    <property name="http-test-url" value="http://localhost" />
+    <property name="java.vm.specification.version.ivy.instance" value="1.8" />
+    <property name="dir.build" value="build" />
+    <property name="ivy.default.always.check.exact.revision" value="false" />
+    <property name="os.name.ivy.instance" value="Linux" />
+    <property name="mms.keyfile" value="conf/gen.key" />
+    <property name="java.endorsed.dirs" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/endorsed" />
+    <property name="java.endorsed.dirs.ivy.instance" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/endorsed" />
+    <property name="dir.build.test-reports" value="build/test-reports" />
+    <property name="gitBranch" value="master" />
+    <property name="ivy.lib.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib" />
+    <property name="java.vm.specification.version" value="1.8" />
+    <property name="env.EVR_AGENT_PID" value="10603" />
+    <property name="env._system_version" value="7" />
+    <property name="java.awt.headless" value="true" />
+    <property name="ivy.settings.url" value="file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="dir.conf" value="conf" />
+    <property name="env.SHLVL" value="2" />
+    <property name="java.vendor" value="Oracle Corporation" />
+    <property name="log_path" value="${logback.log.path}" />
+    <property name="user.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="ivy.default.settings.dir" value="jar:file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib-local/ivy-2.4.0.jar!/org/apache/ivy/core/settings" />
+    <property name="ivy.settings.file" value="ivysettings.xml" />
+    <property name="java.runtime.name.ivy.instance" value="OpenJDK Runtime Environment" />
+    <property name="node.executable" value="node" />
+    <property name="file.separator" value="/" />
+    <property name="ivy.cache.dir.ivy.instance" value="/root/.ivy2/cache" />
+    <property name="ivy.conf.file" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="env.XFILESEARCHPATH" value="/usr/dt/app-defaults/%L/Dt" />
+    <property name="ivy.default.settings.dir.ivy.instance" value="jar:file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib-local/ivy-2.4.0.jar!/org/apache/ivy/core/settings" />
+    <property name="sun.java.launcher" value="SUN_STANDARD" />
+    <property name="env.MAIL" value="/var/mail/root" />
+    <property name="env.NLSPATH" value="/usr/dt/lib/nls/msg/%L/%N.cat" />
+    <property name="java.io.tmpdir.ivy.instance" value="/tmp" />
+    <property name="ant.home" value="/opt/ant" />
+    <property name="server-env" value="test" />
+    <property name="ivy.resolved.file" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/ivy.xml" />
+    <property name="ant.java.version" value="1.8" />
+    <property name="java.library.path" value="/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib" />
+    <property name="env._system_type" value="Linux" />
+    <property name="dir.lib.local" value="lib-local" />
+    <property name="ivy.resolved.configurations" value="compile, runtime, test" />
+    <property name="sun.arch.data.model" value="64" />
+    <property name="basedir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="java.vendor.url.ivy.instance" value="http://java.oracle.com/" />
+    <property name="java.ext.dirs.ivy.instance" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/ext:/usr/java/packages/lib/ext" />
+    <property name="ivy.version" value="2.4.0" />
+    <property name="env.PATH" value="/opt/go/bin:/usr/lib64/qt-3.3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/.rvm/bin" />
+    <property name="path.separator" value=":" />
+    <property name="ivy.resolver.default.check.modified.ivy.instance" value="false" />
+    <property name="sun.io.unicode.encoding" value="UnicodeLittle" />
+    <property name="ivy.conf.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module" />
+    <property name="dir.build.java" value="build/java/classes" />
+    <property name="gitVersion" value="b13b9850dc1d66bb326b41c893b416446bcaaada" />
+    <property name="user.language" value="en" />
+    <property name="java.vm.specification.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="env.rvm_path" value="/root/.rvm" />
+    <property name="ant.project.invoked-targets" value="mms.unit" />
+    <property name="awt.toolkit.ivy.instance" value="sun.awt.X11.XToolkit" />
+    <property name="_jacoco.agentFile" value="/tmp/jacocoagent8143014663803686379.jar" />
+    <property name="ivy.parents.count" value="0" />
+    <property name="ivy.report.output.pattern" value="[organisation]-[module]-[conf].[ext]" />
+    <property name="java.class.version" value="52.0" />
+    <property name="sun.boot.library.path.ivy.instance" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/amd64" />
+    <property name="build.conf.crowd.version" value="2.4.1" />
+    <property name="os.version.ivy.instance" value="3.10.0-327.22.2.el7.x86_64" />
+    <property name="env.QTINC" value="/usr/lib64/qt-3.3/include" />
+    <property name="build.conf.slf4j.version" value="1.7.2" />
+    <property name="build.conf.jersey2.version" value="2.18" />
+    <property name="ivy.project.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="file.encoding.pkg" value="sun.io" />
+    <property name="sun.cpu.endian" value="little" />
+    <property name="brs.untrusted.testing.pem" value="conf/untrusted-testing.pem" />
+    <property name="env.EVR_TASK_ID" value="mms_unit_java_UNIT_JAVA_MMS_patch_b13b9850dc1d66bb326b41c893b416446bcaaada_5a1db5ece3c3315c910004c4_17_11_28_19_15_56" />
+    <property name="ivy.configurations.ivy.instance" value="*" />
+    <property name="build.conf.javac.source" value="1.8" />
+    <property name="ivy.home.ivy.instance" value="/root/.ivy2" />
+    <property name="env.SHELL" value="/bin/bash" />
+    <property name="env.rvm_version" value="1.29.3 (1.29.3)" />
+    <property name="java.home" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre" />
+    <property name="dir.client" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/../client" />
+    <property name="env.GOROOT" value="/opt/go" />
+    <property name="ant.project.default-target" value="usage" />
+    <property name="ivy.status.ivy.instance" value="integration" />
+    <property name="ant.library.dir.ivy.instance" value="/opt/ant/lib" />
+    <property name="brs.queryable.pem" value="conf/brs-snapshot-query.pem" />
+    <property name="dir.compiled_assets" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/../client/dist" />
+    <property name="env.GRIP_SPLUNK_SERVER_URL" value="https://http-inputs-mongodb.splunkcloud.com/" />
+    <property name="sun.java.launcher.ivy.instance" value="SUN_STANDARD" />
+    <property name="daemon.local2.root.dir" value="/data/backups/daemon2/" />
+    <property name="dir.lib.test" value="lib-test" />
+    <property name="ivy.basedir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="mongo.base.port" value="26000" />
+    <property name="java.vm.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="instance.id" value="0" />
+    <property name="ivy.cache.ttl.default.ivy.instance" value="10s" />
+    <property name="base.snmp.port" value="11611" />
+    <property name="ivy.default.conf.dir.ivy.instance" value="jar:file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib-local/ivy-2.4.0.jar!/org/apache/ivy/core/settings" />
+    <property name="ivy.settings.url.ivy.instance" value="file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="http.test.port" value="8060" />
+    <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers" />
+    <property name="ant.file" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/build.xml" />
+    <property name="ivy.buildlist.ivyfilepath.ivy.instance" value="ivy.xml" />
+    <property name="env._system_name" value="CentOS" />
+    <property name="user.country.ivy.instance" value="US" />
+    <property name="ivy.default.always.check.exact.revision.ivy.instance" value="false" />
+    <property name="env.XDG_RUNTIME_DIR" value="/run/user/0" />
+    <property name="ant.file.type.cloud" value="file" />
+    <property name="sun.cpu.isalist.ivy.instance" value="" />
+    <property name="java.vm.specification.vendor" value="Oracle Corporation" />
+    <property name="continue.on.fail" value="true" />
+    <property name="build.conf.opendmk.version" value="1.0-b02" />
+    <property name="java.vm.name" value="OpenJDK 64-Bit Server VM" />
+    <property name="dummy" value="" />
+    <property name="env._system_arch" value="x86_64" />
+    <property name="java.io.tmpdir" value="/tmp" />
+    <property name="file.encoding.ivy.instance" value="UTF-8" />
+    <property name="java.vendor.url" value="http://java.oracle.com/" />
+    <property name="dir.root" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/.." />
+    <property name="ivy.cache.ttl.default" value="10s" />
+    <property name="ivy.settings.file.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="dir.npm_cache" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/../client/.npm" />
+    <property name="sun.boot.library.path" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/amd64" />
+    <property name="gitBranchFound" value="true" />
+    <property name="file.encoding.pkg.ivy.instance" value="sun.io" />
+    <property name="dir.liveImport.workingDir" value="/tmp/mongomirror" />
+    <property name="dir.tenant.upgrade" value="/tmp/tenantUpgrade" />
+    <property name="ivy.resolver.default.check.modified" value="false" />
+    <property name="java.runtime.name" value="OpenJDK Runtime Environment" />
+    <property name="ant.project.name" value="cloud" />
+    <property name="sun.management.compiler.ivy.instance" value="HotSpot 64-Bit Tiered Compilers" />
+    <property name="java.vendor.url.bug.ivy.instance" value="http://bugreport.sun.com/bugreport/" />
+    <property name="ivy.conf.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module" />
+    <property name="ivy.buildlist.ivyfilepath" value="ivy.xml" />
+    <property name="sun.cpu.isalist" value="" />
+    <property name="ivy.default.ivy.user.dir" value="/root/.ivy2" />
+    <property name="java.runtime.version.ivy.instance" value="1.8.0_151-b12" />
+    <property name="user.home" value="/root" />
+    <property name="jvm.debug.suspend" value="n" />
+    <property name="daemon.hosted.root.dir" value="/data/backups/daemon/" />
+    <property name="java.vm.version.ivy.instance" value="25.151-b12" />
+    <property name="java.specification.name" value="Java Platform API Specification" />
+    <property name="git.branch.exit.code" value="0" />
+    <property name="ivy.dep.file" value="ivy.xml" />
+    <property name="build.conf.guice.version" value="4.0" />
+    <property name="user.timezone.ivy.instance" value="UTC" />
+    <property name="env.QT_GRAPHICSSYSTEM_CHECKED" value="1" />
+    <property name="ivy.deliver.ivy.pattern.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="ivy.conf.url" value="file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="java.specification.vendor" value="Oracle Corporation" />
+    <property name="ivy.deps.changed" value="false" />
+    <property name="java.version" value="1.8.0_151" />
+    <property name="sun.jnu.encoding.ivy.instance" value="UTF-8" />
+    <property name="sun.io.unicode.encoding.ivy.instance" value="UnicodeLittle" />
+    <property name="ivy.conf.file.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="sun.java.command.ivy.instance" value="org.apache.tools.ant.launch.Launcher -cp  mms.unit -Dcontinue.on.fail=true" />
+    <property name="basedir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="ivy.conf.url.ivy.instance" value="file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/ivysettings.xml" />
+    <property name="java.specification.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="env.LESSOPEN" value="||/usr/bin/lesspipe.sh %s" />
+    <property name="ivy.build.artifacts.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/build/artifacts" />
+    <property name="ivy.cache.dir" value="/root/.ivy2/cache" />
+    <property name="ivy.settings.dir.url.ivy.instance" value="file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/" />
+    <property name="user.language.ivy.instance" value="en" />
+    <property name="java.class.path.ivy.instance" value="/opt/ant/lib/ant-launcher.jar:/opt/ant/lib/ant-junit.jar:/opt/ant/lib/ant-xz.jar:/opt/ant/lib/ant-commons-logging.jar:/opt/ant/lib/ant-jmf.jar:/opt/ant/lib/ant-antlr.jar:/opt/ant/lib/ant-testutil.jar:/opt/ant/lib/ant-apache-resolver.jar:/opt/ant/lib/ant-apache-bsf.jar:/opt/ant/lib/ant-swing.jar:/opt/ant/lib/ant-jai.jar:/opt/ant/lib/ant-apache-log4j.jar:/opt/ant/lib/ant.jar:/opt/ant/lib/ant-apache-regexp.jar:/opt/ant/lib/ant-javamail.jar:/opt/ant/lib/ant-junit4.jar:/opt/ant/lib/ant-apache-bcel.jar:/opt/ant/lib/ant-apache-xalan2.jar:/opt/ant/lib/ant-launcher.jar:/opt/ant/lib/ant-jsch.jar:/opt/ant/lib/ant-apache-oro.jar:/opt/ant/lib/ant-netrexx.jar:/opt/ant/lib/ant-commons-net.jar:/opt/ant/lib/ant-jdepend.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/lib/tools.jar" />
+    <property name="env.PWD" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="sun.cpu.endian.ivy.instance" value="little" />
+    <property name="line.separator" value="&#xa;" />
+    <property name="java.specification.version" value="1.8" />
+    <property name="ivy.publish.src.artifacts.pattern" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="java.vm.info" value="mixed mode" />
+    <property name="instance-id" value="0" />
+    <property name="ivy.retrieve.pattern" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/lib/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="ivy.organisation" value="com.mongodb" />
+    <property name="env.ANT_HOME" value="/opt/ant" />
+    <property name="dir.test.daemon.base" value="./test_dbs/" />
+    <property name="sun.boot.class.path" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/resources.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/rt.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/sunrsasign.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/jsse.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/jce.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/charsets.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/jfr.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/classes" />
+    <property name="ivy.resolve.default.type.filter" value="*" />
+    <property name="java.specification.version.ivy.instance" value="1.8" />
+    <property name="http.test.url" value="http://localhost" />
+    <property name="ivy.basedir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="ivy.log.modules.in.use.ivy.instance" value="false" />
+    <property name="env.rvm_prefix" value="/root" />
+    <property name="env.SSH_ASKPASS" value="/usr/libexec/openssh/gnome-ssh-askpass" />
+    <property name="mongo.bin.prefix" value="" />
+    <property name="java.specification.name.ivy.instance" value="Java Platform API Specification" />
+    <property name="env.HOME" value="/root" />
+    <property name="line.separator.ivy.instance" value="&#xa;" />
+    <property name="user.home.ivy.instance" value="/root" />
+    <property name="ivy.publish.src.artifacts.pattern.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="ivy.deliver.ivy.pattern" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/distrib/[type]s/[artifact]-[revision](-[classifier]).[ext]" />
+    <property name="ivy.checksums.ivy.instance" value="sha1,md5" />
+    <property name="java.awt.printerjob" value="sun.print.PSPrinterJob" />
+    <property name="sun.jnu.encoding" value="UTF-8" />
+    <property name="ivy.default.ivy.user.dir.ivy.instance" value="/root/.ivy2" />
+    <property name="dir.src.java.gen" value="build/gen/src/java" />
+    <property name="env.QTLIB" value="/usr/lib64/qt-3.3/lib" />
+    <property name="ivy.project.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server" />
+    <property name="env.QTDIR" value="/usr/lib64/qt-3.3" />
+    <property name="ivy.revision" value="working@ip-10-154-243-173.ec2.internal" />
+    <property name="java.runtime.version" value="1.8.0_151-b12" />
+    <property name="build.conf.pdfbox.version" value="1.8.4" />
+    <property name="app-id" value="@{app.id}" />
+    <property name="sun.boot.class.path.ivy.instance" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/resources.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/rt.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/sunrsasign.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/jsse.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/jce.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/charsets.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/jfr.jar:/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/classes" />
+    <property name="ivy.home" value="/root/.ivy2" />
+    <property name="java.vendor.ivy.instance" value="Oracle Corporation" />
+    <property name="ivy.settings.dir.url" value="file:/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module/" />
+    <property name="dir.src" value="src" />
+    <property name="ivy.distrib.dir.ivy.instance" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/distrib" />
+    <property name="user.timezone" value="GMT" />
+    <property name="java.vm.specification.name.ivy.instance" value="Java Virtual Machine Specification" />
+    <property name="ivy.dep.file.ivy.instance" value="ivy.xml" />
+    <property name="java.ext.dirs" value="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.151-1.b12.el7_4.x86_64/jre/lib/ext:/usr/java/packages/lib/ext" />
+    <property name="dir.src.java.test" value="src/test" />
+    <property name="java.class.path" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/build/classpath.test.jar:/opt/apache-ant-1.10.1/lib/ant-launcher.jar:/opt/ant/lib/ant.jar:/opt/ant/lib/ant-junit.jar:/opt/ant/lib/ant-junit4.jar:/tmp/jacocoagent8143014663803686379.jar" />
+    <property name="ivy.settings.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/scripts/build-module" />
+    <property name="os.version" value="3.10.0-327.22.2.el7.x86_64" />
+    <property name="java.class.version.ivy.instance" value="52.0" />
+    <property name="jvm.debug.port" value="5005" />
+    <property name="ivy.module" value="cloud" />
+    <property name="build.conf.logback.version" value="1.1.2" />
+    <property name="build.conf.zxing.version" value="2.2" />
+    <property name="daemon.local1.root.dir" value="/data/backups/daemon/" />
+    <property name="os.arch.ivy.instance" value="amd64" />
+    <property name="build.conf.bouncycastle.version" value="1.51" />
+    <property name="env.LANG" value="en_US.UTF-8" />
+    <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment" />
+    <property name="java.vm.name.ivy.instance" value="OpenJDK 64-Bit Server VM" />
+    <property name="java.vm.vendor" value="Oracle Corporation" />
+    <property name="ivy.log.modules.in.use" value="false" />
+    <property name="mongorestore" value="mongorestore" />
+    <property name="halt.on.fail" value="false" />
+    <property name="ant.file.type" value="file" />
+    <property name="ivy.build.artifacts.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/build/artifacts" />
+    <property name="sun.os.patch.level.ivy.instance" value="unknown" />
+    <property name="ivy.checksums" value="sha1,md5" />
+    <property name="ivy.configurations" value="*" />
+    <property name="build.conf.jersey1.version" value="1.19" />
+    <property name="ivy.distrib.dir" value="/data/mci/37b14e2d19e23a8b39d1e9fb385f3b4d/mms/server/distrib" />
+    <property name="ant.version" value="Apache Ant(TM) version 1.10.1 compiled on February 2 2017" />
+    <property name="dir.lib" value="lib" />
+    <property name="file.encoding" value="UTF-8" />
+    <property name="build.conf.jetty.version" value="8.1.8" />
+    <property name="mongo" value="mongo" />
+    <property name="awt.toolkit" value="sun.awt.X11.XToolkit" />
+    <property name="dir.build.conf" value="build/conf" />
+    <property name="user.name.ivy.instance" value="root" />
+  </properties>
+  <error type="java.lang.ExceptionInInitializerError">java.lang.ExceptionInInitializerError
+	at java.lang.Class.forName0(Native Method)
+	at java.lang.Class.forName(Class.java:264)
+Caused by: java.lang.NumberFormatException: For input string: &quot;&quot;
+	at java.lang.NumberFormatException.forInputString(NumberFormatException.java:65)
+	at java.lang.Integer.parseInt(Integer.java:592)
+	at java.lang.Integer.parseInt(Integer.java:615)
+	at com.xgen.svc.core.BaseTest.&lt;clinit&gt;(BaseTest.java:34)
+</error>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

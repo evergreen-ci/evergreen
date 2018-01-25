@@ -189,7 +189,7 @@ Evergreen Projects
           <div id="adminsList" class="form-group" ng-repeat="(index, admin) in settingsFormData.admins">
             <div class="col-lg-4"> <label class="control-label">[[admin]]</label> </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeAdmin(index)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeAdmin(index)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -199,7 +199,7 @@ Evergreen Projects
               <input ng-model="admin_name" class="form-control" type="text" placeholder="username">
             </div>
             <div class="col-lg-2">
-              <button class="plus-button btn btn-primary " ng-disabled="!(admin_name)" id="admin-add" type="button" ng-click="addAdmin()">
+              <button class="plus-button btn btn-primary" ng-disabled="!(admin_name)" type="button" ng-click="addAdmin()">
                 <i class="fa fa-plus"></i>
               </button>
             </div>
@@ -215,6 +215,31 @@ Evergreen Projects
                 <input type="checkbox" name="deactivate_previous" ng-model="settingsFormData.deactivate_previous"/>
               </label>
               <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
+            </div>
+          </div>
+          <div ng-show="githubHookId !== 0">
+            <div class="h3">Repotracker Settings</div>
+            <div class="form-group">
+                <div class="col-lg-5 col-header">
+                    <div class="radio">
+                        <label class="control-label">
+                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="false"> <strong> Trigger Repotracker via Runner</strong>
+                        </label> <br>
+                        <label class="muted col-lg-offset-1">Repotracker will be automatically run every few minutes</label>
+                    </div>
+                    <div class="radio">
+                        <label class="control-label">
+                            <input type="radio" ng-model="settingsFormData.tracks_push_events" ng-value="true"> <strong> Trigger Repotracker via PushEvents</strong>
+                        </label> <br>
+                        <label class="muted col-lg-offset-1">Repotracker will be triggered from Github PushEvents sent via webhooks</label>
+                    </div>
+                </div>
+                <br />
+                <div class="col-lg-8 col-header" ng-show="settingsFormData.tracks_push_events === true">
+                    <label class="control-label">Run Repotracker on Save&nbsp;&nbsp;
+                        <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" />
+                    </label>
+                </div>
             </div>
           </div>
         </div>
@@ -254,11 +279,11 @@ Evergreen Projects
           </div>
           <div id="projectVarsList" class="form-group" ng-repeat="(name, value) in settingsFormData.project_vars">
             <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>
-            <div class="col-lg-4" >
+            <div class="col-lg-4">
               <textarea class="form-control" style="font-family:monospace;" readonly>[[valueString(name, value)]]</textarea>
             </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeProjectVar(name)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
@@ -273,20 +298,140 @@ Evergreen Projects
             <div>
              <label class="control-label">
                <input type="checkbox" name="set_private" ng-model="proj_var.is_private" ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" /> <strong>Private Variable</strong>
+             </label>
             </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary " ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
+              <button class="plus-button btn btn-primary " ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" type="button" ng-click="addProjectVar()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidKeyMessage]]</label>
             </div>
           </div>
         </div>
-        <br>
-        <div class="row">
-          <div class="col-lg-2">
-            <label>[[saveMessage]]</label>
+
+        <div class="variables" ng-show="isSuperUser">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Configuration </h3>
+                <div class="muted small" ng-show="githubHookId === 0">Github webhooks have not been enabled for this repository. In order to use Github Pull Request testing, tick the box below, and save the project to set up the webhook in this
+                repository.</div>
+                <div class="muted small" ng-show="githubHookId !== 0">Github webhooks are enabled!. You can uncheck the box to remove the webhook at any time.</div>
+            </div>
           </div>
+
+          <div id="patch-variants-list" class="form-group">
+            <div class="col-lg-6">
+                <input type="checkbox" id="githubhook-checkbox" ng-model="settingsFormData.setup_github_hook" />
+                <label for="githubhook-checkbox">Enable Github Webhooks</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="variables" ng-show="githubHookId !== 0">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Patch Definitions </h3>
+              <div class="muted small">For patches created from Github pull requests, Evergreen will find variants that match each variant regex, and schedule tasks that match the corresponding task regex. All regular expressions must be valid Golang regular expressions.</div>
+            </div>
+          </div>
+          <div id="patch-variants-list-header" class="form-group">
+            <div class="col-lg-3"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-3"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"></div>
+          </div>
+
+          <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_patch_definitions track by $index">
+            <div class="col-lg-3">
+              <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].variant" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-3">
+              <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].task" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubPatchDefinition($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-3">
+              <input ng-model="github_patch_definition.variant" class="form-control" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-3">
+              <input ng-model="github_patch_definition.task" class="form-control" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-6">
+              <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_patch_definition.variant, github_patch_definition.task)" type="button" ng-click="addGithubPatchDefinition()">
+                <i class="fa fa-plus"></i>
+              </button>
+              <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="variables">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3> Patch Aliases </h3>
+              <div class="muted small">Specify aliases to use with the CLI. Aliases may be specified multiple times. The result will be their union. All regular expressions must be valid Golang regular expressions. Task regexes and tags will use their union, if specified. Use an alias with the --alias flag to the CLI patch command.</div>
+            </div>
+          </div>
+          <div id="patch-aliases-list-header" class="form-group">
+            <div class="col-lg-2"> <label class="control-label"> Alias </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Variant Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Regex </label> </div>
+            <div class="col-lg-2"> <label class="control-label"> Task Tags </label> </div>
+            <div class="col-lg-2"></div>
+          </div>
+
+          <div id="patch-aliases-list" class="form-group" ng-repeat="obj in settingsFormData.patch_aliases track by $index">
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].alias" type="text" placeholder="alias">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].variant" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].task" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-2">
+              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].tags_temp" type="text" placeholder="tags (comma-delimited)">
+            </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removePatchAlias($index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.alias" class="form-control" type="text" placeholder="alias">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.variant" class="form-control" type="text" placeholder="variant regex">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.task" class="form-control" type="text" placeholder="task regex">
+            </div>
+            <div class="col-lg-2">
+              <input ng-model="patch_alias.tags_temp" class="form-control" type="text" placeholder="tags (comma-delimited)">
+            </div>
+            <div class="col-lg-6">
+              <button class="plus-button btn btn-primary " ng-disabled="!validPatchAlias(patch_alias.alias, patch_alias.variant, patch_alias.task, patch_alias.tags_temp)" type="button" ng-click="addPatchAlias()">
+                <i class="fa fa-plus"></i>
+              </button>
+              <label class="distro-error">[[invalidPatchAliasMessage]]</label>
+            </div>
+          </div>
+        </div>
+
+        <br/>
+
+        <div class="row">
+          <div class="col-lg-6">
+            <label ng-show="saveMessage">[[saveMessage]]</label>
+            <label ng-hide="saveMessage">&nbsp;</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-lg-2">&nbsp;</div>
           <div class="col-lg-4">
             <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
           </div>

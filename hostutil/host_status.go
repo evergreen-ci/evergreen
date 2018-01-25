@@ -2,14 +2,13 @@ package hostutil
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -33,40 +32,43 @@ func CheckSSHResponse(ctx context.Context, hostObject *host.Host, sshOptions []s
 	}
 
 	// construct a command to check reachability
-	remoteCommand := &subprocess.RemoteCommand{
-		Id:             fmt.Sprintf("reachability check %s", hostObject.Id),
-		CmdString:      "echo hi",
-		Stdout:         ioutil.Discard,
-		Stderr:         ioutil.Discard,
-		RemoteHostName: hostInfo.Hostname,
-		User:           hostInfo.User,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     false,
+	remoteCommand := subprocess.NewRemoteCommand(
+		"echo hi >| reachability_check.txt",
+		hostInfo.Hostname,
+		hostInfo.User,
+		nil,   // env
+		false, // background
+		append([]string{"-p", hostInfo.Port}, sshOptions...),
+		false, // logging disabled
+	)
+
+	output := subprocess.OutputOptions{SuppressOutput: true, SuppressError: true}
+
+	if err = remoteCommand.SetOutput(output); err != nil {
+		grip.Alert(message.WrapError(err, message.Fields{
+			"operation": "reachability check",
+			"message":   "configuring output for reachability check",
+			"hostname":  hostInfo.Hostname,
+			"distro":    hostObject.Distro.Id,
+			"host_id":   hostObject.Id,
+			"cause":     "programmer error",
+			"output":    output,
+		}))
+
+		return false, errors.Wrap(err, "problem configuring output")
 	}
 
-	done := make(chan error)
-	err = remoteCommand.Start()
-	if err != nil {
-		return false, errors.Wrap(err, "problem starting command")
-	}
-
-	go func() {
-		select {
-		case done <- remoteCommand.Wait():
-			return
-		case <-ctx.Done():
-			return
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		grip.Warning(remoteCommand.Stop())
+	if err = remoteCommand.Run(ctx); err != nil {
+		grip.Debug(message.WrapError(err, message.Fields{
+			"message":  "problem running check ssh response",
+			"command":  "echo hi",
+			"host_id":  hostObject.Id,
+			"hostname": hostInfo.Hostname,
+			"distro":   hostObject.Distro.Id,
+			"canceled": ctx.Err() != nil,
+		}))
 		return false, nil
-	case err = <-done:
-		if err != nil {
-			return false, errors.Wrap(err, "error during host check operation")
-		}
-		return true, nil
 	}
+
+	return true, nil
 }

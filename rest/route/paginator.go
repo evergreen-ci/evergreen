@@ -12,14 +12,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
 const (
-	defaultLimit      = 100
-	NextPageHeaderKey = "Link"
+	defaultLimit = 100
 )
 
 var linkMatcher = regexp.MustCompile(`^\<(\S+)\>; rel=\"(\S+)\"`)
@@ -231,6 +231,6 @@ func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter, apiURL, route st
 			return err
 		}
 	}
-	w.Header().Set(NextPageHeaderKey, b.String())
+	w.Header().Set(evergreen.RoutePaginatorNextPageHeaderKey, b.String())
 	return nil
 }

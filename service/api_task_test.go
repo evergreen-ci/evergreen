@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -245,6 +246,9 @@ func TestAssignNextAvailableTask(t *testing.T) {
 }
 
 func TestNextTask(t *testing.T) {
+	conf := testutil.TestConfig()
+	queue := evergreen.GetEnvironment().LocalQueue()
+
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, admin.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
@@ -256,7 +260,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
-		as, err := NewAPIServer(testutil.TestConfig())
+		as, err := NewAPIServer(conf, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -510,12 +514,15 @@ func TestCheckHostHealth(t *testing.T) {
 }
 
 func TestEndTaskEndpoint(t *testing.T) {
+	conf := testutil.TestConfig()
+	queue := evergreen.GetEnvironment().LocalQueue()
+
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
-			build.Collection, model.ProjectRefCollection, version.Collection); err != nil {
+			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		as, err := NewAPIServer(testutil.TestConfig())
+		as, err := NewAPIServer(conf, queue)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -563,6 +570,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 			Tasks: []build.TaskCache{
 				{Id: "task1"},
 				{Id: "task2"},
+				{Id: "dt"},
 			},
 			Project: projectId,
 			Version: versionId,
@@ -671,5 +679,80 @@ func TestEndTaskEndpoint(t *testing.T) {
 			})
 		})
 
+		Convey("with a display task", func() {
+			execTask := task.Task{
+				Id:           "et",
+				DisplayName:  "execTask",
+				Status:       evergreen.TaskStarted,
+				Activated:    true,
+				HostId:       "h2",
+				Secret:       taskSecret,
+				Project:      projectId,
+				BuildId:      buildId,
+				BuildVariant: "bv",
+				Version:      versionId,
+			}
+			So(execTask.Insert(), ShouldBeNil)
+			displayTask := task.Task{
+				Id:             "dt",
+				DisplayName:    "displayTask",
+				Status:         evergreen.TaskStarted,
+				Activated:      true,
+				Secret:         taskSecret,
+				Project:        projectId,
+				BuildId:        buildId,
+				Version:        versionId,
+				DisplayOnly:    true,
+				BuildVariant:   "bv",
+				ExecutionTasks: []string{execTask.Id},
+			}
+			So(displayTask.Insert(), ShouldBeNil)
+
+			sampleHost := host.Host{
+				Id:            "h2",
+				Secret:        hostSecret,
+				RunningTask:   execTask.Id,
+				Status:        evergreen.HostRunning,
+				AgentRevision: agentRevision,
+			}
+			So(sampleHost.Insert(), ShouldBeNil)
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			}
+			resp := getEndTaskEndpoint(t, as, sampleHost.Id, execTask.Id, details)
+			So(resp, ShouldNotBeNil)
+			Convey("should return http status ok", func() {
+				So(resp.Code, ShouldEqual, http.StatusOK)
+				Convey("task should exist with the existing task id and be dispatched", func() {
+					taskResp := apimodels.EndTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
+					So(taskResp.ShouldExit, ShouldBeFalse)
+				})
+			})
+			Convey("the display task should be updated correctly", func() {
+				dbTask, err := task.FindOne(task.ById(displayTask.Id))
+				So(err, ShouldBeNil)
+				So(dbTask.Status, ShouldEqual, evergreen.TaskFailed)
+			})
+			Convey("the build cache should be updated correctly", func() {
+				dbBuild, err := build.FindOne(build.ById(buildId))
+				So(err, ShouldBeNil)
+				So(dbBuild.Tasks[2].Status, ShouldEqual, evergreen.TaskFailed)
+			})
+			Convey("alerts should be created for the build failure", func() {
+				dbAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
+					displayTask.DisplayName, displayTask.BuildVariant, displayTask.Project))
+				So(err, ShouldBeNil)
+				So(dbAlert.Type, ShouldEqual, alertrecord.TaskFailTransitionId)
+				So(dbAlert.TaskId, ShouldEqual, displayTask.Id)
+
+				// alerts should not have been created for the execution task
+				execTaskAlert, err := alertrecord.FindOne(alertrecord.ByLastFailureTransition(
+					execTask.DisplayName, execTask.BuildVariant, execTask.Project))
+				So(err, ShouldBeNil)
+				So(execTaskAlert, ShouldBeNil)
+			})
+		})
 	})
 }

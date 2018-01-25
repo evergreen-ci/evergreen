@@ -62,7 +62,7 @@ func TestLogType(t *testing.T) {
 }
 
 func TestStripDirectories(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 
 	paths := []string{"foo", "bar", "./foo", "./bar", "foo/bar", "bar/foo"}
 	for _, path := range paths {

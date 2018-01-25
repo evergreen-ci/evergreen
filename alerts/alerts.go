@@ -349,7 +349,10 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 	})
 
 	if len(qp.config.SuperUsers) == 0 {
-		grip.Warning("no superusers configured, some alerts may have no recipient")
+		grip.Warning(message.Fields{
+			"message": "no superusers configured, some alerts may have no recipient",
+			"runner":  qp.Name(),
+		})
 	}
 	superUsers, err := user.Find(user.ByIds(qp.config.SuperUsers...))
 	if err != nil {
@@ -369,7 +372,7 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 		qp.superUsersConfigs = append(qp.superUsersConfigs, model.AlertConfig{"email", bson.M{"rcpt": u.Email()}})
 	}
 
-	grip.Info("Running alert queue processing")
+	grip.Debug(message.Fields{"message": "Running alert queue processing", "runner": qp.Name()})
 	for {
 		nextAlert, err := alert.DequeueAlertRequest()
 
@@ -386,7 +389,7 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 			return err
 		}
 		if nextAlert == nil {
-			grip.Info("Reached end of queue items - stopping")
+			grip.Debug(message.Fields{"message": "Reached end of queue items - stopping", "runner": qp.Name()})
 			break
 		}
 
@@ -395,21 +398,26 @@ func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) e
 		alertContext, err := qp.loadAlertContext(nextAlert)
 		if err != nil {
 			err = errors.Wrap(err, "Failed to load alert context")
-			grip.Error(message.Fields{
+			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  qp.Name(),
-				"error":   err.Error(),
 				"status":  "failed",
 				"runtime": time.Since(startTime),
 				"span":    time.Since(startTime).String(),
-			})
+			}))
 
 			return err
 		}
 
-		grip.Debugln("Delivering queue item", nextAlert.Id.Hex())
+		grip.Debug(message.Fields{"message": "Delivering queue item",
+			"item":   nextAlert.Id.Hex(),
+			"runner": qp.Name(),
+		})
 
-		grip.Warning(errors.Wrap(qp.Deliver(nextAlert, alertContext),
-			"Got error delivering message"))
+		grip.Warning(message.WrapError(qp.Deliver(nextAlert, alertContext),
+			message.Fields{
+				"message": "Got error delivering message",
+				"runner":  qp.Name(),
+			}))
 
 	}
 

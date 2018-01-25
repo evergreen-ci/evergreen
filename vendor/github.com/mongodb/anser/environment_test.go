@@ -2,28 +2,29 @@ package anser
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
-	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
 	grip.SetName("anser.test")
-	dialTimeout = 10 * time.Millisecond
 }
 
 type EnvImplSuite struct {
-	env    *envState
-	q      amboy.Queue
-	cancel context.CancelFunc
+	env     *envState
+	q       amboy.Queue
+	session db.Session
+	cancel  context.CancelFunc
 	suite.Suite
 }
 
@@ -32,20 +33,18 @@ func TestEnvImplSuite(t *testing.T) {
 	suite.Run(t, new(EnvImplSuite))
 }
 
-func (s *EnvImplSuite) SetupSuite() {
+func (s *EnvImplSuite) SetupTest() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.q = queue.NewLocalUnordered(4)
 	s.cancel = cancel
 	s.NoError(s.q.Start(ctx))
 
+	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/", 10*time.Millisecond)
+	s.Require().NoError(err)
+	s.session = db.WrapSession(mgoses)
+
 	s.Require().Equal(globalEnv, GetEnvironment())
-}
 
-func (s *EnvImplSuite) TearDownSuite() {
-	s.cancel()
-}
-
-func (s *EnvImplSuite) SetupTest() {
 	s.env = &envState{
 		migrations: make(map[string]db.MigrationOperation),
 		processor:  make(map[string]db.Processor),
@@ -53,7 +52,7 @@ func (s *EnvImplSuite) SetupTest() {
 
 	s.Nil(s.env.session)
 	s.False(s.env.isSetup)
-	s.NoError(s.env.Setup(s.q, "mongodb://localhost:27017/"))
+	s.NoError(s.env.Setup(s.q, s.session))
 	s.True(s.env.isSetup)
 	s.NotNil(s.env.session)
 	s.Equal(s.env.metadataNS.DB, defaultAnserDB)
@@ -61,15 +60,19 @@ func (s *EnvImplSuite) SetupTest() {
 	s.Equal(s.env.MetadataNamespace(), s.env.metadataNS)
 }
 
+func (s *EnvImplSuite) TearDownTest() {
+	s.cancel()
+}
+
 func (s *EnvImplSuite) TestCallingSetupMultipleTimesErrors() {
-	s.Error(s.env.Setup(s.q, "mongodb://localhost:27017/"))
+	s.Error(s.env.Setup(s.q, s.session))
 	s.True(s.env.isSetup)
 }
 
 func (s *EnvImplSuite) TestDialErrorCausesSetupError() {
 	s.env.isSetup = false
 	s.env.session = nil
-	s.Error(s.env.Setup(s.q, "mongodb://127.0.1.1:80/"))
+	s.Error(s.env.Setup(s.q, nil))
 	s.False(s.env.isSetup)
 	s.Nil(s.env.session)
 }
@@ -78,16 +81,21 @@ func (s *EnvImplSuite) TestUnstartedQueueCausesError() {
 	s.env.isSetup = false
 	s.env.queue = nil
 
-	s.Error(s.env.Setup(queue.NewLocalUnordered(2), "mongodb://localhost:27017/"))
+	s.Error(s.env.Setup(queue.NewLocalUnordered(2), s.session))
 	s.Nil(s.env.queue)
 	s.False(s.env.isSetup)
 }
 
 func (s *EnvImplSuite) TestDatabaseNameOverrideFromURI() {
 	s.env.isSetup = false
-	s.NoError(s.env.Setup(s.q, "mongodb://127.0.0.1:27017/mci"))
+	mgoses, err := mgo.DialWithTimeout("mongodb://localhost:27017/mci", 10*time.Millisecond)
+	s.Require().NoError(err)
+	session := db.WrapSession(mgoses)
+	defer session.Close()
+
+	s.NoError(s.env.Setup(s.q, session))
 	s.True(s.env.isSetup)
-	s.Equal(s.env.metadataNS.DB, "mci")
+	s.Equal("mci", s.env.metadataNS.DB)
 }
 
 func (s *EnvImplSuite) TestSessionAccessor() {
@@ -148,15 +156,38 @@ func (s *EnvImplSuite) TestDocumentProcessor() {
 }
 
 func (s *EnvImplSuite) TestDependencyNetworkConstructor() {
-	dep := s.env.NewDependencyManager("foo", model.Namespace{"db", "coll"})
+	dep := s.env.NewDependencyManager("foo")
 
 	s.NotNil(dep)
 	mdep := dep.(*migrationDependency)
 	s.Equal(mdep.Env(), s.env)
-	s.Len(mdep.Query, 0)
-	s.Equal(mdep.NS.DB, "db")
-	s.Equal(mdep.NS.Collection, "coll")
 	s.Equal(mdep.MigrationID, "foo")
+}
+
+func (s *EnvImplSuite) TestRegisterCloser() {
+	s.Len(s.env.closers, 1)
+	s.env.RegisterCloser(nil)
+	s.Len(s.env.closers, 1)
+	s.env.RegisterCloser(func() error { return nil })
+	s.Len(s.env.closers, 2)
+
+	s.env.RegisterCloser(func() error { return nil })
+	s.Len(s.env.closers, 3)
+
+	s.NoError(s.env.Close())
+
+	s.env.RegisterCloser(func() error { return errors.New("foo") })
+	s.Len(s.env.closers, 4)
+
+	s.Error(s.env.Close())
+}
+
+func (s *EnvImplSuite) TestCloseEncountersError() {
+	s.Len(s.env.closers, 1)
+	s.env.RegisterCloser(func() error { return errors.New("foo") })
+	s.Len(s.env.closers, 2)
+
+	s.Error(s.env.Close())
 }
 
 func TestUninitializedEnvErrors(t *testing.T) {

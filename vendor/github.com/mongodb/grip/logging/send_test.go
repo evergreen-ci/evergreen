@@ -88,18 +88,29 @@ func (s *GripInternalSuite) TestConditionalSend() {
 	msgTwo := message.NewLineMessage(level.Notice, "bar")
 
 	// when the conditional argument is true, it should work
-	s.grip.sendConditional(true, msg)
-	s.Equal(sink.GetMessage().Message, msg)
+	s.grip.Log(msg.Priority(), message.When(true, msg))
+	s.Equal(msg.Raw(), sink.GetMessage().Message.Raw())
 
 	// when the conditional argument is true, it should work, and the channel is fifo
-	s.grip.sendConditional(false, msgTwo)
-	s.grip.sendConditional(true, msg)
-	s.Equal(sink.GetMessage().Message, msg)
+	s.grip.Log(msgTwo.Priority(), message.When(false, msgTwo))
+	s.grip.Log(msg.Priority(), message.When(true, msg))
+	result := sink.GetMessage().Message
+	if result.Loggable() {
+		s.Equal(msg.Raw(), result.Raw())
+	} else {
+		s.Equal(msgTwo.Raw(), result.Raw())
+	}
 
 	// change the order
-	s.grip.sendConditional(true, msg)
-	s.grip.sendConditional(false, msgTwo)
-	s.Equal(sink.GetMessage().Message, msg)
+	s.grip.Log(msg.Priority(), message.When(true, msg))
+	s.grip.Log(msgTwo.Priority(), message.When(false, msgTwo))
+	result = sink.GetMessage().Message
+
+	if result.Loggable() {
+		s.Equal(msg.Raw(), result.Raw())
+	} else {
+		s.Equal(msgTwo.Raw(), result.Raw())
+	}
 }
 
 func (s *GripInternalSuite) TestCatchMethods() {

@@ -19,8 +19,10 @@ const (
 	EventHostCreated              = "HOST_CREATED"
 	EventHostStarted              = "HOST_STARTED"
 	EventHostAgentDeployed        = "HOST_AGENT_DEPLOYED"
+	EventHostAgentDeployFailed    = "HOST_AGENT_DEPLOY_FAILED"
 	EventHostStatusChanged        = "HOST_STATUS_CHANGED"
 	EventHostDNSNameSet           = "HOST_DNS_NAME_SET"
+	EventHostProvisionError       = "HOST_PROVISION_ERROR"
 	EventHostProvisionFailed      = "HOST_PROVISION_FAILED"
 	EventHostProvisioned          = "HOST_PROVISIONED"
 	EventHostRunningTaskSet       = "HOST_RUNNING_TASK_SET"
@@ -47,9 +49,15 @@ type HostEventData struct {
 	TaskStatus    string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
 	Execution     string        `bson:"execution,omitempty" json:"execution,omitempty"`
 	MonitorOp     string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	User          string        `bson:"usr" json:"user,omitempty"`
 	Successful    bool          `bson:"successful,omitempty" json:"successful"`
 	Duration      time.Duration `bson:"duration,omitempty" json:"duration"`
 }
+
+var (
+	hostDataResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
+	hostDataStatusKey       = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+)
 
 func (self HostEventData) IsValid() bool {
 	return self.ResourceType == ResourceTypeHost
@@ -82,16 +90,27 @@ func LogHostAgentDeployed(hostId string) {
 	LogHostEvent(hostId, EventHostAgentDeployed, HostEventData{AgentRevision: evergreen.BuildRevision})
 }
 
+func LogHostAgentDeployFailed(hostId string) {
+	LogHostEvent(hostId, EventHostAgentDeployFailed, HostEventData{})
+}
+
+func LogHostProvisionError(hostId string) {
+	LogHostEvent(hostId, EventHostProvisionError, HostEventData{})
+}
+
 func LogHostTerminatedExternally(hostId string) {
 	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
 }
 
-func LogHostStatusChanged(hostId string, oldStatus string, newStatus string) {
+func LogHostStatusChanged(hostId, oldStatus, newStatus, user string) {
 	if oldStatus == newStatus {
 		return
 	}
-	LogHostEvent(hostId, EventHostStatusChanged,
-		HostEventData{OldStatus: oldStatus, NewStatus: newStatus})
+	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{
+		OldStatus: oldStatus,
+		NewStatus: newStatus,
+		User:      user,
+	})
 }
 
 func LogHostDNSNameSet(hostId string, dnsName string) {

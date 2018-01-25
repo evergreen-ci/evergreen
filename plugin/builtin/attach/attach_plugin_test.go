@@ -5,47 +5,43 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/user"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestFileVisibility(t *testing.T) {
+	s := &TestFileVisibilitySuite{}
+	suite.Run(t, s)
+}
 
-	Convey("With a list of files with 4 ui visibility permissions", t, func() {
-		files := []artifact.File{
-			{Name: "Private", Visibility: artifact.Private},
-			{Name: "Public", Visibility: artifact.Public},
-			{Name: "Hidden", Visibility: artifact.None},
-			{Name: "Unset", Visibility: ""},
-		}
+type TestFileVisibilitySuite struct {
+	files []artifact.File
+	suite.Suite
+}
 
-		Convey("and no user", func() {
-			stripped := stripHiddenFiles(files, nil)
+func (s *TestFileVisibilitySuite) SetupTest() {
+	s.files = []artifact.File{
+		{Name: "Private", Visibility: artifact.Private},
+		{Name: "Public", Visibility: artifact.Public},
+		{Name: "Hidden", Visibility: artifact.None},
+		{Name: "Unset", Visibility: ""},
+	}
+}
 
-			Convey("the original array should be unmodified", func() {
-				So(len(files), ShouldEqual, 4)
-			})
+func (s *TestFileVisibilitySuite) TestFileVisibilityWithoutUser() {
+	stripped := stripHiddenFiles(s.files, nil)
+	s.Len(s.files, 4)
 
-			Convey("and all only the public and unset files should be returned", func() {
-				So(stripped[0].Name, ShouldEqual, "Public")
-				So(stripped[1].Name, ShouldEqual, "Unset")
-				So(len(stripped), ShouldEqual, 2)
-			})
-		})
+	s.Equal("Public", stripped[0].Name)
+	s.Equal("Unset", stripped[1].Name)
+	s.Len(stripped, 2)
+}
 
-		Convey("with a user", func() {
-			stripped := stripHiddenFiles(files, &user.DBUser{})
+func (s *TestFileVisibilitySuite) TestFileVisibilityWithUser() {
+	stripped := stripHiddenFiles(s.files, &user.DBUser{})
+	s.Len(s.files, 4)
 
-			Convey("the original array should be unmodified", func() {
-				So(len(files), ShouldEqual, 4)
-			})
-
-			Convey("and all but the 'None' files should be returned", func() {
-				So(stripped[0].Name, ShouldEqual, "Private")
-				So(stripped[1].Name, ShouldEqual, "Public")
-				So(stripped[2].Name, ShouldEqual, "Unset")
-				So(len(stripped), ShouldEqual, 3)
-			})
-		})
-	})
-
+	s.Equal("Private", stripped[0].Name)
+	s.Equal("Public", stripped[1].Name)
+	s.Equal("Unset", stripped[2].Name)
+	s.Len(stripped, 3)
 }

@@ -32,6 +32,15 @@ var escapeHtml = function(str) {
   return div.innerHTML;
 };
 
+
+var isDismissed = function(bannerText) {
+  return md5(bannerText) === localStorage.getItem("dismissed");
+}
+
+var bannerText = function() {
+  return escapeHtml(window.BannerText);
+}
+
 filters.common.filter('conditional', function() {
   return function(b, t, f) {
     return b ? t : f;

@@ -1,6 +1,7 @@
 package taskrunner
 
 import (
+	"context"
 	"math/rand"
 	"path/filepath"
 	"runtime"
@@ -10,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
+	"github.com/mongodb/grip/message"
 )
 
 // TODO: take out task queue finder and host finder once transition is complete
@@ -47,7 +48,14 @@ func (tr *TaskRunner) Run() error {
 		return err
 	}
 
-	grip.Infof("Found %d hosts that need agents dispatched", len(freeHosts))
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	grip.Info(message.Fields{
+		"runner":     RunnerName,
+		"free_hosts": len(freeHosts),
+		"message":    "found hosts without agents",
+	})
 
 	freeHostChan := make(chan agentStartData, len(freeHosts))
 
@@ -64,17 +72,16 @@ func (tr *TaskRunner) Run() error {
 	workers := runtime.NumCPU() * 2
 	wg.Add(workers)
 
-	catcher := grip.NewBasicCatcher()
 	// for each worker create a new goroutine
 	for i := 0; i < workers; i++ {
 		go func() {
 			defer wg.Done()
 			for input := range freeHostChan {
-				catcher.Add(errors.Wrapf(tr.StartAgentOnHost(input.Settings, input.Host),
-					"problem starting agent on host %s", input.Host.Id))
+				errorCollector.add(&input.Host, tr.StartAgentOnHost(ctx, input.Settings, input.Host))
 			}
 		}()
 	}
 	wg.Wait()
-	return catcher.Resolve()
+
+	return errorCollector.report()
 }

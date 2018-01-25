@@ -50,6 +50,11 @@ func RunTaskFailureTriggers(taskId string) error {
 		return errors.Errorf("could not find task for %s", taskId)
 	}
 
+	if t.Aborted {
+		// don't send failure alerts for tasks that were aborted.
+		return nil
+	}
+
 	ctx, err := getTaskTriggerContext(t)
 	if err != nil {
 		return err

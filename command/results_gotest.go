@@ -112,7 +112,6 @@ func (c *goTestResults) Execute(ctx context.Context,
 	logger.Task().Info("Successfully sent parsed results to server")
 
 	return nil
-
 }
 
 // AllOutputFiles creates a list of all test output files that will be parsed, by expanding

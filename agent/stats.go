@@ -60,6 +60,12 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()
+
+		output := subprocess.OutputOptions{
+			Output: sc.logger.SystemWriter(level.Info),
+			Error:  sc.logger.SystemWriter(level.Error),
+		}
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -68,11 +74,13 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 			case <-timer.C:
 				for _, cmd := range sc.Cmds {
 					sc.logger.System().Infof("Running %v", cmd)
-					command := &subprocess.LocalCommand{
-						CmdString: cmd,
-						Stdout:    sc.logger.SystemWriter(level.Info),
-						Stderr:    sc.logger.SystemWriter(level.Error),
+					command := subprocess.NewLocalCommand(cmd, "", "bash", nil, false)
+					if err := command.SetOutput(output); err != nil {
+						// if we get here, it's programmer error
+						grip.Critical(err)
+						panic("problem configuring output for stats collector")
 					}
+
 					if err := command.Run(ctx); err != nil {
 						sc.logger.System().Errorf("error running '%v': %v", cmd, err)
 					}

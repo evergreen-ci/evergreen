@@ -10,6 +10,11 @@ post:
     params:
       files:
         - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
+  - command: attach.xunit_results
+    type: system
+    params:
+      files:
+        - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
   - command: s3.put
     type: system
     params:
@@ -81,7 +86,7 @@ variables:
         type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: setup-credentials
+      - func: set-up-credentials
       - func: run-make
         vars: { target: "${task_name}" }
   - &run-go-test-suite-with-mongodb
@@ -93,7 +98,7 @@ variables:
         type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: setup-credentials
+      - func: set-up-credentials
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
@@ -103,7 +108,7 @@ variables:
       - name: dist-test
     commands:
       - func: get-dist-test
-      - func: setup-credentials
+      - func: set-up-credentials
       - func: run-cross
         vars: { target: "${task_name}" }
   - &run-xc-test-suite-with-mongodb
@@ -112,10 +117,59 @@ variables:
       - name: dist-test
     commands:
       - func: get-dist-test
-      - func: setup-credentials
+      - func: set-up-credentials
       - func: set-up-mongodb
       - func: run-cross
         vars: { target: "${task_name}" }
+  - &run-smoke-test
+    name: smoke
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-mongodb
+      - func: run-make
+        vars: { target: "set-project-var" }
+      - func: run-make
+        vars: { target: "load-smoke-data" }
+      - command: shell.exec
+        params:
+          silent: true
+          shell: bash
+          script: |
+            set -o errexit
+
+            cd gopath/src/github.com/evergreen-ci/evergreen
+            mkdir -p clients
+            echo "foo" >| clients/version
+
+            cat >> testdata/smoke_config.yml <<EOF
+            log_path: "STDOUT"
+            credentials: {
+              github: "${github_token}",
+            }
+            EOF
+
+            ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
+            ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
+      - func: run-make
+        vars:
+          target: "${task_name}"
+  - &run-lint
+    name: test
+    stepback: false
+    tags: ["lint"]
+    commands:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-credentials
+      - func: run-make
+        vars: { target: "${task_name}" }
+  - &version-constants
+    nodejs_version: "6.11.1"
 
 #######################################
 #              Functions              #
@@ -124,12 +178,16 @@ functions:
   run-make:
     command: shell.exec
     params:
+       shell: bash
        script: |
          set -o xtrace
          set -o errexit
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
+
+         # Set the path to nodejs binaries
+         export PATH=/opt/node/bin:gopath/src/github.com/evergreen-ci/evergreen/public/node_modules/.bin:$PATH
 
          cd gopath/src/github.com/evergreen-ci/evergreen
 
@@ -167,7 +225,7 @@ functions:
         export EVERGREEN_ALL=true
 
         $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
-  setup-credentials:
+  set-up-credentials:
     command: shell.exec
     type: system
     params:
@@ -193,6 +251,8 @@ functions:
         }
 
         api_url: http://localhost:8080
+        api:
+          github_webhook_secret: "test"
         ui:
           secret: "secret for UI"
           defaultproject: "mci"
@@ -227,7 +287,9 @@ functions:
         plugins:
           manifest:
             github_token: "${github_token}"
+        github_pr_creator_org: "10gen"
         EOF
+
   set-up-mongodb:
     - command: shell.exec
       type: system
@@ -271,6 +333,7 @@ functions:
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
           echo "mongod is up."
 
+
 #######################################
 #                Tasks                #
 #######################################
@@ -283,23 +346,13 @@ tasks:
         type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: setup-credentials
+      - func: set-up-credentials
       - func: set-up-mongodb
       - func: run-make
         vars:
           target: "coverage-html"
           make_args: "-k"
           build_env: "EVERGREEN_ALL=true"
-  - name: lint
-    tags: [ "report" ]
-    commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: run-make
-        vars: { target: "${task_name}" }
-        make_args: "-k"
   - name: dist-test
     commands:
       - command: git.get_project
@@ -321,6 +374,15 @@ tasks:
           content_type: application/x-gzip
           permissions: public-read
           display_name: dist-test-${distro_id}.tar.gz
+  - <<: *run-smoke-test
+    name: smoke-test-task
+    tags: ["smoke"]
+  - <<: *run-smoke-test
+    name: smoke-test-endpoints
+    tags: ["smoke"]
+
+  - <<: *run-go-test-suite
+    name: js-test
   - <<: *run-build
     name: dist
   - <<: *run-go-test-suite
@@ -329,8 +391,8 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-auth
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-rest-route
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -355,28 +417,13 @@ tasks:
     name: test-rest-data
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
-    name: test-cli
+    name: test-operations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-cloud-providers
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-docker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-ec2
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-gce
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-openstack
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-cloud-providers-vsphere
+    name: test-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-hostinit
@@ -389,6 +436,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-service
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-monitor
@@ -416,6 +466,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-admin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-patch
@@ -466,8 +519,8 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["race", "db"]
     name: race-units
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
     name: race-rest-route
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
@@ -480,7 +533,7 @@ tasks:
     name: race-hostinit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
-    name: race-cli
+    name: race-operations
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-agent
@@ -489,22 +542,7 @@ tasks:
     name: race-db
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-cloud-providers
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-ec2
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-docker
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-gce
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-openstack
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-cloud-providers-vsphere
+    name: race-cloud
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-repotracker
@@ -514,6 +552,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-service
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-spawn
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-monitor
@@ -541,6 +582,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-admin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-patch
@@ -576,10 +620,88 @@ tasks:
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-plugin-builtin-perfdash 
+    name: race-plugin-builtin-perfdash
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-migrations
+
+  # lint tasks
+  - <<: *run-lint
+    name: lint-agent
+  - <<: *run-lint
+    name: lint-alerts
+  - <<: *run-lint
+    name: lint-auth
+  - <<: *run-lint
+    name: lint-operations
+  - <<: *run-lint
+    name: lint-cloud
+  - <<: *run-lint
+    name: lint-command
+  - <<: *run-lint
+    name: lint-db
+  - <<: *run-lint
+    name: lint-evergreen
+  - <<: *run-lint
+    name: lint-hostinit
+  - <<: *run-lint
+    name: lint-hostutil
+  - <<: *run-lint
+    name: lint-migrations
+  - <<: *run-lint
+    name: lint-model
+  - <<: *run-lint
+    name: lint-model-artifact
+  - <<: *run-lint
+    name: lint-model-build
+  - <<: *run-lint
+    name: lint-model-event
+  - <<: *run-lint
+    name: lint-model-host
+  - <<: *run-lint
+    name: lint-model-patch
+  - <<: *run-lint
+    name: lint-model-task
+  - <<: *run-lint
+    name: lint-monitor
+  - <<: *run-lint
+    name: lint-notify
+  - <<: *run-lint
+    name: lint-plugin
+  - <<: *run-lint
+    name: lint-plugin-builtin-buildbaron
+  - <<: *run-lint
+    name: lint-plugin-builtin-manifest
+  - <<: *run-lint
+    name: lint-plugin-builtin-perfdash
+  - <<: *run-lint
+    name: lint-repotracker
+  - <<: *run-lint
+    name: lint-rest-client
+  - <<: *run-lint
+    name: lint-rest-data
+  - <<: *run-lint
+    name: lint-rest-model
+  - <<: *run-lint
+    name: lint-rest-route
+  - <<: *run-lint
+    name: lint-scheduler
+  - <<: *run-lint
+    name: lint-service
+  - <<: *run-lint
+    name: lint-spawn
+  - <<: *run-lint
+    name: lint-subprocess
+  - <<: *run-lint
+    name: lint-taskrunner
+  - <<: *run-lint
+    name: lint-thirdparty
+  - <<: *run-lint
+    name: lint-units
+  - <<: *run-lint
+    name: lint-util
+  - <<: *run-lint
+    name: lint-validator
 
   # cross compiled test suites
   - <<: *run-xc-test-suite
@@ -596,7 +718,7 @@ tasks:
     name: xc-agent
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "cli"]
-    name: xc-cli
+    name: xc-operations
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "agent"]
     name: xc-util
@@ -606,20 +728,24 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     run_on:
+      - ubuntu1604-build
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
+      build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
     tasks:
       - name: "dist"
+      - name: ".smoke"
       - name: ".test"
+      - name: "js-test"
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
     run_on:
       - ubuntu1604-build
+      - ubuntu1604-test
     expansions:
-      build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go"
+      build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
     tasks:
       - name: "dist"
         depends_on:
@@ -639,8 +765,13 @@ buildvariants:
           - archlinux-build
       - name: ".race"
       - name: ".report"
+      - name: ".lint"
         distros:
           - archlinux-build
+    display_tasks:
+      - name: lint
+        execution_tasks:
+        - ".lint"
 
   - name: osx
     display_name: OSX
@@ -648,7 +779,7 @@ buildvariants:
     run_on:
       - macos-1012
     expansions:
-      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
+      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.4.7.tgz
     tasks:
       - name: "dist"
@@ -659,12 +790,11 @@ buildvariants:
     run_on:
       - windows-64-vs2015-small
     expansions:
-      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
+      build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/cygdrive/c/go1.8/go/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.4.7.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
-      - name: "dist"
       - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
@@ -675,7 +805,7 @@ buildvariants:
     run_on:
       - rhel71-power8-test
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le"
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.4.7.tgz
     tasks:
       - name: "dist-test"
@@ -689,7 +819,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=s390x"
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=s390x GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
     tasks:
       - name: "dist-test"
@@ -703,7 +833,7 @@ buildvariants:
     run_on:
       - ubuntu1604-arm64-small
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=arm64"
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=arm64 GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.5.13.tgz
     tasks:
       - name: "dist-test"

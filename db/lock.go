@@ -8,33 +8,31 @@ import (
 )
 
 const (
-	LockCollection = "lock"
-	GlobalLockId   = "global"
-	LockTimeout    = time.Minute * 8
+	lockCollection = "lock"
+	lockTimeout    = 8 * time.Minute
 )
 
 // Lock represents a lock stored in the database, for synchronization.
 type Lock struct {
 	Id       string    `bson:"_id"`
 	Locked   bool      `bson:"locked"`
-	LockedBy string    `bson:"locked_by"`
 	LockedAt time.Time `bson:"locked_at"`
 }
 
-// WaitTillAcquireGlobalLock "spins" on acquiring the given database lock,
-// for the process id, until timeoutMS. Returns whether or not the lock was
-// acquired.
-func WaitTillAcquireGlobalLock(id string, timeoutMS time.Duration) (bool, error) {
+// WaitTillAcquireLock "spins" on acquiring the given database lock,
+// for the process id, until the lock times out. Returns whether or
+// not the lock was acquired.
+func WaitTillAcquireLock(id string) (bool, error) {
 	startTime := time.Now()
 	for {
 		// if the timeout has been reached, we failed to get the lock
 		currTime := time.Now()
-		if startTime.Add(timeoutMS * time.Millisecond).Before(currTime) {
+		if startTime.Add(lockTimeout).Before(currTime) {
 			return false, nil
 		}
 
 		// attempt to get the lock
-		acquired, err := AcquireGlobalLock(id)
+		acquired, err := AcquireLock(id)
 		if err != nil {
 			return false, err
 		}
@@ -43,7 +41,7 @@ func WaitTillAcquireGlobalLock(id string, timeoutMS time.Duration) (bool, error)
 		}
 
 		// sleep
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(time.Second)
 	}
 }
 
@@ -58,21 +56,23 @@ func setDocumentLocked(id string, upsert bool) (bool, error) {
 	// for findAndModify-ing the lock
 
 	// timeout to check for
-	timeoutThreshold := time.Now().Add(-LockTimeout)
+	timeoutThreshold := time.Now().Add(-lockTimeout)
 
 	// construct the selector for the following cases:
 	// 1. lock is not held by anyone
 	// 2. lock is held but has timed out
 	selector := bson.M{
-		"_id": GlobalLockId,
-		"$or": []bson.M{{"locked": false}, {"locked_at": bson.M{"$lte": timeoutThreshold}}},
+		"_id": id,
+		"$or": []bson.M{
+			{"locked": false},
+			{"locked_at": bson.M{"$lte": timeoutThreshold}},
+		},
 	}
 
 	// change to apply to document
 	change := mgo.Change{
 		Update: bson.M{"$set": bson.M{
 			"locked":    true,
-			"locked_by": id,
 			"locked_at": time.Now(),
 		}},
 		Upsert:    upsert,
@@ -82,7 +82,7 @@ func setDocumentLocked(id string, upsert bool) (bool, error) {
 	lock := Lock{}
 
 	// gets the lock if we can
-	_, err = db.C(LockCollection).Find(selector).Apply(change, &lock)
+	_, err = db.C(lockCollection).Find(selector).Apply(change, &lock)
 
 	if err != nil {
 		return false, err
@@ -90,10 +90,10 @@ func setDocumentLocked(id string, upsert bool) (bool, error) {
 	return lock.Locked, nil
 }
 
-// AcquireGlobalLock attempts to acquire the global lock if
+// AcquireLock attempts to acquire the specified lock if
 // no one has it or it's timed out. Returns a boolean indicating
 // whether the lock was acquired.
-func AcquireGlobalLock(id string) (bool, error) {
+func AcquireLock(id string) (bool, error) {
 	acquired, err := setDocumentLocked(id, false)
 
 	if err == mgo.ErrNotFound {
@@ -113,8 +113,8 @@ func AcquireGlobalLock(id string) (bool, error) {
 	return acquired, err
 }
 
-// ReleaseGlobalLock relinquishes the global lock for the given id.
-func ReleaseGlobalLock(id string) error {
+// ReleaseLock relinquishes the lock for the given id.
+func ReleaseLock(id string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return err
@@ -122,8 +122,8 @@ func ReleaseGlobalLock(id string) error {
 	defer session.Close()
 
 	// will return mgo.ErrNotFound if the lock expired
-	return db.C(LockCollection).Update(
-		bson.M{"_id": GlobalLockId, "locked_by": id},
+	return db.C(lockCollection).Update(
+		bson.M{"_id": id},
 		bson.M{"$set": bson.M{"locked": false}},
 	)
 }

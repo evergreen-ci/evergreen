@@ -31,12 +31,11 @@ import:
     subpackages:
       - cmd/cover
   - package: github.com/urfave/negroni
+  - package: github.com/urfave/cli
   - package: github.com/evergreen-ci/render
   - package: github.com/evergreen-ci/crowd
-  - package: github.com/jessevdk/go-flags
   - package: github.com/kardianos/osext
   - package: github.com/sabhiram/go-git-ignore
-  - package: github.com/tylerb/graceful
   - package: github.com/dustin/go-humanize
   - package: github.com/mitchellh/go-homedir
   - package: github.com/go-ini/ini
@@ -51,3 +50,7 @@ import:
   - package: github.com/mongodb/anser
   - package: github.com/mongodb/amboy
   - package: github.com/tychoish/tarjan
+  - package: github.com/google/go-github
+  - package: github.com/google/go-querystring
+  - package: github.com/google/shlex
+  - package: github.com/newrelic/go-agent

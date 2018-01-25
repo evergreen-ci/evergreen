@@ -20,6 +20,7 @@ type Entry struct {
 	TaskDisplayName string `json:"task_name" bson:"task_name"`
 	BuildId         string `json:"build" bson:"build"`
 	Files           []File `json:"files" bson:"files"`
+	Execution       int    `json:"execution" bson:"execution"`
 }
 
 // Params stores file entries as key-value pairs, for easy parameter parsing.
@@ -35,6 +36,8 @@ type File struct {
 	Link string `json:"link" bson:"link"`
 	// Visibility determines who can see the file in the UI
 	Visibility string `json:"visibility" bson:"visibility"`
+	// When true, these artifacts are excluded from reproduction
+	IgnoreForFetch bool `bson:"fetch_ignore,omitempty" json:"ignore_for_fetch"`
 }
 
 // Array turns the parameter map into an array of File structs.
@@ -42,7 +45,10 @@ type File struct {
 func (params Params) Array() []File {
 	var files []File
 	for name, link := range params {
-		files = append(files, File{name, link, ""})
+		files = append(files, File{
+			Name: name,
+			Link: link,
+		})
 	}
 	return files
 }

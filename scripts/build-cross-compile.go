@@ -68,10 +68,6 @@ func main() {
 		buildName = fmt.Sprintf("%s_%s", system, arch)
 	}
 
-	if runtime.GOOS == "windows" && goBin == "/cygdrive/c/go/bin/go" {
-		goBin = `c:\\go\\bin\\go`
-	}
-
 	cmd := exec.Command(goBin, "build")
 	ldf := fmt.Sprintf("-ldflags=%s", ldFlags)
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)

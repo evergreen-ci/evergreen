@@ -49,7 +49,17 @@ func newLinesFromStrings(p level.Priority, args []string) Composer {
 }
 
 func (l *lineMessenger) Loggable() bool {
-	return len(l.lines) > 0
+	if len(l.lines) <= 0 {
+		return false
+	}
+
+	for idx := range l.lines {
+		if l.lines[idx] != "" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (l *lineMessenger) String() string {

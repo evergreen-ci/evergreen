@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RemoteCommand struct {
+type remoteCmd struct {
 	Id        string `json:"id"`
 	CmdString string `json:"command"`
 
@@ -33,9 +33,26 @@ type RemoteCommand struct {
 	Cmd *exec.Cmd `json:"-"`
 }
 
-func (rc *RemoteCommand) Run(ctx context.Context) error {
+func NewRemoteCommand(cmd, hostname, user string, env map[string]string, background bool, options []string, loggingDisabled bool) Command {
+	rc := &remoteCmd{
+		CmdString:       cmd,
+		RemoteHostName:  hostname,
+		User:            user,
+		Options:         options,
+		LoggingDisabled: loggingDisabled,
+		Background:      background,
+	}
+
+	for k, v := range env {
+		rc.EnvVars = append(rc.EnvVars, fmt.Sprintf("%s='%s'", k, v))
+	}
+
+	return rc
+}
+
+func (rc *remoteCmd) Run(ctx context.Context) error {
 	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
-	err := rc.Start()
+	err := rc.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -46,31 +63,33 @@ func (rc *RemoteCommand) Run(ctx context.Context) error {
 		grip.Warningf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 
-	errChan := make(chan error)
-	go func() {
-		select {
-		case errChan <- rc.Cmd.Wait():
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err = rc.Cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"operation '%s' was canceled and terminated.",
-			rc.CmdString)
-	case err = <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(rc.Cmd.Wait())
 }
 
-func (rc *RemoteCommand) Wait() error {
+func (rc *remoteCmd) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	rc.Stderr = opts.GetError()
+	rc.Stdout = opts.GetOutput()
+
+	return nil
+}
+
+func (rc *remoteCmd) GetPid() int {
+	if rc.Cmd == nil {
+		return -1
+	}
+
+	return rc.Cmd.Process.Pid
+}
+
+func (rc *remoteCmd) Wait() error {
 	return rc.Cmd.Wait()
 }
 
-func (rc *RemoteCommand) Start() error {
-
+func (rc *remoteCmd) Start(ctx context.Context) error {
 	// build the remote connection, in user@host format
 	remote := rc.RemoteHostName
 	if rc.User != "" {
@@ -106,7 +125,7 @@ func (rc *RemoteCommand) Start() error {
 		})
 
 	// set up execution
-	cmd := exec.Command("ssh", cmdArray...)
+	cmd := exec.CommandContext(ctx, "ssh", cmdArray...)
 	cmd.Stdout = rc.Stdout
 	cmd.Stderr = rc.Stderr
 
@@ -115,7 +134,7 @@ func (rc *RemoteCommand) Start() error {
 	return cmd.Start()
 }
 
-func (rc *RemoteCommand) Stop() error {
+func (rc *remoteCmd) Stop() error {
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
 		grip.Debugf("RemoteCommand(%s) killing process %d", rc.Id, rc.Cmd.Process.Pid)
 		err := rc.Cmd.Process.Kill()

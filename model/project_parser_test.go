@@ -3,10 +3,12 @@ package model
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 // ShouldContainResembling tests whether a slice contains an element that DeepEquals
@@ -366,7 +368,7 @@ func TestTranslateDependsOn(t *testing.T) {
 			}
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 4)
+			So(len(errs), ShouldEqual, 6)
 		})
 	})
 }
@@ -410,7 +412,7 @@ func TestTranslateRequires(t *testing.T) {
 			}
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 4)
+			So(len(errs), ShouldEqual, 7)
 		})
 	})
 }
@@ -426,7 +428,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			}
 			pp.BuildVariants = []parserBV{{
 				Name: "v1",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: "t1"},
 					{Name: ".z", DependsOn: parserDependencies{
 						{taskSelector: taskSelector{Name: ".b"}}}},
@@ -450,18 +452,18 @@ func TestTranslateBuildVariants(t *testing.T) {
 			}
 			pp.BuildVariants = []parserBV{{
 				Name: "v1",
-				Tasks: parserBVTasks{
+				Tasks: parserBVTaskUnits{
 					{Name: "t1", Requires: taskSelectors{{Name: ".b"}}},
 				},
 			}}
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 1)
+			So(len(errs), ShouldEqual, 2)
 		})
 	})
 }
 
-func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTasks, expected []BuildVariantTask) {
+func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUnits, expected []BuildVariantTaskUnit) {
 	names := []string{}
 	exp := []string{}
 	for _, t := range tasks {
@@ -473,7 +475,7 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTasks,
 	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
-		ts, errs := evaluateBVTasks(tse, vse, tasks)
+		ts, errs := evaluateBVTasks(tse, nil, vse, tasks)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -510,40 +512,454 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 			tse := NewParserTaskSelectorEvaluator(taskDefs)
 			Convey("should evaluate valid tasks pointers properly", func() {
 				parserTaskSelectorTaskEval(tse,
-					parserBVTasks{{Name: "white"}},
-					[]BuildVariantTask{{Name: "white"}})
+					parserBVTaskUnits{{Name: "white"}},
+					[]BuildVariantTaskUnit{{Name: "white"}})
 				parserTaskSelectorTaskEval(tse,
-					parserBVTasks{{Name: "red", Priority: 500}, {Name: ".secondary"}},
-					[]BuildVariantTask{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}})
+					parserBVTaskUnits{{Name: "red", Priority: 500}, {Name: ".secondary"}},
+					[]BuildVariantTaskUnit{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}})
 				parserTaskSelectorTaskEval(tse,
-					parserBVTasks{
+					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: ".warm .secondary", Distros: []string{"d1"}}},
-					[]BuildVariantTask{{Name: "orange", Distros: []string{"d1"}}})
+					[]BuildVariantTaskUnit{{Name: "orange", Distros: []string{"d1"}}})
 				parserTaskSelectorTaskEval(tse,
-					parserBVTasks{
+					parserBVTaskUnits{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: "!.warm .secondary", Distros: []string{"d1"}}},
-					[]BuildVariantTask{
+					[]BuildVariantTaskUnit{
 						{Name: "orange", Distros: []string{"d1"}},
 						{Name: "purple", Distros: []string{"d1"}},
 						{Name: "green", Distros: []string{"d1"}}})
 				parserTaskSelectorTaskEval(tse,
-					parserBVTasks{{Name: "*"}},
-					[]BuildVariantTask{
+					parserBVTaskUnits{{Name: "*"}},
+					[]BuildVariantTaskUnit{
 						{Name: "red"}, {Name: "blue"}, {Name: "yellow"},
 						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
 						{Name: "brown"}, {Name: "white"}, {Name: "black"},
 					})
 				parserTaskSelectorTaskEval(tse,
-					parserBVTasks{
+					parserBVTaskUnits{
 						{Name: "red", Priority: 100},
 						{Name: "!.warm .secondary", Priority: 100}},
-					[]BuildVariantTask{
+					[]BuildVariantTaskUnit{
 						{Name: "red", Priority: 100},
 						{Name: "purple", Priority: 100},
 						{Name: "green", Priority: 100}})
 			})
 		})
 	})
+}
+
+func TestDisplayTaskParsing(t *testing.T) {
+	assert := assert.New(t) //nolint
+	yml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - execTask3
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+	p, errs := createIntermediateProject([]byte(yml))
+
+	// check that display tasks in bv1 parsed correctly
+	assert.Len(errs, 0)
+	assert.Len(p.BuildVariants[0].DisplayTasks, 1)
+	assert.Equal("displayTask1", p.BuildVariants[0].DisplayTasks[0].Name)
+	assert.Len(p.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("execTask1", p.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("execTask3", p.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+
+	// check that bv2 did not parse any display tasks
+	assert.Len(p.BuildVariants[1].DisplayTasks, 0)
+
+	// check that bv1 has the correct execution tasks
+	assert.Len(p.BuildVariants[0].Tasks, 3)
+	assert.Equal("execTask1", p.BuildVariants[0].Tasks[0].Name)
+	assert.Equal("execTask3", p.BuildVariants[0].Tasks[1].Name)
+	assert.Equal("execTask4", p.BuildVariants[0].Tasks[2].Name)
+}
+
+func TestDisplayTaskValidation(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	// check that yml with valid display tasks does not error
+	validYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - execTask3
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
+
+	// test that a display task listing a nonexistent task errors
+	nonexistentTaskYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - notHere
+    - execTask3
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(nonexistentTaskYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.EqualError(errs[0], "notHere: nothing named 'notHere'")
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[1].DisplayTasks, 0)
+
+	// test that a display task with duplicate task errors
+	duplicateTaskYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - execTask1
+    - execTask3
+  - name: displayTask2
+    execution_tasks:
+    - execTask4
+    - execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(duplicateTaskYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.EqualError(errs[0], "execution task execTask3 is listed in more than 1 display task")
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
+
+	// test that a display task can't share a name with an execution task
+	conflictYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: execTask1
+    execution_tasks:
+    - execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(conflictYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.EqualError(errs[0], "display task execTask1 cannot have the same name as an execution task")
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 0)
+
+	// test that wildcard selectors are resolved correctly
+	wildcardYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTask1
+    execution_tasks:
+    - "*"
+- name: "bv2"
+  tasks:
+  - name: execTask2
+  - name: execTask3
+tasks:
+- name: execTask1
+- name: execTask2
+- name: execTask3
+- name: execTask4
+`
+
+	proj, errs = projectFromYAML([]byte(wildcardYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 3)
+
+	// test that tag selectors are resolved correctly
+	tagYml := `
+buildvariants:
+- name: "bv1"
+  tasks:
+  - name: execTask1
+  - name: execTask2
+  - name: execTask3
+  - name: execTask4
+  display_tasks:
+  - name: displayTaskOdd
+    execution_tasks:
+    - ".odd"
+  - name: displayTaskEven
+    execution_tasks:
+    - ".even"
+tasks:
+- name: execTask1
+  tags: [ "odd" ]
+- name: execTask2
+  tags: [ "even" ]
+- name: execTask3
+  tags: [ "odd" ]
+- name: execTask4
+  tags: [ "even" ]
+`
+
+	proj, errs = projectFromYAML([]byte(tagYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks, 2)
+	assert.Equal("execTask1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("execTask3", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Equal("execTask2", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[0])
+	assert.Equal("execTask4", proj.BuildVariants[0].DisplayTasks[1].ExecutionTasks[1])
+}
+
+func TestTaskGroupParsing(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	// check that yml with valid task group does not error and parses correctly
+	validYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  max_hosts: 2
+  setup_group:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_group:
+  - command: shell.exec
+    params:
+      script: "echo teardown_group"
+  setup_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  teardown_task:
+  - command: shell.exec
+    params:
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: example_task_group
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("example_task_group", tg.Name)
+	assert.Equal(2, tg.MaxHosts)
+	assert.Len(tg.Tasks, 2)
+	assert.Len(tg.SetupTask, 1)
+	assert.Len(tg.SetupGroup, 1)
+	assert.Len(tg.TeardownTask, 1)
+	assert.Len(tg.TeardownGroup, 1)
+	assert.Nil(tg.Patchable)
+	assert.Nil(tg.Stepback)
+
+	// check that yml with a task group that contains a nonexistent task errors
+	wrongTaskYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  tasks:
+  - example_task_1
+  - example_task_3
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: example_task_group
+`
+	proj, errs = projectFromYAML([]byte(wrongTaskYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 1)
+	assert.Contains(errs[0].Error(), `nothing named 'example_task_3'`)
+
+	// check that tasks listed in the task group yml maintain their order
+	orderedYml := `
+tasks:
+- name: 8
+- name: 7
+- name: 6
+- name: 5
+- name: 4
+- name: 3
+- name: 2
+- name: 1
+task_groups:
+- name: example_task_group
+  patchable: false
+  stepback: false
+  tasks:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: example_task_group
+`
+	proj, errs = projectFromYAML([]byte(orderedYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	for i, t := range proj.TaskGroups[0].Tasks {
+		assert.Equal(strconv.Itoa(i+1), t)
+	}
+	assert.Equal(false, *proj.TaskGroups[0].Patchable)
+	assert.Equal(false, *proj.TaskGroups[0].Stepback)
+
+	// check that dependencies parse correctly
+	dependencyYml := `
+tasks:
+- name: example_task_0
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  patchable: true
+  stepback: true
+  depends_on:
+  - name: example_task_0
+    variant: bv
+    status: success
+  tasks:
+  - example_task_1
+  - example_task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: example_task_group
+  - name: example_task_0
+`
+	proj, errs = projectFromYAML([]byte(dependencyYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	tg = proj.TaskGroups[0]
+	assert.Len(tg.DependsOn, 1)
+	assert.Equal("example_task_0", tg.DependsOn[0].Name)
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
+	assert.True(proj.BuildVariants[0].Tasks[0].IsGroup)
+	assert.False(proj.BuildVariants[0].Tasks[1].IsGroup)
+	assert.Equal(true, *tg.Patchable)
+	assert.Equal(true, *tg.Stepback)
+
+	// check that tags select the correct tasks
+	tagYml := `
+tasks:
+- name: 1
+  tags: [ "odd" ]
+- name: 2
+  tags: [ "even" ]
+- name: 3
+  tags: [ "odd" ]
+- name: 4
+  tags: [ "even" ]
+task_groups:
+- name: even_task_group
+  tasks:
+  - .even
+- name: odd_task_group
+  tasks:
+  - .odd
+buildvariants:
+- name: bv
+  tasks:
+  - name: even_task_group
+  - name: odd_task_group
+`
+	proj, errs = projectFromYAML([]byte(tagYml))
+	assert.NotNil(proj)
+	assert.Len(errs, 0)
+	assert.Len(proj.TaskGroups, 2)
+	assert.Equal("even_task_group", proj.TaskGroups[0].Name)
+	assert.Len(proj.TaskGroups[0].Tasks, 2)
+	for _, t := range proj.TaskGroups[0].Tasks {
+		v, err := strconv.Atoi(t)
+		assert.NoError(err)
+		assert.Equal(0, v%2)
+	}
 }

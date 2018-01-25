@@ -31,7 +31,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			// log some events, sleeping in between to make sure the times are different
 			LogHostCreated(hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostStatusChanged(hostId, evergreen.HostRunning, evergreen.HostTerminated)
+			LogHostStatusChanged(hostId, evergreen.HostRunning, evergreen.HostTerminated, "user")
 			time.Sleep(1 * time.Millisecond)
 			LogHostDNSNameSet(hostId, hostname)
 			time.Sleep(1 * time.Millisecond)

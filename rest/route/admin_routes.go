@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	dataModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
@@ -228,21 +228,26 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 }
 
 // this manages the /admin/restart route, which restarts failed tasks
-func getRestartRouteManager(route string, version int) *RouteManager {
-	rh := &restartHandler{}
-	restartHandler := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &SuperUserAuthenticator{},
-		RequestHandler:    rh.Handler(),
-		MethodType:        http.MethodPost,
-	}
+func getRestartRouteManager(queue amboy.Queue) routeManagerFactory {
+	return func(route string, version int) *RouteManager {
+		rh := &restartHandler{
+			queue: queue,
+		}
 
-	restartRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{restartHandler},
-		Version: version,
+		restartHandler := MethodHandler{
+			PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+			Authenticator:     &SuperUserAuthenticator{},
+			RequestHandler:    rh.Handler(),
+			MethodType:        http.MethodPost,
+		}
+
+		restartRoute := RouteManager{
+			Route:   route,
+			Methods: []MethodHandler{restartHandler},
+			Version: version,
+		}
+		return &restartRoute
 	}
-	return &restartRoute
 }
 
 type restartHandler struct {
@@ -251,10 +256,14 @@ type restartHandler struct {
 	DryRun     bool      `json:"dry_run"`
 	OnlyRed    bool      `json:"only_red"`
 	OnlyPurple bool      `json:"only_purple"`
+
+	queue amboy.Queue
 }
 
 func (h *restartHandler) Handler() RequestHandler {
-	return &restartHandler{}
+	return &restartHandler{
+		queue: h.queue,
+	}
 }
 
 func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
@@ -277,8 +286,11 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 		DryRun:     h.DryRun,
 		OnlyRed:    h.OnlyRed,
 		OnlyPurple: h.OnlyPurple,
+		StartTime:  h.StartTime,
+		EndTime:    h.EndTime,
+		User:       u.Username(),
 	}
-	resp, err := sc.RestartFailedTasks(evergreen.GetEnvironment(), h.StartTime, h.EndTime, u.Username(), opts)
+	resp, err := sc.RestartFailedTasks(h.queue, opts)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Error restarting tasks")

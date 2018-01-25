@@ -10,18 +10,22 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/bookkeeping"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskrunner"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
+
+// if a host encounters more than this number of system failures, then it should be disabled.
+const consecutiveSystemFailureThreshold = 6
 
 // StartTask is the handler function that retrieves the task from the request
 // and acquires the global lock
@@ -38,11 +42,19 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
 		return
 	}
-
-	if err := model.MarkStart(t.Id); err != nil {
+	updates := model.StatusChanges{}
+	if err := model.MarkStart(t.Id, &updates); err != nil {
 		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+
+	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
+		job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
+		if err := as.queue.Put(job); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
+			return
+		}
 	}
 
 	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
@@ -129,12 +141,30 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
+	updates := model.StatusChanges{}
 	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details,
-		project, projectRef.DeactivatePrevious)
+		project, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
+	}
+	if t.Requester == evergreen.GithubPRRequester {
+		if updates.BuildNewStatus == evergreen.BuildFailed || updates.BuildNewStatus == evergreen.BuildSucceeded {
+			job := units.NewGithubStatusUpdateJobForBuild(t.BuildId)
+			if err = as.queue.Put(job); err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
+				return
+			}
+		}
+
+		if updates.PatchNewStatus == evergreen.PatchFailed || updates.PatchNewStatus == evergreen.PatchSucceeded {
+			job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
+			if err = as.queue.Put(job); err != nil {
+				as.LoggedError(w, r, http.StatusInternalServerError, errors.New("couldn't queue job to update github status"))
+				return
+			}
+		}
 	}
 	// the task was aborted if it is still in undispatched.
 	// the active state should be inactive.
@@ -163,11 +193,19 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// task cost calculations have no impact on task results, so do them in their own goroutine
 	go as.updateTaskCost(t, currentHost, finishTime)
 
-	if t.Requester != evergreen.PatchVersionRequester {
-		grip.Infoln("Processing alert triggers for task", t.Id)
+	if !evergreen.IsPatchRequester(t.Requester) {
+		if t.IsPartOfDisplay() {
+			parent := t.DisplayTask
+			if task.IsFinished(*parent) {
+				grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(parent.Id),
+					"processing alert triggers for display task %s", parent.Id))
+			}
+		} else {
+			grip.Infoln("Processing alert triggers for task", t.Id)
 
-		grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
-			"processing alert triggers for task %s", t.Id))
+			grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
+				"processing alert triggers for task %s", t.Id))
+		}
 	}
 	// TODO(EVG-223) process patch-specific triggers
 
@@ -196,6 +234,26 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		endTaskResp.Message = message
 	}
 
+	// we should disable hosts and prevent them from performing
+	// more work if they appear to be in a bad state
+	// (e.g. encountered 5 consecutive system failures)
+	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
+		env := evergreen.GetEnvironment()
+		queue := env.LocalQueue()
+		message := "host encountered consecutive system failures"
+		err := currentHost.DisablePoisonedHost()
+		job := units.NewDecoHostNotifyJob(env, currentHost, err, message)
+		grip.Critical(queue.Put(job))
+
+		if err != nil {
+			as.WriteJSON(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		endTaskResp.ShouldExit = true
+		endTaskResp.Message = message
+	}
+
 	grip.Infof("Successfully marked task %s as finished", t.Id)
 	as.WriteJSON(w, http.StatusOK, endTaskResp)
 
@@ -206,7 +264,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 // are logged but not returned, since any number of API failures could happen and
 // we shouldn't sacrifice a task's status for them.
 func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.Time) {
-	manager, err := providers.GetCloudManager(h.Provider, &as.Settings)
+	manager, err := cloud.GetCloudManager(h.Provider, &as.Settings)
 	if err != nil {
 		grip.Errorf("Error loading provider for host %s cost calculation: %+v", t.HostId, err)
 		return

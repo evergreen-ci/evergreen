@@ -2,6 +2,7 @@ package send
 
 import (
 	"errors"
+	"net/http"
 
 	jira "github.com/andygrunwald/go-jira"
 )
@@ -13,18 +14,18 @@ type jiraClientMock struct {
 	numSent    int
 }
 
-func (j *jiraClientMock) CreateClient(_ string) error {
+func (j *jiraClientMock) CreateClient(_ *http.Client, _ string) error {
 	if j.failCreate {
 		return errors.New("mock failed to create client")
 	}
 	return nil
 }
 
-func (j *jiraClientMock) Authenticate(_ string, _ string) (bool, error) {
+func (j *jiraClientMock) Authenticate(_ string, _ string) error {
 	if j.failAuth {
-		return true, errors.New("mock failed authentication")
+		return errors.New("mock failed authentication")
 	}
-	return false, nil
+	return nil
 }
 
 func (j *jiraClientMock) PostIssue(_ *jira.IssueFields) error {

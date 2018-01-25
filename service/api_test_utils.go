@@ -23,7 +23,7 @@ type TestServer struct {
 }
 
 func (s *TestServer) Close() {
-	grip.Alertln("closing test server:", s.URL)
+	grip.Noticeln("closing test server:", s.URL)
 
 	grip.CatchError(s.Listener.Close())
 	s.ts.CloseClientConnections()
@@ -36,7 +36,9 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 		return nil, err
 	}
 
-	as, err := NewAPIServer(settings)
+	env := evergreen.GetEnvironment()
+
+	as, err := NewAPIServer(settings, env.LocalQueue())
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +50,7 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*Tes
 	router := mux.NewRouter()
 	as.AttachRoutes(router)
 	n := negroni.New()
-	n.Use(NewLogger())
+	n.Use(NewRecoveryLogger())
 	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
 	n.UseHandler(router)
 

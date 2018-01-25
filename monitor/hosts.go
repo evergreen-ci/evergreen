@@ -9,8 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -128,13 +126,12 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
 
 				func() { // use a function so that the defer works
-					var cancel context.CancelFunc
-					ctx, cancel = context.WithTimeout(ctx, 3*time.Minute)
+					funcCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 					defer cancel()
 
-					if err := terminateHost(ctx, hostToTerminate, settings); err != nil {
-						if strings.Contains(err.Error(), ec2.EC2ErrorNotFound) {
-							err = hostToTerminate.Terminate()
+					if err := terminateHost(funcCtx, hostToTerminate, settings); err != nil {
+						if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
+							err = hostToTerminate.Terminate(evergreen.User)
 							if err != nil {
 								catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
 								return
@@ -179,7 +176,7 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 		}
 	}
 	// convert the host to a cloud host
-	cloudHost, err := providers.GetCloudHost(h, settings)
+	cloudHost, err := cloud.GetCloudHost(h, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
 	}
@@ -202,13 +199,19 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
 				notify.TeardownFailurePreface, h.Id)
 
-			grip.Error(errors.Wrap(notify.NotifyAdmins(subj, err.Error(), settings),
-				"Error sending email"))
+			grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
+				message.Fields{
+					"message": "problem sending email",
+					"host":    h.Id,
+					"subject": subj,
+					"error":   err.Error(),
+					"runner":  RunnerName,
+				}))
 		}
 	}
 
 	// terminate the instance
-	if err := cloudHost.TerminateInstance(); err != nil {
+	if err := cloudHost.TerminateInstance(evergreen.User); err != nil {
 		return errors.Wrapf(err, "error terminating host %s", h.Id)
 	}
 
@@ -222,7 +225,7 @@ func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHo
 	}
 	startTime := time.Now()
 	// run the teardown script with the agent
-	logs, err := hostutil.RunSSHCommand("teardown", hostutil.TearDownCommand(h), sshOptions, *h)
+	logs, err := hostutil.RunSSHCommand(ctx, hostutil.TearDownCommand(h), sshOptions, *h)
 	if err != nil {
 		event.LogHostTeardown(h.Id, logs, false, time.Since(startTime))
 		return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)

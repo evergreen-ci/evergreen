@@ -157,10 +157,11 @@ func TestParseAndUpload(t *testing.T) {
 
 	// spot check messages logged from sending logs to the mock communicator
 	messagesToCheck := []string{
-		"Attaching test logs for pkg1.test.test_things.SomeTests.test_params_method_2",  // junit_1.xml
-		"Attaching test logs for tests.ATest.error",                                     // junit_2.xml
-		"Attaching test logs for test.test_bson.TestBSON.test_basic_encode",             // junit_3.xml
-		"Attaching test logs for unittest.loader.ModuleImportFailure.tests.test_binder", // results.xml
+		"Attaching test logs for pkg1.test.test_things.SomeTests.test_params_method_2",       // junit_1.xml
+		"Attaching test logs for tests.ATest.error",                                          // junit_2.xml
+		"Attaching test logs for test.test_bson.TestBSON.test_basic_encode",                  // junit_3.xml
+		"Attaching test logs for unittest.loader.ModuleImportFailure.tests.test_binder",      // results.xml
+		"Attaching test logs for com.xgen.svc.mms.svc.deployment.DeploymentDiffSvcUnitTests", // junit_5.xml
 	}
 	count := 0
 	for _, message := range messages {

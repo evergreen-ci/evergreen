@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 )
@@ -545,25 +544,41 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		buildVar1 := BuildVariant{
 			Name:        "buildVar",
 			DisplayName: "Build Variant",
-			Tasks: []BuildVariantTask{
+			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
+			},
+			DisplayTasks: []DisplayTask{
+				DisplayTask{
+					Name: "bv1DisplayTask1",
+					ExecutionTasks: []string{
+						"taskA",
+						"taskB",
+					},
+				},
+				DisplayTask{
+					Name: "bv1DisplayTask2",
+					ExecutionTasks: []string{
+						"taskC",
+						"taskD",
+					},
+				},
 			},
 		}
 		buildVar2 := BuildVariant{
 			Name:        "buildVar2",
 			DisplayName: "Build Variant 2",
-			Tasks: []BuildVariantTask{
+			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
 		buildVar3 := BuildVariant{
 			Name:        "buildVar3",
 			DisplayName: "Build Variant 3",
-			Tasks: []BuildVariantTask{
+			Tasks: []BuildVariantTaskUnit{
 				{
 					// wait for the first BV's taskA to complete
 					Name:      "taskA",
-					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
+					DependsOn: []TaskUnitDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 			},
 		}
@@ -574,17 +589,17 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Name:      "taskA",
 					Priority:  5,
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{},
+					DependsOn: []TaskUnitDependency{},
 				},
 				{
 					Name:      "taskB",
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
+					DependsOn: []TaskUnitDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 				{
 					Name: "taskC",
 					Tags: []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{
+					DependsOn: []TaskUnitDependency{
 						{Name: "taskA"},
 						{Name: "taskB"},
 					},
@@ -592,12 +607,12 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{
 					Name:      "taskD",
 					Tags:      []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{{Name: AllDependencies}},
+					DependsOn: []TaskUnitDependency{{Name: AllDependencies}},
 				},
 				{
 					Name: "taskE",
 					Tags: []string{"tag1", "tag2"},
-					DependsOn: []TaskDependency{
+					DependsOn: []TaskUnitDependency{
 						{
 							Name:    AllDependencies,
 							Variant: AllVariants,
@@ -631,7 +646,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			},
 		}
 
-		tt := NewTaskIdTable(project, v)
+		table := NewTaskIdTable(project, v)
+		tt := table.ExecutionTasks
+		dt := table.DisplayTasks
 
 		Convey("the task id table should be well-formed", func() {
 			So(tt.GetId("buildVar", "taskA"), ShouldNotEqual, "")
@@ -643,17 +660,20 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tt.GetId("buildVar2", "taskC"), ShouldNotEqual, "")
 			So(tt.GetId("buildVar2", "taskE"), ShouldNotEqual, "")
 			So(tt.GetId("buildVar3", "taskA"), ShouldNotEqual, "")
+			So(dt.GetId("buildVar", "bv1DisplayTask1"), ShouldNotEqual, "")
+			So(dt.GetId("buildVar", "bv1DisplayTask2"), ShouldNotEqual, "")
 
 			Convey(`and incorrect GetId() calls should return ""`, func() {
 				So(tt.GetId("buildVar", "taskF"), ShouldEqual, "")
 				So(tt.GetId("buildVar2", "taskD"), ShouldEqual, "")
 				So(tt.GetId("buildVar7", "taskA"), ShouldEqual, "")
+				So(dt.GetId("buildVar7", "displayTask"), ShouldEqual, "")
 			})
 		})
 
 		Convey("if a non-existent build variant is passed in, an error should be returned", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, "blecch", false, []string{})
+			buildId, err := CreateBuildFromVersion(project, v, table, "blecch", false, []string{}, nil)
 			So(err, ShouldNotBeNil)
 			So(buildId, ShouldEqual, "")
 
@@ -662,10 +682,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if no task names are passed in to be used, all of the default"+
 			" tasks for the build variant should be created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false, nil)
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
-			buildId2, err := CreateBuildFromVersion(project, v, tt, buildVar2.Name, false, nil)
+			buildId2, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId2, ShouldNotEqual, "")
 
@@ -680,8 +700,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if a non-empty list of task names is passed in, only the"+
 			" specified tasks should be created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false,
-				[]string{"taskA", "taskB"})
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false,
+				[]string{"taskA", "taskB"}, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -695,7 +715,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("the build should contain task caches that correspond exactly"+
 			" to the tasks created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false, nil)
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -721,21 +741,55 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(b.Tasks[2].DisplayName, ShouldEqual, "taskC")
 			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[3].Id, ShouldNotEqual, "")
-			So(b.Tasks[3].DisplayName, ShouldEqual, "taskD")
+			So(b.Tasks[3].DisplayName, ShouldEqual, "taskE")
 			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
+		})
 
+		Convey("a task cache should not contain execution tasks that are part of a display task", func() {
+
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
+			So(err, ShouldBeNil)
+			So(buildId, ShouldNotEqual, "")
+
+			// find the execution tasks, make sure they were all created
+			tasks, err := task.Find(task.All)
+			So(err, ShouldBeNil)
+			So(len(tasks), ShouldEqual, 4)
+
+			// find the build from the db
+			b, err := build.FindOne(build.ById(buildId))
+			So(err, ShouldBeNil)
+			So(len(b.Tasks), ShouldEqual, 2)
+
+			// make sure the task caches are correct
+			So(b.Tasks[0].Id, ShouldNotEqual, "")
+			So(b.Tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(b.Tasks[1].Id, ShouldNotEqual, "")
+			So(b.Tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
+			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
+
+			// check the display tasks too
+			tasks, err = task.FindWithDisplayTasks(task.ByBuildId(buildId))
+			So(err, ShouldBeNil)
+			So(len(tasks), ShouldEqual, 6)
+			So(tasks[0].DisplayName, ShouldEqual, buildVar1.DisplayTasks[0].Name)
+			So(tasks[0].DisplayOnly, ShouldBeTrue)
+			So(len(tasks[0].ExecutionTasks), ShouldEqual, 2)
+			So(tasks[1].DisplayName, ShouldEqual, buildVar1.DisplayTasks[1].Name)
+			So(tasks[1].DisplayOnly, ShouldBeTrue)
 		})
 
 		Convey("all of the tasks created should have the dependencies"+
 			"and priorities specified in the project", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false, nil)
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
-			buildId2, err := CreateBuildFromVersion(project, v, tt, buildVar2.Name, false, nil)
+			buildId2, err := CreateBuildFromVersion(project, v, table, buildVar2.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId2, ShouldNotEqual, "")
-			buildId3, err := CreateBuildFromVersion(project, v, tt, buildVar3.Name, false, nil)
+			buildId3, err := CreateBuildFromVersion(project, v, table, buildVar3.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId3, ShouldNotEqual, "")
 
@@ -782,7 +836,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("all of the build's essential fields should be set"+
 			" correctly", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false, nil)
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -791,12 +845,12 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			// verify all the fields are set appropriately
-			So(len(b.Tasks), ShouldEqual, 4)
+			So(len(b.Tasks), ShouldEqual, 2)
 			So(b.CreateTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
 			So(b.PushTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
-			So(b.Activated, ShouldEqual, v.BuildVariants[0].Activated)
+			So(b.Activated, ShouldEqual, v.BuildVariants[2].Activated)
 			So(b.Project, ShouldEqual, project.Identifier)
 			So(b.Revision, ShouldEqual, v.Revision)
 			So(b.Status, ShouldEqual, evergreen.BuildCreated)
@@ -811,7 +865,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("all of the tasks' essential fields should be set"+
 			" correctly", func() {
 
-			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false, nil)
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -900,7 +954,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
 			func() {
 
-				buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, true, nil)
+				buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, true, []string{}, nil)
 				So(err, ShouldBeNil)
 				So(buildId, ShouldNotEqual, "")
 
@@ -988,6 +1042,82 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			})
 
 	})
+}
+
+func TestCreateTaskGroup(t *testing.T) {
+	assert := assert.New(t) //nolint
+	testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t, "Error clearing collection")
+	projYml := `
+  tasks:
+  - name: example_task_1
+  - name: example_task_2
+  - name: example_task_3
+  task_groups:
+  - name: example_task_group
+    max_hosts: 2
+    priority: 50
+    setup_group:
+    - command: shell.exec
+      params:
+        script: "echo setup_group"
+    teardown_group:
+    - command: shell.exec
+      params:
+        script: "echo teardown_group"
+    setup_task:
+    - command: shell.exec
+      params:
+        script: "echo setup_group"
+    teardown_task:
+    - command: shell.exec
+      params:
+        script: "echo setup_group"
+    tasks:
+    - example_task_1
+    - example_task_2
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: example_task_group
+    - name: example_task_3
+  `
+	proj, errs := projectFromYAML([]byte(projYml))
+	proj.Identifier = "test"
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	v := &version.Version{
+		Id:                  "versionId",
+		CreateTime:          time.Now(),
+		Revision:            "foobar",
+		RevisionOrderNumber: 500,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		BuildVariants: []version.BuildStatus{
+			{
+				BuildVariant: "bv",
+				Activated:    false,
+			},
+		},
+	}
+	table := NewTaskIdTable(proj, v)
+
+	buildId, err := CreateBuildFromVersion(proj, v, table, "bv", true, nil, nil)
+	assert.NoError(err)
+	dbBuild, err := build.FindOne(build.ById(buildId))
+	assert.NoError(err)
+	assert.NotNil(dbBuild)
+	assert.Len(dbBuild.Tasks, 3)
+	dbTasks, err := task.Find(task.ByBuildId(buildId))
+	assert.NoError(err)
+	assert.Len(dbTasks, 3)
+	for _, t := range dbTasks {
+		if t.DisplayName == "example_task_3" {
+			assert.Equal("", t.TaskGroup)
+			assert.EqualValues(0, t.Priority)
+		} else {
+			assert.Equal(task.FormTaskGroupId("example_task_group", v.Id), t.TaskGroup)
+			assert.EqualValues(50, t.Priority)
+		}
+	}
 }
 
 func TestDeletingBuild(t *testing.T) {
@@ -1241,7 +1371,7 @@ func TestSortTasks(t *testing.T) {
 }
 
 func TestVersionRestart(t *testing.T) {
-	assert := assert.New(t)
+	assert := assert.New(t) //nolint
 	assert.NoError(resetTaskData())
 
 	// test that restarting a version restarts its tasks
@@ -1275,6 +1405,65 @@ func TestVersionRestart(t *testing.T) {
 	assert.NotNil(dbTask)
 	assert.False(dbTask.Aborted)
 	assert.Equal(evergreen.TaskDispatched, dbTask.Status)
+}
+
+func TestDisplayTaskRestart(t *testing.T) {
+	assert := assert.New(t) //nolint
+	displayTasks := []string{"displayTask"}
+	allTasks := []string{"displayTask", "task5", "task6"}
+
+	// test restarting a version
+	assert.NoError(resetTaskData())
+	assert.NoError(RestartVersion("version", displayTasks, false, "test"))
+	tasks, err := task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
+
+	// test restarting a build
+	assert.NoError(resetTaskData())
+	assert.NoError(RestartBuild("build3", displayTasks, false, "test"))
+	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
+
+	// test that restarting a task correctly resets the task and archives it
+	assert.NoError(resetTaskData())
+	assert.NoError(resetTask("displayTask"))
+	archivedTasks, err := task.FindOldWithDisplayTasks(task.All)
+	assert.NoError(err)
+	assert.Len(archivedTasks, 3)
+	foundDisplayTask := false
+	for _, ot := range archivedTasks {
+		if ot.OldTaskId == "displayTask" {
+			foundDisplayTask = true
+		}
+	}
+	assert.True(foundDisplayTask)
+	tasks, err = task.FindWithDisplayTasks(task.ByIds(allTasks))
+	assert.NoError(err)
+	assert.Len(tasks, 3)
+	for _, dbTask := range tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status, dbTask.Id)
+		assert.True(dbTask.Activated, dbTask.Id)
+	}
+	b, err := build.FindOne(build.ById("build3"))
+	assert.NoError(err)
+	assert.NotNil(b)
+	for _, dbTask := range b.Tasks {
+		assert.Equal(evergreen.TaskUndispatched, dbTask.Status)
+	}
+
+	// test that execution tasks cannot be restarted
+	assert.NoError(resetTaskData())
+	assert.Error(TryResetTask("task5", "", "", nil, nil))
 }
 
 func resetTaskData() error {
@@ -1319,10 +1508,24 @@ func resetTaskData() error {
 			},
 		},
 	}
+	build3 := &build.Build{
+		Id:      "build3",
+		Version: v.Id,
+		Tasks: []build.TaskCache{
+			{
+				Id:        "displayTask",
+				Status:    evergreen.TaskFailed,
+				Activated: true,
+			},
+		},
+	}
 	if err := build1.Insert(); err != nil {
 		return err
 	}
 	if err := build2.Insert(); err != nil {
+		return err
+	}
+	if err := build3.Insert(); err != nil {
 		return err
 	}
 	task1 := &task.Task{
@@ -1362,11 +1565,43 @@ func resetTaskData() error {
 		Version:     v.Id,
 		Status:      evergreen.TaskFailed,
 	}
-
 	if err := task4.Insert(); err != nil {
 		return err
 	}
-
-	grip.Info("reset task data")
+	task5 := &task.Task{
+		Id:          "task5",
+		DisplayName: "task5",
+		BuildId:     build3.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskSucceeded,
+	}
+	if err := task5.Insert(); err != nil {
+		return err
+	}
+	task6 := &task.Task{
+		Id:          "task6",
+		DisplayName: "task6",
+		BuildId:     build3.Id,
+		Version:     v.Id,
+		Status:      evergreen.TaskFailed,
+	}
+	if err := task6.Insert(); err != nil {
+		return err
+	}
+	displayTask := &task.Task{
+		Id:             "displayTask",
+		DisplayName:    "displayTask",
+		BuildId:        build3.Id,
+		Version:        v.Id,
+		DisplayOnly:    true,
+		ExecutionTasks: []string{task5.Id, task6.Id},
+		Status:         evergreen.TaskFailed,
+	}
+	if err := displayTask.Insert(); err != nil {
+		return err
+	}
+	if err := displayTask.UpdateDisplayTask(); err != nil {
+		return err
+	}
 	return nil
 }

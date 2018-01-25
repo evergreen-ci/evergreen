@@ -8,12 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
-type LocalCommand struct {
+type localCmd struct {
 	CmdString        string    `json:"command"`
 	WorkingDirectory string    `json:"directory"`
 	Shell            string    `json:"shell"`
@@ -25,8 +24,18 @@ type LocalCommand struct {
 	mutex            sync.RWMutex
 }
 
-func (lc *LocalCommand) Run(ctx context.Context) error {
-	err := lc.Start()
+func NewLocalCommand(cmdString, workingDir, shell string, env []string, scriptMode bool) Command {
+	return &localCmd{
+		CmdString:        cmdString,
+		WorkingDirectory: workingDir,
+		Shell:            shell,
+		Environment:      env,
+		ScriptMode:       scriptMode,
+	}
+}
+
+func (lc *localCmd) Run(ctx context.Context) error {
+	err := lc.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -34,33 +43,31 @@ func (lc *LocalCommand) Run(ctx context.Context) error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
-	errChan := make(chan error)
-	go func() {
-		select {
-		case errChan <- lc.cmd.Wait():
-		case <-ctx.Done():
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		err = lc.cmd.Process.Kill()
-		return errors.Wrapf(err,
-			"operation '%s' was canceled and terminated.",
-			lc.CmdString)
-	case err = <-errChan:
-		return errors.WithStack(err)
-	}
+	return errors.WithStack(lc.cmd.Wait())
 }
 
-func (lc *LocalCommand) Wait() error {
+func (lc *localCmd) SetOutput(opts OutputOptions) error {
+	if err := opts.Validate(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
+	lc.Stderr = opts.GetError()
+	lc.Stdout = opts.GetOutput()
+
+	return nil
+}
+
+func (lc *localCmd) Wait() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
 	return lc.cmd.Wait()
 }
 
-func (lc *LocalCommand) GetPid() int {
+func (lc *localCmd) GetPid() int {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
@@ -71,7 +78,7 @@ func (lc *LocalCommand) GetPid() int {
 	return lc.cmd.Process.Pid
 }
 
-func (lc *LocalCommand) Start() error {
+func (lc *localCmd) Start(ctx context.Context) error {
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
@@ -81,10 +88,10 @@ func (lc *LocalCommand) Start() error {
 
 	var cmd *exec.Cmd
 	if lc.ScriptMode {
-		cmd = exec.Command(lc.Shell)
+		cmd = exec.CommandContext(ctx, lc.Shell)
 		cmd.Stdin = strings.NewReader(lc.CmdString)
 	} else {
-		cmd = exec.Command(lc.Shell, "-c", lc.CmdString)
+		cmd = exec.CommandContext(ctx, lc.Shell, "-c", lc.CmdString)
 	}
 
 	// create the command, set the options
@@ -105,7 +112,7 @@ func (lc *LocalCommand) Start() error {
 	return cmd.Start()
 }
 
-func (lc *LocalCommand) Stop() error {
+func (lc *localCmd) Stop() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
@@ -114,19 +121,4 @@ func (lc *LocalCommand) Stop() error {
 	}
 	grip.Warning("Trying to stop command but Cmd / Process was nil")
 	return nil
-}
-
-func (lc *LocalCommand) PrepToRun(expansions *util.Expansions) error {
-	lc.mutex.Lock()
-	defer lc.mutex.Unlock()
-
-	var err error
-
-	lc.CmdString, err = expansions.ExpandString(lc.CmdString)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	lc.WorkingDirectory, err = expansions.ExpandString(lc.WorkingDirectory)
-	return errors.WithStack(err)
 }

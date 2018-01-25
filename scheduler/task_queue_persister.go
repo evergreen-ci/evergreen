@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // TaskQueuePersister is responsible for taking a task queue for a particular distro
@@ -38,7 +39,11 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 		})
 
 		if err := t.SetExpectedDuration(expectedTaskDuration); err != nil {
-			grip.Errorf("Error updating projected task duration for %s: %+v", t.Id, err)
+			grip.Error(message.WrapError(err, message.Fields{
+				"runner":  RunnerName,
+				"task":    t.Id,
+				"message": "problem updating projected task duration",
+			}))
 		}
 	}
 	return taskQueue, model.UpdateTaskQueue(distro, taskQueue)

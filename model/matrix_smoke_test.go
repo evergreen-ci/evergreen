@@ -131,7 +131,7 @@ func TestDepsMatrixIntegration(t *testing.T) {
 					Convey("which should contain a compile", func() {
 						So(v.Tasks[4].Name, ShouldEqual, "compile")
 						So(v.Tasks[4].Distros, ShouldResemble, []string{"linux_big"})
-						So(v.Tasks[4].DependsOn[0], ShouldResemble, TaskDependency{
+						So(v.Tasks[4].DependsOn[0], ShouldResemble, TaskUnitDependency{
 							Name:    "pre-task",
 							Variant: "analysis",
 						})

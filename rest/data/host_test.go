@@ -1,7 +1,9 @@
 package data
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,61 +12,109 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
 type HostConnectorSuite struct {
-	ctx Connector
+	ctx   Connector
+	setup func(*HostConnectorSuite)
 	suite.Suite
 }
 
 const testUser = "user1"
 
 func TestHostConnectorSuite(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	s := new(HostConnectorSuite)
 	s.ctx = &DBConnector{}
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
-	host1 := &host.Host{
-		Id:        "host1",
-		StartedBy: testUser,
-		Status:    evergreen.HostRunning,
-	}
-	host2 := &host.Host{
-		Id:        "host2",
-		StartedBy: "user2",
-		Status:    evergreen.HostTerminated,
-	}
-	host3 := &host.Host{
-		Id:        "host3",
-		StartedBy: "user3",
-		Status:    evergreen.HostTerminated,
-	}
-	host4 := &host.Host{
-		Id:        "host4",
-		StartedBy: "user4",
-		Status:    evergreen.HostTerminated,
+	s.setup = func(s *HostConnectorSuite) {
+		s.NoError(db.ClearCollections(user.Collection, host.Collection))
+		host1 := &host.Host{
+			Id:             "host1",
+			StartedBy:      testUser,
+			Status:         evergreen.HostRunning,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+		host2 := &host.Host{
+			Id:             "host2",
+			StartedBy:      "user2",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+		host3 := &host.Host{
+			Id:             "host3",
+			StartedBy:      "user3",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+		host4 := &host.Host{
+			Id:             "host4",
+			StartedBy:      "user4",
+			Status:         evergreen.HostTerminated,
+			ExpirationTime: time.Now().Add(time.Hour),
+		}
+
+		s.NoError(host1.Insert())
+		s.NoError(host2.Insert())
+		s.NoError(host3.Insert())
+		s.NoError(host4.Insert())
+
+		users := []string{testUser, "user2", "user3", "user4", "root"}
+
+		for _, id := range users {
+			user := &user.DBUser{
+				Id: id,
+			}
+			s.NoError(user.Insert())
+		}
+
+		s.ctx.SetSuperUsers([]string{"root"})
 	}
 
-	assert.NoError(t, host1.Insert())
-	assert.NoError(t, host2.Insert())
-	assert.NoError(t, host3.Insert())
-	assert.NoError(t, host4.Insert())
 	suite.Run(t, s)
 }
 
 func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
-	s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
-		CachedHosts: []host.Host{
-			{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning},
-			{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated},
-			{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated},
-			{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated}},
-	}}
+	s.setup = func(s *HostConnectorSuite) {
+		s.ctx = &MockConnector{
+			MockHostConnector: MockHostConnector{
+				CachedHosts: []host.Host{
+					{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)},
+					{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated, ExpirationTime: time.Now().Add(time.Hour)}},
+			},
+			MockUserConnector: MockUserConnector{
+				CachedUsers: map[string]*user.DBUser{
+					testUser: {
+						Id: testUser,
+					},
+					"user2": {
+						Id: "user2",
+					},
+					"user3": {
+						Id: "user3",
+					},
+					"user4": {
+						Id: "user4",
+					},
+					"root": {
+						Id: "root",
+					},
+				},
+			},
+		}
+		s.ctx.SetSuperUsers([]string{"root"})
+	}
 	suite.Run(t, s)
+}
+
+func (s *HostConnectorSuite) SetupTest() {
+	s.NotNil(s.setup)
+	s.setup(s)
 }
 
 func (s *HostConnectorSuite) TearDownSuite() {
@@ -170,4 +220,55 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	s.NoError(err)
 	s.True(foundHost.UserHost)
 	s.Equal(testUserID, foundHost.StartedBy)
+}
+
+func (s *HostConnectorSuite) TestSetHostStatus() {
+	h, err := s.ctx.FindHostById("host1")
+	s.NoError(err)
+	s.NoError(s.ctx.SetHostStatus(h, evergreen.HostTerminated, evergreen.User))
+
+	for i := 1; i < 5; i++ {
+		h, err := s.ctx.FindHostById(fmt.Sprintf("host%d", i))
+		s.NoError(err)
+		s.Equal(evergreen.HostTerminated, h.Status)
+	}
+}
+
+func (s *HostConnectorSuite) TestExtendHostExpiration() {
+	h, err := s.ctx.FindHostById("host1")
+	s.NoError(err)
+	expectedTime := h.ExpirationTime.Add(5 * time.Hour)
+	s.NoError(s.ctx.SetHostExpirationTime(h, expectedTime))
+
+	hCheck, err := s.ctx.FindHostById("host1")
+	s.Equal(expectedTime, hCheck.ExpirationTime)
+	s.NoError(err)
+}
+
+func (s *HostConnectorSuite) TestFindHostByIdWithOwner() {
+	u, err := s.ctx.FindUserById(testUser)
+	s.NoError(err)
+
+	h, err := s.ctx.FindHostByIdWithOwner("host1", u)
+	s.NoError(err)
+	s.NotNil(h)
+}
+
+func (s *HostConnectorSuite) TestFindHostByIdFailsWithWrongUser() {
+	u, err := s.ctx.FindUserById(testUser)
+	s.NoError(err)
+	s.NotNil(u)
+
+	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
+	s.Error(err)
+	s.Nil(h)
+}
+
+func (s *HostConnectorSuite) TestFindHostByIdWithSuperUser() {
+	u, err := s.ctx.FindUserById("root")
+	s.NoError(err)
+
+	h, err := s.ctx.FindHostByIdWithOwner("host2", u)
+	s.NoError(err)
+	s.NotNil(h)
 }

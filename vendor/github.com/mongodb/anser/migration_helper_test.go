@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -14,14 +15,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type MigrationHelperSuite struct {
-	env    *mock.Environment
-	mh     *migrationBase
-	queue  amboy.Queue
-	cancel context.CancelFunc
+	env     *mock.Environment
+	mh      *migrationBase
+	session db.Session
+	queue   amboy.Queue
+	cancel  context.CancelFunc
 	suite.Suite
 }
 
@@ -34,6 +37,10 @@ func (s *MigrationHelperSuite) SetupSuite() {
 	s.cancel = cancel
 	s.queue = queue.NewLocalUnordered(4)
 	s.NoError(s.queue.Start(ctx))
+
+	ses, err := mgo.DialWithTimeout("mongodb://localhost:27017", 10*time.Millisecond)
+	s.Require().NoError(err)
+	s.session = db.WrapSession(ses)
 }
 
 func (s *MigrationHelperSuite) TearDownSuite() {
@@ -45,7 +52,8 @@ func (s *MigrationHelperSuite) SetupTest() {
 	s.env.MetaNS = model.Namespace{"anserDB", "anserMeta"}
 	s.env.Queue = s.queue
 	s.mh = NewMigrationHelper(s.env).(*migrationBase)
-	s.NoError(s.env.Setup(s.queue, "mongodb://localhost:27017/"))
+
+	s.NoError(s.env.Setup(s.queue, s.session))
 }
 
 func (s *MigrationHelperSuite) TestEnvironmentIsConsistent() {

@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -55,6 +56,9 @@ var (
 	PriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	ActivatedByKey         = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 	CostKey                = bsonutil.MustHaveTag(Task{}, "Cost")
+	ExecutionTasksKey      = bsonutil.MustHaveTag(Task{}, "ExecutionTasks")
+	DisplayOnlyKey         = bsonutil.MustHaveTag(Task{}, "DisplayOnly")
+	TaskGroupKey           = bsonutil.MustHaveTag(Task{}, "TaskGroup")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -186,10 +190,10 @@ func ByStatusAndActivation(status string, active bool) db.Q {
 	})
 }
 
-func ByOrderNumbersForNameAndVariant(revisionOrder []int, displayName, buildVariant string) db.Q {
+func ByVersionsForNameAndVariant(versions []string, displayName, buildVariant string) db.Q {
 	return db.Query(bson.M{
-		RevisionOrderNumberKey: bson.M{
-			"$in": revisionOrder,
+		VersionKey: bson.M{
+			"$in": versions,
 		},
 		DisplayNameKey:  displayName,
 		BuildVariantKey: buildVariant,
@@ -250,7 +254,7 @@ func ByBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVar
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
-func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant, displayName, project string) db.Q {
+func ByActivatedBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant string, displayName string, project string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
 		DisplayNameKey:  displayName,
@@ -380,12 +384,26 @@ func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, sta
 	})
 }
 
+func ByExecutionTask(taskId string) db.Q {
+	return db.Query(bson.M{
+		ExecutionTasksKey: taskId,
+	})
+}
+
 var (
-	IsUndispatched        = ByStatusAndActivation(evergreen.TaskUndispatched, true)
 	IsDispatchedOrStarted = db.Query(bson.M{
 		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
 	})
 )
+
+func scheduleableTasksQuery() bson.M {
+	return bson.M{
+		ActivatedKey: true,
+		StatusKey:    evergreen.TaskUndispatched,
+		//Filter out blacklisted tasks
+		PriorityKey: bson.M{"$gte": 0},
+	}
+}
 
 // TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
 // associated with a given project and commit hash.
@@ -655,7 +673,43 @@ func FindOld(query db.Q) ([]Task, error) {
 		}
 		tasks[i] = task
 	}
+
+	// remove display tasks from results
+	for i := len(tasks) - 1; i >= 0; i-- {
+		t := tasks[i]
+		if t.DisplayOnly {
+			tasks = append(tasks[:i], tasks[i+1:]...)
+		}
+	}
 	return tasks, err
+}
+
+// FindOldWithDisplayTasks finds display and execution tasks in the old collection
+func FindOldWithDisplayTasks(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(OldCollection, query, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	for i, task := range tasks {
+		if err = task.MergeNewTestResults(); err != nil {
+			return nil, errors.Wrap(err, "error merging new test results")
+		}
+		tasks[i] = task
+	}
+
+	return tasks, err
+}
+
+// FindOneIdOldOrNew attempts to find a given task ID by first looking in the
+// old collection, then the tasks collection
+func FindOneIdOldOrNew(id string, execution string) (*Task, error) {
+	task, err := FindOneOld(ById(fmt.Sprintf("%s_%s", id, execution)))
+	if task == nil || err != nil {
+		return FindOne(ById(id))
+	}
+
+	return task, err
 }
 
 // Find returns all tasks that satisfy the query.
@@ -665,12 +719,36 @@ func Find(query db.Q) ([]Task, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	// for i, task := range tasks {
-	//	if err = task.MergeNewTestResults(); err != nil {
-	//		return nil, errors.Wrap(err, "error merging new test results")
-	//	}
-	//	tasks[i] = task
-	// }
+
+	filtered := []Task{}
+
+	// remove display tasks from results
+	for idx := range tasks {
+		t := tasks[idx]
+		if t.DisplayOnly {
+			continue
+		}
+		filtered = append(filtered, t)
+
+	}
+
+	return filtered, err
+}
+
+func FindWithDisplayTasks(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(Collection, query, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+
+	for _, t := range tasks {
+		_, err = t.GetDisplayTask()
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to retrieve parent display task")
+		}
+	}
+
 	return tasks, err
 }
 
