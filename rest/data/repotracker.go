@@ -21,20 +21,61 @@ type RepoTrackerConnector struct{}
 func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, event *github.PushEvent) error {
 	branch, err := validatePushEvent(event)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source": "github hook",
+			"msg_id": msgID,
+			"event":  "push",
+		}))
 		return err
 	}
+	if len(branch) == 0 {
+		return nil
+	}
+
 	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
 		branch)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"source":  "github hook",
+			"msg_id":  msgID,
+			"event":   "push",
+			"owner":   *event.Repo.Owner.Name,
+			"repo":    *event.Repo.Name,
+			"ref":     *event.Ref,
+			"message": "can't match push event to project ref",
+		}))
 		return err
 	}
+	fields := message.Fields{
+		"source":      "github hook",
+		"msg_id":      msgID,
+		"event":       "push",
+		"owner":       *event.Repo.Owner.Name,
+		"repo":        *event.Repo.Name,
+		"ref":         *event.Ref,
+		"project_ref": ref.Identifier,
+		"message":     "actionable push acknowledged",
+	}
 	if !ref.TracksPushEvents || !ref.Enabled {
+		fields["tracks_push_events"] = ref.TracksPushEvents
+		fields["enabled"] = ref.Enabled
+		fields["message"] = "unactionable push acknowledged"
+		grip.Info(fields)
 		return nil
 	}
+	grip.Info(fields)
+
 	if err := q.Put(units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), ref.Identifier)); err != nil {
 		msg := "failed to add repotracker job to queue"
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": msg,
+			"source":      "github hook",
+			"msg_id":      msgID,
+			"event":       "push",
+			"owner":       *event.Repo.Owner.Name,
+			"repo":        *event.Repo.Name,
+			"ref":         *event.Ref,
+			"project_ref": ref.Identifier,
+			"message":     msg,
 		}))
 		return &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
@@ -76,14 +117,9 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 
 	refs := strings.Split(*event.Ref, "/")
 	if len(refs) != 3 {
-		msg := fmt.Sprintf("Unexpected Git ref format: %s", *event.Ref)
-		grip.Info(message.Fields{
-			"message": msg,
-			"source":  "/rest/v2/hooks/github",
-		})
 		return "", &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    msg,
+			Message:    fmt.Sprintf("Unexpected Git ref format: %s", *event.Ref),
 		}
 	}
 
