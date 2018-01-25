@@ -437,7 +437,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 
 	for i, _ := range patches {
 		if patches[i].Version != "" {
-			if err = AbortVersion(patches[i].Version); err != nil {
+			if err = CancelPatch(&patches[i], evergreen.GithubPRRequester); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"source":         "github hook",
 					"created_before": createdBefore.String(),
@@ -449,6 +449,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 				}))
 				return errors.Wrap(err, "error aborting patch")
 			}
+
 		}
 	}
 
