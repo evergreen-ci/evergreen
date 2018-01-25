@@ -541,8 +541,8 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 
 		if v.Requester == evergreen.GithubPRRequester && p != nil {
 			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
-			expansions.Put("github_organization", p.GithubPatchData.BaseOwner)
-			expansions.Put("github_repository", p.GithubPatchData.BaseRepo)
+			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
+			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
 			expansions.Put("github_author", p.GithubPatchData.Author)
 		}
 
