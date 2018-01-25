@@ -368,7 +368,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	}
 
 	var reachable bool
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 6; i++ {
 		reachable, err = cloudHost.IsSSHReachable()
 		if err != nil {
 			err = errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
