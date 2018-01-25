@@ -231,17 +231,13 @@ func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.Task
 
 	var confPatch *patch.Patch
 	if confVersion.Requester == evergreen.GithubPRRequester {
-		tc.logger.Execution().Info("Fetching patch.")
+		tc.logger.Execution().Info("Fetching patch document for Github PR request.")
 		confPatch, err = a.comm.GetTaskPatch(ctx, tc.task)
 		if err != nil {
+			err = errors.Wrap(err, "couldn't fetch patch for Github PR request")
+			tc.logger.Execution().Error(err.Error())
 			return nil, err
 		}
-		if confPatch == nil {
-			return nil, errors.New("agent retrieved an empty patch")
-		}
-
-	} else {
-		tc.logger.Execution().Info("skipping patch fetch (not a github pr patch)")
 	}
 
 	tc.logger.Execution().Info("Constructing TaskConfig.")
