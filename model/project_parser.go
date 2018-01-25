@@ -67,7 +67,9 @@ type parserProject struct {
 type parserTaskGroup struct {
 	Name            string              `yaml:"name"`
 	Priority        int64               `yaml:"priority"`
+	Patchable       *bool               `yaml:"patchable,omitempty"`
 	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs"`
+	Stepback        *bool               `yaml:"stepback,omitempty"`
 	MaxHosts        int                 `yaml:"max_hosts"`
 	SetupGroup      []PluginCommandConf `yaml:"setup_group"`
 	TeardownGroup   []PluginCommandConf `yaml:"teardown_group"`
@@ -512,6 +514,8 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Tags:            ptg.Tags,
 			MaxHosts:        ptg.MaxHosts,
 			Timeout:         ptg.Timeout,
+			Patchable:       ptg.Patchable,
+			Stepback:        ptg.Stepback,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1

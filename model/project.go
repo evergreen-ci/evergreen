@@ -278,19 +278,26 @@ func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(interface{}) error) e
 }
 
 type TaskGroup struct {
-	Name            string                `yaml:"name" bson:"name"`
-	Priority        int64                 `yaml:"priority,omitempty" bson:"priority"`
-	ExecTimeoutSecs int                   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	MaxHosts        int                   `yaml:"max_hosts" bson:"max_hosts"`
-	SetupGroup      []PluginCommandConf   `yaml:"setup_group" bson:"setup_group"`
-	TeardownGroup   []PluginCommandConf   `yaml:"teardown_group" bson:"teardown_group"`
-	SetupTask       []PluginCommandConf   `yaml:"setup_task" bson:"setup_task"`
-	TeardownTask    []PluginCommandConf   `yaml:"teardown_task" bson:"teardown_task"`
-	Timeout         *YAMLCommandSet       `yaml:"timeout,omitempty" bson:"timeout"`
-	Tasks           []string              `yaml:"tasks" bson:"tasks"`
-	DependsOn       []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires        []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
-	Tags            []string              `yaml:"tags,omitempty" bson:"tags"`
+	Name string `yaml:"name" bson:"name"`
+
+	// fields that will be copied to all tasks
+	Priority  int64                 `yaml:"priority,omitempty" bson:"priority"`
+	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	DependsOn []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Requires  []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
+	// currently unsupported (TODO EVG-578)
+	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+
+	// data about the task group
+	MaxHosts      int                 `yaml:"max_hosts" bson:"max_hosts"`
+	SetupGroup    []PluginCommandConf `yaml:"setup_group" bson:"setup_group"`
+	TeardownGroup []PluginCommandConf `yaml:"teardown_group" bson:"teardown_group"`
+	SetupTask     []PluginCommandConf `yaml:"setup_task" bson:"setup_task"`
+	TeardownTask  []PluginCommandConf `yaml:"teardown_task" bson:"teardown_task"`
+	Timeout       *YAMLCommandSet     `yaml:"timeout,omitempty" bson:"timeout"`
+	Tasks         []string            `yaml:"tasks" bson:"tasks"`
+	Tags          []string            `yaml:"tags,omitempty" bson:"tags"`
 }
 
 // Unmarshalled from the "tasks" list in the project file
