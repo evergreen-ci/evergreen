@@ -1,23 +1,13 @@
 package model
 
-import "github.com/pkg/errors"
-
 //
 
 type TaskQueueAccessor interface {
 	Length() int
-	NextTask() TaskQueueItem
-	FindTask(TaskSpec) TaskQueueItem
+	NextTask() *TaskQueueItem
+	FindTask(TaskSpec) *TaskQueueItem
 	Save() error
 	DequeueTask(string) error
-}
-
-func FetchQueue(distro string) (TaskQueueAccessor, error) {
-	queue, err := FindTaskQueueForDistro(distro)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return queue, nil
 }
 
 type TaskSpec struct {
@@ -25,4 +15,17 @@ type TaskSpec struct {
 	BuildVariant string
 	ProjectID    string
 	Version      string
+}
+
+func MatchingOrNextTask(queue TaskQueueAccessor, spec TaskSpec) *TaskQueueItem {
+	if queue.Length() == 0 {
+		return nil
+	}
+
+	it := queue.FindTask(spec)
+	if it == nil {
+		it = queue.NextTask()
+	}
+
+	return it
 }

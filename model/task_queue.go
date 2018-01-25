@@ -57,19 +57,30 @@ var (
 	taskQueuePriorityKey         = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 )
 
+func NewTaskQueue(distro string, queue []TaskQueueItem) TaskQueueAccessor {
+	return &TaskQueue{
+		Distro: distro,
+		Queue:  queue,
+	}
+}
+
+func LoadTaskQueue(distro string) (TaskQueueAccessor, error) {
+	return findTaskQueueForDistro(distro)
+}
+
 func (self *TaskQueue) Length() int {
 	return len(self.Queue)
 }
 
-func (self *TaskQueue) NextTask() TaskQueueItem {
-	return self.Queue[0]
+func (self *TaskQueue) NextTask() *TaskQueueItem {
+	return &self.Queue[0]
 }
 
 func (self *TaskQueue) Save() error {
-	return UpdateTaskQueue(self.Distro, self.Queue)
+	return updateTaskQueue(self.Distro, self.Queue)
 }
 
-func (self *TaskQueue) FindTask(spec TaskSpec) TaskQueueItem {
+func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
 	for _, it := range self.Queue {
 		if spec.ProjectID != "" && it.Project != spec.ProjectID {
 			continue
@@ -87,14 +98,14 @@ func (self *TaskQueue) FindTask(spec TaskSpec) TaskQueueItem {
 			continue
 		}
 
-		return it
+		return &it
 	}
 
 	// TODO decide if we should return NextTask or nil
 	return nil
 }
 
-func UpdateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
+func updateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 	_, err := db.Upsert(
 		TaskQueuesCollection,
 		bson.M{
@@ -109,7 +120,7 @@ func UpdateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 	return errors.WithStack(err)
 }
 
-func FindTaskQueueForDistro(distroId string) (*TaskQueue, error) {
+func findTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 	taskQueue := &TaskQueue{}
 	err := db.FindOne(
 		TaskQueuesCollection,

@@ -48,5 +48,8 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 		}
 	}
 
-	return taskQueue, errors.WithStack(model.UpdateTaskQueue(distro, taskQueue))
+	queue := model.NewTaskQueue(distro, taskQueue)
+	err := queue.Save()
+
+	return taskQueue, errors.WithStack(err)
 }

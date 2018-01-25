@@ -160,7 +160,7 @@ func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) 
 	status := apiStatusSuccess
 
 	if distro != "" {
-		taskQueue, err := model.FindTaskQueueForDistro(distro)
+		taskQueue, err := model.LoadTaskQueue(distro)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
