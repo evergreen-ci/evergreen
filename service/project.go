@@ -403,7 +403,7 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 		Active: github.Bool(true),
 		Events: []string{"*"},
 		Config: map[string]interface{}{
-			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.Ui.Url)),
+			"url":          github.String(fmt.Sprintf("%s/rest/v2/hooks/github", uis.Settings.ApiUrl)),
 			"content_type": github.String("json"),
 			"secret":       github.String(uis.Settings.Api.GithubWebhookSecret),
 			"insecure_ssl": github.String("0"),
