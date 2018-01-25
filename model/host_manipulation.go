@@ -23,7 +23,7 @@ func NextTaskForHost(h *host.Host) (*task.Task, error) {
 		return nil, err
 	}
 
-	if taskQueue == nil || taskQueue.IsEmpty() {
+	if taskQueue == nil || taskQueue.Length() == 0 {
 		return nil, nil
 	}
 

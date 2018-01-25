@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -9,10 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-)
-
-var (
-	_ fmt.Stringer = nil
 )
 
 const (
@@ -42,38 +37,27 @@ type TaskQueueItem struct {
 	Priority            int64         `bson:"priority" json:"priority"`
 }
 
+// nolint
 var (
 	// bson fields for the task queue struct
-	TaskQueueIdKey     = bsonutil.MustHaveTag(TaskQueue{}, "Id")
-	TaskQueueDistroKey = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
-	TaskQueueQueueKey  = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
+	taskQueueIdKey     = bsonutil.MustHaveTag(TaskQueue{}, "Id")
+	taskQueueDistroKey = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
+	taskQueueQueueKey  = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
 
 	// bson fields for the individual task queue items
-	TaskQueueItemIdKey          = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
-	TaskQueueItemDisplayNameKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"DisplayName")
-	TaskQueueItemBuildVariantKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"BuildVariant")
-	TaskQueueItemConKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"RevisionOrderNumber")
-	TaskQueueItemRequesterKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"Requester")
-	TaskQueueItemRevisionKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"Revision")
-	TaskQueueItemProjectKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"Project")
-	TaskQueueItemExpDurationKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"ExpectedDuration")
-	TaskQueuePriorityKey = bsonutil.MustHaveTag(TaskQueueItem{},
-		"Priority")
+	taskQueueItemIdKey           = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
+	taskQueueItemDisplayNameKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "DisplayName")
+	taskQueueItemBuildVariantKey = bsonutil.MustHaveTag(TaskQueueItem{}, "BuildVariant")
+	taskQueueItemConKey          = bsonutil.MustHaveTag(TaskQueueItem{}, "RevisionOrderNumber")
+	taskQueueItemRequesterKey    = bsonutil.MustHaveTag(TaskQueueItem{}, "Requester")
+	taskQueueItemRevisionKey     = bsonutil.MustHaveTag(TaskQueueItem{}, "Revision")
+	taskQueueItemProjectKey      = bsonutil.MustHaveTag(TaskQueueItem{}, "Project")
+	taskQueueItemExpDurationKey  = bsonutil.MustHaveTag(TaskQueueItem{}, "ExpectedDuration")
+	taskQueuePriorityKey         = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 )
 
 func (self *TaskQueue) Length() int {
 	return len(self.Queue)
-}
-
-func (self *TaskQueue) IsEmpty() bool {
-	return len(self.Queue) == 0
 }
 
 func (self *TaskQueue) NextTask() TaskQueueItem {
@@ -88,15 +72,15 @@ func UpdateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 	_, err := db.Upsert(
 		TaskQueuesCollection,
 		bson.M{
-			TaskQueueDistroKey: distro,
+			taskQueueDistroKey: distro,
 		},
 		bson.M{
 			"$set": bson.M{
-				TaskQueueQueueKey: taskQueue,
+				taskQueueQueueKey: taskQueue,
 			},
 		},
 	)
-	return err
+	return errors.WithStack(err)
 }
 
 func FindTaskQueueForDistro(distroId string) (*TaskQueue, error) {
@@ -104,7 +88,7 @@ func FindTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 	err := db.FindOne(
 		TaskQueuesCollection,
 		bson.M{
-			TaskQueueDistroKey: distroId,
+			taskQueueDistroKey: distroId,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -122,7 +106,8 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 	var results []struct {
 		Index int `bson:"index"`
 	}
-	queueItemIdKey := fmt.Sprintf("%v.%v", TaskQueueQueueKey, TaskQueueItemIdKey)
+
+	queueItemIdKey := bsonutil.GetDottedKeyName(taskQueueQueueKey, taskQueueItemIdKey)
 
 	// NOTE: this aggregation requires 3.2+ because of its use of
 	// $unwind's 'path' and 'includeArrayIndex'
@@ -130,7 +115,7 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 		{"$match": bson.M{
 			queueItemIdKey: taskId}},
 		{"$unwind": bson.M{
-			"path":              fmt.Sprintf("$%s", TaskQueueQueueKey),
+			"path":              "$" + taskQueueQueueKey,
 			"includeArrayIndex": "index"}},
 		{"$match": bson.M{
 			queueItemIdKey: taskId}},
@@ -165,7 +150,6 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 // pull out the task with the specified id from both the in-memory and db
 // versions of the task queue
 func (self *TaskQueue) DequeueTask(taskId string) error {
-
 	// first, remove from the in-memory queue
 	found := false
 	for idx, queueItem := range self.Queue {
@@ -185,12 +169,12 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
-			TaskQueueDistroKey: self.Distro,
+			taskQueueDistroKey: self.Distro,
 		},
 		bson.M{
 			"$pull": bson.M{
-				TaskQueueQueueKey: bson.M{
-					TaskQueueItemIdKey: taskId,
+				taskQueueQueueKey: bson.M{
+					taskQueueItemIdKey: taskId,
 				},
 			},
 		},

@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 // TaskQueuePersister is responsible for taking a task queue for a particular distro
@@ -46,5 +47,6 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 			}))
 		}
 	}
-	return taskQueue, model.UpdateTaskQueue(distro, taskQueue)
+
+	return taskQueue, errors.WithStack(model.UpdateTaskQueue(distro, taskQueue))
 }

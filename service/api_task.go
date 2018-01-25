@@ -291,7 +291,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			currentHost.Id, currentHost.RunningTask)
 	}
 	// only proceed if there are pending tasks left
-	for !taskQueue.IsEmpty() {
+	for taskQueue.Length() != 0 {
 		nextTaskId := taskQueue.NextTask().Id
 
 		nextTask, err := task.FindOne(task.ById(nextTaskId))
