@@ -38,14 +38,16 @@ type Options struct {
 }
 
 type taskContext struct {
-	currentCommand command.Command
-	logger         client.LoggerProducer
-	statsCollector *StatsCollector
-	task           client.TaskData
-	taskConfig     *model.TaskConfig
-	taskDirectory  string
-	timeout        time.Duration
-	timedOut       bool
+	currentCommand           command.Command
+	logger                   client.LoggerProducer
+	statsCollector           *StatsCollector
+	task                     client.TaskData
+	taskGroup                string
+	runGroupSetupAndTeardown bool
+	taskConfig               *model.TaskConfig
+	taskDirectory            string
+	timeout                  time.Duration
+	timedOut                 bool
 	sync.RWMutex
 }
 
@@ -94,6 +96,7 @@ func (a *Agent) loop(ctx context.Context) error {
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
+	var tc taskContext
 	for {
 		select {
 		case <-ctx.Done():
@@ -108,12 +111,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				if nextTask.TaskSecret == "" {
 					return errors.New("task response missing secret")
 				}
-				tc := taskContext{
-					task: client.TaskData{
-						ID:     nextTask.TaskId,
-						Secret: nextTask.TaskSecret,
-					},
-				}
+				tc = makeTaskContext(nextTask, &tc)
 				if err := a.resetLogging(lgrCtx, &tc); err != nil {
 					return errors.WithStack(err)
 				}
@@ -127,6 +125,22 @@ func (a *Agent) loop(ctx context.Context) error {
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
 			timer.Reset(jitteredSleep)
 		}
+	}
+}
+
+func makeTaskContext(nextTask *apimodels.NextTaskResponse, tc *taskContext) taskContext {
+	setupTeardownGroup := false
+	if nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup {
+		setupTeardownGroup = true
+	}
+	tc.taskGroup = nextTask.TaskGroup
+	return taskContext{
+		task: client.TaskData{
+			ID:     nextTask.TaskId,
+			Secret: nextTask.TaskSecret,
+		},
+		taskGroup:                nextTask.TaskGroup,
+		runGroupSetupAndTeardown: setupTeardownGroup,
 	}
 }
 
