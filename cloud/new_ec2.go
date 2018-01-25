@@ -711,7 +711,7 @@ func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 
 	spotInstance := spotDetails.SpotInstanceRequests[0]
 	//Spot request has been fulfilled, so get status of the instance itself
-	if *spotInstance.InstanceId != "" {
+	if spotInstance.InstanceId != nil && *spotInstance.InstanceId != "" {
 		instanceInfo, err := m.client.GetInstanceInfo(*spotInstance.InstanceId)
 		if err != nil {
 			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
