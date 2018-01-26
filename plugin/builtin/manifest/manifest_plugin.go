@@ -21,8 +21,7 @@ const (
 )
 
 // ManifestPlugin handles the creation of a Build Manifest associated with a version.
-type ManifestPlugin struct {
-}
+type ManifestPlugin struct{}
 
 func init() {
 	plugin.Publish(&ManifestPlugin{})
