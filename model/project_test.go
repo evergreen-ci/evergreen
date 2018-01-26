@@ -2,7 +2,6 @@ package model
 
 import (
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -482,7 +481,6 @@ func TestPopulateExpansions(t *testing.T) {
 		Id:                  "v1",
 		Branch:              "master",
 		Author:              "somebody",
-		CreateTime:          time.Unix(1234567890, 0),
 		RevisionOrderNumber: 42,
 		//Requester:           evergreen.PatchVersionRequester,
 	}
@@ -531,7 +529,7 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("master", expansions.Get("branch_name"))
 	assert.Equal("somebody", expansions.Get("author"))
 	assert.Equal("d1", expansions.Get("distro_id"))
-	assert.Equal("09_02_13_18_31_30", expansions.Get("created_at"))
+	assert.True(expansions.Exists("created_at"))
 	assert.Equal("42", expansions.Get("revision_order_id"))
 	assert.False(expansions.Exists("is_patch"))
 	assert.False(expansions.Exists("github_repo"))
