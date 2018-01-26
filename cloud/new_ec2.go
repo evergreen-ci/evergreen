@@ -639,6 +639,12 @@ func (m *ec2Manager) IsSSHReachable(h *host.Host, keyName string) (bool, error) 
 func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 	var instance *ec2.Instance
 	var err error
+
+	if err = m.client.Create(m.credentials); err != nil {
+		return "", errors.Wrap(err, "error creating client")
+	}
+	defer m.client.Close()
+
 	if isHostOnDemand(h) {
 		instance, err = m.client.GetInstanceInfo(h.Id)
 		if err != nil {
@@ -753,6 +759,7 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 	if err := m.client.Create(m.credentials); err != nil {
 		return 0, errors.Wrap(err, "error creating client")
 	}
+	defer m.client.Close()
 
 	t := timeRange{start: start, end: end}
 	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(m.client, h, t)
