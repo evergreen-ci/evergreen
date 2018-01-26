@@ -549,11 +549,6 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 
 // OnUp is called when the host is up.
 func (m *ec2Manager) OnUp(h *host.Host) error {
-	if err = m.client.Create(m.credentials); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
-	}
-	defer m.client.Close()
-
 	if isHostSpot(h) {
 		grip.Debug(message.Fields{
 			"message":       "spot host is up, attaching tags",
