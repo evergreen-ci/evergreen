@@ -3,7 +3,6 @@ package monitor
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -130,20 +129,6 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 					defer cancel()
 
 					if err := terminateHost(funcCtx, hostToTerminate, settings); err != nil {
-						if strings.Contains(err.Error(), cloud.EC2ErrorNotFound) {
-							err = hostToTerminate.Terminate(evergreen.User)
-							if err != nil {
-								catcher.Add(errors.Wrap(err, "unable to set host as terminated"))
-								return
-							}
-							grip.Debug(message.Fields{
-								"runner":  RunnerName,
-								"message": "host not found in EC2, changed to terminated",
-								"host":    hostToTerminate.Id,
-							})
-							return
-						}
-
 						catcher.Add(errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id))
 					}
 				}()
