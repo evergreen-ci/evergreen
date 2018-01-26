@@ -85,9 +85,7 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudMa
 		provider = makeMockManager()
 	case evergreen.ProviderNameDigitalOcean:
 		provider = &doManager{}
-	case evergreen.ProviderNameEc2Legacy:
-		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider})
-	case evergreen.ProviderNameEc2OnDemand:
+	case evergreen.ProviderNameEc2Legacy, evergreen.ProviderNameEc2OnDemand:
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: onDemandProvider})
 	case evergreen.ProviderNameEc2Spot:
 		provider = NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}, provider: spotProvider})
