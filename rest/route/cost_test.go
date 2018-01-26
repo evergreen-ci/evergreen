@@ -114,7 +114,7 @@ func (s *DistroCostSuite) SetupSuite() {
 	settings1["instance_type"] = "type"
 	testDistro1 := distro.Distro{
 		Id:               "distro1",
-		Provider:         "ec2",
+		Provider:         "ec2-ondemand",
 		ProviderSettings: &settings1,
 	}
 	testDistro2 := distro.Distro{
@@ -178,7 +178,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	s.True(ok)
 	s.Equal(model.APIString("distro1"), h.DistroId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
-	s.Equal(model.APIString("ec2"), h.Provider)
+	s.Equal(model.APIString("ec2-ondemand"), h.Provider)
 	s.Equal(model.APIString("type"), h.InstanceType)
 }
 

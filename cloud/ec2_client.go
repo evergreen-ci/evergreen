@@ -207,6 +207,17 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 			output, err = c.EC2.TerminateInstances(input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
+					if strings.Contains(ec2err.Code(), EC2ErrorNotFound) {
+						grip.Debug(message.WrapError(ec2err, message.Fields{
+							"client":          fmt.Sprintf("%T", c),
+							"message":         "instance ID not found in AWS",
+							"args":            input,
+							"ec2_err_message": ec2err.Message(),
+							"ec2_err_code":    ec2err.Code(),
+						}))
+						return false, nil
+					}
+
 					grip.Error(message.WrapError(ec2err, message.Fields{
 						"client":  fmt.Sprintf("%T", c),
 						"message": "error running TerminateInstances",
