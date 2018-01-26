@@ -64,6 +64,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -74,6 +75,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 	defer cancel()
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
+	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
@@ -128,6 +130,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -136,6 +139,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
+	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
@@ -189,6 +193,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -197,6 +202,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
+	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
@@ -250,6 +256,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		runGroupSetup: true,
 	}
 	// Windows may not have finished deleting task directories when
 	// os.RemoveAll returns. Setting TaskExecution in this suite causes the
@@ -258,6 +265,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
+	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 

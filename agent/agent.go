@@ -38,16 +38,16 @@ type Options struct {
 }
 
 type taskContext struct {
-	currentCommand           command.Command
-	logger                   client.LoggerProducer
-	statsCollector           *StatsCollector
-	task                     client.TaskData
-	taskGroup                string
-	runGroupSetupAndTeardown bool
-	taskConfig               *model.TaskConfig
-	taskDirectory            string
-	timeout                  time.Duration
-	timedOut                 bool
+	currentCommand command.Command
+	logger         client.LoggerProducer
+	statsCollector *StatsCollector
+	task           client.TaskData
+	taskGroup      string
+	runGroupSetup  bool
+	taskConfig     *model.TaskConfig
+	taskDirectory  string
+	timeout        time.Duration
+	timedOut       bool
 	sync.RWMutex
 }
 
@@ -111,7 +111,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				if nextTask.TaskSecret == "" {
 					return errors.New("task response missing secret")
 				}
-				tc = makeTaskContext(nextTask, &tc)
+				tc = a.prepareNextTask(ctx, nextTask, &tc)
 				if err := a.resetLogging(lgrCtx, &tc); err != nil {
 					return errors.WithStack(err)
 				}
@@ -128,19 +128,27 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
-func makeTaskContext(nextTask *apimodels.NextTaskResponse, tc *taskContext) taskContext {
-	setupTeardownGroup := false
+func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) taskContext {
+	setupGroup := false
+	taskDirectory := tc.taskDirectory
 	if nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup {
-		setupTeardownGroup = true
+		defer a.removeTaskDirectory(tc)
+		setupGroup = true
+		taskDirectory = ""
+		if tc.taskConfig != nil {
+			if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+				a.runPostGroupCommands(ctx, tc, taskGroup)
+			}
+		}
 	}
-	tc.taskGroup = nextTask.TaskGroup
 	return taskContext{
 		task: client.TaskData{
 			ID:     nextTask.TaskId,
 			Secret: nextTask.TaskSecret,
 		},
-		taskGroup:                nextTask.TaskGroup,
-		runGroupSetupAndTeardown: setupTeardownGroup,
+		taskGroup:     nextTask.TaskGroup,
+		runGroupSetup: setupGroup,
+		taskDirectory: taskDirectory,
 	}
 }
 
@@ -178,7 +186,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
 	}
 
 	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
-	defer a.removeTaskDirectory(tc)
 	defer a.killProcs(tc)
 	defer cancel()
 
@@ -250,14 +257,10 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) 
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
-		grip.Info("Running post task commands")
 		a.runPostTaskCommands(ctx, tc)
-		grip.Info("Finished running post task commands")
 	case evergreen.TaskFailed:
 		tc.logger.Task().Info("Task completed - FAILURE.")
-		grip.Info("Running post task commands")
 		a.runPostTaskCommands(ctx, tc)
-		grip.Info("Finished running post task commands")
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
 	case evergreen.TaskConflict:
@@ -290,8 +293,10 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
-	if tc.taskConfig != nil && tc.taskConfig.Project.Post != nil {
+	if tc.taskConfig != nil && tc.taskConfig.Project.Post != nil && tc.taskGroup == "" {
+		grip.Info("Running post-task commands")
 		a.killProcs(tc)
+		defer a.killProcs(tc)
 		tc.logger.Task().Info("Running post-task commands.")
 		start := time.Now()
 		var cancel context.CancelFunc
@@ -303,7 +308,23 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		} else {
 			tc.logger.Task().Infof("Finished running post-task commands in %v.", time.Since(start).String())
 		}
-		a.killProcs(tc)
+		grip.Info("Finished running post-task commands")
+	}
+}
+
+func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext, taskGroup *model.TaskGroup) {
+	grip.Info("Running post-group commands")
+	a.killProcs(tc)
+	defer a.killProcs(tc)
+	var cancel context.CancelFunc
+	ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	defer cancel()
+	var err error
+	err = a.runCommands(ctx, tc, taskGroup.TeardownGroup, false)
+	if err != nil {
+		grip.Errorf("Error running post-task command: %v", err)
+	} else {
+		grip.Info("Finished running post-group commands")
 	}
 }
 

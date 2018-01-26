@@ -37,7 +37,6 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 		return "", err
 	}
 
-	tc.taskConfig.WorkDir = newDir
 	return newDir, nil
 }
 
@@ -47,7 +46,7 @@ func (a *Agent) createTaskDirectory(tc *taskContext) (string, error) {
 // exits.
 func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	if tc.taskDirectory == "" {
-		grip.Critical("Task directory is not set")
+		grip.Info("Task directory is not set, not removing")
 		return
 	}
 	grip.Infof("Deleting directory for completed task: %s", tc.taskDirectory)

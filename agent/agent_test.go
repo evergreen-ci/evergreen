@@ -48,6 +48,7 @@ func (s *AgentSuite) SetupTest() {
 		taskConfig: &model.TaskConfig{
 			Project: &model.Project{},
 		},
+		runGroupSetup: true,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
@@ -361,24 +362,100 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 	s.False(s.tc.hadTimedOut())
 }
 
-func (s *AgentSuite) TestMakeTaskContext() {
+func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask := &apimodels.NextTaskResponse{}
 	tc := taskContext{}
-	tc = makeTaskContext(nextTask, &tc)
-	s.True(tc.runGroupSetupAndTeardown, "if the next task is not in a group, setupTeardownGroup should be true")
+	tc.taskDirectory = "task_directory"
+	tc = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	s.True(tc.runGroupSetup, "if the next task is not in a group, runGroupSetup should be true")
 	s.Equal("", tc.taskGroup)
+	s.Empty(tc.taskDirectory)
 
 	nextTask.TaskGroup = "foo"
 	tc.taskGroup = "foo"
-	tc = makeTaskContext(nextTask, &tc)
-	s.False(tc.runGroupSetupAndTeardown, "if the next task is in the same group as the previous task, setupTeardownGroup should be false")
+	tc.taskDirectory = "task_directory"
+	tc = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	s.False(tc.runGroupSetup, "if the next task is in the same group as the previous task, runGroupSetup should be false")
 	s.Equal("foo", tc.taskGroup)
+	s.Equal("task_directory", tc.taskDirectory)
 
 	nextTask.TaskGroup = "bar"
 	tc.taskGroup = "foo"
-	tc = makeTaskContext(nextTask, &tc)
-	s.True(tc.runGroupSetupAndTeardown, "if the next task is in a different group from the previous task, setupTeardownGroup should be true")
+	tc.taskDirectory = "task_directory"
+	tc = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	s.True(tc.runGroupSetup, "if the next task is in a different group from the previous task, runGroupSetup should be true")
 	s.Equal("bar", tc.taskGroup)
+	s.Empty(tc.taskDirectory)
+}
+
+func (s *AgentSuite) TestRunPreGroupCommands() {
+	s.tc.taskGroup = "task_group_name"
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+		},
+		Project: &model.Project{
+			TaskGroups: []model.TaskGroup{
+				model.TaskGroup{
+					Name: "task_group_name",
+					SetupGroup: []model.PluginCommandConf{
+						model.PluginCommandConf{
+							Command: "shell.exec",
+							Params: map[string]interface{}{
+								"working_dir": testutil.GetDirectoryOfFile(),
+								"script":      "echo hi",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.a.runPreTaskCommands(ctx, s.tc)
+
+	_ = s.tc.logger.Close()
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Equal("Running pre-task commands.", msgs[1].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
+	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
+}
+
+func (s *AgentSuite) TestRunPostGroupCommands() {
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id: "task_id",
+		},
+		Project: &model.Project{},
+	}
+	tg := &model.TaskGroup{
+		TeardownGroup: []model.PluginCommandConf{
+			model.PluginCommandConf{
+				Command: "shell.exec",
+				Params: map[string]interface{}{
+					"working_dir": testutil.GetDirectoryOfFile(),
+					"script":      "echo hi",
+				},
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.a.runPostGroupCommands(ctx, s.tc, tg)
+	_ = s.tc.logger.Close()
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
+	s.Contains(msgs[len(msgs)-1].Message, "Finished 'shell.exec'")
 }
 
 func TestAgentConstructorSetsHostData(t *testing.T) {
