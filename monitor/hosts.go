@@ -200,7 +200,7 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 		return errors.Wrapf(err, "error terminating host %s", h.Id)
 	}
 
-	return nil
+	return h.Terminate(evergreen.User)
 }
 
 func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHost) error {
