@@ -152,7 +152,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/json/task_log/{task_id}/{execution}", uis.loadCtx(uis.taskLog))
 	r.HandleFunc("/task_log_raw/{task_id}/{execution}", uis.loadCtx(uis.taskLogRaw))
 
-  // Performance discovery pages
+	// Performance discovery pages
 	r.HandleFunc("/perfdiscovery/", uis.loadCtx(uis.perfdiscoveryPage)).Methods("GET")
 
 	// Test Logs
