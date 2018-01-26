@@ -10,9 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -23,13 +20,8 @@ const (
 	ManifestLoadAPIEndpoint = "load"
 )
 
-type manifestParams struct {
-	GithubToken string `mapstructure:"github_token"`
-}
-
 // ManifestPlugin handles the creation of a Build Manifest associated with a version.
 type ManifestPlugin struct {
-	OAuthCredentials string
 }
 
 func init() {
@@ -42,17 +34,6 @@ func (m *ManifestPlugin) Name() string {
 }
 
 func (m *ManifestPlugin) Configure(conf map[string]interface{}) error {
-	mp := &manifestParams{}
-	err := mapstructure.Decode(conf, mp)
-	if err != nil {
-		return err
-	}
-	if mp.GithubToken == "" {
-		// this should return an error, but never has before
-		// (caught an lint error.) Tests break if this returns early.
-		grip.Warning(errors.New("GitHub token is empty"))
-	}
-	m.OAuthCredentials = mp.GithubToken
 	return nil
 }
 
