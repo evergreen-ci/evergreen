@@ -641,7 +641,7 @@ func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 	var err error
 
 	if err = m.client.Create(m.credentials); err != nil {
-		return nil, errors.Wrap(err, "error creating client")
+		return "", errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 
