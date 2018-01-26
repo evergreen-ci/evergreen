@@ -24,6 +24,7 @@ var mciModule = angular.module('MCI', [
   'ui.grid.emptyBaseLayer',
   'ui.grid.autoResize',
   'ui.grid.pinning',
+  'ui.select',
 ], function($interpolateProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
   $interpolateProvider.startSymbol('[[');
