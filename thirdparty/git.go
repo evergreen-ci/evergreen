@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -75,8 +76,11 @@ func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err err
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			grip.Errorf("File stat details for '%v' has length '%v'",
-				details, len(details))
+			grip.Error(message.Fields{
+				"message": "file stat details has unexpected length",
+				"details": details,
+				"length":  len(details),
+			})
 			continue
 		}
 

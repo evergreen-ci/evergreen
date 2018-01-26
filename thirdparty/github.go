@@ -252,7 +252,7 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 		branch,
 	)
 
-	grip.Errorln("requesting github commit from url:", branchURL)
+	grip.Debugln("requesting github commit from url:", branchURL)
 
 	resp, err := tryGithubGet(oauthToken, branchURL)
 	if resp != nil {
