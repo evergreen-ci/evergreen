@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -15,26 +14,6 @@ import (
 
 // TODO(MCI-2245):
 //	This is a temporary package for storing host-related interactions that involve multiple models.
-
-// NextTaskForHost the next task that should be run on the host.
-func NextTaskForHost(h *host.Host) (*task.Task, error) {
-	taskQueue, err := FindTaskQueueForDistro(h.Distro.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	if taskQueue == nil || taskQueue.IsEmpty() {
-		return nil, nil
-	}
-
-	nextTaskId := taskQueue.Queue[0].Id
-	fullTask, err := task.FindOne(task.ById(nextTaskId))
-	if err != nil {
-		return nil, err
-	}
-
-	return fullTask, nil
-}
 
 func UpdateStaticHosts() error {
 	distros, err := distro.Find(distro.ByProvider(evergreen.ProviderNameStatic))

@@ -285,13 +285,13 @@ func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		return nil, errors.Errorf("Error host %v must have an unset running task field but has running task %v",
 			currentHost.Id, currentHost.RunningTask)
 	}
 	// only proceed if there are pending tasks left
-	for !taskQueue.IsEmpty() {
+	for taskQueue.Length() != 0 {
 		nextTaskId := taskQueue.NextTask().Id
 
 		nextTask, err := task.FindOne(task.ById(nextTaskId))
@@ -446,7 +446,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve the next task off the task queue and attempt to assign it to the host.
 	// If there is already a host that has the task, it will error
-	taskQueue, err := model.FindTaskQueueForDistro(h.Distro.Id)
+	taskQueue, err := model.LoadTaskQueue(h.Distro.Id)
 	if err != nil {
 		err = errors.Wrapf(err, "Error locating distro queue (%v) for host '%v'", h.Distro.Id, h.Id)
 		grip.Error(err)
