@@ -17,7 +17,13 @@ var mciModule = angular.module('MCI', [
   'md5',
   'ngSanitize',
   'ngMaterial',
-  'md.time.picker'
+  'md.time.picker',
+  'ui.grid',
+  'ui.grid.resizeColumns',
+  'ui.grid.moveColumns',
+  'ui.grid.emptyBaseLayer',
+  'ui.grid.autoResize',
+  'ui.grid.pinning',
 ], function($interpolateProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
   $interpolateProvider.startSymbol('[[');
