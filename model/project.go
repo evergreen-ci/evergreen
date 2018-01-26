@@ -526,7 +526,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *util.Expansions {
+func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task, p *patch.Patch) *util.Expansions {
 	expansions := util.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
@@ -545,6 +545,14 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 	if evergreen.IsPatchRequester(v.Requester) {
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+
+		if v.Requester == evergreen.GithubPRRequester && p != nil {
+			expansions.Put("github_pr_number", fmt.Sprintf("%d", p.GithubPatchData.PRNumber))
+			expansions.Put("github_org", p.GithubPatchData.BaseOwner)
+			expansions.Put("github_repo", p.GithubPatchData.BaseRepo)
+			expansions.Put("github_author", p.GithubPatchData.Author)
+		}
+
 	} else {
 		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
 	}

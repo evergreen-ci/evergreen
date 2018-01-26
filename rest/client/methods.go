@@ -332,11 +332,14 @@ func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) 
 	}
 	info.setTaskPathSuffix("git/patch")
 	resp, err := c.retryRequest(ctx, info, nil)
-
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get patch for %s", taskData.ID)
 	}
+	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("could not fetch patch for task with id '%s'; expected status code 200 OK, got %d %s", taskData.ID, resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
 	if err = util.ReadJSONInto(resp.Body, &patch); err != nil {
 		return nil, errors.Wrapf(err, "problem parsing patch response for %s", taskData.ID)
 	}
