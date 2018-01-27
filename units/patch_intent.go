@@ -236,6 +236,7 @@ func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, error) {
 		return "", nil
 	}
 	defer util.PutHttpClientForOauth2(client)
+
 	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
 	if err != nil {
 		return "", nil

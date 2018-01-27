@@ -134,10 +134,17 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
 	flags := admin.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
 	s.NoError(admin.SetServiceFlags(flags))
+
+	patchContent, err := fetchDiffByURL(s.diffURL, githubOauthToken)
+	s.NoError(err)
+	s.NotEmpty(patchContent)
 
 	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
 	s.NoError(err)
@@ -161,12 +168,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
-	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
-	s.Require().NoError(err)
-
-	patchContent, err := fetchDiffByURL(s.diffURL, githubOauthToken)
-	s.NoError(err)
-	s.NotEmpty(patchContent)
 
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL, ""))
 	s.NoError(err)
