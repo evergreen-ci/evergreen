@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -34,16 +33,17 @@ type PatchIntentUnitsSuite struct {
 	env    *mock.Environment
 	cancel context.CancelFunc
 
-	repo     string
-	headRepo string
-	prNumber int
-	user     string
-	hash     string
-	diffURL  string
-	desc     string
-	project  string
-	variants []string
-	tasks    []string
+	repo            string
+	headRepo        string
+	prNumber        int
+	user            string
+	hash            string
+	diffURL         string
+	desc            string
+	project         string
+	variants        []string
+	tasks           []string
+	githubPatchData patch.GithubPatch
 
 	suite.Suite
 }
@@ -102,6 +102,17 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.user = evergreen.GithubPatchUser
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
 	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
+	s.githubPatchData = patch.GithubPatch{
+		PRNumber:   448,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "master",
+		HeadOwner:  "richardsamuels",
+		HeadRepo:   "evergreen",
+		HeadHash:   "something",
+		Author:     "richardsamuels",
+		DiffURL:    "https://github.com/evergreen-ci/evergreen/pull/448.diff",
+	}
 	s.desc = "Test!"
 	s.project = "mci"
 	s.variants = []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
@@ -142,7 +153,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	patchContent, err := fetchDiffByURL(s.diffURL, githubOauthToken)
+	patchContent, err := fetchDiffByURL(&s.githubPatchData, githubOauthToken)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 	s.NotEqual("{", patchContent[0])
@@ -313,19 +324,6 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
 }
 
-func TestBuildPatchURL(t *testing.T) {
-	assert := assert.New(t) //nolint
-	gp := patch.GithubPatch{
-		PRNumber:   627,
-		BaseOwner:  "evergreen-ci",
-		BaseRepo:   "evergreen",
-		BaseBranch: "master",
-		HeadOwner:  "richardsamuels",
-		HeadRepo:   "evergreen",
-		HeadHash:   "something",
-		Author:     "richardsamuels",
-		DiffURL:    "https://github.com/evergreen-ci/evergreen/pull/627.diff",
-	}
-
-	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/627.diff", buildPatchURL(&gp))
+func (s *PatchIntentUnitsSuite) TestBuildPatchURL() {
+	s.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&s.githubPatchData))
 }
