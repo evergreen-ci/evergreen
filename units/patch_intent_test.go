@@ -145,6 +145,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	patchContent, err := fetchDiffByURL(s.diffURL, githubOauthToken)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
+	s.NotEqual("{", patchContent[0])
 
 	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
 	s.NoError(err)
