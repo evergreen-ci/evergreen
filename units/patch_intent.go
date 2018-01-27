@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -216,11 +217,31 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	return nil
 }
 
-func fetchDiffByURL(URL string) (string, error) {
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+// buildPatchURL creates a URL to enable downloading patch files through the
+// Github API
+func buildPatchURL(gp *patch.GithubPatch) string {
+	url := &url.URL{
+		Scheme: "https",
+		Host:   "api.github.com",
+		Path: fmt.Sprintf("/repos/%s/%s/pulls/%d.diff", gp.BaseOwner,
+			gp.BaseRepo, gp.PRNumber),
+	}
 
-	resp, err := client.Get(URL)
+	return url.String()
+}
+
+func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, error) {
+	client, err := util.GetHttpClientForOauth2(token)
+	if err != nil {
+		return "", nil
+	}
+	defer util.PutHttpClientForOauth2(client)
+	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
+	if err != nil {
+		return "", nil
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -346,7 +367,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("user is not a member of %s", mustBeMemberOfOrg)
 	}
 
-	patchContent, err := fetchDiffByURL(patchDoc.GithubPatchData.DiffURL)
+	patchContent, err := fetchDiffByURL(&patchDoc.GithubPatchData, githubOauthToken)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -138,10 +139,6 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	patchContent, err := fetchDiffByURL(s.diffURL)
-	s.NoError(err)
-	s.NotEmpty(patchContent)
-
 	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
 	s.NoError(err)
 	s.Require().NotNil(intent)
@@ -164,6 +161,12 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	patchContent, err := fetchDiffByURL(s.diffURL, githubOauthToken)
+	s.NoError(err)
+	s.NotEmpty(patchContent)
 
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL, ""))
 	s.NoError(err)
@@ -306,4 +309,21 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Len(unprocessedIntents, 1)
 
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
+}
+
+func TestBuildPatchURL(t *testing.T) {
+	assert := assert.New(t) //nolint
+	gp := patch.GithubPatch{
+		PRNumber:   627,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "master",
+		HeadOwner:  "richardsamuels",
+		HeadRepo:   "evergreen",
+		HeadHash:   "something",
+		Author:     "richardsamuels",
+		DiffURL:    "https://github.com/evergreen-ci/evergreen/pull/627.diff",
+	}
+
+	assert.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/627.diff", buildPatchURL(&gp))
 }
