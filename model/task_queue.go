@@ -28,7 +28,7 @@ type TaskDep struct {
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
-	GroupName           string        `bson:"group_name" json"group_name"`
+	GroupName           string        `bson:"group_name" json:"group_name"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
 	RevisionOrderNumber int           `bson:"order" json:"order"`
 	Requester           string        `bson:"requester" json:"requester"`

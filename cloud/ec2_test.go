@@ -103,21 +103,21 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	}
 
 	m := []MountPoint{}
-	b, err := newMakeBlockDeviceMappings(m)
+	b, err := makeBlockDeviceMappings(m)
 	s.NoError(err)
 	s.Len(b, 0)
 
 	noDeviceName := validMount
 	noDeviceName.DeviceName = ""
 	m = []MountPoint{validMount, noDeviceName}
-	b, err = newMakeBlockDeviceMappings(m)
+	b, err = makeBlockDeviceMappings(m)
 	s.Nil(b)
 	s.Error(err)
 
 	noVirtualName := validMount
 	noVirtualName.VirtualName = ""
 	m = []MountPoint{validMount, noVirtualName}
-	b, err = newMakeBlockDeviceMappings(m)
+	b, err = makeBlockDeviceMappings(m)
 	s.Nil(b)
 	s.Error(err)
 
@@ -125,7 +125,7 @@ func (s *EC2Suite) TestMakeDeviceMappings() {
 	anotherMount.DeviceName = "anotherDeviceName"
 	anotherMount.VirtualName = "anotherVirtualName"
 	m = []MountPoint{validMount, anotherMount}
-	b, err = newMakeBlockDeviceMappings(m)
+	b, err = makeBlockDeviceMappings(m)
 	s.Len(b, 2)
 	s.Equal("device", *b[0].DeviceName)
 	s.Equal("virtual", *b[0].VirtualName)

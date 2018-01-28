@@ -242,7 +242,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	if projectVars.GithubHookID != 0 && projectRef.TracksPushEvents &&
 		responseRef.ForceRepotrackerRun {
 		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
-		if err := uis.queue.Put(j); err != nil {
+		if err = uis.queue.Put(j); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
