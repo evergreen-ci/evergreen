@@ -1001,6 +1001,8 @@ func (t *Task) String() (taskStruct string) {
 
 // Insert writes the b to the db.
 func (t *Task) Insert() error {
+	grip.WarningWhen(t.CreateTime == util.ZeroTime,
+		message.NewStackFormatted(1, "task %s inserted with zero creation time", t.Id))
 	return db.Insert(Collection, t)
 }
 
