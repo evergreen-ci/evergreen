@@ -249,7 +249,7 @@ func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", errors.Errorf("Expected 200 OK, got %s", http.StatusText(resp.StatusCode))
+		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
 		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
@@ -258,7 +258,7 @@ func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, error) {
 
 	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "failed to read response body from github response")
 	}
 
 	return string(bytes), nil
