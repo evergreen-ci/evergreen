@@ -24,7 +24,7 @@ func init() {
 	evgdb.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
-type testOrphanDeletion struct {
+type testRepotrackerCleanup struct {
 	suite.Suite
 
 	env     *evgmock.Environment
@@ -45,7 +45,7 @@ func TestCleanupOrphans(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	s := &testOrphanDeletion{
+	s := &testRepotrackerCleanup{
 		env:     &evgmock.Environment{},
 		dbName:  database.Name,
 		session: session,
@@ -62,7 +62,7 @@ func TestCleanupOrphans(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *testOrphanDeletion) TestOrphanedBuildCleanupGenerator() {
+func (s *testRepotrackerCleanup) TestOrphanedBuildCleanupGenerator() {
 	gen, err := orphanedBuildCleanupGenerator(anser.GetEnvironment(), s.dbName, 50)
 	s.Require().NoError(err)
 	gen.Run()
@@ -89,7 +89,7 @@ func (s *testOrphanDeletion) TestOrphanedBuildCleanupGenerator() {
 	s.Require().Len(t, 2)
 }
 
-func (s *testOrphanDeletion) TestOrphanedVersionCleanupGenerator() {
+func (s *testRepotrackerCleanup) TestOrphanedVersionCleanupGenerator() {
 	gen, err := orphanedVersionCleanupGenerator(anser.GetEnvironment(), s.dbName, 50)
 	s.Require().NoError(err)
 	gen.Run()
@@ -116,7 +116,7 @@ func (s *testOrphanDeletion) TestOrphanedVersionCleanupGenerator() {
 	s.Equal("b5", v[1].BuildIds[0])
 }
 
-func (s *testOrphanDeletion) TestOrphanedTaskCleanupGenerator() {
+func (s *testRepotrackerCleanup) TestOrphanedTaskCleanupGenerator() {
 	gen, err := orphanedTaskCleanupGenerator(anser.GetEnvironment(), s.dbName, 50)
 	s.Require().NoError(err)
 	gen.Run()
@@ -135,15 +135,85 @@ func (s *testOrphanDeletion) TestOrphanedTaskCleanupGenerator() {
 	s.Equal("t3", t[1].Id)
 }
 
-func (s *testOrphanDeletion) SetupTest() {
+func (s *testRepotrackerCleanup) TestRemoveDuplicateVersions() {
+	ver, err := version.FindOne(version.ById("v1"))
+	s.NoError(err)
+	s.NotNil(ver)
+
+	ver.Id = "v1-dupe"
+	ver.BuildIds = []string{"b1-dupe"}
+	ver.Status = evergreen.VersionFailed
+	s.NoError(ver.Insert())
+
+	s.NoError((&build.Build{
+		Id:        "b1-dupe",
+		Requester: evergreen.RepotrackerVersionRequester,
+		Status:    evergreen.BuildStarted,
+		Version:   "v1-dupe",
+		Tasks: []build.TaskCache{
+			{
+				Id: "t1",
+			},
+			{
+				Id: "o-t2",
+			},
+		},
+		Project: "test",
+	}).Insert())
+
+	s.NoError((&task.Task{
+		Id:        "t1-dupe",
+		Requester: evergreen.RepotrackerVersionRequester,
+		BuildId:   "b1",
+		Version:   "v1-dupe",
+	}).Insert())
+
+	gen, err := duplicateVersionsCleanup(anser.GetEnvironment(), s.dbName, 50)
+	s.Require().NoError(err)
+	gen.Run()
+	s.NoError(gen.Error())
+
+	for j := range gen.Jobs() {
+		j.Run()
+		s.NoError(j.Error())
+	}
+
+	v, err := version.Find(evgdb.Q{})
+	s.NoError(err)
+	s.Require().Len(v, 3)
+
+	for i := range v {
+		s.NotEqual("v1", v[i].Id)
+	}
+
+	b, err := build.Find(evgdb.Q{})
+	s.NoError(err)
+	s.Require().Len(b, 3)
+
+	for i := range b {
+		s.NotEqual("b1", b[i].Id)
+	}
+
+	t, err := task.Find(evgdb.Q{})
+	s.NoError(err)
+	s.Require().Len(b, 3)
+
+	for i := range b {
+		s.NotEqual("t1", t[i].Id)
+	}
+}
+
+func (s *testRepotrackerCleanup) SetupTest() {
 	s.NoError(evgdb.ClearCollections(version.Collection, build.Collection, task.Collection))
 
 	versions := []version.Version{
 		{
-			Id:        "v1",
-			Requester: evergreen.RepotrackerVersionRequester,
-			Status:    evergreen.VersionCreated,
-			BuildIds:  []string{"b1", "o-b2"},
+			Id:         "v1",
+			Identifier: "test",
+			Revision:   "v1",
+			Requester:  evergreen.RepotrackerVersionRequester,
+			Status:     evergreen.VersionCreated,
+			BuildIds:   []string{"b1", "o-b2"},
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: "test1",
@@ -156,10 +226,12 @@ func (s *testOrphanDeletion) SetupTest() {
 			},
 		},
 		{
-			Id:        "v2",
-			Requester: evergreen.RepotrackerVersionRequester,
-			Status:    evergreen.VersionCreated,
-			BuildIds:  []string{"o-b3"},
+			Id:         "v2",
+			Identifier: "test",
+			Revision:   "v2",
+			Requester:  evergreen.RepotrackerVersionRequester,
+			Status:     evergreen.VersionCreated,
+			BuildIds:   []string{"o-b3"},
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: "test",
@@ -168,10 +240,12 @@ func (s *testOrphanDeletion) SetupTest() {
 			},
 		},
 		{
-			Id:        "v3",
-			Requester: evergreen.RepotrackerVersionRequester,
-			Status:    evergreen.VersionCreated,
-			BuildIds:  []string{"b5"},
+			Id:         "v3",
+			Identifier: "test",
+			Revision:   "v3",
+			Requester:  evergreen.RepotrackerVersionRequester,
+			Status:     evergreen.VersionCreated,
+			BuildIds:   []string{"b5"},
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: "test",
@@ -257,6 +331,6 @@ func (s *testOrphanDeletion) SetupTest() {
 	}
 }
 
-func (s *testOrphanDeletion) TearDownSuite() {
+func (s *testRepotrackerCleanup) TearDownSuite() {
 	s.cancel()
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -320,5 +321,133 @@ func makeOrphanedTaskCleanup(database string) db.MigrationOperation {
 		}
 
 		return nil
+	}
+}
+
+func duplicateVersionsCleanup(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	const migrationName = "clean_duplicate_versions"
+
+	if err := env.RegisterManualMigrationOperation(migrationName, makeDuplicateVersionCleanup(db)); err != nil {
+		return nil, err
+	}
+
+	opts := model.GeneratorOptions{
+		NS: model.Namespace{
+			DB:         db,
+			Collection: versionCollection,
+		},
+		Query: bson.M{
+			requesterKey: evergreen.RepotrackerVersionRequester,
+		},
+		Limit: limit,
+		JobID: "migration-duplicate-versions",
+	}
+
+	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
+}
+
+func makeDuplicateVersionCleanup(database string) db.MigrationOperation {
+	const (
+		idKey           = "_id"
+		hashKey         = "gitspec"
+		projectRefIDKey = "identifier"
+		versionKey      = "version"
+	)
+	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
+
+		versionID := ""
+		projectID := ""
+		hash := ""
+
+		for i := range rawD {
+			switch rawD[i].Name {
+			case idKey:
+				if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
+					return errors.Wrap(err, "error unmarshaling id")
+				}
+
+			case projectRefIDKey:
+				if err := rawD[i].Value.Unmarshal(&projectID); err != nil {
+					return errors.Wrap(err, "error unmarshaling project ID")
+				}
+
+			case hashKey:
+				if err := rawD[i].Value.Unmarshal(&hash); err != nil {
+					return errors.Wrap(err, "error unmarshaling git hash")
+				}
+			}
+		}
+
+		versions := []version.Version{}
+		query := session.DB(database).C(versionCollection).Find(bson.M{
+			requesterKey:    evergreen.RepotrackerVersionRequester,
+			hashKey:         hash,
+			projectRefIDKey: projectID,
+		})
+		err := query.All(&versions)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if len(versions) == 1 {
+			return nil
+		}
+
+		deleteThese := findVersionsToDelete(versions)
+
+		catcher := grip.NewSimpleCatcher()
+		for _, id := range deleteThese {
+			catcher.Add(session.DB(database).C(versionCollection).RemoveId(id))
+			_, err := session.DB(database).C(buildCollection).RemoveAll(bson.M{
+				versionKey: id,
+			})
+			if err == mgo.ErrNotFound {
+				err = nil
+			}
+			catcher.Add(errors.Wrapf(err, "trying to delete builds with version %s", versionID))
+			_, err = session.DB(database).C(taskCollection).RemoveAll(bson.M{
+				versionKey: id,
+			})
+			if err == mgo.ErrNotFound {
+				err = nil
+			}
+			catcher.Add(errors.Wrapf(err, "trying to delete tasks with version %s", versionID))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func findVersionsToDelete(v []version.Version) []string {
+	mostProgress := &v[0]
+
+	for i := range v {
+		if rankVersionStatus(v[i].Status) > rankVersionStatus(mostProgress.Status) {
+			mostProgress = &v[i]
+		}
+	}
+
+	deleteThese := []string{}
+	for i := range v {
+		if mostProgress.Id == v[i].Id {
+			continue
+		}
+
+		deleteThese = append(deleteThese, v[i].Id)
+	}
+
+	return deleteThese
+}
+
+func rankVersionStatus(s string) int {
+	switch s {
+	case evergreen.VersionSucceeded, evergreen.VersionFailed:
+		return 2
+	case evergreen.VersionStarted:
+		return 1
+	case evergreen.VersionCreated:
+		return 0
+	default:
+		return -100
 	}
 }
