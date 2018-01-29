@@ -233,19 +233,19 @@ func buildPatchURL(gp *patch.GithubPatch) string {
 func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, error) {
 	client, err := util.GetHttpClientForOauth2(token)
 	if err != nil {
-		return "", nil
+		return "", errors.Wrap(err, "error getting http client")
 	}
 	defer util.PutHttpClientForOauth2(client)
 
 	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
-	req.Header.Add("Accept", "application/vnd.github.v3.diff")
 	if err != nil {
-		return "", nil
+		return "", errors.Wrap(err, "failed to create github request")
 	}
+	req.Header.Add("Accept", "application/vnd.github.v3.diff")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "failed to fetch diff from github")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
