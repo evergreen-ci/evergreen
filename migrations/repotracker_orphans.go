@@ -269,10 +269,8 @@ func orphanedTaskCleanupGenerator(env anser.Environment, db string, limit int) (
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-// orpganedTaskCleanup, given a task, will:
-// 1. If it's version doesn't exist, remove the build and it's tasks
-// 2. Check it's task cache, and ensure that all listed tasks exist, removing
-//    any that do not exist
+// orpganedTaskCleanup, given a task, will delete it if the build or version
+// it claims to belong to doesn't exist
 func makeOrphanedTaskCleanup(database string) db.MigrationOperation {
 	const (
 		idKey      = "_id"
@@ -315,10 +313,10 @@ func makeOrphanedTaskCleanup(database string) db.MigrationOperation {
 			return errors.WithStack(session.DB(database).C(taskCollection).RemoveId(taskID))
 		}
 		if errV != nil {
-			return errV
+			return errors.WithStack(errV)
 		}
 		if errB != nil {
-			return errB
+			return errors.WithStack(errB)
 		}
 
 		return nil
