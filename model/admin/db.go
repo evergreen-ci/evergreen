@@ -13,10 +13,41 @@ const (
 )
 
 var (
-	idKey                           = bsonutil.MustHaveTag(AdminSettings{}, "Id")
-	bannerKey                       = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
-	bannerThemeKey                  = bsonutil.MustHaveTag(AdminSettings{}, "BannerTheme")
-	serviceFlagsKey                 = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
+	idKey = bsonutil.MustHaveTag(AdminSettings{}, "Id")
+
+	bannerKey       = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
+	bannerThemeKey  = bsonutil.MustHaveTag(AdminSettings{}, "BannerTheme")
+	serviceFlagsKey = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
+
+	configDirKey          = bsonutil.MustHaveTag(AdminSettings{}, "ConfigDir")
+	apiUrlKey             = bsonutil.MustHaveTag(AdminSettings{}, "ApiUrl")
+	clientBinariesDirKey  = bsonutil.MustHaveTag(AdminSettings{}, "ClientBinariesDir")
+	superUsersKey         = bsonutil.MustHaveTag(AdminSettings{}, "SuperUsers")
+	jiraKey               = bsonutil.MustHaveTag(AdminSettings{}, "Jira")
+	splunkKey             = bsonutil.MustHaveTag(AdminSettings{}, "Splunk")
+	slackKey              = bsonutil.MustHaveTag(AdminSettings{}, "Slack")
+	providersKey          = bsonutil.MustHaveTag(AdminSettings{}, "Providers")
+	keysKey               = bsonutil.MustHaveTag(AdminSettings{}, "Keys")
+	credentialsKey        = bsonutil.MustHaveTag(AdminSettings{}, "Credentials")
+	authConfigKey         = bsonutil.MustHaveTag(AdminSettings{}, "AuthConfig")
+	repoTrackerConfigKey  = bsonutil.MustHaveTag(AdminSettings{}, "RepoTracker")
+	apiKey                = bsonutil.MustHaveTag(AdminSettings{}, "Api")
+	alertsConfigKey       = bsonutil.MustHaveTag(AdminSettings{}, "Alerts")
+	uiKey                 = bsonutil.MustHaveTag(AdminSettings{}, "Ui")
+	hostInitConfigKey     = bsonutil.MustHaveTag(AdminSettings{}, "HostInit")
+	notifyKey             = bsonutil.MustHaveTag(AdminSettings{}, "Notify")
+	schedulerConfigKey    = bsonutil.MustHaveTag(AdminSettings{}, "Scheduler")
+	amboyKey              = bsonutil.MustHaveTag(AdminSettings{}, "Amboy")
+	expansionsKey         = bsonutil.MustHaveTag(AdminSettings{}, "Expansions")
+	pluginsKey            = bsonutil.MustHaveTag(AdminSettings{}, "Plugins")
+	isNonProdKey          = bsonutil.MustHaveTag(AdminSettings{}, "IsNonProd")
+	loggerConfigKey       = bsonutil.MustHaveTag(AdminSettings{}, "LoggerConfig")
+	logPathKey            = bsonutil.MustHaveTag(AdminSettings{}, "LogPath")
+	pprofPortKey          = bsonutil.MustHaveTag(AdminSettings{}, "PprofPort")
+	githubPRCreatorOrgKey = bsonutil.MustHaveTag(AdminSettings{}, "GithubPRCreatorOrg")
+	newRelicKey           = bsonutil.MustHaveTag(AdminSettings{}, "NewRelic")
+
+	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostinitKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
 	monitorKey                      = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
@@ -96,9 +127,36 @@ func SetServiceFlags(flags ServiceFlags) error {
 func Upsert(settings *AdminSettings) error {
 	update := bson.M{
 		"$set": bson.M{
-			idKey:           systemSettingsDocID,
-			bannerKey:       settings.Banner,
-			serviceFlagsKey: settings.ServiceFlags,
+			idKey:                 systemSettingsDocID,
+			bannerKey:             settings.Banner,
+			serviceFlagsKey:       settings.ServiceFlags,
+			configDirKey:          settings.ConfigDir,
+			apiUrlKey:             settings.ApiUrl,
+			clientBinariesDirKey:  settings.ClientBinariesDir,
+			superUsersKey:         settings.SuperUsers,
+			jiraKey:               settings.Jira,
+			splunkKey:             settings.Splunk,
+			slackKey:              settings.Slack,
+			providersKey:          settings.Providers,
+			keysKey:               settings.Keys,
+			credentialsKey:        settings.Credentials,
+			authConfigKey:         settings.AuthConfig,
+			repoTrackerConfigKey:  settings.RepoTracker,
+			apiKey:                settings.Api,
+			alertsConfigKey:       settings.Alerts,
+			uiKey:                 settings.Ui,
+			hostInitConfigKey:     settings.HostInit,
+			notifyKey:             settings.Notify,
+			schedulerConfigKey:    settings.Scheduler,
+			amboyKey:              settings.Amboy,
+			expansionsKey:         settings.Expansions,
+			pluginsKey:            settings.Plugins,
+			isNonProdKey:          settings.IsNonProd,
+			loggerConfigKey:       settings.LoggerConfig,
+			logPathKey:            settings.LogPath,
+			pprofPortKey:          settings.PprofPort,
+			githubPRCreatorOrgKey: settings.GithubPRCreatorOrg,
+			newRelicKey:           settings.NewRelic,
 		},
 	}
 	_, err := db.Upsert(Collection, settingsQuery, update)

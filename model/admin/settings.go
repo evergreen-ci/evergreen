@@ -1,12 +1,48 @@
 package admin
 
+import (
+	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip/send"
+)
+
 // AdminSettings currently holds settings related to degraded mode. It is intended
 // to hold all configurable Evergreen-wide settings
 type AdminSettings struct {
-	Id           string       `bson:"_id"`
+	Id string `bson:"_id" json:"id"`
+
+	// Degraded mode-related settings
 	Banner       string       `bson:"banner" json:"banner"`
 	BannerTheme  BannerTheme  `bson:"banner_theme" json:"banner_theme"`
 	ServiceFlags ServiceFlags `bson:"service_flags" json:"service_flags"`
+
+	// Evergreen config
+	ConfigDir          string                      `bson:"configdir" json:"configdir"`
+	ApiUrl             string                      `bson:"api_url" json:"api_url"`
+	ClientBinariesDir  string                      `bson:"client_binaries_dir" json:"client_binaries_dir"`
+	SuperUsers         []string                    `bson:"superusers" json:"superusers"`
+	Jira               evergreen.JiraConfig        `bson:"jira" json:"jira"`
+	Splunk             send.SplunkConnectionInfo   `bson:"splunk" json:"splunk"`
+	Slack              evergreen.SlackConfig       `bson:"slack" json:"slack"`
+	Providers          evergreen.CloudProviders    `bson:"providers" json:"providers"`
+	Keys               map[string]string           `bson:"keys" json:"keys"`
+	Credentials        map[string]string           `bson:"credentials" json:"credentials"`
+	AuthConfig         evergreen.AuthConfig        `bson:"auth" json:"auth"`
+	RepoTracker        evergreen.RepoTrackerConfig `bson:"repotracker" json:"repotracker"`
+	Api                evergreen.APIConfig         `bson:"api" json:"api"`
+	Alerts             evergreen.AlertsConfig      `bson:"alerts" json:"alerts"`
+	Ui                 evergreen.UIConfig          `bson:"ui" json:"ui"`
+	HostInit           evergreen.HostInitConfig    `bson:"hostinit" json:"hostinit"`
+	Notify             evergreen.NotifyConfig      `bson:"notify" json:"notify"`
+	Scheduler          evergreen.SchedulerConfig   `bson:"scheduler" json:"scheduler"`
+	Amboy              evergreen.AmboyConfig       `bson:"amboy" json:"amboy"`
+	Expansions         map[string]string           `bson:"expansions" json:"expansions"`
+	Plugins            evergreen.PluginConfig      `bson:"plugins" json:"plugins"`
+	IsNonProd          bool                        `bson:"isnonprod" json:"isnonprod"`
+	LoggerConfig       evergreen.LoggerConfig      `bson:"logger_config" json:"logger_config"`
+	LogPath            string                      `bson:"log_path" json:"log_path"`
+	PprofPort          string                      `bson:"pprof_port" json:"pprof_port"`
+	GithubPRCreatorOrg string                      `bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	NewRelic           evergreen.NewRelicConfig    `bson:"new_relic" json:"new_relic"`
 }
 
 // ServiceFlags holds the state of each of the runner/API processes
