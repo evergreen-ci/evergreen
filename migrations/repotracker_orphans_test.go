@@ -116,6 +116,25 @@ func (s *testOrphanDeletion) TestOrphanedVersionCleanupGenerator() {
 	s.Equal("b5", v[1].BuildIds[0])
 }
 
+func (s *testOrphanDeletion) TestOrphanedTaskCleanupGenerator() {
+	gen, err := orphanedTaskCleanupGenerator(anser.GetEnvironment(), s.dbName, 50)
+	s.Require().NoError(err)
+	gen.Run()
+	s.NoError(gen.Error())
+
+	for j := range gen.Jobs() {
+		j.Run()
+		s.NoError(j.Error())
+	}
+
+	t, err := task.Find(evgdb.Q{})
+	s.NoError(err)
+	s.Require().Len(t, 2)
+
+	s.Equal("t1", t[0].Id)
+	s.Equal("t3", t[1].Id)
+}
+
 func (s *testOrphanDeletion) SetupTest() {
 	s.NoError(evgdb.ClearCollections(version.Collection, build.Collection, task.Collection))
 
@@ -217,7 +236,7 @@ func (s *testOrphanDeletion) SetupTest() {
 			Id:        "t3",
 			Requester: evergreen.RepotrackerVersionRequester,
 			BuildId:   "b5",
-			Version:   "v4",
+			Version:   "v3",
 		},
 		{
 			Id:        "t4",

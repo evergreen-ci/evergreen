@@ -246,3 +246,81 @@ func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
 		return errors.WithStack(session.DB(database).C(buildCollection).UpdateId(buildID, update))
 	}
 }
+
+func orphanedTaskCleanupGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	const migrationName = "clean_orphaned_tasks"
+
+	if err := env.RegisterManualMigrationOperation(migrationName, makeOrphanedTaskCleanup(db)); err != nil {
+		return nil, err
+	}
+
+	opts := model.GeneratorOptions{
+		NS: model.Namespace{
+			DB:         db,
+			Collection: taskCollection,
+		},
+		Query: bson.M{
+			requesterKey: evergreen.RepotrackerVersionRequester,
+		},
+		Limit: limit,
+		JobID: "migration-builds-tasks",
+	}
+
+	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
+}
+
+// orpganedTaskCleanup, given a task, will:
+// 1. If it's version doesn't exist, remove the build and it's tasks
+// 2. Check it's task cache, and ensure that all listed tasks exist, removing
+//    any that do not exist
+func makeOrphanedTaskCleanup(database string) db.MigrationOperation {
+	const (
+		idKey      = "_id"
+		tasksKey   = "tasks"
+		versionKey = "version"
+		buildIDKey = "build_id"
+	)
+	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
+
+		versionID := ""
+		buildID := ""
+		taskID := ""
+
+		for i := range rawD {
+			switch rawD[i].Name {
+			case idKey:
+				if err := rawD[i].Value.Unmarshal(&taskID); err != nil {
+					return errors.Wrap(err, "error unmarshaling id")
+				}
+
+			case buildIDKey:
+				if err := rawD[i].Value.Unmarshal(&buildID); err != nil {
+					return errors.Wrap(err, "error unmarshaling tasks")
+				}
+
+			case versionKey:
+				if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
+					return errors.Wrap(err, "error unmarshaling version")
+				}
+			}
+		}
+
+		queryVersion := session.DB(database).C(versionCollection).FindId(versionID)
+		queryBuild := session.DB(database).C(buildCollection).FindId(buildID)
+		errV := queryVersion.One(nil)
+		errB := queryBuild.One(nil)
+
+		if errV == mgo.ErrNotFound || errB == mgo.ErrNotFound {
+			return errors.WithStack(session.DB(database).C(taskCollection).RemoveId(taskID))
+		}
+		if errV != nil {
+			return errV
+		}
+		if errB != nil {
+			return errB
+		}
+
+		return nil
+	}
+}
