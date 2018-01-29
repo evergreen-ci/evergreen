@@ -71,6 +71,10 @@ func (opts Options) Application(env anser.Environment) (*anser.Application, erro
 		// addExecutionToTasksGenerator,
 		oldTestResultsGenerator,
 		testResultsGenerator,
+		orphanedVersionCleanupGenerator,
+		orphanedBuildCleanupGenerator,
+		orphanedTaskCleanupGenerator,
+		duplicateVersionsCleanup,
 	}
 
 	catcher := grip.NewBasicCatcher()

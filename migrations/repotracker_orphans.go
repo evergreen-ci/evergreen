@@ -195,7 +195,7 @@ func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
 		err := query.One(nil)
 
 		if err == mgo.ErrNotFound {
-			err := session.DB(database).C(taskCollection).Remove(bson.M{
+			err = session.DB(database).C(taskCollection).Remove(bson.M{
 				buildIDKey: buildID,
 			})
 			if err != nil && err != mgo.ErrNotFound {
@@ -275,7 +275,6 @@ func orphanedTaskCleanupGenerator(env anser.Environment, db string, limit int) (
 func makeOrphanedTaskCleanup(database string) db.MigrationOperation {
 	const (
 		idKey      = "_id"
-		tasksKey   = "tasks"
 		versionKey = "version"
 		buildIDKey = "build_id"
 	)
