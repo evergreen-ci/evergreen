@@ -13,9 +13,7 @@ import (
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/goamz/goamz/ec2"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -101,32 +99,6 @@ func osBillingName(os osType) string {
 		return "Linux"
 	}
 	return string(os)
-}
-
-//GetInstanceInfo returns the full ec2 instance info for the given instance ID.
-//Note that this is the *instance* id, not the spot request ID, which is different.
-func GetInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, error) {
-	resp, err := ec2Handle.DescribeInstances([]string{instanceId}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	reservation := resp.Reservations
-	if len(reservation) < 1 {
-		err = errors.Errorf("No reservation found for instance id: %s", instanceId)
-		grip.Error(err)
-		return nil, err
-	}
-
-	instances := reservation[0].Instances
-	if len(instances) < 1 {
-		err = errors.Errorf("'%v' was not found in reservation '%v'",
-			instanceId, resp.Reservations[0].ReservationId)
-		grip.Error(err)
-		return nil, err
-	}
-
-	return &instances[0], nil
 }
 
 //ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
