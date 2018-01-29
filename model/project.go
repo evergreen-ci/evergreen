@@ -290,14 +290,14 @@ type TaskGroup struct {
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	// data about the task group
-	MaxHosts      int                 `yaml:"max_hosts" bson:"max_hosts"`
-	SetupGroup    []PluginCommandConf `yaml:"setup_group" bson:"setup_group"`
-	TeardownGroup []PluginCommandConf `yaml:"teardown_group" bson:"teardown_group"`
-	SetupTask     []PluginCommandConf `yaml:"setup_task" bson:"setup_task"`
-	TeardownTask  []PluginCommandConf `yaml:"teardown_task" bson:"teardown_task"`
-	Timeout       *YAMLCommandSet     `yaml:"timeout,omitempty" bson:"timeout"`
-	Tasks         []string            `yaml:"tasks" bson:"tasks"`
-	Tags          []string            `yaml:"tags,omitempty" bson:"tags"`
+	MaxHosts      int             `yaml:"max_hosts" bson:"max_hosts"`
+	SetupGroup    *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
+	TeardownGroup *YAMLCommandSet `yaml:"teardown_group" bson:"teardown_group"`
+	SetupTask     *YAMLCommandSet `yaml:"setup_task" bson:"setup_task"`
+	TeardownTask  *YAMLCommandSet `yaml:"teardown_task" bson:"teardown_task"`
+	Timeout       *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
+	Tasks         []string        `yaml:"tasks" bson:"tasks"`
+	Tags          []string        `yaml:"tags,omitempty" bson:"tags"`
 }
 
 // Unmarshalled from the "tasks" list in the project file

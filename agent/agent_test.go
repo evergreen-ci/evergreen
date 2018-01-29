@@ -388,7 +388,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	s.Empty(tc.taskDirectory)
 }
 
-func (s *AgentSuite) TestRunPreGroupCommands() {
+func (s *AgentSuite) TestPreGroupCommands() {
 	s.tc.taskGroup = "task_group_name"
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
@@ -402,8 +402,8 @@ func (s *AgentSuite) TestRunPreGroupCommands() {
 			TaskGroups: []model.TaskGroup{
 				model.TaskGroup{
 					Name: "task_group_name",
-					SetupGroup: []model.PluginCommandConf{
-						model.PluginCommandConf{
+					SetupGroup: &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
 							Command: "shell.exec",
 							Params: map[string]interface{}{
 								"working_dir": testutil.GetDirectoryOfFile(),
@@ -417,9 +417,7 @@ func (s *AgentSuite) TestRunPreGroupCommands() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	s.a.runPreTaskCommands(ctx, s.tc)
-
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[1].Message)
@@ -427,7 +425,7 @@ func (s *AgentSuite) TestRunPreGroupCommands() {
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
 }
 
-func (s *AgentSuite) TestRunPostGroupCommands() {
+func (s *AgentSuite) TestPostGroupCommands() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -438,8 +436,8 @@ func (s *AgentSuite) TestRunPostGroupCommands() {
 		Project: &model.Project{},
 	}
 	tg := &model.TaskGroup{
-		TeardownGroup: []model.PluginCommandConf{
-			model.PluginCommandConf{
+		TeardownGroup: &model.YAMLCommandSet{
+			SingleCommand: &model.PluginCommandConf{
 				Command: "shell.exec",
 				Params: map[string]interface{}{
 					"working_dir": testutil.GetDirectoryOfFile(),
@@ -450,12 +448,43 @@ func (s *AgentSuite) TestRunPostGroupCommands() {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	s.a.runPostGroupCommands(ctx, s.tc, tg)
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished 'shell.exec'")
+}
+
+func (s *AgentSuite) TestTimeoutGroupCommands() {
+	s.tc.task = client.TaskData{
+		ID:     "task_id",
+		Secret: "task_secret",
+	}
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id: "task_id",
+		},
+		Project: &model.Project{
+			Timeout: &model.YAMLCommandSet{
+				SingleCommand: &model.PluginCommandConf{
+					Command: "shell.exec",
+					Params: map[string]interface{}{
+						"script": "echo hi",
+					},
+				},
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.a.runTaskTimeoutCommands(ctx, s.tc)
+	_ = s.tc.logger.Close()
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
+	s.Contains(msgs[len(msgs)-3].Message, "Finished 'shell.exec'")
 }
 
 func TestAgentConstructorSetsHostData(t *testing.T) {
