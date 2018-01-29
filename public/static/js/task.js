@@ -340,7 +340,7 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     }, {
       name: 'Sequence',
       by: ['test_result'],
-      reverse: true
+      reverse: false
     }];
 
     var totalTestTime = 0;
