@@ -33,16 +33,17 @@ type PatchIntentUnitsSuite struct {
 	env    *mock.Environment
 	cancel context.CancelFunc
 
-	repo     string
-	headRepo string
-	prNumber int
-	user     string
-	hash     string
-	diffURL  string
-	desc     string
-	project  string
-	variants []string
-	tasks    []string
+	repo            string
+	headRepo        string
+	prNumber        int
+	user            string
+	hash            string
+	diffURL         string
+	desc            string
+	project         string
+	variants        []string
+	tasks           []string
+	githubPatchData patch.GithubPatch
 
 	suite.Suite
 }
@@ -101,6 +102,17 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.user = evergreen.GithubPatchUser
 	s.hash = "776f608b5b12cd27b8d931c8ee4ca0c13f857299"
 	s.diffURL = "https://github.com/evergreen-ci/evergreen/pull/448.diff"
+	s.githubPatchData = patch.GithubPatch{
+		PRNumber:   448,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "master",
+		HeadOwner:  "richardsamuels",
+		HeadRepo:   "evergreen",
+		HeadHash:   "something",
+		Author:     "richardsamuels",
+		DiffURL:    "https://github.com/evergreen-ci/evergreen/pull/448.diff",
+	}
 	s.desc = "Test!"
 	s.project = "mci"
 	s.variants = []string{"ubuntu1604", "ubuntu1604-arm64", "ubuntu1604-debug", "race-detector"}
@@ -133,14 +145,18 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
 	flags := admin.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	patchContent, err := fetchDiffByURL(s.diffURL)
+	patchContent, err := fetchDiffByURL(&s.githubPatchData, githubOauthToken)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
+	s.NotEqual("{", patchContent[0])
 
 	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
 	s.NoError(err)
@@ -306,4 +322,8 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Len(unprocessedIntents, 1)
 
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
+}
+
+func (s *PatchIntentUnitsSuite) TestBuildPatchURL() {
+	s.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&s.githubPatchData))
 }
