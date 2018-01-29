@@ -542,6 +542,9 @@ tasks:
     name: race-db
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
+    name: race-cloud
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
     name: race-repotracker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
