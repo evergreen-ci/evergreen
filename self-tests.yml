@@ -44,7 +44,6 @@ post:
 #######################################
 variables:
   - &generic-linux-distros
-    - archlinux-test
     - rhel62-test
     - rhel70-small
     - rhel62-small
