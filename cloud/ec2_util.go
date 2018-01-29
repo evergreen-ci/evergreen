@@ -1,28 +1,19 @@
 package cloud
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"math"
-	"net/http"
 	"os"
 	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/ec2"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -110,60 +101,6 @@ func osBillingName(os osType) string {
 	return string(os)
 }
 
-//helper function for getting an EC2 handle at US east
-func getUSEast(creds aws.Auth) (*ec2.EC2, *http.Client) {
-	client := util.GetHttpClient()
-	return ec2.NewWithClient(creds, aws.USEast, client), client
-}
-
-func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
-	if keyPath == "" {
-		return []string{}, errors.New("No key specified for EC2 host")
-	}
-	opts := []string{"-i", keyPath}
-	hasKnownHostsFile := false
-
-	for _, opt := range h.Distro.SSHOptions {
-		opt = strings.Trim(opt, " \t")
-		opts = append(opts, "-o", opt)
-		if strings.HasPrefix(opt, "UserKnownHostsFile") {
-			hasKnownHostsFile = true
-		}
-	}
-
-	if !hasKnownHostsFile {
-		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
-	}
-
-	return opts, nil
-}
-
-//GetInstanceInfo returns the full ec2 instance info for the given instance ID.
-//Note that this is the *instance* id, not the spot request ID, which is different.
-func GetInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, error) {
-	resp, err := ec2Handle.DescribeInstances([]string{instanceId}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	reservation := resp.Reservations
-	if len(reservation) < 1 {
-		err = errors.Errorf("No reservation found for instance id: %s", instanceId)
-		grip.Error(err)
-		return nil, err
-	}
-
-	instances := reservation[0].Instances
-	if len(instances) < 1 {
-		err = errors.Errorf("'%v' was not found in reservation '%v'",
-			instanceId, resp.Reservations[0].ReservationId)
-		grip.Error(err)
-		return nil, err
-	}
-
-	return &instances[0], nil
-}
-
 //ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
 //provider-specific status codes.
 func ec2StatusToEvergreenStatus(ec2Status string) CloudStatus {
@@ -235,21 +172,6 @@ func makeTags(intentHost *host.Host) map[string]string {
 	return tags
 }
 
-//attachTags makes a call to EC2 to attach the given map of tags to a resource.
-func attachTags(ec2Handle *ec2.EC2, tags map[string]string, instance string) error {
-	return attachTagsToResources(ec2Handle, tags, []string{instance})
-}
-
-func attachTagsToResources(ec2Handle *ec2.EC2, tags map[string]string, instances []string) error {
-	tagSlice := []ec2.Tag{}
-	for tag, value := range tags {
-		tagSlice = append(tagSlice, ec2.Tag{tag, value})
-	}
-
-	_, err := ec2Handle.CreateTags(instances, tagSlice)
-	return err
-}
-
 func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	if usesHourlyBilling(h) {
 		return timeTilNextHourlyPayment(h)
@@ -287,181 +209,12 @@ func timeTilNextHourlyPayment(host *host.Host) time.Duration {
 // ebsRegex extracts EBS Price JSON data from Amazon's UI.
 var ebsRegex = regexp.MustCompile(`(?s)callback\((.*)\)`)
 
-// ebsPriceFetcher is an interface for types capable of returning EBS price data.
-// Data is in the form of map[AVAILABILITY_ZONE]PRICE.
-type ebsPriceFetcher interface {
-	FetchEBSPrices() (map[string]float64, error)
-}
-
-// cachedEBSPriceFetcher is a threadsafe price fetcher that only grabs EBS price
-// data once during a program's execution. Prices change so infrequently that
-// this is safe to do.
-type cachedEBSPriceFetcher struct {
-	prices map[string]float64
-	m      sync.Mutex
-}
-
-// package-level price fetcher for all requests
-var pkgEBSFetcher cachedEBSPriceFetcher
-
-// FetchEBSPrices returns an EBS zone->price map. If the prices aren't cached,
-// it makes a request to Amazon and caches them before returning.
-func (cpf *cachedEBSPriceFetcher) FetchEBSPrices() (map[string]float64, error) {
-	cpf.m.Lock()
-	defer cpf.m.Unlock()
-	if prices := cpf.prices; prices != nil {
-		return prices, nil
-	} else {
-		ps, err := fetchEBSPricing()
-		if err != nil {
-			return nil, errors.Wrap(err, "fetching EBS prices")
-		}
-		cpf.prices = ps
-		return ps, nil
-	}
-}
-
-// fetchEBSPricing does the dirty work of scraping price information from Amazon.
-func fetchEBSPricing() (map[string]float64, error) {
-	// there is no true EBS pricing API, so we have to wrangle it from EC2's frontend
-	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
-	grip.Debugln("Loading EBS pricing from", endpoint)
-
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
-
-	resp, err := client.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return nil, errors.Wrapf(err, "fetching %s", endpoint)
-	}
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading response body")
-	}
-	matches := ebsRegex.FindSubmatch(data)
-	if len(matches) < 2 {
-		return nil, errors.Errorf("could not find price JSON in response from %v", endpoint)
-	}
-	// define a one-off type for storing results from the price JSON
-	prices := struct {
-		Config struct {
-			Regions []struct {
-				Region string
-				Types  []struct {
-					Name   string
-					Values []struct {
-						Prices struct {
-							USD string
-						}
-					}
-				}
-			}
-		}
-	}{}
-	err = json.Unmarshal(matches[1], &prices)
-	if err != nil {
-		return nil, errors.Wrap(err, "parsing price JSON")
-	}
-	fmt.Printf("%+v\n", prices)
-
-	pricePerRegion := map[string]float64{}
-	for _, r := range prices.Config.Regions {
-		for _, t := range r.Types {
-			// only cache "general purpose" pricing for now
-			if strings.Contains(t.Name, "ebsGPSSD") {
-				if len(t.Values) == 0 {
-					continue
-				}
-				price, err := strconv.ParseFloat(t.Values[0].Prices.USD, 64)
-				if err != nil {
-					continue
-				}
-				pricePerRegion[r.Region] = price
-			}
-		}
-	}
-	// one final sanity check that we actually pulled information, which will alert
-	// us if, say, Amazon changes the structure of their JSON
-	if len(pricePerRegion) == 0 {
-		return nil, errors.Errorf("unable to parse prices from %v", endpoint)
-	}
-	return pricePerRegion, nil
-}
-
-// blockDeviceCosts returns the total price of a slice of BlockDevices over the given duration
-// by using the EC2 API.
-func blockDeviceCosts(handle *ec2.EC2, devices []ec2.BlockDevice, dur time.Duration) (float64, error) {
-	cost := 0.0
-	if len(devices) > 0 {
-		volumeIds := []string{}
-		for _, bd := range devices {
-			volumeIds = append(volumeIds, bd.EBS.VolumeId)
-		}
-		vols, err := handle.Volumes(volumeIds, nil)
-		if err != nil {
-			return 0, err
-		}
-		for _, v := range vols.Volumes {
-			// an amazon region is just the availability zone minus the final letter
-			region := azToRegion(v.AvailZone)
-			size, err := strconv.Atoi(v.Size)
-			if err != nil {
-				return 0, errors.Wrap(err, "reading volume size")
-			}
-			p, err := ebsCost(&pkgEBSFetcher, region, int64(size), dur)
-			if err != nil {
-				return 0, errors.Wrapf(err, "EBS volume %v", v.VolumeId)
-			}
-			cost += p
-		}
-	}
-	return cost, nil
-}
-
-// ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
-// EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.
-func ebsCost(pf ebsPriceFetcher, region string, size int64, duration time.Duration) (float64, error) {
-	prices, err := pf.FetchEBSPrices()
-	if err != nil {
-		return 0.0, err
-	}
-	price, ok := prices[region]
-	if !ok {
-		return 0.0, errors.Errorf("no EBS price for region '%v'", region)
-	}
-	// price = GB * % of month *
-	month := (time.Hour * 24 * 30)
-
-	return float64(size) * (float64(duration) / float64(month)) * price, nil
-
-}
-
-// onDemandPriceFetcher is an interface for fetching the hourly price of a given
-// os/instance/region combination.
-type onDemandPriceFetcher interface {
-	FetchPrice(os osType, instance, region string) (float64, error)
-}
-
 // odInfo is an internal type for keying hosts by the attributes that affect billing.
 type odInfo struct {
 	os       string
 	instance string
 	region   string
 }
-
-// cachedOnDemandPriceFetcher is a thread-safe onDemandPriceFetcher that caches the results from
-// Amazon, allowing on long load on first access followed by virtually instant response time.
-type cachedOnDemandPriceFetcher struct {
-	prices map[odInfo]float64
-	m      sync.Mutex
-}
-
-// pkgOnDemandPriceFetcher is a package-level cached price fetcher.
-// Pricing logic uses this by default to speed up price calculations.
-var pkgOnDemandPriceFetcher cachedOnDemandPriceFetcher
 
 // Terms is an internal type for loading price API results into.
 type Terms struct {
@@ -489,93 +242,7 @@ func (t Terms) skuPrice(sku string) float64 {
 	return 0
 }
 
-// FetchPrice returns the hourly price of a host based on its attributes. A pricing table
-// is cached after the first communication with Amazon to avoid expensive API calls.
-func (cpf *cachedOnDemandPriceFetcher) FetchPrice(os osType, instance, region string) (float64, error) {
-	cpf.m.Lock()
-	defer cpf.m.Unlock()
-	if cpf.prices == nil {
-		if err := cpf.cachePrices(); err != nil {
-			return 0, errors.Wrap(err, "loading On Demand price data")
-		}
-	}
-	region, err := regionFullname(region)
-	if err != nil {
-		return 0, err
-	}
-	return cpf.prices[odInfo{
-		os: osBillingName(os), instance: instance, region: region,
-	}], nil
-}
-
-// cachePrices updates the internal cache with Amazon data.
-func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
-	cpf.prices = map[odInfo]float64{}
-	// the On Demand pricing API is not part of the normal EC2 API
-	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
-	grip.Debugln("Loading On Demand pricing from", endpoint)
-
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
-
-	resp, err := client.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return errors.Wrapf(err, "fetching %v", endpoint)
-	}
-	grip.Debug("Parsing On Demand pricing")
-	details := struct {
-		Terms    Terms
-		Products map[string]struct {
-			SKU           string
-			ProductFamily string
-			Attributes    struct {
-				Location        string
-				InstanceType    string
-				PreInstalledSW  string
-				OperatingSystem string
-				Tenancy         string
-				LicenseModel    string
-			}
-		}
-	}{}
-	if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
-		return errors.Wrap(err, "parsing response body")
-	}
-
-	for _, p := range details.Products {
-		if p.ProductFamily == "Compute Instance" &&
-			p.Attributes.PreInstalledSW == "NA" &&
-			p.Attributes.Tenancy == "Shared" &&
-			p.Attributes.LicenseModel != "Bring your own license" {
-			// the product description does not include pricing information,
-			// so we must look up the SKU in the "Terms" section.
-			price := details.Terms.skuPrice(p.SKU)
-			cpf.prices[odInfo{
-				os:       p.Attributes.OperatingSystem,
-				instance: p.Attributes.InstanceType,
-				region:   p.Attributes.Location,
-			}] = price
-		}
-	}
-	return nil
-}
-
-// onDemandCost is a helper for calculating the price of an On Demand instance using the given price fetcher.
-func onDemandCost(pf onDemandPriceFetcher, os osType, instance, region string, dur time.Duration) (float64, error) {
-	price, err := pf.FetchPrice(os, instance, region)
-	if err != nil {
-		return 0, err
-	}
-	if price == 0 {
-		return 0, errors.New("price not found in EC2 price listings")
-	}
-	return price * dur.Hours(), nil
-}
-
-func newMakeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
+func makeBlockDeviceMappings(mounts []MountPoint) ([]*ec2aws.BlockDeviceMapping, error) {
 	if len(mounts) == 0 {
 		return nil, nil
 	}

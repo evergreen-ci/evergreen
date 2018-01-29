@@ -68,7 +68,7 @@ func (s *EC2ProviderSettings) Validate() error {
 	if s.IsVpc && s.SubnetId == "" {
 		return errors.New("must set a default subnet for a vpc")
 	}
-	if _, err := newMakeBlockDeviceMappings(s.MountPoints); err != nil {
+	if _, err := makeBlockDeviceMappings(s.MountPoints); err != nil {
 		return errors.Wrap(err, "block device mappings invalid")
 	}
 	return nil
@@ -307,7 +307,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
 	}
 
-	blockDevices, err := newMakeBlockDeviceMappings(ec2Settings.MountPoints)
+	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
 		return nil, errors.Wrap(err, "error making block device mappings")
 	}

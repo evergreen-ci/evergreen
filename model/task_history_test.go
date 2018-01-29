@@ -1179,7 +1179,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 
 func TestTaskHistoryPickaxe(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t, "error clearing collections")
-	assert := assert.New(t)
+	assert := assert.New(t) // nolint
 	proj := Project{
 		Identifier: "proj",
 	}
