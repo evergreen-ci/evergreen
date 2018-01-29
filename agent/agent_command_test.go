@@ -63,9 +63,11 @@ func (s *CommandSuite) TestShellExec() {
 			ID:     taskID,
 			Secret: taskSecret,
 		},
+		runGroupSetup: true,
 	}
 	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)
+	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
@@ -113,6 +115,7 @@ func (s *CommandSuite) TestS3Copy() {
 	}
 	err := s.a.resetLogging(ctx, tc)
 	s.NoError(err)
+	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 

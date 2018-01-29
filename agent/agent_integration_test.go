@@ -89,6 +89,7 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 			errChan <- err
 			return
 		}
+		defer s.a.removeTaskDirectory(s.tc)
 		errChan <- s.a.runTask(tskCtx, s.tc)
 	}()
 	cancel()

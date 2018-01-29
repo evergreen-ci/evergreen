@@ -107,14 +107,16 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		tc.logger.Task().Info("task canceled")
 		return
 	}
-	newDir, err := a.createTaskDirectory(tc)
-	if err != nil {
-		tc.logger.Execution().Errorf("error creating task directory: %s", err)
-		complete <- evergreen.TaskFailed
-		return
+	if tc.runGroupSetup {
+		tc.taskDirectory, err = a.createTaskDirectory(tc)
+		if err != nil {
+			tc.logger.Execution().Errorf("error creating task directory: %s", err)
+			complete <- evergreen.TaskFailed
+			return
+		}
 	}
-	tc.taskDirectory = newDir
-	taskConfig.Expansions.Put("workdir", newDir)
+	tc.taskConfig.WorkDir = tc.taskDirectory
+	taskConfig.Expansions.Put("workdir", tc.taskConfig.WorkDir)
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
@@ -135,12 +137,21 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
-	if tc.taskConfig.Project.Pre != nil {
+	if tc.runGroupSetup {
+		var err error
 		tc.logger.Execution().Info("Running pre-task commands.")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false)
+
+		// note that if there is a named TaskGroup without a SetupGroup, we do NOT fall back to Pre
+		if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+			err = a.runCommands(ctx, tc, taskGroup.SetupGroup, false)
+		} else if tc.taskConfig.Project.Pre != nil {
+			err = a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false)
+		} else {
+			return
+		}
 		if err != nil {
 			tc.logger.Execution().Errorf("Running pre-task script failed: %v", err)
 		}
