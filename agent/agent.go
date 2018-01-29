@@ -303,12 +303,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false)
-		if err != nil {
-			tc.logger.Execution().Errorf("Error running post-task command: %v", err)
-		} else {
-			tc.logger.Task().Infof("Finished running post-task commands in %v.", time.Since(start).String())
-		}
-		grip.Info("Finished running post-task commands")
+		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
 }
 
@@ -319,8 +315,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext, taskG
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
-	var err error
-	err = a.runCommands(ctx, tc, taskGroup.TeardownGroup, false)
+	err := a.runCommands(ctx, tc, taskGroup.TeardownGroup, false)
 	if err != nil {
 		grip.Errorf("Error running post-task command: %v", err)
 	} else {
