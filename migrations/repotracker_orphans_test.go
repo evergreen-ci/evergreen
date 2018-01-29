@@ -27,11 +27,10 @@ func init() {
 type testOrphanDeletion struct {
 	suite.Suite
 
-	env       *evgmock.Environment
-	dbName    string
-	migration db.MigrationOperation
-	session   db.Session
-	cancel    func()
+	env     *evgmock.Environment
+	dbName  string
+	session db.Session
+	cancel  func()
 }
 
 func TestCleanupOrphans(t *testing.T) {
@@ -47,11 +46,10 @@ func TestCleanupOrphans(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := &testOrphanDeletion{
-		env:       &evgmock.Environment{},
-		dbName:    database.Name,
-		migration: orphanedVersionCleanup,
-		session:   session,
-		cancel:    cancel,
+		env:     &evgmock.Environment{},
+		dbName:  database.Name,
+		session: session,
+		cancel:  cancel,
 	}
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))

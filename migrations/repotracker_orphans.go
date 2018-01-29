@@ -13,21 +13,30 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	buildCollection   = "builds"
+	versionCollection = "versions"
+	taskCollection    = "tasks"
+
+	requesterKey = "r"
+	statusKey    = "status"
+)
+
 func orphanedVersionCleanupGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
 	const migrationName = "clean_orphaned_versions"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, orphanedVersionCleanup); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeOrphanedVersionCleanup(db)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
-			Collection: version.Collection,
+			Collection: versionCollection,
 		},
 		Query: bson.M{
-			version.RequesterKey: evergreen.RepotrackerVersionRequester,
-			version.StatusKey:    evergreen.VersionCreated, // TODO is this true?
+			requesterKey: evergreen.RepotrackerVersionRequester,
+			statusKey:    evergreen.VersionCreated, // TODO is this true?
 		},
 		Limit: limit,
 		JobID: "migration-versions-orphans",
@@ -36,88 +45,89 @@ func orphanedVersionCleanupGenerator(env anser.Environment, db string, limit int
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-func orphanedVersionCleanup(session db.Session, rawD bson.RawD) error {
-	defer session.Close()
+func makeOrphanedVersionCleanup(database string) db.MigrationOperation {
+	const (
+		idKey            = "_id"
+		buildStatusesKey = "build_variants_status"
+		buildIDsKey      = "builds"
+	)
+	return func(session db.Session, rawD bson.RawD) error {
+		defer session.Close()
 
-	bstatuses := []version.BuildStatus{}
-	builds := []string{}
-	versionID := ""
+		bstatuses := []version.BuildStatus{}
+		builds := []string{}
+		versionID := ""
 
-	for i := range rawD {
-		switch rawD[i].Name {
-		case version.IdKey:
-			if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
-				return errors.Wrap(err, "error unmarshaling id")
-			}
+		for i := range rawD {
+			switch rawD[i].Name {
+			case idKey:
+				if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
+					return errors.Wrap(err, "error unmarshaling id")
+				}
 
-		case version.BuildVariantsKey:
-			if err := rawD[i].Value.Unmarshal(&bstatuses); err != nil {
-				return errors.Wrap(err, "error unmarshaling build statuses")
-			}
+			case buildStatusesKey:
+				if err := rawD[i].Value.Unmarshal(&bstatuses); err != nil {
+					return errors.Wrap(err, "error unmarshaling build statuses")
+				}
 
-		case version.BuildIdsKey:
-			if err := rawD[i].Value.Unmarshal(&builds); err != nil {
-				return errors.Wrap(err, "error unmarshaling builds")
-			}
-		}
-	}
-
-	buildMap := map[string]*build.Build{}
-
-	newBuilds := []string{}
-	for _, buildID := range builds {
-		b, ok := buildMap[buildID]
-		if !ok {
-			var err error
-			b, err = build.FindOne(build.ById(buildID))
-			if err != nil {
-				return errors.Wrapf(err, "error fetching build %s", buildID)
-			}
-			if b != nil {
-				buildMap[buildID] = b
+			case buildIDsKey:
+				if err := rawD[i].Value.Unmarshal(&builds); err != nil {
+					return errors.Wrap(err, "error unmarshaling builds")
+				}
 			}
 		}
 
-		if b != nil {
+		buildMap := map[string]bool{}
+
+		newBuilds := []string{}
+		for _, buildID := range builds {
+			_, ok := buildMap[buildID]
+			if !ok {
+				query := session.DB(database).C(buildCollection).FindId(buildID)
+				err := query.One(nil)
+				if err == mgo.ErrNotFound {
+					continue
+				}
+				if err != nil {
+					return errors.Wrapf(err, "error fetching build %s", buildID)
+				}
+				buildMap[buildID] = true
+			}
+
 			newBuilds = append(newBuilds, buildID)
 		}
-	}
 
-	newBuildStatuses := []version.BuildStatus{}
-	for _, bstatus := range bstatuses {
-		b, ok := buildMap[bstatus.BuildId]
-		if !ok {
-			var err error
-			b, err = build.FindOne(build.ById(bstatus.BuildId))
-			if err != nil {
-				return errors.Wrapf(err, "error fetching build %s", bstatus.BuildId)
+		newBuildStatuses := []version.BuildStatus{}
+		for _, bstatus := range bstatuses {
+			_, ok := buildMap[bstatus.BuildId]
+			if !ok {
+				query := session.DB(database).C(buildCollection).FindId(bstatus.BuildId)
+				err := query.One(nil)
+				if err == mgo.ErrNotFound {
+					continue
+				}
+				if err != nil {
+					return errors.Wrapf(err, "error fetching build %s", bstatus.BuildId)
+				}
+				buildMap[bstatus.BuildId] = true
 			}
 
-			if b != nil {
-				buildMap[bstatus.BuildId] = b
-			}
-		}
-
-		if b != nil {
 			newBuildStatuses = append(newBuildStatuses, bstatus)
 		}
-	}
 
-	selector := bson.M{
-		version.IdKey: versionID,
-	}
-	if len(newBuilds) == 0 && len(newBuildStatuses) == 0 {
-		return version.RemoveOne(selector)
-	}
+		if len(newBuilds) == 0 && len(newBuildStatuses) == 0 {
+			return session.DB(database).C(versionCollection).RemoveId(versionID)
+		}
 
-	update := bson.M{
-		"$set": bson.M{
-			version.BuildIdsKey:      newBuilds,
-			version.BuildVariantsKey: newBuildStatuses,
-		},
-	}
+		update := bson.M{
+			"$set": bson.M{
+				buildIDsKey:      newBuilds,
+				buildStatusesKey: newBuildStatuses,
+			},
+		}
 
-	return version.UpdateOne(selector, update)
+		return session.DB(database).C(versionCollection).UpdateId(versionID, update)
+	}
 }
 
 func orphanedBuildCleanupGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
@@ -130,11 +140,11 @@ func orphanedBuildCleanupGenerator(env anser.Environment, db string, limit int) 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
 			DB:         db,
-			Collection: build.Collection,
+			Collection: buildCollection,
 		},
 		Query: bson.M{
-			build.RequesterKey: evergreen.RepotrackerVersionRequester,
-			build.StatusKey:    evergreen.BuildCreated, // TODO is this true?
+			requesterKey: evergreen.RepotrackerVersionRequester,
+			statusKey:    evergreen.BuildCreated, // TODO is this true?
 		},
 		Limit: limit,
 		JobID: "migration-builds-orphans",
@@ -148,6 +158,12 @@ func orphanedBuildCleanupGenerator(env anser.Environment, db string, limit int) 
 // 2. Check it's task cache, and ensure that all listed tasks exist, removing
 //    any that do not exist
 func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
+	const (
+		idKey      = "_id"
+		tasksKey   = "tasks"
+		versionKey = "version"
+		buildIDKey = "build_id"
+	)
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
 
@@ -157,33 +173,35 @@ func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
 
 		for i := range rawD {
 			switch rawD[i].Name {
-			case build.IdKey:
+			case idKey:
 				if err := rawD[i].Value.Unmarshal(&buildID); err != nil {
 					return errors.Wrap(err, "error unmarshaling id")
 				}
 
-			case build.TasksKey:
+			case tasksKey:
 				if err := rawD[i].Value.Unmarshal(&cachedTasks); err != nil {
 					return errors.Wrap(err, "error unmarshaling tasks")
 				}
 
-			case build.VersionKey:
+			case versionKey:
 				if err := rawD[i].Value.Unmarshal(&versionID); err != nil {
 					return errors.Wrap(err, "error unmarshaling version")
 				}
 			}
 		}
 
-		query := session.DB(database).C(version.Collection).FindId(versionID)
-		v := version.Version{}
-		err := query.One(&v)
+		query := session.DB(database).C(versionCollection).FindId(versionID)
+		err := query.One(nil)
 
 		if err == mgo.ErrNotFound {
-			if err := session.DB(database).C(task.Collection).Remove(bson.M{task.BuildIdKey: buildID}); err != nil {
+			err := session.DB(database).C(taskCollection).Remove(bson.M{
+				buildIDKey: buildID,
+			})
+			if err != nil && err != mgo.ErrNotFound {
 				return errors.Wrap(err, "error deleting tasks for build")
 			}
 
-			return session.DB(database).C(build.Collection).Remove(bson.M{build.IdKey: buildID})
+			return errors.WithStack(session.DB(database).C(buildCollection).RemoveId(buildID))
 		}
 		if err != nil {
 			return errors.WithStack(err)
@@ -197,8 +215,8 @@ func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
 		}
 
 		tasks := []task.Task{}
-		query = session.DB(database).C(task.Collection).Find(bson.M{
-			task.IdKey: bson.M{
+		query = session.DB(database).C(taskCollection).Find(bson.M{
+			idKey: bson.M{
 				"$in": cachedTaskIDs,
 			},
 		})
@@ -206,15 +224,13 @@ func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
 			return err
 		}
 		if len(tasks) == 0 {
-			return session.DB(database).C(build.Collection).Remove(bson.M{build.IdKey: buildID})
+			return errors.WithStack(session.DB(database).C(buildCollection).RemoveId(buildID))
 		}
 		if len(tasks) == len(cachedTasks) {
 			return nil
 		}
 
 		newTasksCache := []build.TaskCache{}
-		// TODO?: this does not deal with tasks that weren't listed in
-		// the task cache, but were found by the query.
 		for i := range tasks {
 			if tc, ok := cachedTasksMap[tasks[i].Id]; ok {
 				newTasksCache = append(newTasksCache, *tc)
@@ -223,10 +239,10 @@ func makeOrphanedBuildCleanup(database string) db.MigrationOperation {
 
 		update := bson.M{
 			"$set": bson.M{
-				build.TasksKey: newTasksCache,
+				tasksKey: newTasksCache,
 			},
 		}
 
-		return session.DB(database).C(build.Collection).Update(bson.M{build.IdKey: buildID}, update)
+		return errors.WithStack(session.DB(database).C(buildCollection).UpdateId(buildID, update))
 	}
 }
