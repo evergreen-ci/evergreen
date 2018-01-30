@@ -105,8 +105,8 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	instance, err := m.client.GetInstanceInfo(h.Id)
 	assert.NoError(err)
-	// the instance should be in state 32 (shutting-down) or 48 (terminated)
-	assert.Contains([]int64{32, 48}, *instance.State.Code)
+	// the instance should not be 16 (running), 64 (stopping), or 80 (stopped)
+	assert.NotContains([]int64{16, 64, 80}, *instance.State.Code)
 }
 
 func TestSpawnEC2InstanceSpot(t *testing.T) {
