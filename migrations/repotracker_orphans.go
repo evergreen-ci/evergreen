@@ -154,7 +154,7 @@ func orphanedBuildCleanupGenerator(env anser.Environment, db string, limit int) 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-// orpganedBuildCleanup, given a build, will:
+// orphanedBuildCleanup, given a build, will:
 // 1. If it's version doesn't exist, remove the build and it's tasks
 // 2. Check it's task cache, and ensure that all listed tasks exist, removing
 //    any that do not exist
@@ -270,7 +270,7 @@ func orphanedTaskCleanupGenerator(env anser.Environment, db string, limit int) (
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-// orpganedTaskCleanup, given a task, will delete it if the build or version
+// orphanedTaskCleanup, given a task, will delete it if the build or version
 // it claims to belong to doesn't exist
 func makeOrphanedTaskCleanup(database string) db.MigrationOperation {
 	const (
