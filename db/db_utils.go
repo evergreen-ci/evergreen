@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 
 	"gopkg.in/mgo.v2"
@@ -170,8 +171,22 @@ func UpdateId(collection string, id, update interface{}) error {
 }
 
 // UpdateAll updates all matching documents in the collection.
-func UpdateAll(collection string, query interface{},
-	update interface{}) (*mgo.ChangeInfo, error) {
+func UpdateAll(collection string, query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+	switch query.(type) {
+	case *Q, Q:
+		grip.EmergencyPanic(message.Fields{
+			"message":    "invalid query passed to update all",
+			"cause":      "programmer error",
+			"query":      query,
+			"collection": collection,
+		})
+	case nil:
+		grip.EmergencyPanic(message.Fields{
+			"message":    "nil query passed to update all",
+			"query":      query,
+			"collection": collection,
+		})
+	}
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
