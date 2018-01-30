@@ -589,7 +589,7 @@ func (h *Host) GetElapsedCommunicationTime() time.Duration {
 
 func DecommissionHostsWithDistroId(distroId string) error {
 	err := UpdateAll(
-		ByDistroId(distroId),
+		ByDistroIdDoc(distroId),
 		bson.M{
 			"$set": bson.M{
 				StatusKey: evergreen.HostDecommissioned,

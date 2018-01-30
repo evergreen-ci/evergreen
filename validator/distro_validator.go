@@ -14,6 +14,7 @@ type distroValidator func(*distro.Distro, *evergreen.Settings) []ValidationError
 
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
+	ensureHasNonZeroID,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
 	ensureValidExpansions,
@@ -153,5 +154,17 @@ func ensureValidSSHOptions(d *distro.Distro, s *evergreen.Settings) []Validation
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
 		}
 	}
+	return nil
+}
+
+func ensureHasNonZeroID(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+	if d == nil {
+		return []ValidationError{{Error, "distro cannot be nil"}}
+	}
+
+	if d.Id == "" {
+		return []ValidationError{{Error, "distro must specify id"}}
+	}
+
 	return nil
 }
