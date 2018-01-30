@@ -195,7 +195,7 @@ func (s *AgentSuite) TestRunPreTaskCommands() {
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands")
 }
 
-func (s *AgentSuite) TestRunPostTaskCommands() {
+func (s *AgentSuite) TestRunPost() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -424,6 +424,81 @@ func (s *AgentSuite) TestPreGroupCommands() {
 	s.Equal("Running pre-task commands.", msgs[1].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
 	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
+}
+
+func (s *AgentSuite) TestPreTaskCommands() {
+	s.tc.taskGroup = "task_group_name"
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+		},
+		Project: &model.Project{
+			TaskGroups: []model.TaskGroup{
+				model.TaskGroup{
+					Name: "task_group_name",
+					SetupTask: &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Params: map[string]interface{}{
+								"working_dir": testutil.GetDirectoryOfFile(),
+								"script":      "echo hi",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.a.runPreTaskCommands(ctx, s.tc)
+	_ = s.tc.logger.Close()
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Equal("Running pre-task commands.", msgs[1].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
+	s.Equal("Finished running pre-task commands.", msgs[len(msgs)-1].Message)
+}
+
+func (s *AgentSuite) TestRunPostTaskCommands() {
+	s.tc.taskGroup = "task_group_name"
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:        "task_id",
+			TaskGroup: "task_group_name",
+		},
+		Project: &model.Project{
+			TaskGroups: []model.TaskGroup{
+				model.TaskGroup{
+					Name: "task_group_name",
+					TeardownTask: &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Command: "shell.exec",
+							Params: map[string]interface{}{
+								"working_dir": testutil.GetDirectoryOfFile(),
+								"script":      "echo hi",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s.a.runPostTaskCommands(ctx, s.tc)
+	_ = s.tc.logger.Close()
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
+	s.Contains(msgs[len(msgs)-2].Message, "Finished 'shell.exec'")
+	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
 }
 
 func (s *AgentSuite) TestPostGroupCommands() {
