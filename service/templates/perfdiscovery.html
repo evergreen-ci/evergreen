@@ -7,4 +7,38 @@ Performance Discovery
 {{end}}
 
 {{define "content"}}
+<div ng-controller="PerformanceDiscoveryCtrl as $ctrl">
+  <ui-select ng-model="$ctrl.revisionSelect.selected"
+             style="width: 250px; display: inline-block;"
+             title="Choose revision...">
+    <ui-select-match>
+      <span ng-bind="$select.selected.name"></span>
+    </ui-select-match>
+    <ui-select-choices repeat="item in ($ctrl.revisionSelect.options | filter: $select.search) track by item.id">
+      <span ng-bind="item.name"></span>
+    </ui-select-choices>
+  </ui-select>
+
+  <ui-select ng-model="$ctrl.tagSelect.selected"
+             style="width: 250px; display: inline-block;"
+             title="Choose tag...">
+    <ui-select-match>
+      <span ng-bind="$select.selected.name"></span>
+    </ui-select-match>
+    <ui-select-choices repeat="item in ($ctrl.tagSelect.options | filter: $select.search) track by item.id">
+      <span ng-bind="item.name"></span>
+    </ui-select-choices>
+  </ui-select>
+
+  <br/>
+
+  <div
+    class="grid"
+    ui-grid="$ctrl.gridOptions"
+    ui-grid-resize-columns
+    ui-grid-move-columns
+    ui-grid-auto-resize
+    ui-grid-empty-base-layer
+  ></div>
+</div>
 {{end}}
