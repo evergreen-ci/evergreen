@@ -86,7 +86,6 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		"name":              "",
 		"evergreen-service": "",
 		"distro":            "",
-		"username":          "",
 	}
 	for i := range tags {
 		key := *tags[i].Key
@@ -95,8 +94,8 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	}
 	assert.Equal("test_distro", requiredTags["distro"])
 	assert.Equal("mci", requiredTags["owner"])
-	for _, requiredValue := range requiredTags {
-		assert.NotEmpty(requiredValue)
+	for requiredKey, requiredValue := range requiredTags {
+		assert.NotEmptyf(requiredValue, "%s is empty", requiredKey)
 	}
 	assert.NoError(m.TerminateInstance(h, evergreen.User))
 	foundHosts, err = host.Find(host.IsTerminated)
