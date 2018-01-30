@@ -21,7 +21,7 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 		}
 	}
 
-	settings, err := admin.GetSettings()
+	settings, err := admin.GetConfig()
 	if err != nil {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,

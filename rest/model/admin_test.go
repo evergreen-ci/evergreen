@@ -8,7 +8,7 @@ import (
 )
 
 type AdminModelSuite struct {
-	serviceSettings admin.AdminSettings
+	serviceSettings admin.Config
 	apiSettings     APIAdminSettings
 	restartResp     *RestartTasksResponse
 	suite.Suite
@@ -19,7 +19,7 @@ func TestAdminModelSuite(t *testing.T) {
 }
 
 func (s *AdminModelSuite) SetupSuite() {
-	s.serviceSettings = admin.AdminSettings{
+	s.serviceSettings = admin.Config{
 		Banner:      "banner text",
 		BannerTheme: admin.Information,
 		ServiceFlags: admin.ServiceFlags{
@@ -80,8 +80,8 @@ func (s *AdminModelSuite) TestToService() {
 	// test that ToService returns the correct model for valid input
 	serviceSettings, err := s.apiSettings.ToService()
 	s.NoError(err)
-	s.IsType(admin.AdminSettings{}, serviceSettings)
-	adminSettings := serviceSettings.(admin.AdminSettings)
+	s.IsType(admin.Config{}, serviceSettings)
+	adminSettings := serviceSettings.(admin.Config)
 	s.Equal(s.serviceSettings.Banner, adminSettings.Banner)
 	s.Equal(s.serviceSettings.BannerTheme, adminSettings.BannerTheme)
 	s.Equal(s.serviceSettings.ServiceFlags, adminSettings.ServiceFlags)

@@ -45,7 +45,7 @@ type RestartTasksResponse struct {
 // BuildFromService builds a model from the service layer
 func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *admin.AdminSettings:
+	case *admin.Config:
 		as.Banner = APIString(v.Banner)
 		as.BannerTheme = APIString(v.BannerTheme)
 		err := as.ServiceFlags.BuildFromService(v.ServiceFlags)
@@ -68,7 +68,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if !valid {
 		return nil, fmt.Errorf("%s is not a valid banner theme type", as.BannerTheme)
 	}
-	settings := admin.AdminSettings{
+	settings := admin.Config{
 		Banner:       string(as.Banner),
 		BannerTheme:  theme,
 		ServiceFlags: flags.(admin.ServiceFlags),

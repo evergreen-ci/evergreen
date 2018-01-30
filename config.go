@@ -41,7 +41,7 @@ type NaiveAuthConfig struct {
 type CrowdConfig struct {
 	Username string `bson:"username" json:"username" yaml:"username"`
 	Password string `bson:"password" json:"password" yaml:"password"`
-	Urlroot  string `bson:"urlroot" json:"urlroot" yaml:"urlroot"`
+	Urlroot  string `bson:"url_root" json:"url_root" yaml:"urlroot"`
 }
 
 // GithubAuthConfig holds settings for interacting with Github Authentication including the
@@ -63,9 +63,9 @@ type AuthConfig struct {
 
 // RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
-	NumNewRepoRevisionsToFetch int `bson:"numnewreporevisionstofetch" json:"numnewreporevisionstofetch" yaml:"numnewreporevisionstofetch"`
-	MaxRepoRevisionsToSearch   int `bson:"maxreporevisionstosearch" json:"maxreporevisionstosearch" yaml:"maxreporevisionstosearch"`
-	MaxConcurrentRequests      int `bson:"maxconcurrentrequests" json:"maxconcurrentrequests" yaml:"maxconcurrentrequests"`
+	NumNewRepoRevisionsToFetch int `bson:"revs_to_fetch" json:"revs_to_fetch" yaml:"numnewreporevisionstofetch"`
+	MaxRepoRevisionsToSearch   int `bson:"max_revs_to_search" json:"max_revs_to_search" yaml:"maxreporevisionstosearch"`
+	MaxConcurrentRequests      int `bson:"max_con_requests" json:"max_con_requests" yaml:"maxconcurrentrequests"`
 }
 
 type ClientBinary struct {
@@ -81,36 +81,36 @@ type ClientConfig struct {
 
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	HttpListenAddr      string `bson:"httplistenaddr" json:"httplistenaddr" yaml:"httplistenaddr"`
+	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret"`
 }
 
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
 	Url            string `bson:"url" json:"url" yaml:"url"`
-	HelpUrl        string `bson:"helpurl" json:"helpurl" yaml:"helpurl"`
-	HttpListenAddr string `bson:"httplistenaddr" json:"httplistenaddr" yaml:"httplistenaddr"`
+	HelpUrl        string `bson:"help_url" json:"help_url" yaml:"helpurl"`
+	HttpListenAddr string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	// Secret to encrypt session storage
 	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 	// Default project to assume when none specified, e.g. when using
 	// the /waterfall route use this project, while /waterfall/other-project
 	// then use `other-project`
-	DefaultProject string `bson:"defaultproject" json:"defaultproject" yaml:"defaultproject"`
+	DefaultProject string `bson:"default_project" json:"default_project" yaml:"defaultproject"`
 	// Cache results of template compilation, so you don't have to re-read files
 	// on every request. Note that if this is true, changes to HTML templates
 	// won't take effect until server restart.
-	CacheTemplates bool `bson:"cachetemplates" json:"cachetemplates" yaml:"cachetemplates"`
+	CacheTemplates bool `bson:"cache_templates" json:"cache_templates" yaml:"cachetemplates"`
 	// SecureCookies sets the "secure" flag on user tokens. Evergreen
 	// does not yet natively support SSL UI connections, but this option
 	// is available, for example, for deployments behind HTTPS load balancers.
-	SecureCookies bool `bson:"securecookies" json:"securecookies" yaml:"securecookies"`
+	SecureCookies bool `bson:"secure_cookies" json:"secure_cookies" yaml:"securecookies"`
 	// CsrfKey is a 32-byte key used to generate tokens that validate UI requests
-	CsrfKey string `bson:"csrfkey" json:"csrfkey" yaml:"csrfkey"`
+	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`
 }
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
-	SSHTimeoutSeconds int64 `bson:"sshtimeoutseconds" json:"sshtimeoutseconds" yaml:"sshtimeoutseconds"`
+	SSHTimeoutSeconds int64 `bson:"ssh_timeout_secs" json:"ssh_timeout_secs" yaml:"sshtimeoutseconds"`
 }
 
 // NotifyConfig hold logging and email settings for the notify package.
@@ -131,7 +131,7 @@ type SMTPConfig struct {
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	MergeToggle int    `bson:"mergetoggle" json:"mergetoggle" yaml:"mergetoggle"`
+	MergeToggle int    `bson:"merge_toggle" json:"merge_toggle" yaml:"mergetoggle"`
 	TaskFinder  string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
 }
 
@@ -146,7 +146,7 @@ type CloudProviders struct {
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	Secret string `bson:"aws_secret" json:"aws_secret"yaml:"aws_secret"`
+	Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
 	Id     string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
 }
 
@@ -265,35 +265,35 @@ type NewRelicConfig struct {
 
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	Database           DBSettings                `yaml:"database"`
-	WriteConcern       WriteConcern              `yaml:"write_concern"`
-	ConfigDir          string                    `yaml:"configdir"`
-	ApiUrl             string                    `yaml:"api_url"`
-	ClientBinariesDir  string                    `yaml:"client_binaries_dir"`
-	SuperUsers         []string                  `yaml:"superusers"`
-	Jira               JiraConfig                `yaml:"jira"`
-	Splunk             send.SplunkConnectionInfo `yaml:"splunk"`
-	Slack              SlackConfig               `yaml:"slack"`
-	Providers          CloudProviders            `yaml:"providers"`
-	Keys               map[string]string         `yaml:"keys"`
-	Credentials        map[string]string         `yaml:"credentials"`
-	AuthConfig         AuthConfig                `yaml:"auth"`
-	RepoTracker        RepoTrackerConfig         `yaml:"repotracker"`
-	Api                APIConfig                 `yaml:"api"`
 	Alerts             AlertsConfig              `yaml:"alerts"`
-	Ui                 UIConfig                  `yaml:"ui"`
-	HostInit           HostInitConfig            `yaml:"hostinit"`
-	Notify             NotifyConfig              `yaml:"notify"`
-	Scheduler          SchedulerConfig           `yaml:"scheduler"`
 	Amboy              AmboyConfig               `yaml:"amboy"`
+	Api                APIConfig                 `yaml:"api"`
+	ApiUrl             string                    `yaml:"api_url"`
+	AuthConfig         AuthConfig                `yaml:"auth"`
+	ClientBinariesDir  string                    `yaml:"client_binaries_dir"`
+	ConfigDir          string                    `yaml:"configdir"`
+	Credentials        map[string]string         `yaml:"credentials"`
+	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions"`
-	Plugins            PluginConfig              `yaml:"plugins"`
+	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org"`
+	HostInit           HostInitConfig            `yaml:"hostinit"`
 	IsNonProd          bool                      `yaml:"isnonprod"`
+	Jira               JiraConfig                `yaml:"jira"`
+	Keys               map[string]string         `yaml:"keys"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config"`
 	LogPath            string                    `yaml:"log_path"`
-	PprofPort          string                    `yaml:"pprof_port"`
-	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org"`
 	NewRelic           NewRelicConfig            `yaml:"new_relic"`
+	Notify             NotifyConfig              `yaml:"notify"`
+	Plugins            PluginConfig              `yaml:"plugins"`
+	PprofPort          string                    `yaml:"pprof_port"`
+	Providers          CloudProviders            `yaml:"providers"`
+	RepoTracker        RepoTrackerConfig         `yaml:"repotracker"`
+	Scheduler          SchedulerConfig           `yaml:"scheduler"`
+	Slack              SlackConfig               `yaml:"slack"`
+	Splunk             send.SplunkConnectionInfo `yaml:"splunk"`
+	SuperUsers         []string                  `yaml:"superusers"`
+	Ui                 UIConfig                  `yaml:"ui"`
+	WriteConcern       WriteConcern              `yaml:"write_concern"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.

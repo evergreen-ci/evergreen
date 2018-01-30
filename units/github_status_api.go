@@ -239,7 +239,7 @@ func (j *githubStatusUpdateJob) Run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	adminSettings, err := admin.GetSettings()
+	adminSettings, err := admin.GetConfig()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return

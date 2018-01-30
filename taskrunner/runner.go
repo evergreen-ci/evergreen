@@ -23,7 +23,7 @@ const (
 func (r *Runner) Name() string { return RunnerName }
 func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
-	adminSettings, err := admin.GetSettings()
+	adminSettings, err := admin.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}

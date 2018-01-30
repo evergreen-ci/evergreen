@@ -16,12 +16,12 @@ import (
 type DBAdminConnector struct{}
 
 // GetAdminSettings retrieves the admin settings document from the DB
-func (ac *DBAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
-	return admin.GetSettings()
+func (ac *DBAdminConnector) GetAdminSettings() (*admin.Config, error) {
+	return admin.GetConfig()
 }
 
 // SetAdminSettings sets the admin settings document in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u *user.DBUser) error {
+func (ac *DBAdminConnector) SetAdminSettings(settings *admin.Config, u *user.DBUser) error {
 	if err := ac.SetAdminBanner(settings.Banner, u); err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u *u
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
 func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
-	oldSettings, err := admin.GetSettings()
+	oldSettings, err := admin.GetConfig()
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) e
 		return fmt.Errorf("%s is not a valid banner theme type", themeString)
 	}
 
-	oldSettings, err := admin.GetSettings()
+	oldSettings, err := admin.GetConfig()
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) e
 
 // SetServiceFlags sets the service flags in the DB and event logs it
 func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DBUser) error {
-	oldSettings, err := admin.GetSettings()
+	oldSettings, err := admin.GetConfig()
 	if err != nil {
 		return err
 	}
@@ -104,16 +104,16 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 }
 
 type MockAdminConnector struct {
-	MockSettings *admin.AdminSettings
+	MockSettings *admin.Config
 }
 
 // GetAdminSettings retrieves the admin settings document from the mock connector
-func (ac *MockAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
+func (ac *MockAdminConnector) GetAdminSettings() (*admin.Config, error) {
 	return ac.MockSettings, nil
 }
 
 // SetAdminSettings sets the admin settings document in the mock connector
-func (ac *MockAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u *user.DBUser) error {
+func (ac *MockAdminConnector) SetAdminSettings(settings *admin.Config, u *user.DBUser) error {
 	ac.MockSettings = settings
 	return nil
 }
@@ -121,7 +121,7 @@ func (ac *MockAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u 
 // SetAdminBanner sets the admin banner in the mock connector
 func (ac *MockAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
 	if ac.MockSettings == nil {
-		ac.MockSettings = &admin.AdminSettings{}
+		ac.MockSettings = &admin.Config{}
 	}
 	ac.MockSettings.Banner = text
 	return nil
@@ -133,7 +133,7 @@ func (ac *MockAdminConnector) SetBannerTheme(themeString string, u *user.DBUser)
 		return fmt.Errorf("%s is not a valid banner theme type", themeString)
 	}
 	if ac.MockSettings == nil {
-		ac.MockSettings = &admin.AdminSettings{}
+		ac.MockSettings = &admin.Config{}
 	}
 	ac.MockSettings.BannerTheme = theme
 	return nil
@@ -142,7 +142,7 @@ func (ac *MockAdminConnector) SetBannerTheme(themeString string, u *user.DBUser)
 // SetServiceFlags sets the service flags in the mock connector
 func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DBUser) error {
 	if ac.MockSettings == nil {
-		ac.MockSettings = &admin.AdminSettings{}
+		ac.MockSettings = &admin.Config{}
 	}
 	ac.MockSettings.ServiceFlags = flags
 	return nil

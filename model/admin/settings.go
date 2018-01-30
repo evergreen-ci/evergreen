@@ -1,89 +1,122 @@
 package admin
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 )
 
-// AdminSettings currently holds settings related to degraded mode. It is intended
-// to hold all configurable Evergreen-wide settings
-type AdminSettings struct {
-	Id string `bson:"_id" json:"id"`
-
-	// Degraded mode-related settings
-	Banner       string       `bson:"banner" json:"banner"`
-	BannerTheme  BannerTheme  `bson:"banner_theme" json:"banner_theme"`
-	ServiceFlags ServiceFlags `bson:"service_flags" json:"service_flags"`
-
-	// Evergreen config
-	ConfigDir          string                      `bson:"configdir" json:"configdir"`
-	ApiUrl             string                      `bson:"api_url" json:"api_url"`
-	ClientBinariesDir  string                      `bson:"client_binaries_dir" json:"client_binaries_dir"`
-	SuperUsers         []string                    `bson:"superusers" json:"superusers"`
-	Jira               evergreen.JiraConfig        `bson:"jira" json:"jira"`
-	Splunk             send.SplunkConnectionInfo   `bson:"splunk" json:"splunk"`
-	Slack              evergreen.SlackConfig       `bson:"slack" json:"slack"`
-	Providers          evergreen.CloudProviders    `bson:"providers" json:"providers"`
-	Keys               map[string]string           `bson:"keys" json:"keys"`
-	Credentials        map[string]string           `bson:"credentials" json:"credentials"`
-	AuthConfig         evergreen.AuthConfig        `bson:"auth" json:"auth"`
-	RepoTracker        evergreen.RepoTrackerConfig `bson:"repotracker" json:"repotracker"`
-	Api                evergreen.APIConfig         `bson:"api" json:"api"`
+// Config is a struct that holds Evergreen-wide configuration settings
+type Config struct {
+	Id                 string                      `bson:"_id" json:"id"`
 	Alerts             evergreen.AlertsConfig      `bson:"alerts" json:"alerts"`
-	Ui                 evergreen.UIConfig          `bson:"ui" json:"ui"`
-	HostInit           evergreen.HostInitConfig    `bson:"hostinit" json:"hostinit"`
-	Notify             evergreen.NotifyConfig      `bson:"notify" json:"notify"`
-	Scheduler          evergreen.SchedulerConfig   `bson:"scheduler" json:"scheduler"`
 	Amboy              evergreen.AmboyConfig       `bson:"amboy" json:"amboy"`
+	Api                evergreen.APIConfig         `bson:"api" json:"api"`
+	ApiUrl             string                      `bson:"api_url" json:"api_url"`
+	AuthConfig         evergreen.AuthConfig        `bson:"auth" json:"auth"`
+	Banner             string                      `bson:"banner" json:"banner"`
+	BannerTheme        BannerTheme                 `bson:"banner_theme" json:"banner_theme"`
+	ClientBinariesDir  string                      `bson:"client_binaries_dir" json:"client_binaries_dir"`
+	ConfigDir          string                      `bson:"configdir" json:"configdir"`
+	Credentials        map[string]string           `bson:"credentials" json:"credentials"`
 	Expansions         map[string]string           `bson:"expansions" json:"expansions"`
-	Plugins            evergreen.PluginConfig      `bson:"plugins" json:"plugins"`
+	GithubPRCreatorOrg string                      `bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	HostInit           evergreen.HostInitConfig    `bson:"hostinit" json:"hostinit"`
 	IsNonProd          bool                        `bson:"isnonprod" json:"isnonprod"`
+	Jira               evergreen.JiraConfig        `bson:"jira" json:"jira"`
+	Keys               map[string]string           `bson:"keys" json:"keys"`
 	LoggerConfig       evergreen.LoggerConfig      `bson:"logger_config" json:"logger_config"`
 	LogPath            string                      `bson:"log_path" json:"log_path"`
-	PprofPort          string                      `bson:"pprof_port" json:"pprof_port"`
-	GithubPRCreatorOrg string                      `bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	NewRelic           evergreen.NewRelicConfig    `bson:"new_relic" json:"new_relic"`
+	Notify             evergreen.NotifyConfig      `bson:"notify" json:"notify"`
+	Plugins            evergreen.PluginConfig      `bson:"plugins" json:"plugins"`
+	PprofPort          string                      `bson:"pprof_port" json:"pprof_port"`
+	Providers          evergreen.CloudProviders    `bson:"providers" json:"providers"`
+	RepoTracker        evergreen.RepoTrackerConfig `bson:"repotracker" json:"repotracker"`
+	Scheduler          evergreen.SchedulerConfig   `bson:"scheduler" json:"scheduler"`
+	ServiceFlags       ServiceFlags                `bson:"service_flags" json:"service_flags" id:"service_flags"`
+	Slack              evergreen.SlackConfig       `bson:"slack" json:"slack"`
+	Splunk             send.SplunkConnectionInfo   `bson:"splunk" json:"splunk"`
+	SuperUsers         []string                    `bson:"superusers" json:"superusers"`
+	Ui                 evergreen.UIConfig          `bson:"ui" json:"ui"`
 }
 
-// ServiceFlags holds the state of each of the runner/API processes
-type ServiceFlags struct {
-	TaskDispatchDisabled         bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
-	HostinitDisabled             bool `bson:"hostinit_disabled" json:"hostinit_disabled"`
-	MonitorDisabled              bool `bson:"monitor_disabled" json:"monitor_disabled"`
-	NotificationsDisabled        bool `bson:"notifications_disabled" json:"notifications_disabled"`
-	AlertsDisabled               bool `bson:"alerts_disabled" json:"alerts_disabled"`
-	TaskrunnerDisabled           bool `bson:"taskrunner_disabled" json:"taskrunner_disabled"`
-	RepotrackerDisabled          bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
-	SchedulerDisabled            bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
-	GithubPRTestingDisabled      bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
-	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
-	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
-	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
-}
-
-// supported banner themes in Evergreen
-type BannerTheme string
-
-const (
-	Announcement BannerTheme = "announcement"
-	Information              = "information"
-	Warning                  = "warning"
-	Important                = "important"
-)
-
-func IsValidBannerTheme(input string) (bool, BannerTheme) {
-	switch input {
-	case "":
-		return true, ""
-	case "announcement":
-		return true, Announcement
-	case "information":
-		return true, Information
-	case "warning":
-		return true, Warning
-	case "important":
-		return true, Important
-	default:
-		return false, ""
+func (c *Config) id() string { return configDocID }
+func (c *Config) get() error {
+	err := db.FindOneQ(Collection, db.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
 	}
+	return err
+}
+func (c *Config) set() error {
+	return nil
+}
+
+// configSection defines a sub-document in the evegreen configSection
+// any config sections must also be added to registry.go
+type configSection interface {
+	// id() returns the ID of the section to be used in the database document and struct tag
+	id() string
+	// get() populates the section from the DB
+	get() error
+	// set() upserts the section document into the DB
+	set() error
+}
+
+// GetSettings retrieves the Evergreen config document. If no document is
+// present in the DB, it will return the defaults
+func GetConfig() (*Config, error) {
+	config := &Config{}
+
+	// retrieve the root config document
+	if err := config.get(); err != nil {
+		return nil, err
+	}
+	grip.Info(config)
+
+	// retrieve the other config sub-documents and form the whole struct
+	catcher := grip.NewSimpleCatcher()
+	sections := registry.getSections()
+	valConfig := reflect.ValueOf(*config)
+	//iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
+		}
+
+		// get the property name and find its corresponding section in the registry
+		propName := valConfig.Type().Field(i).Name
+		section, ok := sections[sectionId]
+		if !ok {
+			catcher.Add(fmt.Errorf("config section %s not found in registry", sectionId))
+			continue
+		}
+
+		// retrieve the section's document from the db
+		if err := section.get(); err != nil {
+			catcher.Add(errors.Wrapf(err, "error populating section %s", sectionId))
+			continue
+		}
+
+		// set the value of the section struct to the value of the corresponding field in the config
+		sectionVal := reflect.ValueOf(section).Elem()
+		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
+		if !propVal.CanSet() {
+			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+		}
+		propVal.Set(sectionVal)
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return config, nil
 }

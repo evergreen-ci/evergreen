@@ -143,8 +143,8 @@ type Connector interface {
 	SetPatchActivated(string, string, bool) error
 
 	// GetAdminSettings/SetAdminSettings retrieves/sets the system-wide settings document
-	GetAdminSettings() (*admin.AdminSettings, error)
-	SetAdminSettings(*admin.AdminSettings, *user.DBUser) error
+	GetAdminSettings() (*admin.Config, error)
+	SetAdminSettings(*admin.Config, *user.DBUser) error
 	// SetAdminBanner sets set the banner in the system-wide settings document
 	SetAdminBanner(string, *user.DBUser) error
 	// SetBannerTheme sets set the banner theme in the system-wide settings document

@@ -31,14 +31,14 @@ func (s *AdminSuite) TestBanner() {
 
 	err := SetBanner(bannerText)
 	s.NoError(err)
-	settings, err := GetSettings()
+	settings, err := GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(bannerText, settings.Banner)
 
 	err = SetBannerTheme(Important)
 	s.NoError(err)
-	settings, err = GetSettings()
+	settings, err = GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(Important, string(settings.BannerTheme))
@@ -60,9 +60,9 @@ func (s *AdminSuite) TestServiceFlags() {
 		GithubStatusAPIDisabled:      true,
 	}
 
-	err := SetServiceFlags(testFlags)
+	err := testFlags.set()
 	s.NoError(err)
-	settings, err := GetSettings()
+	settings, err := GetConfig()
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(testFlags, settings.ServiceFlags)
@@ -70,8 +70,8 @@ func (s *AdminSuite) TestServiceFlags() {
 
 func (s *AdminSuite) TestUpsert() {
 	db.Clear(Collection)
-	settings := &AdminSettings{
-		Id:     systemSettingsDocID,
+	settings := &Config{
+		Id:     configDocID,
 		Banner: "",
 		ServiceFlags: ServiceFlags{
 			TaskDispatchDisabled:         false,
@@ -118,7 +118,7 @@ func (s *AdminSuite) TestUpsert() {
 	err := Upsert(settings)
 	s.NoError(err)
 
-	settingsFromDB, err := GetSettings()
+	settingsFromDB, err := GetConfig()
 	s.NoError(err)
 	s.NotNil(settingsFromDB)
 	s.Equal(settings, settingsFromDB)
@@ -128,7 +128,7 @@ func (s *AdminSuite) TestUpsert() {
 	err = Upsert(settings)
 	s.NoError(err)
 
-	settingsFromDB, err = GetSettings()
+	settingsFromDB, err = GetConfig()
 	s.NoError(err)
 	s.NotNil(settingsFromDB)
 	s.Equal(settings.Banner, settingsFromDB.Banner)

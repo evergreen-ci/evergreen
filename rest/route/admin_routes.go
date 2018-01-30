@@ -104,7 +104,7 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		}
 		return ResponseData{}, err
 	}
-	settings := settingsModel.(admin.AdminSettings)
+	settings := settingsModel.(admin.Config)
 	err = sc.SetAdminSettings(&settings, u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {

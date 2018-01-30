@@ -108,7 +108,7 @@ func (s *AdminDataSuite) SetupSuite() {
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
 	u := &user.DBUser{Id: "user"}
-	settings := &admin.AdminSettings{
+	settings := &admin.Config{
 		Banner:      "test banner",
 		BannerTheme: admin.Warning,
 		ServiceFlags: admin.ServiceFlags{

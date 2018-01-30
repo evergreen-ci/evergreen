@@ -353,7 +353,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		}
 		viewData.Project = *project
 	}
-	settings, err := admin.GetSettings()
+	settings, err := admin.GetConfig()
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
 	}

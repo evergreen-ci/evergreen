@@ -50,7 +50,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
 
 	// test parsing the POST body
-	body := admin.AdminSettings{
+	body := admin.Config{
 		Banner:      "banner text",
 		BannerTheme: admin.Information,
 		ServiceFlags: admin.ServiceFlags{
@@ -82,7 +82,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NotNil(resp)
 	settingsResp, err := resp.Result[0].ToService()
 	s.NoError(err)
-	settings, ok := settingsResp.(admin.AdminSettings)
+	settings, ok := settingsResp.(admin.Config)
 	s.True(ok)
 	s.Equal(body.Banner, settings.Banner)
 	s.Equal(body.BannerTheme, settings.BannerTheme)

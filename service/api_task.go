@@ -365,7 +365,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		ShouldExit: false,
 	}
 
-	adminSettings, err := admin.GetSettings()
+	adminSettings, err := admin.GetConfig()
 	if err != nil {
 		err = errors.Wrap(err, "error retrieving admin settings")
 		grip.Error(err)

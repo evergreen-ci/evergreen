@@ -3,49 +3,48 @@ package admin
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
 const (
-	Collection          = "admin"
-	systemSettingsDocID = "global"
+	Collection  = "admin"
+	configDocID = "global"
 )
 
 var (
-	idKey = bsonutil.MustHaveTag(AdminSettings{}, "Id")
+	idKey = bsonutil.MustHaveTag(Config{}, "Id")
 
-	bannerKey       = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
-	bannerThemeKey  = bsonutil.MustHaveTag(AdminSettings{}, "BannerTheme")
-	serviceFlagsKey = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
+	bannerKey       = bsonutil.MustHaveTag(Config{}, "Banner")
+	bannerThemeKey  = bsonutil.MustHaveTag(Config{}, "BannerTheme")
+	serviceFlagsKey = bsonutil.MustHaveTag(Config{}, "ServiceFlags")
 
-	configDirKey          = bsonutil.MustHaveTag(AdminSettings{}, "ConfigDir")
-	apiUrlKey             = bsonutil.MustHaveTag(AdminSettings{}, "ApiUrl")
-	clientBinariesDirKey  = bsonutil.MustHaveTag(AdminSettings{}, "ClientBinariesDir")
-	superUsersKey         = bsonutil.MustHaveTag(AdminSettings{}, "SuperUsers")
-	jiraKey               = bsonutil.MustHaveTag(AdminSettings{}, "Jira")
-	splunkKey             = bsonutil.MustHaveTag(AdminSettings{}, "Splunk")
-	slackKey              = bsonutil.MustHaveTag(AdminSettings{}, "Slack")
-	providersKey          = bsonutil.MustHaveTag(AdminSettings{}, "Providers")
-	keysKey               = bsonutil.MustHaveTag(AdminSettings{}, "Keys")
-	credentialsKey        = bsonutil.MustHaveTag(AdminSettings{}, "Credentials")
-	authConfigKey         = bsonutil.MustHaveTag(AdminSettings{}, "AuthConfig")
-	repoTrackerConfigKey  = bsonutil.MustHaveTag(AdminSettings{}, "RepoTracker")
-	apiKey                = bsonutil.MustHaveTag(AdminSettings{}, "Api")
-	alertsConfigKey       = bsonutil.MustHaveTag(AdminSettings{}, "Alerts")
-	uiKey                 = bsonutil.MustHaveTag(AdminSettings{}, "Ui")
-	hostInitConfigKey     = bsonutil.MustHaveTag(AdminSettings{}, "HostInit")
-	notifyKey             = bsonutil.MustHaveTag(AdminSettings{}, "Notify")
-	schedulerConfigKey    = bsonutil.MustHaveTag(AdminSettings{}, "Scheduler")
-	amboyKey              = bsonutil.MustHaveTag(AdminSettings{}, "Amboy")
-	expansionsKey         = bsonutil.MustHaveTag(AdminSettings{}, "Expansions")
-	pluginsKey            = bsonutil.MustHaveTag(AdminSettings{}, "Plugins")
-	isNonProdKey          = bsonutil.MustHaveTag(AdminSettings{}, "IsNonProd")
-	loggerConfigKey       = bsonutil.MustHaveTag(AdminSettings{}, "LoggerConfig")
-	logPathKey            = bsonutil.MustHaveTag(AdminSettings{}, "LogPath")
-	pprofPortKey          = bsonutil.MustHaveTag(AdminSettings{}, "PprofPort")
-	githubPRCreatorOrgKey = bsonutil.MustHaveTag(AdminSettings{}, "GithubPRCreatorOrg")
-	newRelicKey           = bsonutil.MustHaveTag(AdminSettings{}, "NewRelic")
+	configDirKey          = bsonutil.MustHaveTag(Config{}, "ConfigDir")
+	apiUrlKey             = bsonutil.MustHaveTag(Config{}, "ApiUrl")
+	clientBinariesDirKey  = bsonutil.MustHaveTag(Config{}, "ClientBinariesDir")
+	superUsersKey         = bsonutil.MustHaveTag(Config{}, "SuperUsers")
+	jiraKey               = bsonutil.MustHaveTag(Config{}, "Jira")
+	splunkKey             = bsonutil.MustHaveTag(Config{}, "Splunk")
+	slackKey              = bsonutil.MustHaveTag(Config{}, "Slack")
+	providersKey          = bsonutil.MustHaveTag(Config{}, "Providers")
+	keysKey               = bsonutil.MustHaveTag(Config{}, "Keys")
+	credentialsKey        = bsonutil.MustHaveTag(Config{}, "Credentials")
+	authConfigKey         = bsonutil.MustHaveTag(Config{}, "AuthConfig")
+	repoTrackerConfigKey  = bsonutil.MustHaveTag(Config{}, "RepoTracker")
+	apiKey                = bsonutil.MustHaveTag(Config{}, "Api")
+	alertsConfigKey       = bsonutil.MustHaveTag(Config{}, "Alerts")
+	uiKey                 = bsonutil.MustHaveTag(Config{}, "Ui")
+	hostInitConfigKey     = bsonutil.MustHaveTag(Config{}, "HostInit")
+	notifyKey             = bsonutil.MustHaveTag(Config{}, "Notify")
+	schedulerConfigKey    = bsonutil.MustHaveTag(Config{}, "Scheduler")
+	amboyKey              = bsonutil.MustHaveTag(Config{}, "Amboy")
+	expansionsKey         = bsonutil.MustHaveTag(Config{}, "Expansions")
+	pluginsKey            = bsonutil.MustHaveTag(Config{}, "Plugins")
+	isNonProdKey          = bsonutil.MustHaveTag(Config{}, "IsNonProd")
+	loggerConfigKey       = bsonutil.MustHaveTag(Config{}, "LoggerConfig")
+	logPathKey            = bsonutil.MustHaveTag(Config{}, "LogPath")
+	pprofPortKey          = bsonutil.MustHaveTag(Config{}, "PprofPort")
+	githubPRCreatorOrgKey = bsonutil.MustHaveTag(Config{}, "GithubPRCreatorOrg")
+	newRelicKey           = bsonutil.MustHaveTag(Config{}, "NewRelic")
 
 	// degraded mode flags
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
@@ -62,24 +61,10 @@ var (
 	githubStatusAPIDisabled         = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 )
 
-var settingsQuery = db.Query(bson.M{idKey: systemSettingsDocID})
+var settingsQuery = db.Query(bson.M{idKey: configDocID})
 
-// GetSettings retrieves the admin settings document. If no document is
-// present in the DB, it will return the defaults
-func GetSettings() (*AdminSettings, error) {
-	settings := &AdminSettings{}
-	query := db.Q{}
-	query = query.Filter(settingsQuery)
-	err := db.FindOneQ(Collection, query, settings)
-	if err != nil {
-		// if the settings document doesn't exist, return the defaults
-		if err.Error() == "not found" {
-			return settings, nil
-		} else {
-			return nil, errors.Wrap(err, "Error retrieving admin settings from DB")
-		}
-	}
-	return settings, nil
+func byId(id string) bson.M {
+	return bson.M{idKey: id}
 }
 
 // SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
@@ -89,7 +74,7 @@ func SetBanner(bannerText string) error {
 		Collection,
 		settingsQuery,
 		bson.M{
-			"$set": bson.M{idKey: systemSettingsDocID, bannerKey: bannerText},
+			"$set": bson.M{idKey: configDocID, bannerKey: bannerText},
 		},
 	)
 
@@ -103,7 +88,7 @@ func SetBannerTheme(theme BannerTheme) error {
 		Collection,
 		settingsQuery,
 		bson.M{
-			"$set": bson.M{idKey: systemSettingsDocID, bannerThemeKey: theme},
+			"$set": bson.M{idKey: configDocID, bannerThemeKey: theme},
 		},
 	)
 
@@ -112,22 +97,14 @@ func SetBannerTheme(theme BannerTheme) error {
 
 // SetServiceFlags sets whether each of the runner/API server processes is enabled
 func SetServiceFlags(flags ServiceFlags) error {
-	_, err := db.Upsert(
-		Collection,
-		settingsQuery,
-		bson.M{
-			"$set": bson.M{idKey: systemSettingsDocID, serviceFlagsKey: flags},
-		},
-	)
-
-	return err
+	return flags.set()
 }
 
 // Upsert will update/insert the admin settings document
-func Upsert(settings *AdminSettings) error {
+func Upsert(settings *Config) error {
 	update := bson.M{
 		"$set": bson.M{
-			idKey:                 systemSettingsDocID,
+			idKey:                 configDocID,
 			bannerKey:             settings.Banner,
 			serviceFlagsKey:       settings.ServiceFlags,
 			configDirKey:          settings.ConfigDir,

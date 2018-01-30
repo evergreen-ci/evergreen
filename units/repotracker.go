@@ -58,7 +58,7 @@ func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 func (j *repotrackerJob) Run() {
 	defer j.MarkComplete()
 
-	adminSettings, err := admin.GetSettings()
+	adminSettings, err := admin.GetConfig()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return

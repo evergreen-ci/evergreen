@@ -33,7 +33,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		GUID:     util.RandomString(),
 	}
 
-	adminSettings, err := admin.GetSettings()
+	adminSettings, err := admin.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}

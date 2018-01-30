@@ -256,7 +256,7 @@ func TestNextTask(t *testing.T) {
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
 		}
-		if err := admin.Upsert(&admin.AdminSettings{}); err != nil {
+		if err := admin.Upsert(&admin.Config{}); err != nil {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 

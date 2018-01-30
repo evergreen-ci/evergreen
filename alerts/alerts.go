@@ -320,7 +320,7 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 // Run loops while there are any unprocessed alerts and attempts to deliver them.
 func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
-	adminSettings, err := admin.GetSettings()
+	adminSettings, err := admin.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
