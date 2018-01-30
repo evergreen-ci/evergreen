@@ -441,7 +441,7 @@ func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	start := time.Now()
 	reqID := <-l.ids
 
-	grip.Info(message.Fields{
+	grip.Debug(message.Fields{
 		"action":  "started",
 		"method":  r.Method,
 		"remote":  r.RemoteAddr,
@@ -457,15 +457,14 @@ func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 			rw.WriteHeader(http.StatusInternalServerError)
 
-			grip.Critical(message.Fields{
-				"stack":    message.NewStack(2, "").Raw(),
+			grip.Critical(message.WrapStack(2, message.Fields{
 				"panic":    err,
 				"action":   "aborted",
 				"request":  reqID,
 				"duration": time.Since(start),
 				"path":     r.URL.Path,
 				"span":     time.Since(start).String(),
-			})
+			}))
 		}
 	}()
 
