@@ -9,6 +9,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 var conf = testutil.TestConfig()
@@ -237,4 +238,15 @@ func TestEnsureValidSSHOptions(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 	})
+}
+
+func TestEnsureNonZeroID(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	assert.NotNil(ensureHasNonZeroID(nil, conf))
+	assert.NotNil(ensureHasNonZeroID(&distro.Distro{}, conf))
+	assert.NotNil(ensureHasNonZeroID(&distro.Distro{Id: ""}, conf))
+
+	assert.Nil(ensureHasNonZeroID(&distro.Distro{Id: "foo"}, conf))
+	assert.Nil(ensureHasNonZeroID(&distro.Distro{Id: " "}, conf))
 }
