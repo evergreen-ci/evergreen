@@ -70,7 +70,21 @@ func (s *ProjectAliasSuite) TestRemove() {
 	}
 }
 
-func (s *ProjectAliasSuite) TestFindProjectAliases() {
+func (s *ProjectAliasSuite) TestFindAliasesForProject() {
+	a1 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     "alias-1",
+		Variant:   "variants-11",
+		Task:      "variants-11",
+	}
+	s.NoError(a1.Upsert())
+
+	out, err := FindAliasesForProject("project-1")
+	s.NoError(err)
+	s.Len(out, 2)
+}
+
+func (s *ProjectAliasSuite) TestFindAliasInProject() {
 	for _, a := range s.aliases {
 		s.NoError(a.Upsert())
 	}
@@ -96,7 +110,7 @@ func (s *ProjectAliasSuite) TestFindProjectAliases() {
 	s.NoError(a2.Upsert())
 	s.NoError(a3.Upsert())
 
-	found, err := FindProjectAliases("project-1", "alias-1")
+	found, err := FindAliasInProject("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 }

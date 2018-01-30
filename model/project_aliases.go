@@ -50,8 +50,28 @@ type ProjectAlias struct {
 	Tags      []string      `bson:"tags,omitempty"`
 }
 
-// FindProjectAliases finds aliases with a given name for a project.
-func FindProjectAliases(projectID, alias string) ([]ProjectAlias, error) {
+// FindAliasesForProject fetches all aliases for a given project
+func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
+	out := []ProjectAlias{}
+	err := db.FindAll(ProjectAliasCollection,
+		bson.M{
+			projectIDKey: projectID,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&out)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// FindAliasesForProject finds aliases with a given name for a project.
+func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
