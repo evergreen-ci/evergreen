@@ -11,6 +11,9 @@ var (
 	idKey        = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
 	projectIDKey = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
 	aliasKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
+	variantKey   = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
+	taskKey      = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
+	tagsKey      = bsonutil.MustHaveTag(ProjectAlias{}, "Tags")
 )
 
 const (
@@ -23,7 +26,7 @@ const (
 //
 // For example, a user can specify that alias with the CLI tool so that a project
 // admin can define a set of default builders for patch builds. Pull request
-// testing uses a special alias, "github_pull_request" to determine the default
+// testing uses a special alias, "__github" to determine the default
 // variants and tasks to run in a patch build.
 //
 // An alias can be specified multiple times. The resulting variant/task
@@ -31,8 +34,8 @@ const (
 // following:
 //
 // ALIAS                  VARIANTS          TASKS
-// github_pull_request    .*linux.*         .*test.*
-// github_pull_request    ^ubuntu1604.*$    ^comppile.*$
+// __github               .*linux.*         .*test.*
+// __github               ^ubuntu1604.*$    ^compile.*$
 //
 // This will cause a GitHub pull request to create and finalize a patch which runs
 // all tasks containing the string “test” on all variants containing the string
@@ -42,8 +45,9 @@ type ProjectAlias struct {
 	ID        bson.ObjectId `bson:"_id"`
 	ProjectID string        `bson:"project_id"`
 	Alias     string        `bson:"alias"`
-	Variants  string        `bson:"variants"`
-	Tasks     string        `bson:"tasks"`
+	Variant   string        `bson:"variant"`
+	Task      string        `bson:"task,omitempty"`
+	Tags      []string      `bson:"tags,omitempty"`
 }
 
 // FindProjectAliases finds aliases with a given name for a project.
@@ -60,12 +64,21 @@ func FindProjectAliases(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// Insert adds a project alias to the database.
-func (p *ProjectAlias) Insert() error {
+func (p *ProjectAlias) Upsert() error {
 	if p.ID == "" {
 		p.ID = bson.NewObjectId()
 	}
-	err := db.Insert(ProjectAliasCollection, p)
+	_, err := db.Upsert(ProjectAliasCollection, bson.M{
+		idKey: p.ID,
+	}, bson.M{
+		"$set": bson.M{
+			aliasKey:     p.Alias,
+			projectIDKey: p.ProjectID,
+			variantKey:   p.Variant,
+			taskKey:      p.Task,
+			tagsKey:      p.Tags,
+		},
+	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to insert project alias", p.ID)
 	}

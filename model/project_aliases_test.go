@@ -27,8 +27,8 @@ func (s *ProjectAliasSuite) SetupSuite() {
 		s.aliases = append(s.aliases, ProjectAlias{
 			ProjectID: fmt.Sprintf("project-%d", i),
 			Alias:     fmt.Sprintf("alias-%d", i),
-			Variants:  fmt.Sprintf("variant-%d", i),
-			Tasks:     fmt.Sprintf("task-%d", i),
+			Variant:   fmt.Sprintf("variant-%d", i),
+			Task:      fmt.Sprintf("task-%d", i),
 		})
 	}
 }
@@ -39,7 +39,7 @@ func (s *ProjectAliasSuite) SetupTest() {
 
 func (s *ProjectAliasSuite) TestInsert() {
 	for _, a := range s.aliases {
-		s.NoError(a.Insert())
+		s.NoError(a.Upsert())
 	}
 
 	var out ProjectAlias
@@ -48,14 +48,14 @@ func (s *ProjectAliasSuite) TestInsert() {
 		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
-		s.Equal(a.Variants, out.Variants)
-		s.Equal(a.Tasks, out.Tasks)
+		s.Equal(a.Variant, out.Variant)
+		s.Equal(a.Task, out.Task)
 	}
 }
 
 func (s *ProjectAliasSuite) TestRemove() {
 	for i, a := range s.aliases {
-		s.NoError(a.Insert())
+		s.NoError(a.Upsert())
 		s.aliases[i] = a
 	}
 	var out []ProjectAlias
@@ -72,29 +72,29 @@ func (s *ProjectAliasSuite) TestRemove() {
 
 func (s *ProjectAliasSuite) TestFindProjectAliases() {
 	for _, a := range s.aliases {
-		s.NoError(a.Insert())
+		s.NoError(a.Upsert())
 	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     "alias-1",
-		Variants:  "variants-11",
-		Tasks:     "variants-11",
+		Variant:   "variants-11",
+		Task:      "variants-11",
 	}
 	a2 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     "alias-2",
-		Variants:  "variants-11",
-		Tasks:     "variants-11",
+		Variant:   "variants-11",
+		Task:      "variants-11",
 	}
 	a3 := ProjectAlias{
 		ProjectID: "project-2",
 		Alias:     "alias-1",
-		Variants:  "variants-11",
-		Tasks:     "variants-11",
+		Variant:   "variants-11",
+		Task:      "variants-11",
 	}
-	s.NoError(a1.Insert())
-	s.NoError(a2.Insert())
-	s.NoError(a3.Insert())
+	s.NoError(a1.Upsert())
+	s.NoError(a2.Upsert())
+	s.NoError(a3.Upsert())
 
 	found, err := FindProjectAliases("project-1", "alias-1")
 	s.NoError(err)
