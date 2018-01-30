@@ -172,7 +172,7 @@ func UpdateId(collection string, id, update interface{}) error {
 
 // UpdateAll updates all matching documents in the collection.
 func UpdateAll(collection string, query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
-	switch q := query.(type) {
+	switch query.(type) {
 	case *Q, Q:
 		grip.EmergencyPanic(message.Fields{
 			"message":    "invalid query passed to update all",
@@ -186,14 +186,6 @@ func UpdateAll(collection string, query interface{}, update interface{}) (*mgo.C
 			"query":      query,
 			"collection": collection,
 		})
-	case map[string]interface{}:
-		if len(q) == 0 {
-			grip.EmergencyPanic(message.Fields{
-				"message":    "empty query passed to update all",
-				"collection": collection,
-				"type":       fmt.Sprintf("%T", query),
-			})
-		}
 	}
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
