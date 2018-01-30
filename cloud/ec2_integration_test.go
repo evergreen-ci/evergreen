@@ -92,6 +92,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		val := *tags[i].Value
 		requiredTags[key] = val
 	}
+	delete(requiredTags, "username")
 	assert.Equal("test_distro", requiredTags["distro"])
 	assert.Equal("mci", requiredTags["owner"])
 	for requiredKey, requiredValue := range requiredTags {
