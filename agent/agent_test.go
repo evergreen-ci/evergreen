@@ -181,6 +181,7 @@ func (s *AgentSuite) TestRunPreTaskCommands() {
 				},
 			},
 		},
+		WorkDir: ".",
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -477,6 +478,7 @@ func (s *AgentSuite) TestTimeoutGroupCommands() {
 				},
 			},
 		},
+		WorkDir: ".",
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -484,7 +486,7 @@ func (s *AgentSuite) TestTimeoutGroupCommands() {
 	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
-	s.Contains(msgs[len(msgs)-3].Message, "Finished 'shell.exec'")
+	s.Contains(msgs[len(msgs)-2].Message, "Finished 'shell.exec'")
 }
 
 func TestAgentConstructorSetsHostData(t *testing.T) {
