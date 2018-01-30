@@ -146,16 +146,16 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 
 		// note that if there is a named TaskGroup without a SetupGroup, we do NOT fall back to Pre
 		if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
-			err = a.runCommands(ctx, tc, taskGroup.SetupGroup, false)
+			if taskGroup.SetupGroup != nil {
+				err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false)
+			}
 		} else if tc.taskConfig.Project.Pre != nil {
 			err = a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false)
 		} else {
 			return
 		}
-		if err != nil {
-			tc.logger.Execution().Errorf("Running pre-task script failed: %v", err)
-		}
-		tc.logger.Execution().Info("Finished running pre-task commands.")
+		tc.logger.Execution().ErrorWhenf(err != nil, "Running pre-task script failed: %v", err)
+		tc.logger.Execution().InfoWhen(err == nil, "Finished running pre-task commands.")
 	}
 }
 

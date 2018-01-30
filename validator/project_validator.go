@@ -741,12 +741,14 @@ func validateTaskGroups(p *model.Project) []ValidationError {
 			}
 		}
 		// validate that attach commands aren't used in the teardown_group phase
-		for _, cmd := range tg.TeardownGroup {
-			if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
-				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("%s cannot be used in the group teardown stage", cmd.Command),
-					Level:   Error,
-				})
+		if tg.TeardownGroup != nil {
+			for _, cmd := range tg.TeardownGroup.List() {
+				if cmd.Command == "attach.results" || cmd.Command == "attach.artifacts" {
+					errs = append(errs, ValidationError{
+						Message: fmt.Sprintf("%s cannot be used in the group teardown stage", cmd.Command),
+						Level:   Error,
+					})
+				}
 			}
 		}
 	}

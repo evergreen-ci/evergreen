@@ -65,21 +65,21 @@ type parserProject struct {
 }
 
 type parserTaskGroup struct {
-	Name            string              `yaml:"name"`
-	Priority        int64               `yaml:"priority"`
-	Patchable       *bool               `yaml:"patchable,omitempty"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs"`
-	Stepback        *bool               `yaml:"stepback,omitempty"`
-	MaxHosts        int                 `yaml:"max_hosts"`
-	SetupGroup      []PluginCommandConf `yaml:"setup_group"`
-	TeardownGroup   []PluginCommandConf `yaml:"teardown_group"`
-	SetupTask       []PluginCommandConf `yaml:"setup_task"`
-	TeardownTask    []PluginCommandConf `yaml:"teardown_task"`
-	Timeout         *YAMLCommandSet     `yaml:"timeout"`
-	Tasks           []string            `yaml:"tasks"`
-	DependsOn       parserDependencies  `yaml:"depends_on"`
-	Requires        taskSelectors       `yaml:"requires"`
-	Tags            parserStringSlice   `yaml:"tags"`
+	Name            string             `yaml:"name"`
+	Priority        int64              `yaml:"priority"`
+	Patchable       *bool              `yaml:"patchable,omitempty"`
+	ExecTimeoutSecs int                `yaml:"exec_timeout_secs"`
+	Stepback        *bool              `yaml:"stepback,omitempty"`
+	MaxHosts        int                `yaml:"max_hosts"`
+	SetupGroup      *YAMLCommandSet    `yaml:"setup_group"`
+	TeardownGroup   *YAMLCommandSet    `yaml:"teardown_group"`
+	SetupTask       *YAMLCommandSet    `yaml:"setup_task"`
+	TeardownTask    *YAMLCommandSet    `yaml:"teardown_task"`
+	Timeout         *YAMLCommandSet    `yaml:"timeout"`
+	Tasks           []string           `yaml:"tasks"`
+	DependsOn       parserDependencies `yaml:"depends_on"`
+	Requires        taskSelectors      `yaml:"requires"`
+	Tags            parserStringSlice  `yaml:"tags"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }

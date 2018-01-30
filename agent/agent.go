@@ -235,20 +235,31 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	}
 
-	if tc.hadTimedOut() && tc.taskConfig.Project.Timeout != nil {
-		tc.logger.Task().Info("Running task-timeout commands.")
-		start := time.Now()
-		var cancel context.CancelFunc
-		ctx, cancel = a.withCallbackTimeout(ctx, tc)
-		defer cancel()
-		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false)
-		if err != nil {
-			tc.logger.Execution().Errorf("Error running task-timeout command: %v", err)
-		}
-		tc.logger.Task().Infof("Finished running task-timeout commands in %v.", time.Since(start).String())
+	if tc.hadTimedOut() {
+		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
 	return status
+}
+
+func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
+	tc.logger.Task().Info("Running task-timeout commands.")
+	start := time.Now()
+	var cancel context.CancelFunc
+	ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	defer cancel()
+	var err error
+
+	// note that if there is a named TaskGroup without a Timeout, we do NOT fall back to Project Timeout
+	if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+		if taskGroup.Timeout != nil {
+			err = a.runCommands(ctx, tc, taskGroup.Timeout.List(), false)
+		}
+	} else if tc.taskConfig.Project.Timeout != nil {
+		err = a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false)
+	}
+	tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
+	tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
 }
 
 // finishTask sends the returned TaskEndResponse and error
@@ -315,11 +326,10 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext, taskG
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
-	err := a.runCommands(ctx, tc, taskGroup.TeardownGroup, false)
-	if err != nil {
-		grip.Errorf("Error running post-task command: %v", err)
-	} else {
-		grip.Info("Finished running post-group commands")
+	if taskGroup.TeardownGroup != nil {
+		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), false)
+		grip.ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+		grip.InfoWhen(err == nil, "Finished running post-group commands")
 	}
 }
 
