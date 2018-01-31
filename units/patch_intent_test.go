@@ -153,10 +153,18 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	patchContent, err := fetchDiffByURL(&s.githubPatchData, githubOauthToken)
+	patchContent, summaries, err := fetchDiffByURL(&s.githubPatchData, githubOauthToken)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 	s.NotEqual("{", patchContent[0])
+
+	s.Equal("cli/host.go", summaries[0].Name)
+	s.Equal(2, summaries[0].Additions)
+	s.Equal(6, summaries[0].Deletions)
+
+	s.Equal("cli/keys.go", summaries[1].Name)
+	s.Equal(1, summaries[1].Additions)
+	s.Equal(3, summaries[1].Deletions)
 
 	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", patchContent, s.desc, true, s.variants, s.tasks, "")
 	s.NoError(err)

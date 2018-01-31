@@ -230,27 +230,49 @@ func buildPatchURL(gp *patch.GithubPatch) string {
 	return url.String()
 }
 
-func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, error) {
+func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, []patch.Summary, error) {
 	client, err := util.GetHttpClientForOauth2(token)
 	if err != nil {
-		return "", errors.Wrap(err, "error getting http client")
+		return "", nil, errors.Wrap(err, "error getting http client")
 	}
 	defer util.PutHttpClientForOauth2(client)
 
 	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to create github request")
+		return "", nil, errors.Wrap(err, "failed to create github request")
 	}
-	req.Header.Add("Accept", "application/vnd.github.v3.diff")
+
+	patchData, err := doGithubRequest(client, req, "application/vnd.github.v3.patch")
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to fetch patch from github")
+	}
+
+	diff, err := doGithubRequest(client, req, "application/vnd.github.v3.diff")
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
+	}
+
+	summaries, err := thirdparty.GetPatchSummaries(diff)
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to get patch summary")
+	}
+
+	return patchData, summaries, nil
+}
+
+func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
+	req.Header.Del("Accept")
+	req.Header.Add("Accept", accept)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to fetch diff from github")
+		return "", errors.Wrap(err, "failed to fetch patch from github")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return "", errors.Errorf("Expected 200 OK, got %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
+
 	if resp.ContentLength > patch.SizeLimit || resp.ContentLength == 0 {
 		return "", errors.Errorf("Patch contents must be at least 1 byte and no greater than %d bytes; was %d bytes",
 			patch.SizeLimit, resp.ContentLength)
@@ -369,12 +391,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("user is not a member of %s", mustBeMemberOfOrg)
 	}
 
-	patchContent, err := fetchDiffByURL(&patchDoc.GithubPatchData, githubOauthToken)
-	if err != nil {
-		return err
-	}
-
-	summaries, err := thirdparty.GetPatchSummaries(patchContent)
+	patchContent, summaries, err := fetchDiffByURL(&patchDoc.GithubPatchData, githubOauthToken)
 	if err != nil {
 		return err
 	}
