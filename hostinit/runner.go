@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -33,7 +33,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		GUID:     util.RandomString(),
 	}
 
-	adminSettings, err := admin.GetConfig()
+	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}

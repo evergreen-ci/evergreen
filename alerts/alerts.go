@@ -8,7 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/model/alert"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -320,7 +320,7 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 // Run loops while there are any unprocessed alerts and attempts to deliver them.
 func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
-	adminSettings, err := admin.GetConfig()
+	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}

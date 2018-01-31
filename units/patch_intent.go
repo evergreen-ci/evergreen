@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -332,7 +332,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
-	adminSettings, err := admin.GetConfig()
+	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "github pr testing is disabled, error retrieving admin settings")
 	}

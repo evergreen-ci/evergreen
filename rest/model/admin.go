@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/pkg/errors"
 )
 
@@ -45,7 +45,7 @@ type RestartTasksResponse struct {
 // BuildFromService builds a model from the service layer
 func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case *admin.Config:
+	case *evergreen.Settings:
 		as.Banner = APIString(v.Banner)
 		as.BannerTheme = APIString(v.BannerTheme)
 		err := as.ServiceFlags.BuildFromService(v.ServiceFlags)
@@ -64,14 +64,14 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	valid, theme := admin.IsValidBannerTheme(string(as.BannerTheme))
+	valid, theme := evergreen.IsValidBannerTheme(string(as.BannerTheme))
 	if !valid {
 		return nil, fmt.Errorf("%s is not a valid banner theme type", as.BannerTheme)
 	}
-	settings := admin.Config{
+	settings := evergreen.Settings{
 		Banner:       string(as.Banner),
 		BannerTheme:  theme,
-		ServiceFlags: flags.(admin.ServiceFlags),
+		ServiceFlags: flags.(evergreen.ServiceFlags),
 	}
 	return settings, nil
 }
@@ -96,7 +96,7 @@ func (ab *APIBanner) ToService() (interface{}, error) {
 // BuildFromService builds a model from the service layer
 func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case admin.ServiceFlags:
+	case evergreen.ServiceFlags:
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostinitDisabled = v.HostinitDisabled
 		as.MonitorDisabled = v.MonitorDisabled
@@ -117,7 +117,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 
 // ToService returns a service model from an API model
 func (as *APIServiceFlags) ToService() (interface{}, error) {
-	serviceFlags := admin.ServiceFlags{
+	serviceFlags := evergreen.ServiceFlags{
 		TaskDispatchDisabled:         as.TaskDispatchDisabled,
 		HostinitDisabled:             as.HostinitDisabled,
 		MonitorDisabled:              as.MonitorDisabled,

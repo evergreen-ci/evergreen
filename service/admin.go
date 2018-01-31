@@ -10,9 +10,9 @@ import (
 
 func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	DBUser := GetUser(r)
-	template := "not_admin.html"
+	template := "not_evergreen.html"
 	if uis.isSuperUser(DBUser) {
-		template = "admin.html"
+		template = "evergreen.html"
 	}
 	events, err := event.Find(event.AllLogCollection, event.RecentAdminEvents(15))
 	if err != nil {

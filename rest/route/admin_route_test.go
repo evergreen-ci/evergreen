@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -50,10 +50,10 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
 
 	// test parsing the POST body
-	body := admin.Config{
+	body := evergreen.Settings{
 		Banner:      "banner text",
-		BannerTheme: admin.Information,
-		ServiceFlags: admin.ServiceFlags{
+		BannerTheme: evergreen.Information,
+		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled: true,
 			RepotrackerDisabled:  true,
 		},
@@ -82,7 +82,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NotNil(resp)
 	settingsResp, err := resp.Result[0].ToService()
 	s.NoError(err)
-	settings, ok := settingsResp.(admin.Config)
+	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
 	s.Equal(body.Banner, settings.Banner)
 	s.Equal(body.BannerTheme, settings.BannerTheme)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
@@ -58,7 +58,7 @@ func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 func (j *repotrackerJob) Run() {
 	defer j.MarkComplete()
 
-	adminSettings, err := admin.GetConfig()
+	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
@@ -20,12 +20,12 @@ const (
 
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
-	ResourceType string             `bson:"r_type" json:"resource_type"`
-	User         string             `bson:"user" json:"user"`
-	OldVal       string             `bson:"old_val,omitempty" json:"old_val,omitempty"`
-	NewVal       string             `bson:"new_val,omitempty" json:"new_val,omitempty"`
-	OldFlags     admin.ServiceFlags `bson:"old_flags,omitempty" json:"old_flags,omitempty"`
-	NewFlags     admin.ServiceFlags `bson:"new_flags,omitempty" json:"new_flags,omitempty"`
+	ResourceType string                 `bson:"r_type" json:"resource_type"`
+	User         string                 `bson:"user" json:"user"`
+	OldVal       string                 `bson:"old_val,omitempty" json:"old_val,omitempty"`
+	NewVal       string                 `bson:"new_val,omitempty" json:"new_val,omitempty"`
+	OldFlags     evergreen.ServiceFlags `bson:"old_flags,omitempty" json:"old_flags,omitempty"`
+	NewFlags     evergreen.ServiceFlags `bson:"new_flags,omitempty" json:"new_flags,omitempty"`
 }
 
 // IsValid checks if a given event is an event on an admin resource
@@ -58,7 +58,7 @@ func LogBannerChanged(oldText, newText string, u *user.DBUser) error {
 }
 
 // LogBannerThemeChanged will log a change to the banner theme field
-func LogBannerThemeChanged(oldTheme, newTheme admin.BannerTheme, u *user.DBUser) error {
+func LogBannerThemeChanged(oldTheme, newTheme evergreen.BannerTheme, u *user.DBUser) error {
 	if oldTheme == newTheme {
 		return nil
 	}
@@ -66,7 +66,7 @@ func LogBannerThemeChanged(oldTheme, newTheme admin.BannerTheme, u *user.DBUser)
 }
 
 // LogServiceChanged will log a change to the service flags
-func LogServiceChanged(oldFlags, newFlags admin.ServiceFlags, u *user.DBUser) error {
+func LogServiceChanged(oldFlags, newFlags evergreen.ServiceFlags, u *user.DBUser) error {
 	if reflect.DeepEqual(oldFlags, newFlags) {
 		return nil
 	}

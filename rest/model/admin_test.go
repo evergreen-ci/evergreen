@@ -3,12 +3,12 @@ package model
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/stretchr/testify/suite"
 )
 
 type AdminModelSuite struct {
-	serviceSettings admin.Config
+	serviceSettings evergreen.Settings
 	apiSettings     APIAdminSettings
 	restartResp     *RestartTasksResponse
 	suite.Suite
@@ -19,10 +19,10 @@ func TestAdminModelSuite(t *testing.T) {
 }
 
 func (s *AdminModelSuite) SetupSuite() {
-	s.serviceSettings = admin.Config{
+	s.serviceSettings = evergreen.Settings{
 		Banner:      "banner text",
-		BannerTheme: admin.Information,
-		ServiceFlags: admin.ServiceFlags{
+		BannerTheme: evergreen.Information,
+		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled: true,
 			MonitorDisabled:      true,
 			TaskrunnerDisabled:   true,
@@ -31,7 +31,7 @@ func (s *AdminModelSuite) SetupSuite() {
 
 	s.apiSettings = APIAdminSettings{
 		Banner:      "banner text",
-		BannerTheme: admin.Information,
+		BannerTheme: evergreen.Information,
 		ServiceFlags: APIServiceFlags{
 			TaskDispatchDisabled: true,
 			MonitorDisabled:      true,
@@ -80,14 +80,14 @@ func (s *AdminModelSuite) TestToService() {
 	// test that ToService returns the correct model for valid input
 	serviceSettings, err := s.apiSettings.ToService()
 	s.NoError(err)
-	s.IsType(admin.Config{}, serviceSettings)
-	adminSettings := serviceSettings.(admin.Config)
+	s.IsType(evergreen.Settings{}, serviceSettings)
+	adminSettings := serviceSettings.(evergreen.Settings)
 	s.Equal(s.serviceSettings.Banner, adminSettings.Banner)
 	s.Equal(s.serviceSettings.BannerTheme, adminSettings.BannerTheme)
 	s.Equal(s.serviceSettings.ServiceFlags, adminSettings.ServiceFlags)
 
 	serviceFlags, err := s.apiSettings.ServiceFlags.ToService()
 	s.NoError(err)
-	s.IsType(admin.ServiceFlags{}, serviceFlags)
+	s.IsType(evergreen.ServiceFlags{}, serviceFlags)
 	s.Equal(s.serviceSettings.ServiceFlags, serviceFlags)
 }

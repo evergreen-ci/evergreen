@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,13 +29,13 @@ func TestUpdateConnector(t *testing.T) {
 		s.cancel = cancel
 		s.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
 
-		s.NoError(db.ClearCollections(admin.Collection))
+		s.NoError(db.ClearCollections(evergreen.Collection))
 	}
 	s.degrade = func() {
-		flags := admin.ServiceFlags{
+		flags := evergreen.ServiceFlags{
 			CLIUpdatesDisabled: true,
 		}
-		s.NoError(admin.SetServiceFlags(flags))
+		s.NoError(evergreen.SetServiceFlags(flags))
 	}
 	suite.Run(t, s)
 }

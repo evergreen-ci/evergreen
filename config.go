@@ -1,7 +1,9 @@
 package evergreen
 
 import (
+	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -61,6 +64,25 @@ type AuthConfig struct {
 	Github *GithubAuthConfig `bson:"github" json:"github" yaml:"github"`
 }
 
+func (c *AuthConfig) id() string { return "auth" }
+func (c *AuthConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
+	}
+	return err
+}
+func (c *AuthConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"crowd":  c.Crowd,
+			"naive":  c.Naive,
+			"github": c.Github,
+		},
+	})
+	return err
+}
+
 // RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
 	NumNewRepoRevisionsToFetch int `bson:"revs_to_fetch" json:"revs_to_fetch" yaml:"numnewreporevisionstofetch"`
@@ -83,6 +105,24 @@ type ClientConfig struct {
 type APIConfig struct {
 	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret"`
+}
+
+func (c *APIConfig) id() string { return "api" }
+func (c *APIConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
+	}
+	return err
+}
+func (c *APIConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"http_listen_addr":      c.HttpListenAddr,
+			"github_webhook_secret": c.GithubWebhookSecret,
+		},
+	})
+	return err
 }
 
 // UIConfig holds relevant settings for the UI server.
@@ -211,6 +251,24 @@ type PluginConfig map[string]map[string]interface{}
 type AlertsConfig struct {
 	SMTP *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
 }
+
+func (c *AlertsConfig) id() string { return "alerts" }
+func (c *AlertsConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
+	}
+	return err
+}
+func (c *AlertsConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"smtp": c.SMTP,
+		},
+	})
+	return err
+}
+
 type WriteConcern struct {
 	W        int    `yaml:"w"`
 	WMode    string `yaml:"wmode"`
@@ -252,6 +310,27 @@ type AmboyConfig struct {
 	LocalStorage   int    `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
 }
 
+func (c *AmboyConfig) id() string { return "amboy" }
+func (c *AmboyConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
+	}
+	return err
+}
+func (c *AmboyConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"name":               c.Name,
+			"database":           c.DB,
+			"pool_size_local":    c.PoolSizeLocal,
+			"pool_size_remote":   c.PoolSizeRemote,
+			"local_storage_size": c.LocalStorage,
+		},
+	})
+	return err
+}
+
 type SlackConfig struct {
 	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
 	Token   string             `bson:"token" json:"token" yaml:"token"`
@@ -263,37 +342,135 @@ type NewRelicConfig struct {
 	LicenseKey      string `bson:"license_key" json:"license_key" yaml:"license_key"`
 }
 
+// ServiceFlags holds the state of each of the runner/API processes
+type ServiceFlags struct {
+	TaskDispatchDisabled         bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
+	HostinitDisabled             bool `bson:"hostinit_disabled" json:"hostinit_disabled"`
+	MonitorDisabled              bool `bson:"monitor_disabled" json:"monitor_disabled"`
+	NotificationsDisabled        bool `bson:"notifications_disabled" json:"notifications_disabled"`
+	AlertsDisabled               bool `bson:"alerts_disabled" json:"alerts_disabled"`
+	TaskrunnerDisabled           bool `bson:"taskrunner_disabled" json:"taskrunner_disabled"`
+	RepotrackerDisabled          bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
+	SchedulerDisabled            bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
+	GithubPRTestingDisabled      bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
+	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
+	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
+	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+}
+
+func (c *ServiceFlags) id() string { return "service_flags" }
+func (c *ServiceFlags) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
+	}
+	return err
+}
+func (c *ServiceFlags) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			taskDispatchKey:                 c.TaskDispatchDisabled,
+			hostinitKey:                     c.HostinitDisabled,
+			monitorKey:                      c.MonitorDisabled,
+			notificationsKey:                c.NotificationsDisabled,
+			alertsKey:                       c.AlertsDisabled,
+			taskrunnerKey:                   c.TaskrunnerDisabled,
+			repotrackerKey:                  c.RepotrackerDisabled,
+			schedulerKey:                    c.SchedulerDisabled,
+			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
+			repotrackerPushEventDisabledKey: c.RepotrackerPushEventDisabled,
+			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
+			githubStatusAPIDisabled:         c.GithubStatusAPIDisabled,
+		},
+	})
+	return err
+}
+
+// supported banner themes in Evergreen
+type BannerTheme string
+
+const (
+	Announcement BannerTheme = "announcement"
+	Information              = "information"
+	Warning                  = "warning"
+	Important                = "important"
+)
+
+func IsValidBannerTheme(input string) (bool, BannerTheme) {
+	switch input {
+	case "":
+		return true, ""
+	case "announcement":
+		return true, Announcement
+	case "information":
+		return true, Information
+	case "warning":
+		return true, Warning
+	case "important":
+		return true, Important
+	default:
+		return false, ""
+	}
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	Alerts             AlertsConfig              `yaml:"alerts"`
-	Amboy              AmboyConfig               `yaml:"amboy"`
-	Api                APIConfig                 `yaml:"api"`
-	ApiUrl             string                    `yaml:"api_url"`
-	AuthConfig         AuthConfig                `yaml:"auth"`
-	ClientBinariesDir  string                    `yaml:"client_binaries_dir"`
-	ConfigDir          string                    `yaml:"configdir"`
-	Credentials        map[string]string         `yaml:"credentials"`
+	Id                 string                    `bson:"_id" json:"id"`
+	Alerts             AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
+	Amboy              AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	Api                APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
+	ApiUrl             string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
+	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	Banner             string                    `bson:"banner" json:"banner"`
+	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
+	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
+	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
 	Database           DBSettings                `yaml:"database"`
-	Expansions         map[string]string         `yaml:"expansions"`
-	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org"`
-	HostInit           HostInitConfig            `yaml:"hostinit"`
-	IsNonProd          bool                      `yaml:"isnonprod"`
-	Jira               JiraConfig                `yaml:"jira"`
-	Keys               map[string]string         `yaml:"keys"`
-	LoggerConfig       LoggerConfig              `yaml:"logger_config"`
-	LogPath            string                    `yaml:"log_path"`
-	NewRelic           NewRelicConfig            `yaml:"new_relic"`
-	Notify             NotifyConfig              `yaml:"notify"`
-	Plugins            PluginConfig              `yaml:"plugins"`
-	PprofPort          string                    `yaml:"pprof_port"`
-	Providers          CloudProviders            `yaml:"providers"`
-	RepoTracker        RepoTrackerConfig         `yaml:"repotracker"`
-	Scheduler          SchedulerConfig           `yaml:"scheduler"`
-	Slack              SlackConfig               `yaml:"slack"`
-	Splunk             send.SplunkConnectionInfo `yaml:"splunk"`
-	SuperUsers         []string                  `yaml:"superusers"`
-	Ui                 UIConfig                  `yaml:"ui"`
+	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
+	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit"`
+	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
+	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira"`
+	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
+	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config"`
+	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
+	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic"`
+	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify"`
+	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers"`
+	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker"`
+	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler"`
+	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
+	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack"`
+	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
+	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
+	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui"`
 	WriteConcern       WriteConcern              `yaml:"write_concern"`
+}
+
+func (c *Settings) id() string { return configDocID }
+func (c *Settings) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == "not found" {
+		return nil
+	}
+	return err
+}
+func (c *Settings) set() error { //TODO
+	return nil
+}
+
+// configSection defines a sub-document in the evegreen configSection
+// any config sections must also be added to registry.go
+type configSection interface {
+	// id() returns the ID of the section to be used in the database document and struct tag
+	id() string
+	// get() populates the section from the DB
+	get() error
+	// set() upserts the section document into the DB
+	set() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -309,6 +486,57 @@ func NewSettings(filename string) (*Settings, error) {
 	}
 
 	return settings, nil
+}
+
+// GetSettings retrieves the Evergreen config document. If no document is
+// present in the DB, it will return the defaults
+func GetConfig() (*Settings, error) {
+	config := &Settings{}
+
+	// retrieve the root config document
+	if err := config.get(); err != nil {
+		return nil, err
+	}
+
+	// retrieve the other config sub-documents and form the whole struct
+	catcher := grip.NewSimpleCatcher()
+	sections := registry.getSections()
+	valConfig := reflect.ValueOf(*config)
+	//iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
+		}
+
+		// get the property name and find its corresponding section in the registry
+		propName := valConfig.Type().Field(i).Name
+		section, ok := sections[sectionId]
+		if !ok {
+			catcher.Add(fmt.Errorf("config section %s not found in registry", sectionId))
+			continue
+		}
+
+		// retrieve the section's document from the db
+		if err := section.get(); err != nil {
+			catcher.Add(errors.Wrapf(err, "error populating section %s", sectionId))
+			continue
+		}
+
+		// set the value of the section struct to the value of the corresponding field in the config
+		sectionVal := reflect.ValueOf(section).Elem()
+		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
+		if !propVal.CanSet() {
+			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+		}
+		propVal.Set(sectionVal)
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return config, nil
 }
 
 // Validate checks the settings and returns nil if the config is valid,

@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
@@ -347,7 +347,7 @@ func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) err
 }
 
 // nolint
-func (c *Mock) SetBannerMessage(ctx context.Context, m string, t admin.BannerTheme) error { return nil }
+func (c *Mock) SetBannerMessage(ctx context.Context, m string, t evergreen.BannerTheme) error { return nil }
 func (c *Mock) GetBannerMessage(ctx context.Context) (string, error)                      { return "", nil }
 func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error       { return nil }
 func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)       { return nil, nil }

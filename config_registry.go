@@ -1,4 +1,4 @@
-package admin
+package evergreen
 
 import (
 	"errors"
@@ -13,6 +13,10 @@ var registry *configSectionRegistry
 func init() {
 	// add any new config sections to the variable below to register them
 	configSections := []configSection{
+		&AlertsConfig{},
+		&AmboyConfig{},
+		&APIConfig{},
+		&AuthConfig{},
 		&ServiceFlags{},
 	}
 

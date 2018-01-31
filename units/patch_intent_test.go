@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
+	
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -63,7 +63,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NotNil(s.env.Settings())
 
-	s.NoError(db.ClearCollections(admin.Collection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
+	s.NoError(db.ClearCollections(evergreen.Collection, model.ProjectVarsCollection, version.Collection, user.Collection, model.ProjectRefCollection, patch.Collection, patch.IntentCollection))
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
@@ -147,10 +147,10 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
-	flags := admin.ServiceFlags{
+	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(admin.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(flags))
 
 	patchContent, summaries, err := fetchDiffFromGithub(&s.githubPatchData, githubOauthToken)
 	s.NoError(err)
@@ -300,10 +300,10 @@ func (s *PatchIntentUnitsSuite) gridFSFileExists(patchFileID string) {
 }
 
 func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
-	flags := admin.ServiceFlags{
+	flags := evergreen.ServiceFlags{
 		GithubPRTestingDisabled: true,
 	}
-	s.NoError(admin.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(flags))
 
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
