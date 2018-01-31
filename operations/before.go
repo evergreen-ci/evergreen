@@ -48,6 +48,18 @@ var (
 		return c.Set(pathFlagName, path)
 	}
 
+	requireHostFlag = func(c *cli.Context) error {
+		host := c.String(hostFlagName)
+		if host == "" {
+			if c.NArg() != 1 {
+				return errors.New("must specify a host id")
+			}
+			host = c.Args().Get(0)
+		}
+
+		return c.Set(hostFlagName, host)
+	}
+
 	requirePatchIDFlag = func(c *cli.Context) error {
 		patch := c.String(patchIDFlagName)
 		if patch == "" {
