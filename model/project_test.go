@@ -282,34 +282,6 @@ func TestAliasResolution(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(ProjectVarsCollection), t, "Error clearing collection")
 	vars := ProjectVars{
 		Id: "project",
-		PatchDefinitions: []PatchDefinition{
-			{
-				Alias:   "all",
-				Variant: ".*",
-				Task:    ".*",
-			},
-			{
-				Alias:   "bv2",
-				Variant: ".*_2",
-				Task:    ".*",
-			},
-			{
-				Alias:   "2tasks",
-				Variant: ".*",
-				Task:    ".*_2",
-			},
-			{
-				Alias:   "aTags",
-				Variant: ".*",
-				Tags:    []string{"a"},
-			},
-			{
-				Alias:   "aTags_2tasks",
-				Variant: ".*",
-				Task:    ".*_2",
-				Tags:    []string{"a"},
-			},
-		},
 	}
 	assert.NoError(vars.Insert())
 	p := &Project{
@@ -370,13 +342,50 @@ func TestAliasResolution(t *testing.T) {
 		},
 	}
 
+	aliases := []ProjectAlias{
+		{
+			ProjectID: "project",
+			Alias:     "all",
+			Variant:   ".*",
+			Task:      ".*",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "bv2",
+			Variant:   ".*_2",
+			Task:      ".*",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "2tasks",
+			Variant:   ".*",
+			Task:      ".*_2",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "aTags",
+			Variant:   ".*",
+			Tags:      []string{"a"},
+		},
+		{
+			ProjectID: "project",
+			Alias:     "aTags_2tasks",
+			Variant:   ".*",
+			Task:      ".*_2",
+			Tags:      []string{"a"},
+		},
+	}
+	for _, alias := range aliases {
+		assert.NoError(alias.Upsert())
+	}
+
 	// test that .* on variants and tasks selects everything
-	pairs, err := p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[0].Alias)
+	pairs, err := p.BuildProjectTVPairsWithAlias(aliases[0].Alias)
 	assert.NoError(err)
 	assert.Len(pairs, 8)
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[1].Alias)
+	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[1].Alias)
 	assert.NoError(err)
 	assert.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -384,7 +393,7 @@ func TestAliasResolution(t *testing.T) {
 	}
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[2].Alias)
+	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[2].Alias)
 	assert.NoError(err)
 	assert.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -392,7 +401,7 @@ func TestAliasResolution(t *testing.T) {
 	}
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[3].Alias)
+	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[3].Alias)
 	assert.NoError(err)
 	assert.Len(pairs, 4)
 	for _, pair := range pairs {
@@ -400,7 +409,7 @@ func TestAliasResolution(t *testing.T) {
 	}
 
 	// test that the 'a' tag and .*_2 regex selects the union of both
-	pairs, err = p.BuildProjectTVPairsWithAlias(vars.PatchDefinitions[4].Alias)
+	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[4].Alias)
 	assert.NoError(err)
 	assert.Len(pairs, 6)
 	for _, pair := range pairs {
@@ -413,32 +422,32 @@ func TestGetTaskGroup(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
 	tgName := "example_task_group"
 	projYml := `
-tasks:
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  max_hosts: 2
-  setup_group:
-  - command: shell.exec
+    tasks:
+    - name: example_task_1
+    - name: example_task_2
+    task_groups:
+    - name: example_task_group
+    max_hosts: 2
+    setup_group:
+    - command: shell.exec
     params:
-      script: "echo setup_group"
-  teardown_group:
-  - command: shell.exec
+    script: "echo setup_group"
+    teardown_group:
+    - command: shell.exec
     params:
-      script: "echo teardown_group"
-  setup_task:
-  - command: shell.exec
+    script: "echo teardown_group"
+    setup_task:
+    - command: shell.exec
     params:
-      script: "echo setup_group"
-  teardown_task:
-  - command: shell.exec
+    script: "echo setup_group"
+    teardown_task:
+    - command: shell.exec
     params:
-      script: "echo setup_group"
-  tasks:
-  - example_task_1
-  - example_task_2
-`
+    script: "echo setup_group"
+    tasks:
+    - example_task_1
+    - example_task_2
+    `
 	proj, errs := projectFromYAML([]byte(projYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)

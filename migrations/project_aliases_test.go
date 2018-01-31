@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type projectAliasMigration struct {
@@ -55,22 +56,22 @@ func TestProjectAliasMigration(t *testing.T) {
 func (s *projectAliasMigration) SetupTest() {
 	s.NoError(evgdb.ClearCollections(projectVarsCollection, projectAliasCollection))
 
-	vars := &model.ProjectVars{
-		Id: "test",
-		PatchDefinitions: []model.PatchDefinition{
+	data := bson.M{
+		"_id": "test",
+		"patch_definitions": []bson.M{
 			{
-				Alias:   "__github",
-				Variant: "meh",
-				Task:    "something",
+				"alias":   "__github",
+				"variant": "meh",
+				"task":    "something",
 			},
 			{
-				Alias:   "__github",
-				Variant: "meh",
-				Tags:    []string{"lint"},
+				"alias":   "__github",
+				"variant": "meh",
+				"tags":    []string{"lint"},
 			},
 		},
 	}
-	s.NoError(vars.Insert())
+	s.NoError(evgdb.Insert(projectVarsCollection, data))
 }
 
 func (s *projectAliasMigration) TestMigration() {
@@ -87,11 +88,22 @@ func (s *projectAliasMigration) TestMigration() {
 	v, err := model.FindOneProjectVars("test")
 	s.NoError(err)
 	s.Require().NotNil(v)
-	s.Empty(v.PatchDefinitions)
 
 	a, err := model.FindAliasInProject("test", "__github")
 	s.NoError(err)
 	s.Len(a, 2)
+
+	s.Equal("test", a[0].ProjectID)
+	s.Equal("__github", a[0].Alias)
+	s.Equal("meh", a[0].Variant)
+	s.Equal("something", a[0].Task)
+	s.Empty(a[0].Tags)
+
+	s.Equal("test", a[1].ProjectID)
+	s.Equal("__github", a[1].Alias)
+	s.Equal("meh", a[1].Variant)
+	s.Empty(a[1].Task)
+	s.Equal("lint", a[1].Tags[0])
 }
 
 func (s *projectAliasMigration) TearDownTest() {

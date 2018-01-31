@@ -85,6 +85,9 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 }
 
 func (p *ProjectAlias) Upsert() error {
+	if len(p.ProjectID) == 0 {
+		return errors.New("empty project ID")
+	}
 	if p.ID.Hex() == "" {
 		p.ID = bson.NewObjectId()
 	}

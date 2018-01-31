@@ -18,40 +18,34 @@ func TestFindProjectAliases(t *testing.T) {
 
 	sc := &DBConnector{}
 
-	vars := []model.ProjectVars{
-		model.ProjectVars{
-			Id: "project_id",
-			PatchDefinitions: []model.PatchDefinition{
-				{
-					Alias:   "foo",
-					Variant: "variant",
-					Task:    "task",
-				},
-				{
-					Alias:   "bar",
-					Variant: "not_this_variant",
-					Task:    "not_this_task",
-				},
-				{
-					Alias:   "foo",
-					Variant: "another_variant",
-					Task:    "another_task",
-				},
-			},
+	aliases := []model.ProjectAlias{
+		{
+			ProjectID: "project_id",
+			Alias:     "foo",
+			Variant:   "variant",
+			Task:      "task",
 		},
-		model.ProjectVars{
-			Id: "other_project_id",
-			PatchDefinitions: []model.PatchDefinition{
-				{
-					Alias:   "baz",
-					Variant: "variant",
-					Task:    "task",
-				},
-			},
+		{
+			ProjectID: "project_id",
+			Alias:     "bar",
+			Variant:   "not_this_variant",
+			Task:      "not_this_task",
+		},
+		{
+			ProjectID: "project_id",
+			Alias:     "foo",
+			Variant:   "another_variant",
+			Task:      "another_task",
+		},
+		{
+			ProjectID: "other_project_id",
+			Alias:     "baz",
+			Variant:   "variant",
+			Task:      "task",
 		},
 	}
-	for _, v := range vars {
-		assert.NoError(v.Insert())
+	for _, v := range aliases {
+		assert.NoError(v.Upsert())
 	}
 	found, err := sc.FindProjectAliases("project_id")
 	assert.Nil(err)

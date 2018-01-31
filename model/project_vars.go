@@ -8,11 +8,10 @@ import (
 )
 
 var (
-	projectVarIdKey     = bsonutil.MustHaveTag(ProjectVars{}, "Id")
-	projectVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
-	privateVarsMapKey   = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	patchDefinitionsKey = bsonutil.MustHaveTag(ProjectVars{}, "PatchDefinitions")
-	githubHookIDKey     = bsonutil.MustHaveTag(ProjectVars{}, "GithubHookID")
+	projectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	projectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	privateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
+	githubHookIDKey   = bsonutil.MustHaveTag(ProjectVars{}, "GithubHookID")
 )
 
 const (

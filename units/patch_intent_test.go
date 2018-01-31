@@ -82,19 +82,20 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 
 	s.NoError((&model.ProjectVars{
 		Id: "mci",
-		PatchDefinitions: []model.PatchDefinition{
-			{
-				Alias:   patch.GithubAlias,
-				Variant: "ubuntu.*",
-				Task:    "dist.*",
-			},
-			{
-				Alias:   patch.GithubAlias,
-				Variant: "race.*",
-				Task:    "dist.*",
-			},
-		},
 	}).Insert())
+
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "mci",
+		Alias:     patch.GithubAlias,
+		Variant:   "ubuntu.*",
+		Task:      "dist.*",
+	}).Upsert())
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "mci",
+		Alias:     patch.GithubAlias,
+		Variant:   "race.*",
+		Task:      "dist.*",
+	}).Upsert())
 
 	s.repo = "evergreen-ci/evergreen"
 	s.headRepo = "tychoish/evergreen"
