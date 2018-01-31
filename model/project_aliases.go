@@ -42,12 +42,12 @@ const (
 // “linux”; and to run all tasks beginning with the string “compile” to run on all
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
-	ID        bson.ObjectId `bson:"_id"`
-	ProjectID string        `bson:"project_id"`
-	Alias     string        `bson:"alias"`
-	Variant   string        `bson:"variant"`
-	Task      string        `bson:"task,omitempty"`
-	Tags      []string      `bson:"tags,omitempty"`
+	ID        bson.ObjectId `bson:"_id" json:"_id"`
+	ProjectID string        `bson:"project_id" json:"project_id"`
+	Alias     string        `bson:"alias" json:"alias"`
+	Variant   string        `bson:"variant" json:"variant"`
+	Task      string        `bson:"task,omitempty" json:"task"`
+	Tags      []string      `bson:"tags,omitempty" json:"tags"`
 }
 
 // FindAliasesForProject fetches all aliases for a given project
@@ -85,7 +85,7 @@ func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 }
 
 func (p *ProjectAlias) Upsert() error {
-	if p.ID == "" {
+	if p.ID.Hex() == "" {
 		p.ID = bson.NewObjectId()
 	}
 	_, err := db.Upsert(ProjectAliasCollection, bson.M{
@@ -105,14 +105,15 @@ func (p *ProjectAlias) Upsert() error {
 	return nil
 }
 
-// Remove removes a matching project alias from the database.
-func (p *ProjectAlias) Remove() error {
-	if p.ID == "" {
+// RemoveProjectAlias removes a project alias with the given document ID from the
+// database.
+func RemoveProjectAlias(id string) error {
+	if id == "" {
 		return errors.New("can't remove project alias with empty id")
 	}
-	err := db.Remove(ProjectAliasCollection, db.Query(bson.M{idKey: p.ID}))
+	err := db.Remove(ProjectAliasCollection, db.Query(bson.M{idKey: bson.ObjectIdHex(id)}))
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove project alias %s", p.ID)
+		return errors.Wrapf(err, "failed to remove project alias %s", id)
 	}
 	return nil
 }

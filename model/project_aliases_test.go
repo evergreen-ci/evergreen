@@ -22,7 +22,11 @@ func TestProjectAliasSuite(t *testing.T) {
 
 func (s *ProjectAliasSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
 
+func (s *ProjectAliasSuite) SetupTest() {
+	s.Require().NoError(db.Clear(ProjectAliasCollection))
+	s.aliases = []ProjectAlias{}
 	for i := 0; i < 10; i++ {
 		s.aliases = append(s.aliases, ProjectAlias{
 			ProjectID: fmt.Sprintf("project-%d", i),
@@ -31,10 +35,6 @@ func (s *ProjectAliasSuite) SetupSuite() {
 			Task:      fmt.Sprintf("task-%d", i),
 		})
 	}
-}
-
-func (s *ProjectAliasSuite) SetupTest() {
-	s.Require().NoError(db.Clear(ProjectAliasCollection))
 }
 
 func (s *ProjectAliasSuite) TestInsert() {
@@ -64,17 +64,20 @@ func (s *ProjectAliasSuite) TestRemove() {
 	s.Len(out, 10)
 
 	for i, a := range s.aliases {
-		s.NoError(a.Remove())
+		s.NoError(RemoveProjectAlias(a.ID.Hex()))
 		s.NoError(db.FindAllQ(ProjectAliasCollection, q, &out))
 		s.Len(out, 10-i-1)
 	}
 }
 
 func (s *ProjectAliasSuite) TestFindAliasesForProject() {
+	for _, a := range s.aliases {
+		s.NoError(a.Upsert())
+	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     "alias-1",
-		Variant:   "variants-11",
+		Variant:   "variants-111",
 		Task:      "variants-11",
 	}
 	s.NoError(a1.Upsert())
