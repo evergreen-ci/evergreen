@@ -81,6 +81,10 @@ func (self *TaskQueue) Save() error {
 }
 
 func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
+	if spec.GroupName == "" {
+		return nil
+	}
+
 	for _, it := range self.Queue {
 		if spec.ProjectID != "" && it.Project != spec.ProjectID {
 			continue
@@ -94,7 +98,7 @@ func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
 			continue
 		}
 
-		if spec.GroupName != "" && it.GroupName != spec.GroupName {
+		if it.GroupName != spec.GroupName {
 			continue
 		}
 
