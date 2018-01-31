@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?><env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tns="http://ws.api.profitbricks.com/" xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"><env:Body><tns:getStorage><storageId>dd24d153-6cf7-4476-aab3-0b1d32d5e15c</storageId></tns:getStorage></env:Body></env:Envelope>

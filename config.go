@@ -137,24 +137,17 @@ type SchedulerConfig struct {
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
 type CloudProviders struct {
-	AWS          AWSConfig          `yaml:"aws"`
-	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
-	Docker       DockerConfig       `yaml:"docker"`
-	GCE          GCEConfig          `yaml:"gce"`
-	OpenStack    OpenStackConfig    `yaml:"openstack"`
-	VSphere      VSphereConfig      `yaml:"vsphere"`
+	AWS       AWSConfig       `yaml:"aws"`
+	Docker    DockerConfig    `yaml:"docker"`
+	GCE       GCEConfig       `yaml:"gce"`
+	OpenStack OpenStackConfig `yaml:"openstack"`
+	VSphere   VSphereConfig   `yaml:"vsphere"`
 }
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
 	Secret string `yaml:"aws_secret"`
 	Id     string `yaml:"aws_id"`
-}
-
-// DigitalOceanConfig stores auth info for Digital Ocean.
-type DigitalOceanConfig struct {
-	ClientId string `yaml:"client_id"`
-	Key      string `yaml:"key"`
 }
 
 // DockerConfig stores auth info for Docker.

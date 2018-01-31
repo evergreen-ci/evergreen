@@ -126,16 +126,15 @@ const (
 
 // cloud provider related constants
 const (
-	ProviderNameEc2Auto      = "ec2-auto"
-	ProviderNameEc2OnDemand  = "ec2-ondemand"
-	ProviderNameEc2Spot      = "ec2-spot"
-	ProviderNameDigitalOcean = "digitalocean"
-	ProviderNameDocker       = "docker"
-	ProviderNameGce          = "gce"
-	ProviderNameStatic       = "static"
-	ProviderNameOpenstack    = "openstack"
-	ProviderNameVsphere      = "vsphere"
-	ProviderNameMock         = "mock"
+	ProviderNameEc2Auto     = "ec2-auto"
+	ProviderNameEc2OnDemand = "ec2-ondemand"
+	ProviderNameEc2Spot     = "ec2-spot"
+	ProviderNameDocker      = "docker"
+	ProviderNameGce         = "gce"
+	ProviderNameStatic      = "static"
+	ProviderNameOpenstack   = "openstack"
+	ProviderNameVsphere     = "vsphere"
+	ProviderNameMock        = "mock"
 
 	// TODO: This can be removed when no more hosts with provider ec2 are running.
 	ProviderNameEc2Legacy = "ec2"

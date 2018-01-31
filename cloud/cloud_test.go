@@ -47,13 +47,6 @@ func TestGetCloudManager(t *testing.T) {
 			So(cloudMgr, ShouldHaveSameTypeAs, &mockManager{})
 		})
 
-		Convey("DigitalOcean should be returned for digitalocean provider name", func() {
-			cloudMgr, err := GetCloudManager("digitalocean", testutil.TestConfig())
-			So(cloudMgr, ShouldNotBeNil)
-			So(err, ShouldBeNil)
-			So(cloudMgr, ShouldHaveSameTypeAs, &doManager{})
-		})
-
 		Convey("Invalid provider names should return nil with err", func() {
 			cloudMgr, err := GetCloudManager("bogus", testutil.TestConfig())
 			So(cloudMgr, ShouldBeNil)
