@@ -34,13 +34,11 @@ func projectAliasesToCollectionGenerator(env anser.Environment, db string, limit
 			Collection: projectVarsCollection,
 		},
 		Limit: limit,
-		//Query: bson.M{
-		//	"patch_definitions": bson.M{
-		//		"$not": bson.M{
-		//			"$size": 0,
-		//		},
-		//	},
-		//},
+		Query: bson.M{
+			"patch_definitions": bson.M{
+				"$ne": []interface{}{},
+			},
+		},
 		JobID: "migration-project-aliases-to-collection",
 	}
 
