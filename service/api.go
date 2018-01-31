@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -656,16 +655,11 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	errorFields := message.Fields{
+	grip.Error(message.WrapError(err, message.Fields{
 		"method": r.Method,
-		"url":    r.URL,
-		"err":    err.Error(),
+		"url":    r.URL.String(),
 		"code":   code,
-	}
-	if code >= 500 {
-		errorFields["stack"] = string(debug.Stack())
-	}
-	grip.Error(errorFields)
+	}))
 
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
