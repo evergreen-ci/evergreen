@@ -1111,10 +1111,11 @@ func TestCreateTaskGroup(t *testing.T) {
 	assert.Len(dbTasks, 3)
 	for _, t := range dbTasks {
 		if t.DisplayName == "example_task_3" {
-			assert.Equal("", t.TaskGroup)
+			assert.Contains(t.TaskGroup, "test_bv_example_task_3_foobar")
+			assert.NotContains(t.TaskGroup, "example_task_group")
 			assert.EqualValues(0, t.Priority)
 		} else {
-			assert.Equal(task.FormTaskGroupId("example_task_group", v.Id), t.TaskGroup)
+			assert.Equal("example_task_group", t.TaskGroup)
 			assert.EqualValues(50, t.Priority)
 		}
 	}

@@ -233,11 +233,6 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 	return false
 }
 
-// FormTaskGroupId concatenates a task group and version to return a task group ID
-func FormTaskGroupId(tgName, version string) string {
-	return fmt.Sprintf("%s_%s", tgName, version)
-}
-
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries
