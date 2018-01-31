@@ -135,18 +135,11 @@ func printHosts(hosts []*model.APIHost) error {
 }
 
 func hostTerminate() cli.Command {
-	const hostFlagName = "host"
-
 	return cli.Command{
-		Name:  "terminate",
-		Usage: "terminate active spawn hosts",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  joinFlagNames(hostFlagName, "h"),
-				Usage: "terminate the specified host",
-			},
-		},
-		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(hostFlagName)),
+		Name:   "terminate",
+		Usage:  "terminate active spawn hosts",
+		Flags:  addHostFlag(),
+		Before: mergeBeforeFuncs(setPlainLogger, requireHostFlag),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			hostID := c.String(hostFlagName)

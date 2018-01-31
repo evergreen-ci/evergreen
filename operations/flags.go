@@ -19,6 +19,7 @@ const (
 	yesFlagName        = "yes"
 	tasksFlagName      = "tasks"
 	largeFlagName      = "large"
+	hostFlagName       = "host"
 
 	anserDryRunFlagName  = "dry-run"
 	anserLimitFlagName   = "limit"
@@ -105,6 +106,14 @@ func addYesFlag(flags ...cli.Flag) []cli.Flag {
 		Name:  joinFlagNames(yesFlagName, "y"),
 		Usage: "skip confirmation text",
 	})
+}
+
+func addHostFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  hostFlagName,
+		Usage: "specify the name of an evergreen host",
+	})
+
 }
 
 func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
