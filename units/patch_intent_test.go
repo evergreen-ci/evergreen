@@ -111,7 +111,6 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		HeadRepo:   "evergreen",
 		HeadHash:   "something",
 		Author:     "richardsamuels",
-		DiffURL:    "https://github.com/evergreen-ci/evergreen/pull/448.diff",
 	}
 	s.desc = "Test!"
 	s.project = "mci"
@@ -189,7 +188,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
 
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL, ""))
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -205,7 +204,6 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
 	s.Equal(s.user, patchDoc.Author)
-	s.Equal(s.diffURL, patchDoc.GithubPatchData.DiffURL)
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
 	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepo)
@@ -307,7 +305,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", s.diffURL, ""))
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())

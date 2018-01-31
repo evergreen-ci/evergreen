@@ -89,9 +89,6 @@ type githubIntent struct {
 	// commit.
 	HeadHash string `bson:"head_hash"`
 
-	// DiffURL is the URL to the diff file for this pull request
-	DiffURL string `bson:"diff_url"`
-
 	// Title is the title of the Github PR
 	Title string `bson:"Title"`
 
@@ -120,7 +117,6 @@ var (
 	prNumberKey     = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
 	userKey         = bsonutil.MustHaveTag(githubIntent{}, "User")
 	headHashKey     = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
-	diffURLKey      = bsonutil.MustHaveTag(githubIntent{}, "DiffURL")
 	processedKey    = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	processedAtKey  = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
 	intentTypeKey   = bsonutil.MustHaveTag(githubIntent{}, "IntentType")
@@ -132,7 +128,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 	if event.Action == nil || event.Number == nil ||
 		event.Repo == nil || event.Repo.FullName == nil ||
 		event.Sender == nil || event.Sender.Login == nil ||
-		event.PullRequest == nil || event.PullRequest.DiffURL == nil ||
+		event.PullRequest == nil ||
 		event.PullRequest.Head == nil || event.PullRequest.Head.SHA == nil ||
 		event.PullRequest.Head.Repo == nil || event.PullRequest.Head.Repo.FullName == nil ||
 		event.PullRequest.Title == nil || event.PullRequest.Base == nil ||
@@ -160,12 +156,6 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 	if len(*event.PullRequest.Head.SHA) == 0 {
 		return nil, errors.New("Head hash must not be empty")
 	}
-	if !strings.HasPrefix(*event.PullRequest.DiffURL, "https://") {
-		return nil, errors.Errorf("DiffURL must begin with 'https://' (%s)", *event.PullRequest.DiffURL)
-	}
-	if !strings.HasSuffix(*event.PullRequest.DiffURL, ".diff") {
-		return nil, errors.New("Github patch intents must be created from *.diff files")
-	}
 
 	return &githubIntent{
 		DocumentID:   bson.NewObjectId(),
@@ -176,7 +166,6 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		PRNumber:     *event.Number,
 		User:         *event.Sender.Login,
 		HeadHash:     *event.PullRequest.Head.SHA,
-		DiffURL:      *event.PullRequest.DiffURL,
 		Title:        *event.PullRequest.Title,
 		IntentType:   GithubIntentType,
 	}, nil
@@ -267,7 +256,6 @@ func (g *githubIntent) NewPatch() *Patch {
 			HeadRepo:   headRepo[1],
 			HeadHash:   g.HeadHash,
 			Author:     g.User,
-			DiffURL:    g.DiffURL,
 		},
 	}
 	return patchDoc

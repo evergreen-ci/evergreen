@@ -2,7 +2,7 @@ package testutil
 
 import "github.com/google/go-github/github"
 
-func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, url, title string) *github.PullRequestEvent {
+func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, title string) *github.PullRequestEvent {
 	return &github.PullRequestEvent{
 		Action: github.String("opened"),
 		Number: github.Int(prNumber),
@@ -13,8 +13,7 @@ func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, 
 			Login: github.String(user),
 		},
 		PullRequest: &github.PullRequest{
-			Title:   github.String(title),
-			DiffURL: github.String(url),
+			Title: github.String(title),
 			Head: &github.PullRequestBranch{
 				SHA: github.String(headHash),
 				Repo: &github.Repository{

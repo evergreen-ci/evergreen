@@ -43,43 +43,31 @@ func (s *GithubSuite) SetupTest() {
 }
 
 func (s *GithubSuite) TestNewGithubIntent() {
-	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(0, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(0, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, "", s.headRepo, s.hash, s.user, s.url, s.title))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, "", s.headRepo, s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, "", s.hash, s.user, s.url, s.title))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, "", s.hash, s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, "", s.user, s.url, s.title))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, "", s.user, s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.url, s.title))
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, "", s.title))
 	s.Nil(intent)
 	s.Error(err)
 
-	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "", s.title))
-	s.Nil(intent)
-	s.Error(err)
+	intent, err = NewGithubIntent("2", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, ""))
+	s.NotNil(intent)
+	s.NoError(err)
 
-	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "foo", s.title))
-	s.Nil(intent)
-	s.Error(err)
-
-	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "https://example.com/1.patch", s.title))
-	s.Nil(intent)
-	s.Error(err)
-
-	intent, err = NewGithubIntent("3", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, "http://example.com/1.diff", s.title))
-	s.Nil(intent)
-	s.Error(err)
-
-	intent, err = NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
+	intent, err = NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.Implements((*Intent)(nil), intent)
@@ -91,7 +79,6 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(s.pr, githubIntent.PRNumber)
 	s.Equal(s.user, githubIntent.User)
 	s.Equal(s.hash, githubIntent.HeadHash)
-	s.Equal(s.url, githubIntent.DiffURL)
 	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
@@ -113,11 +100,10 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(headRepo[1], patchDoc.GithubPatchData.HeadRepo)
 	s.Equal(s.hash, patchDoc.GithubPatchData.HeadHash)
 	s.Equal(s.user, patchDoc.GithubPatchData.Author)
-	s.Equal(s.url, patchDoc.GithubPatchData.DiffURL)
 }
 
 func (s *GithubSuite) TestInsert() {
-	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -132,13 +118,12 @@ func (s *GithubSuite) TestInsert() {
 	s.Equal(s.pr, found.PRNumber)
 	s.Equal(s.user, found.User)
 	s.Equal(s.hash, found.HeadHash)
-	s.Equal(s.url, found.DiffURL)
 	s.False(found.IsProcessed())
 	s.Equal(GithubIntentType, found.GetType())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
-	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
+	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 	s.NoError(intent.Insert())
@@ -153,13 +138,11 @@ func (s *GithubSuite) TestSetProcessed() {
 	s.Len(intents, 1)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.hash, intents[0].HeadHash)
-	s.Equal(s.url, intents[0].DiffURL)
 	s.Equal(s.baseRepo, intents[0].BaseRepoName)
 	s.Equal(s.headRepo, intents[0].HeadRepoName)
 	s.Equal(s.pr, intents[0].PRNumber)
 	s.Equal(s.user, intents[0].User)
 	s.Equal(s.hash, intents[0].HeadHash)
-	s.Equal(s.url, intents[0].DiffURL)
 	s.True(intents[0].IsProcessed())
 	s.Equal(GithubIntentType, intents[0].GetType())
 }
@@ -210,7 +193,7 @@ func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 }
 
 func (s *GithubSuite) TestNewPatch() {
-	intent, err := NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.url, s.title))
+	intent, err := NewGithubIntent("4", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
 	s.NotNil(intent)
 
@@ -240,5 +223,4 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Equal("evergreen", patchDoc.GithubPatchData.HeadRepo)
 	s.Equal("67da19930b1b18d346477e99a8e18094a672f48a", patchDoc.GithubPatchData.HeadHash)
 	s.Equal("octocat", patchDoc.GithubPatchData.Author)
-	s.Equal("https://www.example.com/1.diff", patchDoc.GithubPatchData.DiffURL)
 }
