@@ -20,9 +20,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     'id': 'static',
     'display': 'Static IP/VM'
   }, {
-    'id': 'digitalocean',
-    'display': 'Digital Ocean'
-  }, {
     'id': 'docker',
     'display': 'Docker'
   }, {
@@ -84,8 +81,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
       // If the distro exists, load it.
       var distro = $scope.getDistroById(distroHash);
       if (distro) {
-        $scope.activeDistro = distro;
-        return;
+	$scope.activeDistro = distro;
+	return;
       }
     }
     // Default to the first distro.
@@ -99,7 +96,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   $scope.getDistroById = function(id) {
     return _.find($scope.distros, function(distro) {
-        return distro._id === id;
+	return distro._id === id;
     });
   };
 
@@ -116,8 +113,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
     for (var i = 0; i < keys.length; i++) {
       $scope.keys.push({
-        name: keys[i],
-        location: $window.keys[keys[i]],
+	name: keys[i],
+	location: $window.keys[keys[i]],
       });
     }
   };
@@ -133,7 +130,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   $scope.getKeyDisplay = function(key, display) {
     for (var i = 0; i < $scope[key].length; i++) {
       if ($scope[key][i].id === display) {
-        return $scope[key][i].display;
+	return $scope[key][i].display;
       }
     }
     return display;
@@ -238,30 +235,30 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   $scope.saveConfiguration = function() {
     if ($scope.activeDistro.new) {
       mciDistroRestService.addDistro(
-        $scope.activeDistro, {
-          success: function(resp) {
-            $window.location.reload(true);
-          },
-          error: function(resp) {
-            $window.location.reload(true);
-            console.log(resp.data.error);
-          }
-        }
+	$scope.activeDistro, {
+	  success: function(resp) {
+	    $window.location.reload(true);
+	  },
+	  error: function(resp) {
+	    $window.location.reload(true);
+	    console.log(resp.data.error);
+	  }
+	}
       );
     } else {
       mciDistroRestService.modifyDistro(
-        $scope.activeDistro._id,
-        $scope.activeDistro,
-        $scope.shouldDeco,
-        {
-          success: function(resp) {
-            $window.location.reload(true);
-          },
-          error: function(resp) {
-            $window.location.reload(true);
-            console.log(resp.data.error);
-          }
-        }
+	$scope.activeDistro._id,
+	$scope.activeDistro,
+	$scope.shouldDeco,
+	{
+	  success: function(resp) {
+	    $window.location.reload(true);
+	  },
+	  error: function(resp) {
+	    $window.location.reload(true);
+	    console.log(resp.data.error);
+	  }
+	}
       );
     }
     // this will reset the location hash to the new one in case the _id is changed.
@@ -273,13 +270,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
       $scope.activeDistro._id,
       $scope.shouldDeco,
       {
-        success: function(resp) {
-          $window.location.reload(true);
-        },
-        error: function(resp) {
-          $window.location.reload(true);
-          console.log(resp.data.error);
-        }
+	success: function(resp) {
+	  $window.location.reload(true);
+	},
+	error: function(resp) {
+	  $window.location.reload(true);
+	  console.log(resp.data.error);
+	}
       }
     );
   };
@@ -287,14 +284,14 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   $scope.newDistro = function() {
     if (!$scope.hasNew) {
       var defaultOptions = {
-        '_id': 'new distro',
-        'arch': 'linux_amd64',
-        'provider': 'ec2',
-        'new': true,
+	'_id': 'new distro',
+	'arch': 'linux_amd64',
+	'provider': 'ec2',
+	'new': true,
       };
 
       if ($scope.keys.length != 0) {
-        defaultOptions.ssh_key = $scope.keys[0].name;
+	defaultOptions.ssh_key = $scope.keys[0].name;
       }
       $scope.distros.unshift(defaultOptions);
       $scope.hasNew = true;
@@ -307,16 +304,16 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   $scope.copyDistro = function(){
     if (!$scope.hasNew) {
       var newDistro = {
-        'arch': $scope.activeDistro.arch,
-        'work_dir': $scope.activeDistro.work_dir,
-        'provider': $scope.activeDistro.provider,
-        'new': true,
-        'user': $scope.activeDistro.user,
-        'ssh_key': $scope.activeDistro.ssh_key,
-        'ssh_options': $scope.activeDistro.ssh_options,
-        'setup': $scope.activeDistro.setup,
-        'pool_size': $scope.activeDistro.pool_size,
-        'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
+	'arch': $scope.activeDistro.arch,
+	'work_dir': $scope.activeDistro.work_dir,
+	'provider': $scope.activeDistro.provider,
+	'new': true,
+	'user': $scope.activeDistro.user,
+	'ssh_key': $scope.activeDistro.ssh_key,
+	'ssh_options': $scope.activeDistro.ssh_options,
+	'setup': $scope.activeDistro.setup,
+	'pool_size': $scope.activeDistro.pool_size,
+	'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
 
       }
       newDistro.settings = _.clone($scope.activeDistro.settings);
@@ -338,25 +335,25 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
     if (option === 'removeDistro') {
       if (modal.data('bs.modal').isShown) {
-        $scope.modalOpen = true;
+	$scope.modalOpen = true;
       } else {
-        $scope.modalOpen = false;
+	$scope.modalOpen = false;
       }
     }
 
     $(document).keyup(function(ev) {
       if ($scope.modalOpen && ev.keyCode === 13) {
-        if ($scope.confirmationOption === 'removeDistro') {
-          $scope.removeConfiguration();
-          $('#admin-modal').modal('hide');
-        }
+	if ($scope.confirmationOption === 'removeDistro') {
+	  $scope.removeConfiguration();
+	  $('#admin-modal').modal('hide');
+	}
       }
     });
   }
 
   $scope.checkPortRange = function(min, max) {
     if ($scope.form.portRange.minPort.$invalid || $scope.form.portRange.maxPort.$invalid) {
-        return false
+	return false
     }
     return (!min && !max) || (min >= 0 && min <= max);
   }
@@ -382,9 +379,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     // if a security group is in a vpc it needs to be the id which starts with 'subnet-'
     $scope.validSubnetId = function(){
       if ($scope.activeDistro){
-        if ($scope.activeDistro.settings.is_vpc) {
-          return $scope.activeDistro.settings.subnet_id.substring(0,7) == 'subnet-';
-        }
+	if ($scope.activeDistro.settings.is_vpc) {
+	  return $scope.activeDistro.settings.subnet_id.substring(0,7) == 'subnet-';
+	}
       }
       return true
     };
@@ -430,14 +427,14 @@ mciModule.directive('unique', function() {
     require: 'ngModel',
     link: function(scope, elm, attrs, ctrl) {
       ctrl.$parsers.unshift(function(value) {
-        var valid = scope.isUnique(value);
-        ctrl.$setValidity('unique', valid);
-        return value;
+	var valid = scope.isUnique(value);
+	ctrl.$setValidity('unique', valid);
+	return value;
       });
       ctrl.$formatters.unshift(function(value) {
-        var valid = scope.isUnique(value);
-        ctrl.$setValidity('unique', valid);
-        return value;
+	var valid = scope.isUnique(value);
+	ctrl.$setValidity('unique', valid);
+	return value;
       });
     }
   };
