@@ -15,17 +15,14 @@ var (
 	errEncounteredError = errors.New("repotracker encountered error")
 )
 
-func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef, num int) error {
-	if !project.Enabled {
-		return errors.Wrap(errProjectDisabled, project.String())
-	}
+func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracker, error) {
 	token, err := conf.GetGithubOauthToken()
 	if err != nil {
 		grip.Warning(message.Fields{
 			"runner":  RunnerName,
 			"message": "Github credentials not specified in Evergreen credentials file",
 		})
-		return err
+		return nil, errors.WithStack(err)
 	}
 
 	tracker := &RepoTracker{
@@ -34,7 +31,17 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 		RepoPoller: NewGithubRepositoryPoller(&project, token),
 	}
 
-	if err := tracker.FetchRevisions(num); err != nil {
+	return tracker, nil
+}
+
+func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef, num int) error {
+	if !project.Enabled {
+		return errors.Wrap(errProjectDisabled, project.String())
+	}
+
+	tracker, err := getTracker(conf, project)
+
+	if err = tracker.FetchRevisions(num); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"project": project.Identifier,
 			"message": "problem fetching revisions",
@@ -42,6 +49,30 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 		}))
 
 		return errors.Wrap(errEncounteredError, err.Error())
+	}
+
+	return nil
+}
+
+func ActivateBuildsForProject(conf *evergreen.Settings, project model.ProjectRef) error {
+	if !project.Enabled {
+		return errors.Wrap(errProjectDisabled, project.String())
+	}
+
+	tracker, err := getTracker(conf, project)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err = tracker.activationForProject(project.Identifier); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message": "problem activating recent commit for project",
+			"runner":  RunnerName,
+			"mode":    "catch up",
+			"project": project.Identifier,
+		}))
+
+		return errors.WithStack(err)
 	}
 
 	return nil
