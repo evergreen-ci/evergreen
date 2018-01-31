@@ -130,7 +130,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       $http.put('/project/' + $scope.newProject.identifier, $scope.newProject).then(
         function(resp) {
           var data_put = resp.data;
-          $http.post('/project/' + $scope.newProject.identifier, $scope.settingsFormData).then(
+          item = Object.assign({}, $scope.settingsFormData);
+          item["setup_github_hook"] = false;
+          $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
               $scope.loadProject(data_put.ProjectId);
@@ -254,12 +256,12 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
     if ($scope.github_alias) {
       $scope.addGithubAlias();
-      if($scope.github_alias.variant) {
-        $scope.invalidPatchDefinitionMessage = "Missing task regex";
-        return;
-      }
-      if($scope.github_alias.task) {
-        $scope.invalidPatchDefinitionMessage = "Missing variant regex";
+      if($scope.github_alias) {
+        if($scope.github_alias.variant) {
+          $scope.invalidPatchDefinitionMessage = "Missing task regex";
+        }else if($scope.github_alias_task) {
+          $scope.invalidPatchDefinitionMessage = "Missing variant regex";
+        }
         return;
       }
     }

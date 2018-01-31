@@ -91,19 +91,23 @@ func (p *ProjectAlias) Upsert() error {
 	if p.ID.Hex() == "" {
 		p.ID = bson.NewObjectId()
 	}
+	update := bson.M{
+		aliasKey:     p.Alias,
+		projectIDKey: p.ProjectID,
+		variantKey:   p.Variant,
+	}
+	if p.Task != "" {
+		update["task"] = p.Task
+
+	} else {
+		update["tags"] = p.Tags
+	}
+
 	_, err := db.Upsert(ProjectAliasCollection, bson.M{
 		idKey: p.ID,
-	}, bson.M{
-		"$set": bson.M{
-			aliasKey:     p.Alias,
-			projectIDKey: p.ProjectID,
-			variantKey:   p.Variant,
-			taskKey:      p.Task,
-			tagsKey:      p.Tags,
-		},
-	})
+	}, bson.M{"$set": update})
 	if err != nil {
-		return errors.Wrapf(err, "failed to insert project alias", p.ID)
+		return errors.Wrapf(err, "failed to insert project alias '%s'", p.ID)
 	}
 	return nil
 }
