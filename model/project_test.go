@@ -280,10 +280,6 @@ func boolPtr(b bool) *bool {
 func TestAliasResolution(t *testing.T) {
 	assert := assert.New(t) //nolint
 	testutil.HandleTestingErr(db.ClearCollections(ProjectVarsCollection), t, "Error clearing collection")
-	vars := ProjectVars{
-		Id: "project",
-	}
-	assert.NoError(vars.Insert())
 	p := &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
@@ -422,32 +418,32 @@ func TestGetTaskGroup(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
 	tgName := "example_task_group"
 	projYml := `
-    tasks:
-    - name: example_task_1
-    - name: example_task_2
-    task_groups:
-    - name: example_task_group
-    max_hosts: 2
-    setup_group:
-    - command: shell.exec
+tasks:
+- name: example_task_1
+- name: example_task_2
+task_groups:
+- name: example_task_group
+  max_hosts: 2
+  setup_group:
+  - command: shell.exec
     params:
-    script: "echo setup_group"
-    teardown_group:
-    - command: shell.exec
+      script: "echo setup_group"
+  teardown_group:
+  - command: shell.exec
     params:
-    script: "echo teardown_group"
-    setup_task:
-    - command: shell.exec
+      script: "echo teardown_group"
+  setup_task:
+  - command: shell.exec
     params:
-    script: "echo setup_group"
-    teardown_task:
-    - command: shell.exec
+      script: "echo setup_group"
+  teardown_task:
+  - command: shell.exec
     params:
-    script: "echo setup_group"
-    tasks:
-    - example_task_1
-    - example_task_2
-    `
+      script: "echo setup_group"
+  tasks:
+  - example_task_1
+  - example_task_2
+`
 	proj, errs := projectFromYAML([]byte(projYml))
 	assert.NotNil(proj)
 	assert.Empty(errs)
