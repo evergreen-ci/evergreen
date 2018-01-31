@@ -166,22 +166,30 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
         $scope.projectVars = data.ProjectVars.vars || {};
-        $scope.patchDefinitions = data.ProjectVars.patch_definitions || [];
-        $scope.patchDefinitions = _.sortBy($scope.patchDefinitions, function(v) {
-          return v.alias + v.variant + v.task;
-        });
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
+
+        $scope.aliases = data.aliases || [];
+        $scope.aliases = _.sortBy($scope.aliases, function(v) {
+          return v.alias + v.variant + v.task;
+        });
+
+        $scope.github_aliases = _.filter($scope.aliases, function(patch) {
+          return patch.alias == "__github";
+        });
+        $scope.patch_aliases = _.filter($scope.aliases, function(patch) {
+          return patch.alias != "__github";
+        });
+        for (var i = 0; i < $scope.patch_aliases.length; i++) {
+          var alias = $scope.patch_aliases[i];
+          if (alias.tags) {
+            alias.tags_temp = alias.tags.join(',');
+          }
+        }
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
-          github_patch_definitions: _.filter($scope.patchDefinitions, function(patch) {
-            return patch.alias == "__github";
-          }),
-          patch_aliases: _.filter($scope.patchDefinitions, function(patch) {
-            return patch.alias != "__github";
-          }),
           private_vars: $scope.privateVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
@@ -198,14 +206,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           admins : $scope.projectRef.admins || [],
           setup_github_hook: $scope.githubHookId != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
-          force_repotracker_run: false
+          force_repotracker_run: false,
+          delete_aliases: []
         };
-        for (var i = 0; i < $scope.settingsFormData.patch_aliases.length; i++) {
-          var alias = $scope.settingsFormData.patch_aliases[i];
-          if (alias.tags) {
-            alias.tags_temp = alias.tags.join(',');
-          }
-        }
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
         $location.hash($scope.projectRef.identifier);
@@ -249,13 +252,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if ($scope.proj_var) {
       $scope.addProjectVar();
     }
-    if ($scope.github_patch_definition) {
-      $scope.addGithubPatchDefinition();
-      if($scope.github_patch_definition.variant) {
+    if ($scope.github_alias) {
+      $scope.addGithubAlias();
+      if($scope.github_alias.variant) {
         $scope.invalidPatchDefinitionMessage = "Missing task regex";
         return;
       }
-      if($scope.github_patch_definition.task) {
+      if($scope.github_alias.task) {
         $scope.invalidPatchDefinitionMessage = "Missing variant regex";
         return;
       }
@@ -263,13 +266,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if ($scope.patch_alias) {
       $scope.addPatchAlias();
     }
-    for (var i = 0; i < $scope.settingsFormData.patch_aliases.length; i++) {
-      var alias = $scope.settingsFormData.patch_aliases[i];
+    for (var i = 0; i < $scope.patch_aliases.length; i++) {
+      var alias = $scope.patch_aliases[i];
       if (alias.tags_temp) {
         alias.tags = alias.tags_temp.split(',');
       }
     }
-    $scope.settingsFormData.patch_definitions = $scope.settingsFormData.github_patch_definitions.concat($scope.settingsFormData.patch_aliases);
+    $scope.settingsFormData.project_aliases = $scope.github_aliases.concat($scope.patch_aliases);
     if ($scope.admin_name) {
       $scope.addAdmin();
     }
@@ -280,6 +283,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
         $scope.settingsFormData.force_repotracker_run = false;
+        $scope.loadProject($scope.settingsFormData.identifier)
         $scope.isDirty = false;
       },
       function(resp) {
@@ -301,36 +305,24 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
   };
 
-  $scope.addGithubPatchDefinition = function() {
-    if ($scope.github_patch_definition.variant && $scope.github_patch_definition.task) {
-      item = {
-        "alias": "__github",
-        "variant": $scope.github_patch_definition.variant,
-        "task": $scope.github_patch_definition.task
-      };
-      $scope.settingsFormData.github_patch_definitions = $scope.settingsFormData.github_patch_definitions.concat([item]);
-      $scope.github_patch_definition.variant = "";
-      $scope.github_patch_definition.task = "";
+  $scope.addGithubAlias = function() {
+    if ($scope.github_alias.variant && $scope.github_alias.task) {
+      item = Object.assign({}, $scope.github_alias)
+      item["alias"] = "__github"
+      $scope.github_aliases = $scope.github_aliases.concat([item]);
+      delete $scope.github_alias
       $scope.invalidPatchDefinitionMessage = "";
     }
   };
 
   $scope.addPatchAlias = function() {
     if ($scope.patch_alias.alias && $scope.patch_alias.variant && ($scope.patch_alias.task || $scope.patch_alias.tags_temp)) {
-      item = {
-        "alias": $scope.patch_alias.alias,
-        "variant": $scope.patch_alias.variant,
-        "task": $scope.patch_alias.task,
-        "tags_temp": $scope.patch_alias.tags_temp
-      };
-      if ($scope.patch_alias.tags_temp) {
-        item.tags = $scope.patch_alias.tags_temp.split(',');
+      item = Object.assign({}, $scope.patch_alias)
+      if ($scope.patch_alias.tags) {
+        item.tags = $scope.patch_alias.tags.split(',');
       }
-      $scope.settingsFormData.patch_aliases = $scope.settingsFormData.patch_aliases.concat([item]);
-      $scope.patch_alias.alias = "";
-      $scope.patch_alias.variant = "";
-      $scope.patch_alias.task = "";
-      $scope.patch_alias.tags_temp = "";
+      $scope.patch_aliases = $scope.patch_aliases.concat([item]);
+      delete $scope.patch_alias
     }
   };
 
@@ -340,13 +332,19 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     $scope.isDirty = true;
   };
 
-  $scope.removeGithubPatchDefinition = function(i) {
-    $scope.settingsFormData.github_patch_definitions.splice(i, 1);
+  $scope.removeGithubAlias = function(i) {
+    if ($scope.github_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.github_aliases[i]["_id"]])
+    }
+    $scope.github_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 
   $scope.removePatchAlias = function(i) {
-    $scope.settingsFormData.patch_aliases.splice(i, 1);
+    if ($scope.patch_aliases[i]["_id"]) {
+      $scope.settingsFormData.delete_aliases = $scope.settingsFormData.delete_aliases.concat([$scope.patch_aliases[i]["_id"]])
+    }
+    $scope.patch_aliases.splice(i, 1);
     $scope.isDirty = true;
   };
 

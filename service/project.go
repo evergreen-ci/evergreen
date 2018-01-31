@@ -17,6 +17,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -75,7 +76,6 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
-
 	_ = MustHaveProjectContext(r)
 	_ = MustHaveUser(r)
 
@@ -83,24 +83,29 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	id := vars["project_id"]
 
 	projRef, err := model.FindOneProjectRef(id)
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+
 	projVars, err := model.FindOneProjectVars(id)
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
 	projVars.RedactPrivateVars()
 
+	projectAliases, err := model.FindAliasesForProject(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	data := struct {
-		ProjectRef  *model.ProjectRef
-		ProjectVars *model.ProjectVars
-	}{projRef, projVars}
+		ProjectRef     *model.ProjectRef
+		ProjectVars    *model.ProjectVars
+		ProjectAliases []model.ProjectAlias `json:"aliases,omitempty"`
+	}{projRef, projVars, projectAliases}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
@@ -133,21 +138,22 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier         string                  `json:"id"`
-		DisplayName        string                  `json:"display_name"`
-		RemotePath         string                  `json:"remote_path"`
-		BatchTime          int                     `json:"batch_time"`
-		DeactivatePrevious bool                    `json:"deactivate_previous"`
-		Branch             string                  `json:"branch_name"`
-		ProjVarsMap        map[string]string       `json:"project_vars"`
-		PatchDefinitions   []model.PatchDefinition `json:"patch_definitions"`
-		PrivateVars        map[string]bool         `json:"private_vars"`
-		Enabled            bool                    `json:"enabled"`
-		Private            bool                    `json:"private"`
-		Owner              string                  `json:"owner_name"`
-		Repo               string                  `json:"repo_name"`
-		Admins             []string                `json:"admins"`
-		TracksPushEvents   bool                    `json:"tracks_push_events"`
+		Identifier         string               `json:"id"`
+		DisplayName        string               `json:"display_name"`
+		RemotePath         string               `json:"remote_path"`
+		BatchTime          int                  `json:"batch_time"`
+		DeactivatePrevious bool                 `json:"deactivate_previous"`
+		Branch             string               `json:"branch_name"`
+		ProjVarsMap        map[string]string    `json:"project_vars"`
+		ProjectAliases     []model.ProjectAlias `json:"project_aliases"`
+		DeleteAliases      []string             `json:"delete_aliases"`
+		PrivateVars        map[string]bool      `json:"private_vars"`
+		Enabled            bool                 `json:"enabled"`
+		Private            bool                 `json:"private"`
+		Owner              string               `json:"owner_name"`
+		Repo               string               `json:"repo_name"`
+		Admins             []string             `json:"admins"`
+		TracksPushEvents   bool                 `json:"tracks_push_events"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -162,7 +168,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	errs := []string{}
-	for i, pd := range responseRef.PatchDefinitions {
+	for i, pd := range responseRef.ProjectAliases {
 		if strings.TrimSpace(pd.Alias) == "" {
 			errs = append(errs, fmt.Sprintf("alias name #%d can't be empty string", i+1))
 		}
@@ -257,11 +263,24 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	//modify project vars if necessary
 	projectVars.Vars = responseRef.ProjVarsMap
 	projectVars.PrivateVars = responseRef.PrivateVars
-	projectVars.PatchDefinitions = responseRef.PatchDefinitions
 
 	_, err = projectVars.Upsert()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	catcher := grip.NewSimpleCatcher()
+	for i := range responseRef.ProjectAliases {
+		responseRef.ProjectAliases[i].ProjectID = id
+		catcher.Add(responseRef.ProjectAliases[i].Upsert())
+	}
+
+	for _, alias := range responseRef.DeleteAliases {
+		catcher.Add(model.RemoveProjectAlias(alias))
+	}
+	if catcher.HasErrors() {
+		uis.LoggedError(w, r, http.StatusInternalServerError, catcher.Resolve())
 		return
 	}
 

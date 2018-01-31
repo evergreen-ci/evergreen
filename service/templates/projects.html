@@ -338,28 +338,28 @@ Evergreen Projects
             <div class="col-lg-2"></div>
           </div>
 
-          <div id="patch-variants-list" class="form-group" ng-repeat="obj in settingsFormData.github_patch_definitions track by $index">
+          <div id="patch-variants-list" class="form-group" ng-repeat="obj in github_aliases track by $index">
             <div class="col-lg-3">
-              <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].variant" type="text" placeholder="variant regex">
+              <input class="form-control" ng-model="github_aliases[$index].variant" type="text" placeholder="variant regex">
             </div>
             <div class="col-lg-3">
-              <input class="form-control" ng-model="settingsFormData.github_patch_definitions[$index].task" type="text" placeholder="task regex">
+              <input class="form-control" ng-model="github_aliases[$index].task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
-              <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubPatchDefinition($index)">
+              <button class="btn btn-default btn-danger" type="button" ng-click="removeGithubAlias($index)">
                 <i class="fa fa-trash"></i>
               </button>
             </div>
           </div>
           <div class="form-group">
             <div class="col-lg-3">
-              <input ng-model="github_patch_definition.variant" class="form-control" type="text" placeholder="variant regex">
+              <input ng-model="github_alias.variant" class="form-control" type="text" placeholder="variant regex">
             </div>
             <div class="col-lg-3">
-              <input ng-model="github_patch_definition.task" class="form-control" type="text" placeholder="task regex">
+              <input ng-model="github_alias.task" class="form-control" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-6">
-              <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_patch_definition.variant, github_patch_definition.task)" type="button" ng-click="addGithubPatchDefinition()">
+              <button class="plus-button btn btn-primary" ng-disabled="!validPatchDefinition(github_alias.variant, github_alias.task)" type="button" ng-click="addGithubAlias()">
                 <i class="fa fa-plus"></i>
               </button>
               <label class="distro-error">[[invalidPatchDefinitionMessage]]</label>
@@ -381,18 +381,18 @@ Evergreen Projects
             <div class="col-lg-2"></div>
           </div>
 
-          <div id="patch-aliases-list" class="form-group" ng-repeat="obj in settingsFormData.patch_aliases track by $index">
+          <div id="patch-aliases-list" class="form-group" ng-repeat="obj in patch_aliases track by $index">
             <div class="col-lg-2">
-              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].alias" type="text" placeholder="alias">
+              <input class="form-control" ng-model="patch_aliases[$index].alias" type="text" placeholder="alias">
             </div>
             <div class="col-lg-2">
-              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].variant" type="text" placeholder="variant regex">
+              <input class="form-control" ng-model="patch_aliases[$index].variant" type="text" placeholder="variant regex">
             </div>
             <div class="col-lg-2">
-              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].task" type="text" placeholder="task regex">
+              <input class="form-control" ng-model="patch_aliases[$index].task" type="text" placeholder="task regex">
             </div>
             <div class="col-lg-2">
-              <input class="form-control" ng-model="settingsFormData.patch_aliases[$index].tags_temp" type="text" placeholder="tags (comma-delimited)">
+              <input class="form-control" ng-model="patch_aliases[$index].tags_temp" type="text" placeholder="tags (comma-delimited)">
             </div>
             <div class="col-lg-2">
               <button class="btn btn-default btn-danger" type="button" ng-click="removePatchAlias($index)">
