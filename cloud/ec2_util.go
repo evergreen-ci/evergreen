@@ -10,7 +10,6 @@ import (
 	"time"
 
 	ec2aws "github.com/aws/aws-sdk-go/service/ec2"
-	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/anser/bsonutil"
@@ -65,7 +64,7 @@ var (
 type osType string
 
 const (
-	osLinux   osType = gcec2.DESC_LINUX_UNIX
+	osLinux   osType = "Linux/UNIX"
 	osSUSE    osType = "SUSE Linux"
 	osWindows osType = "Windows"
 )

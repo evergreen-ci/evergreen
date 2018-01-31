@@ -21,469 +21,447 @@ Evergreen - Distros
   <div ng-form="form" class="row">
     <div id="nav-container" class="col-md-2" ng-show="distros.length != 0" style="left:10%; max-width:350px">
       <div>
-        <div>
-          <h2 style="text-align: center;">Distros<span ng-show="distros.length != 0">([[distros.length]])</span></h2>
-        </div>
-        <div class="row" style="text-align: center;">
-          <button type="button" class="btn btn-primary col-lg-8" ng-hide="readOnly" style="margin-bottom: 10px; margin-left: 35px" ng-click="newDistro()" ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
-        </div>
-        <div id="distros-list-container">
-          <ul id="distros-list">
-            <li ng-repeat="distro in distros" ng-click="form.$setPristine();setActiveDistro(distro)"
-              ng-class="{'active-distro': distro._id == activeDistro._id}">
-              [[distro._id]]
-            </li>
-          </ul>
-        </div>
+	<div>
+	  <h2 style="text-align: center;">Distros<span ng-show="distros.length != 0">([[distros.length]])</span></h2>
+	</div>
+	<div class="row" style="text-align: center;">
+	  <button type="button" class="btn btn-primary col-lg-8" ng-hide="readOnly" style="margin-bottom: 10px; margin-left: 35px" ng-click="newDistro()" ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
+	</div>
+	<div id="distros-list-container">
+	  <ul id="distros-list">
+	    <li ng-repeat="distro in distros" ng-click="form.$setPristine();setActiveDistro(distro)"
+	      ng-class="{'active-distro': distro._id == activeDistro._id}">
+	      [[distro._id]]
+	    </li>
+	  </ul>
+	</div>
       </div>
     </div>
     <div class="col-lg-2"></div>
     <div class="col-lg-6 col-lg-offset-1" ng-show="distros.length != 0">
       <div ng-init="initOptions()">
-        <div ng-show="activeDistro">
-          <h2 style="display:inline-block; padding-right:15px">Configure
-          </h2>
-            <a class="pointer" ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a> /
-            <a ng-href="/event_log/distro/[[activeDistro._id]]"> view event log </a>
-        </div>
-        <div style="padding-top: -25px;" class="panel-body panel-default">
-          <div>
-            <label class="distro-label">Identifier:</label>
-            <input required ng-readonly="!activeDistro.new" id="identifier" name="id" type="text" class="form-control" ng-model="activeDistro._id" placeholder="Unique identifier for this distro">
-            <label class="icon fa fa-warning distro-error" ng-show="form.id.$error.required">Distro identifier is required<br></label>
-            <label class="icon fa fa-warning distro-error" ng-show="form.id.$dirty && form.id.$error.unsique || (activeDistro.new && form.id.$error.unique)">Distro identifier already exists</label>
-          </div>
-          <br>
+	<div ng-show="activeDistro">
+	  <h2 style="display:inline-block; padding-right:15px">Configure
+	  </h2>
+	    <a class="pointer" ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a> /
+	    <a ng-href="/event_log/distro/[[activeDistro._id]]"> view event log </a>
+	</div>
+	<div style="padding-top: -25px;" class="panel-body panel-default">
+	  <div>
+	    <label class="distro-label">Identifier:</label>
+	    <input required ng-readonly="!activeDistro.new" id="identifier" name="id" type="text" class="form-control" ng-model="activeDistro._id" placeholder="Unique identifier for this distro">
+	    <label class="icon fa fa-warning distro-error" ng-show="form.id.$error.required">Distro identifier is required<br></label>
+	    <label class="icon fa fa-warning distro-error" ng-show="form.id.$dirty && form.id.$error.unsique || (activeDistro.new && form.id.$error.unique)">Distro identifier already exists</label>
+	  </div>
+	  <br>
 
-          <div class="panel-body panel panel-default">
-            <div class="dropdown">
-              <span class="distro-menu-title">Agent Architecture:</span>
-              <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
-              <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-              </button>
-              <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
-                <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures | orderBy:'display'" role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
-              </ul>
-              <div class="icon fa fa-warning distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid">Agent architecture is required</div>
-            </div>
-            <div>
-              <label class="distro-label">Working Directory:</label>
-              <input required name="workDir" type="text" class="form-control" ng-model="activeDistro.work_dir" placeholder="Absolute path in which agent runs tasks on host machine" ng-readonly="readOnly">
-              <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working Directory is required</div>
-            </div>
-          </div>
-          <br>
-          <div class="panel-body panel panel-default">
-            <div class="dropdown">
-              <span class="distro-menu-title">Provider:</span>
-              <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
-              <strong class="distro-menu-item">[[activeDistro.provider | providerDisplay:this]]<span class="fa fa-caret-down"></span></strong>
-              </button>
-              <ul class="dropdown-menu" role="menu" style="margin-left: 60px; align: left;">
-                <li ng-click="form.$setDirty();setKeyValue('provider', provider.id)" required name="providerForm" ng-repeat="provider in providers" role="presentation"><a role="menuitem" tabindex="-1">[[provider.display]]</a></li>
-              </ul>
-              <div class="icon fa fa-warning distro-error" ng-show="form.providerForm.$dirty && form.providerForm.$error.required">Distro provider is required</div>
-            </div>
-            <div ng-show="activeDistro.provider == 'docker'">
-              <div>
-                <label class="distro-label">Host IP:</label>
-                <input type="text" ng-required="activeDistro.provider == 'docker'" name="hostIP" class="form-control" ng-model="activeDistro.settings.host_ip" placeholder="Machine IP address or DNS name" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.hostIP.$dirty && form.hostIP.$error.required || form.hostIP.$invalid">Host IP is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Docker Image ID:</label>
-                <input type="text" ng-required="activeDistro.provider == 'docker'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="Docker image ID preloaded on host machine" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Docker Client Port:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'docker'" name="clientPort" class="form-control" type="number" ng-model="activeDistro.settings.client_port" placeholder="Port exposing the Docker remote API e.g. 2376">
-                <div class="icon fa fa-warning distro-error" ng-show="form.clientPort.$dirty && form.clientPort.$error.required || form.clientPort.$invalid || form.clientPort.$modelValue < 0">Non-negative numeric Client Port is required</div>
-              </div>
-              <div id="port-table" class="distro-table-scroll">
-                <label class="distro-label">Container Port Range:</label>
-                <table style="margin-left: -8px;" ng-form name="portRange" class="table distro-table" ng-init="form.devName=''; form.devSize=''">
-                  <tr>
-                    <td style="padding-left: 10px;"><input ng-readonly="readOnly" ng-required="activeDistro.settings.port_range.max_port" name="minPort" type="number" ng-model="activeDistro.settings.port_range.min_port" class="form-control" placeholder="Min Port"></td>
-                    <td><input ng-readonly="readOnly" ng-required="activeDistro.settings.port_range.min_port" name="maxPort" type="number" ng-model="activeDistro.settings.port_range.max_port" class="form-control" placeholder="Max Port"></td>
-                  </tr>
-                </table>
-                <div class="icon fa fa-warning distro-error" ng-show="!checkPortRange(form.portRange.minPort.$modelValue, form.portRange.maxPort.$modelValue)">A non-negative, increasing port range is required</div>
-              </div>
-            </div>
-            <div ng-show="activeDistro.provider == 'digitalocean'">
-              <div>
-                <label class="distro-label">Image ID:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'digitalocean'" name="imageID" type="number" class="form-control" ng-model="activeDistro.settings.image_id">
-                <div class="icon fa fa-warning distro-error" ng-show="form.imageID.$dirty && form.imageID.$error.required || form.imageID.$invalid">Numeric image ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Size ID:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'digitalocean'" name="sizeID" type="number" class="form-control" ng-model="activeDistro.settings.size_id">
-                <div class="icon fa fa-warning distro-error" ng-show="form.sizeID.$dirty && form.sizeID.$error.required || form.sizeID.$invalid">Numeric size ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Region ID:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'digitalocean'" name="regionID" type="number" class="form-control" ng-model="activeDistro.settings.region_id">
-                <div class="icon fa fa-warning distro-error" ng-show="form.regionID.$dirty && form.regionID.$error.required || form.regionID.$invalid">Numeric region ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">SSH Key ID:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider == 'digitalocean'" name="sshKeyID" type="number" class="form-control" ng-model="activeDistro.settings.ssh_key_id">
-                <div class="icon fa fa-warning distro-error" ng-show="form.sshKeyID.$dirty && form.sshKeyID.$error.required || form.sshKeyID.$invalid">Numeric SSH Key ID is required</div>
-              </div>
-            </div>
-            <div ng-show="activeDistro.provider.startsWith('ec2')">
-              <div>
-                <label class="distro-label">AMI ID:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="ami" class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.ami.$dirty && form.ami.$error.required || form.ami.$invalid">AMI ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Instance Type:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="EC2 instance type for the AMI e.g t1.micro (must be available)" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance type is required</div>
-              </div>
-              <div ng-show="activeDistro.provider.startsWith('ec2-spot')">
-                <label class="distro-label">Bid Price:</label>
-                <input ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2-spot')" name="bidPrice" type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
-                <div class="icon fa fa-warning distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">Numeric bid price is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Key Name:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in EC2) to add on host machine" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2 key name is required</div>
-              </div>
-              <div>
-                <label class="distro-label"><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox" name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
-                <label class="distro-label">Security Group:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)" class="form-control">
-                <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">Security group is required</div>
-                <div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">Security group for EC2 VPC must be the id (starts with 'sg-')</div>
-              </div>
-              <div ng-show="activeDistro.settings.is_vpc">
-                <label class="distro-label">Default VPC Subnet Id:</label>
-                <input type="text" name="subnet_id" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.subnet_id" placeholder="EC2 subnet id (must already exist) e.g subnet-xxxx" ng-required="activeDistro.settings.is_vpc">
-                <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.subnet_id.$error.required || form.subnet_id.$invalid || !validSubnetId()"> Subnet Id is required for EC2 VPC (must start with 'subnet-')</div>
-              </div>
-              <div ng-show="activeDistro.settings.is_vpc">
-                <label class="distro-label">VPC Subnet Prefix:</label>
-                <input type="text" name="vpc_name" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.vpc_name" placeholder="will look for subnets like <prefix>.subnet_1a, <prefix>.subnet_1b, etc.">
-              </div>
-              <div ng-show="activeDistro.provider.startsWith('ec2')">
-                <div id="mounts-table" class="distro-table-scroll">
-                  <label class="distro-label">Mount Points:</label>
-                  <table ng-form name="mountPoints" class="table distro-table" ng-show="activeDistro.settings.mount_points" ng-init="form.devName=''; form.devSize=''">
-                    <thead class="muted">
-                      <tr>
-                        <th>Device Name</th>
-                        <th>Virtual Name</th>
-                        <th>Size</th>
-                      </tr>
-                    </thead>
-                    <tbody ng-repeat="mount_point in activeDistro.settings.mount_points">
-                      <tr>
-                        <td><input ng-readonly="readOnly" required name="devName" type="text" ng-model="mount_point.device_name" class="form-control"></td>
-                        <td><input ng-readonly="readOnly" ng-required="!mount_point.size" name="virtName" type="text" ng-model="mount_point.virtual_name" class="form-control"></td>
-                        <td><input ng-readonly="readOnly" type="number" ng-required="!mount_point.virtual_name" name="devSize" type="text" ng-model="mount_point.size" class="form-control"></td>
-                        <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeMount(mount_point)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div>
-                <div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.devName.$error.required">Device name is required<br /></div>
-                <div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.virtName.$error.required && mountPoints.devSize.$error.required">Must specify either virtual device name or device size<br /></div>
-                <button ng-hide="readOnly" type="button" ng-disabled="mountPoints.devName.$dirty && mountPoints.$invalid || mountPoints.devName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addMount()"><i class="fa fa-plus"></i>Add Mount Point</button>
-              </div>
-            </div>
-            <div ng-show="activeDistro.provider == 'openstack'">
-              <div>
-                <label class="distro-label">Image Name:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'openstack'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="OpenStack image name e.g. xenial-server" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image name is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Flavor Name:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'openstack'" name="flavorName" class="form-control" ng-model="activeDistro.settings.flavor_name" placeholder="OpenStack flavor name for the image e.g m1.tiny (must be available)" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.flavorName.$dirty && form.flavorName.$error.required || form.flavorName.$invalid">Flavor name is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Key Name:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'openstack'" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in OpenStack cloud) to add on host machine" ng-readonly="readOnly">
-                <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">OpenStack key name is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Security Group:</label>
-                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'openstack'" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="OpenStack security group (must already exist)" class="form-control">
-                <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">Security group is required</div>
-              </div>
-            </div>
-            <div ng-show="activeDistro.provider == 'gce'">
-              <div>
-                <label class="distro-label">Project ID:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="projectID" class="form-control" ng-model="activeDistro.settings.project_id" placeholder="Google Cloud project ID e.g. abc-abc-123">
-                <div class="icon fa fa-warning distro-error" ng-show="form.projectID.$dirty && form.projectID.$error.required || form.projectID.$invalid">Project ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Zone:</label>
-                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="zone" class="form-control" ng-model="activeDistro.settings.zone" placeholder="geographical zone e.g. us-east1-c">
-                <div class="icon fa fa-warning distro-error" ng-show="form.zone.$dirty && form.zone.$error.required || form.zone.$invalid">Zone is required</div>
-              </div>
-              <br>
-              <div>
-                <label>Image:</label>
-                <div>
-                  <label>
-                    <input type="radio" ng-model="activeDistro.settings.image" value="imageName"/>
-                    Image Name
-                  </label>
-                  <label>
-                    <input type="radio" ng-model="activeDistro.settings.image" value="imageFamily" />
-                    Image Family
-                  </label>
-                </div>
-                <div class="icon fa fa-warning distro-error" ng-show="activeDistro.settings.image == null">Image name or image family is required</div>
-                <div>
-                  <div ng-show="activeDistro.settings.image == 'imageName'">
-                    <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.image == 'imageName'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="the disk will use the private image of the specified name">
-                    <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image name is required</div>
-                  </div>
-                  <div ng-show="activeDistro.settings.image == 'imageFamily'">
-                    <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.image == 'imageFamily'" name="imageFamily" class="form-control" ng-model="activeDistro.settings.image_family" placeholder="the disk will use the newest image from the private image family">
-                    <div class="icon fa fa-warning distro-error" ng-show="form.imageFamily.$dirty && form.imageFamily.$error.required || form.imageFamily.$invalid">Image family is required</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <br>
-                <label>Machine Type:</label>
-                <div>
-                  <label>
-                    <input type="radio" ng-model="activeDistro.settings.machine" value="standard"/>
-                    Standard
-                  </label>
-                  <label>
-                    <input type="radio" ng-model="activeDistro.settings.machine" value="custom" />
-                    Custom
-                  </label>
-                </div>
-                <div class="icon fa fa-warning distro-error" ng-show="activeDistro.settings.machine == null">Machine type is required</div>
-                <div>
-                  <div ng-show="activeDistro.settings.machine == 'standard'">
-                    <label>Instance Type:</label>
-                    <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.machine == 'standard'" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="instance type e.g. n1-standard-8">
-                    <div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance type is required</div>
-                  </div>
-                  <div ng-show="activeDistro.settings.machine == 'custom'">
-                    <label>Number of CPUs:</label>
-                    <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.machine == 'custom'" name="numCPUs" class="form-control" ng-model="activeDistro.settings.num_cpus" placeholder="number of cores e.g. 2">
-                    <div class="icon fa fa-warning distro-error" ng-show="form.numCPUs.$dirty && form.numCPUs.$error.required || form.numCPUs.$invalid">Number of CPUs is required</div>
-                  </div>
-                  <div ng-show="activeDistro.settings.machine == 'custom'">
-                    <label>Memory (MB):</label>
-                    <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.machine == 'custom'" name="memoryMB" class="form-control" ng-model="activeDistro.settings.memory_mb" placeholder="memory, in MB e.g. 2048">
-                    <div class="icon fa fa-warning distro-error" ng-show="form.memoryMB.$dirty && form.memoryMB.$error.required || form.memoryMB.$invalid">Memory is required</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label class="distro-label">Disk Type:</label><br>
-                <select ng-readonly="readOnly" name="diskType" ng-model="activeDistro.settings.disk_type" ng-required="activeDistro.provider == 'gce'">
-                  <option value="pd-standard">Standard persistent disk</option>
-                  <option value="pd-ssd">SSD persistent disk</option>
-                </select>
-              </div>
-              <div class="icon fa fa-warning distro-error" ng-show="form.diskType.$dirty && form.diskType.$error.required || form.diskType.$invalid">Disk type is required</div>
-              <div>
-                <label class="distro-label">Disk Size (GB):</label>
-                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce'" name="diskSizeGB" class="form-control" ng-model="activeDistro.settings.disk_size_gb" placeholder="boot disk size, in base-2 GB e.g. 10">
-                <div class="icon fa fa-warning distro-error" ng-show="form.diskSizeGB.$dirty && form.diskSizeGB.$error.required || form.diskSizeGB.$invalid">Numeric disk size is required</div>
-              </div>
-              <div id="network-tags-table" class="distro-table-scroll">
-                <label class="distro-label">Network Tags:</label>
-                <table ng-form name="networkTags" class="table distro-table" ng-show="activeDistro.settings.network_tags" ng-init="form.devName=''; form.devSize=''">
-                  <tbody ng-repeat="tag in activeDistro.settings.network_tags track by $index">
-                    <tr>
-                      <td><input ng-readonly="readOnly" required name="tag" type="text" ng-model="activeDistro.settings.network_tags[$index]" class="form-control"></td>
-                      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeNetworkTag(tag)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div>
-                <div class="icon fa fa-warning distro-error" ng-show="networkTags.tag.$dirty && networkTags.tag.$error.required">Tag is required<br /></div>
-                <button ng-hide="readOnly" type="button" ng-disabled="(networkTags.tag.$dirty) && networkTags.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addNetworkTag()"><i class="fa fa-plus"></i>Add Tag</button>
-              </div>
-              <div id="ssh-keys-table" class="distro-table-scroll">
-                  <label class="distro-label">Instance SSH Keys:</label>
-                  <table ng-form name="sshKeys" class="table distro-table" ng-show="activeDistro.settings.ssh_keys" ng-init="form.devName=''; form.devSize=''">
-                    <thead class="muted">
-                      <tr>
-                        <th>Username</th>
-                        <th>Public Key</th>
-                      </tr>
-                    </thead>
-                    <tbody ng-repeat="ssh_key in activeDistro.settings.ssh_keys">
-                      <tr>
-                        <td><input ng-readonly="readOnly" required name="username" type="text" ng-model="ssh_key.username" class="form-control"></td>
-                        <td><input ng-readonly="readOnly" required name="public_key" type="text" ng-model="ssh_key.public_key" class="form-control"></td>
-                        <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeInstanceSSHKey(ssh_key)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div>
-                  <div class="icon fa fa-warning distro-error" ng-show="sshKeys.username.$dirty && sshKeys.username.$error.required">Username is required<br /></div>
-                  <div class="icon fa fa-warning distro-error" ng-show="sshKeys.public_key.$dirty && sshKeys.public_key.$error.required">Public key is required<br /></div>
-                  <button ng-hide="readOnly" type="button" ng-disabled="(sshKeys.username.$dirty || sshKeys.public_key.$dirty) && sshKeys.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addInstanceSSHKey()"><i class="fa fa-plus"></i>Add SSH Key</button>
-                </div>
-              </div>
-              <div ng-show="activeDistro.provider == 'vsphere'">
-                <div>
-                  <label class="distro-label">Template:</label>
-                  <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'vsphere'" name="template" class="form-control" ng-model="activeDistro.settings.template" placeholder="name of the template VM e.g. osx-1012-template">
-                  <div class="icon fa fa-warning distro-error" ng-show="form.template.$dirty && form.template.$error.required || form.template.$invalid">Template is required</div>
-                </div>
-                <div>
-                  <label class="distro-label">Datastore:</label>
-                  <input ng-readonly="readOnly" type="text" name="datastore" class="form-control" ng-model="activeDistro.settings.datastore" placeholder="(optional) name/path of the datastore to attach e.g. 1TB_SSD">
-                </div>
-                <div>
-                  <label class="distro-label">Resource Pool:</label>
-                  <input type="text" ng-readonly="readOnly" name="resourcePool" class="form-control" ng-model="activeDistro.settings.resource_pool" placeholder="(optional) name/path of a resource pool e.g. Resources">
-                </div>
-                <div>
-                  <label class="distro-label">Number of CPUs:</label>
-                  <input type="number" ng-readonly="readOnly" name="numCPUs" ng-model="activeDistro.settings.num_cpus" placeholder="(optional) number of CPUs e.g. 2" class="form-control">
-                </div>
-                <div>
-                  <label class="distro-label">Memory (MB):</label>
-                  <input type="number" ng-readonly="readOnly" name="memoryMB" ng-model="activeDistro.settings.memory_mb" placeholder="(optional) memory in MB e.g. 2048" class="form-control">
-                </div>
-              </div>
-            </div>
-            <div ng-show="activeDistro.provider != 'static'">
-              <label class="distro-label">Maximum number of hosts allowed:</label>
-              <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
-              <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">Numeric pool size is required</div>
-            </div>
-            <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
-              <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
-              <div id="hosts-table" class="distro-table-scroll">
-                <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.settings.hosts">
-                  <tbody id="hosts-table" >
-                    <tr ng-repeat="host in activeDistro.settings.hosts">
-                      <td><input ng-readonly="readOnly" required name="hostName" type="text" ng-model="host.name" class="col-md-10" placeholder="Machine DNS name"></td>
-                      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeHost(host)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div>
-                <div class="icon fa fa-warning distro-error" ng-show="hostProviderForm.hostName.$dirty && hostProviderForm.hostName.$error.required">Static host can not be blank<br /></div>
-                <br />
-                <button type="button" ng-hide="readOnly" ng-disabled="hostProviderForm.hostName.$dirty && hostProviderForm.$invalid || hostProviderForm.hostName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addHost()"><i class="fa fa-plus"></i>Add Host</button>
-              </div>
-            </div>
-          </div>
-          <div>
-            <label class="distro-label">User:</label>
-            <input required ng-readonly="readOnly" name="userName" type="text" class="form-control" ng-model="activeDistro.user" placeholder="Username with which to SSH into host machine">
-            <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">SSH user is required</div><br>
-          </div>
-          <div class="dropdown">
-            <span class="distro-menu-title">SSH Key:</span>
-            <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
-            <strong class="distro-menu-item">[[activeDistro.ssh_key]]<span class="fa fa-caret-down"></span></strong>
-            </button>
-            <ul class="dropdown-menu" role="menu" style="margin-left: 63px; align: left;">
-              <li required name="sshKeyForm" ng-click="form.$setDirty();setKeyValue('ssh_key', key.name)" ng-repeat="key in keys" role="presentation"><a role="menuitem" tabindex="-1">[[key.name]] - [[key.location]]</a></li>
-            </ul>
-            <br>
-            <div class="icon fa fa-warning distro-error" ng-show="!activeDistro.ssh_key">SSH keys must be configured</div>
-          </div>
-          <div ng-form name="sshForm">
-            <label class="distro-label">SSH Options:</label>
-            <div id="ssh-options-table" class="distro-table-scroll">
-              <table style="margin-left: -8px;" class="table distro-table">
-                <tbody ng-repeat="opt in activeDistro.ssh_options track by $index">
-                  <tr>
-                    <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="opt" type="text" ng-model="activeDistro.ssh_options[$index]"
-                      class="form-control" placeholder="e.g. BatchMode=yes">
-                    </td>
-                    <td ng-hide="readOnly">
-                      <a ng-click="form.$setDirty();removeSSHOption(opt)">
-                        <i class="fa fa-trash distro-trash-icon"></i>
-                      </a>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">SSH option can not be blank<br /></div>
-            <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required" ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
-          </div>
-          <div>
-            <div>
-              <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
-              <label class="distro-label">Setup Script:</label>
-            </div>
-            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup" style="margin-left: 0px; font-family: monospace"></textarea>
-            <div ng-hide="activeDistro.provider=='static'">
-              <label class="distro-label">Teardown Script:</label>
-              <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2" ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>
-              <div ng-show="activeDistro.teardown.length"><i label class="icon fa fa-warning warning-text"></i>
-                There is no guarantee this script will be run if the host is terminated by mechanisms outside of Evergreen.
-              </div>
-            </div>
-          </div>
-          <div>
-            <div ng-form name="expansions">
-              <label class="distro-label">Expansions:</label>
-              <div id="expansions-table" class="distro-table-scroll">
-                <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.expansions">
-                  <thead class="muted">
-                    <tr>
-                      <th>Key</th>
-                      <th>Value</th>
-                    </tr>
-                  </thead>
-                  <tbody ng-repeat="expansion in activeDistro.expansions">
-                    <tr>
-                      <td><input ng-readonly="readOnly" type="text" required name="expKey" ng-model="expansion.key" class="form-control"></td>
-                      <td><input ng-readonly="readOnly" type="text" ng-model="expansion.value" class="form-control"></td>
-                      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeExpansion(expansion)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div>
-                <div class="icon fa fa-warning distro-error" ng-show="expansions.expKey.$dirty && expansions.expKey.$error.required">Expansion key can not be blank<br /></div>
-                <button type="button" ng-hide="readOnly" ng-disabled="(expansions.expKey.$dirty && expansions.$invalid) || expansions.expKey.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addExpansion()"><i class="fa fa-plus"></i>Add Expansion</button>
-              </div>
-            </div>
-            <div>
-              <p class="distro-checkbox checkbox">
-                <input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">
-                Allow users to spawn these hosts for personal use
-              </p>
-            </div>
-          </div>
-        </div>
-        <div ng-hide="readOnly">
-          <br><br>
-          <p class="distro-checkbox checkbox" style="margin-left: 5px">
-            <input ng-disabled="readOnly" type="checkbox" name="shouldDeco" ng-model="shouldDeco">
-            Decommission hosts of this distro for this update
-          </p>
-          <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()" ng-click="saveConfiguration()">Save Configuration</button>
-          <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-click="openConfirmationModal('removeDistro')" ng-disabled="activeDistro.new">Remove Configuration</button>
-          <admin-modal>
-            <remove-distro ng-show="confirmationOption == 'removeDistro'"></remove-distro>
-          </admin-modal>
-        </div>
+	  <div class="panel-body panel panel-default">
+	    <div class="dropdown">
+	      <span class="distro-menu-title">Agent Architecture:</span>
+	      <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true" ng-disabled="readOnly">
+	      <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+	      </button>
+	      <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
+		<li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures | orderBy:'display'" role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
+	      </ul>
+	      <div class="icon fa fa-warning distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid">Agent architecture is required</div>
+	    </div>
+	    <div>
+	      <label class="distro-label">Working Directory:</label>
+	      <input required name="workDir" type="text" class="form-control" ng-model="activeDistro.work_dir" placeholder="Absolute path in which agent runs tasks on host machine" ng-readonly="readOnly">
+	      <div class="icon fa fa-warning distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">Working Directory is required</div>
+	    </div>
+	  </div>
+	  <br>
+	  <div class="panel-body panel panel-default">
+	    <div class="dropdown">
+	      <span class="distro-menu-title">Provider:</span>
+	      <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
+	      <strong class="distro-menu-item">[[activeDistro.provider | providerDisplay:this]]<span class="fa fa-caret-down"></span></strong>
+	      </button>
+	      <ul class="dropdown-menu" role="menu" style="margin-left: 60px; align: left;">
+		<li ng-click="form.$setDirty();setKeyValue('provider', provider.id)" required name="providerForm" ng-repeat="provider in providers" role="presentation"><a role="menuitem" tabindex="-1">[[provider.display]]</a></li>
+	      </ul>
+	      <div class="icon fa fa-warning distro-error" ng-show="form.providerForm.$dirty && form.providerForm.$error.required">Distro provider is required</div>
+	    </div>
+	    <div ng-show="activeDistro.provider == 'docker'">
+	      <div>
+		<label class="distro-label">Host IP:</label>
+		<input type="text" ng-required="activeDistro.provider == 'docker'" name="hostIP" class="form-control" ng-model="activeDistro.settings.host_ip" placeholder="Machine IP address or DNS name" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.hostIP.$dirty && form.hostIP.$error.required || form.hostIP.$invalid">Host IP is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Docker Image ID:</label>
+		<input type="text" ng-required="activeDistro.provider == 'docker'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="Docker image ID preloaded on host machine" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image ID is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Docker Client Port:</label>
+		<input ng-readonly="readOnly" ng-required="activeDistro.provider == 'docker'" name="clientPort" class="form-control" type="number" ng-model="activeDistro.settings.client_port" placeholder="Port exposing the Docker remote API e.g. 2376">
+		<div class="icon fa fa-warning distro-error" ng-show="form.clientPort.$dirty && form.clientPort.$error.required || form.clientPort.$invalid || form.clientPort.$modelValue < 0">Non-negative numeric Client Port is required</div>
+	      </div>
+	      <div id="port-table" class="distro-table-scroll">
+		<label class="distro-label">Container Port Range:</label>
+		<table style="margin-left: -8px;" ng-form name="portRange" class="table distro-table" ng-init="form.devName=''; form.devSize=''">
+		  <tr>
+		    <td style="padding-left: 10px;"><input ng-readonly="readOnly" ng-required="activeDistro.settings.port_range.max_port" name="minPort" type="number" ng-model="activeDistro.settings.port_range.min_port" class="form-control" placeholder="Min Port"></td>
+		    <td><input ng-readonly="readOnly" ng-required="activeDistro.settings.port_range.min_port" name="maxPort" type="number" ng-model="activeDistro.settings.port_range.max_port" class="form-control" placeholder="Max Port"></td>
+		  </tr>
+		</table>
+		<div class="icon fa fa-warning distro-error" ng-show="!checkPortRange(form.portRange.minPort.$modelValue, form.portRange.maxPort.$modelValue)">A non-negative, increasing port range is required</div>
+	      </div>
+	    </div>
+	    <div ng-show="activeDistro.provider.startsWith('ec2')">
+	      <div>
+		<label class="distro-label">AMI ID:</label>
+		<input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="ami" class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.ami.$dirty && form.ami.$error.required || form.ami.$invalid">AMI ID is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Instance Type:</label>
+		<input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider.startsWith('ec2')" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="EC2 instance type for the AMI e.g t1.micro (must be available)" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance type is required</div>
+	      </div>
+	      <div ng-show="activeDistro.provider.startsWith('ec2-spot')">
+		<label class="distro-label">Bid Price:</label>
+		<input ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2-spot')" name="bidPrice" type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
+		<div class="icon fa fa-warning distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">Numeric bid price is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Key Name:</label>
+		<input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in EC2) to add on host machine" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">EC2 key name is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label"><input style="margin-right:10px;" ng-disabled="readOnly" type="checkbox" name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
+		<label class="distro-label">Security Group:</label>
+		<input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider.startsWith('ec2')" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)" class="form-control">
+		<div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">Security group is required</div>
+		<div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">Security group for EC2 VPC must be the id (starts with 'sg-')</div>
+	      </div>
+	      <div ng-show="activeDistro.settings.is_vpc">
+		<label class="distro-label">Default VPC Subnet Id:</label>
+		<input type="text" name="subnet_id" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.subnet_id" placeholder="EC2 subnet id (must already exist) e.g subnet-xxxx" ng-required="activeDistro.settings.is_vpc">
+		<div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.subnet_id.$error.required || form.subnet_id.$invalid || !validSubnetId()"> Subnet Id is required for EC2 VPC (must start with 'subnet-')</div>
+	      </div>
+	      <div ng-show="activeDistro.settings.is_vpc">
+		<label class="distro-label">VPC Subnet Prefix:</label>
+		<input type="text" name="vpc_name" ng-readonly="readOnly" class="form-control" ng-model="activeDistro.settings.vpc_name" placeholder="will look for subnets like <prefix>.subnet_1a, <prefix>.subnet_1b, etc.">
+	      </div>
+	      <div ng-show="activeDistro.provider.startsWith('ec2')">
+		<div id="mounts-table" class="distro-table-scroll">
+		  <label class="distro-label">Mount Points:</label>
+		  <table ng-form name="mountPoints" class="table distro-table" ng-show="activeDistro.settings.mount_points" ng-init="form.devName=''; form.devSize=''">
+		    <thead class="muted">
+		      <tr>
+			<th>Device Name</th>
+			<th>Virtual Name</th>
+			<th>Size</th>
+		      </tr>
+		    </thead>
+		    <tbody ng-repeat="mount_point in activeDistro.settings.mount_points">
+		      <tr>
+			<td><input ng-readonly="readOnly" required name="devName" type="text" ng-model="mount_point.device_name" class="form-control"></td>
+			<td><input ng-readonly="readOnly" ng-required="!mount_point.size" name="virtName" type="text" ng-model="mount_point.virtual_name" class="form-control"></td>
+			<td><input ng-readonly="readOnly" type="number" ng-required="!mount_point.virtual_name" name="devSize" type="text" ng-model="mount_point.size" class="form-control"></td>
+			<td ng-hide="readOnly"><a ng-click="form.$setDirty();removeMount(mount_point)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
+		      </tr>
+		    </tbody>
+		  </table>
+		</div>
+	      </div>
+	      <div>
+		<div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.devName.$error.required">Device name is required<br /></div>
+		<div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.virtName.$error.required && mountPoints.devSize.$error.required">Must specify either virtual device name or device size<br /></div>
+		<button ng-hide="readOnly" type="button" ng-disabled="mountPoints.devName.$dirty && mountPoints.$invalid || mountPoints.devName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addMount()"><i class="fa fa-plus"></i>Add Mount Point</button>
+	      </div>
+	    </div>
+	    <div ng-show="activeDistro.provider == 'openstack'">
+	      <div>
+		<label class="distro-label">Image Name:</label>
+		<input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'openstack'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="OpenStack image name e.g. xenial-server" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image name is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Flavor Name:</label>
+		<input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'openstack'" name="flavorName" class="form-control" ng-model="activeDistro.settings.flavor_name" placeholder="OpenStack flavor name for the image e.g m1.tiny (must be available)" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.flavorName.$dirty && form.flavorName.$error.required || form.flavorName.$invalid">Flavor name is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Key Name:</label>
+		<input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'openstack'" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in OpenStack cloud) to add on host machine" ng-readonly="readOnly">
+		<div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">OpenStack key name is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Security Group:</label>
+		<input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'openstack'" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="OpenStack security group (must already exist)" class="form-control">
+		<div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">Security group is required</div>
+	      </div>
+	    </div>
+	    <div ng-show="activeDistro.provider == 'gce'">
+	      <div>
+		<label class="distro-label">Project ID:</label>
+		<input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="projectID" class="form-control" ng-model="activeDistro.settings.project_id" placeholder="Google Cloud project ID e.g. abc-abc-123">
+		<div class="icon fa fa-warning distro-error" ng-show="form.projectID.$dirty && form.projectID.$error.required || form.projectID.$invalid">Project ID is required</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Zone:</label>
+		<input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="zone" class="form-control" ng-model="activeDistro.settings.zone" placeholder="geographical zone e.g. us-east1-c">
+		<div class="icon fa fa-warning distro-error" ng-show="form.zone.$dirty && form.zone.$error.required || form.zone.$invalid">Zone is required</div>
+	      </div>
+	      <br>
+	      <div>
+		<label>Image:</label>
+		<div>
+		  <label>
+		    <input type="radio" ng-model="activeDistro.settings.image" value="imageName"/>
+		    Image Name
+		  </label>
+		  <label>
+		    <input type="radio" ng-model="activeDistro.settings.image" value="imageFamily" />
+		    Image Family
+		  </label>
+		</div>
+		<div class="icon fa fa-warning distro-error" ng-show="activeDistro.settings.image == null">Image name or image family is required</div>
+		<div>
+		  <div ng-show="activeDistro.settings.image == 'imageName'">
+		    <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.image == 'imageName'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="the disk will use the private image of the specified name">
+		    <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image name is required</div>
+		  </div>
+		  <div ng-show="activeDistro.settings.image == 'imageFamily'">
+		    <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.image == 'imageFamily'" name="imageFamily" class="form-control" ng-model="activeDistro.settings.image_family" placeholder="the disk will use the newest image from the private image family">
+		    <div class="icon fa fa-warning distro-error" ng-show="form.imageFamily.$dirty && form.imageFamily.$error.required || form.imageFamily.$invalid">Image family is required</div>
+		  </div>
+		</div>
+	      </div>
+	      <div>
+		<br>
+		<label>Machine Type:</label>
+		<div>
+		  <label>
+		    <input type="radio" ng-model="activeDistro.settings.machine" value="standard"/>
+		    Standard
+		  </label>
+		  <label>
+		    <input type="radio" ng-model="activeDistro.settings.machine" value="custom" />
+		    Custom
+		  </label>
+		</div>
+		<div class="icon fa fa-warning distro-error" ng-show="activeDistro.settings.machine == null">Machine type is required</div>
+		<div>
+		  <div ng-show="activeDistro.settings.machine == 'standard'">
+		    <label>Instance Type:</label>
+		    <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.machine == 'standard'" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="instance type e.g. n1-standard-8">
+		    <div class="icon fa fa-warning distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">Instance type is required</div>
+		  </div>
+		  <div ng-show="activeDistro.settings.machine == 'custom'">
+		    <label>Number of CPUs:</label>
+		    <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.machine == 'custom'" name="numCPUs" class="form-control" ng-model="activeDistro.settings.num_cpus" placeholder="number of cores e.g. 2">
+		    <div class="icon fa fa-warning distro-error" ng-show="form.numCPUs.$dirty && form.numCPUs.$error.required || form.numCPUs.$invalid">Number of CPUs is required</div>
+		  </div>
+		  <div ng-show="activeDistro.settings.machine == 'custom'">
+		    <label>Memory (MB):</label>
+		    <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce' && activeDistro.settings.machine == 'custom'" name="memoryMB" class="form-control" ng-model="activeDistro.settings.memory_mb" placeholder="memory, in MB e.g. 2048">
+		    <div class="icon fa fa-warning distro-error" ng-show="form.memoryMB.$dirty && form.memoryMB.$error.required || form.memoryMB.$invalid">Memory is required</div>
+		  </div>
+		</div>
+	      </div>
+	      <div>
+		<label class="distro-label">Disk Type:</label><br>
+		<select ng-readonly="readOnly" name="diskType" ng-model="activeDistro.settings.disk_type" ng-required="activeDistro.provider == 'gce'">
+		  <option value="pd-standard">Standard persistent disk</option>
+		  <option value="pd-ssd">SSD persistent disk</option>
+		</select>
+	      </div>
+	      <div class="icon fa fa-warning distro-error" ng-show="form.diskType.$dirty && form.diskType.$error.required || form.diskType.$invalid">Disk type is required</div>
+	      <div>
+		<label class="distro-label">Disk Size (GB):</label>
+		<input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce'" name="diskSizeGB" class="form-control" ng-model="activeDistro.settings.disk_size_gb" placeholder="boot disk size, in base-2 GB e.g. 10">
+		<div class="icon fa fa-warning distro-error" ng-show="form.diskSizeGB.$dirty && form.diskSizeGB.$error.required || form.diskSizeGB.$invalid">Numeric disk size is required</div>
+	      </div>
+	      <div id="network-tags-table" class="distro-table-scroll">
+		<label class="distro-label">Network Tags:</label>
+		<table ng-form name="networkTags" class="table distro-table" ng-show="activeDistro.settings.network_tags" ng-init="form.devName=''; form.devSize=''">
+		  <tbody ng-repeat="tag in activeDistro.settings.network_tags track by $index">
+		    <tr>
+		      <td><input ng-readonly="readOnly" required name="tag" type="text" ng-model="activeDistro.settings.network_tags[$index]" class="form-control"></td>
+		      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeNetworkTag(tag)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
+		    </tr>
+		  </tbody>
+		</table>
+	      </div>
+	      <div>
+		<div class="icon fa fa-warning distro-error" ng-show="networkTags.tag.$dirty && networkTags.tag.$error.required">Tag is required<br /></div>
+		<button ng-hide="readOnly" type="button" ng-disabled="(networkTags.tag.$dirty) && networkTags.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addNetworkTag()"><i class="fa fa-plus"></i>Add Tag</button>
+	      </div>
+	      <div id="ssh-keys-table" class="distro-table-scroll">
+		  <label class="distro-label">Instance SSH Keys:</label>
+		  <table ng-form name="sshKeys" class="table distro-table" ng-show="activeDistro.settings.ssh_keys" ng-init="form.devName=''; form.devSize=''">
+		    <thead class="muted">
+		      <tr>
+			<th>Username</th>
+			<th>Public Key</th>
+		      </tr>
+		    </thead>
+		    <tbody ng-repeat="ssh_key in activeDistro.settings.ssh_keys">
+		      <tr>
+			<td><input ng-readonly="readOnly" required name="username" type="text" ng-model="ssh_key.username" class="form-control"></td>
+			<td><input ng-readonly="readOnly" required name="public_key" type="text" ng-model="ssh_key.public_key" class="form-control"></td>
+			<td ng-hide="readOnly"><a ng-click="form.$setDirty();removeInstanceSSHKey(ssh_key)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
+		      </tr>
+		    </tbody>
+		  </table>
+		</div>
+		<div>
+		  <div class="icon fa fa-warning distro-error" ng-show="sshKeys.username.$dirty && sshKeys.username.$error.required">Username is required<br /></div>
+		  <div class="icon fa fa-warning distro-error" ng-show="sshKeys.public_key.$dirty && sshKeys.public_key.$error.required">Public key is required<br /></div>
+		  <button ng-hide="readOnly" type="button" ng-disabled="(sshKeys.username.$dirty || sshKeys.public_key.$dirty) && sshKeys.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addInstanceSSHKey()"><i class="fa fa-plus"></i>Add SSH Key</button>
+		</div>
+	      </div>
+	      <div ng-show="activeDistro.provider == 'vsphere'">
+		<div>
+		  <label class="distro-label">Template:</label>
+		  <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'vsphere'" name="template" class="form-control" ng-model="activeDistro.settings.template" placeholder="name of the template VM e.g. osx-1012-template">
+		  <div class="icon fa fa-warning distro-error" ng-show="form.template.$dirty && form.template.$error.required || form.template.$invalid">Template is required</div>
+		</div>
+		<div>
+		  <label class="distro-label">Datastore:</label>
+		  <input ng-readonly="readOnly" type="text" name="datastore" class="form-control" ng-model="activeDistro.settings.datastore" placeholder="(optional) name/path of the datastore to attach e.g. 1TB_SSD">
+		</div>
+		<div>
+		  <label class="distro-label">Resource Pool:</label>
+		  <input type="text" ng-readonly="readOnly" name="resourcePool" class="form-control" ng-model="activeDistro.settings.resource_pool" placeholder="(optional) name/path of a resource pool e.g. Resources">
+		</div>
+		<div>
+		  <label class="distro-label">Number of CPUs:</label>
+		  <input type="number" ng-readonly="readOnly" name="numCPUs" ng-model="activeDistro.settings.num_cpus" placeholder="(optional) number of CPUs e.g. 2" class="form-control">
+		</div>
+		<div>
+		  <label class="distro-label">Memory (MB):</label>
+		  <input type="number" ng-readonly="readOnly" name="memoryMB" ng-model="activeDistro.settings.memory_mb" placeholder="(optional) memory in MB e.g. 2048" class="form-control">
+		</div>
+	      </div>
+	    </div>
+	    <div ng-show="activeDistro.provider != 'static'">
+	      <label class="distro-label">Maximum number of hosts allowed:</label>
+	      <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
+	      <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">Numeric pool size is required</div>
+	    </div>
+	    <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
+	      <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
+	      <div id="hosts-table" class="distro-table-scroll">
+		<table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.settings.hosts">
+		  <tbody id="hosts-table" >
+		    <tr ng-repeat="host in activeDistro.settings.hosts">
+		      <td><input ng-readonly="readOnly" required name="hostName" type="text" ng-model="host.name" class="col-md-10" placeholder="Machine DNS name"></td>
+		      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeHost(host)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
+		    </tr>
+		  </tbody>
+		</table>
+	      </div>
+	      <div>
+		<div class="icon fa fa-warning distro-error" ng-show="hostProviderForm.hostName.$dirty && hostProviderForm.hostName.$error.required">Static host can not be blank<br /></div>
+		<br />
+		<button type="button" ng-hide="readOnly" ng-disabled="hostProviderForm.hostName.$dirty && hostProviderForm.$invalid || hostProviderForm.hostName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addHost()"><i class="fa fa-plus"></i>Add Host</button>
+	      </div>
+	    </div>
+	  </div>
+	  <div>
+	    <label class="distro-label">User:</label>
+	    <input required ng-readonly="readOnly" name="userName" type="text" class="form-control" ng-model="activeDistro.user" placeholder="Username with which to SSH into host machine">
+	    <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">SSH user is required</div><br>
+	  </div>
+	  <div class="dropdown">
+	    <span class="distro-menu-title">SSH Key:</span>
+	    <button class="btn btn-default dropdown-toggle" ng-disabled="readOnly" type="button" data-toggle="dropdown">
+	    <strong class="distro-menu-item">[[activeDistro.ssh_key]]<span class="fa fa-caret-down"></span></strong>
+	    </button>
+	    <ul class="dropdown-menu" role="menu" style="margin-left: 63px; align: left;">
+	      <li required name="sshKeyForm" ng-click="form.$setDirty();setKeyValue('ssh_key', key.name)" ng-repeat="key in keys" role="presentation"><a role="menuitem" tabindex="-1">[[key.name]] - [[key.location]]</a></li>
+	    </ul>
+	    <br>
+	    <div class="icon fa fa-warning distro-error" ng-show="!activeDistro.ssh_key">SSH keys must be configured</div>
+	  </div>
+	  <div ng-form name="sshForm">
+	    <label class="distro-label">SSH Options:</label>
+	    <div id="ssh-options-table" class="distro-table-scroll">
+	      <table style="margin-left: -8px;" class="table distro-table">
+		<tbody ng-repeat="opt in activeDistro.ssh_options track by $index">
+		  <tr>
+		    <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="opt" type="text" ng-model="activeDistro.ssh_options[$index]"
+		      class="form-control" placeholder="e.g. BatchMode=yes">
+		    </td>
+		    <td ng-hide="readOnly">
+		      <a ng-click="form.$setDirty();removeSSHOption(opt)">
+			<i class="fa fa-trash distro-trash-icon"></i>
+		      </a>
+		    </td>
+		  </tr>
+		</tbody>
+	      </table>
+	    </div>
+	    <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">SSH option can not be blank<br /></div>
+	    <button type="button" class="btn btn-primary" ng-hide="readOnly" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required" ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
+	  </div>
+	  <div>
+	    <div>
+	      <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
+	      <label class="distro-label">Setup Script:</label>
+	    </div>
+	    <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup" style="margin-left: 0px; font-family: monospace"></textarea>
+	    <div ng-hide="activeDistro.provider=='static'">
+	      <label class="distro-label">Teardown Script:</label>
+	      <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2" ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>
+	      <div ng-show="activeDistro.teardown.length"><i label class="icon fa fa-warning warning-text"></i>
+		There is no guarantee this script will be run if the host is terminated by mechanisms outside of Evergreen.
+	      </div>
+	    </div>
+	  </div>
+	  <div>
+	    <div ng-form name="expansions">
+	      <label class="distro-label">Expansions:</label>
+	      <div id="expansions-table" class="distro-table-scroll">
+		<table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.expansions">
+		  <thead class="muted">
+		    <tr>
+		      <th>Key</th>
+		      <th>Value</th>
+		    </tr>
+		  </thead>
+		  <tbody ng-repeat="expansion in activeDistro.expansions">
+		    <tr>
+		      <td><input ng-readonly="readOnly" type="text" required name="expKey" ng-model="expansion.key" class="form-control"></td>
+		      <td><input ng-readonly="readOnly" type="text" ng-model="expansion.value" class="form-control"></td>
+		      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeExpansion(expansion)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
+		    </tr>
+		  </tbody>
+		</table>
+	      </div>
+	      <div>
+		<div class="icon fa fa-warning distro-error" ng-show="expansions.expKey.$dirty && expansions.expKey.$error.required">Expansion key can not be blank<br /></div>
+		<button type="button" ng-hide="readOnly" ng-disabled="(expansions.expKey.$dirty && expansions.$invalid) || expansions.expKey.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addExpansion()"><i class="fa fa-plus"></i>Add Expansion</button>
+	      </div>
+	    </div>
+	    <div>
+	      <p class="distro-checkbox checkbox">
+		<input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.spawn_allowed">
+		Allow users to spawn these hosts for personal use
+	      </p>
+	    </div>
+	  </div>
+	</div>
+	<div ng-hide="readOnly">
+	  <br><br>
+	  <p class="distro-checkbox checkbox" style="margin-left: 5px">
+	    <input ng-disabled="readOnly" type="checkbox" name="shouldDeco" ng-model="shouldDeco">
+	    Decommission hosts of this distro for this update
+	  </p>
+	  <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()" ng-click="saveConfiguration()">Save Configuration</button>
+	  <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-click="openConfirmationModal('removeDistro')" ng-disabled="activeDistro.new">Remove Configuration</button>
+	  <admin-modal>
+	    <remove-distro ng-show="confirmationOption == 'removeDistro'"></remove-distro>
+	  </admin-modal>
+	</div>
       </div>
     </div>
   </div>

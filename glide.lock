@@ -54,13 +54,9 @@ imports:
     version: 49c95bdc21843256fb6c4e0d370a05f24a0bf213
   - name: gopkg.in/mgo.v2
     version: f4923a569136442e900b8cf5c1a706c0a8b0883c
-  - name: github.com/dynport/gocloud
-    version: 86eb7951c13ee7437f5952d63537533068f9f15c
   - name: github.com/gophercloud/gophercloud
     version: 64e5161c25fde7f0ccfb85f9af29ed22eeab4cd0
 
-  - name: github.com/dynport/gologger
-    version: 341c03cd2f0ff842817d6311364a1f8ab0df541e
   - name: golang.org/x/tools/cmd/cover
     version: release-branch.go1.4
 
