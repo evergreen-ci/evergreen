@@ -14,7 +14,7 @@ type TaskQueueAccessor interface {
 // may query/select a task from an existing task queue to support
 // out-of-order task execution for the purpose of task-groups.
 type TaskSpec struct {
-	GroupName    string
+	Group        string
 	BuildVariant string
 	ProjectID    string
 	Version      string

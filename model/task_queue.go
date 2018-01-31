@@ -28,7 +28,8 @@ type TaskDep struct {
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
-	GroupName           string        `bson:"group_name" json:"group_name"`
+	Group               string        `bson:"group_name" json:"group_name"`
+	Version             string        `bson:"version" json:"version"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
 	RevisionOrderNumber int           `bson:"order" json:"order"`
 	Requester           string        `bson:"requester" json:"requester"`
@@ -81,24 +82,24 @@ func (self *TaskQueue) Save() error {
 }
 
 func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
-	if spec.GroupName == "" {
+	if spec.Group == "" {
 		return nil
 	}
 
 	for _, it := range self.Queue {
-		if spec.ProjectID != "" && it.Project != spec.ProjectID {
+		if spec.ProjectID == "" || it.Project != spec.ProjectID {
 			continue
 		}
 
-		if spec.Version != "" && it.Revision != spec.Version {
+		if spec.Version == "" || it.Version != spec.Version {
 			continue
 		}
 
-		if spec.BuildVariant != "" && it.BuildVariant != spec.BuildVariant {
+		if spec.BuildVariant == "" || it.BuildVariant != spec.BuildVariant {
 			continue
 		}
 
-		if it.GroupName != spec.GroupName {
+		if it.Group != spec.Group {
 			continue
 		}
 
