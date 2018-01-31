@@ -71,6 +71,7 @@ func (opts Options) Application(env anser.Environment) (*anser.Application, erro
 		// addExecutionToTasksGenerator,
 		oldTestResultsGenerator,
 		testResultsGenerator,
+		projectAliasesToCollectionGenerator,
 	}
 
 	catcher := grip.NewBasicCatcher()
