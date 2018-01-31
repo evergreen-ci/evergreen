@@ -304,19 +304,25 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
+	var err error
+	start := time.Now()
 	if tc.taskConfig != nil && tc.taskConfig.Project.Post != nil && tc.taskGroup == "" {
-		grip.Info("Running post-task commands")
 		a.killProcs(tc)
 		defer a.killProcs(tc)
 		tc.logger.Task().Info("Running post-task commands.")
-		start := time.Now()
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false)
-		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
+		err = a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false)
 	}
+
+	if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+		if taskGroup.TeardownTask != nil {
+			err = a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), false)
+		}
+	}
+	tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+	tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
 }
 
 func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext, taskGroup *model.TaskGroup) {

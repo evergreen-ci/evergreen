@@ -137,9 +137,9 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 }
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
+	var err error
 	if tc.runGroupSetup {
-		var err error
-		tc.logger.Execution().Info("Running pre-task commands.")
+		tc.logger.Task().Info("Running pre-task commands.")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -151,12 +151,16 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 			}
 		} else if tc.taskConfig.Project.Pre != nil {
 			err = a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false)
-		} else {
-			return
 		}
-		tc.logger.Execution().ErrorWhenf(err != nil, "Running pre-task script failed: %v", err)
-		tc.logger.Execution().InfoWhen(err == nil, "Finished running pre-task commands.")
 	}
+
+	if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+		if taskGroup.SetupTask != nil {
+			err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false)
+		}
+	}
+	tc.logger.Task().ErrorWhenf(err != nil, "Running pre-task commands failed: %v", err)
+	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
 }
 
 func (tc *taskContext) setCurrentCommand(command command.Command) {
