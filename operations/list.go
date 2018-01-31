@@ -215,7 +215,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 	}
 	comm := conf.GetRestCommunicator(ctx)
 
-	var aliases []model.PatchDefinition
+	var aliases []model.ProjectAlias
 
 	if project != "" {
 		aliases, err = comm.ListAliases(ctx, project)

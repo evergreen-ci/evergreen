@@ -143,7 +143,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if p.Alias != "" {
 		validAlias := false
-		var aliases []model.PatchDefinition
+		var aliases []model.ProjectAlias
 		aliases, err = comm.ListAliases(ctx, p.Project)
 		if err != nil {
 			err = errors.Wrap(err, "error contacting API server")

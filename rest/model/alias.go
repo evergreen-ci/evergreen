@@ -15,7 +15,7 @@ type APIAlias struct {
 // BuildFromService converts from service level structs to an APIAlias.
 func (apiAlias *APIAlias) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case model.PatchDefinition:
+	case model.ProjectAlias:
 		apiAlias.Alias = APIString(v.Alias)
 		apiAlias.Variant = APIString(v.Variant)
 		apiAlias.Task = APIString(v.Task)

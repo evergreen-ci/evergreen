@@ -140,7 +140,7 @@ type Communicator interface {
 	DeletePublicKey(context.Context, string) error
 
 	// List variant/task aliases
-	ListAliases(context.Context, string) ([]model.PatchDefinition, error)
+	ListAliases(context.Context, string) ([]model.ProjectAlias, error)
 
 	// GetClientConfig fetches the ClientConfig for the evergreen server
 	GetClientConfig(context.Context) (*evergreen.ClientConfig, error)

@@ -40,13 +40,6 @@ type ProjectVars struct {
 	GithubHookID int `bson:"github_hook_id,omitempty" json:"github_hook_id,omitempty"`
 }
 
-type PatchDefinition struct {
-	Alias   string   `bson:"alias" json:"alias"`
-	Variant string   `bson:"variant" json:"variant"`
-	Task    string   `bson:"task" json:"task"`
-	Tags    []string `bson:"tags" json:"tags"`
-}
-
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
 	projectVars := &ProjectVars{}
 	err := db.FindOne(
