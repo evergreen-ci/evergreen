@@ -36,7 +36,8 @@ func projectAliasesToCollectionGenerator(env anser.Environment, db string, limit
 		Limit: limit,
 		Query: bson.M{
 			"patch_definitions": bson.M{
-				"$ne": []interface{}{},
+				"$exists": true,
+				"$ne":     []interface{}{},
 			},
 		},
 		JobID: "migration-project-aliases-to-collection",
@@ -71,14 +72,19 @@ func makeProjectAliasMigration(database string) db.MigrationOperation {
 
 		catcher := grip.NewSimpleCatcher()
 		for _, alias := range aliases {
-			catcher.Add(session.DB(database).C(projectAliasCollection).Insert(bson.M{
+			data := bson.M{
 				"_id":        bson.NewObjectId(),
 				"project_id": projectID,
 				"alias":      alias.Alias,
 				"variant":    alias.Variant,
-				"task":       alias.Task,
-				"tags":       alias.Tags,
-			}))
+			}
+			if alias.Task != "" {
+				data["task"] = alias.Task
+
+			} else {
+				data["tags"] = alias.Tags
+			}
+			catcher.Add(session.DB(database).C(projectAliasCollection).Insert(data))
 		}
 
 		if catcher.HasErrors() {

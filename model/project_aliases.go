@@ -70,7 +70,7 @@ func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// FindAliasesForProject finds aliases with a given name for a project.
+// FindAliasInProject finds all aliases with a given name for a project.
 func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
