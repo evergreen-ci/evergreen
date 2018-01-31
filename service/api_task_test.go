@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	
+
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -256,7 +256,7 @@ func TestNextTask(t *testing.T) {
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
 		}
-		if err := evergreen.Upsert(&evergreen.Settings{}); err != nil {
+		if err := evergreen.SetServiceFlags(evergreen.ServiceFlags{}); err != nil {
 			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
