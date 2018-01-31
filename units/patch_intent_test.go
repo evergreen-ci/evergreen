@@ -152,7 +152,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 	}
 	s.NoError(admin.SetServiceFlags(flags))
 
-	patchContent, summaries, err := fetchDiffByURL(&s.githubPatchData, githubOauthToken)
+	patchContent, summaries, err := fetchDiffFromGithub(&s.githubPatchData, githubOauthToken)
 	s.NoError(err)
 	s.NotEmpty(patchContent)
 	s.NotEqual("{", patchContent[0])

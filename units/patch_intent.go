@@ -230,7 +230,7 @@ func buildPatchURL(gp *patch.GithubPatch) string {
 	return url.String()
 }
 
-func fetchDiffByURL(gh *patch.GithubPatch, token string) (string, []patch.Summary, error) {
+func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.Summary, error) {
 	client, err := util.GetHttpClientForOauth2(token)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error getting http client")
@@ -266,7 +266,7 @@ func doGithubRequest(client *http.Client, req *http.Request, accept string) (str
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to fetch patch from github")
+		return "", errors.Wrap(err, "failed to fetch data from github")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -391,7 +391,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return errors.Errorf("user is not a member of %s", mustBeMemberOfOrg)
 	}
 
-	patchContent, summaries, err := fetchDiffByURL(&patchDoc.GithubPatchData, githubOauthToken)
+	patchContent, summaries, err := fetchDiffFromGithub(&patchDoc.GithubPatchData, githubOauthToken)
 	if err != nil {
 		return err
 	}
