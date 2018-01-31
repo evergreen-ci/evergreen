@@ -920,10 +920,8 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
 	var pairs []TVPair
-	var err error
-	var vars []PatchDefinition
-	vars, err = FindOneProjectAlias(p.Identifier, alias)
-	if err != nil || vars == nil {
+	vars, err := FindAliasInProject(p.Identifier, alias)
+	if err != nil || len(vars) == 0 {
 		return pairs, err
 	}
 	for _, v := range vars {
