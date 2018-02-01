@@ -619,7 +619,7 @@ func FindOneId(id string) (*Task, error) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "")
+		return nil, errors.Wrap(err, "error finding task by id")
 	}
 
 	return task, nil

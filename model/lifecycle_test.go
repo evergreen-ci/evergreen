@@ -1097,6 +1097,7 @@ func TestCreateTaskGroup(t *testing.T) {
 				Activated:    false,
 			},
 		},
+		Config: projYml,
 	}
 	table := NewTaskIdTable(proj, v)
 

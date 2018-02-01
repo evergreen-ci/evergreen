@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -781,6 +782,23 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
+		tg, err := GetTaskGroup(&TaskConfig{
+			Task: &task.Task{
+				Project:   project.Identifier,
+				TaskGroup: buildVarTask.GroupName,
+				Version:   v.Id,
+			},
+			Version: v,
+		})
+		if err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"message":    "error getting task group",
+				"task_id":    id,
+				"task_group": t.TaskGroup,
+			}))
+			return nil
+		}
+		t.TaskGroupMaxHosts = tg.MaxHosts
 	}
 	return t
 }
