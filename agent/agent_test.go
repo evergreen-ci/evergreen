@@ -189,9 +189,8 @@ func (s *AgentSuite) TestRunPre() {
 			Name: "buildvariant_id",
 		},
 		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_id",
-			Version:   versionId,
+			Id:      "task_id",
+			Version: versionId,
 		},
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,
@@ -224,9 +223,8 @@ func (s *AgentSuite) TestRunPost() {
 			Name: "buildvariant_id",
 		},
 		Task: &task.Task{
-			Id:        "task_id",
-			TaskGroup: "task_id",
-			Version:   versionId,
+			Id:      "task_id",
+			Version: versionId,
 		},
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,

@@ -131,7 +131,7 @@ func (a *Agent) loop(ctx context.Context) error {
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) taskContext {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
-	if tc.taskConfig == nil || nextTask.TaskGroup == nextTask.TaskId || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
+	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
 		defer a.removeTaskDirectory(tc)
 		setupGroup = true
 		taskDirectory = ""

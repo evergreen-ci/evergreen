@@ -781,8 +781,6 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
-	} else {
-		t.TaskGroup = id
 	}
 	return t
 }

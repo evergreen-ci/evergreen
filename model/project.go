@@ -649,10 +649,6 @@ func GetTaskGroup(t *task.Task) (*TaskGroup, error) {
 	if t == nil {
 		return nil, errors.New("unable to get task group: task is nil")
 	}
-
-	if t.TaskGroup == "" {
-		return nil, errors.New("task group name cannot be empty")
-	}
 	if t.Version == "" {
 		return nil, errors.New("task has no version")
 	}
@@ -667,16 +663,19 @@ func GetTaskGroup(t *task.Task) (*TaskGroup, error) {
 	if err = LoadProjectInto([]byte(v.Config), t.Project, &p); err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
+	if t.TaskGroup == "" {
+		// if there is no named task group, fall back to project definitions
+		return &TaskGroup{
+			SetupTask:    p.Pre,
+			TeardownTask: p.Post,
+			Timeout:      p.Timeout,
+		}, nil
+	}
 	tg := p.FindTaskGroup(t.TaskGroup)
 	if tg != nil {
 		return tg, nil
 	}
-	// if there is no named task group, fall back to project definitions
-	return &TaskGroup{
-		SetupTask:    p.Pre,
-		TeardownTask: p.Post,
-		Timeout:      p.Timeout,
-	}, nil
+	return nil, errors.Errorf("couldn't find task group %s", t.TaskGroup)
 }
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
