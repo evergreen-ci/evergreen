@@ -31,7 +31,11 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-const patchIntentJobName = "patch-intent-processor"
+const (
+	githubAcceptPatch  = "application/vnd.github.v3.patch"
+	githubAcceptDiff   = "application/vnd.github.v3.diff"
+	patchIntentJobName = "patch-intent-processor"
+)
 
 func init() {
 	registry.AddJobType(patchIntentJobName,
@@ -242,12 +246,12 @@ func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.S
 		return "", nil, errors.Wrap(err, "failed to create github request")
 	}
 
-	patchData, err := doGithubRequest(client, req, "application/vnd.github.v3.patch")
+	patchData, err := doGithubRequest(client, req, githubAcceptPatch)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to fetch patch from github")
 	}
 
-	diff, err := doGithubRequest(client, req, "application/vnd.github.v3.diff")
+	diff, err := doGithubRequest(client, req, githubAcceptDiff)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
 	}
