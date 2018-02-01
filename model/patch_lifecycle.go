@@ -142,7 +142,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TaskVariantPairs) error {
-	builds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey))
+	builds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
 	if err != nil {
 		return err
 	}
