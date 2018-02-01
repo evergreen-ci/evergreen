@@ -8,7 +8,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -25,7 +28,12 @@ func TestTimeoutSuite(t *testing.T) {
 	suite.Run(t, new(TimeoutSuite))
 }
 
+func (s *TimeoutSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+}
+
 func (s *TimeoutSuite) SetupTest() {
+	s.Require().NoError(db.ClearCollections(version.Collection))
 	s.a = &Agent{
 		opts: Options{
 			HostID:     "host",
@@ -52,6 +60,7 @@ func (s *TimeoutSuite) SetupTest() {
 func (s *TimeoutSuite) TearDownTest() {
 	s.Require().NoError(os.Remove(s.tmpFileName))
 	s.Require().NoError(os.RemoveAll(s.tmpDirName))
+	s.Require().NoError(db.ClearCollections(version.Collection))
 }
 
 // TestExecTimeoutProject tests exec_timeout_secs set on a project.
@@ -59,6 +68,12 @@ func (s *TimeoutSuite) TearDownTest() {
 func (s *TimeoutSuite) TestExecTimeoutProject() {
 	taskID := "exec_timeout_project"
 	taskSecret := "mock_task_secret"
+	v, err := s.mockCommunicator.GetVersion(context.Background(), client.TaskData{
+		ID:     taskID,
+		Secret: taskSecret,
+	})
+	s.NoError(err)
+	s.Require().NoError(v.Insert())
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
@@ -73,7 +88,7 @@ func (s *TimeoutSuite) TestExecTimeoutProject() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err := s.a.resetLogging(ctx, tc)
+	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
@@ -125,6 +140,12 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 
 	taskID := "exec_timeout_task"
 	taskSecret := "mock_task_secret"
+	v, err := s.mockCommunicator.GetVersion(context.Background(), client.TaskData{
+		ID:     taskID,
+		Secret: taskSecret,
+	})
+	s.NoError(err)
+	s.Require().NoError(v.Insert())
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
@@ -137,7 +158,7 @@ func (s *TimeoutSuite) TestExecTimeoutTask() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 1
 
-	err := s.a.resetLogging(ctx, tc)
+	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
@@ -188,6 +209,12 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 
 	taskID := "idle_timeout_func"
 	taskSecret := "mock_task_secret"
+	v, err := s.mockCommunicator.GetVersion(context.Background(), client.TaskData{
+		ID:     taskID,
+		Secret: taskSecret,
+	})
+	s.NoError(err)
+	s.Require().NoError(v.Insert())
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
@@ -200,7 +227,7 @@ func (s *TimeoutSuite) TestIdleTimeoutFunc() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 2
 
-	err := s.a.resetLogging(ctx, tc)
+	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
@@ -251,6 +278,12 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 
 	taskID := "idle_timeout_task"
 	taskSecret := "mock_task_secret"
+	v, err := s.mockCommunicator.GetVersion(context.Background(), client.TaskData{
+		ID:     taskID,
+		Secret: taskSecret,
+	})
+	s.NoError(err)
+	s.Require().NoError(v.Insert())
 	tc := &taskContext{
 		task: client.TaskData{
 			ID:     taskID,
@@ -263,7 +296,7 @@ func (s *TimeoutSuite) TestIdleTimeoutCommand() {
 	// tests in this suite to create differently-named task directories.
 	s.mockCommunicator.TaskExecution = 3
 
-	err := s.a.resetLogging(ctx, tc)
+	err = s.a.resetLogging(ctx, tc)
 	s.NoError(err)
 	defer s.a.removeTaskDirectory(tc)
 	err = s.a.runTask(ctx, tc)
