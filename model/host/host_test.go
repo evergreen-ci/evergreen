@@ -557,6 +557,9 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			" clearing '%v' collection", Collection)
 		oldTaskId := "oldId"
 		newTaskId := "newId"
+		newTask := task.Task{
+			Id: newTaskId,
+		}
 		h := Host{
 			Id:          "test",
 			RunningTask: oldTaskId,
@@ -564,7 +567,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		}
 		So(h.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			_, err := h.UpdateRunningTask(oldTaskId, newTaskId, time.Now())
+			_, err := h.UpdateRunningTask(oldTaskId, &newTask, time.Now())
 			So(err, ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
@@ -575,7 +578,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should error out", func() {
-			_, err := h.UpdateRunningTask(newTaskId, "", time.Now())
+			_, err := h.UpdateRunningTask(newTaskId, &task.Task{}, time.Now())
 			So(err, ShouldNotBeNil)
 		})
 	})

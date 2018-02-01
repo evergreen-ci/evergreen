@@ -21,37 +21,41 @@ const (
 )
 
 var (
-	IdKey                    = bsonutil.MustHaveTag(Host{}, "Id")
-	DNSKey                   = bsonutil.MustHaveTag(Host{}, "Host")
-	SecretKey                = bsonutil.MustHaveTag(Host{}, "Secret")
-	UserKey                  = bsonutil.MustHaveTag(Host{}, "User")
-	TagKey                   = bsonutil.MustHaveTag(Host{}, "Tag")
-	DistroKey                = bsonutil.MustHaveTag(Host{}, "Distro")
-	ProviderKey              = bsonutil.MustHaveTag(Host{}, "Provider")
-	ProvisionedKey           = bsonutil.MustHaveTag(Host{}, "Provisioned")
-	RunningTaskKey           = bsonutil.MustHaveTag(Host{}, "RunningTask")
-	PidKey                   = bsonutil.MustHaveTag(Host{}, "Pid")
-	TaskDispatchTimeKey      = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
-	CreateTimeKey            = bsonutil.MustHaveTag(Host{}, "CreationTime")
-	ExpirationTimeKey        = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
-	TerminationTimeKey       = bsonutil.MustHaveTag(Host{}, "TerminationTime")
-	LTCTimeKey               = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
-	LTCKey                   = bsonutil.MustHaveTag(Host{}, "LastTaskCompleted")
-	StatusKey                = bsonutil.MustHaveTag(Host{}, "Status")
-	AgentRevisionKey         = bsonutil.MustHaveTag(Host{}, "AgentRevision")
-	NeedsNewAgentKey         = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
-	StartedByKey             = bsonutil.MustHaveTag(Host{}, "StartedBy")
-	InstanceTypeKey          = bsonutil.MustHaveTag(Host{}, "InstanceType")
-	NotificationsKey         = bsonutil.MustHaveTag(Host{}, "Notifications")
-	UserDataKey              = bsonutil.MustHaveTag(Host{}, "UserData")
-	LastReachabilityCheckKey = bsonutil.MustHaveTag(Host{}, "LastReachabilityCheck")
-	LastCommunicationTimeKey = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
-	UnreachableSinceKey      = bsonutil.MustHaveTag(Host{}, "UnreachableSince")
-	UserHostKey              = bsonutil.MustHaveTag(Host{}, "UserHost")
-	ZoneKey                  = bsonutil.MustHaveTag(Host{}, "Zone")
-	ProjectKey               = bsonutil.MustHaveTag(Host{}, "Project")
-	ProvisionOptionsKey      = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
-	StartTimeKey             = bsonutil.MustHaveTag(Host{}, "StartTime")
+	IdKey                      = bsonutil.MustHaveTag(Host{}, "Id")
+	DNSKey                     = bsonutil.MustHaveTag(Host{}, "Host")
+	SecretKey                  = bsonutil.MustHaveTag(Host{}, "Secret")
+	UserKey                    = bsonutil.MustHaveTag(Host{}, "User")
+	TagKey                     = bsonutil.MustHaveTag(Host{}, "Tag")
+	DistroKey                  = bsonutil.MustHaveTag(Host{}, "Distro")
+	ProviderKey                = bsonutil.MustHaveTag(Host{}, "Provider")
+	ProvisionedKey             = bsonutil.MustHaveTag(Host{}, "Provisioned")
+	RunningTaskKey             = bsonutil.MustHaveTag(Host{}, "RunningTask")
+	RunningTaskGroupKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
+	RunningTaskBuildVariantKey = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
+	RunningTaskVersionKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
+	RunningTaskProjectKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
+	PidKey                     = bsonutil.MustHaveTag(Host{}, "Pid")
+	TaskDispatchTimeKey        = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
+	CreateTimeKey              = bsonutil.MustHaveTag(Host{}, "CreationTime")
+	ExpirationTimeKey          = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
+	TerminationTimeKey         = bsonutil.MustHaveTag(Host{}, "TerminationTime")
+	LTCTimeKey                 = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
+	LTCKey                     = bsonutil.MustHaveTag(Host{}, "LastTaskCompleted")
+	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
+	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
+	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
+	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
+	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
+	NotificationsKey           = bsonutil.MustHaveTag(Host{}, "Notifications")
+	UserDataKey                = bsonutil.MustHaveTag(Host{}, "UserData")
+	LastReachabilityCheckKey   = bsonutil.MustHaveTag(Host{}, "LastReachabilityCheck")
+	LastCommunicationTimeKey   = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
+	UnreachableSinceKey        = bsonutil.MustHaveTag(Host{}, "UnreachableSince")
+	UserHostKey                = bsonutil.MustHaveTag(Host{}, "UserHost")
+	ZoneKey                    = bsonutil.MustHaveTag(Host{}, "Zone")
+	ProjectKey                 = bsonutil.MustHaveTag(Host{}, "Project")
+	ProvisionOptionsKey        = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
+	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
 )
 
 // === Queries ===
@@ -133,6 +137,19 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 		CreateTimeKey:  bson.M{"$lte": threshold},
 		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
 		StartedByKey:   evergreen.User,
+	})
+}
+
+// ByTaskSpec returns a query that finds all running hosts that are running a
+// task with the given group, buildvariant, project, and version.
+func ByTaskSpec(group, bv, project, version string) db.Q {
+	return db.Query(bson.M{
+		StatusKey:                  evergreen.HostRunning,
+		RunningTaskKey:             bson.M{"$exists": "true"},
+		RunningTaskGroupKey:        group,
+		RunningTaskBuildVariantKey: bv,
+		RunningTaskProjectKey:      project,
+		RunningTaskVersionKey:      version,
 	})
 }
 

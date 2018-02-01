@@ -14,10 +14,11 @@ type TaskQueueAccessor interface {
 // may query/select a task from an existing task queue to support
 // out-of-order task execution for the purpose of task-groups.
 type TaskSpec struct {
-	Group        string
-	BuildVariant string
-	ProjectID    string
-	Version      string
+	Group         string
+	BuildVariant  string
+	ProjectID     string
+	Version       string
+	GroupMaxHosts int
 }
 
 // MatchingOrNextTask provides a generic implementation of logic to
@@ -29,11 +30,8 @@ func MatchingOrNextTask(queue TaskQueueAccessor, spec TaskSpec) *TaskQueueItem {
 	if queue.Length() == 0 {
 		return nil
 	}
-
-	it := queue.FindTask(spec)
-	if it == nil {
-		it = queue.NextTask()
+	if it := queue.FindTask(spec); it != nil {
+		return it
 	}
-
-	return it
+	return queue.NextTask()
 }

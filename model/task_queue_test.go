@@ -1,12 +1,16 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -103,4 +107,117 @@ func TestFindTask(t *testing.T) {
 	assert.Equal("one", q.FindTask(TaskSpec{Group: "foo", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
 	assert.Equal("six", q.FindTask(TaskSpec{Group: "bar", ProjectID: "aa", Version: "bb", BuildVariant: "a"}).Id)
 	assert.Equal("two", q.FindTask(TaskSpec{Group: "bar", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
+}
+
+func TestNextTask(t *testing.T) {
+	assert := assert.New(t)   // nolint
+	require := require.New(t) // nolint
+
+	require.NoError(db.ClearCollections(host.Collection, task.Collection))
+	defer db.ClearCollections(host.Collection, task.Collection)
+
+	hosts := []host.Host{}
+	for i := 0; i < 10; i++ {
+		hosts = append(hosts, host.Host{
+			Id:                      fmt.Sprintf("host_%d", i),
+			Status:                  "running",
+			RunningTask:             fmt.Sprintf("task_id_%d", i),
+			RunningTaskGroup:        "task_group",
+			RunningTaskBuildVariant: "build_variant",
+			RunningTaskVersion:      "task_version",
+			RunningTaskProject:      "task_project",
+		})
+	}
+	for _, h := range hosts {
+		require.NoError(h.Insert())
+	}
+	tasks := []task.Task{}
+	for i := 0; i < 10; i++ {
+		tasks = append(tasks, task.Task{
+			Id:           fmt.Sprintf("task_%d", i),
+			TaskGroup:    "task_group",
+			BuildVariant: "build_variant",
+			Version:      "task_version",
+			Project:      "task_project",
+		})
+	}
+	queueTask := task.Task{
+		Id:           "first_item",
+		TaskGroup:    "task_group",
+		BuildVariant: "build_variant",
+		Version:      "task_version",
+		Project:      "task_project",
+	}
+	require.NoError(queueTask.Insert())
+	for _, t := range tasks {
+		require.NoError(t.Insert())
+	}
+
+	// Return the task if the task group is empty.
+	queue := TaskQueue{
+		Queue: []TaskQueueItem{
+			TaskQueueItem{Id: "first_item"},
+		},
+	}
+	next := queue.NextTask()
+	assert.NotNil(next)
+	assert.Equal("first_item", next.Id)
+
+	// Return a task if it's running on less than maxhosts
+	queue = TaskQueue{
+		Queue: []TaskQueueItem{
+			TaskQueueItem{
+				Id:            "first_item",
+				Group:         "task_group",
+				BuildVariant:  "build_variant",
+				Version:       "task_version",
+				Project:       "task_project",
+				GroupMaxHosts: 100,
+			},
+		},
+	}
+	next = queue.NextTask()
+	assert.NotNil(next)
+	assert.Equal("first_item", next.Id)
+
+	// Don't return a task if it's running on more than maxhosts
+	queue.Queue[0].GroupMaxHosts = 1
+	next = queue.NextTask()
+	assert.Nil(next)
+
+	// Check that all four fields must match to be in task group.
+	// If all match, NextTask() should return nil, because the task is
+	// running on more than max_hosts. If any one does not match, NextTask()
+	// should return not nil, because no hosts are running this group.
+	//
+	// All four match:
+	queue.Queue[0].GroupMaxHosts = 1
+	next = queue.NextTask()
+	assert.Nil(next)
+	// Group does not match.
+	tmp := queue.Queue[0].Group
+	queue.Queue[0].Group = "foo"
+	next = queue.NextTask()
+	assert.NotNil(next)
+	assert.Equal("first_item", next.Id)
+	queue.Queue[0].Group = tmp
+	// BuildVariant does not match.
+	tmp = queue.Queue[0].BuildVariant
+	queue.Queue[0].BuildVariant = "foo"
+	next = queue.NextTask()
+	assert.NotNil(next)
+	assert.Equal("first_item", next.Id)
+	queue.Queue[0].BuildVariant = tmp
+	// Version does not match.
+	tmp = queue.Queue[0].Version
+	queue.Queue[0].Version = "foo"
+	next = queue.NextTask()
+	assert.NotNil(next)
+	assert.Equal("first_item", next.Id)
+	queue.Queue[0].Version = tmp
+	// Project does not match.
+	queue.Queue[0].Project = "foo"
+	next = queue.NextTask()
+	assert.NotNil(next)
+	assert.Equal("first_item", next.Id)
 }

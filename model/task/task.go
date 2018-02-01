@@ -47,11 +47,12 @@ type Task struct {
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 
-	Version   string `bson:"version" json:"version,omitempty"`
-	Project   string `bson:"branch" json:"branch,omitempty"`
-	Revision  string `bson:"gitspec" json:"gitspec"`
-	Priority  int64  `bson:"priority" json:"priority"`
-	TaskGroup string `bson:"task_group" json:"task_group"` //format is taskGroup_version
+	Version           string `bson:"version" json:"version,omitempty"`
+	Project           string `bson:"branch" json:"branch,omitempty"`
+	Revision          string `bson:"gitspec" json:"gitspec"`
+	Priority          int64  `bson:"priority" json:"priority"`
+	TaskGroup         string `bson:"task_group" json:"task_group"`
+	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
