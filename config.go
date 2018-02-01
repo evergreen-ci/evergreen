@@ -84,6 +84,26 @@ func (c *AuthConfig) set() error {
 	})
 	return err
 }
+func (c *AuthConfig) validateAndDefault() error {
+	if c.Crowd == nil && c.Naive == nil && c.Github == nil {
+		return errors.New("You must specify one form of authentication")
+	}
+	if c.Naive != nil {
+		used := map[string]bool{}
+		for _, x := range c.Naive.Users {
+			if used[x.Username] {
+				return errors.New("Duplicate user in list")
+			}
+			used[x.Username] = true
+		}
+	}
+	if c.Github != nil {
+		if c.Github.Users == nil && c.Github.Organization == "" {
+			return errors.New("Must specify either a set of users or an organization for Github Authentication")
+		}
+	}
+	return nil
+}
 
 // RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
@@ -110,6 +130,7 @@ func (c *RepoTrackerConfig) set() error {
 	})
 	return err
 }
+func (c *RepoTrackerConfig) validateAndDefault() error { return nil }
 
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
@@ -145,6 +166,7 @@ func (c *APIConfig) set() error {
 	})
 	return err
 }
+func (c *APIConfig) validateAndDefault() error { return nil }
 
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
@@ -192,6 +214,21 @@ func (c *UIConfig) set() error {
 	})
 	return err
 }
+func (c *UIConfig) validateAndDefault() error {
+	if c.Secret == "" {
+		return errors.New("UI Secret must not be empty")
+	}
+	if c.DefaultProject == "" {
+		return errors.New("You must specify a default project in UI")
+	}
+	if c.Url == "" {
+		return errors.New("You must specify a default UI url")
+	}
+	if c.CsrfKey != "" && len(c.CsrfKey) != 32 {
+		return errors.New("CSRF key must be 32 characters long")
+	}
+	return nil
+}
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
@@ -214,6 +251,7 @@ func (c *HostInitConfig) set() error {
 	})
 	return err
 }
+func (c *HostInitConfig) validateAndDefault() error { return nil }
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
@@ -235,6 +273,27 @@ func (c *NotifyConfig) set() error {
 		},
 	})
 	return err
+}
+func (c *NotifyConfig) validateAndDefault() error {
+	notifyConfig := c.SMTP
+
+	if notifyConfig == nil {
+		return nil
+	}
+
+	if notifyConfig.Server == "" || notifyConfig.Port == 0 {
+		return errors.New("You must specify a SMTP server and port")
+	}
+
+	if len(notifyConfig.AdminEmail) == 0 {
+		return errors.New("You must specify at least one admin_email")
+	}
+
+	if notifyConfig.From == "" {
+		return errors.New("You must specify a from address")
+	}
+
+	return nil
 }
 
 // SMTPConfig holds SMTP email settings.
@@ -271,6 +330,22 @@ func (c *SchedulerConfig) set() error {
 	})
 	return err
 }
+func (c *SchedulerConfig) validateAndDefault() error {
+	finders := []string{"legacy", "alternate", "parallel", "pipeline"}
+
+	if c.TaskFinder == "" {
+		// default to alternate
+		c.TaskFinder = finders[0]
+		return nil
+	}
+
+	if !sliceContains(finders, c.TaskFinder) {
+		return errors.Errorf("supported finders are %s; %s is not supported",
+			finders, c.TaskFinder)
+
+	}
+	return nil
+}
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
 type CloudProviders struct {
@@ -301,6 +376,7 @@ func (c *CloudProviders) set() error {
 	})
 	return err
 }
+func (c *CloudProviders) validateAndDefault() error { return nil }
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
@@ -373,6 +449,7 @@ func (c *JiraConfig) set() error {
 	})
 	return err
 }
+func (c *JiraConfig) validateAndDefault() error { return nil }
 func (j JiraConfig) GetHostURL() string {
 	if strings.HasPrefix("http", j.Host) {
 		return j.Host
@@ -405,6 +482,7 @@ func (c *AlertsConfig) set() error {
 	})
 	return err
 }
+func (c *AlertsConfig) validateAndDefault() error { return nil }
 
 type WriteConcern struct {
 	W        int    `yaml:"w"`
@@ -451,6 +529,26 @@ func (c *LoggerConfig) set() error {
 	})
 	return err
 }
+func (c *LoggerConfig) validateAndDefault() error {
+	if c.Buffer.DurationSeconds == 0 {
+		c.Buffer.DurationSeconds = defaultLogBufferingDuration
+	}
+
+	if c.DefaultLevel == "" {
+		c.DefaultLevel = "info"
+	}
+
+	if c.ThresholdLevel == "" {
+		c.ThresholdLevel = "debug"
+	}
+
+	info := c.Info()
+	if !info.Valid() {
+		return errors.Errorf("logging level configuration is not valid [%+v]", info)
+	}
+
+	return nil
+}
 
 type LogBuffering struct {
 	DurationSeconds int `yaml:"duration_seconds"`
@@ -485,6 +583,29 @@ func (c *AmboyConfig) set() error {
 	})
 	return err
 }
+func (c *AmboyConfig) validateAndDefault() error {
+	if c.Name == "" {
+		c.Name = defaultAmboyQueueName
+	}
+
+	if c.DB == "" {
+		c.DB = defaultAmboyDBName
+	}
+
+	if c.PoolSizeLocal == 0 {
+		c.PoolSizeLocal = defaultAmboyPoolSize
+	}
+
+	if c.PoolSizeRemote == 0 {
+		c.PoolSizeRemote = defaultAmboyPoolSize
+	}
+
+	if c.LocalStorage == 0 {
+		c.LocalStorage = defaultAmboyLocalStorageSize
+	}
+
+	return nil
+}
 
 type SlackConfig struct {
 	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
@@ -510,6 +631,31 @@ func (c *SlackConfig) set() error {
 	})
 	return err
 }
+func (c *SlackConfig) validateAndDefault() error {
+	if c.Options == nil {
+		c.Options = &send.SlackOptions{}
+	}
+
+	if c.Token != "" {
+		if c.Options.Channel == "" {
+			c.Options.Channel = "#evergreen-ops-alerts"
+		}
+
+		if c.Options.Name == "" {
+			c.Options.Name = "evergreen"
+		}
+
+		if err := c.Options.Validate(); err != nil {
+			return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
+		}
+
+		if !level.IsValidPriority(level.FromString(c.Level)) {
+			return errors.Errorf("%s is not a valid priority", c.Level)
+		}
+	}
+
+	return nil
+}
 
 type NewRelicConfig struct {
 	ApplicationName string `bson:"application_name" json:"application_name" yaml:"application_name"`
@@ -533,6 +679,7 @@ func (c *NewRelicConfig) set() error {
 	})
 	return err
 }
+func (c *NewRelicConfig) validateAndDefault() error { return nil }
 
 // ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
@@ -577,6 +724,7 @@ func (c *ServiceFlags) set() error {
 	})
 	return err
 }
+func (c *ServiceFlags) validateAndDefault() error { return nil }
 
 // supported banner themes in Evergreen
 type BannerTheme string
@@ -650,7 +798,7 @@ func (c *Settings) get() error {
 	}
 	return err
 }
-func (c *Settings) set() error { //TODO
+func (c *Settings) set() error {
 	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
@@ -672,8 +820,26 @@ func (c *Settings) set() error { //TODO
 	})
 	return err
 }
+func (c *Settings) validateAndDefault() error {
+	if c.Database.Url == "" || c.Database.DB == "" {
+		return errors.New("DBUrl and DB must not be empty")
+	}
+	if c.ApiUrl == "" {
+		return errors.New("API hostname must not be empty")
+	}
+	if c.ConfigDir == "" {
+		return errors.New("Config directory must not be empty")
+	}
+	if c.ClientBinariesDir == "" {
+		c.ClientBinariesDir = ClientDirectory
+	}
+	if c.LogPath == "" {
+		c.LogPath = LocalLoggingOverride
+	}
+	return nil
+}
 
-// configSection defines a sub-document in the evegreen configSection
+// configSection defines a sub-document in the evegreen config
 // any config sections must also be added to registry.go
 type configSection interface {
 	// id() returns the ID of the section to be used in the database document and struct tag
@@ -682,6 +848,8 @@ type configSection interface {
 	get() error
 	// set() upserts the section document into the DB
 	set() error
+	// validateAndDefault() validates input and sets defaults
+	validateAndDefault() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -753,13 +921,59 @@ func GetConfig() (*Settings, error) {
 // Validate checks the settings and returns nil if the config is valid,
 // or an error with a message explaining why otherwise.
 func (settings *Settings) Validate() error {
-	for _, validator := range configValidationRules {
-		err := validator(settings)
-		if err != nil {
-			return err
+	catcher := grip.NewSimpleCatcher()
+
+	// validate the root-level settings struct
+	catcher.Add(settings.validateAndDefault())
+
+	// validate each sub-document
+	valConfig := reflect.ValueOf(*settings)
+	// iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
 		}
+
+		// get the property name and find its value within the settings struct
+		propName := valConfig.Type().Field(i).Name
+		propVal := valConfig.FieldByName(propName)
+
+		// the goal is to convert this struct which we know implements configSection
+		// from a reflection data structure back to the interface
+		// the below creates a copy and takes the address of it as a workaround because
+		// you can't take the address of it via reflection for some reason
+		// (and all interface methods on the struct have pointer receivers)
+
+		// create a reflective copy of the struct
+		valPointer := reflect.Indirect(reflect.New(propVal.Type()))
+		valPointer.Set(propVal)
+
+		// convert the pointer to that struct to an empty interface
+		propInterface := valPointer.Addr().Interface()
+
+		// type assert to the configSection interface
+		section, ok := propInterface.(configSection)
+		if !ok {
+			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			continue
+		}
+		err := section.validateAndDefault()
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+
+		// set the value of the section struct in case there was any defaulting done
+		sectionVal := reflect.ValueOf(section).Elem()
+		propAddr := reflect.ValueOf(settings).Elem().FieldByName(propName)
+		if !propAddr.CanSet() {
+			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+		}
+		propAddr.Set(sectionVal)
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 func (s *Settings) GetSender(env Environment) (send.Sender, error) {
@@ -895,207 +1109,6 @@ func (n *NewRelicConfig) SetUp() (newrelic.Application, error) {
 		return nil, errors.Wrap(err, "error creating New Relic application")
 	}
 	return app, nil
-}
-
-// ConfigValidator is a type of function that checks the settings
-// struct for any errors or missing required fields.
-type configValidator func(settings *Settings) error
-
-// ConfigValidationRules is the set of all ConfigValidator functions.
-var configValidationRules = []configValidator{
-	func(settings *Settings) error {
-		if settings.Database.Url == "" || settings.Database.DB == "" {
-			return errors.New("DBUrl and DB must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Amboy.Name == "" {
-			settings.Amboy.Name = defaultAmboyQueueName
-		}
-
-		if settings.Amboy.DB == "" {
-			settings.Amboy.DB = defaultAmboyDBName
-		}
-
-		if settings.Amboy.PoolSizeLocal == 0 {
-			settings.Amboy.PoolSizeLocal = defaultAmboyPoolSize
-		}
-
-		if settings.Amboy.PoolSizeRemote == 0 {
-			settings.Amboy.PoolSizeRemote = defaultAmboyPoolSize
-		}
-
-		if settings.Amboy.LocalStorage == 0 {
-			settings.Amboy.LocalStorage = defaultAmboyLocalStorageSize
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.LoggerConfig.Buffer.DurationSeconds == 0 {
-			settings.LoggerConfig.Buffer.DurationSeconds = defaultLogBufferingDuration
-		}
-
-		if settings.LoggerConfig.DefaultLevel == "" {
-			settings.LoggerConfig.DefaultLevel = "info"
-		}
-
-		if settings.LoggerConfig.ThresholdLevel == "" {
-			settings.LoggerConfig.ThresholdLevel = "debug"
-		}
-
-		info := settings.LoggerConfig.Info()
-		if !info.Valid() {
-			return errors.Errorf("logging level configuration is not valid [%+v]", info)
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Slack.Options == nil {
-			settings.Slack.Options = &send.SlackOptions{}
-		}
-
-		if settings.Slack.Token != "" {
-			if settings.Slack.Options.Channel == "" {
-				settings.Slack.Options.Channel = "#evergreen-ops-alerts"
-			}
-
-			if settings.Slack.Options.Name == "" {
-				settings.Slack.Options.Name = "evergreen"
-			}
-
-			if err := settings.Slack.Options.Validate(); err != nil {
-				return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
-			}
-
-			if !level.IsValidPriority(level.FromString(settings.Slack.Level)) {
-				return errors.Errorf("%s is not a valid priority", settings.Slack.Level)
-			}
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.ClientBinariesDir == "" {
-			settings.ClientBinariesDir = ClientDirectory
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		finders := []string{"legacy", "alternate", "parallel", "pipeline"}
-
-		if settings.Scheduler.TaskFinder == "" {
-			// default to alternate
-			settings.Scheduler.TaskFinder = finders[0]
-			return nil
-		}
-
-		if !sliceContains(finders, settings.Scheduler.TaskFinder) {
-			return errors.Errorf("supported finders are %s; %s is not supported",
-				finders, settings.Scheduler.TaskFinder)
-
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.LogPath == "" {
-			settings.LogPath = LocalLoggingOverride
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.ApiUrl == "" {
-			return errors.New("API hostname must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.Secret == "" {
-			return errors.New("UI Secret must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.ConfigDir == "" {
-			return errors.New("Config directory must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.DefaultProject == "" {
-			return errors.New("You must specify a default project in UI")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.Url == "" {
-			return errors.New("You must specify a default UI url")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		notifyConfig := settings.Notify.SMTP
-
-		if notifyConfig == nil {
-			return nil
-		}
-
-		if notifyConfig.Server == "" || notifyConfig.Port == 0 {
-			return errors.New("You must specify a SMTP server and port")
-		}
-
-		if len(notifyConfig.AdminEmail) == 0 {
-			return errors.New("You must specify at least one admin_email")
-		}
-
-		if notifyConfig.From == "" {
-			return errors.New("You must specify a from address")
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil && settings.AuthConfig.Github == nil {
-			return errors.New("You must specify one form of authentication")
-		}
-		if settings.AuthConfig.Naive != nil {
-			used := map[string]bool{}
-			for _, x := range settings.AuthConfig.Naive.Users {
-				if used[x.Username] {
-					return errors.New("Duplicate user in list")
-				}
-				used[x.Username] = true
-			}
-		}
-		if settings.AuthConfig.Github != nil {
-			if settings.AuthConfig.Github.Users == nil && settings.AuthConfig.Github.Organization == "" {
-				return errors.New("Must specify either a set of users or an organization for Github Authentication")
-			}
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.CsrfKey != "" && len(settings.Ui.CsrfKey) != 32 {
-			return errors.New("CSRF key must be 32 characters long")
-		}
-		return nil
-	},
 }
 
 func sliceContains(slice []string, elem string) bool {
