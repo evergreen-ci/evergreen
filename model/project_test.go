@@ -279,7 +279,12 @@ func boolPtr(b bool) *bool {
 
 func TestAliasResolution(t *testing.T) {
 	assert := assert.New(t) //nolint
-	testutil.HandleTestingErr(db.ClearCollections(ProjectVarsCollection), t, "Error clearing collection")
+	testutil.HandleTestingErr(db.ClearCollections(ProjectAliasCollection, ProjectVarsCollection), t, "Error clearing collection")
+
+	vars := ProjectVars{
+		Id: "project",
+	}
+	assert.NoError(vars.Insert())
 	p := &Project{
 		Identifier: "project",
 		BuildVariants: []BuildVariant{
@@ -371,8 +376,8 @@ func TestAliasResolution(t *testing.T) {
 			Tags:      []string{"a"},
 		},
 	}
-	for _, alias := range aliases {
-		assert.NoError(alias.Upsert())
+	for i := range aliases {
+		assert.NoError(aliases[i].Upsert())
 	}
 
 	// test that .* on variants and tasks selects everything

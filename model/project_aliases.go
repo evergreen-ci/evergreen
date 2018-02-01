@@ -98,8 +98,8 @@ func (p *ProjectAlias) Upsert() error {
 	}
 	if p.Task != "" {
 		update["task"] = p.Task
-
-	} else {
+	}
+	if len(p.Tags) > 0 {
 		update["tags"] = p.Tags
 	}
 
