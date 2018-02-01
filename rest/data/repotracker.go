@@ -51,8 +51,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		return errors.New("repotracker is disabled")
 	}
 
-	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
-		branch)
+	refs, err := validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "github hook",
@@ -65,40 +64,55 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		}))
 		return err
 	}
-	fields := message.Fields{
-		"source":      "github hook",
-		"msg_id":      msgID,
-		"event":       "push",
-		"owner":       *event.Repo.Owner.Name,
-		"repo":        *event.Repo.Name,
-		"ref":         *event.Ref,
-		"project_ref": ref.Identifier,
-		"message":     "actionable push acknowledged",
-	}
-	if !ref.TracksPushEvents || !ref.Enabled {
-		fields["tracks_push_events"] = ref.TracksPushEvents
-		fields["enabled"] = ref.Enabled
-		fields["message"] = "unactionable push acknowledged"
-		grip.Info(fields)
-		return nil
-	}
-	grip.Info(fields)
 
-	if err := q.Put(units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), ref.Identifier)); err != nil {
-		msg := "failed to add repotracker job to queue"
-		grip.Error(message.WrapError(err, message.Fields{
-			"source":      "github hook",
-			"msg_id":      msgID,
-			"event":       "push",
-			"owner":       *event.Repo.Owner.Name,
-			"repo":        *event.Repo.Name,
-			"ref":         *event.Ref,
-			"project_ref": ref.Identifier,
-			"message":     msg,
-		}))
+	actionable := []string{}
+	unactionable := []string{}
+	failed := []string{}
+	catcher := grip.NewSimpleCatcher()
+	for i := range refs {
+		if !refs[i].TracksPushEvents || !refs[i].Enabled {
+			unactionable = append(unactionable, refs[i].Identifier)
+			continue
+		}
+
+		if err := q.Put(units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier)); err != nil {
+			catcher.Add(errors.Errorf("failed to add repotracker job to queue for project: '%s'", refs[i].Identifier))
+			failed = append(failed, refs[i].Identifier)
+
+		} else {
+			actionable = append(actionable, refs[i].Identifier)
+		}
+	}
+
+	grip.Error(message.WrapError(catcher.Resolve(), message.Fields{
+		"source":  "github hook",
+		"msg_id":  msgID,
+		"event":   "push",
+		"owner":   *event.Repo.Owner.Name,
+		"repo":    *event.Repo.Name,
+		"ref":     *event.Ref,
+		"message": "errors occurred while triggering repotracker",
+	}))
+
+	grip.Info(message.Fields{
+		"source":  "github hook",
+		"msg_id":  msgID,
+		"event":   "push",
+		"owner":   *event.Repo.Owner.Name,
+		"repo":    *event.Repo.Name,
+		"ref":     *event.Ref,
+		"message": "done processing PushEvent",
+		"project_refs": message.Fields{
+			"failures":     failed,
+			"actionable":   actionable,
+			"unactionable": unactionable,
+		},
+	})
+
+	if catcher.HasErrors() {
 		return &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
-			Message:    msg,
+			Message:    catcher.Resolve().Error(),
 		}
 	}
 
@@ -112,9 +126,11 @@ func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, e
 	if err != nil {
 		return err
 	}
+	if len(branch) == 0 {
+		return nil
+	}
 
-	_, err = validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
-		branch)
+	_, err = validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name)
 
 	return err
 }
@@ -130,7 +146,7 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	}
 
 	if !strings.HasPrefix(*event.Ref, branchRefPrefix) {
-		// Not an error, we're uninterested in tag pushes
+		// Not an error, but we're uninterested in tag pushes
 		return "", nil
 	}
 
@@ -145,8 +161,8 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	return refs[2], nil
 }
 
-func validateProjectRef(owner, repo, branch string) (*model.ProjectRef, error) {
-	ref, err := model.FindOneProjectRefByRepoAndBranch(owner, repo, branch)
+func validateProjectRefs(owner, repo string) ([]model.ProjectRef, error) {
+	refs, err := model.FindProjectRefsByRepo(owner, repo)
 	if err != nil {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
@@ -154,12 +170,12 @@ func validateProjectRef(owner, repo, branch string) (*model.ProjectRef, error) {
 		}
 	}
 
-	if ref == nil {
+	if len(refs) == 0 {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    "can't find project ref",
+			Message:    "no project refs found",
 		}
 	}
 
-	return ref, nil
+	return refs, nil
 }

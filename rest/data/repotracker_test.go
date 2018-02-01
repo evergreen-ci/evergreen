@@ -59,13 +59,13 @@ func TestValidateProjectRef(t *testing.T) {
 		Enabled:    true,
 	}
 
-	ref, err := validateProjectRef("baxterthehacker", "public-repo", "changes")
+	refs, err := validateProjectRefs("baxterthehacker", "public-repo")
 	assert.Error(err)
-	assert.Equal("can't find project ref", err.Error())
-	assert.Nil(ref)
+	assert.Equal("no project refs found", err.Error())
+	assert.Empty(refs)
 	assert.NoError(doc.Insert())
 
-	ref, err = validateProjectRef("baxterthehacker", "public-repo", "changes")
+	refs, err = validateProjectRefs("baxterthehacker", "public-repo")
 	assert.NoError(err)
-	assert.NotNil(ref)
+	assert.Len(refs, 1)
 }
