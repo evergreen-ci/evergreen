@@ -58,7 +58,6 @@ type GithubPatch struct {
 	HeadRepo   string `bson:"head_repo"`
 	HeadHash   string `bson:"head_hash"`
 	Author     string `bson:"author"`
-	DiffURL    string `bson:"diff_url"`
 }
 
 // ModulePatch stores request details for a patch

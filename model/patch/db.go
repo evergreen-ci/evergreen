@@ -59,7 +59,6 @@ var (
 	githubPatchHeadRepoKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadRepo")
 	githubPatchHeadHashKey   = bsonutil.MustHaveTag(GithubPatch{}, "HeadHash")
 	githubPatchAuthorKey     = bsonutil.MustHaveTag(GithubPatch{}, "Author")
-	githubPatchDiffURLKey    = bsonutil.MustHaveTag(GithubPatch{}, "DiffURL")
 )
 
 // Query Validation

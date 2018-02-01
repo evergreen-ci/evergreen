@@ -90,7 +90,6 @@ type githubPatch struct {
 	HeadRepo  APIString `json:"head_repo"`
 	HeadHash  APIString `json:"head_hash"`
 	Author    APIString `json:"author"`
-	DiffURL   APIString `json:"diff_url"`
 }
 
 // BuildFromService converts from service level structs to an APIPatch
@@ -106,7 +105,6 @@ func (g *githubPatch) BuildFromService(h interface{}) error {
 	g.HeadRepo = APIString(v.HeadRepo)
 	g.HeadHash = APIString(v.HeadHash)
 	g.Author = APIString(v.Author)
-	g.DiffURL = APIString(v.DiffURL)
 	return nil
 }
 

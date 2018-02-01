@@ -51,7 +51,6 @@ func TestAPIPatch(t *testing.T) {
 			HeadRepo:  "evergreen",
 			HeadHash:  "hash",
 			Author:    "octocat",
-			DiffURL:   "https://github.com/evergreen-ci/evergreen/pull/123.diff",
 		},
 	}
 
@@ -98,7 +97,6 @@ func TestGithubPatch(t *testing.T) {
 		HeadRepo:  "evergreen",
 		HeadHash:  "hash",
 		Author:    "octocat",
-		DiffURL:   "https://github.com/evergreen-ci/evergreen/pull/123.diff",
 	}
 	a := githubPatch{}
 	err := a.BuildFromService(p)
@@ -110,5 +108,4 @@ func TestGithubPatch(t *testing.T) {
 	assert.Equal("evergreen", string(a.HeadRepo))
 	assert.Equal("hash", string(a.HeadHash))
 	assert.Equal("octocat", string(a.Author))
-	assert.Equal("https://github.com/evergreen-ci/evergreen/pull/123.diff", string(a.DiffURL))
 }
