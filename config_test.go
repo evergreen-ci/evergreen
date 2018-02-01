@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -115,6 +116,50 @@ func (s *AdminSuite) TestBanner() {
 	s.Equal(Important, string(settings.BannerTheme))
 }
 
+func (s *AdminSuite) TestBaseConfig() {
+	config := Settings{
+		ApiUrl:             "api",
+		Banner:             "banner",
+		BannerTheme:        Important,
+		ClientBinariesDir:  "bin_dir",
+		ConfigDir:          "cfg_dir",
+		Credentials:        map[string]string{"k1": "v1"},
+		Expansions:         map[string]string{"k2": "v2"},
+		GithubPRCreatorOrg: "org",
+		IsNonProd:          true,
+		Keys:               map[string]string{"k3": "v3"},
+		LogPath:            "logpath",
+		Plugins:            map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
+		PprofPort:          "port",
+		Splunk: send.SplunkConnectionInfo{
+			ServerURL: "server",
+			Token:     "token",
+			Channel:   "channel",
+		},
+		SuperUsers: []string{"user"},
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config.ApiUrl, settings.ApiUrl)
+	s.Equal(config.Banner, settings.Banner)
+	s.Equal(config.BannerTheme, settings.BannerTheme)
+	s.Equal(config.ClientBinariesDir, settings.ClientBinariesDir)
+	s.Equal(config.ConfigDir, settings.ConfigDir)
+	s.Equal(config.Credentials, settings.Credentials)
+	s.Equal(config.Expansions, settings.Expansions)
+	s.Equal(config.GithubPRCreatorOrg, settings.GithubPRCreatorOrg)
+	s.Equal(config.IsNonProd, settings.IsNonProd)
+	s.Equal(config.Keys, settings.Keys)
+	s.Equal(config.LogPath, settings.LogPath)
+	s.Equal(config.Plugins, settings.Plugins)
+	s.Equal(config.PprofPort, settings.PprofPort)
+	s.Equal(config.SuperUsers, settings.SuperUsers)
+}
+
 func (s *AdminSuite) TestServiceFlags() {
 	testFlags := ServiceFlags{
 		TaskDispatchDisabled:         true,
@@ -215,4 +260,175 @@ func (s *AdminSuite) TestAuthConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.AuthConfig)
+}
+
+func (s *AdminSuite) TestHostinitConfig() {
+	config := HostInitConfig{
+		SSHTimeoutSeconds: 10,
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.HostInit)
+}
+
+func (s *AdminSuite) TestJiraConfig() {
+	config := JiraConfig{
+		Host:           "host",
+		Username:       "username",
+		Password:       "password",
+		DefaultProject: "proj",
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Jira)
+}
+
+func (s *AdminSuite) TestNewRelicConfig() {
+	config := NewRelicConfig{
+		ApplicationName: "new_relic",
+		LicenseKey:      "key",
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.NewRelic)
+}
+
+func (s *AdminSuite) TestNotifyConfig() {
+	config := NotifyConfig{
+		SMTP: &SMTPConfig{
+			Server:     "server",
+			Port:       2285,
+			UseSSL:     true,
+			Username:   "username",
+			Password:   "password",
+			From:       "from",
+			AdminEmail: []string{"email"},
+		},
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Notify)
+}
+
+func (s *AdminSuite) TestProvidersConfig() {
+	config := CloudProviders{
+		AWS: AWSConfig{
+			Secret: "aws_secret",
+			Id:     "aws",
+		},
+		Docker: DockerConfig{
+			APIVersion: "docker_version",
+		},
+		GCE: GCEConfig{
+			ClientEmail:  "gce_email",
+			PrivateKey:   "gce_key",
+			PrivateKeyID: "gce_key_id",
+			TokenURI:     "gce_token",
+		},
+		OpenStack: OpenStackConfig{
+			IdentityEndpoint: "endpoint",
+			Username:         "username",
+			Password:         "password",
+			DomainName:       "domain",
+			ProjectName:      "project",
+			ProjectID:        "project_id",
+			Region:           "region",
+		},
+		VSphere: VSphereConfig{
+			Host:     "host",
+			Username: "vsphere",
+			Password: "vsphere_pass",
+		},
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Providers)
+}
+
+func (s *AdminSuite) TestRepotrackerConfig() {
+	config := RepoTrackerConfig{
+		NumNewRepoRevisionsToFetch: 10,
+		MaxRepoRevisionsToSearch:   20,
+		MaxConcurrentRequests:      30,
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.RepoTracker)
+}
+
+func (s *AdminSuite) TestSchedulerConfig() {
+	config := SchedulerConfig{
+		MergeToggle: 10,
+		TaskFinder:  "task_finder",
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Scheduler)
+}
+
+func (s *AdminSuite) TestSlackConfig() {
+	config := SlackConfig{
+		Options: &send.SlackOptions{
+			Channel:   "channel",
+			Fields:    true,
+			FieldsSet: map[string]bool{},
+		},
+		Token: "token",
+		Level: "info",
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Slack)
+}
+
+func (s *AdminSuite) TestUiConfig() {
+	config := UIConfig{
+		Url:            "url",
+		HelpUrl:        "helpurl",
+		HttpListenAddr: "addr",
+		Secret:         "secret",
+		DefaultProject: "mci",
+		CacheTemplates: true,
+		SecureCookies:  true,
+		CsrfKey:        "csrf",
+	}
+
+	err := config.set()
+	s.NoError(err)
+	settings, err := GetConfig()
+	s.NoError(err)
+	s.NotNil(settings)
+	s.Equal(config, settings.Ui)
 }

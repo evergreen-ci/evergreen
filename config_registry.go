@@ -17,7 +17,17 @@ func init() {
 		&AmboyConfig{},
 		&APIConfig{},
 		&AuthConfig{},
+		&CloudProviders{},
+		&HostInitConfig{},
+		&JiraConfig{},
+		&LoggerConfig{},
+		&NewRelicConfig{},
+		&NotifyConfig{},
+		&RepoTrackerConfig{},
+		&SchedulerConfig{},
 		&ServiceFlags{},
+		&SlackConfig{},
+		&UIConfig{},
 	}
 
 	registry = newConfigSectionRegistry()

@@ -25,6 +25,8 @@ var (
 
 	// Commandline Version String; used to control auto-updating.
 	ClientVersion = "2018-01-31"
+
+	errNotFound = "not found"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
@@ -67,7 +69,7 @@ type AuthConfig struct {
 func (c *AuthConfig) id() string { return "auth" }
 func (c *AuthConfig) get() error {
 	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
-	if err != nil && err.Error() == "not found" {
+	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return err
@@ -90,6 +92,25 @@ type RepoTrackerConfig struct {
 	MaxConcurrentRequests      int `bson:"max_con_requests" json:"max_con_requests" yaml:"maxconcurrentrequests"`
 }
 
+func (c *RepoTrackerConfig) id() string { return "repotracker" }
+func (c *RepoTrackerConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *RepoTrackerConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"revs_to_fetch":      c.NumNewRepoRevisionsToFetch,
+			"max_revs_to_search": c.MaxRepoRevisionsToSearch,
+			"max_con_requests":   c.MaxConcurrentRequests,
+		},
+	})
+	return err
+}
+
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
 	OS   string `yaml:"os" json:"os"`
@@ -110,7 +131,7 @@ type APIConfig struct {
 func (c *APIConfig) id() string { return "api" }
 func (c *APIConfig) get() error {
 	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
-	if err != nil && err.Error() == "not found" {
+	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return err
@@ -148,14 +169,72 @@ type UIConfig struct {
 	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`
 }
 
+func (c *UIConfig) id() string { return "ui" }
+func (c *UIConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *UIConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"url":              c.Url,
+			"help_url":         c.HelpUrl,
+			"http_listen_addr": c.HttpListenAddr,
+			"secret":           c.Secret,
+			"default_project":  c.DefaultProject,
+			"cache_templates":  c.CacheTemplates,
+			"secure_cookies":   c.SecureCookies,
+			"csrf_key":         c.CsrfKey,
+		},
+	})
+	return err
+}
+
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
 	SSHTimeoutSeconds int64 `bson:"ssh_timeout_secs" json:"ssh_timeout_secs" yaml:"sshtimeoutseconds"`
 }
 
+func (c *HostInitConfig) id() string { return "hostinit" }
+func (c *HostInitConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *HostInitConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"ssh_timeout_secs": c.SSHTimeoutSeconds,
+		},
+	})
+	return err
+}
+
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
 	SMTP *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
+}
+
+func (c *NotifyConfig) id() string { return "notify" }
+func (c *NotifyConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *NotifyConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"smtp": c.SMTP,
+		},
+	})
+	return err
 }
 
 // SMTPConfig holds SMTP email settings.
@@ -175,6 +254,24 @@ type SchedulerConfig struct {
 	TaskFinder  string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
 }
 
+func (c *SchedulerConfig) id() string { return "scheduler" }
+func (c *SchedulerConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *SchedulerConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"merge_toggle": c.MergeToggle,
+			"task_finder":  c.TaskFinder,
+		},
+	})
+	return err
+}
+
 // CloudProviders stores configuration settings for the supported cloud host providers.
 type CloudProviders struct {
 	AWS       AWSConfig       `bson:"aws" json:"aws" yaml:"aws"`
@@ -182,6 +279,27 @@ type CloudProviders struct {
 	GCE       GCEConfig       `bson:"gce" json:"gce" yaml:"gce"`
 	OpenStack OpenStackConfig `bson:"openstack" json:"openstack" yaml:"openstack"`
 	VSphere   VSphereConfig   `bson:"vsphere" json:"vsphere" yaml:"vsphere"`
+}
+
+func (c *CloudProviders) id() string { return "providers" }
+func (c *CloudProviders) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *CloudProviders) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"aws":       c.AWS,
+			"docker":    c.Docker,
+			"gce":       c.GCE,
+			"openstack": c.OpenStack,
+			"vsphere":   c.VSphere,
+		},
+	})
+	return err
 }
 
 // AWSConfig stores auth info for Amazon Web Services.
@@ -236,6 +354,25 @@ type JiraConfig struct {
 	DefaultProject string `yaml:"default_project" bson:"default_project" json:"default_project"`
 }
 
+func (c *JiraConfig) id() string { return "jira" }
+func (c *JiraConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *JiraConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"host":            c.Host,
+			"username":        c.Username,
+			"password":        c.Password,
+			"default_project": c.DefaultProject,
+		},
+	})
+	return err
+}
 func (j JiraConfig) GetHostURL() string {
 	if strings.HasPrefix("http", j.Host) {
 		return j.Host
@@ -255,7 +392,7 @@ type AlertsConfig struct {
 func (c *AlertsConfig) id() string { return "alerts" }
 func (c *AlertsConfig) get() error {
 	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
-	if err != nil && err.Error() == "not found" {
+	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return err
@@ -296,6 +433,24 @@ func (c LoggerConfig) Info() send.LevelInfo {
 		Threshold: level.FromString(c.ThresholdLevel),
 	}
 }
+func (c *LoggerConfig) id() string { return "logger_config" }
+func (c *LoggerConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *LoggerConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"buffer":          c.Buffer,
+			"default_level":   c.DefaultLevel,
+			"threshold_level": c.ThresholdLevel,
+		},
+	})
+	return err
+}
 
 type LogBuffering struct {
 	DurationSeconds int `yaml:"duration_seconds"`
@@ -313,7 +468,7 @@ type AmboyConfig struct {
 func (c *AmboyConfig) id() string { return "amboy" }
 func (c *AmboyConfig) get() error {
 	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
-	if err != nil && err.Error() == "not found" {
+	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return err
@@ -337,9 +492,46 @@ type SlackConfig struct {
 	Level   string             `bson:"level" json:"level" yaml:"level"`
 }
 
+func (c *SlackConfig) id() string { return "slack" }
+func (c *SlackConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *SlackConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"options": c.Options,
+			"token":   c.Token,
+			"level":   c.Level,
+		},
+	})
+	return err
+}
+
 type NewRelicConfig struct {
 	ApplicationName string `bson:"application_name" json:"application_name" yaml:"application_name"`
 	LicenseKey      string `bson:"license_key" json:"license_key" yaml:"license_key"`
+}
+
+func (c *NewRelicConfig) id() string { return "new_relic" }
+func (c *NewRelicConfig) get() error {
+	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return err
+}
+func (c *NewRelicConfig) set() error {
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"application_name": c.ApplicationName,
+			"license_key":      c.LicenseKey,
+		},
+	})
+	return err
 }
 
 // ServiceFlags holds the state of each of the runner/API processes
@@ -361,7 +553,7 @@ type ServiceFlags struct {
 func (c *ServiceFlags) id() string { return "service_flags" }
 func (c *ServiceFlags) get() error {
 	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
-	if err != nil && err.Error() == "not found" {
+	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return err
@@ -429,37 +621,56 @@ type Settings struct {
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
-	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit"`
+	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
-	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira"`
+	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
-	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config"`
+	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
-	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic"`
-	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify"`
+	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
+	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
 	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
-	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers"`
-	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker"`
-	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler"`
+	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
+	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
 	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
-	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack"`
+	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
 	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
-	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui"`
+	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 	WriteConcern       WriteConcern              `yaml:"write_concern"`
 }
 
 func (c *Settings) id() string { return configDocID }
 func (c *Settings) get() error {
 	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
-	if err != nil && err.Error() == "not found" {
+	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return err
 }
 func (c *Settings) set() error { //TODO
-	return nil
+	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			apiUrlKey:             c.ApiUrl,
+			bannerKey:             c.Banner,
+			bannerThemeKey:        c.BannerTheme,
+			clientBinariesDirKey:  c.ClientBinariesDir,
+			configDirKey:          c.ConfigDir,
+			credentialsKey:        c.Credentials,
+			expansionsKey:         c.Expansions,
+			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
+			isNonProdKey:          c.IsNonProd,
+			keysKey:               c.Keys,
+			logPathKey:            c.LogPath,
+			pprofPortKey:          c.PprofPort,
+			pluginsKey:            c.Plugins,
+			splunkKey:             c.Splunk,
+			superUsersKey:         c.SuperUsers,
+		},
+	})
+	return err
 }
 
 // configSection defines a sub-document in the evegreen configSection
