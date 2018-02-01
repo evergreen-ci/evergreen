@@ -103,7 +103,4 @@ func TestFindTask(t *testing.T) {
 	assert.Equal("one", q.FindTask(TaskSpec{Group: "foo", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
 	assert.Equal("six", q.FindTask(TaskSpec{Group: "bar", ProjectID: "aa", Version: "bb", BuildVariant: "a"}).Id)
 	assert.Equal("two", q.FindTask(TaskSpec{Group: "bar", ProjectID: "a", Version: "b", BuildVariant: "a"}).Id)
-
-	assert.Nil(q.FindTask(TaskSpec{Group: "foo", Project: "a", Version: "b", BuildVariant: "a"}))
-	assert.Nil(q.FindTask(TaskSpec{Group: "bar", Project: "a", Version: "b", BuildVariant: "a"}))
 }

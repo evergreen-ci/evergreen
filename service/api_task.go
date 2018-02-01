@@ -417,7 +417,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		groupSpec = model.TaskSpec{
-			GroupName:    t.TaskGroup,
+			Group:        t.TaskGroup,
 			BuildVariant: t.BuildVariant,
 			Version:      t.Version,
 			ProjectID:    t.Project,
