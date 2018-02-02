@@ -386,7 +386,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem sending task log for %s", taskData.ID)
+		return "", errors.Wrapf(err, "problem sending task log '%+v' for %s", *log, taskData.ID)
 	}
 	defer resp.Body.Close()
 
@@ -415,7 +415,7 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, results)
 	if err != nil {
-		return errors.Wrapf(err, "failed to post results for task %s", taskData.ID)
+		return errors.Wrapf(err, "failed to post results '%+v' for task %s", *results, taskData.ID)
 	}
 	defer resp.Body.Close()
 	return nil
