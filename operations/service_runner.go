@@ -13,8 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/hostinit"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/repotracker"
@@ -129,72 +127,11 @@ func startRunnerService() cli.Command {
 // Running and executing the offline operations processing.
 
 func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
-	const tsFormat = "2006-01-02.15-04-05"
+	// Add jobs to a remote queue every minute (restart safe because of unique strings).
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), true, units.PopulateActivationJobs(env))
 
-	// Add jobs to a remote queue every minute (restart safe because of unique strings). Has access to project refs.
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
-		projects, err := model.FindAllTrackedProjectRefs()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		now := time.Now().Add(-time.Minute).UTC()
-		ts := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, time.UTC).Format(tsFormat)
-
-		catcher := grip.NewBasicCatcher()
-		for _, proj := range projects {
-			if !proj.Enabled {
-				continue
-			}
-
-			catcher.Add(queue.Put(units.NewStepbackActiationJob(env, proj.Identifier, ts)))
-		}
-
-		return catcher.Resolve()
-	})
-
-	// Add jobs to a remote queue every 20 minutes (restart safe because of unique strings). Has access to project refs.
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 30*time.Minute, time.Now(), true, func(queue amboy.Queue) error {
-		projects, err := model.FindAllTrackedProjectRefs()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		now := time.Now().Add(-time.Minute).UTC()
-		mins := now.Minute()
-		if mins > 30 {
-			mins = 30
-		} else {
-			mins = 0
-		}
-
-		ts := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), mins, 0, 0, time.UTC).Format(tsFormat)
-
-		catcher := grip.NewBasicCatcher()
-		for _, proj := range projects {
-			if !proj.Enabled {
-				continue
-			}
-
-			mostRecentVersion, err := version.FindOne(version.ByMostRecentForRequester(proj.Identifier, evergreen.RepotrackerVersionRequester))
-			catcher.Add(err)
-			if mostRecentVersion == nil {
-				grip.Warning(message.Fields{
-					"project":   proj.Identifier,
-					"operation": "repotracker catchup",
-					"message":   "could not find a recent version for project, skipping catchup",
-					"error":     err,
-				})
-				continue
-			}
-
-			if mostRecentVersion.CreateTime.Before(time.Now().Add(-2 * time.Hour)) {
-				catcher.Add(queue.Put(units.NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Identifier)))
-			}
-		}
-
-		return catcher.Resolve()
-	})
+	// Add jobs to a remote queue every 20 minutes (restart safe because of unique strings).
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 30*time.Minute, time.Now(), true, units.PopulateCatchupJobs())
 
 	// add jobs to a local queue every minute.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
