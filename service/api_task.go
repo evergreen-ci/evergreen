@@ -348,7 +348,7 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 
 		// attempt to update the host. TODO: double check Last task completed thing...
 		// TODO: get rid of last task completed field in update running task.
-		ok, err := currentHost.UpdateRunningTask(currentHost.LastTaskCompleted, queueItem.Id, time.Now())
+		ok, err := currentHost.UpdateRunningTask(currentHost.LastTaskCompleted, nextTask.Id, time.Now())
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
