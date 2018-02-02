@@ -52,7 +52,7 @@ func (h *adminGetHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 }
 
 func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	settings, err := sc.GetAdminSettings()
+	settings, err := sc.GetEvergreenSettings()
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -105,7 +105,7 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 	settings := settingsModel.(evergreen.Settings)
-	err = sc.SetAdminSettings(&settings, u)
+	err = sc.SetEvergreenSettings(&settings, u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")

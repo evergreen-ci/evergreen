@@ -15,13 +15,13 @@ import (
 
 type DBAdminConnector struct{}
 
-// GetAdminSettings retrieves the admin settings document from the DB
-func (ac *DBAdminConnector) GetAdminSettings() (*evergreen.Settings, error) {
+// GetEvergreenSettings retrieves the admin settings document from the DB
+func (ac *DBAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) {
 	return evergreen.GetConfig()
 }
 
-// SetAdminSettings sets the admin settings document in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminSettings(settings *evergreen.Settings, u *user.DBUser) error {
+// SetEvergreenSettings sets the admin settings document in the DB and event logs it
+func (ac *DBAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
 	if err := ac.SetAdminBanner(settings.Banner, u); err != nil {
 		return err
 	}
@@ -107,13 +107,13 @@ type MockAdminConnector struct {
 	MockSettings *evergreen.Settings
 }
 
-// GetAdminSettings retrieves the admin settings document from the mock connector
-func (ac *MockAdminConnector) GetAdminSettings() (*evergreen.Settings, error) {
+// GetEvergreenSettings retrieves the admin settings document from the mock connector
+func (ac *MockAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) {
 	return ac.MockSettings, nil
 }
 
-// SetAdminSettings sets the admin settings document in the mock connector
-func (ac *MockAdminConnector) SetAdminSettings(settings *evergreen.Settings, u *user.DBUser) error {
+// SetEvergreenSettings sets the admin settings document in the mock connector
+func (ac *MockAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
 	ac.MockSettings = settings
 	return nil
 }

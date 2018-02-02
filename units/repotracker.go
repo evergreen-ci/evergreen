@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"

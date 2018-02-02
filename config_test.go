@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -92,9 +91,12 @@ func TestAdminSuite(t *testing.T) {
 	s := new(AdminSuite)
 	config := testConfig()
 	db.SetGlobalSessionProvider(config.SessionFactory())
-	db.Clear(Collection)
-
 	suite.Run(t, s)
+}
+
+func (s *AdminSuite) SetupTest() {
+	db.Clear(ConfigCollection)
+	resetRegistry()
 }
 
 func (s *AdminSuite) TestBanner() {
@@ -103,7 +105,6 @@ func (s *AdminSuite) TestBanner() {
 	err := SetBanner(bannerText)
 	s.NoError(err)
 	settings, err := GetConfig()
-	grip.Info(err)
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(bannerText, settings.Banner)
@@ -431,4 +432,32 @@ func (s *AdminSuite) TestUiConfig() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(config, settings.Ui)
+}
+
+func (s *AdminSuite) TestConfigDefaults() {
+	config, err := GetConfig()
+	s.NoError(err)
+	s.Require().NotNil(config)
+	config.Database = DBSettings{
+		Url: "url",
+		DB:  "db",
+	}
+	config.AuthConfig = AuthConfig{
+		Naive: &NaiveAuthConfig{},
+	}
+	config.Ui = UIConfig{
+		Secret:         "secret",
+		DefaultProject: "proj",
+		Url:            "url",
+	}
+	config.ApiUrl = "api"
+	config.ConfigDir = "dir"
+	s.NoError(config.Validate())
+
+	// spot check the defaults
+	s.Nil(config.Notify.SMTP)
+	s.Equal("legacy", config.Scheduler.TaskFinder)
+	s.Equal(defaultLogBufferingDuration, config.LoggerConfig.Buffer.DurationSeconds)
+	s.Equal("info", config.LoggerConfig.DefaultLevel)
+	s.Equal(defaultAmboyPoolSize, config.Amboy.PoolSizeLocal)
 }

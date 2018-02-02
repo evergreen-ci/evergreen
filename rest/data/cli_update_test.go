@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -29,7 +28,7 @@ func TestUpdateConnector(t *testing.T) {
 		s.cancel = cancel
 		s.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
 
-		s.NoError(db.ClearCollections(evergreen.Collection))
+		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	}
 	s.degrade = func() {
 		flags := evergreen.ServiceFlags{

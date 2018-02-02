@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -250,7 +249,7 @@ func TestNextTask(t *testing.T) {
 	queue := evergreen.GetEnvironment().LocalQueue()
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.Collection); err != nil {
+		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, evergreen.ConfigCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {

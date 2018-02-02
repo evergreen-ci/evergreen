@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	Collection  = "admin"
-	configDocID = "global"
+	ConfigCollection = "admin"
+	configDocID      = "global"
 
 	idKey = bsonutil.MustHaveTag(Settings{}, "Id")
 
@@ -67,7 +67,7 @@ func byId(id string) bson.M {
 // string here means that there is no banner
 func SetBanner(bannerText string) error {
 	_, err := db.Upsert(
-		Collection,
+		ConfigCollection,
 		byId(configDocID),
 		bson.M{
 			"$set": bson.M{bannerKey: bannerText},
@@ -81,7 +81,7 @@ func SetBanner(bannerText string) error {
 // string here means that there is no banner
 func SetBannerTheme(theme BannerTheme) error {
 	_, err := db.Upsert(
-		Collection,
+		ConfigCollection,
 		byId(configDocID),
 		bson.M{
 			"$set": bson.M{bannerThemeKey: theme},

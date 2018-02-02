@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -45,7 +44,7 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(evergreen.Collection, patch.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection))
 	startTime := time.Now()
 	s.patchDoc = &patch.Patch{
 		Id:         bson.NewObjectId(),
@@ -99,7 +98,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "github status updates are disabled, not updating status")
-	s.NoError(db.Clear(evergreen.Collection))
+	s.NoError(db.Clear(evergreen.ConfigCollection))
 }
 
 func (s *githubStatusUpdateSuite) TestForBuild() {

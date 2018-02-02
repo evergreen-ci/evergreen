@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -33,7 +32,7 @@ func (s *repotrackerJobSuite) SetupTest() {
 }
 
 func (s *repotrackerJobSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(evergreen.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	s.cancel()
 	evergreen.ResetEnvironment()
 }

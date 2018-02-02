@@ -54,7 +54,7 @@ func TestAdminFlagsRouteSuite(t *testing.T) {
 	resp, err := postHandler.RequestHandler.Execute(ctx, sc)
 	assert.NoError(err)
 	assert.NotNil(resp)
-	settings, err := sc.GetAdminSettings()
+	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(body.Flags.HostinitDisabled, settings.ServiceFlags.HostinitDisabled)
 	assert.Equal(body.Flags.TaskrunnerDisabled, settings.ServiceFlags.TaskrunnerDisabled)

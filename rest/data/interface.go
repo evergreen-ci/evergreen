@@ -142,9 +142,9 @@ type Connector interface {
 	SetPatchPriority(string, int64) error
 	SetPatchActivated(string, string, bool) error
 
-	// GetAdminSettings/SetAdminSettings retrieves/sets the system-wide settings document
-	GetAdminSettings() (*evergreen.Settings, error)
-	SetAdminSettings(*evergreen.Settings, *user.DBUser) error
+	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document
+	GetEvergreenSettings() (*evergreen.Settings, error)
+	SetEvergreenSettings(*evergreen.Settings, *user.DBUser) error
 	// SetAdminBanner sets set the banner in the system-wide settings document
 	SetAdminBanner(string, *user.DBUser) error
 	// SetBannerTheme sets set the banner theme in the system-wide settings document

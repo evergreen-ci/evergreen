@@ -11,6 +11,18 @@ import (
 var registry *configSectionRegistry
 
 func init() {
+
+	if err := resetRegistry(); err != nil {
+		panic(fmt.Sprintf("error registering config sections: %s", err.Error()))
+	}
+}
+
+type configSectionRegistry struct {
+	mu       *sync.RWMutex
+	sections map[string]configSection
+}
+
+func resetRegistry() error {
 	// add any new config sections to the variable below to register them
 	configSections := []configSection{
 		&AlertsConfig{},
@@ -36,26 +48,20 @@ func init() {
 	for _, section := range configSections {
 		catcher.Add(registry.registerSection(section.id(), section))
 	}
-	if catcher.HasErrors() {
-		panic(fmt.Sprintf("error registering config sections: %s", catcher.String()))
-	}
-}
 
-type configSectionRegistry struct {
-	mux      *sync.RWMutex
-	sections map[string]configSection
+	return catcher.Resolve()
 }
 
 func newConfigSectionRegistry() *configSectionRegistry {
 	return &configSectionRegistry{
-		mux:      &sync.RWMutex{},
+		mu:       &sync.RWMutex{},
 		sections: map[string]configSection{},
 	}
 }
 
 func (r *configSectionRegistry) registerSection(id string, section configSection) error {
-	r.mux.Lock()
-	defer r.mux.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	if id == "" {
 		return errors.New("cannot register a section with no ID")
@@ -69,8 +75,8 @@ func (r *configSectionRegistry) registerSection(id string, section configSection
 }
 
 func (r *configSectionRegistry) getSections() map[string]configSection {
-	r.mux.RLock()
-	defer r.mux.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	return r.sections
 }

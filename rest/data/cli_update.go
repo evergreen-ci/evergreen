@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )

@@ -68,41 +68,42 @@ type AuthConfig struct {
 
 func (c *AuthConfig) id() string { return "auth" }
 func (c *AuthConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *AuthConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"crowd":  c.Crowd,
 			"naive":  c.Naive,
 			"github": c.Github,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *AuthConfig) validateAndDefault() error {
+	catcher := grip.NewSimpleCatcher()
 	if c.Crowd == nil && c.Naive == nil && c.Github == nil {
-		return errors.New("You must specify one form of authentication")
+		catcher.Add(errors.New("You must specify one form of authentication"))
 	}
 	if c.Naive != nil {
 		used := map[string]bool{}
 		for _, x := range c.Naive.Users {
 			if used[x.Username] {
-				return errors.New("Duplicate user in list")
+				catcher.Add(fmt.Errorf("Duplicate user %s in list", x.Username))
 			}
 			used[x.Username] = true
 		}
 	}
 	if c.Github != nil {
 		if c.Github.Users == nil && c.Github.Organization == "" {
-			return errors.New("Must specify either a set of users or an organization for Github Authentication")
+			catcher.Add(errors.New("Must specify either a set of users or an organization for Github Authentication"))
 		}
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 // RepoTrackerConfig holds settings for polling project repositories.
@@ -114,21 +115,21 @@ type RepoTrackerConfig struct {
 
 func (c *RepoTrackerConfig) id() string { return "repotracker" }
 func (c *RepoTrackerConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *RepoTrackerConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"revs_to_fetch":      c.NumNewRepoRevisionsToFetch,
 			"max_revs_to_search": c.MaxRepoRevisionsToSearch,
 			"max_con_requests":   c.MaxConcurrentRequests,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *RepoTrackerConfig) validateAndDefault() error { return nil }
 
@@ -151,20 +152,20 @@ type APIConfig struct {
 
 func (c *APIConfig) id() string { return "api" }
 func (c *APIConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *APIConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"http_listen_addr":      c.HttpListenAddr,
 			"github_webhook_secret": c.GithubWebhookSecret,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *APIConfig) validateAndDefault() error { return nil }
 
@@ -193,14 +194,14 @@ type UIConfig struct {
 
 func (c *UIConfig) id() string { return "ui" }
 func (c *UIConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *UIConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"url":              c.Url,
 			"help_url":         c.HelpUrl,
@@ -212,22 +213,23 @@ func (c *UIConfig) set() error {
 			"csrf_key":         c.CsrfKey,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *UIConfig) validateAndDefault() error {
+	catcher := grip.NewSimpleCatcher()
 	if c.Secret == "" {
-		return errors.New("UI Secret must not be empty")
+		catcher.Add(errors.New("UI Secret must not be empty"))
 	}
 	if c.DefaultProject == "" {
-		return errors.New("You must specify a default project in UI")
+		catcher.Add(errors.New("You must specify a default project in UI"))
 	}
 	if c.Url == "" {
-		return errors.New("You must specify a default UI url")
+		catcher.Add(errors.New("You must specify a default UI url"))
 	}
 	if c.CsrfKey != "" && len(c.CsrfKey) != 32 {
-		return errors.New("CSRF key must be 32 characters long")
+		catcher.Add(errors.New("CSRF key must be 32 characters long"))
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 // HostInitConfig holds logging settings for the hostinit process.
@@ -237,19 +239,19 @@ type HostInitConfig struct {
 
 func (c *HostInitConfig) id() string { return "hostinit" }
 func (c *HostInitConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *HostInitConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"ssh_timeout_secs": c.SSHTimeoutSeconds,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *HostInitConfig) validateAndDefault() error { return nil }
 
@@ -260,19 +262,19 @@ type NotifyConfig struct {
 
 func (c *NotifyConfig) id() string { return "notify" }
 func (c *NotifyConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *NotifyConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"smtp": c.SMTP,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *NotifyConfig) validateAndDefault() error {
 	notifyConfig := c.SMTP
@@ -315,20 +317,20 @@ type SchedulerConfig struct {
 
 func (c *SchedulerConfig) id() string { return "scheduler" }
 func (c *SchedulerConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *SchedulerConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"merge_toggle": c.MergeToggle,
 			"task_finder":  c.TaskFinder,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *SchedulerConfig) validateAndDefault() error {
 	finders := []string{"legacy", "alternate", "parallel", "pipeline"}
@@ -358,14 +360,14 @@ type CloudProviders struct {
 
 func (c *CloudProviders) id() string { return "providers" }
 func (c *CloudProviders) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *CloudProviders) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"aws":       c.AWS,
 			"docker":    c.Docker,
@@ -374,7 +376,7 @@ func (c *CloudProviders) set() error {
 			"vsphere":   c.VSphere,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *CloudProviders) validateAndDefault() error { return nil }
 
@@ -432,14 +434,14 @@ type JiraConfig struct {
 
 func (c *JiraConfig) id() string { return "jira" }
 func (c *JiraConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *JiraConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"host":            c.Host,
 			"username":        c.Username,
@@ -447,7 +449,7 @@ func (c *JiraConfig) set() error {
 			"default_project": c.DefaultProject,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *JiraConfig) validateAndDefault() error { return nil }
 func (j JiraConfig) GetHostURL() string {
@@ -468,19 +470,19 @@ type AlertsConfig struct {
 
 func (c *AlertsConfig) id() string { return "alerts" }
 func (c *AlertsConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *AlertsConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"smtp": c.SMTP,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *AlertsConfig) validateAndDefault() error { return nil }
 
@@ -513,21 +515,21 @@ func (c LoggerConfig) Info() send.LevelInfo {
 }
 func (c *LoggerConfig) id() string { return "logger_config" }
 func (c *LoggerConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *LoggerConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"buffer":          c.Buffer,
 			"default_level":   c.DefaultLevel,
 			"threshold_level": c.ThresholdLevel,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *LoggerConfig) validateAndDefault() error {
 	if c.Buffer.DurationSeconds == 0 {
@@ -565,14 +567,14 @@ type AmboyConfig struct {
 
 func (c *AmboyConfig) id() string { return "amboy" }
 func (c *AmboyConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *AmboyConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"name":               c.Name,
 			"database":           c.DB,
@@ -581,7 +583,7 @@ func (c *AmboyConfig) set() error {
 			"local_storage_size": c.LocalStorage,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *AmboyConfig) validateAndDefault() error {
 	if c.Name == "" {
@@ -615,21 +617,21 @@ type SlackConfig struct {
 
 func (c *SlackConfig) id() string { return "slack" }
 func (c *SlackConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *SlackConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"options": c.Options,
 			"token":   c.Token,
 			"level":   c.Level,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *SlackConfig) validateAndDefault() error {
 	if c.Options == nil {
@@ -664,20 +666,20 @@ type NewRelicConfig struct {
 
 func (c *NewRelicConfig) id() string { return "new_relic" }
 func (c *NewRelicConfig) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *NewRelicConfig) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"application_name": c.ApplicationName,
 			"license_key":      c.LicenseKey,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *NewRelicConfig) validateAndDefault() error { return nil }
 
@@ -699,14 +701,14 @@ type ServiceFlags struct {
 
 func (c *ServiceFlags) id() string { return "service_flags" }
 func (c *ServiceFlags) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *ServiceFlags) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			taskDispatchKey:                 c.TaskDispatchDisabled,
 			hostinitKey:                     c.HostinitDisabled,
@@ -722,7 +724,7 @@ func (c *ServiceFlags) set() error {
 			githubStatusAPIDisabled:         c.GithubStatusAPIDisabled,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *ServiceFlags) validateAndDefault() error { return nil }
 
@@ -792,14 +794,14 @@ type Settings struct {
 
 func (c *Settings) id() string { return configDocID }
 func (c *Settings) get() error {
-	err := legacyDB.FindOneQ(Collection, legacyDB.Query(byId(c.id())), c)
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
-	return err
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
 func (c *Settings) set() error {
-	_, err := legacyDB.Upsert(Collection, byId(c.id()), bson.M{
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
 			bannerKey:             c.Banner,
@@ -818,17 +820,21 @@ func (c *Settings) set() error {
 			superUsersKey:         c.SuperUsers,
 		},
 	})
-	return err
+	return errors.Wrapf(err, "error updating section %s", c.id())
 }
 func (c *Settings) validateAndDefault() error {
+	catcher := grip.NewSimpleCatcher()
 	if c.Database.Url == "" || c.Database.DB == "" {
-		return errors.New("DBUrl and DB must not be empty")
+		catcher.Add(errors.New("DBUrl and DB must not be empty"))
 	}
 	if c.ApiUrl == "" {
-		return errors.New("API hostname must not be empty")
+		catcher.Add(errors.New("API hostname must not be empty"))
 	}
 	if c.ConfigDir == "" {
-		return errors.New("Config directory must not be empty")
+		catcher.Add(errors.New("Config directory must not be empty"))
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 	if c.ClientBinariesDir == "" {
 		c.ClientBinariesDir = ClientDirectory
@@ -908,6 +914,7 @@ func GetConfig() (*Settings, error) {
 		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
 		if !propVal.CanSet() {
 			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+			continue
 		}
 		propVal.Set(sectionVal)
 	}
@@ -970,6 +977,7 @@ func (settings *Settings) Validate() error {
 		propAddr := reflect.ValueOf(settings).Elem().FieldByName(propName)
 		if !propAddr.CanSet() {
 			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+			continue
 		}
 		propAddr.Set(sectionVal)
 	}
