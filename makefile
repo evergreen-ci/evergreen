@@ -233,6 +233,12 @@ vendor-clean:
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/gorilla/context/
 	rm -rf vendor/github.com/gorilla/csrf/vendor/github.com/pkg/
+	rm -rf vendor/gopkg.in/mgo.v2/harness/
+	rm -rf vendor/gopkg.in/mgo.v2/testdb/
+	rm -rf vendor/gopkg.in/mgo.v2/testserver/
+	rm -rf vendor/gopkg.in/mgo.v2/internal/json/testdata
+	rm -rf vendor/gopkg.in/mgo.v2/.git/
+	rm -rf vendor/gopkg.in/mgo.v2/txn/
 phony += vendor-clean
 # end vendoring tooling configuration
 
