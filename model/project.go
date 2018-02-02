@@ -649,13 +649,11 @@ func GetTaskGroup(t *task.Task) (*TaskGroup, error) {
 	if t == nil {
 		return nil, errors.New("unable to get task group: task is nil")
 	}
-	if t.Version == "" {
-		return nil, errors.New("task has no version")
+	tgName, versionId := parseTaskGroup(t.TaskGroup)
+	if tgName == "" || versionId == "" {
+		return nil, fmt.Errorf("invalid task group ID: %s", t.TaskGroup)
 	}
-	v, err := version.FindOne(version.ById(t.Version))
-	if v == nil {
-		return nil, errors.New("no version found")
-	}
+	v, err := version.FindOne(version.ById(versionId))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to find version for task group")
 	}
@@ -663,19 +661,24 @@ func GetTaskGroup(t *task.Task) (*TaskGroup, error) {
 	if err = LoadProjectInto([]byte(v.Config), t.Project, &p); err != nil {
 		return nil, errors.Wrap(err, "error retrieving project for task group")
 	}
-	if t.TaskGroup == "" {
-		// if there is no named task group, fall back to project definitions
-		return &TaskGroup{
-			SetupTask:    p.Pre,
-			TeardownTask: p.Post,
-			Timeout:      p.Timeout,
-		}, nil
-	}
-	tg := p.FindTaskGroup(t.TaskGroup)
+	tg := p.FindTaskGroup(tgName)
 	if tg != nil {
 		return tg, nil
 	}
-	return nil, errors.Errorf("couldn't find task group %s", t.TaskGroup)
+
+	return nil, fmt.Errorf("task group %s not found in project config", tgName)
+}
+
+func parseTaskGroup(tg string) (string, string) {
+	temp := strings.Split(tg, "_")
+	index := len(temp) - 1
+	if index < 1 {
+		return "", ""
+	}
+	version := temp[len(temp)-1]
+	taskGroup := strings.Join(temp[:index], "_")
+
+	return taskGroup, version
 }
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {

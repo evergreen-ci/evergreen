@@ -131,11 +131,15 @@ func (a *Agent) loop(ctx context.Context) error {
 func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) taskContext {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
-	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
+	if nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup {
 		defer a.removeTaskDirectory(tc)
 		setupGroup = true
 		taskDirectory = ""
-		a.runPostGroupCommands(ctx, tc)
+		if tc.taskConfig != nil {
+			if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+				a.runPostGroupCommands(ctx, tc, taskGroup)
+			}
+		}
 	}
 	return taskContext{
 		task: client.TaskData{
@@ -244,17 +248,18 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
+	var err error
 
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig.Task)
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for task timeout commands"))
-		return
+	// note that if there is a named TaskGroup without a Timeout, we do NOT fall back to Project Timeout
+	if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+		if taskGroup.Timeout != nil {
+			err = a.runCommands(ctx, tc, taskGroup.Timeout.List(), false)
+		}
+	} else if tc.taskConfig.Project.Timeout != nil {
+		err = a.runCommands(ctx, tc, tc.taskConfig.Project.Timeout.List(), false)
 	}
-	if taskGroup.Timeout != nil {
-		err := a.runCommands(ctx, tc, taskGroup.Timeout.List(), false)
-		tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
-	}
+	tc.logger.Execution().ErrorWhenf(err != nil, "Error running timeout command: %v", err)
+	tc.logger.Task().InfoWhenf(err == nil, "Finished running timeout commands in %v.", time.Since(start).String())
 }
 
 // finishTask sends the returned TaskEndResponse and error
@@ -299,41 +304,35 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
+	var err error
 	start := time.Now()
-	a.killProcs(tc)
-	defer a.killProcs(tc)
-	tc.logger.Task().Info("Running post-task commands.")
-	var cancel context.CancelFunc
-	ctx, cancel = a.withCallbackTimeout(ctx, tc)
-	defer cancel()
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig.Task)
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
-		return
-	}
-	if taskGroup.TeardownTask != nil {
-		err := a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), false)
-		tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
-		tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
-	}
-}
-
-func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
-	if tc.taskConfig == nil {
-		return
-	}
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig.Task)
-	if err != nil {
-		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
-		return
-	}
-	if taskGroup.TeardownGroup != nil {
-		grip.Info("Running post-group commands")
+	if tc.taskConfig != nil && tc.taskConfig.Project.Post != nil && tc.taskGroup == "" {
 		a.killProcs(tc)
 		defer a.killProcs(tc)
+		tc.logger.Task().Info("Running post-task commands.")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
+		err = a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false)
+	}
+
+	if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
+		if taskGroup.TeardownTask != nil {
+			err = a.runCommands(ctx, tc, taskGroup.TeardownTask.List(), false)
+		}
+	}
+	tc.logger.Task().ErrorWhenf(err != nil, "Error running post-task command: %v", err)
+	tc.logger.Task().InfoWhenf(err == nil, "Finished running post-task commands in %v.", time.Since(start).String())
+}
+
+func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext, taskGroup *model.TaskGroup) {
+	grip.Info("Running post-group commands")
+	a.killProcs(tc)
+	defer a.killProcs(tc)
+	var cancel context.CancelFunc
+	ctx, cancel = a.withCallbackTimeout(ctx, tc)
+	defer cancel()
+	if taskGroup.TeardownGroup != nil {
 		err := a.runCommands(ctx, tc, taskGroup.TeardownGroup.List(), false)
 		grip.ErrorWhenf(err != nil, "Error running post-task command: %v", err)
 		grip.InfoWhen(err == nil, "Finished running post-group commands")

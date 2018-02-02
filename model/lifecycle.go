@@ -780,7 +780,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		Priority:            buildVarTask.Priority,
 	}
 	if buildVarTask.IsGroup {
-		t.TaskGroup = buildVarTask.GroupName
+		t.TaskGroup = task.FormTaskGroupId(buildVarTask.GroupName, v.Id)
 	}
 	return t
 }

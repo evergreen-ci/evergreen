@@ -449,7 +449,7 @@ task_groups:
 	assert.NoError(v.Insert())
 	t1 := task.Task{
 		Id:        "t1",
-		TaskGroup: tgName,
+		TaskGroup: task.FormTaskGroupId(tgName, v.Id),
 		Version:   v.Id,
 	}
 

@@ -41,7 +41,7 @@ func (s *DBUserConnectorSuite) SetupTest() {
 	}
 }
 
-func (s *DBUserConnectorSuite) TearDownTest() {
+func (s *DBUserConnectorSuite) TeardownTest() {
 	s.NoError(db.Clear(user.Collection))
 }
 
