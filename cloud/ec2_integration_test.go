@@ -29,11 +29,17 @@ func fetchTestDistro() *distro.Distro {
 		PoolSize: 10,
 		Provider: evergreen.ProviderNameEc2Spot,
 		ProviderSettings: &map[string]interface{}{
-			"ami":            "ami-c7e7f2d0",
-			"instance_type":  "t1.micro",
-			"key_name":       "mci",
-			"bid_price":      .005,
-			"security_group": "default",
+			"ami":           "ami-97785bed",
+			"instance_type": "t2.micro",
+			"key_name":      "mci",
+			"bid_price":     .005,
+			"is_vpc":        true,
+			// TODO : The below settings require access to our staging environment. We
+			// hope to make settings test data better in the future so that we do not
+			// have to include values like these in our test code.
+			"security_group": "sg-601a6c13",
+			"subnet_id":      "subnet-517c941a",
+			"vpc_name":       "stage_dynamic_vpc",
 		},
 
 		SetupAsSudo: true,
