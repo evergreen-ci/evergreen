@@ -82,7 +82,7 @@ func (self *TaskQueue) Save() error {
 }
 
 func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
-	if spec.Group == "" || spec.ProjectID == "" || spec.BuildVariant == "" {
+	if spec.Group == "" || spec.ProjectID == "" || spec.BuildVariant == "" || spec.Version == "" {
 		return nil
 	}
 
