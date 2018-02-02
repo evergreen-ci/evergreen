@@ -82,20 +82,20 @@ func (self *TaskQueue) Save() error {
 }
 
 func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
-	if spec.Group == "" {
+	if spec.Group == "" || spec.ProjectID == "" || spec.BuildVariant == "" {
 		return nil
 	}
 
 	for _, it := range self.Queue {
-		if spec.ProjectID == "" || it.Project != spec.ProjectID {
+		if it.Project != spec.ProjectID {
 			continue
 		}
 
-		if spec.Version == "" || it.Version != spec.Version {
+		if it.Version != spec.Version {
 			continue
 		}
 
-		if spec.BuildVariant == "" || it.BuildVariant != spec.BuildVariant {
+		if it.BuildVariant != spec.BuildVariant {
 			continue
 		}
 
