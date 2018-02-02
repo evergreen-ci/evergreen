@@ -47,6 +47,7 @@ type mongoServer struct {
 	unusedSockets []*mongoSocket
 	liveSockets   []*mongoSocket
 	closed        bool
+	closedCh      chan struct{}
 	abended       bool
 	sync          chan bool
 	dial          dialer
@@ -84,9 +85,9 @@ func newServer(addr string, tcpaddr *net.TCPAddr, sync chan bool, dial dialer) *
 		sync:         sync,
 		dial:         dial,
 		info:         &defaultServerInfo,
+		pingValue:    time.Hour, // Push it back before an actual ping.
+		closedCh:     make(chan struct{}),
 	}
-	// Once so the server gets a ping value, then loop in background.
-	server.pinger(false)
 	go server.pinger(true)
 	return server
 }
@@ -163,6 +164,11 @@ func (server *mongoServer) Connect(timeout time.Duration) (*mongoSocket, error) 
 		// Cannot do this because it lacks timeout support. :-(
 		//conn, err = net.DialTCP("tcp", nil, server.tcpaddr)
 		conn, err = net.DialTimeout("tcp", server.ResolvedAddr, timeout)
+		if tcpconn, ok := conn.(*net.TCPConn); ok {
+			tcpconn.SetKeepAlive(true)
+		} else if err == nil {
+			panic("internal error: obtained TCP connection is not a *net.TCPConn!?")
+		}
 	case dial.old != nil:
 		conn, err = dial.old(server.tcpaddr)
 	case dial.new != nil:
@@ -184,6 +190,10 @@ func (server *mongoServer) Connect(timeout time.Duration) (*mongoSocket, error) 
 // they're currently in use or not.
 func (server *mongoServer) Close() {
 	server.Lock()
+	if !server.closed {
+		// close once
+		close(server.closedCh)
+	}
 	server.closed = true
 	liveSockets := server.liveSockets
 	unusedSockets := server.unusedSockets
@@ -274,7 +284,7 @@ NextTagSet:
 	return false
 }
 
-var pingDelay = 5 * time.Second
+var pingDelay = 15 * time.Second
 
 func (server *mongoServer) pinger(loop bool) {
 	var delay time.Duration
@@ -293,12 +303,20 @@ func (server *mongoServer) pinger(loop bool) {
 		limit:      -1,
 	}
 	for {
-		if loop {
-			time.Sleep(delay)
-		}
-		op := op
-		socket, _, err := server.AcquireSocket(0, 3*delay)
-		if err == nil {
+		timer := time.NewTimer(delay)
+		select {
+		case <-server.closedCh:
+			timer.Stop()
+			return
+		case <-timer.C:
+			op := op
+			socket, _, err := server.AcquireSocket(0, delay)
+			if err != nil {
+				break
+			} else if err == errServerClosed {
+				return
+			}
+
 			start := time.Now()
 			_, _ = socket.SimpleQuery(&op)
 			delay := time.Now().Sub(start)
@@ -315,16 +333,14 @@ func (server *mongoServer) pinger(loop bool) {
 			socket.Release()
 			server.Lock()
 			if server.closed {
-				loop = false
+				// server may have been closed since we acquired this
+				// socket
+				server.Unlock()
+				return
 			}
 			server.pingValue = max
 			server.Unlock()
 			logf("Ping for %s is %d ms", server.Addr, max/time.Millisecond)
-		} else if err == errServerClosed {
-			return
-		}
-		if !loop {
-			return
 		}
 	}
 }
@@ -398,9 +414,18 @@ func (servers *mongoServers) Empty() bool {
 	return len(servers.slice) == 0
 }
 
+func (servers *mongoServers) HasMongos() bool {
+	for _, s := range servers.slice {
+		if s.Info().Mongos {
+			return true
+		}
+	}
+	return false
+}
+
 // BestFit returns the best guess of what would be the most interesting
 // server to perform operations on at this point in time.
-func (servers *mongoServers) BestFit(serverTags []bson.D) *mongoServer {
+func (servers *mongoServers) BestFit(mode Mode, serverTags []bson.D) *mongoServer {
 	var best *mongoServer
 	for _, next := range servers.slice {
 		if best == nil {
@@ -417,9 +442,11 @@ func (servers *mongoServers) BestFit(serverTags []bson.D) *mongoServer {
 		switch {
 		case serverTags != nil && !next.info.Mongos && !next.hasTags(serverTags):
 			// Must have requested tags.
-		case next.info.Master != best.info.Master:
-			// Prefer slaves.
-			swap = best.info.Master
+		case mode == Secondary && next.info.Master && !next.info.Mongos:
+			// Must be a secondary or mongos.
+		case next.info.Master != best.info.Master && mode != Nearest:
+			// Prefer slaves, unless the mode is PrimaryPreferred.
+			swap = (mode == PrimaryPreferred) != best.info.Master
 		case absDuration(next.pingValue-best.pingValue) > 15*time.Millisecond:
 			// Prefer nearest server.
 			swap = next.pingValue < best.pingValue
