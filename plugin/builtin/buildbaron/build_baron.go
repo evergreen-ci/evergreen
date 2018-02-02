@@ -9,17 +9,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -31,9 +28,8 @@ const (
 	JIRAFailure = "Error searching jira for ticket"
 	JQLBFQuery  = "(project in (%v)) and ( %v ) order by updatedDate desc"
 
-	NotesCollection = "build_baron_notes"
-	msPerNS         = 1000 * 1000
-	maxNoteSize     = 16 * 1024 // 16KB
+	msPerNS     = 1000 * 1000
+	maxNoteSize = 16 * 1024 // 16KB
 )
 
 type bbPluginOptions struct {
@@ -167,7 +163,7 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 // getNote retrieves the latest note from the database.
 func (bbp *BuildBaronPlugin) getNote(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
-	n, err := NoteForTask(taskId)
+	n, err := model.NoteForTask(taskId)
 	if err != nil {
 		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
@@ -183,7 +179,7 @@ func (bbp *BuildBaronPlugin) getNote(w http.ResponseWriter, r *http.Request) {
 // edit time and updates the note in the database.
 func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
-	n := &Note{}
+	n := &model.Note{}
 	if err := util.ReadJSONInto(r.Body, n); err != nil {
 		util.WriteJSON(w, http.StatusBadRequest, err.Error())
 		return
@@ -198,7 +194,7 @@ func (bbp *BuildBaronPlugin) saveNote(w http.ResponseWriter, r *http.Request) {
 	// We need to make sure the user isn't blowing away a new edit,
 	// so we load the existing note. If the user's last seen edit time is less
 	// than the most recent edit, we error with a helpful message.
-	old, err := NoteForTask(taskId)
+	old, err := model.NoteForTask(taskId)
 	if err != nil {
 		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
 		return
@@ -242,39 +238,4 @@ func taskToJQL(t *task.Task, searchProjects []string) string {
 	}
 
 	return fmt.Sprintf(JQLBFQuery, strings.Join(searchProjects, ", "), jqlClause)
-}
-
-// Note contains arbitrary information entered by an Evergreen user, scope to a task.
-type Note struct {
-	TaskId       string `bson:"_id" json:"-"`
-	UnixNanoTime int64  `bson:"time" json:"time"`
-	Content      string `bson:"content" json:"content"`
-}
-
-// Note DB Logic
-
-var TaskIdKey = bsonutil.MustHaveTag(Note{}, "TaskId")
-
-// Upsert overwrites an existing note.
-func (n *Note) Upsert() error {
-	_, err := db.Upsert(
-		NotesCollection,
-		bson.D{{TaskIdKey, n.TaskId}},
-		n,
-	)
-	return err
-}
-
-// NoteForTask returns the note for the given task Id, if it exists.
-func NoteForTask(taskId string) (*Note, error) {
-	n := &Note{}
-	err := db.FindOneQ(
-		NotesCollection,
-		db.Query(bson.D{{TaskIdKey, taskId}}),
-		n,
-	)
-	if err == mgo.ErrNotFound {
-		return nil, nil
-	}
-	return n, err
 }
