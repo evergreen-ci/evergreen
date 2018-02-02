@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -93,6 +94,11 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	}
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	logger.Task().Info(message.Fields{
+		"message": "attempting to attach files",
+		"files":   files,
+		"string":  c.Files,
+	})
 	if err = comm.AttachFiles(ctx, td, files); err != nil {
 		return errors.Wrap(err, "attach artifacts failed")
 	}
