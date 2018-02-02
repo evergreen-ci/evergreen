@@ -1,6 +1,7 @@
 package spawn
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -18,8 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -185,10 +185,32 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 		return errors.Wrap(err, "Error constructing host RDP password")
 	}
 
+	stdout := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	stderr := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+
+	opts := subprocess.OutputOptions{Error: stderr, Output: stdout}
+	if err = pwdUpdateCmd.SetOutput(opts); err != nil {
+		return errors.WithStack(err)
+	}
+
 	// update RDP and sshd password
 	if err = pwdUpdateCmd.Run(ctx); err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"stdout":    stdout.Buffer.String(),
+			"stderr":    stderr.Buffer.String(),
+			"operation": "set host rdp password",
+			"host":      host.Id,
+		}))
 		return errors.Wrap(err, "Error updating host RDP password")
 	}
+
+	grip.Debug(message.Fields{
+		"stdout":    stdout.Buffer.String(),
+		"stderr":    stderr.Buffer.String(),
+		"operation": "set host rdp password",
+		"host":      host.Id,
+	})
+
 	return nil
 }
 
@@ -210,11 +232,6 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 		return nil, err
 	}
 
-	stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-	defer stderr.Close()
-	stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-	defer stdout.Close()
-
 	escapedPassword := strings.Replace(password, `\`, `\\`, -1)
 	updatePwdCmd := fmt.Sprintf(`net user %s "%s" && sc config sshd obj= '.\%s' password= "%s"`,
 		hostObj.User, escapedPassword, hostObj.User, escapedPassword)
@@ -229,11 +246,6 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 		append([]string{"-p", hostInfo.Port}, sshOptions...),
 		true, // logging disabled
 	)
-
-	opts := subprocess.OutputOptions{Error: stderr, Output: stdout}
-	if err = remoteCommand.SetOutput(opts); err != nil {
-		return nil, err
-	}
 
 	return remoteCommand, nil
 }
