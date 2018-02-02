@@ -1,6 +1,8 @@
 package units
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
@@ -43,8 +45,8 @@ func NewStepbackActiationJob(env evergreen.Environment, project string, id strin
 	j := makeStepbackActivationCatchupJob()
 	j.Project = project
 	j.env = env
-	job.SetID("%s.%s.%s", stepbackActivationCatchupJobName, project, id)
-	return job
+	j.SetID(fmt.Sprintf("%s.%s.%s", stepbackActivationCatchupJobName, project, id))
+	return j
 }
 
 func (j *stepbackActivationCatchup) Run() {
@@ -58,6 +60,6 @@ func (j *stepbackActivationCatchup) Run() {
 		return
 	}
 
-	j.AddError(errors.Wrap(repotracker.ActivateBuildsForProject(conf, ref),
+	j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(conf, *ref),
 		"problem activating builds for project %s", j.Project))
 }
