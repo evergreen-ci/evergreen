@@ -245,7 +245,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
 
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig.Task)
+	taskGroup, err := model.GetTaskGroup(tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for task timeout commands"))
 		return
@@ -306,7 +306,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
 	defer cancel()
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig.Task)
+	taskGroup, err := model.GetTaskGroup(tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-task commands"))
 		return
@@ -322,7 +322,7 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig.Task)
+	taskGroup, err := model.GetTaskGroup(tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))
 		return

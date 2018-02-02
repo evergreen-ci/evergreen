@@ -8,9 +8,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -23,10 +21,6 @@ type CommandSuite struct {
 
 func TestCommandSuite(t *testing.T) {
 	suite.Run(t, new(CommandSuite))
-}
-
-func (s *CommandSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *CommandSuite) SetupTest() {

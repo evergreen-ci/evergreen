@@ -10,12 +10,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -35,10 +33,6 @@ type AgentSuite struct {
 
 func TestAgentSuite(t *testing.T) {
 	suite.Run(t, new(AgentSuite))
-}
-
-func (s *AgentSuite) SetupSuite() {
-	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *AgentSuite) SetupTest() {
@@ -201,12 +195,11 @@ pre:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPreTaskCommands(ctx, s.tc)
@@ -235,12 +228,11 @@ post:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostTaskCommands(ctx, s.tc)
@@ -477,12 +469,11 @@ task_groups:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPreTaskCommands(ctx, s.tc)
@@ -515,12 +506,11 @@ task_groups:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPreTaskCommands(ctx, s.tc)
@@ -553,12 +543,11 @@ task_groups:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostTaskCommands(ctx, s.tc)
@@ -590,12 +579,11 @@ task_groups:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runPostGroupCommands(ctx, s.tc)
@@ -630,12 +618,11 @@ task_groups:
     params:
     script: "echo hi"
 `
-	v := version.Version{
+	v := &version.Version{
 		Id:     versionId,
 		Config: projYml,
 	}
-	s.Require().NoError(db.ClearCollections(version.Collection))
-	s.Require().NoError(v.Insert())
+	s.tc.taskConfig.Version = v
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.a.runTaskTimeoutCommands(ctx, s.tc)
