@@ -285,16 +285,19 @@ func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
 // of currentHost.
-func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *host.Host) (*task.Task, error) {
+func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *host.Host, spec model.TaskSpec) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
 		return nil, errors.Errorf("Error host %v must have an unset running task field but has running task %v",
 			currentHost.Id, currentHost.RunningTask)
 	}
 	// only proceed if there are pending tasks left
 	for taskQueue.Length() != 0 {
-		nextTaskId := taskQueue.NextTask().Id
+		queueItem := model.MatchingOrNextTask(taskQueue, spec)
+		if queueItem == nil {
+			return nil, errors.New("no dispatchable task found in the queue")
+		}
 
-		nextTask, err := task.FindOne(task.ById(nextTaskId))
+		nextTask, err := task.FindOne(task.ById(queueItem.Id))
 		if err != nil {
 			return nil, err
 		}
@@ -345,7 +348,7 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 
 		// attempt to update the host. TODO: double check Last task completed thing...
 		// TODO: get rid of last task completed field in update running task.
-		ok, err := currentHost.UpdateRunningTask(currentHost.LastTaskCompleted, nextTaskId, time.Now())
+		ok, err := currentHost.UpdateRunningTask(currentHost.LastTaskCompleted, nextTask.Id, time.Now())
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -400,6 +403,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var groupSpec model.TaskSpec
+
 	// if there is already a task assigned to the host send back that task
 	if h.RunningTask != "" {
 		var t *task.Task
@@ -410,6 +415,12 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			as.WriteJSON(w, http.StatusInternalServerError,
 				errors.Wrapf(err, "error getting running task %s", h.RunningTask))
 			return
+		}
+		groupSpec = model.TaskSpec{
+			Group:        t.TaskGroup,
+			BuildVariant: t.BuildVariant,
+			Version:      t.Version,
+			ProjectID:    t.Project,
 		}
 
 		// if the task can be dispatched and activated dispatch it
@@ -462,7 +473,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// assign the task to a host and retrieve the task
-	nextTask, err := assignNextAvailableTask(taskQueue, h)
+	nextTask, err := assignNextAvailableTask(taskQueue, h, groupSpec)
 	if err != nil {
 		err = errors.WithStack(err)
 		grip.Error(err)

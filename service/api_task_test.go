@@ -138,10 +138,12 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			Enabled:    true,
 		}
 
+		spec := model.TaskSpec{}
+
 		So(pref.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
 		Convey("a host should get the task at the top of the queue", func() {
-			t, err := assignNextAvailableTask(tq, &sampleHost)
+			t, err := assignNextAvailableTask(tq, &sampleHost, spec)
 			So(err, ShouldBeNil)
 			So(t, ShouldNotBeNil)
 			So(t.Id, ShouldEqual, "task1")
@@ -165,7 +167,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					Status: evergreen.TaskStarted,
 				}
 				So(undispatchedTask.Insert(), ShouldBeNil)
-				t, err := assignNextAvailableTask(tq, &sampleHost)
+				t, err := assignNextAvailableTask(tq, &sampleHost, spec)
 				So(err, ShouldBeNil)
 				So(t.Id, ShouldEqual, "task2")
 
@@ -176,14 +178,14 @@ func TestAssignNextAvailableTask(t *testing.T) {
 			Convey("an empty task queue should return a nil task", func() {
 				tq.Queue = []model.TaskQueueItem{}
 				So(tq.Save(), ShouldBeNil)
-				t, err := assignNextAvailableTask(tq, &sampleHost)
+				t, err := assignNextAvailableTask(tq, &sampleHost, spec)
 				So(err, ShouldBeNil)
 				So(t, ShouldBeNil)
 			})
 			Convey("a tasks queue with a task that does not exist should error", func() {
 				tq.Queue = []model.TaskQueueItem{{Id: "notatask"}}
 				So(tq.Save(), ShouldBeNil)
-				_, err := assignNextAvailableTask(tq, h)
+				_, err := assignNextAvailableTask(tq, h, spec)
 				So(err, ShouldNotBeNil)
 			})
 			Convey("with a host with a running task", func() {
@@ -226,7 +228,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 				}
 				So(tq.Save(), ShouldBeNil)
 				Convey("the task that is in the other host should not be assigned to another host", func() {
-					t, err := assignNextAvailableTask(tq, &h2)
+					t, err := assignNextAvailableTask(tq, &h2, spec)
 					So(err, ShouldBeNil)
 					So(t, ShouldNotBeNil)
 					So(t.Id, ShouldEqual, t2.Id)
@@ -235,7 +237,7 @@ func TestAssignNextAvailableTask(t *testing.T) {
 					So(h.RunningTask, ShouldEqual, t2.Id)
 				})
 				Convey("a host with a running task should return an error", func() {
-					_, err := assignNextAvailableTask(tq, &anotherHost)
+					_, err := assignNextAvailableTask(tq, &anotherHost, spec)
 					So(err, ShouldNotBeNil)
 				})
 

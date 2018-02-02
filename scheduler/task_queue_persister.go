@@ -37,6 +37,8 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 			Project:             t.Project,
 			ExpectedDuration:    expectedTaskDuration,
 			Priority:            t.Priority,
+			Group:               t.TaskGroup,
+			Version:             t.Version,
 		})
 
 		if err := t.SetExpectedDuration(expectedTaskDuration); err != nil {
