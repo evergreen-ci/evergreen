@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 func TestFindProject(t *testing.T) {
@@ -277,147 +278,6 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
-func TestAliasResolution(t *testing.T) {
-	assert := assert.New(t) //nolint
-	testutil.HandleTestingErr(db.ClearCollections(ProjectAliasCollection, ProjectVarsCollection), t, "Error clearing collection")
-
-	vars := ProjectVars{
-		Id: "project",
-	}
-	assert.NoError(vars.Insert())
-	p := &Project{
-		Identifier: "project",
-		BuildVariants: []BuildVariant{
-			{
-				Name: "bv_1",
-				Tasks: []BuildVariantTaskUnit{
-					{
-						Name: "a_task_1",
-					},
-					{
-						Name: "a_task_2",
-					},
-					{
-						Name: "b_task_1",
-					},
-					{
-						Name: "b_task_2",
-					},
-				},
-			},
-			{
-				Name: "bv_2",
-				Tasks: []BuildVariantTaskUnit{
-					{
-						Name: "a_task_1",
-					},
-					{
-						Name: "a_task_2",
-					},
-					{
-						Name: "b_task_1",
-					},
-					{
-						Name: "b_task_2",
-					},
-				},
-			},
-		},
-		Tasks: []ProjectTask{
-			{
-				Name: "a_task_1",
-				Tags: []string{"a", "1"},
-			},
-			{
-				Name: "a_task_2",
-				Tags: []string{"a", "2"},
-			},
-			{
-				Name: "b_task_1",
-				Tags: []string{"b", "1"},
-			},
-			{
-				Name: "b_task_2",
-				Tags: []string{"b", "2"},
-			},
-		},
-	}
-
-	aliases := []ProjectAlias{
-		{
-			ProjectID: "project",
-			Alias:     "all",
-			Variant:   ".*",
-			Task:      ".*",
-		},
-		{
-			ProjectID: "project",
-			Alias:     "bv2",
-			Variant:   ".*_2",
-			Task:      ".*",
-		},
-		{
-			ProjectID: "project",
-			Alias:     "2tasks",
-			Variant:   ".*",
-			Task:      ".*_2",
-		},
-		{
-			ProjectID: "project",
-			Alias:     "aTags",
-			Variant:   ".*",
-			Tags:      []string{"a"},
-		},
-		{
-			ProjectID: "project",
-			Alias:     "aTags_2tasks",
-			Variant:   ".*",
-			Task:      ".*_2",
-			Tags:      []string{"a"},
-		},
-	}
-	for i := range aliases {
-		assert.NoError(aliases[i].Upsert())
-	}
-
-	// test that .* on variants and tasks selects everything
-	pairs, err := p.BuildProjectTVPairsWithAlias(aliases[0].Alias)
-	assert.NoError(err)
-	assert.Len(pairs, 8)
-
-	// test that the .*_2 regex on variants selects just bv_2
-	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[1].Alias)
-	assert.NoError(err)
-	assert.Len(pairs, 4)
-	for _, pair := range pairs {
-		assert.Equal("bv_2", pair.Variant)
-	}
-
-	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[2].Alias)
-	assert.NoError(err)
-	assert.Len(pairs, 4)
-	for _, pair := range pairs {
-		assert.Contains(pair.TaskName, "task_2")
-	}
-
-	// test that the 'a' tag only selects 'a' tasks
-	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[3].Alias)
-	assert.NoError(err)
-	assert.Len(pairs, 4)
-	for _, pair := range pairs {
-		assert.Contains(pair.TaskName, "a_task")
-	}
-
-	// test that the 'a' tag and .*_2 regex selects the union of both
-	pairs, err = p.BuildProjectTVPairsWithAlias(aliases[4].Alias)
-	assert.NoError(err)
-	assert.Len(pairs, 6)
-	for _, pair := range pairs {
-		assert.NotEqual("b_task_1", pair.TaskName)
-	}
-}
-
 func TestGetTaskGroup(t *testing.T) {
 	assert := assert.New(t) //nolint
 	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
@@ -581,4 +441,418 @@ func TestPopulateExpansions(t *testing.T) {
 	assert.Equal("octocat", expansions.Get("github_author"))
 	assert.Equal("42", expansions.Get("github_pr_number"))
 	assert.Equal("wut?", expansions.Get("github_org"))
+}
+
+type projectSuite struct {
+	project *Project
+	vars    ProjectVars
+	aliases []ProjectAlias
+	suite.Suite
+}
+
+func TestProject(t *testing.T) {
+	suite.Run(t, &projectSuite{})
+}
+
+func (s *projectSuite) SetupTest() {
+	s.Require().NoError(db.ClearCollections(ProjectVarsCollection, ProjectAliasCollection))
+	s.vars = ProjectVars{
+		Id: "project",
+	}
+	s.NoError(s.vars.Insert())
+
+	s.aliases = []ProjectAlias{
+		{
+			ProjectID: "project",
+			Alias:     "all",
+			Variant:   ".*",
+			Task:      ".*",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "bv2",
+			Variant:   ".*_2",
+			Task:      ".*",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "2tasks",
+			Variant:   ".*",
+			Task:      ".*_2",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "aTags",
+			Variant:   ".*",
+			Tags:      []string{"a"},
+		},
+		{
+			ProjectID: "project",
+			Alias:     "aTags_2tasks",
+			Variant:   ".*",
+			Task:      ".*_2",
+			Tags:      []string{"a"},
+		},
+		{
+			ProjectID: "project",
+			Alias:     "memes",
+			Variant:   ".*",
+			Task:      "memes",
+		},
+		{
+			ProjectID: "project",
+			Alias:     "disabled_stuff",
+			Variant:   "bv_3",
+			Task:      "disabled_.*",
+		},
+	}
+	for _, alias := range s.aliases {
+		s.NoError(alias.Upsert())
+	}
+
+	s.project = &Project{
+		Identifier: "project",
+		BuildVariants: []BuildVariant{
+			{
+				Name: "bv_1",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "a_task_1",
+					},
+					{
+						Name: "a_task_2",
+					},
+					{
+						Name: "b_task_1",
+					},
+					{
+						Name: "b_task_2",
+					},
+					{
+						Name: "wow_task",
+						Requires: []TaskUnitRequirement{
+							{
+								Name:    "a_task_1",
+								Variant: "bv_1",
+							},
+							{
+								Name:    "a_task_1",
+								Variant: "bv_2",
+							},
+						},
+					},
+					{
+						Name: "9001_task",
+						DependsOn: []TaskUnitDependency{
+							{
+								Name:    "a_task_2",
+								Variant: "bv_2",
+							},
+						},
+					},
+					{
+						Name: "very_task",
+					},
+				},
+				DisplayTasks: []DisplayTask{
+					{
+						Name:           "memes",
+						ExecutionTasks: []string{"wow_task", "9001_task", "very_task"},
+					},
+				},
+			},
+			{
+				Name: "bv_2",
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "a_task_1",
+					},
+					{
+						Name: "a_task_2",
+					},
+					{
+						Name: "b_task_1",
+					},
+					{
+						Name: "b_task_2",
+					},
+				},
+			},
+			{
+				Name:     "bv_3",
+				Disabled: true,
+				Tasks: []BuildVariantTaskUnit{
+					{
+						Name: "disabled_task",
+					},
+				},
+			},
+		},
+		Tasks: []ProjectTask{
+			{
+				Name: "a_task_1",
+				Tags: []string{"a", "1"},
+			},
+			{
+				Name: "a_task_2",
+				Tags: []string{"a", "2"},
+			},
+			{
+				Name: "b_task_1",
+				Tags: []string{"b", "1"},
+			},
+			{
+				Name: "b_task_2",
+				Tags: []string{"b", "2"},
+			},
+			{
+				Name: "wow_task",
+			},
+			{
+				Name: "9001_task",
+			},
+			{
+				Name: "very_task",
+			},
+			{
+				Name: "disabled_task",
+			},
+		},
+	}
+}
+
+func (s *projectSuite) TestAliasResolution() {
+	// test that .* on variants and tasks selects everything
+	pairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
+	s.NoError(err)
+	s.Len(pairs, 12)
+
+	// test that the .*_2 regex on variants selects just bv_2
+	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[1].Alias)
+	s.NoError(err)
+	s.Len(pairs, 4)
+	for _, pair := range pairs {
+		s.Equal("bv_2", pair.Variant)
+	}
+
+	// test that the .*_2 regex on tasks selects just the _2 tasks
+	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[2].Alias)
+	s.NoError(err)
+	s.Len(pairs, 4)
+	for _, pair := range pairs {
+		s.Contains(pair.TaskName, "task_2")
+	}
+
+	// test that the 'a' tag only selects 'a' tasks
+	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[3].Alias)
+	s.NoError(err)
+	s.Len(pairs, 4)
+	for _, pair := range pairs {
+		s.Contains(pair.TaskName, "a_task")
+	}
+
+	// test that the 'a' tag and .*_2 regex selects the union of both
+	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
+	s.NoError(err)
+	s.Len(pairs, 6)
+	for _, pair := range pairs {
+		s.NotEqual("b_task_1", pair.TaskName)
+	}
+
+	// test for display tasks (not supported)
+	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[5].Alias)
+	s.NoError(err)
+	s.Empty(pairs)
+
+	// test for alias including disabled task
+	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
+	s.NoError(err)
+	s.Len(pairs, 1)
+	s.Equal("bv_3/disabled_task", pairs[0].String())
+}
+
+func (s *projectSuite) TestBuildProjectTVPairs() {
+	// test all expansions
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"all"},
+		Tasks:         []string{"all"},
+	}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Len(patchDoc.Tasks, 7)
+
+	// test all tasks expansion with named buildvariant
+	patchDoc.BuildVariants = []string{"bv_1"}
+	patchDoc.Tasks = []string{"all"}
+	patchDoc.VariantsTasks = []patch.VariantTasks{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Len(patchDoc.Tasks, 7)
+
+	// test all variants expansion with named task
+	patchDoc.BuildVariants = []string{"all"}
+	patchDoc.Tasks = []string{"wow_task"}
+	patchDoc.VariantsTasks = []patch.VariantTasks{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Len(patchDoc.Tasks, 2)
+
+	patchDoc.BuildVariants = []string{}
+	patchDoc.Tasks = []string{}
+	patchDoc.VariantsTasks = []patch.VariantTasks{}
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
+	patchDoc := patch.Patch{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "aTags_2tasks")
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.Tasks, 3)
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Contains(patchDoc.Tasks, "a_task_2")
+	s.Contains(patchDoc.Tasks, "b_task_2")
+
+	for _, vt := range patchDoc.VariantsTasks {
+		s.Len(vt.Tasks, 3)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		s.Contains(vt.Tasks, "b_task_2")
+		if vt.Variant != "bv_1" && vt.Variant != "bv_2" {
+			s.T().Fail()
+		}
+	}
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"bv_1", "bv_2", "totallynotreal"},
+		Tasks:         []string{"wow_task"},
+	}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+
+	s.Require().Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "wow_task")
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.VariantsTasks, 2)
+	for _, vt := range patchDoc.VariantsTasks {
+		if vt.Variant == "bv_1" {
+			s.Len(vt.Tasks, 2)
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "wow_task")
+
+		} else if vt.Variant == "bv_2" {
+			s.Equal([]string{"a_task_1"}, vt.Tasks)
+
+		} else {
+			s.T().Fail()
+		}
+		s.Empty(vt.DisplayTasks)
+	}
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
+	patchDoc := patch.Patch{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "aTags")
+
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Contains(patchDoc.Tasks, "a_task_2")
+
+	for _, vt := range patchDoc.VariantsTasks {
+		s.Len(vt.Tasks, 2)
+		s.Contains(vt.Tasks, "a_task_1")
+		s.Contains(vt.Tasks, "a_task_2")
+		if vt.Variant != "bv_1" && vt.Variant != "bv_2" {
+			s.T().Fail()
+		}
+	}
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
+	patchDoc := patch.Patch{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "memes")
+	s.Empty(patchDoc.BuildVariants)
+	s.Empty(patchDoc.Tasks)
+	s.Empty(patchDoc.VariantsTasks)
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
+	patchDoc := patch.Patch{}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "disabled_stuff")
+	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
+	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
+	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
+	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
+	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
+
+	patchDoc = patch.Patch{
+		BuildVariants: []string{"bv_3"},
+		Tasks:         []string{"disabled_task"},
+	}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
+	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
+	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
+	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
+	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() {
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"bv_1", "bv_2"},
+		Tasks:         []string{"memes"},
+	}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.Tasks, 5)
+	s.Contains(patchDoc.Tasks, "wow_task")
+	s.Contains(patchDoc.Tasks, "9001_task")
+	s.Contains(patchDoc.Tasks, "very_task")
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Contains(patchDoc.Tasks, "a_task_2")
+	s.Require().Len(patchDoc.VariantsTasks, 2)
+
+	for _, vt := range patchDoc.VariantsTasks {
+		if vt.Variant == "bv_1" {
+			s.Require().Len(vt.Tasks, 4)
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "very_task")
+			s.Contains(vt.Tasks, "9001_task")
+			s.Contains(vt.Tasks, "wow_task")
+			s.Require().Len(vt.DisplayTasks, 1)
+			s.Equal("memes", vt.DisplayTasks[0].Name)
+			s.Empty(vt.DisplayTasks[0].ExecTasks)
+
+		} else if vt.Variant == "bv_2" {
+			s.Require().Len(vt.Tasks, 2)
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "a_task_2")
+			s.Empty(vt.DisplayTasks)
+
+		} else {
+			s.T().Fail()
+		}
+	}
 }
