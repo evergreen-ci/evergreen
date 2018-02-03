@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -19,11 +20,6 @@ const tsFormat = "2006-01-02.15-04-05"
 
 func PopulateCatchupJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		projects, err := model.FindAllTrackedProjectRefs()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
 		adminSettings, err := admin.GetSettings()
 		if err != nil {
 			return errors.WithStack(err)
@@ -31,22 +27,23 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 		if adminSettings.ServiceFlags.RepotrackerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "repotracker is disabled",
+				"impact":  "catchup jobs disabled",
+				"mode":    "degraded",
 			})
 			return nil
 		}
 
-		now := time.Now().Add(-time.Minute).UTC()
-		mins := now.Minute()
-		if mins > 30 {
-			mins = 30
-		} else {
-			mins = 0
+		projects, err := model.FindAllTrackedProjectRefs()
+		if err != nil {
+			return errors.WithStack(err)
 		}
 
-		ts := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), mins, 0, 0, time.UTC).Format(tsFormat)
+		ts := util.RoundPartOfHour(30).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
+			// only do catchup jobs for enabled projects
+			// that track push events.
 			if !proj.Enabled || !proj.TracksPushEvents {
 				continue
 			}
@@ -72,15 +69,64 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 	}
 }
 
-func PopulateActivationJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
+		adminSettings, err := admin.GetSettings()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if adminSettings.ServiceFlags.RepotrackerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "repotracker is disabled",
+				"impact":  "polling repos disabled",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
 		projects, err := model.FindAllTrackedProjectRefs()
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		now := time.Now().Add(-time.Minute).UTC()
-		ts := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), 0, 0, time.UTC).Format(tsFormat)
+		ts := util.RoundPartOfHour(5).Format(tsFormat)
+
+		catcher := grip.NewBasicCatcher()
+		for _, proj := range projects {
+			if !proj.Enabled || proj.TracksPushEvents {
+				continue
+			}
+
+			catcher.Add(queue.Put(NewRepotrackerJob(fmt.Sprintf("polling-%s", ts), proj.Identifier)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateActivationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		adminSettings, err := admin.GetSettings()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if adminSettings.ServiceFlags.TaskDispatchDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "task dispatching disabled",
+				"mode":    "degraded",
+				"impact":  "skipping stepback activation",
+			})
+			return nil
+		}
+
+		projects, err := model.FindAllTrackedProjectRefs()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		ts := util.RoundPartOfHour(2).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/taskrunner"
@@ -127,11 +126,10 @@ func startRunnerService() cli.Command {
 // Running and executing the offline operations processing.
 
 func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
-	// Add jobs to a remote queue every minute (restart safe because of unique strings).
+	// Add jobs to a remote queue for repotracker operations
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), true, units.PopulateActivationJobs(env))
-
-	// Add jobs to a remote queue every 20 minutes (restart safe because of unique strings).
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 30*time.Minute, time.Now(), true, units.PopulateCatchupJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), true, units.PopulateCatchupJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), true, units.PopulateRepotrackerPollingJobs())
 
 	// add jobs to a local queue every minute.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
@@ -163,7 +161,11 @@ type processRunner interface {
 var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&notify.Runner{},
-	&repotracker.Runner{},
+
+	// Note: commented out while exploring moving to amboy-based
+	// schedule.
+	//
+	// &repotracker.Runner{},
 
 	&scheduler.Runner{},
 	&hostinit.Runner{},
@@ -192,7 +194,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	infrequentRunners := []string{
 		alerts.RunnerName,
 		notify.RunnerName,
-		repotracker.RunnerName,
+		// repotracker.RunnerName,
 	}
 
 	grip.Notice(message.Fields{

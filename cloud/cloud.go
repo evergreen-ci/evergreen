@@ -28,7 +28,7 @@ type CloudManager interface {
 	SpawnHost(h *host.Host) (*host.Host, error)
 
 	// CanSpawn indicates if this provider is capable of creating new instances
-	// with SpawnInstance(). If this provider doesn't support spawning new
+	// with SpawnInstance(). If this provider doesn't support spawning knew
 	// hosts, this will return false (and calls to SpawnInstance will
 	// return errors)
 	CanSpawn() (bool, error)
