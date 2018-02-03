@@ -8,6 +8,7 @@
     <span ng-switch-when="TASK_CREATED">Task created</span>
     <span ng-switch-when="TASK_RESTARTED">Restarted by [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_ACTIVATED">Activated by [[eventLogObj.data.user_id]].</span>
+    <span ng-switch-when="TASK_JIRA_ALERT_CREATED">Created Jira Alert <strong ng-bind-html="eventLogObj.data.jira | jiraLinkify: jiraHost | ansi"></strong>.</span>
     <span ng-switch-when="TASK_DEACTIVATED">Deactivated by user [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_ABORT_REQUEST">Marked to abort by user [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_SCHEDULED">Scheduled at [[eventLogObj.data.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY, h:mm:ss a']]</span>
