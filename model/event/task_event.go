@@ -58,7 +58,7 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 }
 
 func LogJiraIssueCreated(taskId, jiraIssue string) {
-	LogTaskEvent(taskid, TaskJiraAlertCreated, TaskEventData{JiraIssue: jiraIssue})
+	LogTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{JiraIssue: jiraIssue})
 }
 
 func LogTaskPriority(taskId, user string, priority int64) {
