@@ -125,7 +125,8 @@ func (j *decoHostNotifyJob) Run() {
 
 	grip.Warning(sender.SetErrorHandler(send.ErrorHandlerFromSender(grip.GetSender())))
 	descParts := []string{
-		fmt.Sprintln("Distro:", j.Host.Distro.Id),
+		fmt.Sprintf("Distro: [%s|%s/distros##%s]", j.Host.Distro.Id, conf.Ui.Url, j.Host.Distro.Id),
+		fmt.Sprintf("Host: [%s|%s/host/%s]", j.Host.Id, conf.Ui.Url, j.Host.Id),
 		fmt.Sprintln("Provider:", j.Host.Provider),
 		fmt.Sprintln("Uptime:", time.Since(j.Host.CreationTime).String()),
 		fmt.Sprintf("Target: %s@%s", j.Host.Distro.User, j.Host.Host),
