@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -27,7 +28,7 @@ type restartTasksJob struct {
 }
 
 func makeTaskRestartJob() *restartTasksJob {
-	return &restartTasksJob{
+	j := &restartTasksJob{
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -37,6 +38,8 @@ func makeTaskRestartJob() *restartTasksJob {
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 // NewTasksRestartJob creates a job to restart failed tasks in a time range

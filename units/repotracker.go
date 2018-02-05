@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -32,16 +33,18 @@ type repotrackerJob struct {
 }
 
 func makeRepotrackerJob() *repotrackerJob {
-	return &repotrackerJob{
+	j := &repotrackerJob{
 		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    githubStatusUpdateJobName,
+				Name:    repotrackerJobName,
 				Version: 0,
 				Format:  amboy.BSON,
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 // NewRepotrackerJob creates a job to run repotracker against a repository.

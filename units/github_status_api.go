@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -75,7 +76,7 @@ type githubStatusUpdateJob struct {
 }
 
 func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
-	return &githubStatusUpdateJob{
+	j := &githubStatusUpdateJob{
 		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -85,6 +86,8 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 // NewGithubStatusUpdateJobForBuild creates a job to update github's API from a Build.

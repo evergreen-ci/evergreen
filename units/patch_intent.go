@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -43,7 +44,7 @@ type patchIntentProcessor struct {
 	env      evergreen.Environment
 
 	Intent  patch.Intent  `bson:"intent" json:"intent"`
-	PatchID bson.ObjectId `bson:"patch_id" json:"patch_id" yaml:"patch_id"`
+	PatchID bson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
 	user    *user.DBUser
 }
 
@@ -58,7 +59,7 @@ func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.J
 }
 
 func makePatchIntentProcessor() *patchIntentProcessor {
-	return &patchIntentProcessor{
+	j := &patchIntentProcessor{
 		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -68,6 +69,9 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 			},
 		},
 	}
+
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func (j *patchIntentProcessor) Run() {

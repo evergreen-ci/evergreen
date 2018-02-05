@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -40,7 +41,7 @@ func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 }
 
 func makeAmboyStatsCollector() *amboyStatsCollector {
-	return &amboyStatsCollector{
+	j := &amboyStatsCollector{
 		env:    evergreen.GetEnvironment(),
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
@@ -51,6 +52,9 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 			},
 		},
 	}
+
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func (j *amboyStatsCollector) Run() {

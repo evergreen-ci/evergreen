@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -36,7 +37,7 @@ func NewLatencyStatsCollector(id string, duration time.Duration) amboy.Job {
 }
 
 func makeLatencyStatsCollector() *latencyStatsCollector {
-	return &latencyStatsCollector{
+	j := &latencyStatsCollector{
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    latencyStatsCollectorJobName,
@@ -46,6 +47,9 @@ func makeLatencyStatsCollector() *latencyStatsCollector {
 		},
 		Duration: latencyStatsCollectorInterval,
 	}
+
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func (j *latencyStatsCollector) Run() {

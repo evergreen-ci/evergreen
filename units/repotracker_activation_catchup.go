@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/pkg/errors"
@@ -29,7 +30,7 @@ type stepbackActivationCatchup struct {
 }
 
 func makeStepbackActivationCatchupJob() *stepbackActivationCatchup {
-	return &stepbackActivationCatchup{
+	j := &stepbackActivationCatchup{
 		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -39,6 +40,9 @@ func makeStepbackActivationCatchupJob() *stepbackActivationCatchup {
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
+	return j
+
 }
 
 func NewStepbackActiationJob(env evergreen.Environment, project string, id string) amboy.Job {
