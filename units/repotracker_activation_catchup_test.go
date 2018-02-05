@@ -3,7 +3,6 @@ package units
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/mongodb/amboy/registry"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,8 +21,6 @@ func TestStepbackActivationJob(t *testing.T) {
 	j, ok := factory().(*stepbackActivationCatchup)
 	assert.True(ok)
 	assert.NotNil(j)
-
-	env := &mock.Environment{}
 
 	jOne := NewStepbackActiationJob("foo", "id")
 	jTwo := NewStepbackActiationJob("foo", "id")
