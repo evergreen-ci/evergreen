@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -638,9 +639,23 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
-func (h *Host) DisablePoisonedHost() error {
+func (h *Host) DisablePoisonedHost(force bool) error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		return errors.WithStack(h.SetQuarantined(evergreen.User))
+		if force {
+			return errors.WithStack(h.SetQuarantined(evergreen.User))
+		}
+
+		// TODO: in the future maybe decomission hosts
+
+		grip.Critical(message.Fields{
+			"host":     h.Id,
+			"provider": h.Provider,
+			"distro":   h.Distro.Id,
+			"message":  "host may be poisoned",
+			"action":   "investigate recent provisioning and system failures",
+		})
+
+		return nil
 	}
 	return errors.WithStack(h.SetDecommissioned(evergreen.User))
 }

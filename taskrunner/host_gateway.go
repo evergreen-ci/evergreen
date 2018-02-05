@@ -177,7 +177,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 		}))
 
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
-		if disableErr := hostObj.DisablePoisonedHost(); disableErr != nil {
+		if disableErr := hostObj.DisablePoisonedHost(true); disableErr != nil {
 			return "", errors.Wrapf(disableErr, "error terminating host %s", hostObj.Id)
 		}
 
