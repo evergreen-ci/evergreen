@@ -870,3 +870,35 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 		}
 	}
 }
+
+func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithOneExecutionTask() {
+	// TODO: See EVG-2722 this behaviour may be wrong
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"bv_1"},
+		Tasks:         []string{"wow_task"},
+	}
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "wow_task")
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Require().Len(patchDoc.VariantsTasks, 2)
+	for _, vt := range patchDoc.VariantsTasks {
+		if vt.Variant == "bv_1" {
+			s.Require().Len(vt.Tasks, 2)
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "wow_task")
+			s.Empty(vt.DisplayTasks, 1)
+
+		} else if vt.Variant == "bv_2" {
+			s.Require().Len(vt.Tasks, 1)
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Empty(vt.DisplayTasks)
+
+		} else {
+			s.T().Fail()
+		}
+	}
+}
