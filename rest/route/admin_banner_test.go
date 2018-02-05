@@ -47,7 +47,7 @@ func TestAdminBannerRoute(t *testing.T) {
 	resp, err := postHandler.RequestHandler.Execute(ctx, sc)
 	assert.NoError(err)
 	assert.NotNil(resp)
-	settings, err := sc.GetAdminSettings()
+	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(string(body.Text), settings.Banner)
 
@@ -67,7 +67,7 @@ func TestAdminBannerRoute(t *testing.T) {
 	resp, err = postHandler.RequestHandler.Execute(ctx, sc)
 	assert.NoError(err)
 	assert.NotNil(resp)
-	settings, err = sc.GetAdminSettings()
+	settings, err = sc.GetEvergreenSettings()
 	assert.NoError(err)
 	assert.Equal(string(body.Theme), string(settings.BannerTheme))
 

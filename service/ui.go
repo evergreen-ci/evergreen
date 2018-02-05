@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
@@ -353,7 +352,7 @@ func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, n
 		}
 		viewData.Project = *project
 	}
-	settings, err := admin.GetSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
 	}

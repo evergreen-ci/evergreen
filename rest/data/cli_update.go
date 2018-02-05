@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 )
@@ -21,7 +20,7 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 		}
 	}
 
-	settings, err := admin.GetSettings()
+	settings, err := evergreen.GetConfig()
 	if err != nil {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,

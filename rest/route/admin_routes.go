@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	dataModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -52,7 +52,7 @@ func (h *adminGetHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 }
 
 func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	settings, err := sc.GetAdminSettings()
+	settings, err := sc.GetEvergreenSettings()
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -104,8 +104,8 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		}
 		return ResponseData{}, err
 	}
-	settings := settingsModel.(admin.AdminSettings)
-	err = sc.SetAdminSettings(&settings, u)
+	settings := settingsModel.(evergreen.Settings)
+	err = sc.SetEvergreenSettings(&settings, u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -215,7 +215,7 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 
-	err = sc.SetServiceFlags(flags.(admin.ServiceFlags), u)
+	err = sc.SetServiceFlags(flags.(evergreen.ServiceFlags), u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")

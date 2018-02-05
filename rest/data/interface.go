@@ -3,9 +3,9 @@ package data
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -142,15 +142,15 @@ type Connector interface {
 	SetPatchPriority(string, int64) error
 	SetPatchActivated(string, string, bool) error
 
-	// GetAdminSettings/SetAdminSettings retrieves/sets the system-wide settings document
-	GetAdminSettings() (*admin.AdminSettings, error)
-	SetAdminSettings(*admin.AdminSettings, *user.DBUser) error
+	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document
+	GetEvergreenSettings() (*evergreen.Settings, error)
+	SetEvergreenSettings(*evergreen.Settings, *user.DBUser) error
 	// SetAdminBanner sets set the banner in the system-wide settings document
 	SetAdminBanner(string, *user.DBUser) error
 	// SetBannerTheme sets set the banner theme in the system-wide settings document
 	SetBannerTheme(string, *user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
-	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
+	SetServiceFlags(evergreen.ServiceFlags, *user.DBUser) error
 	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)

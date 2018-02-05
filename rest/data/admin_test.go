@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -30,7 +29,7 @@ func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	testutil.HandleTestingErr(db.ClearCollections(admin.Collection, task.Collection, task.OldCollection, build.Collection, version.Collection), t,
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, version.Collection), t,
 		"Error clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
@@ -108,23 +107,23 @@ func (s *AdminDataSuite) SetupSuite() {
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
 	u := &user.DBUser{Id: "user"}
-	settings := &admin.AdminSettings{
+	settings := &evergreen.Settings{
 		Banner:      "test banner",
-		BannerTheme: admin.Warning,
-		ServiceFlags: admin.ServiceFlags{
+		BannerTheme: evergreen.Warning,
+		ServiceFlags: evergreen.ServiceFlags{
 			NotificationsDisabled: true,
 			TaskrunnerDisabled:    true,
 		},
 	}
 
-	err := s.ctx.SetAdminSettings(settings, u)
+	err := s.ctx.SetEvergreenSettings(settings, u)
 	s.NoError(err)
 
-	settingsFromConnector, err := s.ctx.GetAdminSettings()
+	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
 	s.NoError(err)
 	s.Equal(settings.Banner, settingsFromConnector.Banner)
 	s.Equal(settings.ServiceFlags, settingsFromConnector.ServiceFlags)
-	s.Equal(admin.Warning, string(settings.BannerTheme))
+	s.Equal(evergreen.Warning, string(settings.BannerTheme))
 }
 
 func (s *AdminDataSuite) TestRestart() {

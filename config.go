@@ -1,7 +1,9 @@
 package evergreen
 
 import (
+	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	newrelic "github.com/newrelic/go-agent"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,51 +25,113 @@ var (
 
 	// Commandline Version String; used to control auto-updating.
 	ClientVersion = "2018-01-31"
+
+	errNotFound = "not found"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
 type AuthUser struct {
-	Username    string `yaml:"username"`
-	DisplayName string `yaml:"display_name"`
-	Password    string `yaml:"password"`
-	Email       string `yaml:"email"`
+	Username    string `bson:"username" json:"username" yaml:"username"`
+	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
+	Password    string `bson:"password" json:"password" yaml:"password"`
+	Email       string `bson:"email" json:"email" yaml:"email"`
 }
 
 // NaiveAuthConfig contains a list of AuthUsers from the settings file.
 type NaiveAuthConfig struct {
-	Users []*AuthUser
+	Users []*AuthUser `bson:"users" json:"users" yaml:"users"`
 }
 
 // CrowdConfig holds settings for interacting with Atlassian Crowd.
 type CrowdConfig struct {
-	Username string
-	Password string
-	Urlroot  string
+	Username string `bson:"username" json:"username" yaml:"username"`
+	Password string `bson:"password" json:"password" yaml:"password"`
+	Urlroot  string `bson:"url_root" json:"url_root" yaml:"urlroot"`
 }
 
 // GithubAuthConfig holds settings for interacting with Github Authentication including the
 // ClientID, ClientSecret and CallbackUri which are given when registering the application
 // Furthermore,
 type GithubAuthConfig struct {
-	ClientId     string   `yaml:"client_id"`
-	ClientSecret string   `yaml:"client_secret"`
-	Users        []string `yaml:"users"`
-	Organization string   `yaml:"organization"`
+	ClientId     string   `bson:"client_id" bson:"client_id" yaml:"client_id"`
+	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
+	Users        []string `bson:"users" json:"users" yaml:"users"`
+	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
 }
 
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
-	Crowd  *CrowdConfig      `yaml:"crowd"`
-	Naive  *NaiveAuthConfig  `yaml:"naive"`
-	Github *GithubAuthConfig `yaml:"github"`
+	Crowd  *CrowdConfig      `bson:"crowd" json:"crowd" yaml:"crowd"`
+	Naive  *NaiveAuthConfig  `bson:"naive" json:"naive" yaml:"naive"`
+	Github *GithubAuthConfig `bson:"github" json:"github" yaml:"github"`
+}
+
+func (c *AuthConfig) id() string { return "auth" }
+func (c *AuthConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *AuthConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"crowd":  c.Crowd,
+			"naive":  c.Naive,
+			"github": c.Github,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *AuthConfig) validateAndDefault() error {
+	catcher := grip.NewSimpleCatcher()
+	if c.Crowd == nil && c.Naive == nil && c.Github == nil {
+		catcher.Add(errors.New("You must specify one form of authentication"))
+	}
+	if c.Naive != nil {
+		used := map[string]bool{}
+		for _, x := range c.Naive.Users {
+			if used[x.Username] {
+				catcher.Add(fmt.Errorf("Duplicate user %s in list", x.Username))
+			}
+			used[x.Username] = true
+		}
+	}
+	if c.Github != nil {
+		if c.Github.Users == nil && c.Github.Organization == "" {
+			catcher.Add(errors.New("Must specify either a set of users or an organization for Github Authentication"))
+		}
+	}
+	return catcher.Resolve()
 }
 
 // RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
-	NumNewRepoRevisionsToFetch int
-	MaxRepoRevisionsToSearch   int
-	MaxConcurrentRequests      int
+	NumNewRepoRevisionsToFetch int `bson:"revs_to_fetch" json:"revs_to_fetch" yaml:"numnewreporevisionstofetch"`
+	MaxRepoRevisionsToSearch   int `bson:"max_revs_to_search" json:"max_revs_to_search" yaml:"maxreporevisionstosearch"`
+	MaxConcurrentRequests      int `bson:"max_con_requests" json:"max_con_requests" yaml:"maxconcurrentrequests"`
 }
+
+func (c *RepoTrackerConfig) id() string { return "repotracker" }
+func (c *RepoTrackerConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *RepoTrackerConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"revs_to_fetch":      c.NumNewRepoRevisionsToFetch,
+			"max_revs_to_search": c.MaxRepoRevisionsToSearch,
+			"max_con_requests":   c.MaxConcurrentRequests,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *RepoTrackerConfig) validateAndDefault() error { return nil }
 
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
@@ -81,121 +146,312 @@ type ClientConfig struct {
 
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	HttpListenAddr      string `yaml:"httplistenaddr"`
-	GithubWebhookSecret string `yaml:"github_webhook_secret"`
+	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
+	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret"`
 }
+
+func (c *APIConfig) id() string { return "api" }
+func (c *APIConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *APIConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"http_listen_addr":      c.HttpListenAddr,
+			"github_webhook_secret": c.GithubWebhookSecret,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *APIConfig) validateAndDefault() error { return nil }
 
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
-	Url            string
-	HelpUrl        string
-	HttpListenAddr string
+	Url            string `bson:"url" json:"url" yaml:"url"`
+	HelpUrl        string `bson:"help_url" json:"help_url" yaml:"helpurl"`
+	HttpListenAddr string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	// Secret to encrypt session storage
-	Secret string
+	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 	// Default project to assume when none specified, e.g. when using
 	// the /waterfall route use this project, while /waterfall/other-project
 	// then use `other-project`
-	DefaultProject string
+	DefaultProject string `bson:"default_project" json:"default_project" yaml:"defaultproject"`
 	// Cache results of template compilation, so you don't have to re-read files
 	// on every request. Note that if this is true, changes to HTML templates
 	// won't take effect until server restart.
-	CacheTemplates bool
+	CacheTemplates bool `bson:"cache_templates" json:"cache_templates" yaml:"cachetemplates"`
 	// SecureCookies sets the "secure" flag on user tokens. Evergreen
 	// does not yet natively support SSL UI connections, but this option
 	// is available, for example, for deployments behind HTTPS load balancers.
-	SecureCookies bool
+	SecureCookies bool `bson:"secure_cookies" json:"secure_cookies" yaml:"securecookies"`
 	// CsrfKey is a 32-byte key used to generate tokens that validate UI requests
-	CsrfKey string
+	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`
+}
+
+func (c *UIConfig) id() string { return "ui" }
+func (c *UIConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *UIConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"url":              c.Url,
+			"help_url":         c.HelpUrl,
+			"http_listen_addr": c.HttpListenAddr,
+			"secret":           c.Secret,
+			"default_project":  c.DefaultProject,
+			"cache_templates":  c.CacheTemplates,
+			"secure_cookies":   c.SecureCookies,
+			"csrf_key":         c.CsrfKey,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *UIConfig) validateAndDefault() error {
+	catcher := grip.NewSimpleCatcher()
+	if c.Secret == "" {
+		catcher.Add(errors.New("UI Secret must not be empty"))
+	}
+	if c.DefaultProject == "" {
+		catcher.Add(errors.New("You must specify a default project in UI"))
+	}
+	if c.Url == "" {
+		catcher.Add(errors.New("You must specify a default UI url"))
+	}
+	if c.CsrfKey != "" && len(c.CsrfKey) != 32 {
+		catcher.Add(errors.New("CSRF key must be 32 characters long"))
+	}
+	return catcher.Resolve()
 }
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
-	SSHTimeoutSeconds int64
+	SSHTimeoutSeconds int64 `bson:"ssh_timeout_secs" json:"ssh_timeout_secs" yaml:"sshtimeoutseconds"`
 }
+
+func (c *HostInitConfig) id() string { return "hostinit" }
+func (c *HostInitConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *HostInitConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"ssh_timeout_secs": c.SSHTimeoutSeconds,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *HostInitConfig) validateAndDefault() error { return nil }
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
-	SMTP *SMTPConfig `yaml:"smtp"`
+	SMTP *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
+}
+
+func (c *NotifyConfig) id() string { return "notify" }
+func (c *NotifyConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *NotifyConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"smtp": c.SMTP,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *NotifyConfig) validateAndDefault() error {
+	notifyConfig := c.SMTP
+
+	if notifyConfig == nil {
+		return nil
+	}
+
+	if notifyConfig.Server == "" || notifyConfig.Port == 0 {
+		return errors.New("You must specify a SMTP server and port")
+	}
+
+	if len(notifyConfig.AdminEmail) == 0 {
+		return errors.New("You must specify at least one admin_email")
+	}
+
+	if notifyConfig.From == "" {
+		return errors.New("You must specify a from address")
+	}
+
+	return nil
 }
 
 // SMTPConfig holds SMTP email settings.
 type SMTPConfig struct {
-	Server     string   `yaml:"server"`
-	Port       int      `yaml:"port"`
-	UseSSL     bool     `yaml:"use_ssl"`
-	Username   string   `yaml:"username"`
-	Password   string   `yaml:"password"`
-	From       string   `yaml:"from"`
-	AdminEmail []string `yaml:"admin_email"`
+	Server     string   `bson:"server" json:"server" yaml:"server"`
+	Port       int      `bson:"port" json:"port" yaml:"port"`
+	UseSSL     bool     `bson:"use_ssl" json:"use_ssl" yaml:"use_ssl"`
+	Username   string   `bson:"username" json:"username" yaml:"username"`
+	Password   string   `bson:"password" json:"password" yaml:"password"`
+	From       string   `bson:"from" json:"from" yaml:"from"`
+	AdminEmail []string `bson:"admin_email" json:"admin_email" yaml:"admin_email"`
 }
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	MergeToggle int    `yaml:"mergetoggle"`
-	TaskFinder  string `yaml:"task_finder"`
+	MergeToggle int    `bson:"merge_toggle" json:"merge_toggle" yaml:"mergetoggle"`
+	TaskFinder  string `bson:"task_finder" json:"task_finder" yaml:"task_finder"`
+}
+
+func (c *SchedulerConfig) id() string { return "scheduler" }
+func (c *SchedulerConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *SchedulerConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"merge_toggle": c.MergeToggle,
+			"task_finder":  c.TaskFinder,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *SchedulerConfig) validateAndDefault() error {
+	finders := []string{"legacy", "alternate", "parallel", "pipeline"}
+
+	if c.TaskFinder == "" {
+		// default to alternate
+		c.TaskFinder = finders[0]
+		return nil
+	}
+
+	if !sliceContains(finders, c.TaskFinder) {
+		return errors.Errorf("supported finders are %s; %s is not supported",
+			finders, c.TaskFinder)
+
+	}
+	return nil
 }
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
 type CloudProviders struct {
-	AWS       AWSConfig       `yaml:"aws"`
-	Docker    DockerConfig    `yaml:"docker"`
-	GCE       GCEConfig       `yaml:"gce"`
-	OpenStack OpenStackConfig `yaml:"openstack"`
-	VSphere   VSphereConfig   `yaml:"vsphere"`
+	AWS       AWSConfig       `bson:"aws" json:"aws" yaml:"aws"`
+	Docker    DockerConfig    `bson:"docker" json:"docker" yaml:"docker"`
+	GCE       GCEConfig       `bson:"gce" json:"gce" yaml:"gce"`
+	OpenStack OpenStackConfig `bson:"openstack" json:"openstack" yaml:"openstack"`
+	VSphere   VSphereConfig   `bson:"vsphere" json:"vsphere" yaml:"vsphere"`
 }
+
+func (c *CloudProviders) id() string { return "providers" }
+func (c *CloudProviders) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *CloudProviders) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"aws":       c.AWS,
+			"docker":    c.Docker,
+			"gce":       c.GCE,
+			"openstack": c.OpenStack,
+			"vsphere":   c.VSphere,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *CloudProviders) validateAndDefault() error { return nil }
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	Secret string `yaml:"aws_secret"`
-	Id     string `yaml:"aws_id"`
+	Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
+	Id     string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
 }
 
 // DockerConfig stores auth info for Docker.
 type DockerConfig struct {
-	APIVersion string `yaml:"api_version"`
+	APIVersion string `bson:"api_version" json:"api_version" yaml:"api_version"`
 }
 
 // OpenStackConfig stores auth info for Linaro using Identity V3. All fields required.
 //
 // The config is NOT compatible with Identity V2.
 type OpenStackConfig struct {
-	IdentityEndpoint string `yaml:"identity_endpoint"`
+	IdentityEndpoint string `bson:"identity_endpoint" json:"identity_endpoint" yaml:"identity_endpoint"`
 
-	Username   string `yaml:"username"`
-	Password   string `yaml:"password"`
-	DomainName string `yaml:"domain_name"`
+	Username   string `bson:"username" json:"username" yaml:"username"`
+	Password   string `bson:"password" json:"password" yaml:"password"`
+	DomainName string `bson:"domain_name" json:"domain_name" yaml:"domain_name"`
 
-	ProjectName string `yaml:"project_name"`
-	ProjectID   string `yaml:"project_id"`
+	ProjectName string `bson:"project_name" json:"project_name" yaml:"project_name"`
+	ProjectID   string `bson:"project_id" json:"project_id" yaml:"project_id"`
 
-	Region string `yaml:"region"`
+	Region string `bson:"region" json:"region" yaml:"region"`
 }
 
 // GCEConfig stores auth info for Google Compute Engine. Can be retrieved from:
 // https://developers.google.com/identity/protocols/application-default-credentials
 type GCEConfig struct {
-	ClientEmail  string `yaml:"client_email"`
-	PrivateKey   string `yaml:"private_key"`
-	PrivateKeyID string `yaml:"private_key_id"`
-	TokenURI     string `yaml:"token_uri"`
+	ClientEmail  string `bson:"client_email" json:"client_email" yaml:"client_email"`
+	PrivateKey   string `bson:"private_key" json:"private_key" yaml:"private_key"`
+	PrivateKeyID string `bson:"private_key_id" json:"private_key_id" yaml:"private_key_id"`
+	TokenURI     string `bson:"token_uri" json:"token_uri" yaml:"token_uri"`
 }
 
 // VSphereConfig stores auth info for VMware vSphere. The config fields refer
 // to your vCenter server, a centralized management tool for the vSphere suite.
 type VSphereConfig struct {
-	Host     string `yaml:"host"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Host     string `bson:"host" json:"host" yaml:"host"`
+	Username string `bson:"username" json:"username" yaml:"username"`
+	Password string `bson:"password" json:"password" yaml:"password"`
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
 type JiraConfig struct {
-	Host           string `yaml:"host"`
-	Username       string `yaml:"username"`
-	Password       string `yaml:"password"`
-	DefaultProject string `yaml:"default_project"`
+	Host           string `yaml:"host" bson:"host" json:"host"`
+	Username       string `yaml:"username" bson:"username" json:"username"`
+	Password       string `yaml:"password" bson:"password" json:"password"`
+	DefaultProject string `yaml:"default_project" bson:"default_project" json:"default_project"`
 }
 
+func (c *JiraConfig) id() string { return "jira" }
+func (c *JiraConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *JiraConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"host":            c.Host,
+			"username":        c.Username,
+			"password":        c.Password,
+			"default_project": c.DefaultProject,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *JiraConfig) validateAndDefault() error { return nil }
 func (j JiraConfig) GetHostURL() string {
 	if strings.HasPrefix("http", j.Host) {
 		return j.Host
@@ -209,8 +465,27 @@ func (j JiraConfig) GetHostURL() string {
 type PluginConfig map[string]map[string]interface{}
 
 type AlertsConfig struct {
-	SMTP *SMTPConfig `yaml:"smtp"`
+	SMTP *SMTPConfig `bson:"smtp" json:"smtp" yaml:"smtp"`
 }
+
+func (c *AlertsConfig) id() string { return "alerts" }
+func (c *AlertsConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *AlertsConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"smtp": c.SMTP,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *AlertsConfig) validateAndDefault() error { return nil }
+
 type WriteConcern struct {
 	W        int    `yaml:"w"`
 	WMode    string `yaml:"wmode"`
@@ -227,9 +502,9 @@ type DBSettings struct {
 }
 
 type LoggerConfig struct {
-	Buffer         LogBuffering `yaml:"buffer"`
-	DefaultLevel   string       `yaml:"default_level"`
-	ThresholdLevel string       `yaml:"threshold_level"`
+	Buffer         LogBuffering `bson:"buffer" json:"buffer" yaml:"buffer"`
+	DefaultLevel   string       `bson:"default_level" json:"default_level" yaml:"default_level"`
+	ThresholdLevel string       `bson:"threshold_level" json:"threshold_level" yaml:"threshold_level"`
 }
 
 func (c LoggerConfig) Info() send.LevelInfo {
@@ -238,6 +513,44 @@ func (c LoggerConfig) Info() send.LevelInfo {
 		Threshold: level.FromString(c.ThresholdLevel),
 	}
 }
+func (c *LoggerConfig) id() string { return "logger_config" }
+func (c *LoggerConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *LoggerConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"buffer":          c.Buffer,
+			"default_level":   c.DefaultLevel,
+			"threshold_level": c.ThresholdLevel,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *LoggerConfig) validateAndDefault() error {
+	if c.Buffer.DurationSeconds == 0 {
+		c.Buffer.DurationSeconds = defaultLogBufferingDuration
+	}
+
+	if c.DefaultLevel == "" {
+		c.DefaultLevel = "info"
+	}
+
+	if c.ThresholdLevel == "" {
+		c.ThresholdLevel = "debug"
+	}
+
+	info := c.Info()
+	if !info.Valid() {
+		return errors.Errorf("logging level configuration is not valid [%+v]", info)
+	}
+
+	return nil
+}
 
 type LogBuffering struct {
 	DurationSeconds int `yaml:"duration_seconds"`
@@ -245,56 +558,304 @@ type LogBuffering struct {
 }
 
 type AmboyConfig struct {
-	Name           string `yaml:"name"`
-	DB             string `yaml:"database"`
-	PoolSizeLocal  int    `yaml:"pool_size_local"`
-	PoolSizeRemote int    `yaml:"pool_size_remote"`
-	LocalStorage   int    `yaml:"local_storage_size"`
+	Name           string `bson:"name" json:"name" yaml:"name"`
+	DB             string `bson:"database" json:"database" yaml:"database"`
+	PoolSizeLocal  int    `bson:"pool_size_local" json:"pool_size_local" yaml:"pool_size_local"`
+	PoolSizeRemote int    `bson:"pool_size_remote" json:"pool_size_remote" yaml:"pool_size_remote"`
+	LocalStorage   int    `bson:"local_storage_size" json:"local_storage_size" yaml:"local_storage_size"`
+}
+
+func (c *AmboyConfig) id() string { return "amboy" }
+func (c *AmboyConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *AmboyConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"name":               c.Name,
+			"database":           c.DB,
+			"pool_size_local":    c.PoolSizeLocal,
+			"pool_size_remote":   c.PoolSizeRemote,
+			"local_storage_size": c.LocalStorage,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *AmboyConfig) validateAndDefault() error {
+	if c.Name == "" {
+		c.Name = defaultAmboyQueueName
+	}
+
+	if c.DB == "" {
+		c.DB = defaultAmboyDBName
+	}
+
+	if c.PoolSizeLocal == 0 {
+		c.PoolSizeLocal = defaultAmboyPoolSize
+	}
+
+	if c.PoolSizeRemote == 0 {
+		c.PoolSizeRemote = defaultAmboyPoolSize
+	}
+
+	if c.LocalStorage == 0 {
+		c.LocalStorage = defaultAmboyLocalStorageSize
+	}
+
+	return nil
 }
 
 type SlackConfig struct {
-	Options *send.SlackOptions `yaml:"options"`
-	Token   string             `yaml:"token"`
-	Level   string             `yaml:"level"`
+	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
+	Token   string             `bson:"token" json:"token" yaml:"token"`
+	Level   string             `bson:"level" json:"level" yaml:"level"`
+}
+
+func (c *SlackConfig) id() string { return "slack" }
+func (c *SlackConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *SlackConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"options": c.Options,
+			"token":   c.Token,
+			"level":   c.Level,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *SlackConfig) validateAndDefault() error {
+	if c.Options == nil {
+		c.Options = &send.SlackOptions{}
+	}
+
+	if c.Token != "" {
+		if c.Options.Channel == "" {
+			c.Options.Channel = "#evergreen-ops-alerts"
+		}
+
+		if c.Options.Name == "" {
+			c.Options.Name = "evergreen"
+		}
+
+		if err := c.Options.Validate(); err != nil {
+			return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
+		}
+
+		if !level.IsValidPriority(level.FromString(c.Level)) {
+			return errors.Errorf("%s is not a valid priority", c.Level)
+		}
+	}
+
+	return nil
 }
 
 type NewRelicConfig struct {
-	ApplicationName string `yaml:"application_name"`
-	LicenseKey      string `yaml:"license_key"`
+	ApplicationName string `bson:"application_name" json:"application_name" yaml:"application_name"`
+	LicenseKey      string `bson:"license_key" json:"license_key" yaml:"license_key"`
+}
+
+func (c *NewRelicConfig) id() string { return "new_relic" }
+func (c *NewRelicConfig) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *NewRelicConfig) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			"application_name": c.ApplicationName,
+			"license_key":      c.LicenseKey,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *NewRelicConfig) validateAndDefault() error { return nil }
+
+// ServiceFlags holds the state of each of the runner/API processes
+type ServiceFlags struct {
+	TaskDispatchDisabled         bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
+	HostinitDisabled             bool `bson:"hostinit_disabled" json:"hostinit_disabled"`
+	MonitorDisabled              bool `bson:"monitor_disabled" json:"monitor_disabled"`
+	NotificationsDisabled        bool `bson:"notifications_disabled" json:"notifications_disabled"`
+	AlertsDisabled               bool `bson:"alerts_disabled" json:"alerts_disabled"`
+	TaskrunnerDisabled           bool `bson:"taskrunner_disabled" json:"taskrunner_disabled"`
+	RepotrackerDisabled          bool `bson:"repotracker_disabled" json:"repotracker_disabled"`
+	SchedulerDisabled            bool `bson:"scheduler_disabled" json:"scheduler_disabled"`
+	GithubPRTestingDisabled      bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
+	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
+	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
+	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+}
+
+func (c *ServiceFlags) id() string { return "service_flags" }
+func (c *ServiceFlags) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *ServiceFlags) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			taskDispatchKey:                 c.TaskDispatchDisabled,
+			hostinitKey:                     c.HostinitDisabled,
+			monitorKey:                      c.MonitorDisabled,
+			notificationsKey:                c.NotificationsDisabled,
+			alertsKey:                       c.AlertsDisabled,
+			taskrunnerKey:                   c.TaskrunnerDisabled,
+			repotrackerKey:                  c.RepotrackerDisabled,
+			schedulerKey:                    c.SchedulerDisabled,
+			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
+			repotrackerPushEventDisabledKey: c.RepotrackerPushEventDisabled,
+			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
+			githubStatusAPIDisabled:         c.GithubStatusAPIDisabled,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *ServiceFlags) validateAndDefault() error { return nil }
+
+// supported banner themes in Evergreen
+type BannerTheme string
+
+const (
+	Announcement BannerTheme = "announcement"
+	Information              = "information"
+	Warning                  = "warning"
+	Important                = "important"
+)
+
+func IsValidBannerTheme(input string) (bool, BannerTheme) {
+	switch input {
+	case "":
+		return true, ""
+	case "announcement":
+		return true, Announcement
+	case "information":
+		return true, Information
+	case "warning":
+		return true, Warning
+	case "important":
+		return true, Important
+	default:
+		return false, ""
+	}
 }
 
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	Database            DBSettings                `yaml:"database"`
-	WriteConcern        WriteConcern              `yaml:"write_concern"`
-	ConfigDir           string                    `yaml:"configdir"`
-	ApiUrl              string                    `yaml:"api_url"`
-	AgentExecutablesDir string                    `yaml:"agentexecutablesdir"`
-	ClientBinariesDir   string                    `yaml:"client_binaries_dir"`
-	SuperUsers          []string                  `yaml:"superusers"`
-	Jira                JiraConfig                `yaml:"jira"`
-	Splunk              send.SplunkConnectionInfo `yaml:"splunk"`
-	Slack               SlackConfig               `yaml:"slack"`
-	Providers           CloudProviders            `yaml:"providers"`
-	Keys                map[string]string         `yaml:"keys"`
-	Credentials         map[string]string         `yaml:"credentials"`
-	AuthConfig          AuthConfig                `yaml:"auth"`
-	RepoTracker         RepoTrackerConfig         `yaml:"repotracker"`
-	Api                 APIConfig                 `yaml:"api"`
-	Alerts              AlertsConfig              `yaml:"alerts"`
-	Ui                  UIConfig                  `yaml:"ui"`
-	HostInit            HostInitConfig            `yaml:"hostinit"`
-	Notify              NotifyConfig              `yaml:"notify"`
-	Scheduler           SchedulerConfig           `yaml:"scheduler"`
-	Amboy               AmboyConfig               `yaml:"amboy"`
-	Expansions          map[string]string         `yaml:"expansions"`
-	Plugins             PluginConfig              `yaml:"plugins"`
-	IsNonProd           bool                      `yaml:"isnonprod"`
-	LoggerConfig        LoggerConfig              `yaml:"logger_config"`
-	LogPath             string                    `yaml:"log_path"`
-	PprofPort           string                    `yaml:"pprof_port"`
-	GithubPRCreatorOrg  string                    `yaml:"github_pr_creator_org"`
-	NewRelic            NewRelicConfig            `yaml:"new_relic"`
+	Id                 string                    `bson:"_id" json:"id"`
+	Alerts             AlertsConfig              `yaml:"alerts" bson:"alerts" json:"alerts" id:"alerts"`
+	Amboy              AmboyConfig               `yaml:"amboy" bson:"amboy" json:"amboy" id:"amboy"`
+	Api                APIConfig                 `yaml:"api" bson:"api" json:"api" id:"api"`
+	ApiUrl             string                    `yaml:"api_url" bson:"api_url" json:"api_url"`
+	AuthConfig         AuthConfig                `yaml:"auth" bson:"auth" json:"auth" id:"auth"`
+	Banner             string                    `bson:"banner" json:"banner"`
+	BannerTheme        BannerTheme               `bson:"banner_theme" json:"banner_theme"`
+	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
+	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
+	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
+	Database           DBSettings                `yaml:"database"`
+	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
+	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
+	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
+	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
+	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
+	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
+	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
+	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
+	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
+	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
+	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
+	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
+	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
+	Scheduler          SchedulerConfig           `yaml:"scheduler" bson:"scheduler" json:"scheduler" id:"scheduler"`
+	ServiceFlags       ServiceFlags              `bson:"service_flags" json:"service_flags" id:"service_flags"`
+	Slack              SlackConfig               `yaml:"slack" bson:"slack" json:"slack" id:"slack"`
+	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
+	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
+	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
+	WriteConcern       WriteConcern              `yaml:"write_concern"`
+}
+
+func (c *Settings) id() string { return configDocID }
+func (c *Settings) get() error {
+	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
+	if err != nil && err.Error() == errNotFound {
+		return nil
+	}
+	return errors.Wrapf(err, "error retrieving section %s", c.id())
+}
+func (c *Settings) set() error {
+	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
+		"$set": bson.M{
+			apiUrlKey:             c.ApiUrl,
+			bannerKey:             c.Banner,
+			bannerThemeKey:        c.BannerTheme,
+			clientBinariesDirKey:  c.ClientBinariesDir,
+			configDirKey:          c.ConfigDir,
+			credentialsKey:        c.Credentials,
+			expansionsKey:         c.Expansions,
+			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
+			isNonProdKey:          c.IsNonProd,
+			keysKey:               c.Keys,
+			logPathKey:            c.LogPath,
+			pprofPortKey:          c.PprofPort,
+			pluginsKey:            c.Plugins,
+			splunkKey:             c.Splunk,
+			superUsersKey:         c.SuperUsers,
+		},
+	})
+	return errors.Wrapf(err, "error updating section %s", c.id())
+}
+func (c *Settings) validateAndDefault() error {
+	catcher := grip.NewSimpleCatcher()
+	if c.Database.Url == "" || c.Database.DB == "" {
+		catcher.Add(errors.New("DBUrl and DB must not be empty"))
+	}
+	if c.ApiUrl == "" {
+		catcher.Add(errors.New("API hostname must not be empty"))
+	}
+	if c.ConfigDir == "" {
+		catcher.Add(errors.New("Config directory must not be empty"))
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
+	}
+	if c.ClientBinariesDir == "" {
+		c.ClientBinariesDir = ClientDirectory
+	}
+	if c.LogPath == "" {
+		c.LogPath = LocalLoggingOverride
+	}
+	return nil
+}
+
+// configSection defines a sub-document in the evegreen config
+// any config sections must also be added to registry.go
+type configSection interface {
+	// id() returns the ID of the section to be used in the database document and struct tag
+	id() string
+	// get() populates the section from the DB
+	get() error
+	// set() upserts the section document into the DB
+	set() error
+	// validateAndDefault() validates input and sets defaults
+	validateAndDefault() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -312,16 +873,115 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
+// GetSettings retrieves the Evergreen config document. If no document is
+// present in the DB, it will return the defaults
+func GetConfig() (*Settings, error) {
+	config := &Settings{}
+
+	// retrieve the root config document
+	if err := config.get(); err != nil {
+		return nil, err
+	}
+
+	// retrieve the other config sub-documents and form the whole struct
+	catcher := grip.NewSimpleCatcher()
+	sections := configRegistry.getSections()
+	valConfig := reflect.ValueOf(*config)
+	//iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
+		}
+
+		// get the property name and find its corresponding section in the registry
+		propName := valConfig.Type().Field(i).Name
+		section, ok := sections[sectionId]
+		if !ok {
+			catcher.Add(fmt.Errorf("config section %s not found in registry", sectionId))
+			continue
+		}
+
+		// retrieve the section's document from the db
+		if err := section.get(); err != nil {
+			catcher.Add(errors.Wrapf(err, "error populating section %s", sectionId))
+			continue
+		}
+
+		// set the value of the section struct to the value of the corresponding field in the config
+		sectionVal := reflect.ValueOf(section).Elem()
+		propVal := reflect.ValueOf(config).Elem().FieldByName(propName)
+		if !propVal.CanSet() {
+			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+			continue
+		}
+		propVal.Set(sectionVal)
+	}
+
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return config, nil
+}
+
 // Validate checks the settings and returns nil if the config is valid,
 // or an error with a message explaining why otherwise.
 func (settings *Settings) Validate() error {
-	for _, validator := range configValidationRules {
-		err := validator(settings)
-		if err != nil {
-			return err
+	catcher := grip.NewSimpleCatcher()
+
+	// validate the root-level settings struct
+	catcher.Add(settings.validateAndDefault())
+
+	// validate each sub-document
+	valConfig := reflect.ValueOf(*settings)
+	// iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
 		}
+
+		// get the property name and find its value within the settings struct
+		propName := valConfig.Type().Field(i).Name
+		propVal := valConfig.FieldByName(propName)
+
+		// the goal is to convert this struct which we know implements configSection
+		// from a reflection data structure back to the interface
+		// the below creates a copy and takes the address of it as a workaround because
+		// you can't take the address of it via reflection for some reason
+		// (and all interface methods on the struct have pointer receivers)
+
+		// create a reflective copy of the struct
+		valPointer := reflect.Indirect(reflect.New(propVal.Type()))
+		valPointer.Set(propVal)
+
+		// convert the pointer to that struct to an empty interface
+		propInterface := valPointer.Addr().Interface()
+
+		// type assert to the configSection interface
+		section, ok := propInterface.(configSection)
+		if !ok {
+			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			continue
+		}
+		err := section.validateAndDefault()
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+
+		// set the value of the section struct in case there was any defaulting done
+		sectionVal := reflect.ValueOf(section).Elem()
+		propAddr := reflect.ValueOf(settings).Elem().FieldByName(propName)
+		if !propAddr.CanSet() {
+			catcher.Add(fmt.Errorf("unable to set field %s in %s", propName, sectionId))
+			continue
+		}
+		propAddr.Set(sectionVal)
 	}
-	return nil
+	return catcher.Resolve()
 }
 
 func (s *Settings) GetSender(env Environment) (send.Sender, error) {
@@ -457,207 +1117,6 @@ func (n *NewRelicConfig) SetUp() (newrelic.Application, error) {
 		return nil, errors.Wrap(err, "error creating New Relic application")
 	}
 	return app, nil
-}
-
-// ConfigValidator is a type of function that checks the settings
-// struct for any errors or missing required fields.
-type configValidator func(settings *Settings) error
-
-// ConfigValidationRules is the set of all ConfigValidator functions.
-var configValidationRules = []configValidator{
-	func(settings *Settings) error {
-		if settings.Database.Url == "" || settings.Database.DB == "" {
-			return errors.New("DBUrl and DB must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Amboy.Name == "" {
-			settings.Amboy.Name = defaultAmboyQueueName
-		}
-
-		if settings.Amboy.DB == "" {
-			settings.Amboy.DB = defaultAmboyDBName
-		}
-
-		if settings.Amboy.PoolSizeLocal == 0 {
-			settings.Amboy.PoolSizeLocal = defaultAmboyPoolSize
-		}
-
-		if settings.Amboy.PoolSizeRemote == 0 {
-			settings.Amboy.PoolSizeRemote = defaultAmboyPoolSize
-		}
-
-		if settings.Amboy.LocalStorage == 0 {
-			settings.Amboy.LocalStorage = defaultAmboyLocalStorageSize
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.LoggerConfig.Buffer.DurationSeconds == 0 {
-			settings.LoggerConfig.Buffer.DurationSeconds = defaultLogBufferingDuration
-		}
-
-		if settings.LoggerConfig.DefaultLevel == "" {
-			settings.LoggerConfig.DefaultLevel = "info"
-		}
-
-		if settings.LoggerConfig.ThresholdLevel == "" {
-			settings.LoggerConfig.ThresholdLevel = "debug"
-		}
-
-		info := settings.LoggerConfig.Info()
-		if !info.Valid() {
-			return errors.Errorf("logging level configuration is not valid [%+v]", info)
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Slack.Options == nil {
-			settings.Slack.Options = &send.SlackOptions{}
-		}
-
-		if settings.Slack.Token != "" {
-			if settings.Slack.Options.Channel == "" {
-				settings.Slack.Options.Channel = "#evergreen-ops-alerts"
-			}
-
-			if settings.Slack.Options.Name == "" {
-				settings.Slack.Options.Name = "evergreen"
-			}
-
-			if err := settings.Slack.Options.Validate(); err != nil {
-				return errors.Wrap(err, "with a non-empty token, you must specify a valid slack configuration")
-			}
-
-			if !level.IsValidPriority(level.FromString(settings.Slack.Level)) {
-				return errors.Errorf("%s is not a valid priority", settings.Slack.Level)
-			}
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.ClientBinariesDir == "" {
-			settings.ClientBinariesDir = ClientDirectory
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		finders := []string{"legacy", "alternate", "parallel", "pipeline"}
-
-		if settings.Scheduler.TaskFinder == "" {
-			// default to alternate
-			settings.Scheduler.TaskFinder = finders[0]
-			return nil
-		}
-
-		if !sliceContains(finders, settings.Scheduler.TaskFinder) {
-			return errors.Errorf("supported finders are %s; %s is not supported",
-				finders, settings.Scheduler.TaskFinder)
-
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.LogPath == "" {
-			settings.LogPath = LocalLoggingOverride
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.ApiUrl == "" {
-			return errors.New("API hostname must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.Secret == "" {
-			return errors.New("UI Secret must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.ConfigDir == "" {
-			return errors.New("Config directory must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.DefaultProject == "" {
-			return errors.New("You must specify a default project in UI")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.Url == "" {
-			return errors.New("You must specify a default UI url")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		notifyConfig := settings.Notify.SMTP
-
-		if notifyConfig == nil {
-			return nil
-		}
-
-		if notifyConfig.Server == "" || notifyConfig.Port == 0 {
-			return errors.New("You must specify a SMTP server and port")
-		}
-
-		if len(notifyConfig.AdminEmail) == 0 {
-			return errors.New("You must specify at least one admin_email")
-		}
-
-		if notifyConfig.From == "" {
-			return errors.New("You must specify a from address")
-		}
-
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil && settings.AuthConfig.Github == nil {
-			return errors.New("You must specify one form of authentication")
-		}
-		if settings.AuthConfig.Naive != nil {
-			used := map[string]bool{}
-			for _, x := range settings.AuthConfig.Naive.Users {
-				if used[x.Username] {
-					return errors.New("Duplicate user in list")
-				}
-				used[x.Username] = true
-			}
-		}
-		if settings.AuthConfig.Github != nil {
-			if settings.AuthConfig.Github.Users == nil && settings.AuthConfig.Github.Organization == "" {
-				return errors.New("Must specify either a set of users or an organization for Github Authentication")
-			}
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
-		if settings.Ui.CsrfKey != "" && len(settings.Ui.CsrfKey) != 32 {
-			return errors.New("CSRF key must be 32 characters long")
-		}
-		return nil
-	},
 }
 
 func sliceContains(slice []string, elem string) bool {

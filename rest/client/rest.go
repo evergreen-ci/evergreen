@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
@@ -192,7 +191,7 @@ func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost
 	return nil
 }
 
-func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme admin.BannerTheme) error {
+func (c *communicatorImpl) SetBannerMessage(ctx context.Context, message string, theme evergreen.BannerTheme) error {
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,

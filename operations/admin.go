@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -68,10 +68,10 @@ func adminSetBanner() cli.Command {
 			themeName := c.String(themeFlagName)
 			msgContent := c.String(messageFlagName)
 
-			var theme admin.BannerTheme
+			var theme evergreen.BannerTheme
 			var ok bool
 			if themeName != "" {
-				if ok, theme = admin.IsValidBannerTheme(themeName); !ok {
+				if ok, theme = evergreen.IsValidBannerTheme(themeName); !ok {
 					return errors.Errorf("%s is not a valid banner theme", themeName)
 				}
 			}

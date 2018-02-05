@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -33,7 +32,7 @@ func (s *repotrackerJobSuite) SetupTest() {
 }
 
 func (s *repotrackerJobSuite) TearDownTest() {
-	s.NoError(db.ClearCollections(admin.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	s.cancel()
 	evergreen.ResetEnvironment()
 }
@@ -49,10 +48,10 @@ func (s *repotrackerJobSuite) TestJob() {
 }
 
 func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
-	flags := admin.ServiceFlags{
+	flags := evergreen.ServiceFlags{
 		RepotrackerPushEventDisabled: true,
 	}
-	s.NoError(admin.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(flags))
 
 	job := NewRepotrackerJob("1", "mci")
 	job.Run()

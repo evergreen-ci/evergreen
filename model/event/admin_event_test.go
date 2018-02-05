@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
@@ -54,22 +54,22 @@ func (s *AdminEventSuite) TestBannerEvent() {
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
 
 	// test that changing the theme logs correctly
-	s.NoError(LogBannerThemeChanged(admin.Announcement, admin.Important, s.u))
+	s.NoError(LogBannerThemeChanged(evergreen.Announcement, evergreen.Important, s.u))
 	events, err = Find(AllLogCollection, RecentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok = events[0].Data.Data.(*AdminEventData)
 	s.True(ok)
 	s.True(eventData.IsValid())
-	s.Equal(string(admin.Important), eventData.NewVal)
-	s.Equal(string(admin.Announcement), eventData.OldVal)
+	s.Equal(string(evergreen.Important), eventData.NewVal)
+	s.Equal(string(evergreen.Announcement), eventData.OldVal)
 }
 
 func (s *AdminEventSuite) TestFlagsEvent() {
-	oldFlags := admin.ServiceFlags{
+	oldFlags := evergreen.ServiceFlags{
 		TaskDispatchDisabled: true,
 		HostinitDisabled:     true,
 	}
-	newFlags := admin.ServiceFlags{
+	newFlags := evergreen.ServiceFlags{
 		MonitorDisabled: true,
 		AlertsDisabled:  true,
 	}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -45,7 +44,7 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(admin.Collection, patch.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection))
 	startTime := time.Now()
 	s.patchDoc = &patch.Patch{
 		Id:         bson.NewObjectId(),
@@ -89,17 +88,17 @@ func (s *githubStatusUpdateSuite) TestFetchForBuildPopulatesRepoInfo() {
 }
 
 func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
-	flags := admin.ServiceFlags{
+	flags := evergreen.ServiceFlags{
 		GithubStatusAPIDisabled: true,
 	}
-	s.NoError(admin.SetServiceFlags(flags))
+	s.NoError(evergreen.SetServiceFlags(flags))
 
 	job := NewGithubStatusUpdateJobForBuild(s.buildDoc.Id)
 	job.Run()
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "github status updates are disabled, not updating status")
-	s.NoError(db.Clear(admin.Collection))
+	s.NoError(db.Clear(evergreen.ConfigCollection))
 }
 
 func (s *githubStatusUpdateSuite) TestForBuild() {
