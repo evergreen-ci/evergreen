@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/grip"
 )
 
-var registry *configSectionRegistry
+var configRegistry *configSectionRegistry
 
 func init() {
 
@@ -18,7 +18,7 @@ func init() {
 }
 
 type configSectionRegistry struct {
-	mu       *sync.RWMutex
+	mu       sync.RWMutex
 	sections map[string]configSection
 }
 
@@ -42,11 +42,11 @@ func resetRegistry() error {
 		&UIConfig{},
 	}
 
-	registry = newConfigSectionRegistry()
+	configRegistry = newConfigSectionRegistry()
 	catcher := grip.NewSimpleCatcher()
 
 	for _, section := range configSections {
-		catcher.Add(registry.registerSection(section.id(), section))
+		catcher.Add(configRegistry.registerSection(section.id(), section))
 	}
 
 	return catcher.Resolve()
@@ -54,7 +54,6 @@ func resetRegistry() error {
 
 func newConfigSectionRegistry() *configSectionRegistry {
 	return &configSectionRegistry{
-		mu:       &sync.RWMutex{},
 		sections: map[string]configSection{},
 	}
 }

@@ -885,7 +885,7 @@ func GetConfig() (*Settings, error) {
 
 	// retrieve the other config sub-documents and form the whole struct
 	catcher := grip.NewSimpleCatcher()
-	sections := registry.getSections()
+	sections := configRegistry.getSections()
 	valConfig := reflect.ValueOf(*config)
 	//iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {
