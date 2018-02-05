@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
@@ -20,7 +19,7 @@ const tsFormat = "2006-01-02.15-04-05"
 
 func PopulateCatchupJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		adminSettings, err := admin.GetSettings()
+		adminSettings, err := evergreen.GetConfig()
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -71,7 +70,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 
 func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		adminSettings, err := admin.GetSettings()
+		adminSettings, err := evergreen.GetConfig()
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -107,7 +106,7 @@ func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 
 func PopulateActivationJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		adminSettings, err := admin.GetSettings()
+		adminSettings, err := evergreen.GetConfig()
 		if err != nil {
 			return errors.WithStack(err)
 		}
