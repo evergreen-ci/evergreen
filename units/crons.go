@@ -134,7 +134,7 @@ func PopulateActivationJobs() amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewStepbackActiationJob(proj.Identifier, ts)))
+			catcher.Add(queue.Put(NewVersionActiationJob(proj.Identifier, ts)))
 		}
 
 		return catcher.Resolve()

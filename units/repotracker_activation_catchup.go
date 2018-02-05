@@ -13,25 +13,25 @@ import (
 	"github.com/pkg/errors"
 )
 
-const stepbackActivationCatchupJobName = "stepback-activation-catchup"
+const versionActivationCatchupJobName = "version-activation-catchup"
 
 func init() {
-	registry.AddJobType(stepbackActivationCatchupJobName, func() amboy.Job {
-		return makeStepbackActivationCatchupJob()
+	registry.AddJobType(versionActivationCatchupJobName, func() amboy.Job {
+		return makeVersionActivationCatchupJob()
 	})
 
 }
 
-type stepbackActivationCatchup struct {
+type versionActivationCatchup struct {
 	Project  string `bson:"project" json:"project" yaml:"project"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-func makeStepbackActivationCatchupJob() *stepbackActivationCatchup {
-	j := &stepbackActivationCatchup{
+func makeVersionActivationCatchupJob() *versionActivationCatchup {
+	j := &versionActivationCatchup{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    stepbackActivationCatchupJobName,
+				Name:    versionActivationCatchupJobName,
 				Version: 0,
 				Format:  amboy.BSON,
 			},
@@ -42,15 +42,15 @@ func makeStepbackActivationCatchupJob() *stepbackActivationCatchup {
 
 }
 
-func NewStepbackActiationJob(project string, id string) amboy.Job {
-	j := makeStepbackActivationCatchupJob()
+func NewVersionActiationJob(project string, id string) amboy.Job {
+	j := makeVersionActivationCatchupJob()
 	j.Project = project
 
-	j.SetID(fmt.Sprintf("%s.%s.%s", stepbackActivationCatchupJobName, project, id))
+	j.SetID(fmt.Sprintf("%s.%s.%s", versionActivationCatchupJobName, project, id))
 	return j
 }
 
-func (j *stepbackActivationCatchup) Run() {
+func (j *versionActivationCatchup) Run() {
 	defer j.MarkComplete()
 
 	conf := evergreen.GetEnvironment().Settings()
