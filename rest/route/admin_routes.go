@@ -73,10 +73,7 @@ func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 }
 
 type adminPostHandler struct {
-	Banner       model.APIString       `json:"banner"`
-	BannerTheme  model.APIString       `json:"banner_theme"`
-	ServiceFlags model.APIServiceFlags `json:"service_flags"`
-	model        model.APIAdminSettings
+	model *model.APIAdminSettings
 }
 
 func (h *adminPostHandler) Handler() RequestHandler {
@@ -84,13 +81,8 @@ func (h *adminPostHandler) Handler() RequestHandler {
 }
 
 func (h *adminPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	if err := util.ReadJSONInto(r.Body, h); err != nil {
+	if err := util.ReadJSONInto(r.Body, &h.model); err != nil {
 		return err
-	}
-	h.model = model.APIAdminSettings{
-		Banner:       h.Banner,
-		BannerTheme:  h.BannerTheme,
-		ServiceFlags: h.ServiceFlags,
 	}
 	return nil
 }
@@ -113,7 +105,7 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 	return ResponseData{
-		Result: []model.Model{&h.model},
+		Result: []model.Model{h.model},
 	}, nil
 }
 
