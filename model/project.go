@@ -946,6 +946,18 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
 						pairs = append(pairs, TVPair{variant.Name, task.Name})
 					}
 				}
+
+				for _, displayTask := range variant.DisplayTasks {
+					if v.Task == "" || !taskRegex.MatchString(displayTask.Name) {
+						continue
+					}
+
+					for _, task := range displayTask.ExecutionTasks {
+						if p.FindTaskForVariant(task, variant.Name) != nil {
+							pairs = append(pairs, TVPair{variant.Name, task})
+						}
+					}
+				}
 			}
 		}
 	}

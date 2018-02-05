@@ -505,6 +505,12 @@ func (s *projectSuite) SetupTest() {
 			Variant:   "bv_3",
 			Task:      "disabled_.*",
 		},
+		{
+			ProjectID: "project",
+			Alias:     "part_of_memes",
+			Variant:   "bv_1",
+			Tags:      []string{"part_of_memes"},
+		},
 	}
 	for _, alias := range s.aliases {
 		s.NoError(alias.Upsert())
@@ -615,6 +621,7 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name: "wow_task",
+				Tags: []string{"part_of_memes"},
 			},
 			{
 				Name: "9001_task",
@@ -637,7 +644,23 @@ func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
 	pairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
 	s.NoError(err)
-	s.Len(pairs, 12)
+	s.Len(pairs, 16)
+	pairStrs := make([]string, len(pairs))
+	for i, p := range pairs {
+		pairStrs[i] = p.String()
+	}
+	s.Contains(pairStrs, "bv_1/a_task_1")
+	s.Contains(pairStrs, "bv_1/a_task_2")
+	s.Contains(pairStrs, "bv_1/b_task_1")
+	s.Contains(pairStrs, "bv_1/b_task_2")
+	s.Contains(pairStrs, "bv_1/wow_task")
+	s.Contains(pairStrs, "bv_1/9001_task")
+	s.Contains(pairStrs, "bv_1/very_task")
+	s.Contains(pairStrs, "bv_2/a_task_1")
+	s.Contains(pairStrs, "bv_2/a_task_2")
+	s.Contains(pairStrs, "bv_2/b_task_1")
+	s.Contains(pairStrs, "bv_2/b_task_2")
+	s.Contains(pairStrs, "bv_3/disabled_task")
 
 	// test that the .*_2 regex on variants selects just bv_2
 	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[1].Alias)
@@ -671,10 +694,18 @@ func (s *projectSuite) TestAliasResolution() {
 		s.NotEqual("b_task_1", pair.TaskName)
 	}
 
-	// test for display tasks (not supported)
+	// test for display tasks
 	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[5].Alias)
 	s.NoError(err)
-	s.Empty(pairs)
+	pairStrs = make([]string, len(pairs))
+	for i, p := range pairs {
+		pairStrs[i] = p.String()
+	}
+	s.Len(pairStrs, 4)
+	s.Contains(pairStrs, "bv_1/9001_task")
+	s.Contains(pairStrs, "bv_1/very_task")
+	s.Contains(pairStrs, "bv_1/wow_task")
+	s.Contains(pairStrs, "bv_1/another_disabled_task")
 
 	// test for alias including disabled task
 	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
@@ -714,10 +745,6 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 2)
-
-	patchDoc.BuildVariants = []string{}
-	patchDoc.Tasks = []string{}
-	patchDoc.VariantsTasks = []patch.VariantTasks{}
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
@@ -800,9 +827,33 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 	patchDoc := patch.Patch{}
 
 	s.project.BuildProjectTVPairs(&patchDoc, "memes")
-	s.Empty(patchDoc.BuildVariants)
-	s.Empty(patchDoc.Tasks)
-	s.Empty(patchDoc.VariantsTasks)
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.Tasks, 5)
+	s.Contains(patchDoc.Tasks, "very_task")
+	s.Contains(patchDoc.Tasks, "wow_task")
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Contains(patchDoc.Tasks, "9001_task")
+	s.Contains(patchDoc.Tasks, "a_task_2")
+	s.Require().Len(patchDoc.VariantsTasks, 2)
+	for _, vt := range patchDoc.VariantsTasks {
+		if vt.Variant == "bv_1" {
+			s.Contains(vt.Tasks, "very_task")
+			s.Contains(vt.Tasks, "wow_task")
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "9001_task")
+
+		} else if vt.Variant == "bv_2" {
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "a_task_2")
+
+		} else {
+			s.T().Fail()
+		}
+
+	}
+
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
@@ -871,13 +922,12 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 	}
 }
 
-func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithOneExecutionTask() {
-	// TODO: See EVG-2722 this behaviour may be wrong
-	patchDoc := patch.Patch{
-		BuildVariants: []string{"bv_1"},
-		Tasks:         []string{"wow_task"},
-	}
-	s.project.BuildProjectTVPairs(&patchDoc, "")
+func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
+	// TODO: See EVG-2722 this behaviour is wrong. Requesting a tag that
+	// contains a single execution task from a display task should make the
+	// patch include the entire display task
+	patchDoc := patch.Patch{}
+	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
@@ -901,4 +951,21 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithOneExecutionTas
 			s.T().Fail()
 		}
 	}
+}
+
+func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
+	// TODO: See EVG-2722 this behaviour is wrong. This should NOT create
+	// any Build variants or tasks
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"bv_1"},
+		Tasks:         []string{"wow_task"},
+	}
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+	s.Len(patchDoc.BuildVariants, 2)
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "wow_task")
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Require().Len(patchDoc.VariantsTasks, 2)
 }
