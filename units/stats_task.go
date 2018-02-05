@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -35,7 +36,7 @@ func NewTaskStatsCollector(id string) amboy.Job {
 }
 
 func makeTaskStatsCollector() *taskStatsCollector {
-	return &taskStatsCollector{
+	j := &taskStatsCollector{
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -45,6 +46,9 @@ func makeTaskStatsCollector() *taskStatsCollector {
 			},
 		},
 	}
+
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func (j *taskStatsCollector) Run() {

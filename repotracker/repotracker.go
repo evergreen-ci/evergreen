@@ -168,28 +168,36 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		}
 	}
 
-	// fetch the most recent, non-ignored version version to activate
-	activateVersion, err := version.FindOne(version.ByMostRecentNonignored(projectIdentifier))
-	if err != nil {
+	if err := repoTracker.activationForProject(projectIdentifier); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem getting most recent revision for repository",
-			"project": projectRef,
+			"message": "problem activating recent commit for project",
+			"project": projectIdentifier,
 			"runner":  RunnerName,
+			"mode":    "ingestion",
 		}))
+
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (repoTracker *RepoTracker) activationForProject(projectId string) error {
+	// fetch the most recent, non-ignored version version to activate
+	activateVersion, err := version.FindOne(version.ByMostRecentNonignored(projectId))
+	if err != nil {
 		return errors.WithStack(err)
 	}
 	if activateVersion == nil {
-		grip.Warningf("no version to activate for repository %s", projectIdentifier)
+		grip.Info(message.Fields{
+			"message": "no version to activate for repository",
+			"project": projectId,
+			"runner":  RunnerName,
+		})
 		return nil
 	}
 
-	err = repoTracker.activateElapsedBuilds(activateVersion)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message": "problem activating variants",
-			"version": activateVersion,
-			"runner":  RunnerName,
-		}))
+	if err = repoTracker.activateElapsedBuilds(activateVersion); err != nil {
 		return errors.WithStack(err)
 	}
 

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/taskrunner"
@@ -100,7 +99,7 @@ func startRunnerService() cli.Command {
 
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			startCollectorJobs(ctx, env)
+			startSystemCronJobs(ctx, env)
 			go func() {
 				defer recovery.LogStackTraceAndContinue("pprof server")
 				if settings.PprofPort != "" {
@@ -126,7 +125,16 @@ func startRunnerService() cli.Command {
 //
 // Running and executing the offline operations processing.
 
-func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
+func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
+	// Add jobs to a remote queue at various intervals for
+	// repotracker operations. Generally the intervals are half the
+	// actual frequency of the job, which are controled by the
+	// population functions.
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), true, units.PopulateActivationJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), true, units.PopulateCatchupJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), true, units.PopulateRepotrackerPollingJobs())
+
+	// add jobs to a local queue every minute for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := time.Now().Unix()
@@ -139,6 +147,7 @@ func startCollectorJobs(ctx context.Context, env evergreen.Environment) {
 		return catcher.Resolve()
 	})
 
+	// Add jobs to a local queue, every 15 seconds for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
@@ -155,7 +164,11 @@ type processRunner interface {
 var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&notify.Runner{},
-	&repotracker.Runner{},
+
+	// Note: commented out while exploring moving to amboy-based
+	// schedule.
+	//
+	// &repotracker.Runner{},
 
 	&scheduler.Runner{},
 	&hostinit.Runner{},
@@ -184,7 +197,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	infrequentRunners := []string{
 		alerts.RunnerName,
 		notify.RunnerName,
-		repotracker.RunnerName,
+		// repotracker.RunnerName,
 	}
 
 	grip.Notice(message.Fields{

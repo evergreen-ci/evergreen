@@ -2,6 +2,7 @@ package units
 
 import (
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -30,7 +31,7 @@ func NewSysInfoStatsCollector(id string) amboy.Job {
 }
 
 func makeSysInfoStatsCollector() *sysInfoStatsCollector {
-	return &sysInfoStatsCollector{
+	j := &sysInfoStatsCollector{
 		logger: logging.MakeGrip(grip.GetSender()),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -40,6 +41,8 @@ func makeSysInfoStatsCollector() *sysInfoStatsCollector {
 			},
 		},
 	}
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func (j *sysInfoStatsCollector) Run() {

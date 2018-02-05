@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
@@ -33,7 +34,7 @@ type decoHostNotifyJob struct {
 }
 
 func makeDecoHostsNotifyJob() *decoHostNotifyJob {
-	return &decoHostNotifyJob{
+	j := &decoHostNotifyJob{
 		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
@@ -43,6 +44,9 @@ func makeDecoHostsNotifyJob() *decoHostNotifyJob {
 			},
 		},
 	}
+
+	j.SetDependency(dependency.NewAlways())
+	return j
 }
 
 func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, message string) amboy.Job {

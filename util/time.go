@@ -53,3 +53,21 @@ func ToPythonTime(t time.Time) float64 {
 func JitterInterval(interval time.Duration) time.Duration {
 	return time.Duration(rand.Float64()*float64(interval)) + interval
 }
+
+// ParseRoundPartOfHour produces a time value with the minute value
+// rounded down to the most recent interval.
+func RoundPartOfHour(num int) time.Time { return findPart(time.Now(), num) }
+
+// this implements the logic of RoundPartOfHour, but takes time as an
+// argument for testability.
+func findPart(now time.Time, num int) time.Time {
+	var min int
+
+	if num > now.Minute() || num > 30 {
+		min = 0
+	} else {
+		min = now.Minute() - (now.Minute() % num)
+	}
+
+	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), min, 0, 0, time.UTC)
+}
