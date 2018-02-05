@@ -23,11 +23,21 @@ var (
 func Insert(collection string, item interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		return nil
+		return errors.WithStack(err)
 	}
 	defer session.Close()
 
 	return db.C(collection).Insert(item)
+}
+
+func InsertMany(collection string, items ...interface{}) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer session.Close()
+
+	return db.C(collection).Insert(items...)
 }
 
 // Clear removes all documents from a specified collection.

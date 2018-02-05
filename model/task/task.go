@@ -897,17 +897,19 @@ func (t *Task) MarkStart(startTime time.Time) error {
 
 // SetResults sets the results of the task in LocalTestResults
 func (t *Task) SetResults(results []TestResult) error {
-	catcher := grip.NewSimpleCatcher()
-	var testResult testresult.TestResult
-	for _, result := range results {
-		testResult = result.convertToNewStyleTestResult()
-		catcher.Add(testResult.InsertByTaskIDAndExecution(t.Id, t.Execution))
+	docs := make([]testresult.TestResult, len(results))
+
+	for idx, result := range results {
+		docs[idx] = result.convertToNewStyleTestResult(t.Id, t.Execution)
 	}
-	return errors.Wrap(catcher.Resolve(), "error inserting into testresults collection")
+
+	return errors.Wrap(testresult.InsertMany(docs), "error inserting into testresults collection")
 }
 
-func (t TestResult) convertToNewStyleTestResult() testresult.TestResult {
+func (t TestResult) convertToNewStyleTestResult(id string, execution int) testresult.TestResult {
 	return testresult.TestResult{
+		TaskID:    id,
+		Execution: execution,
 		Status:    t.Status,
 		TestFile:  t.TestFile,
 		URL:       t.URL,
