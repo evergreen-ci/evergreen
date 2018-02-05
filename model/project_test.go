@@ -446,14 +446,16 @@ task_groups:
 		Id:     "v1",
 		Config: projYml,
 	}
-	assert.NoError(v.Insert())
 	t1 := task.Task{
 		Id:        "t1",
-		TaskGroup: task.FormTaskGroupId(tgName, v.Id),
+		TaskGroup: tgName,
 		Version:   v.Id,
 	}
 
-	tg, err := GetTaskGroup(&t1)
+	tg, err := GetTaskGroup(&TaskConfig{
+		Version: &v,
+		Task:    &t1,
+	})
 	assert.NoError(err)
 	assert.Equal(tgName, tg.Name)
 	assert.Len(tg.Tasks, 2)

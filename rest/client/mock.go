@@ -147,6 +147,7 @@ func (c *Mock) GetTask(ctx context.Context, td TaskData) (*task.Task, error) {
 		BuildVariant: "mock_build_variant",
 		DisplayName:  "build",
 		Execution:    c.TaskExecution,
+		Version:      "mock_version_id",
 	}, nil
 }
 

@@ -138,26 +138,28 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 	var err error
+	tc.logger.Task().Info("Running pre-task commands.")
 	if tc.runGroupSetup {
-		tc.logger.Task().Info("Running pre-task commands.")
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
-
-		// note that if there is a named TaskGroup without a SetupGroup, we do NOT fall back to Pre
-		if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
-			if taskGroup.SetupGroup != nil {
-				err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false)
-			}
-		} else if tc.taskConfig.Project.Pre != nil {
-			err = a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false)
+		taskGroup, err := model.GetTaskGroup(tc.taskConfig)
+		if err != nil {
+			tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-group commands"))
+			return
+		}
+		if taskGroup.SetupGroup != nil {
+			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false)
 		}
 	}
 
-	if taskGroup := tc.taskConfig.Project.FindTaskGroup(tc.taskGroup); taskGroup != nil {
-		if taskGroup.SetupTask != nil {
-			err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false)
-		}
+	taskGroup, err := model.GetTaskGroup(tc.taskConfig)
+	if err != nil {
+		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for pre-task commands"))
+		return
+	}
+	if taskGroup.SetupTask != nil {
+		err = a.runCommands(ctx, tc, taskGroup.SetupTask.List(), false)
 	}
 	tc.logger.Task().ErrorWhenf(err != nil, "Running pre-task commands failed: %v", err)
 	tc.logger.Task().InfoWhen(err == nil, "Finished running pre-task commands.")
