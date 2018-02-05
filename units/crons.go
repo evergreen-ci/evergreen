@@ -105,7 +105,7 @@ func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 	}
 }
 
-func PopulateActivationJobs(env evergreen.Environment) amboy.QueueOperation {
+func PopulateActivationJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		adminSettings, err := admin.GetSettings()
 		if err != nil {
@@ -134,7 +134,7 @@ func PopulateActivationJobs(env evergreen.Environment) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewStepbackActiationJob(env, proj.Identifier, ts)))
+			catcher.Add(queue.Put(NewStepbackActiationJob(proj.Identifier, ts)))
 		}
 
 		return catcher.Resolve()

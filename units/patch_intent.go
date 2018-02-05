@@ -53,6 +53,7 @@ type patchIntentProcessor struct {
 func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
 	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, intent.GetType(), intent.ID()))
+
 	j.Intent = intent
 	j.PatchID = patchID
 	return j

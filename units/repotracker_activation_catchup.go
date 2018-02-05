@@ -25,13 +25,10 @@ func init() {
 type stepbackActivationCatchup struct {
 	Project  string `bson:"project" json:"project" yaml:"project"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-
-	env evergreen.Environment
 }
 
 func makeStepbackActivationCatchupJob() *stepbackActivationCatchup {
 	j := &stepbackActivationCatchup{
-		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    stepbackActivationCatchupJobName,
@@ -45,10 +42,10 @@ func makeStepbackActivationCatchupJob() *stepbackActivationCatchup {
 
 }
 
-func NewStepbackActiationJob(env evergreen.Environment, project string, id string) amboy.Job {
+func NewStepbackActiationJob(project string, id string) amboy.Job {
 	j := makeStepbackActivationCatchupJob()
 	j.Project = project
-	j.env = env
+
 	j.SetID(fmt.Sprintf("%s.%s.%s", stepbackActivationCatchupJobName, project, id))
 	return j
 }
@@ -56,7 +53,7 @@ func NewStepbackActiationJob(env evergreen.Environment, project string, id strin
 func (j *stepbackActivationCatchup) Run() {
 	defer j.MarkComplete()
 
-	conf := j.env.Settings()
+	conf := evergreen.GetEnvironment().Settings()
 
 	ref, err := model.FindOneProjectRef(j.Project)
 	if err != nil {

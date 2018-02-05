@@ -25,9 +25,9 @@ func TestStepbackActivationJob(t *testing.T) {
 
 	env := &mock.Environment{}
 
-	jOne := NewStepbackActiationJob(env, "foo", "id")
-	jTwo := NewStepbackActiationJob(env, "foo", "id")
-	jThree := NewStepbackActiationJob(env, "foo", "id0")
+	jOne := NewStepbackActiationJob("foo", "id")
+	jTwo := NewStepbackActiationJob("foo", "id")
+	jThree := NewStepbackActiationJob("foo", "id0")
 	assert.Equal(jOne.ID(), jTwo.ID())
 	assert.Equal(jOne, jTwo)
 	assert.NotEqual(jThree.ID(), jOne.ID())
