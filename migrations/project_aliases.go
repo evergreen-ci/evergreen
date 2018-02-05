@@ -73,7 +73,6 @@ func makeProjectAliasMigration(database string) db.MigrationOperation {
 		catcher := grip.NewSimpleCatcher()
 		for _, alias := range aliases {
 			data := bson.M{
-				"_id":        bson.NewObjectId(),
 				"project_id": projectID,
 				"alias":      alias.Alias,
 				"variant":    alias.Variant,

@@ -53,16 +53,10 @@ type ProjectAlias struct {
 // FindAliasesForProject fetches all aliases for a given project
 func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
 	out := []ProjectAlias{}
-	err := db.FindAll(ProjectAliasCollection,
-		bson.M{
-			projectIDKey: projectID,
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&out)
-
+	q := db.Query(bson.M{
+		projectIDKey: projectID,
+	})
+	err := db.FindAllQ(ProjectAliasCollection, q, &out)
 	if err != nil {
 		return nil, err
 	}
