@@ -11,28 +11,31 @@ const (
 	ResourceTypeTask = "TASK"
 
 	// event types
-	TaskCreated         = "TASK_CREATED"
-	TaskDispatched      = "TASK_DISPATCHED"
-	TaskUndispatched    = "TASK_UNDISPATCHED"
-	TaskStarted         = "TASK_STARTED"
-	TaskFinished        = "TASK_FINISHED"
-	TaskRestarted       = "TASK_RESTARTED"
-	TaskActivated       = "TASK_ACTIVATED"
-	TaskDeactivated     = "TASK_DEACTIVATED"
-	TaskAbortRequest    = "TASK_ABORT_REQUEST"
-	TaskScheduled       = "TASK_SCHEDULED"
-	TaskPriorityChanged = "TASK_PRIORITY_CHANGED"
+	TaskCreated          = "TASK_CREATED"
+	TaskDispatched       = "TASK_DISPATCHED"
+	TaskUndispatched     = "TASK_UNDISPATCHED"
+	TaskStarted          = "TASK_STARTED"
+	TaskFinished         = "TASK_FINISHED"
+	TaskRestarted        = "TASK_RESTARTED"
+	TaskActivated        = "TASK_ACTIVATED"
+	TaskDeactivated      = "TASK_DEACTIVATED"
+	TaskAbortRequest     = "TASK_ABORT_REQUEST"
+	TaskScheduled        = "TASK_SCHEDULED"
+	TaskPriorityChanged  = "TASK_PRIORITY_CHANGED"
+	TaskJiraAlertCreated = "TASK_JIRA_ALERT_CREATED"
 )
 
 // implements Data
 type TaskEventData struct {
 	// necessary for IsValid
-	ResourceType string    `bson:"r_type" json:"resource_type"`
-	HostId       string    `bson:"h_id,omitempty" json:"host_id,omitempty"`
-	UserId       string    `bson:"u_id,omitempty" json:"user_id,omitempty"`
-	Status       string    `bson:"s,omitempty" json:"status,omitempty"`
-	Timestamp    time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
-	Priority     int64     `bson:"pri,omitempty" json:"priority,omitempty"`
+	ResourceType string `bson:"r_type" json:"resource_type"`
+	HostId       string `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	UserId       string `bson:"u_id,omitempty" json:"user_id,omitempty"`
+	Status       string `bson:"s,omitempty" json:"status,omitempty"`
+	JiraIssue    string `bson:"jira,omitempty" json:"jira,omitempty"`
+
+	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
+	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
 func (self TaskEventData) IsValid() bool {
@@ -52,6 +55,10 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	if err := logger.LogEvent(event); err != nil {
 		grip.Errorf("Error logging task event: %+v", err)
 	}
+}
+
+func LogJiraIssueCreated(taskId, jiraIssue string) {
+	LogTaskEvent(taskId, TaskJiraAlertCreated, TaskEventData{JiraIssue: jiraIssue})
 }
 
 func LogTaskPriority(taskId, user string, priority int64) {

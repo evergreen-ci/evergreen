@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -106,6 +107,8 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	if err != nil {
 		return errors.Wrap(err, "error creating JIRA ticket")
 	}
+
+	event.LogJiraIssueCreated(ctx.Task.Id, result.Id)
 
 	grip.Info(message.Fields{
 		"message": "creating jira ticket for failure",
