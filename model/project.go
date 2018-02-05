@@ -912,17 +912,19 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
 func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
-	var pairs []TVPair
 	vars, err := FindAliasInProject(p.Identifier, alias)
 	if err != nil || len(vars) == 0 {
-		return pairs, err
+		return nil, err
 	}
+
+	var pairs []TVPair
 	for _, v := range vars {
 		var variantRegex *regexp.Regexp
 		variantRegex, err = regexp.Compile(v.Variant)
 		if err != nil {
 			return pairs, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
 		}
+
 		var taskRegex *regexp.Regexp
 		taskRegex, err = regexp.Compile(v.Task)
 		if err != nil {
@@ -932,12 +934,15 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
 		for _, variant := range p.BuildVariants {
 			if variantRegex.MatchString(variant.Name) {
 				for _, task := range p.Tasks {
-					if ((v.Task != "" && taskRegex.MatchString(task.Name)) ||
-						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) &&
-						(p.FindTaskForVariant(task.Name, variant.Name) != nil) {
-						if task.Patchable != nil && !(*task.Patchable) {
-							continue
-						}
+					if task.Patchable != nil && !(*task.Patchable) {
+						continue
+					}
+					if !((v.Task != "" && taskRegex.MatchString(task.Name)) ||
+						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) {
+						continue
+					}
+
+					if p.FindTaskForVariant(task.Name, variant.Name) != nil {
 						pairs = append(pairs, TVPair{variant.Name, task.Name})
 					}
 				}

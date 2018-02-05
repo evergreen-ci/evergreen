@@ -459,7 +459,7 @@ func (s *projectSuite) SetupTest() {
 	s.vars = ProjectVars{
 		Id: "project",
 	}
-	s.NoError(s.vars.Insert())
+	s.Require().NoError(s.vars.Insert())
 
 	s.aliases = []ProjectAlias{
 		{
@@ -679,7 +679,7 @@ func (s *projectSuite) TestAliasResolution() {
 	// test for alias including disabled task
 	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
 	s.NoError(err)
-	s.Len(pairs, 1)
+	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
 }
 
@@ -695,7 +695,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Len(patchDoc.Tasks, 7)
 
-	// test all tasks expansion with named buildvariant
+	// test all tasks expansion with named buildvariant expands unnamed buildvariant
 	patchDoc.BuildVariants = []string{"bv_1"}
 	patchDoc.Tasks = []string{"all"}
 	patchDoc.VariantsTasks = []patch.VariantTasks{}
