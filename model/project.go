@@ -935,6 +935,9 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
 					if ((v.Task != "" && taskRegex.MatchString(task.Name)) ||
 						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) &&
 						(p.FindTaskForVariant(task.Name, variant.Name) != nil) {
+						if task.Patchable != nil && !(*task.Patchable) {
+							continue
+						}
 						pairs = append(pairs, TVPair{variant.Name, task.Name})
 					}
 				}

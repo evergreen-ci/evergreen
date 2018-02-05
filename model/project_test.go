@@ -553,11 +553,15 @@ func (s *projectSuite) SetupTest() {
 					{
 						Name: "very_task",
 					},
+					{
+						Name:      "another_disabled_task",
+						Patchable: boolPtr(false),
+					},
 				},
 				DisplayTasks: []DisplayTask{
 					{
 						Name:           "memes",
-						ExecutionTasks: []string{"wow_task", "9001_task", "very_task"},
+						ExecutionTasks: []string{"wow_task", "9001_task", "very_task", "another_disabled_task"},
 					},
 				},
 			},
@@ -575,6 +579,10 @@ func (s *projectSuite) SetupTest() {
 					},
 					{
 						Name: "b_task_2",
+					},
+					{
+						Name:      "another_disabled_task",
+						Patchable: boolPtr(false),
 					},
 				},
 			},
@@ -616,6 +624,10 @@ func (s *projectSuite) SetupTest() {
 			},
 			{
 				Name: "disabled_task",
+			},
+			{
+				Name:      "another_disabled_task",
+				Patchable: boolPtr(false),
 			},
 		},
 	}
@@ -799,6 +811,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	s.project.BuildProjectTVPairs(&patchDoc, "disabled_stuff")
 	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
 	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
+	s.Require().Len(patchDoc.VariantsTasks, 1)
 	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
 	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
 	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
@@ -811,6 +824,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisabledBuildVariant() {
 	s.project.BuildProjectTVPairs(&patchDoc, "")
 	s.Equal([]string{"bv_3"}, patchDoc.BuildVariants)
 	s.Equal([]string{"disabled_task"}, patchDoc.Tasks)
+	s.Require().Len(patchDoc.VariantsTasks, 1)
 	s.Equal("bv_3", patchDoc.VariantsTasks[0].Variant)
 	s.Equal([]string{"disabled_task"}, patchDoc.VariantsTasks[0].Tasks)
 	s.Empty(patchDoc.VariantsTasks[0].DisplayTasks)
