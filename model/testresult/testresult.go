@@ -81,6 +81,10 @@ func (t *TestResult) Insert() error {
 }
 
 func InsertMany(results []TestResult) error {
+	if len(results) == 0 {
+		return errors.New("cannot insert empty results")
+	}
+
 	docs := make([]interface{}, len(results))
 	for idx := range results {
 		docs[idx] = results[idx]

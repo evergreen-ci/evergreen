@@ -92,6 +92,7 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 	execution := 3
 	i := 10
 	t := TestResult{
+		TaskID:    taskID,
 		ID:        bson.NewObjectId(),
 		Status:    "pass",
 		TestFile:  fmt.Sprintf("file-%d", i),
@@ -102,8 +103,10 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 		ExitCode:  i,
 		StartTime: float64(i),
 		EndTime:   float64(i),
+		Execution: execution,
 	}
-	err := t.InsertByTaskIDAndExecution(taskID, execution)
+
+	err := InsertMany([]TestResult{t})
 	s.NoError(err)
 	find, err := FindByTaskIDAndExecution(taskID, execution)
 	s.NoError(err)
@@ -121,7 +124,7 @@ func (s *TestResultSuite) TestInsertManyTestResultsForTask() {
 			Execution: execution,
 		})
 	}
-	err := InsertManyByTaskIDAndExecution(toInsert, taskID, execution)
+	err := InsertMany(toInsert)
 	s.NoError(err)
 	find, err := FindByTaskIDAndExecution(taskID, execution)
 	s.NoError(err)
@@ -131,20 +134,8 @@ func (s *TestResultSuite) TestInsertManyTestResultsForTask() {
 func (s *TestResultSuite) TestInsertTestResultForTaskEmptyTaskShouldErr() {
 	taskID := ""
 	execution := 3
-	i := 10
-	t := TestResult{
-		ID:        bson.NewObjectId(),
-		Status:    "pass",
-		TestFile:  fmt.Sprintf("file-%d", i),
-		URL:       fmt.Sprintf("url-%d", i),
-		URLRaw:    fmt.Sprintf("urlraw-%d", i),
-		LogID:     fmt.Sprintf("logid-%d", i),
-		LineNum:   i,
-		ExitCode:  i,
-		StartTime: float64(i),
-		EndTime:   float64(i),
-	}
-	err := t.InsertByTaskIDAndExecution(taskID, execution)
+
+	err := InsertMany([]TestResult{})
 	s.Error(err)
 	find, err := FindByTaskIDAndExecution(taskID, execution)
 	s.NoError(err)
