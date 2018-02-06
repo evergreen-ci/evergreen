@@ -99,6 +99,8 @@ func TestGetTestHistory(t *testing.T) {
 		task1results := []testresult.TestResult{
 			testresult.TestResult{
 				Status:    evergreen.TestFailedStatus,
+				TaskID:    task1.Id,
+				Execution: task1.Execution,
 				TestFile:  "test1",
 				URL:       "url",
 				StartTime: float64(now.Unix()),
@@ -106,13 +108,15 @@ func TestGetTestHistory(t *testing.T) {
 			},
 			testresult.TestResult{
 				Status:    evergreen.TestSucceededStatus,
+				TaskID:    task1.Id,
+				Execution: task1.Execution,
 				TestFile:  "test2",
 				URL:       "anotherurl",
 				StartTime: float64(now.Unix()),
 				EndTime:   float64(now.Add(time.Duration(60 * time.Second)).Unix()),
 			},
 		}
-		So(testresult.InsertManyByTaskIDAndExecution(task1results, task1.Id, task1.Execution), ShouldBeNil)
+		So(testresult.InsertMany(task1results), ShouldBeNil)
 		task2 := task.Task{
 			Id:                  "task2",
 			DisplayName:         "test",
@@ -128,6 +132,8 @@ func TestGetTestHistory(t *testing.T) {
 		task2results := []testresult.TestResult{
 			testresult.TestResult{
 				Status:    evergreen.TestFailedStatus,
+				TaskID:    task2.Id,
+				Execution: task2.Execution,
 				TestFile:  "test1",
 				URL:       "url",
 				StartTime: float64(now.Unix()),
@@ -135,13 +141,15 @@ func TestGetTestHistory(t *testing.T) {
 			},
 			testresult.TestResult{
 				Status:    evergreen.TestFailedStatus,
+				TaskID:    task2.Id,
+				Execution: task2.Execution,
 				TestFile:  "test2",
 				URL:       "anotherurl",
 				StartTime: float64(now.Unix()),
 				EndTime:   float64(now.Add(time.Duration(30 * time.Second)).Unix()),
 			},
 		}
-		So(testresult.InsertManyByTaskIDAndExecution(task2results, task2.Id, task2.Execution), ShouldBeNil)
+		So(testresult.InsertMany(task2results), ShouldBeNil)
 
 		task3 := task.Task{
 			Id:                  "task3",
@@ -156,17 +164,21 @@ func TestGetTestHistory(t *testing.T) {
 		So(task3.Insert(), ShouldBeNil)
 		task3results := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
-				LogID:    "2",
+				Status:    evergreen.TestFailedStatus,
+				TaskID:    task3.Id,
+				Execution: task3.Execution,
+				TestFile:  "test1",
+				LogID:     "2",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestSucceededStatus,
-				TestFile: "test3",
-				LogID:    "4",
+				Status:    evergreen.TestSucceededStatus,
+				TaskID:    task3.Id,
+				Execution: task3.Execution,
+				TestFile:  "test3",
+				LogID:     "4",
 			},
 		}
-		So(testresult.InsertManyByTaskIDAndExecution(task3results, task3.Id, task3.Execution), ShouldBeNil)
+		So(testresult.InsertMany(task3results), ShouldBeNil)
 
 		Convey("response should be a list of test results", func() {
 

@@ -93,6 +93,8 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 	i := 10
 	t := TestResult{
 		ID:        bson.NewObjectId(),
+		TaskID:    taskID,
+		Execution: execution,
 		Status:    "pass",
 		TestFile:  fmt.Sprintf("file-%d", i),
 		URL:       fmt.Sprintf("url-%d", i),
@@ -103,7 +105,7 @@ func (s *TestResultSuite) TestInsertTestResultForTask() {
 		StartTime: float64(i),
 		EndTime:   float64(i),
 	}
-	err := t.InsertByTaskIDAndExecution(taskID, execution)
+	err := InsertMany([]TestResult{t})
 	s.NoError(err)
 	find, err := FindByTaskIDAndExecution(taskID, execution)
 	s.NoError(err)
@@ -121,7 +123,7 @@ func (s *TestResultSuite) TestInsertManyTestResultsForTask() {
 			Execution: execution,
 		})
 	}
-	err := InsertManyByTaskIDAndExecution(toInsert, taskID, execution)
+	err := InsertMany(toInsert)
 	s.NoError(err)
 	find, err := FindByTaskIDAndExecution(taskID, execution)
 	s.NoError(err)
@@ -134,6 +136,8 @@ func (s *TestResultSuite) TestInsertTestResultForTaskEmptyTaskShouldErr() {
 	i := 10
 	t := TestResult{
 		ID:        bson.NewObjectId(),
+		TaskID:    taskID,
+		Execution: execution,
 		Status:    "pass",
 		TestFile:  fmt.Sprintf("file-%d", i),
 		URL:       fmt.Sprintf("url-%d", i),
@@ -144,7 +148,7 @@ func (s *TestResultSuite) TestInsertTestResultForTaskEmptyTaskShouldErr() {
 		StartTime: float64(i),
 		EndTime:   float64(i),
 	}
-	err := t.InsertByTaskIDAndExecution(taskID, execution)
+	err := InsertMany([]TestResult{t})
 	s.Error(err)
 	find, err := FindByTaskIDAndExecution(taskID, execution)
 	s.NoError(err)

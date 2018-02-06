@@ -37,7 +37,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		hostId = "host_id"
 	)
 
-	_, err = insertTaskForTesting(taskId, "version", "project", testresult.TestResult{})
+	_, err = insertTaskForTesting(taskId, "version", "project", testresult.TestResult{TaskID: taskId})
 	testutil.HandleTestingErr(err, t, "problem creating task")
 
 	_, err = insertHostWithRunningTask(hostId, taskId)

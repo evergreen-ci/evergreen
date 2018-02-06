@@ -65,7 +65,7 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult test
 	if err != nil {
 		return nil, err
 	}
-	return task, testresult.InsertManyByTaskIDAndExecution([]testresult.TestResult{testResult}, task.Id, task.Execution)
+	return task, testresult.InsertMany([]testresult.TestResult{testResult})
 }
 
 func TestGetTaskInfo(t *testing.T) {
@@ -100,6 +100,8 @@ func TestGetTaskInfo(t *testing.T) {
 
 		testResult := testresult.TestResult{
 			Status:    "success",
+			TaskID:    taskId,
+			Execution: 0,
 			TestFile:  "some-test",
 			URL:       "some-url",
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
@@ -301,13 +303,6 @@ func TestGetTaskStatus(t *testing.T) {
 
 		taskId := "my-task"
 
-		testResult := testresult.TestResult{
-			Status:    "success",
-			TestFile:  "some-test",
-			URL:       "some-url",
-			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
-			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
-		}
 		testTask := &task.Task{
 			Id:          taskId,
 			DisplayName: "My task",
@@ -317,8 +312,17 @@ func TestGetTaskStatus(t *testing.T) {
 				Description: "some-stage",
 			},
 		}
+		testResult := testresult.TestResult{
+			Status:    "success",
+			TaskID:    testTask.Id,
+			Execution: testTask.Execution,
+			TestFile:  "some-test",
+			URL:       "some-url",
+			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
+			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
+		}
 		So(testTask.Insert(), ShouldBeNil)
-		So(testresult.InsertManyByTaskIDAndExecution([]testresult.TestResult{testResult}, testTask.Id, testTask.Execution), ShouldBeNil)
+		So(testresult.InsertMany([]testresult.TestResult{testResult}), ShouldBeNil)
 
 		url, err := router.Get("task_status").URL("task_id", taskId)
 		So(err, ShouldBeNil)

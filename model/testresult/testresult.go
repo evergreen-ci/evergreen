@@ -3,6 +3,7 @@ package testresult
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -82,8 +83,15 @@ func (t *TestResult) Insert() error {
 
 func InsertMany(results []TestResult) error {
 	docs := make([]interface{}, len(results))
-	for idx := range results {
+	catcher := grip.NewSimpleCatcher()
+	for idx, result := range results {
+		if result.TaskID == "" {
+			catcher.Add(errors.New("Cannot insert test result with empty task ID"))
+		}
 		docs[idx] = results[idx]
+	}
+	if catcher.HasErrors() {
+		return catcher.Resolve()
 	}
 
 	return errors.WithStack(db.InsertMany(Collection, docs...))

@@ -697,15 +697,19 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(task1.Insert())
 		testresults1 := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
+				TaskID:    task1.Id,
+				Execution: task1.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test1",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestSucceededStatus,
-				TestFile: "test2",
+				TaskID:    task1.Id,
+				Execution: task1.Execution,
+				Status:    evergreen.TestSucceededStatus,
+				TestFile:  "test2",
 			},
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(testresults1, task1.Id, task1.Execution))
+		assert.NoError(testresult.InsertMany(testresults1))
 		task2 := task.Task{
 			Id:                  "task2",
 			DisplayName:         "test",
@@ -718,15 +722,19 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(task2.Insert())
 		testresults2 := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
+				TaskID:    task2.Id,
+				Execution: task2.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test1",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test2",
+				TaskID:    task2.Id,
+				Execution: task2.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test2",
 			},
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(testresults2, task2.Id, task2.Execution))
+		assert.NoError(testresult.InsertMany(testresults2))
 		task3 := task.Task{
 			Id:                  "task3",
 			DisplayName:         "test2",
@@ -753,19 +761,25 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(task3.Insert())
 		testresults3 := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
+				TaskID:    task3.Id,
+				Execution: task3.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test1",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestSucceededStatus,
-				TestFile: "test3",
+				TaskID:    task3.Id,
+				Execution: task3.Execution,
+				Status:    evergreen.TestSucceededStatus,
+				TestFile:  "test3",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestSilentlyFailedStatus,
-				TestFile: "test4",
+				TaskID:    task3.Id,
+				Execution: task3.Execution,
+				Status:    evergreen.TestSilentlyFailedStatus,
+				TestFile:  "test4",
 			},
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(testresults3, task3.Id, task3.Execution))
+		assert.NoError(testresult.InsertMany(testresults3))
 		// retrieving the task history with just a task name in the parameters should return relevant results
 		params := TestHistoryParameters{
 			TaskNames:    []string{"test"},
@@ -885,15 +899,19 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(anotherBV.Insert())
 		anotherBVresults := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
+				TaskID:    anotherBV.Id,
+				Execution: anotherBV.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test1",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test2",
+				TaskID:    anotherBV.Id,
+				Execution: anotherBV.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test2",
 			},
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(anotherBVresults, anotherBV.Id, anotherBV.Execution))
+		assert.NoError(testresult.InsertMany(anotherBVresults))
 		// including a filter on build variant should only return test results with that build variant
 		params = TestHistoryParameters{
 			TaskNames:     []string{"test"},
@@ -947,15 +965,19 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(diffOrder.Insert())
 		diffOrderResults := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test2",
+				TaskID:    diffOrder.Id,
+				Execution: diffOrder.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test2",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
+				TaskID:    diffOrder.Id,
+				Execution: diffOrder.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test1",
 			},
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(diffOrderResults, diffOrder.Id, diffOrder.Execution))
+		assert.NoError(testresult.InsertMany(diffOrderResults))
 		diffOrder2 := task.Task{
 			Id:                  "anotherTaskId2",
 			DisplayName:         "testTask",
@@ -967,15 +989,19 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(diffOrder2.Insert())
 		diffOrder2Results := []testresult.TestResult{
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test1",
+				TaskID:    diffOrder2.Id,
+				Execution: diffOrder2.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test1",
 			},
 			testresult.TestResult{
-				Status:   evergreen.TestFailedStatus,
-				TestFile: "test2",
+				TaskID:    diffOrder2.Id,
+				Execution: diffOrder2.Execution,
+				Status:    evergreen.TestFailedStatus,
+				TestFile:  "test2",
 			},
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(diffOrder2Results, diffOrder2.Id, diffOrder2.Execution))
+		assert.NoError(testresult.InsertMany(diffOrder2Results))
 
 		// the order of the tests should be the same
 		params = TestHistoryParameters{
@@ -1010,10 +1036,12 @@ func TestGetTestHistory(t *testing.T) {
 		}
 		assert.NoError(timedOutTask.Insert())
 		timedOutResults := testresult.TestResult{
-			Status:   evergreen.TestFailedStatus,
-			TestFile: "test2",
+			TaskID:    timedOutTask.Id,
+			Execution: timedOutTask.Execution,
+			Status:    evergreen.TestFailedStatus,
+			TestFile:  "test2",
 		}
-		assert.NoError(timedOutResults.InsertByTaskIDAndExecution(timedOutTask.Id, timedOutTask.Execution))
+		assert.NoError(testresult.InsertMany([]testresult.TestResult{timedOutResults}))
 		params = TestHistoryParameters{
 			Project:      project,
 			TaskNames:    []string{"test"},
@@ -1039,10 +1067,12 @@ func TestGetTestHistory(t *testing.T) {
 		}
 		assert.NoError(systemFailureTask.Insert())
 		systemFailureResult := testresult.TestResult{
-			Status:   evergreen.TestFailedStatus,
-			TestFile: "test2",
+			TaskID:    systemFailureTask.Id,
+			Execution: systemFailureTask.Execution,
+			Status:    evergreen.TestFailedStatus,
+			TestFile:  "test2",
 		}
-		assert.NoError(systemFailureResult.InsertByTaskIDAndExecution(systemFailureTask.Id, systemFailureTask.Execution))
+		assert.NoError(testresult.InsertMany([]testresult.TestResult{systemFailureResult}))
 		params = TestHistoryParameters{
 			Project:      project,
 			TaskNames:    []string{"test"},
@@ -1118,11 +1148,13 @@ func TestCompareQueryRunTimes(t *testing.T) {
 		tests := []testresult.TestResult{}
 		for j := 0; j < numTests; j++ {
 			tests = append(tests, testresult.TestResult{
-				TestFile: fmt.Sprintf("test_%d", j),
-				Status:   testStatuses[rand.Intn(3)],
+				TaskID:    t.Id,
+				Execution: t.Execution,
+				TestFile:  fmt.Sprintf("test_%d", j),
+				Status:    testStatuses[rand.Intn(3)],
 			})
 		}
-		assert.NoError(testresult.InsertManyByTaskIDAndExecution(tests, t.Id, t.Execution))
+		assert.NoError(testresult.InsertMany(tests))
 	}
 
 	// test querying on task names

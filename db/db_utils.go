@@ -31,6 +31,9 @@ func Insert(collection string, item interface{}) error {
 }
 
 func InsertMany(collection string, items ...interface{}) error {
+	if len(items) == 0 {
+		return nil
+	}
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return errors.WithStack(err)
