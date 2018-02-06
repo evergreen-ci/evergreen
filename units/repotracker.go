@@ -25,15 +25,13 @@ func init() {
 }
 
 type repotrackerJob struct {
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	env      evergreen.Environment
-
 	ProjectID string `bson:"project_id" json:"project_id" yaml:"project_id"`
+	job.Base  `bson:"job_base" json:"job_base" yaml:"job_base"`
+	env       evergreen.Environment
 }
 
 func makeRepotrackerJob() *repotrackerJob {
 	j := &repotrackerJob{
-		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    repotrackerJobName,
@@ -59,6 +57,10 @@ func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 
 func (j *repotrackerJob) Run() {
 	defer j.MarkComplete()
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {

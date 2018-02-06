@@ -64,7 +64,6 @@ func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.J
 
 func makePatchIntentProcessor() *patchIntentProcessor {
 	j := &patchIntentProcessor{
-		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    patchIntentJobName,
@@ -80,6 +79,11 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 
 func (j *patchIntentProcessor) Run() {
 	defer j.MarkComplete()
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	githubOauthToken, err := j.env.Settings().GetGithubOauthToken()
 	if err != nil {
 		j.AddError(err)

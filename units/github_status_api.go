@@ -76,7 +76,6 @@ type githubStatusUpdateJob struct {
 
 func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 	j := &githubStatusUpdateJob{
-		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    githubStatusUpdateJobName,
@@ -118,6 +117,11 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 	if !status.Valid() {
 		catcher.Add(errors.New("status is invalid"))
 	}
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
 	if j.env.Settings() == nil || j.env.Settings().Ui.Url == "" {
 		catcher.Add(errors.New("ui not configured"))
 	}

@@ -35,7 +35,6 @@ type decoHostNotifyJob struct {
 
 func makeDecoHostsNotifyJob() *decoHostNotifyJob {
 	j := &decoHostNotifyJob{
-		env: evergreen.GetEnvironment(),
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    decoHostNotifyJobName,
@@ -92,6 +91,10 @@ func (j *decoHostNotifyJob) Run() {
 	// otherwise, it was a static host and we should create jira tickets for this.
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)
+
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
 
 	conf := j.env.Settings()
 	opts := &send.JiraOptions{
