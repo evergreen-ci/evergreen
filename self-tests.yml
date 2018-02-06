@@ -580,9 +580,6 @@ tasks:
     name: race-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-model-admin
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-model-patch
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
