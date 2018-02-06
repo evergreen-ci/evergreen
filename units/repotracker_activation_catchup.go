@@ -25,6 +25,7 @@ func init() {
 type versionActivationCatchup struct {
 	Project  string `bson:"project" json:"project" yaml:"project"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
+	env      evergreen.Environment
 }
 
 func makeVersionActivationCatchupJob() *versionActivationCatchup {
@@ -53,7 +54,11 @@ func NewVersionActiationJob(project string, id string) amboy.Job {
 func (j *versionActivationCatchup) Run() {
 	defer j.MarkComplete()
 
-	conf := evergreen.GetEnvironment().Settings()
+	if j.env == nil {
+		j.env = evergreen.GetEnvironment()
+	}
+
+	conf := j.env.Settings()
 
 	ref, err := model.FindOneProjectRef(j.Project)
 	if err != nil {
