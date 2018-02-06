@@ -149,8 +149,8 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
 
       return {
         now: now,
-        baseline: baseline, 
-        history: history, 
+        baseline: baseline,
+        history: history,
       }
     })
   }
@@ -188,7 +188,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
                 if (base == undefined || !base.speed) {
                   return 1
                 }
-                return ratio(hist, baseline.speed) 
+                return ratio(hist, baseline.speed)
               })
               .value(),
           }

@@ -6,11 +6,11 @@ mciModule
 
     // ## PROJECTS API ##
     PROJECTS_API: _.template('{base}/projects/'),
-	  PROJECTS_DETAIL_API: _.template('{base}/projects/{project_id}'),
-	  PROJECTS_VERSION_API: _.template('{base}/projects/{project_id}/versions'),
-	  PROJECTS_REVISIONS_API: _.template('{base}/projects/{project_id}/revisions/{revision}'),
-	  PROJECTS_HISTORY_API: _.template('{base}/projects/{project_id}/test_history'),
-	  PROJECTS_LAST_GREEN_API: _.template('{base}/projects/{project_id}/last_green'),
+    PROJECTS_DETAIL_API: _.template('{base}/projects/{project_id}'),
+    PROJECTS_VERSION_API: _.template('{base}/projects/{project_id}/versions'),
+    PROJECTS_REVISIONS_API: _.template('{base}/projects/{project_id}/revisions/{revision}'),
+    PROJECTS_HISTORY_API: _.template('{base}/projects/{project_id}/test_history'),
+    PROJECTS_LAST_GREEN_API: _.template('{base}/projects/{project_id}/last_green'),
 
     // TODO ## PATCHES API ##
 
