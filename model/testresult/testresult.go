@@ -3,7 +3,6 @@ package testresult
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -69,25 +68,6 @@ func ByTaskIDs(ids []string) db.Q {
 	})
 }
 
-// InsertByTaskIDAndExecution adds task metadata to a TestResult and then writes it to the database.
-func (t *TestResult) InsertByTaskIDAndExecution(taskID string, execution int) error {
-	if taskID == "" {
-		return errors.New("Cannot insert test result with empty task ID")
-	}
-	t.TaskID = taskID
-	t.Execution = execution
-	return errors.Wrap(t.Insert(), "error inserting test result")
-}
-
-// InsertManyByTaskIDAndExecution adds task metadata to many LocalTestResults and writes them to the database.
-func InsertManyByTaskIDAndExecution(testResults []TestResult, taskID string, execution int) error {
-	catcher := grip.NewSimpleCatcher()
-	for _, t := range testResults {
-		catcher.Add(t.InsertByTaskIDAndExecution(taskID, execution))
-	}
-	return catcher.Resolve()
-}
-
 // find returns all test results that satisfy the query. Returns an empty slice no tasks match.
 func Find(query db.Q) ([]TestResult, error) {
 	tests := []TestResult{}
@@ -98,6 +78,15 @@ func Find(query db.Q) ([]TestResult, error) {
 // Insert writes a test result to the database.
 func (t *TestResult) Insert() error {
 	return db.Insert(Collection, t)
+}
+
+func InsertMany(results []TestResult) error {
+	docs := make([]interface{}, len(results))
+	for idx := range results {
+		docs[idx] = results[idx]
+	}
+
+	return errors.WithStack(db.InsertMany(Collection, docs...))
 }
 
 // Aggregate runs an aggregation against the testresults collection.
