@@ -57,5 +57,5 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	job.Run()
 
 	s.Error(job.Error())
-	s.Contains(job.Error().Error(), "github push events triggering repotracker is disabled")
+	s.Contains(job.Error().Error(), "repotracker is disabled")
 }
