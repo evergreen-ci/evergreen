@@ -642,9 +642,9 @@ func (s *projectSuite) SetupTest() {
 
 func (s *projectSuite) TestAliasResolution() {
 	// test that .* on variants and tasks selects everything
-	pairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
+	pairs, displayTaskPairs, err := s.project.BuildProjectTVPairsWithAlias(s.aliases[0].Alias)
 	s.NoError(err)
-	s.Len(pairs, 16)
+	s.Len(pairs, 12)
 	pairStrs := make([]string, len(pairs))
 	for i, p := range pairs {
 		pairStrs[i] = p.String()
@@ -661,57 +661,58 @@ func (s *projectSuite) TestAliasResolution() {
 	s.Contains(pairStrs, "bv_2/b_task_1")
 	s.Contains(pairStrs, "bv_2/b_task_2")
 	s.Contains(pairStrs, "bv_3/disabled_task")
+	s.Require().Len(displayTaskPairs, 1)
+	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
 	// test that the .*_2 regex on variants selects just bv_2
-	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[1].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[1].Alias)
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
 		s.Equal("bv_2", pair.Variant)
 	}
+	s.Empty(displayTaskPairs)
 
 	// test that the .*_2 regex on tasks selects just the _2 tasks
-	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[2].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[2].Alias)
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
 		s.Contains(pair.TaskName, "task_2")
 	}
+	s.Empty(displayTaskPairs)
 
 	// test that the 'a' tag only selects 'a' tasks
-	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[3].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[3].Alias)
 	s.NoError(err)
 	s.Len(pairs, 4)
 	for _, pair := range pairs {
 		s.Contains(pair.TaskName, "a_task")
 	}
+	s.Empty(displayTaskPairs)
 
 	// test that the 'a' tag and .*_2 regex selects the union of both
-	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[4].Alias)
 	s.NoError(err)
 	s.Len(pairs, 6)
 	for _, pair := range pairs {
 		s.NotEqual("b_task_1", pair.TaskName)
 	}
+	s.Empty(displayTaskPairs)
 
 	// test for display tasks
-	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[5].Alias)
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[5].Alias)
 	s.NoError(err)
-	pairStrs = make([]string, len(pairs))
-	for i, p := range pairs {
-		pairStrs[i] = p.String()
-	}
-	s.Len(pairStrs, 4)
-	s.Contains(pairStrs, "bv_1/9001_task")
-	s.Contains(pairStrs, "bv_1/very_task")
-	s.Contains(pairStrs, "bv_1/wow_task")
-	s.Contains(pairStrs, "bv_1/another_disabled_task")
+	s.Empty(pairs)
+	s.Require().Len(displayTaskPairs, 1)
+	s.Equal("bv_1/memes", displayTaskPairs[0].String())
 
-	// test for alias including disabled task
-	pairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
+	// test for alias including a task belong to a disabled variant
+	pairs, displayTaskPairs, err = s.project.BuildProjectTVPairsWithAlias(s.aliases[6].Alias)
 	s.NoError(err)
 	s.Require().Len(pairs, 1)
 	s.Equal("bv_3/disabled_task", pairs[0].String())
+	s.Empty(displayTaskPairs)
 }
 
 func (s *projectSuite) TestBuildProjectTVPairs() {
@@ -765,6 +766,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 		s.Contains(vt.Tasks, "a_task_1")
 		s.Contains(vt.Tasks, "a_task_2")
 		s.Contains(vt.Tasks, "b_task_2")
+		s.Empty(vt.DisplayTasks)
 		if vt.Variant != "bv_1" && vt.Variant != "bv_2" {
 			s.T().Fail()
 		}
@@ -820,6 +822,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 		if vt.Variant != "bv_1" && vt.Variant != "bv_2" {
 			s.T().Fail()
 		}
+		s.Empty(vt.DisplayTasks)
 	}
 }
 
@@ -843,15 +846,17 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithDisplayTask() {
 			s.Contains(vt.Tasks, "wow_task")
 			s.Contains(vt.Tasks, "a_task_1")
 			s.Contains(vt.Tasks, "9001_task")
+			s.Require().Len(vt.DisplayTasks, 1)
+			s.Equal("memes", vt.DisplayTasks[0].Name)
 
 		} else if vt.Variant == "bv_2" {
 			s.Contains(vt.Tasks, "a_task_1")
 			s.Contains(vt.Tasks, "a_task_2")
+			s.Empty(vt.DisplayTasks)
 
 		} else {
 			s.T().Fail()
 		}
-
 	}
 
 }
@@ -950,6 +955,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 		} else {
 			s.T().Fail()
 		}
+		s.Empty(vt.DisplayTasks)
 	}
 }
 
