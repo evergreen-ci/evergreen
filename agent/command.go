@@ -76,15 +76,22 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			}
 
 			start := time.Now()
-			err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
-
-			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
-			if err != nil {
-				tc.logger.Task().Errorf("Command failed: %v", err)
-				if isTaskCommands {
+			cmdChan := make(chan error)
+			go func() {
+				err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
+				cmdChan <- err
+			}()
+			select {
+			case err = <-cmdChan:
+				if err != nil {
+					tc.logger.Task().Errorf("Command failed: %v", err)
 					return errors.Wrap(err, "command failed")
 				}
+			case <-ctx.Done():
+				tc.logger.Task().Errorf("Command canceled: %v", err)
+				return errors.Wrap(err, "command canceled")
 			}
+			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
 		}
 	}
 

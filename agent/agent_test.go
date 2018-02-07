@@ -193,7 +193,7 @@ func (s *AgentSuite) TestRunPre() {
 pre:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -226,7 +226,7 @@ func (s *AgentSuite) TestRunPost() {
 post:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -467,7 +467,7 @@ task_groups:
   setup_group:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -504,7 +504,7 @@ task_groups:
   setup_task:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -541,7 +541,7 @@ task_groups:
   teardown_task:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -577,7 +577,7 @@ task_groups:
   teardown_group:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -616,7 +616,7 @@ task_groups:
   timeout:
   - command: shell.exec
     params:
-    script: "echo hi"
+      script: "echo hi"
 `
 	v := &version.Version{
 		Id:     versionId,
@@ -630,4 +630,47 @@ task_groups:
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
 	s.Contains(msgs[len(msgs)-2].Message, "Finished 'shell.exec'")
+}
+
+func (s *AgentSuite) TestTimeoutDoesNotWaitForChildProcs() {
+	s.tc.task = client.TaskData{
+		ID:     "task_id",
+		Secret: "task_secret",
+	}
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:      "task_id",
+			Version: versionId,
+		},
+		Project: &model.Project{
+			CallbackTimeout: 2,
+		},
+		WorkDir: s.tc.taskDirectory,
+	}
+	projYml := `
+
+timeout:
+  - command: shell.exec
+    params:
+      shell: bash
+      script: |
+        echo "hi"
+        sleep 5
+        echo "bye"
+`
+	v := &version.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
+	s.tc.taskConfig.Version = v
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	now := time.Now()
+	s.a.runTaskTimeoutCommands(ctx, s.tc)
+	then := time.Now()
+	s.True(then.Sub(now) < 4*time.Second)
+	_ = s.tc.logger.Close()
 }
