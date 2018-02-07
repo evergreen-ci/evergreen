@@ -40,9 +40,10 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	}
 	if adminSettings.ServiceFlags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "github push events triggering repotracker is disabled",
+			"message": "repotracker is disabled",
+			"source":  "github hooks",
 		})
-		return errors.New("github push events triggering repotracker is disabled")
+		return errors.New("repotracker is disabled")
 	}
 
 	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,

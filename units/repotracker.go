@@ -70,9 +70,10 @@ func (j *repotrackerJob) Run() {
 	if adminSettings.ServiceFlags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     repotrackerJobName,
-			"message": "github push events triggering repotracker is disabled",
+			"id":      j.ID(),
+			"message": "repotracker is disabled",
 		})
-		j.AddError(errors.New("github push events triggering repotracker is disabled"))
+		j.AddError(errors.New("repotracker is disabled"))
 		return
 	}
 
