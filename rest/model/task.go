@@ -60,6 +60,17 @@ type apiTaskEndDetail struct {
 	TimedOut    bool      `json:"timed_out"`
 }
 
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task) error {
+	at.PreviousExecutions = make([]APITask, len(tasks))
+	for i := range at.PreviousExecutions {
+		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
+			return errors.Wrap(err, "error marshalling previous execution")
+		}
+	}
+
+	return nil
+}
+
 // BuildFromService converts from a service level task by loading the data
 // into the appropriate fields of the APITask.
 func (at *APITask) BuildFromService(t interface{}) error {

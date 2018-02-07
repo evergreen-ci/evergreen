@@ -406,13 +406,24 @@ func TestTaskByBuildPaginator(t *testing.T) {
 		serviceContext := data.MockConnector{}
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
+			cachedOldTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
 				nextTask := task.Task{
 					Id: fmt.Sprintf("build%d", i),
 				}
 				cachedTasks = append(cachedTasks, nextTask)
 			}
+			for i := 0; i < 5; i++ {
+				nextTask := task.Task{
+					Id:        fmt.Sprintf("build0_%d", i),
+					OldTaskId: "build0",
+					Execution: i,
+				}
+				cachedOldTasks = append(cachedOldTasks, nextTask)
+			}
+
 			serviceContext.MockTaskConnector.CachedTasks = cachedTasks
+			serviceContext.MockTaskConnector.CachedOldTasks = cachedOldTasks
 			Convey("then finding a key in the middle of the set should produce"+
 				" a full next and previous page and a full set of models", func() {
 				taskToStartAt := 100
@@ -562,6 +573,31 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				checkPaginatorResultMatches(tasksByBuildPaginator, fmt.Sprintf("build%d", taskToStartAt),
 					limit, &serviceContext, tasksByBuildArgs{}, expectedPages, expectedTasks, nil)
 
+			})
+
+			Convey("pagination with tasks with previous executions", func() {
+				expectedTasks := []model.Model{}
+				serviceModel := &task.Task{
+					Id: "build0",
+				}
+				nextModelTask := &model.APITask{}
+				err := nextModelTask.BuildFromService(serviceModel)
+				So(err, ShouldBeNil)
+				err = nextModelTask.BuildPreviousExecutions(cachedOldTasks)
+				So(err, ShouldBeNil)
+				err = nextModelTask.BuildFromService("")
+				So(err, ShouldBeNil)
+				expectedTasks = append(expectedTasks, nextModelTask)
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      "build1",
+						Limit:    1,
+						Relation: "next",
+					},
+				}
+				checkPaginatorResultMatches(tasksByBuildPaginator, "build0", 1,
+					&serviceContext, tasksByBuildArgs{fetchAllExecutions: true},
+					expectedPages, expectedTasks, nil)
 			})
 		})
 	})
@@ -948,6 +984,11 @@ func TestTaskGetHandler(t *testing.T) {
 			sc.MockTaskConnector.CachedTasks = []task.Task{
 				{Id: "testTaskId"},
 			}
+			sc.MockTaskConnector.CachedOldTasks = []task.Task{
+				{Id: "testTaskId_0",
+					OldTaskId: "testTaskId",
+				},
+			}
 			rm.Register(r, sc)
 			Convey("a request with a user should then return no error and a task should"+
 				" should be returned", func() {
@@ -971,6 +1012,7 @@ func TestTaskGetHandler(t *testing.T) {
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
 				So(res.Id, ShouldEqual, "testTaskId")
+				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("a request without a user should then return a 404 error and a task should"+
 				" should be not returned", func() {
@@ -982,6 +1024,47 @@ func TestTaskGetHandler(t *testing.T) {
 				rr := httptest.NewRecorder()
 				r.ServeHTTP(rr, req)
 				So(rr.Code, ShouldEqual, http.StatusNotFound)
+			})
+			Convey("and old tasks are available", func() {
+				sc.MockTaskConnector.CachedTasks[0].Execution = 1
+				sc.MockUserConnector.CachedUsers = map[string]*user.DBUser{
+					"User": &user.DBUser{
+						APIKey: "Key",
+						Id:     "User",
+					},
+				}
+
+				Convey("a test that requests old executions should receive them", func() {
+					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId?fetch_all_executions=", nil)
+					So(err, ShouldBeNil)
+					req.Header.Add("Api-Key", "Key")
+					req.Header.Add("Api-User", "User")
+
+					rr := httptest.NewRecorder()
+					r.ServeHTTP(rr, req)
+					So(rr.Code, ShouldEqual, http.StatusOK)
+
+					res := model.APITask{}
+					err = json.Unmarshal(rr.Body.Bytes(), &res)
+					So(err, ShouldBeNil)
+					So(len(res.PreviousExecutions), ShouldEqual, 1)
+				})
+				Convey("a test that doesn't request old executions should not receive them", func() {
+					req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
+					So(err, ShouldBeNil)
+					req.Header.Add("Api-Key", "Key")
+					req.Header.Add("Api-User", "User")
+
+					rr := httptest.NewRecorder()
+					r.ServeHTTP(rr, req)
+					So(rr.Code, ShouldEqual, http.StatusOK)
+
+					res := model.APITask{}
+					err = json.Unmarshal(rr.Body.Bytes(), &res)
+					So(err, ShouldBeNil)
+					So(len(res.PreviousExecutions), ShouldEqual, 0)
+				})
+
 			})
 		})
 	})
