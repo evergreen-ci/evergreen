@@ -3,6 +3,7 @@ package version
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
@@ -75,3 +76,54 @@ var (
 	BuildStatusActivateAtKey = bsonutil.MustHaveTag(BuildStatus{}, "ActivateAt")
 	BuildStatusBuildIdKey    = bsonutil.MustHaveTag(BuildStatus{}, "BuildId")
 )
+
+type DuplicateVersionsID struct {
+	Hash      string `bson:"hash"`
+	ProjectID string `bson:"project_id"`
+}
+
+type DuplicateVersions struct {
+	ID       DuplicateVersionsID `bson:"_id"`
+	Versions []Version           `bson:"versions"`
+}
+
+func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
+	pipeline := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				RequesterKey: evergreen.RepotrackerVersionRequester,
+				CreateTimeKey: bson.M{
+					"$gte": since,
+				},
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
+					"project_id": "$" + IdentifierKey,
+					"hash":       "$" + RevisionKey,
+				},
+				"count": bson.M{
+					"$sum": 1,
+				},
+				"versions": bson.M{
+					"$push": "$$ROOT",
+				},
+			},
+		},
+		bson.M{
+			"$match": bson.M{
+				"count": bson.M{
+					"$gt": 1,
+				},
+			},
+		},
+	}
+
+	out := []DuplicateVersions{}
+	if err := db.Aggregate(Collection, pipeline, &out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
