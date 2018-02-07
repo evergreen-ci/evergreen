@@ -142,8 +142,8 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
-func ByTaskSpec(group, bv, project, version string) db.Q {
-	return db.Query(bson.M{
+func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
+	q := db.Query(bson.M{
 		StatusKey:                  evergreen.HostRunning,
 		RunningTaskKey:             bson.M{"$exists": "true"},
 		RunningTaskGroupKey:        group,
@@ -151,6 +151,11 @@ func ByTaskSpec(group, bv, project, version string) db.Q {
 		RunningTaskProjectKey:      project,
 		RunningTaskVersionKey:      version,
 	})
+	hosts, err := Find(q)
+	if err != nil {
+		return 0, errors.Wrap(err, "error querying database for hosts")
+	}
+	return len(hosts), nil
 }
 
 // IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.

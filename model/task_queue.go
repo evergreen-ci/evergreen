@@ -79,6 +79,70 @@ func (self *TaskQueue) Length() int {
 }
 
 func (self *TaskQueue) NextTask() *TaskQueueItem {
+	return &self.Queue[0]
+}
+
+// shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
+func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
+	// Get number of hosts running this spec.
+	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "error finding hosts for spec",
+			"task_id":    taskId,
+			"queue_item": spec,
+		}))
+		return false
+	}
+	// If the group is running on 0 hosts, return true early.
+	if numHosts == 0 {
+		return true
+	}
+	t, err := task.FindOneId(taskId)
+	if err != nil || t == nil {
+		grip.Error(message.Fields{
+			"error":      errors.WithStack(err),
+			"message":    "error finding task for spec",
+			"task_id":    taskId,
+			"queue_item": spec,
+		})
+		return false
+	}
+	// If this spec is running on fewer hosts than max_hosts, dispatch this task.
+	if numHosts < spec.GroupMaxHosts {
+		return true
+	}
+	return false
+}
+
+func (self *TaskQueue) Save() error {
+	return updateTaskQueue(self.Distro, self.Queue)
+}
+
+func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
+	// With a spec, find a matching task.
+	if spec.Group != "" && spec.ProjectID != "" && spec.BuildVariant != "" && spec.Version != "" {
+		for _, it := range self.Queue {
+			if it.Project != spec.ProjectID {
+				continue
+			}
+
+			if it.Version != spec.Version {
+				continue
+			}
+
+			if it.BuildVariant != spec.BuildVariant {
+				continue
+			}
+
+			if it.Group != spec.Group {
+				continue
+			}
+			return &it
+		}
+	}
+
+	// Otherwise, find the next dispatchable task.
 	for _, it := range self.Queue {
 		// Always return a task if the task group is empty.
 		if it.Group == "" {
@@ -95,70 +159,6 @@ func (self *TaskQueue) NextTask() *TaskQueueItem {
 		if shouldRun := shouldRunTaskGroup(it.Id, spec); shouldRun {
 			return &it
 		}
-	}
-	return nil
-}
-
-// shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
-func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
-	// Get number of hosts running this spec.
-	hosts, err := host.Find(host.ByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version))
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":    "error finding hosts for spec",
-			"task_id":    taskId,
-			"queue_item": spec,
-		}))
-		return false
-	}
-	// If the group is running on 0 hosts, return true early.
-	if len(hosts) == 0 {
-		return true
-	}
-	t, err := task.FindOneId(taskId)
-	if err != nil || t == nil {
-		grip.Error(message.Fields{
-			"error":      errors.WithStack(err),
-			"message":    "error finding task for spec",
-			"task_id":    taskId,
-			"queue_item": spec,
-		})
-		return false
-	}
-	// If this spec is running on fewer hosts than max_hosts, dispatch this task.
-	if len(hosts) < spec.GroupMaxHosts {
-		return true
-	}
-	return false
-}
-
-func (self *TaskQueue) Save() error {
-	return updateTaskQueue(self.Distro, self.Queue)
-}
-
-func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
-	if spec.Group == "" || spec.ProjectID == "" || spec.BuildVariant == "" || spec.Version == "" {
-		return nil
-	}
-
-	for _, it := range self.Queue {
-		if it.Project != spec.ProjectID {
-			continue
-		}
-
-		if it.Version != spec.Version {
-			continue
-		}
-
-		if it.BuildVariant != spec.BuildVariant {
-			continue
-		}
-
-		if it.Group != spec.Group {
-			continue
-		}
-
-		return &it
 	}
 	return nil
 }
