@@ -91,7 +91,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				tc.logger.Task().Errorf("Command canceled: %v", err)
 				return errors.Wrap(err, "command canceled")
 			}
-			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
+			tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
 		}
 	}
 
