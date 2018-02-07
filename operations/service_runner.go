@@ -128,7 +128,7 @@ func startRunnerService() cli.Command {
 func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	// Add jobs to a remote queue at various intervals for
 	// repotracker operations. Generally the intervals are half the
-	// actual frequency of the job, which are controled by the
+	// actual frequency of the job, which are controlled by the
 	// population functions.
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), true, units.PopulateActivationJobs())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), true, units.PopulateCatchupJobs())

@@ -27,7 +27,6 @@ type AgentSuite struct {
 	mockCommunicator *client.Mock
 	tc               *taskContext
 	canceler         context.CancelFunc
-	v                version.Version
 	tmpDirName       string
 }
 
