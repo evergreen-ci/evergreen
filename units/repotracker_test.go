@@ -49,7 +49,7 @@ func (s *repotrackerJobSuite) TestJob() {
 
 func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	flags := evergreen.ServiceFlags{
-		RepotrackerPushEventDisabled: true,
+		RepotrackerDisabled: true,
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
@@ -57,5 +57,5 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	job.Run()
 
 	s.Error(job.Error())
-	s.Contains(job.Error().Error(), "github push events triggering repotracker is disabled")
+	s.Contains(job.Error().Error(), "repotracker is disabled")
 }

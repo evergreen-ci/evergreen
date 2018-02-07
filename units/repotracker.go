@@ -67,12 +67,13 @@ func (j *repotrackerJob) Run() {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.RepotrackerPushEventDisabled {
+	if adminSettings.ServiceFlags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     repotrackerJobName,
-			"message": "github push events triggering repotracker is disabled",
+			"id":      j.ID(),
+			"message": "repotracker is disabled",
 		})
-		j.AddError(errors.New("github push events triggering repotracker is disabled"))
+		j.AddError(errors.New("repotracker is disabled"))
 		return
 	}
 
@@ -94,18 +95,6 @@ func (j *repotrackerJob) Run() {
 	}
 	if ref == nil {
 		j.AddError(errors.New("can't find project ref for project"))
-		return
-	}
-
-	if !ref.TracksPushEvents {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     repotrackerJobName,
-			"job_id":  j.ID(),
-			"project": ref.Identifier,
-			"error":   "programmer error",
-		}))
-		j.AddError(errors.New("programmer error: repotrackerJobs should" +
-			" not be created for projects that don't track push events"))
 		return
 	}
 
