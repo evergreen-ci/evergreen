@@ -98,18 +98,6 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
-	if !ref.TracksPushEvents {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job":     repotrackerJobName,
-			"job_id":  j.ID(),
-			"project": ref.Identifier,
-			"error":   "programmer error",
-		}))
-		j.AddError(errors.New("programmer error: repotrackerJobs should" +
-			" not be created for projects that don't track push events"))
-		return
-	}
-
 	if !repotracker.CheckGithubAPIResources(token) {
 		j.AddError(errors.New("Github API is not ready"))
 		return
