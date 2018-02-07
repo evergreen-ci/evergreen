@@ -74,7 +74,7 @@ func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByID() {
 
 	tasks, err := s.ctx.FindOldTasksByID("task_1")
 	s.NoError(err)
-	s.Len(tasks, 9)
+	s.Len(tasks, 10)
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {
