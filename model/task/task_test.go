@@ -964,3 +964,26 @@ func TestMergeTestResultsBulk(t *testing.T) {
 	}
 	assert.Equal(3, count)
 }
+
+func TestFindOldTasksByID(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	taskDoc := Task{
+		Id: "task",
+	}
+	assert.NoError(taskDoc.Insert())
+	assert.NoError(taskDoc.Archive())
+	taskDoc.Execution += 1
+	assert.NoError(taskDoc.Archive())
+	taskDoc.Execution += 1
+
+	tasks, err := FindOld(ByIDPrefix("task"))
+	assert.NoError(err)
+	assert.Len(tasks, 2)
+	assert.Equal(0, tasks[0].Execution)
+	assert.Equal("task_0", tasks[0].Id)
+	assert.Equal("task", tasks[0].OldTaskId)
+	assert.Equal(1, tasks[1].Execution)
+	assert.Equal("task_1", tasks[1].Id)
+	assert.Equal("task", tasks[1].OldTaskId)
+}
