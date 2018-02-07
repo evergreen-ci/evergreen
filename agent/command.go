@@ -76,6 +76,10 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			}
 
 			start := time.Now()
+			// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
+			// the process has called subprocesses. It will wait until a subprocess
+			// finishes, instead of returning immediately when the context is canceled.
+			// We therefore check both if the context is cancled and if Wait() has finished.
 			cmdChan := make(chan error)
 			go func() {
 				err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
