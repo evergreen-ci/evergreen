@@ -76,15 +76,25 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			}
 
 			start := time.Now()
-			err = cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
-
-			tc.logger.Execution().Infof("Finished %v in %v", fullCommandName, time.Since(start).String())
-			if err != nil {
-				tc.logger.Task().Errorf("Command failed: %v", err)
-				if isTaskCommands {
+			// We have seen cases where calling exec.*Cmd.Wait() waits for too long if
+			// the process has called subprocesses. It will wait until a subprocess
+			// finishes, instead of returning immediately when the context is canceled.
+			// We therefore check both if the context is cancled and if Wait() has finished.
+			cmdChan := make(chan error)
+			go func() {
+				cmdChan <- cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
+			}()
+			select {
+			case err = <-cmdChan:
+				if err != nil {
+					tc.logger.Task().Errorf("Command failed: %v", err)
 					return errors.Wrap(err, "command failed")
 				}
+			case <-ctx.Done():
+				tc.logger.Task().Errorf("Command canceled: %v", err)
+				return errors.Wrap(err, "command canceled")
 			}
+			tc.logger.Execution().Infof("Finished %s in %s", fullCommandName, time.Since(start).String())
 		}
 	}
 
