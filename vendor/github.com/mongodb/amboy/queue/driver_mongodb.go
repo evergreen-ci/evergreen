@@ -111,9 +111,16 @@ func (d *mongoDB) start(ctx context.Context, session *mgo.Session) error {
 	d.session = session
 	d.mu.Unlock()
 
+	startAt := time.Now()
 	go func() {
 		<-dCtx.Done()
-		grip.Info("closing session for mongodb driver")
+		grip.Info(message.Fields{
+			"message": "closing session for mongodb driver",
+			"id":      d.instanceID,
+			"uptime":  time.Since(startAt),
+			"span":    time.Since(startAt).String(),
+			"service": "amboy.queue.mongodb",
+		})
 	}()
 
 	if err := d.setupDB(); err != nil {
@@ -171,7 +178,12 @@ func (d *mongoDB) Get(name string) (amboy.Job, error) {
 	j := &registry.JobInterchange{}
 
 	err := jobs.FindId(name).One(j)
-	grip.Debugf("GET operation: [name='%s', payload='%+v' error='%v']", name, j, err)
+	grip.Debug(message.WrapError(err, message.Fields{
+		"operation": "get job",
+		"name":      name,
+		"id":        d.instanceID,
+		"service":   "amboy.queue.mongodb",
+	}))
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
@@ -223,7 +235,12 @@ func (d *mongoDB) Put(j amboy.Job) error {
 		return errors.Wrapf(err, "problem saving new job %s", name)
 	}
 
-	grip.Debugf("saved job '%s'", name)
+	grip.Debug(message.Fields{
+		"id":        d.instanceID,
+		"service":   "amboy.queue.mongodb",
+		"operation": "put job",
+		"name":      name,
+	})
 
 	return nil
 }
@@ -242,12 +259,16 @@ func (d *mongoDB) Save(j amboy.Job) error {
 
 	info, err := jobs.Upsert(d.getAtomicQuery(j.ID(), j.Status()), job)
 	if err != nil {
-		err = errors.Wrapf(err, "problem updating %s: %+v", name, info)
-		grip.Alert(err)
-		return err
+		return errors.Wrapf(err, "problem updating %s: %+v", name, info)
 	}
 
-	grip.Debugf("saved job '%s': %+v", name, info)
+	grip.Debug(message.Fields{
+		"id":        d.instanceID,
+		"service":   "amboy.queue.mongodb",
+		"operation": "save job",
+		"name":      name,
+		"info":      info,
+	})
 
 	return nil
 }
@@ -284,12 +305,23 @@ func (d *mongoDB) Jobs() <-chan amboy.Job {
 		for results.Next(j) {
 			job, err := registry.ConvertToJob(j)
 			if err != nil {
-				grip.CatchError(err)
+				grip.Warning(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongodb",
+					"operation": "job iterator",
+					"message":   "problem converting job obj",
+				}))
 				continue
 			}
 			output <- job
 		}
-		grip.CatchError(results.Err())
+
+		grip.Error(message.WrapError(results.Err(), message.Fields{
+			"id":        d.instanceID,
+			"service":   "amboy.queue.mongodb",
+			"operation": "job iterator",
+			"message":   "database interface error",
+		}))
 	}()
 	return output
 }
@@ -361,19 +393,23 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 					timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
 					continue
 				}
-				grip.Warning(message.Fields{
-					"message": "problem retreiving jobs from MongoDB",
-					"error":   err.Error(),
-				})
+				grip.Warning(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongodb",
+					"message":   "problem retreiving jobs from MongoDB",
+					"operation": "next job",
+				}))
 				return nil
 			}
 
 			job, err := registry.ConvertToJob(j)
 			if err != nil {
-				grip.Warning(message.Fields{
-					"message": "problem converting job object from mongodb",
-					"error":   err.Error(),
-				})
+				grip.Warning(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongodb",
+					"operation": "next job",
+					"message":   "problem converting job object from mongodb",
+				}))
 				timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
 				continue
 			}
@@ -394,18 +430,33 @@ func (d *mongoDB) Stats() amboy.QueueStats {
 	defer session.Close()
 
 	numJobs, err := jobs.Count()
-	grip.ErrorWhenf(err != nil,
-		"problem getting count from jobs collection (%s): %+v ",
-		jobs.Name, err)
+	grip.Warning(message.WrapError(err, message.Fields{
+		"id":         d.instanceID,
+		"service":    "amboy.queue.mongodb",
+		"collection": jobs.Name,
+		"operation":  "queue stats",
+		"message":    "problem counting all jobs",
+	}))
 
 	completed, err := jobs.Find(bson.M{"status.completed": true}).Count()
-	grip.ErrorWhenf(err != nil, "problem getting count of pending jobs (%s): %+v ",
-		jobs.Name, err)
+
+	grip.Warning(message.WrapError(err, message.Fields{
+		"id":         d.instanceID,
+		"service":    "amboy.queue.mongodb",
+		"collection": jobs.Name,
+		"operation":  "queue stats",
+		"message":    "problem counting pending jobs",
+	}))
 
 	numLocked, err := jobs.Find(bson.M{"status.in_prog": true}).Count()
-	grip.ErrorWhenf(err != nil,
-		"problem getting count of locked Jobs (%s): %+v",
-		jobs.Name, err)
+
+	grip.Warning(message.WrapError(err, message.Fields{
+		"id":         d.instanceID,
+		"service":    "amboy.queue.mongodb",
+		"collection": jobs.Name,
+		"operation":  "queue stats",
+		"message":    "problem counting locked jobs",
+	}))
 
 	return amboy.QueueStats{
 		Total:     numJobs,

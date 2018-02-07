@@ -6,6 +6,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -182,7 +183,11 @@ func (l *lockManager) Unlock(j amboy.Job) error {
 	l.removePing(j.ID())
 
 	if err := l.d.SaveStatus(j, stat); err != nil {
-		grip.Infoln("could not save lock state", j.ID())
+		grip.Info(message.WrapError(err, message.Fields{
+			"job":  j.ID(),
+			"stat": stat,
+		}))
+
 		return errors.Wrapf(err, "problem unlocking '%s'", j.ID())
 	}
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
@@ -12,6 +13,8 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
+	"github.com/pkg/errors"
 )
 
 const branchRefPrefix = "refs/heads/"
@@ -30,6 +33,16 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	}
 	if len(branch) == 0 {
 		return nil
+	}
+	adminSettings, err := evergreen.GetConfig()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving admin settings")
+	}
+	if adminSettings.ServiceFlags.RepotrackerDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"message": "github push events triggering repotracker is disabled",
+		})
+		return errors.New("github push events triggering repotracker is disabled")
 	}
 
 	ref, err := validateProjectRef(*event.Repo.Owner.Name, *event.Repo.Name,
