@@ -42,6 +42,13 @@ type Job interface {
 	Status() JobStatusInfo
 	SetStatus(JobStatusInfo)
 
+	// TimeInfo reports the start/end time of jobs, as well as
+	// providing for a "wait until" functionality that queues can
+	// use to schedule jobs in the future. The update method, only
+	// updates non-zero methods.
+	TimeInfo() JobTimeInfo
+	UpdateTimeInfo(JobTimeInfo)
+
 	// Provides access to the job's priority value, which some
 	// queues may use to order job dispatching. Most Jobs
 	// implement these values by composing the
@@ -78,6 +85,20 @@ type JobStatusInfo struct {
 	ModificationTime  time.Time `bson:"mod_ts" json:"mod_time" yaml:"mod_time"`
 	ModificationCount int       `bson:"mod_count" json:"mod_count" yaml:"mod_count"`
 }
+
+// JobTimeInfo stores timing information for a job and is used by both
+// the Runner and Job implementations to track how long jobs take to
+// execute. Additionally, the Queue implementations __may__ use this
+// data to delay execution of a job when WaitUntil refers to a time
+// in the future.
+type JobTimeInfo struct {
+	Start     time.Time `bson:"start" json:"start,omitempty" yaml:"start,omitempty"`
+	End       time.Time `bson:"end" json:"end,omitempty" yaml:"end,omitempty"`
+	WaitUntil time.Time `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
+}
+
+// Duration is a convenience function to return a duration for a job.
+func (j JobTimeInfo) Duration() time.Duration { return j.End.Sub(j.Start) }
 
 // Queue describes a very simple Job queue interface that allows users
 // to define Job objects, add them to a worker queue and execute tasks

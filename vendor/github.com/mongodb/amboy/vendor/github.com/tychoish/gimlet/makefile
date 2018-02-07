@@ -133,10 +133,6 @@ $(buildDir)/race.$(name).out:$(testRunDeps)
 
 # start vendoring configuration
 vendor-clean:
-	rm -rf vendor/gopkg.in/mgo.v2/harness/
-	rm -rf vendor/github.com/stretchr/testify/vendor/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/davecgh/
-	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/pmezard/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
 phony += vendor-clean

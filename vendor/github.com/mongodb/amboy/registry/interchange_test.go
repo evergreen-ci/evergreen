@@ -2,6 +2,7 @@ package registry
 
 import (
 	"testing"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -99,6 +100,24 @@ func (s *JobInterchangeSuite) TestMismatchedDependencyCausesJobConversionToError
 		s.Error(err)
 		s.Nil(j)
 	}
+}
+
+func (s *JobInterchangeSuite) TestTimeInfoPersists() {
+	now := time.Now()
+	ti := amboy.JobTimeInfo{Start: now, End: now.Add(time.Hour), WaitUntil: now.Add(-time.Minute)}
+	s.job.UpdateTimeInfo(ti)
+	s.Equal(ti, s.job.timeInfo)
+
+	i, err := MakeJobInterchange(s.job)
+	if s.NoError(err) {
+		s.Equal(i.TimeInfo, ti)
+
+		j, err := ConvertToJob(i)
+		s.NoError(err)
+		s.NotNil(j)
+		s.Equal(ti, j.TimeInfo())
+	}
+
 }
 
 // DependencyInterchangeSuite tests the DependencyInterchange format

@@ -10,18 +10,10 @@ imports:
   subpackages:
   - gzip
 - name: github.com/mongodb/grip
-  version: 4beebb80a809873037c5d9b370a9235f33cd3096
-- name: github.com/tylerb/graceful
-  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+  version: 168c214db61f61bf79d8de25c4803e569b6c5902
 - name: github.com/urfave/negroni
   version: 3444e69ea1ef03a77998d11fc56e7f0a34f7213c
 
-- name: github.com/stretchr/objx
-  version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
 - name: github.com/stretchr/testify
   version: d77da356e56a7428ad25149ca77381849a6a5232
-- name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
-- name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
 devImports: []

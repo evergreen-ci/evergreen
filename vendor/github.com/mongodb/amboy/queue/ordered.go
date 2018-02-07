@@ -19,7 +19,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -217,7 +216,7 @@ func (q *depGraphOrderedLocal) buildGraph() error {
 	for name, job := range q.tasks.m {
 		id, ok := q.tasks.ids[name]
 		if !ok {
-			return fmt.Errorf("problem building a graph for job %s", name)
+			return errors.Errorf("problem building a graph for job %s", name)
 		}
 
 		edges := job.Dependency().Edges()
@@ -234,7 +233,7 @@ func (q *depGraphOrderedLocal) buildGraph() error {
 		for _, dep := range edges {
 			edgeID, ok := q.tasks.ids[dep]
 			if !ok {
-				return fmt.Errorf("for job %s, the %s dependency is not resolvable [%s]",
+				return errors.Errorf("for job %s, the %s dependency is not resolvable [%s]",
 					name, dep, strings.Join(edges, ", "))
 			}
 			edge := simple.Edge{

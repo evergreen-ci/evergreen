@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
@@ -60,6 +61,7 @@ type simpleRateLimited struct {
 	interval time.Duration
 	queue    amboy.Queue
 	canceler context.CancelFunc
+	wg       sync.WaitGroup
 }
 
 func (p *simpleRateLimited) Started() bool { return p.canceler != nil }
@@ -73,7 +75,7 @@ func (p *simpleRateLimited) Start(ctx context.Context) error {
 
 	ctx, p.canceler = context.WithCancel(ctx)
 
-	jobs := startWorkerServer(ctx, p.queue)
+	jobs := startWorkerServer(ctx, p.queue, &p.wg)
 
 	// start some threads
 	for w := 1; w <= p.size; w++ {
@@ -88,6 +90,8 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 		err error
 		job amboy.Job
 	)
+	p.wg.Add(1)
+	defer p.wg.Done()
 
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
@@ -112,7 +116,14 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 			case <-ctx.Done():
 				return
 			case job := <-jobs:
+				ti := amboy.JobTimeInfo{
+					Start: time.Now(),
+				}
+
 				job.Run()
+				ti.End = time.Now()
+				job.UpdateTimeInfo(ti)
+
 				p.queue.Complete(ctx, job)
 				timer.Reset(p.interval)
 			}
@@ -133,4 +144,5 @@ func (p *simpleRateLimited) Close() {
 	if p.canceler != nil {
 		p.canceler()
 	}
+	p.wg.Wait()
 }

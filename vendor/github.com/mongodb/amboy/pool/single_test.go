@@ -7,8 +7,6 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -20,10 +18,6 @@ type SingleRunnerSuite struct {
 
 func TestSingleWorkerSuite(t *testing.T) {
 	suite.Run(t, new(SingleRunnerSuite))
-}
-
-func (s *SingleRunnerSuite) SetupSuite() {
-	s.NoError(grip.SetThreshold(level.Info))
 }
 
 func (s *SingleRunnerSuite) SetupTest() {

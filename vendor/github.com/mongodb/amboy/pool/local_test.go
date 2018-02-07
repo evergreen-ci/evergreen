@@ -3,6 +3,7 @@ package pool
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/mongodb/amboy"
@@ -47,8 +48,9 @@ func (s *LocalWorkersSuite) SetupTest() {
 func (s *LocalWorkersSuite) TestPanicJobsDoNotPanicHarness() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	wg := &sync.WaitGroup{}
 
-	s.NotPanics(func() { worker(ctx, jobsChanWithPanicingJobs(ctx, s.size), s.queue) })
+	s.NotPanics(func() { worker(ctx, jobsChanWithPanicingJobs(ctx, s.size), s.queue, wg) })
 }
 
 func (s *LocalWorkersSuite) TestConstructedInstanceImplementsInterface() {

@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"math/rand"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -31,6 +32,11 @@ func (items *adaptiveOrderItems) add(j amboy.Job) error {
 		return nil
 	}
 
+	if j.TimeInfo().WaitUntil.After(time.Now()) {
+		items.waiting = append(items.waiting, id)
+		return nil
+	}
+
 	switch j.Dependency().State() {
 	case dependency.Ready:
 		items.ready = append(items.ready, id)
@@ -47,6 +53,7 @@ func (items *adaptiveOrderItems) add(j amboy.Job) error {
 
 func (items *adaptiveOrderItems) updateWaiting(ctx context.Context) {
 	new := []string{}
+	now := time.Now()
 	for _, id := range items.waiting {
 		if ctx.Err() != nil {
 			return
@@ -57,6 +64,13 @@ func (items *adaptiveOrderItems) updateWaiting(ctx context.Context) {
 			continue
 		}
 		status := job.Status()
+		ti := job.TimeInfo()
+
+		if ti.WaitUntil.After(now) {
+			new = append(new, id)
+			continue
+		}
+
 		if status.Completed || status.InProgress {
 			items.completed = append(items.completed, id)
 			continue

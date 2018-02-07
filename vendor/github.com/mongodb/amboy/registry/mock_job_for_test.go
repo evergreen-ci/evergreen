@@ -20,6 +20,7 @@ type JobTest struct {
 	shouldFail bool
 	hadError   bool
 	status     amboy.JobStatusInfo
+	timeInfo   amboy.JobTimeInfo
 	T          amboy.JobType
 	dep        dependency.Manager
 	priority   int
@@ -98,5 +99,12 @@ func (j *JobTest) Status() amboy.JobStatusInfo {
 
 func (j *JobTest) SetStatus(s amboy.JobStatusInfo) {
 	j.status = s
+}
 
+func (j *JobTest) TimeInfo() amboy.JobTimeInfo {
+	return j.timeInfo
+}
+
+func (j *JobTest) UpdateTimeInfo(i amboy.JobTimeInfo) {
+	j.timeInfo = i
 }

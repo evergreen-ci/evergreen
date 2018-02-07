@@ -85,6 +85,24 @@ func WaitCtxInterval(ctx context.Context, q Queue, interval time.Duration) bool 
 	}
 }
 
+// WaitCtxIntervalNum waits for a certain number of jobs to complete,
+// with the same semantics as WaitCtxInterval.
+func WaitCtxIntervalNum(ctx context.Context, q Queue, interval time.Duration, num int) bool {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-timer.C:
+			if q.Stats().Completed >= num {
+				return true
+			}
+		}
+	}
+}
+
 // WaitJob blocks until the job, based on its ID, is marked complete
 // in the queue. The return value is false if the job does not exist
 // (or is removed) and true when the job completes. This operation could

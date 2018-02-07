@@ -65,6 +65,7 @@ type ewmaRateLimiting struct {
 	queue    amboy.Queue
 	canceler context.CancelFunc
 	mutex    sync.Mutex
+	wg       sync.WaitGroup
 }
 
 func (p *ewmaRateLimiting) getNextTime(dur time.Duration) time.Duration {
@@ -123,7 +124,7 @@ func (p *ewmaRateLimiting) Start(ctx context.Context) error {
 
 	ctx, p.canceler = context.WithCancel(ctx)
 
-	jobs := startWorkerServer(ctx, p.queue)
+	jobs := startWorkerServer(ctx, p.queue, &p.wg)
 
 	for w := 1; w <= p.size; w++ {
 		go p.worker(ctx, jobs)
@@ -137,6 +138,8 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan amboy.Job) {
 		job amboy.Job
 	)
 
+	p.wg.Add(1)
+	defer p.wg.Done()
 	defer func() {
 		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
 		if err != nil {
@@ -169,7 +172,14 @@ func (p *ewmaRateLimiting) worker(ctx context.Context, jobs <-chan amboy.Job) {
 
 func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duration {
 	start := time.Now()
+	ti := amboy.JobTimeInfo{
+		Start: start,
+	}
+
 	j.Run()
+	ti.End = time.Now()
+	j.UpdateTimeInfo(ti)
+
 	p.queue.Complete(ctx, j)
 	duration := time.Since(start)
 
@@ -198,4 +208,6 @@ func (p *ewmaRateLimiting) Close() {
 	if p.canceler != nil {
 		p.canceler()
 	}
+	grip.Debug("pool's context canceled, waiting for running jobs to complete")
+	p.wg.Wait()
 }

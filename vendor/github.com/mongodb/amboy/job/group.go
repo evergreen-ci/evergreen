@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/mongodb/amboy"
@@ -58,7 +57,7 @@ func (g *Group) Add(j amboy.Job) error {
 	defer g.mutex.Unlock()
 	_, exists := g.Jobs[name]
 	if exists {
-		return fmt.Errorf("job named '%s', already exists in Group %s",
+		return errors.Errorf("job named '%s', already exists in Group %s",
 			name, g.ID())
 	}
 

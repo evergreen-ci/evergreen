@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"sync"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -14,6 +15,7 @@ import (
 type single struct {
 	canceler context.CancelFunc
 	queue    amboy.Queue
+	wg       sync.WaitGroup
 }
 
 // NewSingle returns an amboy.Runner implementation with single-worker
@@ -55,10 +57,10 @@ func (r *single) Start(ctx context.Context) error {
 	workerCtx, cancel := context.WithCancel(ctx)
 	r.canceler = cancel
 
-	jobs := startWorkerServer(workerCtx, r.queue)
+	jobs := startWorkerServer(workerCtx, r.queue, &r.wg)
 
 	go func() {
-		worker(workerCtx, jobs, r.queue)
+		worker(workerCtx, jobs, r.queue, &r.wg)
 		grip.Info("worker process complete")
 	}()
 
@@ -74,4 +76,5 @@ func (r *single) Close() {
 	if r.canceler != nil {
 		r.canceler()
 	}
+	r.wg.Wait()
 }

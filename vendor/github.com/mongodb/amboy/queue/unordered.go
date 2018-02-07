@@ -15,7 +15,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/mongodb/amboy"
@@ -78,14 +77,14 @@ func (q *unorderedLocal) Put(j amboy.Job) error {
 	name := j.ID()
 
 	if !q.started {
-		return fmt.Errorf("cannot add %s because queue has not started", name)
+		return errors.Errorf("cannot add %s because queue has not started", name)
 	}
 
 	q.tasks.Lock()
 	defer q.tasks.Unlock()
 
 	if _, ok := q.tasks.m[name]; ok {
-		return fmt.Errorf("cannot add %s, because a job exists with that name", name)
+		return errors.Errorf("cannot add %s, because a job exists with that name", name)
 	}
 
 	q.tasks.m[name] = j

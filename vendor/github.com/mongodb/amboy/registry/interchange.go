@@ -1,11 +1,9 @@
 package registry
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
+	"github.com/pkg/errors"
 )
 
 // JobInterchange provides a consistent way to describe and reliably
@@ -16,10 +14,11 @@ type JobInterchange struct {
 	Name       string                 `json:"name" bson:"_id" yaml:"name"`
 	Type       string                 `json:"type" bson:"type" yaml:"type"`
 	Version    int                    `json:"version" bson:"version" yaml:"version"`
-	Priority   int                    `bson:"priority" json:"priority" yaml:"priority"`
-	Job        []byte                 `json:"job,omitempty" bson:"job,omitempty" yaml:"job,omitempty"`
+	Priority   int                    `json:"priority" bson:"priority" yaml:"priority"`
+	Job        *rawJob                `json:"job,omitempty" bson:"job,omitempty" yaml:"job,omitempty"`
 	Dependency *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
 	Status     amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
+	TimeInfo   amboy.JobTimeInfo      `bson:"time_info" json:"time_info" yaml:"time_info"`
 }
 
 // MakeJobInterchange changes a Job interface into a JobInterchange
@@ -42,12 +41,17 @@ func MakeJobInterchange(j amboy.Job) (*JobInterchange, error) {
 	}
 
 	output := &JobInterchange{
-		Name:       j.ID(),
-		Type:       typeInfo.Name,
-		Version:    typeInfo.Version,
-		Priority:   j.Priority(),
-		Status:     j.Status(),
-		Job:        data,
+		Name:     j.ID(),
+		Type:     typeInfo.Name,
+		Version:  typeInfo.Version,
+		Priority: j.Priority(),
+		Status:   j.Status(),
+		TimeInfo: j.TimeInfo(),
+		Job: &rawJob{
+			Body: data,
+			Type: typeInfo.Name,
+			job:  j,
+		},
 		Dependency: dep,
 	}
 
@@ -69,23 +73,24 @@ func ConvertToJob(j *JobInterchange) (amboy.Job, error) {
 	job := factory()
 
 	if job.Type().Version != j.Version {
-		return nil, fmt.Errorf("job '%s' (version=%d) does not match the current version (%d) for the job type '%s'",
+		return nil, errors.Errorf("job '%s' (version=%d) does not match the current version (%d) for the job type '%s'",
 			j.Name, j.Version, job.Type().Version, j.Type)
 	}
 
 	dep, err := convertToDependency(job.Type().Format, j.Dependency)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
-	err = amboy.ConvertFrom(job.Type().Format, j.Job, job)
-	job.SetDependency(dep)
+	err = amboy.ConvertFrom(job.Type().Format, j.Job.Body, job)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "converting job body")
 	}
 
+	job.SetDependency(dep)
 	job.SetPriority(j.Priority)
 	job.SetStatus(j.Status)
+	job.UpdateTimeInfo(j.TimeInfo)
 
 	return job, nil
 }
@@ -97,10 +102,10 @@ func ConvertToJob(j *JobInterchange) (amboy.Job, error) {
 // DependencyInterchange objects between processes, which have the
 // type information in easy to access and index-able locations.
 type DependencyInterchange struct {
-	Type       string   `json:"type" bson:"type" yaml:"type"`
-	Version    int      `json:"version" bson:"version" yaml:"version"`
-	Edges      []string `bson:"edges" json:"edges" yaml:"edges"`
-	Dependency []byte   `json:"dependency" bson:"dependency" yaml:"dependency"`
+	Type       string         `json:"type" bson:"type" yaml:"type"`
+	Version    int            `json:"version" bson:"version" yaml:"version"`
+	Edges      []string       `bson:"edges" json:"edges" yaml:"edges"`
+	Dependency *rawDependency `json:"dependency" bson:"dependency" yaml:"dependency"`
 }
 
 // MakeDependencyInterchange converts a dependency.Manager document to
@@ -114,10 +119,14 @@ func makeDependencyInterchange(f amboy.Format, d dependency.Manager) (*Dependenc
 	}
 
 	output := &DependencyInterchange{
-		Type:       typeInfo.Name,
-		Version:    typeInfo.Version,
-		Edges:      d.Edges(),
-		Dependency: data,
+		Type:    typeInfo.Name,
+		Version: typeInfo.Version,
+		Edges:   d.Edges(),
+		Dependency: &rawDependency{
+			Body: data,
+			Type: typeInfo.Name,
+			dep:  d,
+		},
 	}
 
 	return output, nil
@@ -135,7 +144,7 @@ func convertToDependency(f amboy.Format, d *DependencyInterchange) (dependency.M
 	dep := factory()
 
 	if dep.Type().Version != d.Version {
-		return nil, fmt.Errorf("dependency '%s' (version=%d) does not match the current version (%d) for the dependency type '%s'",
+		return nil, errors.Errorf("dependency '%s' (version=%d) does not match the current version (%d) for the dependency type '%s'",
 			d.Type, d.Version, dep.Type().Version, dep.Type().Name)
 	}
 
@@ -143,9 +152,9 @@ func convertToDependency(f amboy.Format, d *DependencyInterchange) (dependency.M
 	// interchange object, but want to use the type information
 	// associated with the object that we produced with the
 	// factory.
-	err = amboy.ConvertFrom(f, d.Dependency, dep)
+	err = amboy.ConvertFrom(f, d.Dependency.Body, dep)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "converting dependency")
 	}
 
 	return dep, nil

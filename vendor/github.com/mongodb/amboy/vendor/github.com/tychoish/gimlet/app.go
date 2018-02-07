@@ -13,13 +13,14 @@ package gimlet
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/recovery"
 	"github.com/phyber/negroni-gzip/gzip"
-	"github.com/tylerb/graceful"
 	"github.com/urfave/negroni"
 )
 
@@ -190,6 +191,12 @@ func (a *APIApp) getNegroni() (*negroni.Negroni, error) {
 	return n, nil
 }
 
+// Handler returns a handler interface for integration with other
+// server frameworks.
+func (a *APIApp) Handler() (http.Handler, error) {
+	return a.getNegroni()
+}
+
 // Run configured API service on the configured port. Before running
 // the application, Run also resolves any sub-apps, and adds all
 // routes.
@@ -199,10 +206,27 @@ func (a *APIApp) Run() error {
 		return err
 	}
 
-	grip.Noticef("starting app on: %s:$d", a.address, a.port)
-	graceful.Run(fmt.Sprintf("%s:%d", a.address, a.port), 10*time.Second, n)
+	srv := &http.Server{
+		Addr:              fmt.Sprintf("%s:%d", a.address, a.port),
+		Handler:           n,
+		ReadTimeout:       time.Minute,
+		ReadHeaderTimeout: 30 * time.Second,
+		WriteTimeout:      time.Minute,
+	}
 
-	return nil
+	catcher := grip.NewBasicCatcher()
+	serviceWait := make(chan struct{})
+	go func() {
+		defer recovery.LogStackTraceAndContinue("app service")
+
+		grip.Noticef("starting app on: %s:$d", a.address, a.port)
+		catcher.Add(srv.ListenAndServe())
+		close(serviceWait)
+	}()
+
+	<-serviceWait
+
+	return catcher.Resolve()
 }
 
 // SetPort allows users to configure a default port for the API

@@ -1,10 +1,10 @@
 package registry
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // Private implementation of the types registry. Public methods for
@@ -66,7 +66,7 @@ func (r *typeRegistry) getJobFactory(name string) (JobFactory, error) {
 
 	factory, ok := r.job.m[name]
 	if !ok {
-		return nil, fmt.Errorf("there is no job type named '%s' registered", name)
+		return nil, errors.Errorf("there is no job type named '%s' registered", name)
 	}
 
 	return factory, nil
@@ -78,7 +78,7 @@ func (r *typeRegistry) getDependencyFactory(name string) (DependencyFactory, err
 
 	factory, ok := r.dep.m[name]
 	if !ok {
-		return nil, fmt.Errorf("there is no job type named '%s' registered", name)
+		return nil, errors.Errorf("there is no job type named '%s' registered", name)
 	}
 
 	return factory, nil

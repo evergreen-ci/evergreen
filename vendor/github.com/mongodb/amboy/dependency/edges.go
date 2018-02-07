@@ -11,7 +11,7 @@ environment to ensure that all prerequisites are satisfied.
 */
 package dependency
 
-import "fmt"
+import "github.com/pkg/errors"
 
 // JobEdges provides a common subset of a non-trivial Manager
 // implementation. These objects provide two methods of the Manager
@@ -55,7 +55,7 @@ func (e *JobEdges) AddEdge(name string) error {
 	}
 
 	if _, ok := e.edgesSet[name]; ok {
-		return fmt.Errorf("edge '%s' already exists", name)
+		return errors.Errorf("edge '%s' already exists", name)
 	}
 
 	// TODO we probably need a lock here, but maybe not?

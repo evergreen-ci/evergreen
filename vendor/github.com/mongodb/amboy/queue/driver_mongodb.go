@@ -23,14 +23,15 @@ const lockTimeout = 5 * time.Minute
 // mongoDB is a type that represents and wraps a queues
 // persistence of jobs *and* locks to a mongoDB instance.
 type mongoDB struct {
-	name       string
-	mongodbURI string
-	dbName     string
-	session    *mgo.Session
-	canceler   context.CancelFunc
-	instanceID string
-	priority   bool
-	mu         sync.RWMutex
+	name             string
+	mongodbURI       string
+	dbName           string
+	session          *mgo.Session
+	canceler         context.CancelFunc
+	instanceID       string
+	priority         bool
+	respectWaitUntil bool
+	mu               sync.RWMutex
 	LockManager
 }
 
@@ -38,9 +39,10 @@ type mongoDB struct {
 // communicate mongoDB specific settings about the driver's behavior
 // and operation.
 type MongoDBOptions struct {
-	URI      string
-	DB       string
-	Priority bool
+	URI            string
+	DB             string
+	Priority       bool
+	CheckWaitUntil bool
 }
 
 // DefaultMongoDBOptions constructs a new options object with default
@@ -48,11 +50,11 @@ type MongoDBOptions struct {
 // "amboy" database, and *not* using priority ordering of jobs.
 func DefaultMongoDBOptions() MongoDBOptions {
 	return MongoDBOptions{
-		URI:      "mongodb://localhost:27017",
-		DB:       "amboy",
-		Priority: false,
+		URI:            "mongodb://localhost:27017",
+		DB:             "amboy",
+		Priority:       false,
+		CheckWaitUntil: true,
 	}
-
 }
 
 // NewMongoDBDriver creates a driver object given a name, which
@@ -60,11 +62,12 @@ func DefaultMongoDBOptions() MongoDBOptions {
 func NewMongoDBDriver(name string, opts MongoDBOptions) Driver {
 	host, _ := os.Hostname()
 	return &mongoDB{
-		name:       name,
-		dbName:     opts.DB,
-		mongodbURI: opts.URI,
-		priority:   opts.Priority,
-		instanceID: fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
+		name:             name,
+		dbName:           opts.DB,
+		mongodbURI:       opts.URI,
+		priority:         opts.Priority,
+		respectWaitUntil: opts.CheckWaitUntil,
+		instanceID:       fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
 	}
 }
 
@@ -133,11 +136,20 @@ func (d *mongoDB) setupDB() error {
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
 
-	if d.priority {
-		catcher.Add(jobs.EnsureIndexKey("status.completed", "status.in_prog", "priority"))
-	} else {
-		catcher.Add(jobs.EnsureIndexKey("status.completed", "status.in_prog"))
+	indexKey := []string{
+		"status.completed",
+		"status.in_prog",
 	}
+	if d.respectWaitUntil {
+		indexKey = append(indexKey, "time_info.wait_until")
+	}
+
+	// priority must be at the end for the sort
+	if d.priority {
+		indexKey = append(indexKey, "priority")
+	}
+
+	catcher.Add(jobs.EnsureIndexKey(indexKey...))
 	catcher.Add(jobs.EnsureIndexKey("status.mod_ts"))
 
 	return errors.Wrap(catcher.Resolve(), "problem building indexes")
@@ -231,7 +243,7 @@ func (d *mongoDB) Save(j amboy.Job) error {
 	info, err := jobs.Upsert(d.getAtomicQuery(j.ID(), j.Status()), job)
 	if err != nil {
 		err = errors.Wrapf(err, "problem updating %s: %+v", name, info)
-		grip.Warning(err)
+		grip.Alert(err)
 		return err
 	}
 
@@ -320,7 +332,13 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 	defer session.Close()
 	j := &registry.JobInterchange{}
 
-	query := jobs.Find(bson.M{"status.completed": false, "status.in_prog": false})
+	qd := bson.M{"status.completed": false, "status.in_prog": false}
+
+	if d.respectWaitUntil {
+		qd["time_info.wait_until"] = bson.M{"$lt": time.Now()}
+	}
+
+	query := jobs.Find(qd)
 	if d.priority {
 		query = query.Sort("-priority")
 	}
@@ -334,8 +352,7 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 		case <-ctx.Done():
 			return nil
 		case <-timer.C:
-			err := query.One(j)
-			if err != nil {
+			if err := query.One(j); err != nil {
 				if misses < 30 {
 					misses++
 				}

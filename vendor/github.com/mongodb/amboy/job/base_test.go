@@ -4,7 +4,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -79,4 +81,43 @@ func (s *BaseCheckSuite) TestMarkCompleteHelperSetsCompleteState() {
 	s.base.MarkComplete()
 
 	s.True(s.base.status.Completed)
+}
+
+func (s *BaseCheckSuite) TestDefaultTimeInfoIsUnset() {
+	ti := s.base.TimeInfo()
+	s.Zero(ti.Start)
+	s.Zero(ti)
+	s.Zero(ti.End)
+	s.Zero(ti.WaitUntil)
+}
+
+func (s *BaseCheckSuite) TestTimeInfoSetsValues() {
+	ti := s.base.TimeInfo()
+	ti.Start = time.Now()
+	ti.End = ti.Start.Add(time.Hour)
+	s.Zero(ti.WaitUntil)
+	s.Equal(time.Hour, ti.Duration())
+
+	new := amboy.JobTimeInfo{}
+	s.base.UpdateTimeInfo(ti)
+	s.NotEqual(new, s.base.TimeInfo())
+	s.Zero(s.base.TimeInfo().WaitUntil)
+
+	new.End = ti.Start.Add(time.Minute)
+	s.base.UpdateTimeInfo(new)
+	result := s.base.TimeInfo()
+	s.Equal(ti.Start, result.Start)
+	s.Equal(time.Minute, result.Duration())
+	s.Equal(new.End, result.End)
+	s.NotEqual(ti.End, result.End)
+	s.Zero(s.base.TimeInfo().WaitUntil)
+
+	new = amboy.JobTimeInfo{WaitUntil: time.Now()}
+	s.base.UpdateTimeInfo(new)
+	last := s.base.TimeInfo()
+	s.Equal(new.WaitUntil, last.WaitUntil)
+	s.NotEqual(new.Start, last.Start)
+	s.NotEqual(new.End, last.End)
+	s.Equal(result.Start, last.Start)
+	s.Equal(result.End, last.End)
 }

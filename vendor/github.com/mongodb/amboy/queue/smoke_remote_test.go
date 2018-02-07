@@ -15,7 +15,7 @@ import (
 
 // the cases in this file attempt to test the behavior of the remote tasks.
 
-func TestRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
+func TestSmokeRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 	assert := assert.New(t)
 	opts := DefaultMongoDBOptions()
 	name := uuid.NewV4().String()

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -205,7 +206,13 @@ func groupWorker(ctx context.Context, wg *sync.WaitGroup, name string, work <-ch
 		case <-ctx.Done():
 			return
 		default:
+			ti := amboy.JobTimeInfo{
+				Start: time.Now(),
+			}
 			unit.j.Run()
+			ti.End = time.Now()
+
+			unit.j.UpdateTimeInfo(ti)
 			unit.q.Complete(ctx, unit.j)
 		}
 	}

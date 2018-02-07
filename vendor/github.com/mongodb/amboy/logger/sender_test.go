@@ -64,7 +64,7 @@ func (s *SenderSuite) SetupTest() {
 
 }
 
-func (s *SenderSuite) TeardownTest() {
+func (s *SenderSuite) TearDownTest() {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	amboy.WaitCtxInterval(ctx, s.queue, 100*time.Millisecond)
@@ -79,7 +79,7 @@ func (s *SenderSuite) TeardownTest() {
 	}
 }
 
-func (s *SenderSuite) TeardownSuite() {
+func (s *SenderSuite) TearDownSuite() {
 	for _, sender := range s.senders {
 		s.NoError(sender.Close())
 	}

@@ -173,6 +173,12 @@ vendor-clean:
 	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/stretchr/testify/
 	rm -rf vendor/github.com/tychoish/gimlet/vendor/github.com/mongodb/grip/
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+	rm -rf vendor/gopkg.in/mgo.v2/harness/
+	rm -rf vendor/gopkg.in/mgo.v2/testdb/
+	rm -rf vendor/gopkg.in/mgo.v2/testserver/
+	rm -rf vendor/gopkg.in/mgo.v2/internal/json/testdata
+	rm -rf vendor/gopkg.in/mgo.v2/.git/
+	rm -rf vendor/gopkg.in/mgo.v2/txn/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
 #   define dependencies for buildscripts
 phony += vendor-deps vendor-clean

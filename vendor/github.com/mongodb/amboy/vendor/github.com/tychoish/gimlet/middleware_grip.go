@@ -17,22 +17,18 @@ import (
 // support configurable level-based logging. This particular
 // middlewear resembles the basic tracking provided by Negroni's
 // standard logging system.
-type AppLogging struct {
+type appLogging struct {
 	grip.Journaler
 }
 
 // NewAppLogger creates an logging middlear instance suitable for use
 // with Negroni. Sets the logging configuration to be the same as the
 // default global grip logging object.
-func NewAppLogger() *AppLogging {
-	l := &AppLogging{logging.MakeGrip(grip.GetSender())}
-
-	return l
-}
+func NewAppLogger() negroni.Handler { return &appLogging{logging.MakeGrip(grip.GetSender())} }
 
 // Logs the request path, the beginning of every request as well as
 // the duration upon completion and the status of the response.
-func (l *AppLogging) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func (l *appLogging) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
 	id := getNumber()
 
