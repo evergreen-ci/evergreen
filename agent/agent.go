@@ -232,6 +232,7 @@ func (a *Agent) wait(ctx, taskCtx context.Context, tc *taskContext, heartbeat ch
 	}
 
 	if tc.hadTimedOut() {
+		status = evergreen.TaskFailed
 		a.runTaskTimeoutCommands(ctx, tc)
 	}
 
