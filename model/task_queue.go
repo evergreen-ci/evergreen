@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -97,16 +96,6 @@ func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
 	// If the group is running on 0 hosts, return true early.
 	if numHosts == 0 {
 		return true
-	}
-	t, err := task.FindOneId(taskId)
-	if err != nil || t == nil {
-		grip.Error(message.Fields{
-			"error":      errors.WithStack(err),
-			"message":    "error finding task for spec",
-			"task_id":    taskId,
-			"queue_item": spec,
-		})
-		return false
 	}
 	// If this spec is running on fewer hosts than max_hosts, dispatch this task.
 	if numHosts < spec.GroupMaxHosts {
