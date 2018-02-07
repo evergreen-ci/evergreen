@@ -307,7 +307,7 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 		}
 	}
 	for taskQueue.Length() != 0 {
-		queueItem := model.MatchingOrNextTask(taskQueue, spec)
+		queueItem := model.GetNextTask(taskQueue, spec)
 		if queueItem == nil {
 			return nil, errors.New("no dispatchable task found in the queue")
 		}

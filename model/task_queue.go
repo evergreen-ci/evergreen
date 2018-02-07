@@ -108,7 +108,7 @@ func (self *TaskQueue) Save() error {
 	return updateTaskQueue(self.Distro, self.Queue)
 }
 
-func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
+func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
 	// With a spec, find a matching task.
 	if spec.Group != "" && spec.ProjectID != "" && spec.BuildVariant != "" && spec.Version != "" {
 		for _, it := range self.Queue {

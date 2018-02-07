@@ -4,8 +4,7 @@ package model
 // both mocking and different approaches to queue construction.
 type TaskQueueAccessor interface {
 	Length() int
-	NextTask() *TaskQueueItem
-	FindTask(TaskSpec) *TaskQueueItem
+	FindNextTask(TaskSpec) *TaskQueueItem
 	Save() error
 	DequeueTask(string) error
 }
@@ -21,17 +20,11 @@ type TaskSpec struct {
 	GroupMaxHosts int
 }
 
-// MatchingOrNextTask provides a generic implementation of logic to
-// support selecting either a task matching the given task spec or the
-// next task in the queue if none matches.
-//
-// Returns nil if the queue is empty.
-func MatchingOrNextTask(queue TaskQueueAccessor, spec TaskSpec) *TaskQueueItem {
+// GetNextTask returns nil if the queue is empty, otherwise delegates to
+// the queue's FindNextTask() method.
+func GetNextTask(queue TaskQueueAccessor, spec TaskSpec) *TaskQueueItem {
 	if queue.Length() == 0 {
 		return nil
 	}
-	if it := queue.FindTask(spec); it != nil {
-		return it
-	}
-	return queue.NextTask()
+	return queue.FindNextTask(spec)
 }
