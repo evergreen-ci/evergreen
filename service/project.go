@@ -154,6 +154,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Repo               string               `json:"repo_name"`
 		Admins             []string             `json:"admins"`
 		TracksPushEvents   bool                 `json:"tracks_push_events"`
+		PRTestingEnabled   bool                 `json:"pr_testing_enabled"`
 		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
@@ -208,6 +209,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Admins = responseRef.Admins
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
+	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
 
 	projectRef.Alerts = map[string][]model.AlertConfig{}
 	for triggerId, alerts := range responseRef.AlertConfig {

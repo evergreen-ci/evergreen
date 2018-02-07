@@ -32,6 +32,8 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
+	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 
@@ -94,6 +96,7 @@ var (
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
+	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 )
 
 const (
@@ -284,6 +287,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
+				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
 			},
 		},
 	)

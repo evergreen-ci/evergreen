@@ -208,6 +208,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           admins : $scope.projectRef.admins || [],
           setup_github_hook: $scope.githubHookId != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
+          pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
           delete_aliases: []
         };
