@@ -49,7 +49,7 @@ func (s *repotrackerJobSuite) TestJob() {
 
 func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	flags := evergreen.ServiceFlags{
-		RepotrackerPushEventDisabled: true,
+		RepotrackerDisabled: true,
 	}
 	s.NoError(evergreen.SetServiceFlags(flags))
 
