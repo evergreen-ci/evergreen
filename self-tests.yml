@@ -467,13 +467,7 @@ tasks:
     name: test-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-model-patch
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-model-artifact
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
-    name: test-model-host
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-model-build
@@ -482,7 +476,22 @@ tasks:
     name: test-model-event
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-host
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-patch
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-task
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-testresult
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-user
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-version
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-plugin
@@ -580,9 +589,6 @@ tasks:
     name: race-model
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
-    name: race-model-patch
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
     name: race-model-artifact
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -596,6 +602,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-task
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-version
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-rest-data
@@ -644,17 +653,35 @@ tasks:
   - <<: *run-lint
     name: lint-model
   - <<: *run-lint
+    name: lint-model-alert
+  - <<: *run-lint
+    name: lint-model-alertrecord
+  - <<: *run-lint
     name: lint-model-artifact
   - <<: *run-lint
     name: lint-model-build
   - <<: *run-lint
+    name: lint-model-distro
+  - <<: *run-lint
     name: lint-model-event
   - <<: *run-lint
+    name: lint-model-grid
+  - <<: *run-lint
     name: lint-model-host
+  - <<: *run-lint
+    name: lint-model-manifest
   - <<: *run-lint
     name: lint-model-patch
   - <<: *run-lint
     name: lint-model-task
+  - <<: *run-lint
+    name: lint-model-testresult
+  - <<: *run-lint
+    name: lint-model-testutil
+  - <<: *run-lint
+    name: lint-model-user
+  - <<: *run-lint
+    name: lint-model-version
   - <<: *run-lint
     name: lint-monitor
   - <<: *run-lint
