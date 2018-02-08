@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -176,7 +177,7 @@ func (s *AgentSuite) TestCancelRunCommands() {
 	s.Equal("runCommands canceled", err.Error())
 }
 
-func (s *AgentSuite) TestRunPre() {
+func (s *AgentSuite) TestPre() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -209,7 +210,7 @@ pre:
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running pre-task commands")
 }
 
-func (s *AgentSuite) TestRunPost() {
+func (s *AgentSuite) TestPost() {
 	s.tc.taskConfig = &model.TaskConfig{
 		BuildVariant: &model.BuildVariant{
 			Name: "buildvariant_id",
@@ -240,6 +241,57 @@ post:
 	s.Equal("Running post-task commands.", msgs[1].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[2].Message)
 	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
+}
+
+func (s *AgentSuite) TestPostContinuesOnError() {
+	s.tc.taskConfig = &model.TaskConfig{
+		BuildVariant: &model.BuildVariant{
+			Name: "buildvariant_id",
+		},
+		Task: &task.Task{
+			Id:      "task_id",
+			Version: versionId,
+		},
+		Project: &model.Project{},
+		WorkDir: s.tc.taskDirectory,
+	}
+	projYml := `
+post:
+  - command: shell.exec
+    params:
+      script: "exit 1"
+  - command: shell.exec
+    params:
+      script: "exit 0"
+`
+	v := &version.Version{
+		Id:     versionId,
+		Config: projYml,
+	}
+	s.tc.taskConfig.Version = v
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.a.runPostTaskCommands(ctx, s.tc)
+	_ = s.tc.logger.Close()
+	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
+	s.Equal("Running post-task commands.", msgs[1].Message)
+	s.Equal("Running command 'shell.exec' (step 1 of 2)", msgs[2].Message)
+	s.Contains(msgs[len(msgs)-1].Message, "Finished running post-task commands")
+	found := map[string]bool{
+		"Running post-task commands.":                false,
+		"Running command 'shell.exec' (step 1 of 2)": false,
+		"Running command 'shell.exec' (step 2 of 2)": false,
+	}
+	for _, msg := range msgs {
+		for f := range found {
+			if f == msg.Message {
+				found[f] = true
+			}
+		}
+	}
+	for f, b := range found {
+		s.True(b, fmt.Sprintf("did not find string %s in logs", f))
+	}
 }
 
 func (s *AgentSuite) TestEndTaskResponse() {
