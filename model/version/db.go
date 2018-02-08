@@ -191,3 +191,8 @@ func UpdateOne(query interface{}, update interface{}) error {
 		update,
 	)
 }
+
+// RemoveOne removes one version
+func RemoveOne(query interface{}) error {
+	return db.Remove(Collection, query)
+}

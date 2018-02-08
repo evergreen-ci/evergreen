@@ -244,6 +244,6 @@ func UpdateAllBuilds(query interface{}, update interface{}) (*mgo.ChangeInfo, er
 func Remove(id string) error {
 	return db.Remove(
 		Collection,
-		bson.M{IdKey: id},
+		ById(id),
 	)
 }
