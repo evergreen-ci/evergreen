@@ -101,11 +101,24 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	prConflictingRefs, err := model.FindProjectRefsByRepoAndBranch(projRef.Owner, projRef.Repo, projRef.Branch)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	conflictingRefs := []string{}
+	for _, ref := range prConflictingRefs {
+		if ref.Identifier != projRef.Identifier {
+			conflictingRefs = append(conflictingRefs, ref.Identifier)
+		}
+	}
+
 	data := struct {
-		ProjectRef     *model.ProjectRef
-		ProjectVars    *model.ProjectVars
-		ProjectAliases []model.ProjectAlias `json:"aliases,omitempty"`
-	}{projRef, projVars, projectAliases}
+		ProjectRef      *model.ProjectRef
+		ProjectVars     *model.ProjectVars
+		ProjectAliases  []model.ProjectAlias `json:"aliases,omitempty"`
+		ConflictingRefs []string             `json:"pr_testing_conflicting_refs,omitempty"`
+	}{projRef, projVars, projectAliases, conflictingRefs}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
@@ -197,6 +210,18 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	for _, ref := range conflictingRefs {
+		if ref.Identifier != id {
+			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", id))
+			return
+		}
+	}
+
 	projectRef.DisplayName = responseRef.DisplayName
 	projectRef.RemotePath = responseRef.RemotePath
 	projectRef.BatchTime = responseRef.BatchTime
@@ -222,6 +247,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !projectRef.Enabled {
+		projectRef.PRTestingEnabled = false
+	}
+
 	projectVars, err := model.FindOneProjectVars(id)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -244,11 +273,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			}
 			projectVars.GithubHookID = 0
 			projectRef.TracksPushEvents = false
+			projectRef.PRTestingEnabled = false
 		}
 	}
 
-	if projectVars.GithubHookID != 0 && projectRef.TracksPushEvents &&
-		responseRef.ForceRepotrackerRun {
+	if projectVars.GithubHookID != 0 && responseRef.ForceRepotrackerRun {
 		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
 		if err = uis.queue.Put(j); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
