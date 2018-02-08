@@ -1,8 +1,6 @@
 mciModule
   .constant('API_V1', {
     BASE: '/rest/v1',
-    VERSION_API: _.template('/version/{buildId}/'),
-    BUILD_API: '/rest/v1/build/',
 
     // ## PROJECTS API ##
     PROJECTS_API: _.template('{base}/projects/'),

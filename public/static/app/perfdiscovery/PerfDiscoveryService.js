@@ -1,5 +1,5 @@
 mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
-  var _respData = function(resp) {
+  var respData = function(resp) {
     return resp.data
   }
 
@@ -24,21 +24,21 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
   function queryData(tasks, version, baseline) {
     var current = $q.all(_.map(tasks, function(task) {
       return ApiTaskdata.getTaskById(task.taskId, 'perf')
-        .then(_respData, function() { return null })
+        .then(respData, function() { return null })
         .then(function(data) {
           if (data) {
             return $q.all({
               ctx: $q.resolve(task),
               current: data,
               history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
-                .then(_respData, function(e) { return [] }),
+                .then(respData, function(e) { return [] }),
               baseline: ApiTaskdata.getTaskCommit({
                 projectId: data.project_id,
                 revision: baseline.revision,
                 variant: data.variant,
                 taskName: task.taskName,
                 name: 'perf',
-              }).then(_respData, function() { null }),
+              }).then(respData, function() { null }),
             })
           } else {
             return null
@@ -161,6 +161,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     if (item.speed >= 0) {
       return ratio
     } else {
+      // Negatives mean latency in ms. Invert the ratio so higher is better.
       return 1 / ratio
     }
   }
