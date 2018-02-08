@@ -95,8 +95,8 @@ func TestAdminSuite(t *testing.T) {
 }
 
 func (s *AdminSuite) SetupTest() {
-	db.Clear(ConfigCollection)
-	resetRegistry()
+	s.NoError(db.Clear(ConfigCollection))
+	s.NoError(resetRegistry())
 }
 
 func (s *AdminSuite) TestBanner() {

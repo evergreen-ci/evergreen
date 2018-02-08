@@ -9,9 +9,11 @@ import (
 var (
 	ConfigCollection = "admin"
 	configDocID      = "global"
+)
 
-	idKey = bsonutil.MustHaveTag(Settings{}, "Id")
-
+//nolint: deadcode, megacheck
+var (
+	idKey           = bsonutil.MustHaveTag(Settings{}, "Id")
 	bannerKey       = bsonutil.MustHaveTag(Settings{}, "Banner")
 	bannerThemeKey  = bsonutil.MustHaveTag(Settings{}, "BannerTheme")
 	serviceFlagsKey = bsonutil.MustHaveTag(Settings{}, "ServiceFlags")
