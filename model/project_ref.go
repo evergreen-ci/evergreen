@@ -180,11 +180,10 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefOwnerKey:            owner,
-			ProjectRefRepoKey:             repoName,
-			ProjectRefBranchKey:           branch,
-			ProjectRefEnabledKey:          true,
-			projectRefPRTestingEnabledKey: true,
+			ProjectRefOwnerKey:   owner,
+			ProjectRefRepoKey:    repoName,
+			ProjectRefBranchKey:  branch,
+			ProjectRefEnabledKey: true,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -209,17 +208,28 @@ func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, 
 			owner, repo, branch)
 	}
 	l := len(projectRefs)
+	target := 0
 	if l > 1 {
-		err = errors.Errorf("attempt to fetch project ref for "+
-			"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
-			owner, repo, branch, l)
-		return nil, err
+		count := 0
+		for i := range projectRefs {
+			if projectRefs[i].PRTestingEnabled {
+				target = i
+				count += 1
+			}
+		}
+
+		if count > 1 {
+			err = errors.Errorf("attempt to fetch project ref for "+
+				"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
+				owner, repo, branch, l)
+			return nil, err
+		}
 
 	} else if l == 0 {
 		return nil, nil
 	}
 
-	return &projectRefs[0], nil
+	return &projectRefs[target], nil
 }
 
 // FindProjectRefs returns limit refs starting at project identifier key
