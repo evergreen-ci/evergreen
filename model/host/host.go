@@ -36,7 +36,12 @@ type Host struct {
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
 	// the task that is currently running on the host
-	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
+	RunningTask             string `bson:"running_task,omitempty" json:"running_task,omitempty"`
+	RunningTaskGroup        string `bson:"running_task_group,omitempty" json:"running_task_group,omitempty"`
+	RunningTaskBuildVariant string `bson:"running_task_bv,omitempty" json:"running_task_bv,omitempty"`
+	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
+	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
+
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
 
@@ -328,7 +333,11 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 				LTCTimeKey: finishTime,
 			},
 			"$unset": bson.M{
-				RunningTaskKey: 1,
+				RunningTaskKey:             1,
+				RunningTaskGroupKey:        1,
+				RunningTaskBuildVariantKey: 1,
+				RunningTaskVersionKey:      1,
+				RunningTaskProjectKey:      1,
 			},
 		})
 
@@ -348,11 +357,11 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 // the host running the task with Id, 'prevTaskId' and updates its running task
 // to 'newTaskId'; also setting the completion time of 'prevTaskId'
 // Returns true for success and error if it exists
-func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
+func (host *Host) UpdateRunningTask(prevTaskId string, newTask *task.Task,
 	finishTime time.Time) (bool, error) {
 
 	// we should never be calling update running task with an empty new task id.
-	if newTaskId == "" {
+	if newTask.Id == "" {
 		return false, fmt.Errorf("cannot set a running task id to be an empty string")
 	}
 
@@ -362,10 +371,14 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 
 	update := bson.M{
 		"$set": bson.M{
-			RunningTaskKey: newTaskId,
-			LTCKey:         prevTaskId,
-			LTCTimeKey:     finishTime,
-			PidKey:         "",
+			RunningTaskKey:             newTask.Id,
+			RunningTaskGroupKey:        newTask.TaskGroup,
+			RunningTaskBuildVariantKey: newTask.BuildVariant,
+			RunningTaskVersionKey:      newTask.Version,
+			RunningTaskProjectKey:      newTask.Project,
+			LTCKey:                     prevTaskId,
+			LTCTimeKey:                 finishTime,
+			PidKey:                     "",
 		},
 	}
 
@@ -377,7 +390,7 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 		}
 		return false, err
 	}
-	event.LogHostRunningTaskSet(host.Id, newTaskId)
+	event.LogHostRunningTaskSet(host.Id, newTask.Id)
 
 	return true, nil
 }

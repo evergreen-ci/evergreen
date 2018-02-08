@@ -38,6 +38,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 			ExpectedDuration:    expectedTaskDuration,
 			Priority:            t.Priority,
 			Group:               t.TaskGroup,
+			GroupMaxHosts:       t.TaskGroupMaxHosts,
 			Version:             t.Version,
 		})
 

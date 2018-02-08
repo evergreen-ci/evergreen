@@ -4,7 +4,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -29,6 +32,7 @@ type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
 	Group               string        `bson:"group_name" json:"group_name"`
+	GroupMaxHosts       int           `bson:"group_max_hosts,omitempty" json:"group_max_hosts,omitempty"`
 	Version             string        `bson:"version" json:"version"`
 	BuildVariant        string        `bson:"build_variant" json:"build_variant"`
 	RevisionOrderNumber int           `bson:"order" json:"order"`
@@ -77,36 +81,74 @@ func (self *TaskQueue) NextTask() *TaskQueueItem {
 	return &self.Queue[0]
 }
 
+// shouldRunTaskGroup returns true if the number of hosts running a task is less than the maximum for that task group.
+func shouldRunTaskGroup(taskId string, spec TaskSpec) bool {
+	// Get number of hosts running this spec.
+	numHosts, err := host.NumHostsByTaskSpec(spec.Group, spec.BuildVariant, spec.ProjectID, spec.Version)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":    "error finding hosts for spec",
+			"task_id":    taskId,
+			"queue_item": spec,
+		}))
+		return false
+	}
+	// If the group is running on 0 hosts, return true early.
+	if numHosts == 0 {
+		return true
+	}
+	// If this spec is running on fewer hosts than max_hosts, dispatch this task.
+	if numHosts < spec.GroupMaxHosts {
+		return true
+	}
+	return false
+}
+
 func (self *TaskQueue) Save() error {
 	return updateTaskQueue(self.Distro, self.Queue)
 }
 
-func (self *TaskQueue) FindTask(spec TaskSpec) *TaskQueueItem {
-	if spec.Group == "" || spec.ProjectID == "" || spec.BuildVariant == "" || spec.Version == "" {
-		return nil
+func (self *TaskQueue) FindNextTask(spec TaskSpec) *TaskQueueItem {
+	// With a spec, find a matching task.
+	if spec.Group != "" && spec.ProjectID != "" && spec.BuildVariant != "" && spec.Version != "" {
+		for _, it := range self.Queue {
+			if it.Project != spec.ProjectID {
+				continue
+			}
+
+			if it.Version != spec.Version {
+				continue
+			}
+
+			if it.BuildVariant != spec.BuildVariant {
+				continue
+			}
+
+			if it.Group != spec.Group {
+				continue
+			}
+			return &it
+		}
 	}
 
+	// Otherwise, find the next dispatchable task.
 	for _, it := range self.Queue {
-		if it.Project != spec.ProjectID {
-			continue
+		// Always return a task if the task group is empty.
+		if it.Group == "" {
+			return &it
 		}
-
-		if it.Version != spec.Version {
-			continue
+		// Otherwise, return the task if it is running on fewer than its task group's max hosts.
+		spec := TaskSpec{
+			Group:         it.Group,
+			BuildVariant:  it.BuildVariant,
+			ProjectID:     it.Project,
+			Version:       it.Version,
+			GroupMaxHosts: it.GroupMaxHosts,
 		}
-
-		if it.BuildVariant != spec.BuildVariant {
-			continue
+		if shouldRun := shouldRunTaskGroup(it.Id, spec); shouldRun {
+			return &it
 		}
-
-		if it.Group != spec.Group {
-			continue
-		}
-
-		return &it
 	}
-
-	// TODO decide if we should return NextTask or nil
 	return nil
 }
 
