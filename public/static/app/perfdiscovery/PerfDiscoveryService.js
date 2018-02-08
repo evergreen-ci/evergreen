@@ -51,6 +51,8 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     })
   }
 
+  // TODO remove the line and related code once `storageEngine` will be added
+  // to the API (see EVG-2744)
   var seRe = new RegExp('[_ -](wt|wiredtiger|mmapv1|inmemory)$', 'i')
 
   // Takes build and task names
