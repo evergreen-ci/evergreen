@@ -639,13 +639,11 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
-func (h *Host) DisablePoisonedHost(force bool) error {
+func (h *Host) DisablePoisonedHost() error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		if force {
-			return errors.WithStack(h.SetQuarantined(evergreen.User))
+		if err := h.SetQuarantined(evergreen.User); err != nil {
+			return errors.WithStack(err)
 		}
-
-		// TODO: in the future maybe decomission hosts
 
 		grip.Critical(message.Fields{
 			"host":     h.Id,
@@ -657,6 +655,7 @@ func (h *Host) DisablePoisonedHost(force bool) error {
 
 		return nil
 	}
+
 	return errors.WithStack(h.SetDecommissioned(evergreen.User))
 }
 

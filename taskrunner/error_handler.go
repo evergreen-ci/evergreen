@@ -105,7 +105,7 @@ func processErrorItem(rec hostRecord, errors errorRecord) string {
 		queue := env.LocalQueue()
 
 		lines = append(lines, "Action: Disabled Host")
-		err := errors.host.DisablePoisonedHost(true)
+		err := errors.host.DisablePoisonedHost()
 
 		job := units.NewDecoHostNotifyJob(env, errors.host, err,
 			"host encountered consecutive set up failures")
