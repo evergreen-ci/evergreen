@@ -129,9 +129,9 @@ func (s *ClientSettings) GetRestCommunicator(ctx context.Context) client.Communi
 	}
 	if update.needsUpdate {
 		if runtime.GOOS == "windows" {
-			fmt.Printf("A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
+			fmt.Printf(os.Stderr, "A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
 		} else {
-			fmt.Printf("A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
+			fmt.Printf(os.Stderr, "A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
 		}
 	}
 
