@@ -152,7 +152,6 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 			err = a.runCommands(ctx, tc, taskGroup.SetupGroup.List(), false)
 			if err != nil {
 				tc.logger.Execution().Error(errors.Wrap(err, "error running task setup group"))
-				return
 			}
 		}
 	}
