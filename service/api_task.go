@@ -240,13 +240,17 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		env := evergreen.GetEnvironment()
 		queue := env.LocalQueue()
 		message := "host encountered consecutive system failures"
-		err := currentHost.DisablePoisonedHost(false)
-		job := units.NewDecoHostNotifyJob(env, currentHost, err, message)
-		grip.Critical(queue.Put(job))
+		if currentHost.Provider != evergreen.ProviderNameStatic {
+			err := currentHost.DisablePoisonedHost()
 
-		if err != nil {
-			as.WriteJSON(w, http.StatusInternalServerError, err)
-			return
+			job := units.NewDecoHostNotifyJob(env, currentHost, err, message)
+			grip.Critical(queue.Put(job))
+
+			if err != nil {
+				as.WriteJSON(w, http.StatusInternalServerError, err)
+				return
+			}
+
 		}
 
 		endTaskResp.ShouldExit = true
