@@ -11,6 +11,9 @@ var (
 	idKey        = bsonutil.MustHaveTag(ProjectAlias{}, "ID")
 	projectIDKey = bsonutil.MustHaveTag(ProjectAlias{}, "ProjectID")
 	aliasKey     = bsonutil.MustHaveTag(ProjectAlias{}, "Alias")
+	variantKey   = bsonutil.MustHaveTag(ProjectAlias{}, "Variant")
+	taskKey      = bsonutil.MustHaveTag(ProjectAlias{}, "Task")
+	tagsKey      = bsonutil.MustHaveTag(ProjectAlias{}, "Tags")
 )
 
 const (
@@ -23,7 +26,7 @@ const (
 //
 // For example, a user can specify that alias with the CLI tool so that a project
 // admin can define a set of default builders for patch builds. Pull request
-// testing uses a special alias, "github_pull_request" to determine the default
+// testing uses a special alias, "__github" to determine the default
 // variants and tasks to run in a patch build.
 //
 // An alias can be specified multiple times. The resulting variant/task
@@ -31,23 +34,38 @@ const (
 // following:
 //
 // ALIAS                  VARIANTS          TASKS
-// github_pull_request    .*linux.*         .*test.*
-// github_pull_request    ^ubuntu1604.*$    ^comppile.*$
+// __github               .*linux.*         .*test.*
+// __github               ^ubuntu1604.*$    ^compile.*$
 //
 // This will cause a GitHub pull request to create and finalize a patch which runs
 // all tasks containing the string “test” on all variants containing the string
 // “linux”; and to run all tasks beginning with the string “compile” to run on all
 // variants beginning with the string “ubuntu1604”.
 type ProjectAlias struct {
-	ID        bson.ObjectId `bson:"_id"`
-	ProjectID string        `bson:"project_id"`
-	Alias     string        `bson:"alias"`
-	Variants  string        `bson:"variants"`
-	Tasks     string        `bson:"tasks"`
+	ID        bson.ObjectId `bson:"_id" json:"_id"`
+	ProjectID string        `bson:"project_id" json:"project_id"`
+	Alias     string        `bson:"alias" json:"alias"`
+	Variant   string        `bson:"variant" json:"variant"`
+	Task      string        `bson:"task,omitempty" json:"task"`
+	Tags      []string      `bson:"tags,omitempty" json:"tags"`
 }
 
-// FindProjectAliases finds aliases with a given name for a project.
-func FindProjectAliases(projectID, alias string) ([]ProjectAlias, error) {
+// FindAliasesForProject fetches all aliases for a given project
+func FindAliasesForProject(projectID string) ([]ProjectAlias, error) {
+	out := []ProjectAlias{}
+	q := db.Query(bson.M{
+		projectIDKey: projectID,
+	})
+	err := db.FindAllQ(ProjectAliasCollection, q, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// FindAliasInProject finds all aliases with a given name for a project.
+func FindAliasInProject(projectID, alias string) ([]ProjectAlias, error) {
 	var out []ProjectAlias
 	q := db.Query(bson.M{
 		projectIDKey: projectID,
@@ -60,26 +78,43 @@ func FindProjectAliases(projectID, alias string) ([]ProjectAlias, error) {
 	return out, nil
 }
 
-// Insert adds a project alias to the database.
-func (p *ProjectAlias) Insert() error {
-	if p.ID == "" {
+func (p *ProjectAlias) Upsert() error {
+	if len(p.ProjectID) == 0 {
+		return errors.New("empty project ID")
+	}
+	if p.ID.Hex() == "" {
 		p.ID = bson.NewObjectId()
 	}
-	err := db.Insert(ProjectAliasCollection, p)
+	update := bson.M{
+		aliasKey:     p.Alias,
+		projectIDKey: p.ProjectID,
+		variantKey:   p.Variant,
+	}
+	if p.Task != "" {
+		update["task"] = p.Task
+	}
+	if len(p.Tags) > 0 {
+		update["tags"] = p.Tags
+	}
+
+	_, err := db.Upsert(ProjectAliasCollection, bson.M{
+		idKey: p.ID,
+	}, bson.M{"$set": update})
 	if err != nil {
-		return errors.Wrapf(err, "failed to insert project alias", p.ID)
+		return errors.Wrapf(err, "failed to insert project alias '%s'", p.ID)
 	}
 	return nil
 }
 
-// Remove removes a matching project alias from the database.
-func (p *ProjectAlias) Remove() error {
-	if p.ID == "" {
+// RemoveProjectAlias removes a project alias with the given document ID from the
+// database.
+func RemoveProjectAlias(id string) error {
+	if id == "" {
 		return errors.New("can't remove project alias with empty id")
 	}
-	err := db.Remove(ProjectAliasCollection, db.Query(bson.M{idKey: p.ID}))
+	err := db.Remove(ProjectAliasCollection, db.Query(bson.M{idKey: bson.ObjectIdHex(id)}))
 	if err != nil {
-		return errors.Wrapf(err, "failed to remove project alias %s", p.ID)
+		return errors.Wrapf(err, "failed to remove project alias %s", id)
 	}
 	return nil
 }

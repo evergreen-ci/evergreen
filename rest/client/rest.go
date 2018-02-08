@@ -400,7 +400,7 @@ func (c *communicatorImpl) DeletePublicKey(ctx context.Context, keyName string) 
 	return nil
 }
 
-func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.PatchDefinition, error) {
+func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]serviceModel.ProjectAlias, error) {
 	path := fmt.Sprintf("alias/%s", project)
 	info := requestInfo{
 		method:  get,
@@ -415,7 +415,7 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("bad status from api server: %v", resp.StatusCode)
 	}
-	patchAliases := []serviceModel.PatchDefinition{}
+	patchAliases := []serviceModel.ProjectAlias{}
 
 	// use io.ReadAll and json.Unmarshal instead of util.ReadJSONInto since we may read the results twice
 	bytes, err := ioutil.ReadAll(resp.Body)
@@ -423,11 +423,11 @@ func (c *communicatorImpl) ListAliases(ctx context.Context, project string) ([]s
 		return nil, errors.Wrap(err, "error reading JSON")
 	}
 	if err := json.Unmarshal(bytes, &patchAliases); err != nil {
-		patchAlias := serviceModel.PatchDefinition{}
+		patchAlias := serviceModel.ProjectAlias{}
 		if err := json.Unmarshal(bytes, &patchAlias); err != nil {
 			return nil, errors.Wrap(err, "error reading json")
 		}
-		patchAliases = []serviceModel.PatchDefinition{patchAlias}
+		patchAliases = []serviceModel.ProjectAlias{patchAlias}
 	}
 	return patchAliases, nil
 }

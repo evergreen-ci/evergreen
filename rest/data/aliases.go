@@ -9,8 +9,8 @@ import (
 type DBAliasConnector struct{}
 
 // FindProjectAliases queries the database to find all aliases.
-func (d *DBAliasConnector) FindProjectAliases(projectId string) ([]model.PatchDefinition, error) {
-	aliases, err := model.FindAllProjectAliases(projectId)
+func (d *DBAliasConnector) FindProjectAliases(projectId string) ([]model.ProjectAlias, error) {
+	aliases, err := model.FindAliasesForProject(projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +25,6 @@ func (d *DBAliasConnector) FindProjectAliases(projectId string) ([]model.PatchDe
 type MockAliasConnector struct{}
 
 // FindAllAliases is a mock implementation for testing.
-func (d *MockAliasConnector) FindProjectAliases(projectId string) ([]model.PatchDefinition, error) {
+func (d *MockAliasConnector) FindProjectAliases(projectId string) ([]model.ProjectAlias, error) {
 	return nil, nil
 }

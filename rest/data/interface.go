@@ -172,7 +172,7 @@ type Connector interface {
 	TerminateHost(*host.Host, string) error
 
 	// FindProjectAliases queries the database to find all aliases.
-	FindProjectAliases(string) ([]model.PatchDefinition, error)
+	FindProjectAliases(string) ([]model.ProjectAlias, error)
 
 	// TriggerRepotracker creates an amboy job to get the commits from a
 	// Github Push Event

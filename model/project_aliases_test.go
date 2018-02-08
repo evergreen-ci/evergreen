@@ -22,24 +22,24 @@ func TestProjectAliasSuite(t *testing.T) {
 
 func (s *ProjectAliasSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-
-	for i := 0; i < 10; i++ {
-		s.aliases = append(s.aliases, ProjectAlias{
-			ProjectID: fmt.Sprintf("project-%d", i),
-			Alias:     fmt.Sprintf("alias-%d", i),
-			Variants:  fmt.Sprintf("variant-%d", i),
-			Tasks:     fmt.Sprintf("task-%d", i),
-		})
-	}
 }
 
 func (s *ProjectAliasSuite) SetupTest() {
 	s.Require().NoError(db.Clear(ProjectAliasCollection))
+	s.aliases = []ProjectAlias{}
+	for i := 0; i < 10; i++ {
+		s.aliases = append(s.aliases, ProjectAlias{
+			ProjectID: fmt.Sprintf("project-%d", i),
+			Alias:     fmt.Sprintf("alias-%d", i),
+			Variant:   fmt.Sprintf("variant-%d", i),
+			Task:      fmt.Sprintf("task-%d", i),
+		})
+	}
 }
 
 func (s *ProjectAliasSuite) TestInsert() {
 	for _, a := range s.aliases {
-		s.NoError(a.Insert())
+		s.NoError(a.Upsert())
 	}
 
 	var out ProjectAlias
@@ -48,14 +48,14 @@ func (s *ProjectAliasSuite) TestInsert() {
 		s.NoError(db.FindOneQ(ProjectAliasCollection, q, &out))
 		s.Equal(a.ProjectID, out.ProjectID)
 		s.Equal(a.Alias, out.Alias)
-		s.Equal(a.Variants, out.Variants)
-		s.Equal(a.Tasks, out.Tasks)
+		s.Equal(a.Variant, out.Variant)
+		s.Equal(a.Task, out.Task)
 	}
 }
 
 func (s *ProjectAliasSuite) TestRemove() {
 	for i, a := range s.aliases {
-		s.NoError(a.Insert())
+		s.NoError(a.Upsert())
 		s.aliases[i] = a
 	}
 	var out []ProjectAlias
@@ -64,39 +64,56 @@ func (s *ProjectAliasSuite) TestRemove() {
 	s.Len(out, 10)
 
 	for i, a := range s.aliases {
-		s.NoError(a.Remove())
+		s.NoError(RemoveProjectAlias(a.ID.Hex()))
 		s.NoError(db.FindAllQ(ProjectAliasCollection, q, &out))
 		s.Len(out, 10-i-1)
 	}
 }
 
-func (s *ProjectAliasSuite) TestFindProjectAliases() {
+func (s *ProjectAliasSuite) TestFindAliasesForProject() {
 	for _, a := range s.aliases {
-		s.NoError(a.Insert())
+		s.NoError(a.Upsert())
 	}
 	a1 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     "alias-1",
-		Variants:  "variants-11",
-		Tasks:     "variants-11",
+		Variant:   "variants-111",
+		Task:      "variants-11",
+	}
+	s.NoError(a1.Upsert())
+
+	out, err := FindAliasesForProject("project-1")
+	s.NoError(err)
+	s.Len(out, 2)
+}
+
+func (s *ProjectAliasSuite) TestFindAliasInProject() {
+	for _, a := range s.aliases {
+		s.NoError(a.Upsert())
+	}
+	a1 := ProjectAlias{
+		ProjectID: "project-1",
+		Alias:     "alias-1",
+		Variant:   "variants-11",
+		Task:      "variants-11",
 	}
 	a2 := ProjectAlias{
 		ProjectID: "project-1",
 		Alias:     "alias-2",
-		Variants:  "variants-11",
-		Tasks:     "variants-11",
+		Variant:   "variants-11",
+		Task:      "variants-11",
 	}
 	a3 := ProjectAlias{
 		ProjectID: "project-2",
 		Alias:     "alias-1",
-		Variants:  "variants-11",
-		Tasks:     "variants-11",
+		Variant:   "variants-11",
+		Task:      "variants-11",
 	}
-	s.NoError(a1.Insert())
-	s.NoError(a2.Insert())
-	s.NoError(a3.Insert())
+	s.NoError(a1.Upsert())
+	s.NoError(a2.Upsert())
+	s.NoError(a3.Upsert())
 
-	found, err := FindProjectAliases("project-1", "alias-1")
+	found, err := FindAliasInProject("project-1", "alias-1")
 	s.NoError(err)
 	s.Len(found, 2)
 }
