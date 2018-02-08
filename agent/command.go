@@ -88,7 +88,9 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			case err = <-cmdChan:
 				if err != nil {
 					tc.logger.Task().Errorf("Command failed: %v", err)
-					return errors.Wrap(err, "command failed")
+					if isTaskCommands {
+						return errors.Wrap(err, "command failed")
+					}
 				}
 			case <-ctx.Done():
 				tc.logger.Task().Errorf("Command canceled: %v", err)
