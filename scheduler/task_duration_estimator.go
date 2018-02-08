@@ -8,19 +8,11 @@ import (
 
 // TaskDurationEstimator is responsible for fetching the expected duration for a
 // given set of runnable tasks.
-type TaskDurationEstimator interface {
-	GetExpectedDurations(runnableTasks []task.Task) (
-		model.ProjectTaskDurations, error)
-}
-
-// DBTaskDurationEstimator retrives the estimated duration of runnable tasks.
-// Implements TaskDurationEstimator.
-type DBTaskDurationEstimator struct{}
+type TaskDurationEstimator func([]task.Task) (model.ProjectTaskDurations, error)
 
 // GetExpectedDurations returns the expected duration of tasks
 // (by display name) on a project, buildvariant basis.
-func (self *DBTaskDurationEstimator) GetExpectedDurations(
-	runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
+func GetExpectedDurations(runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
 	durations := model.ProjectTaskDurations{}
 
 	// get the average task duration for all the runnable tasks

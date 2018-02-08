@@ -43,12 +43,11 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	})
 
 	schedulerInstance := &Scheduler{
-		config,
-		&CmpBasedTaskPrioritizer{},
-		&DBTaskDurationEstimator{},
-		&DBTaskQueuePersister{},
-		&DurationBasedHostAllocator{},
-		LegacyFindRunnableTasks,
+		Settings:             config,
+		TaskPrioritizer:      &CmpBasedTaskPrioritizer{},
+		TaskQueuePersister:   &DBTaskQueuePersister{},
+		HostAllocator:        &DurationBasedHostAllocator{},
+		GetExpectedDurations: GetExpectedDurations,
 	}
 
 	switch config.Scheduler.TaskFinder {
@@ -60,6 +59,8 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		schedulerInstance.FindRunnableTasks = RunnableTasksPipeline
 	case "alternate":
 		schedulerInstance.FindRunnableTasks = AlternateTaskFinder
+	default:
+		schedulerInstance.FindRunnableTasks = LegacyFindRunnableTasks
 	}
 
 	if err := schedulerInstance.Schedule(ctx); err != nil {

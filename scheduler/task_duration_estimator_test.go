@@ -13,7 +13,6 @@ import (
 )
 
 func TestDBTaskDurationEstimator(t *testing.T) {
-	var taskDurationEstimator *DBTaskDurationEstimator
 	var displayNames []string
 	var buildVariants []string
 	var projects []string
@@ -23,7 +22,6 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 	Convey("With a DBTaskDurationEstimator...", t,
 		func() {
-			taskDurationEstimator = &DBTaskDurationEstimator{}
 			taskIds = []string{"t1", "t2", "t3", "t4", "t5", "t6",
 				"t7", "t8", "t9"}
 			displayNames = []string{"dn1", "dn2", "dn3", "dn4", "dn5", "dn6"}
@@ -73,8 +71,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							"insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 
 					So(err, ShouldEqual, nil)
 
@@ -136,8 +133,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							" insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 
 					So(err, ShouldEqual, nil)
 
@@ -205,8 +201,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							"insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 
 					So(err, ShouldEqual, nil)
 
@@ -270,8 +265,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							"insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 
 					So(err, ShouldEqual, nil)
 
@@ -345,8 +339,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							"insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 
 					So(err, ShouldEqual, nil)
 
@@ -412,8 +405,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							"insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 
 					So(err, ShouldEqual, nil)
 
@@ -563,8 +555,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							"insert task")
 					}
 
-					taskDurations, err := taskDurationEstimator.
-						GetExpectedDurations(runnableTasks)
+					taskDurations, err := GetExpectedDurations(runnableTasks)
 					testutil.HandleTestingErr(err, t, "failed to get task "+
 						"durations")
 					projectDurations := taskDurations.
