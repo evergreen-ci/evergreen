@@ -11,7 +11,7 @@ var (
 	configDocID      = "global"
 )
 
-//nolint: deadcode
+//nolint: deadcode, megacheck
 var (
 	idKey           = bsonutil.MustHaveTag(Settings{}, "Id")
 	bannerKey       = bsonutil.MustHaveTag(Settings{}, "Banner")
