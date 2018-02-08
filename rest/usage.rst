@@ -150,6 +150,10 @@ Objects
    * - ``expected_duration_ms``
      - int            
      - Number of milliseconds expected for this task to execute
+   * - ``previous_executions``
+     - [Task]
+     - Optional. Contains previous executions of the task if they were
+       requested, and available. May be empty.
 
 
 .. list-table:: **Logs**
@@ -202,22 +206,24 @@ List Tasks By Build
 
  GET /builds/<build_id>/tasks
 
- List all tasks within a specific build
-
+ List all tasks within a specific build.
 
 .. list-table:: **Parameters**
    :widths: 25 10 55
    :header-rows: 1
 
-   * - Name        
-     - Type           
+   * - Name
+     - Type
      - Description
-   * - start_at     
-     - string   
+   * - start_at
+     - string
      - Optional. The identifier of the task to start at in the pagination
-   * - limit       
-     - int   
+   * - limit
+     - int
      - Optional. The number of tasks to be returned per page of pagination. Defaults to 100
+   * - fetch_all_executions
+     - any
+     - Optional. Fetches previous executions of tasks if they are available
 
 List Tasks By Project And Commit
 ````````````````````````````````
@@ -251,6 +257,16 @@ Get A Single Task
  GET /tasks/<task_id>
 
  Fetch a single task using its ID
+
+.. list-table:: **Parameters**
+   :widths: 25 10 55
+   :header-rows: 1
+   * - Name
+     - Type
+     - Description
+   * - fetch_all_executions
+     - any
+     - Optional. Fetches previous executions of the task if they are available
 
 Restart A Task
 ``````````````

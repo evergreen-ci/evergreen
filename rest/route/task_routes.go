@@ -245,20 +245,22 @@ func (tph *tasksByProjectHandler) Handler() RequestHandler {
 // taskGetHandler implements the route GET /task/{task_id}. It fetches the associated
 // task and returns it to the user.
 type taskGetHandler struct {
-	taskId string
+	taskID             string
+	fetchAllExecutions bool
 }
 
 // ParseAndValidate fetches the taskId from the http request.
 func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	vars := mux.Vars(r)
-	tgh.taskId = vars["task_id"]
+	tgh.taskID = vars["task_id"]
+	_, tgh.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
 	return nil
 }
 
 // Execute calls the data FindTaskById function and returns the task
 // from the provider.
 func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundTask, err := sc.FindTaskById(tgh.taskId)
+	foundTask, err := sc.FindTaskById(tgh.taskID)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -283,6 +285,17 @@ func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 
+	if tgh.fetchAllExecutions {
+		tasks, err := sc.FindOldTasksByID(tgh.taskID)
+		if err != nil {
+			return ResponseData{}, errors.Wrap(err, "API model error")
+		}
+
+		if err = taskModel.BuildPreviousExecutions(tasks); err != nil {
+			return ResponseData{}, errors.Wrap(err, "API model error")
+		}
+	}
+
 	return ResponseData{
 		Result: []model.Model{taskModel},
 	}, nil
@@ -297,8 +310,9 @@ type tasksByBuildHandler struct {
 }
 
 type tasksByBuildArgs struct {
-	buildId string
-	status  string
+	buildId            string
+	status             string
+	fetchAllExecutions bool
 }
 
 func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
@@ -312,6 +326,7 @@ func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Re
 			StatusCode: http.StatusBadRequest,
 		}
 	}
+	_, args.fetchAllExecutions = r.URL.Query()["fetch_all_executions"]
 	tbh.Args = args
 	return tbh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
@@ -368,6 +383,16 @@ func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Conn
 		err = taskModel.BuildFromService(sc.GetURL())
 		if err != nil {
 			return []model.Model{}, nil, errors.Wrap(err, "API model error")
+		}
+
+		if btArgs.fetchAllExecutions {
+			oldTasks, err := sc.FindOldTasksByID(st.Id)
+			if err != nil {
+				return []model.Model{}, nil, errors.Wrap(err, "error fetching old tasks")
+			}
+			if err = taskModel.BuildPreviousExecutions(oldTasks); err != nil {
+				return []model.Model{}, nil, errors.Wrap(err, "API model error")
+			}
 		}
 		models[ix] = taskModel
 	}

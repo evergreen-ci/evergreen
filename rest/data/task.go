@@ -90,6 +90,15 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	return ts, nil
 }
 
+func (tc *DBTaskConnector) FindOldTasksByID(id string) ([]task.Task, error) {
+	ts, err := task.FindOld(task.ByIDPrefix(id))
+	if err != nil {
+		return nil, err
+	}
+
+	return ts, nil
+}
+
 func (tc *DBTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
 	status string, limit, sortDir int) ([]task.Task, error) {
 	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId,
@@ -174,10 +183,11 @@ func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, startti
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Task related functions.
 type MockTaskConnector struct {
-	CachedTasks   []task.Task
-	CachedAborted map[string]string
-	StoredError   error
-	FailOnAbort   bool
+	CachedTasks    []task.Task
+	CachedOldTasks []task.Task
+	CachedAborted  map[string]string
+	StoredError    error
+	FailOnAbort    bool
 }
 
 // FindTaskById provides a mock implementation of the functions for the
@@ -229,6 +239,11 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 	}
 	return nil, nil
 }
+
+func (mtc *MockTaskConnector) FindOldTasksByID(id string) ([]task.Task, error) {
+	return mtc.CachedOldTasks, mtc.StoredError
+}
+
 func (mtc *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
 	return mtc.CachedTasks, mtc.StoredError
 }

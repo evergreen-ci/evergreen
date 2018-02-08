@@ -15,34 +15,35 @@ const (
 
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
-	Id               APIString        `json:"task_id"`
-	CreateTime       APITime          `json:"create_time"`
-	DispatchTime     APITime          `json:"dispatch_time"`
-	PushTime         APITime          `json:"push_time"`
-	ScheduledTime    APITime          `json:"scheduled_time"`
-	StartTime        APITime          `json:"start_time"`
-	FinishTime       APITime          `json:"finish_time"`
-	Version          APIString        `json:"version_id"`
-	Branch           APIString        `json:"branch"`
-	Revision         APIString        `json:"revision"`
-	Priority         int64            `json:"priority"`
-	Activated        bool             `json:"activated"`
-	ActivatedBy      APIString        `json:"activated_by"`
-	BuildId          APIString        `json:"build_id"`
-	DistroId         APIString        `json:"distro_id"`
-	BuildVariant     APIString        `json:"build_variant"`
-	DependsOn        []string         `json:"depends_on"`
-	DisplayName      APIString        `json:"display_name"`
-	HostId           APIString        `json:"host_id"`
-	Restarts         int              `json:"restarts"`
-	Execution        int              `json:"execution"`
-	Order            int              `json:"order"`
-	Status           APIString        `json:"status"`
-	Details          apiTaskEndDetail `json:"status_details"`
-	Logs             logLinks         `json:"logs"`
-	TimeTaken        APIDuration      `json:"time_taken_ms"`
-	ExpectedDuration APIDuration      `json:"expected_duration_ms"`
-	EstimatedCost    float64          `json:"estimated_cost"`
+	Id                 APIString        `json:"task_id"`
+	CreateTime         APITime          `json:"create_time"`
+	DispatchTime       APITime          `json:"dispatch_time"`
+	PushTime           APITime          `json:"push_time"`
+	ScheduledTime      APITime          `json:"scheduled_time"`
+	StartTime          APITime          `json:"start_time"`
+	FinishTime         APITime          `json:"finish_time"`
+	Version            APIString        `json:"version_id"`
+	Branch             APIString        `json:"branch"`
+	Revision           APIString        `json:"revision"`
+	Priority           int64            `json:"priority"`
+	Activated          bool             `json:"activated"`
+	ActivatedBy        APIString        `json:"activated_by"`
+	BuildId            APIString        `json:"build_id"`
+	DistroId           APIString        `json:"distro_id"`
+	BuildVariant       APIString        `json:"build_variant"`
+	DependsOn          []string         `json:"depends_on"`
+	DisplayName        APIString        `json:"display_name"`
+	HostId             APIString        `json:"host_id"`
+	Restarts           int              `json:"restarts"`
+	Execution          int              `json:"execution"`
+	Order              int              `json:"order"`
+	Status             APIString        `json:"status"`
+	Details            apiTaskEndDetail `json:"status_details"`
+	Logs               logLinks         `json:"logs"`
+	TimeTaken          APIDuration      `json:"time_taken_ms"`
+	ExpectedDuration   APIDuration      `json:"expected_duration_ms"`
+	EstimatedCost      float64          `json:"estimated_cost"`
+	PreviousExecutions []APITask        `json:"previous_executions,omitempty"`
 }
 
 type logLinks struct {
@@ -57,6 +58,17 @@ type apiTaskEndDetail struct {
 	Type        APIString `json:"type"`
 	Description APIString `json:"desc"`
 	TimedOut    bool      `json:"timed_out"`
+}
+
+func (at *APITask) BuildPreviousExecutions(tasks []task.Task) error {
+	at.PreviousExecutions = make([]APITask, len(tasks))
+	for i := range at.PreviousExecutions {
+		if err := at.PreviousExecutions[i].BuildFromService(&tasks[i]); err != nil {
+			return errors.Wrap(err, "error marshalling previous execution")
+		}
+	}
+
+	return nil
 }
 
 // BuildFromService converts from a service level task by loading the data

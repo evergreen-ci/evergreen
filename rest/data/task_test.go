@@ -31,22 +31,24 @@ type TaskConnectorFetchByIdSuite struct {
 }
 
 func TestTaskConnectorFetchByIdSuite(t *testing.T) {
-	s := new(TaskConnectorFetchByIdSuite)
-	s.ctx = &DBConnector{}
-
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskConnectorFetchByIdSuite")
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
-	assert.NoError(t, db.Clear(task.Collection))
+	s := &TaskConnectorFetchByIdSuite{
+		ctx: &DBConnector{},
+	}
 
+	suite.Run(t, s)
+}
+
+func (s *TaskConnectorFetchByIdSuite) SetupTest() {
+	s.Require().NoError(db.Clear(task.Collection))
 	for i := 0; i < 10; i++ {
 		testTask := &task.Task{
 			Id:      fmt.Sprintf("task_%d", i),
 			BuildId: fmt.Sprintf("build_%d", i),
 		}
-		assert.NoError(t, testTask.Insert())
+		s.NoError(testTask.Insert())
 	}
-	suite.Run(t, s)
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindById() {
@@ -55,6 +57,24 @@ func (s *TaskConnectorFetchByIdSuite) TestFindById() {
 		s.Nil(err)
 		s.Equal(found.BuildId, fmt.Sprintf("build_%d", i))
 	}
+}
+
+func (s *TaskConnectorFetchByIdSuite) TestFindOldTasksByID() {
+	s.Require().NoError(db.Clear(task.Collection))
+	testTask := &task.Task{
+		Id:        "task_1",
+		Execution: 0,
+		BuildId:   "build_1",
+	}
+	s.NoError(testTask.Insert())
+	for i := 0; i < 10; i++ {
+		s.NoError(testTask.Archive())
+		testTask.Execution += 1
+	}
+
+	tasks, err := s.ctx.FindOldTasksByID("task_1")
+	s.NoError(err)
+	s.Len(tasks, 10)
 }
 
 func (s *TaskConnectorFetchByIdSuite) TestFindByIdFail() {

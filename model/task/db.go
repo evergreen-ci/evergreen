@@ -110,6 +110,16 @@ func ById(id string) db.Q {
 	}})
 }
 
+func ByIDPrefix(id string) db.Q {
+	return db.Query(bson.M{
+		IdKey: bson.M{
+			"$regex": bson.RegEx{
+				Pattern: fmt.Sprintf("^%s", id),
+			},
+		},
+	})
+}
+
 // ByIds creates a query that finds all tasks with the given ids.
 func ByIds(ids []string) db.Q {
 	return db.Query(bson.D{{
