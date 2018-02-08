@@ -60,12 +60,12 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			"owner":   *event.Repo.Owner.Name,
 			"repo":    *event.Repo.Name,
 			"ref":     *event.Ref,
-			"message": "can't match push event to project ref",
+			"message": "error occurred while trying to match match push event to project refs",
 		}))
 		return err
 	}
 
-	actionable := []string{}
+	succeeded := []string{}
 	unactionable := []string{}
 	failed := []string{}
 	catcher := grip.NewSimpleCatcher()
@@ -80,7 +80,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			failed = append(failed, refs[i].Identifier)
 
 		} else {
-			actionable = append(actionable, refs[i].Identifier)
+			succeeded = append(succeeded, refs[i].Identifier)
 		}
 	}
 
@@ -92,6 +92,11 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		"repo":    *event.Repo.Name,
 		"ref":     *event.Ref,
 		"message": "errors occurred while triggering repotracker",
+		"project_refs": message.Fields{
+			"failed":       failed,
+			"succeeded":    succeeded,
+			"unactionable": unactionable,
+		},
 	}))
 
 	grip.Info(message.Fields{
@@ -103,8 +108,8 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		"ref":     *event.Ref,
 		"message": "done processing PushEvent",
 		"project_refs": message.Fields{
-			"failures":     failed,
-			"actionable":   actionable,
+			"failed":       failed,
+			"succeeded":    succeeded,
 			"unactionable": unactionable,
 		},
 	})
@@ -130,7 +135,7 @@ func (c *MockRepoTrackerConnector) TriggerRepotracker(_ amboy.Queue, _ string, e
 		return nil
 	}
 
-	_, err = validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name)
+	_, err = validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 
 	return err
 }
@@ -161,8 +166,8 @@ func validatePushEvent(event *github.PushEvent) (string, error) {
 	return refs[2], nil
 }
 
-func validateProjectRefs(owner, repo string) ([]model.ProjectRef, error) {
-	refs, err := model.FindProjectRefsByRepo(owner, repo)
+func validateProjectRefs(owner, repo, branch string) ([]model.ProjectRef, error) {
+	refs, err := model.FindProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,

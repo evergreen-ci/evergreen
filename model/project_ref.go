@@ -193,29 +193,6 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 	return projectRefs, err
 }
 
-func FindProjectRefsByRepo(owner, repoName string) ([]ProjectRef, error) {
-	projectRefs := []ProjectRef{}
-
-	err := db.FindAll(
-		ProjectRefCollection,
-		bson.M{
-			ProjectRefOwnerKey:   owner,
-			ProjectRefRepoKey:    repoName,
-			ProjectRefEnabledKey: true,
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		&projectRefs,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return projectRefs, err
-}
-
 func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
