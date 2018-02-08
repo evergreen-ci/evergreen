@@ -25,10 +25,11 @@ import (
 type Scheduler struct {
 	*evergreen.Settings
 	TaskPrioritizer
-	TaskDurationEstimator
 	TaskQueuePersister
 	HostAllocator
-	FindRunnableTasks TaskFinder
+
+	GetExpectedDurations TaskDurationEstimator
+	FindRunnableTasks    TaskFinder
 }
 
 const underwaterPruningEnabled = true

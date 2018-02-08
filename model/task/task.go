@@ -582,6 +582,30 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		})
 	}
 
+	historicRuntime, err := t.GetHistoricRuntime()
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":      "problem computing historic runtime",
+			"task_id":      t.Id,
+			"execution":    t.Execution,
+			"requester":    t.Requester,
+			"activated_by": t.ActivatedBy,
+			"project":      t.Project,
+			"variant":      t.BuildVariant,
+		}))
+	} else {
+		grip.Info(message.Fields{
+			"task_id":              t.Id,
+			"execution":            t.Execution,
+			"requester":            t.Requester,
+			"activated_by":         t.ActivatedBy,
+			"project":              t.Project,
+			"variant":              t.BuildVariant,
+			"average_runtime_secs": historicRuntime.Seconds(),
+			"current_runtime_secs": t.FinishTime.Sub(t.StartTime),
+		})
+	}
+
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
 	return UpdateOne(
@@ -1104,68 +1128,6 @@ func AverageTaskTimeDifference(field1 string, field2 string,
 	return avgTimes, nil
 }
 
-// ExpectedTaskDuration takes a given project and buildvariant and computes
-// the average duration - grouped by task display name - for tasks that have
-// completed within a given threshold as determined by the window
-func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (map[string]time.Duration, error) {
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{
-				BuildVariantKey: buildvariant,
-				ProjectKey:      project,
-				StatusKey: bson.M{
-					"$in": []string{evergreen.TaskSucceeded, evergreen.TaskFailed},
-				},
-				DetailsKey + "." + TaskEndDetailTimedOut: bson.M{
-					"$ne": true,
-				},
-				FinishTimeKey: bson.M{
-					"$gte": time.Now().Add(-window),
-				},
-				StartTimeKey: bson.M{
-					// make sure all documents have a valid start time so we don't
-					// return tasks with runtimes of multiple years
-					"$gt": util.ZeroTime,
-				},
-			},
-		},
-		{
-			"$project": bson.M{
-				DisplayNameKey: 1,
-				TimeTakenKey:   1,
-				IdKey:          0,
-			},
-		},
-		{
-			"$group": bson.M{
-				"_id": fmt.Sprintf("$%v", DisplayNameKey),
-				"exp_dur": bson.M{
-					"$avg": fmt.Sprintf("$%v", TimeTakenKey),
-				},
-			},
-		},
-	}
-
-	// anonymous struct for unmarshalling result bson
-	var results []struct {
-		DisplayName      string `bson:"_id"`
-		ExpectedDuration int64  `bson:"exp_dur"`
-	}
-
-	err := db.Aggregate(Collection, pipeline, &results)
-	if err != nil {
-		return nil, errors.Wrap(err, "error aggregating task average duration")
-	}
-
-	expDurations := make(map[string]time.Duration)
-	for _, result := range results {
-		expDuration := time.Duration(result.ExpectedDuration) * time.Nanosecond
-		expDurations[result.DisplayName] = expDuration
-	}
-
-	return expDurations, nil
-}
-
 // MergeNewTestResults returns the task with both old (embedded in
 // the tasks collection) and new (from the testresults collection) test results
 // merged in the Task's LocalTestResults field.
@@ -1345,4 +1307,17 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 	}
 	t.DisplayTask = dt
 	return dt, nil
+}
+
+func (t *Task) GetHistoricRuntime() (time.Duration, error) {
+	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-30*24*7*time.Hour), t.FinishTime.Add(-time.Second))
+	if err != nil {
+		return 0, errors.WithStack(err)
+	}
+
+	if len(runtimes) != 1 {
+		return 0, errors.Errorf("got unexpected task runtimes data points (%d)", len(runtimes))
+	}
+
+	return time.Duration(runtimes[0].ExpectedDuration), nil
 }

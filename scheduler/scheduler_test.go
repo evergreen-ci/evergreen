@@ -61,10 +61,7 @@ func (self *MockTaskQueuePersister) PersistTaskQueue(distro string,
 	return nil, errors.New("PersistTaskQueue not implemented")
 }
 
-type MockTaskDurationEstimator struct{}
-
-func (self *MockTaskDurationEstimator) GetExpectedDurations(
-	runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
+func MockGetExpectedDurations(runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
 	return model.ProjectTaskDurations{}, errors.New("GetExpectedDurations not " +
 		"implemented")
 }
@@ -82,9 +79,9 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 		schedulerInstance := &Scheduler{
 			schedulerTestConf,
 			&MockTaskPrioritizer{},
-			&MockTaskDurationEstimator{},
 			&MockTaskQueuePersister{},
 			&MockHostAllocator{},
+			MockGetExpectedDurations,
 			MockFindRunnableTasks,
 		}
 
@@ -135,9 +132,9 @@ func TestSpawnHosts(t *testing.T) {
 		schedulerInstance := &Scheduler{
 			schedulerTestConf,
 			&MockTaskPrioritizer{},
-			&MockTaskDurationEstimator{},
 			&MockTaskQueuePersister{},
 			&MockHostAllocator{},
+			MockGetExpectedDurations,
 			MockFindRunnableTasks,
 		}
 
