@@ -34,6 +34,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 	if len(branch) == 0 {
 		return nil
 	}
+
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
@@ -51,7 +52,7 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 		return errors.New("repotracker is disabled")
 	}
 
-	refs, err := validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name)
+	refs, err := validateProjectRefs(*event.Repo.Owner.Name, *event.Repo.Name, branch)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "github hook",

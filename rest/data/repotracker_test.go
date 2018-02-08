@@ -46,7 +46,7 @@ func TestValidatePushEvent(t *testing.T) {
 	assert.Empty(branch)
 }
 
-func TestValidateProjectRef(t *testing.T) {
+func TestValidateProjectRefs(t *testing.T) {
 	assert := assert.New(t) //nolint
 
 	assert.NoError(db.Clear(model.ProjectRefCollection))
@@ -59,13 +59,13 @@ func TestValidateProjectRef(t *testing.T) {
 		Enabled:    true,
 	}
 
-	refs, err := validateProjectRefs("baxterthehacker", "public-repo")
+	refs, err := validateProjectRefs("baxterthehacker", "public-repo", "changes")
 	assert.Error(err)
 	assert.Equal("no project refs found", err.Error())
 	assert.Empty(refs)
 	assert.NoError(doc.Insert())
 
-	refs, err = validateProjectRefs("baxterthehacker", "public-repo")
+	refs, err = validateProjectRefs("baxterthehacker", "public-repo", "changes")
 	assert.NoError(err)
 	assert.Len(refs, 1)
 }
