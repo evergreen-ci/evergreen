@@ -172,16 +172,19 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+// FindProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
+// that are enabled and setup for PR testing
 func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
 	err := db.FindAll(
 		ProjectRefCollection,
 		bson.M{
-			ProjectRefOwnerKey:   owner,
-			ProjectRefRepoKey:    repoName,
-			ProjectRefBranchKey:  branch,
-			ProjectRefEnabledKey: true,
+			ProjectRefOwnerKey:            owner,
+			ProjectRefRepoKey:             repoName,
+			ProjectRefBranchKey:           branch,
+			ProjectRefEnabledKey:          true,
+			projectRefPRTestingEnabledKey: true,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -196,6 +199,9 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 	return projectRefs, err
 }
 
+// FindOneProjectRefByRepoAndBranch finds a signle ProjectRef with matching
+// repo/branch that is enabled and setup for PR testing. If more than one
+// is found, an error is returned
 func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {

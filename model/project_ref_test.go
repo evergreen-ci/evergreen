@@ -129,13 +129,14 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Empty(projectRefs)
 
 	projectRef := &ProjectRef{
-		Owner:      "mongodb",
-		Repo:       "mci",
-		Branch:     "master",
-		RepoKind:   "github",
-		Enabled:    false,
-		BatchTime:  10,
-		Identifier: "iden_",
+		Owner:            "mongodb",
+		Repo:             "mci",
+		Branch:           "master",
+		RepoKind:         "github",
+		Enabled:          false,
+		BatchTime:        10,
+		Identifier:       "iden_",
+		PRTestingEnabled: true,
 	}
 	assert.NoError(projectRef.Insert())
 	projectRefs, err = FindProjectRefsByRepoAndBranch("mongodb", "mci", "master")
@@ -168,13 +169,14 @@ func TestFindOneProjectRefByRepoAndBranch(t *testing.T) {
 	assert.Nil(projectRef)
 
 	doc := &ProjectRef{
-		Owner:      "mongodb",
-		Repo:       "mci",
-		Branch:     "master",
-		RepoKind:   "github",
-		Enabled:    false,
-		BatchTime:  10,
-		Identifier: "ident0",
+		Owner:            "mongodb",
+		Repo:             "mci",
+		Branch:           "master",
+		RepoKind:         "github",
+		Enabled:          false,
+		BatchTime:        10,
+		Identifier:       "ident0",
+		PRTestingEnabled: true,
 	}
 	require.NoError(doc.Insert())
 	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
