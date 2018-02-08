@@ -3,10 +3,7 @@
 package cloud
 
 import (
-	"context"
-
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -207,16 +204,6 @@ func (m *gceManager) IsUp(host *host.Host) (bool, error) {
 // OnUp does nothing since tags are attached in SpawnInstance.
 func (m *gceManager) OnUp(host *host.Host) error {
 	return nil
-}
-
-// IsSSHReachable returns true if the host can successfully accept and run an SSH command.
-func (m *gceManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
-	opts, err := m.GetSSHOptions(host, keyPath)
-	if err != nil {
-		return false, err
-	}
-
-	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the external IPv4 address of the host.

@@ -48,10 +48,6 @@ type CloudManager interface {
 	//to set additional provider-specific metadata
 	OnUp(*host.Host) error
 
-	//IsSSHReachable returns true if the host can successfully
-	//accept and run an ssh command.
-	IsSSHReachable(host *host.Host, keyPath string) (bool, error)
-
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(*host.Host) (string, error)
 

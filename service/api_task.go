@@ -250,9 +250,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 				as.WriteJSON(w, http.StatusInternalServerError, err)
 				return
 			}
-
 		}
-
 		endTaskResp.ShouldExit = true
 		endTaskResp.Message = message
 	}
@@ -371,18 +369,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		ShouldExit: false,
 	}
 
-	adminSettings, err := evergreen.GetConfig()
-	if err != nil {
-		err = errors.Wrap(err, "error retrieving admin settings")
-		grip.Error(err)
-		as.WriteJSON(w, http.StatusInternalServerError, err)
-	}
-	if adminSettings.ServiceFlags.TaskDispatchDisabled {
-		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
-		as.WriteJSON(w, http.StatusOK, response)
-		return
-	}
-
 	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
 	// check host health before getting next task
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
@@ -392,7 +378,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shouldExit, message := checkHostHealth(h, agentRevision)
+	shouldExit, msg := checkHostHealth(h, agentRevision)
 	if shouldExit {
 		// set the needs new agent flag on the host
 		if err = h.SetNeedsNewAgent(true); err != nil {
@@ -401,7 +387,24 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		response.ShouldExit = true
-		response.Message = message
+		response.Message = msg
+		as.WriteJSON(w, http.StatusOK, response)
+		return
+	}
+
+	grip.Warning(message.WrapError(h.UpdateLastCommunicated(), message.Fields{
+		"host":      h.Id,
+		"operation": "updating last communication time",
+	}))
+
+	adminSettings, err := evergreen.GetConfig()
+	if err != nil {
+		err = errors.Wrap(err, "error retrieving admin settings")
+		grip.Error(err)
+		as.WriteJSON(w, http.StatusInternalServerError, err)
+	}
+	if adminSettings.ServiceFlags.TaskDispatchDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
 		as.WriteJSON(w, http.StatusOK, response)
 		return
 	}
@@ -468,10 +471,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if taskQueue == nil {
-		message = fmt.Sprintf("Nil task queue found for task '%v's distro queue - '%v'",
+		msg = fmt.Sprintf("Nil task queue found for task '%v's distro queue - '%v'",
 			h.Id, h.Distro.Id)
-		grip.Info(message)
-		response.Message = message
+		grip.Info(msg)
+		response.Message = msg
 		as.WriteJSON(w, http.StatusOK, response)
 		return
 	}

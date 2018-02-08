@@ -1,11 +1,9 @@
 package cloud
 
 import (
-	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -87,14 +85,6 @@ func (_ *staticManager) GetSettings() ProviderSettings {
 func (staticMgr *staticManager) Configure(settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil
-}
-
-func (staticMgr *staticManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
-	sshOpts, err := staticMgr.GetSSHOptions(host, keyPath)
-	if err != nil {
-		return false, err
-	}
-	return hostutil.CheckSSHResponse(context.TODO(), host, sshOpts)
 }
 
 func (staticMgr *staticManager) IsUp(host *host.Host) (bool, error) {

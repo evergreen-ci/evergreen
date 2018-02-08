@@ -386,9 +386,6 @@ tasks:
     name: dist
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
-    name: test-hostutil
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
     name: test-auth
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -509,9 +506,6 @@ tasks:
     name: test-migrations
 
   # race detector tests
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
-    name: race-hostutil
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-auth

@@ -111,11 +111,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 	// take different action, depending on how the cloud provider reports the host's status
 	switch cloudStatus {
 	case cloud.StatusRunning:
-		// check if the host is reachable via SSH
-		reachable, err := cloudHost.IsSSHReachable()
-		if err != nil {
-			return errors.Wrapf(err, "error checking ssh reachability for host %s", host.Id)
-		}
+		reachable := true
 
 		// log the status update if the reachability of the host is changing
 		if host.Status == evergreen.HostUnreachable && reachable {
@@ -134,10 +130,11 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 			})
 		}
 
-		// mark the host appropriately
+		// mark the host appropriately; this is a noop if the host status hasn't changed.
 		if err := host.UpdateReachability(reachable); err != nil {
 			return errors.Wrapf(err, "error updating reachability for host %s", host.Id)
 		}
+
 	case cloud.StatusTerminated:
 		grip.Info(message.Fields{
 			"runner":    RunnerName,

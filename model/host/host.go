@@ -521,6 +521,10 @@ func (h *Host) UpdateReachability(reachable bool) error {
 	}
 	update["$set"] = setUpdate
 
+	if status == h.Status {
+		return nil
+	}
+
 	event.LogHostStatusChanged(h.Id, h.Status, status, evergreen.User)
 
 	h.Status = status

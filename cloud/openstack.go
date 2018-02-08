@@ -1,11 +1,9 @@
 package cloud
 
 import (
-	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -184,16 +182,6 @@ func (m *openStackManager) IsUp(host *host.Host) (bool, error) {
 // OnUp does nothing since tags are attached in SpawnInstance.
 func (m *openStackManager) OnUp(host *host.Host) error {
 	return nil
-}
-
-// IsSSHReachable returns true if the host can successfully accept and run an SSH command.
-func (m *openStackManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
-	opts, err := m.GetSSHOptions(host, keyPath)
-	if err != nil {
-		return false, err
-	}
-
-	return hostutil.CheckSSHResponse(context.TODO(), host, opts)
 }
 
 // GetDNSName returns the private IP address of the host.
