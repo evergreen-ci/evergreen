@@ -1,3 +1,9 @@
+// Use '{name}' pattern for underscore string interpolation
+// (For consistency with GoLang routes)
+_.templateSettings = {
+  interpolate: /\{(.+?)\}/g
+}
+
 var mciModule = angular.module('MCI', [
   'filters.common',
   'directives.eventLogs',

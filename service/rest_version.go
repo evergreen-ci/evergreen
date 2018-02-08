@@ -121,7 +121,10 @@ func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	projectId := mux.Vars(r)["project_id"]
 
-	versions, err := version.Find(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester).Limit(10))
+	versions, err := version.Find(
+		version.ByMostRecentForRequester(
+			projectId, evergreen.RepotrackerVersionRequester).Limit(NumRecentVersions))
+
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
 		grip.Errorf("%v: %+v", msg, err)
