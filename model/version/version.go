@@ -89,7 +89,7 @@ type DuplicateVersions struct {
 
 func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
 	pipeline := []bson.M{
-		bson.M{
+		{
 			"$match": bson.M{
 				RequesterKey: evergreen.RepotrackerVersionRequester,
 				CreateTimeKey: bson.M{
@@ -97,7 +97,7 @@ func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
 				},
 			},
 		},
-		bson.M{
+		{
 			"$group": bson.M{
 				"_id": bson.M{
 					"project_id": "$" + IdentifierKey,
@@ -111,7 +111,7 @@ func FindDuplicateVersions(since time.Time) ([]DuplicateVersions, error) {
 				},
 			},
 		},
-		bson.M{
+		{
 			"$match": bson.M{
 				"count": bson.M{
 					"$gt": 1,
