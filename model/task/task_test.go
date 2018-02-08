@@ -967,6 +967,7 @@ func TestMergeTestResultsBulk(t *testing.T) {
 
 func TestFindOldTasksByID(t *testing.T) {
 	assert := assert.New(t) //nolint
+	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDoc := Task{
 		Id: "task",
