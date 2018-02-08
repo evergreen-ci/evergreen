@@ -171,6 +171,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
+        $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
 
         $scope.aliases = data.aliases || [];
         $scope.aliases = _.sortBy($scope.aliases, function(v) {
