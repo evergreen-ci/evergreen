@@ -154,7 +154,7 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 // Prepare the remote machine to run a task.
 func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
-	if logs, err := h.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
 		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
@@ -164,7 +164,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 	}
 
 	// run the setup script with the agent
-	if logs, err := h.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
 
 		grip.Error(message.WrapError(err, message.Fields{
