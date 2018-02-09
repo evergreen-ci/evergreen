@@ -169,7 +169,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.projectRef = data.ProjectRef;
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.privateVars = data.ProjectVars.private_vars || {};
-        $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
+        $scope.githubHookID = data.github_hook.hook_id|| 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
 
@@ -208,7 +208,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
-          setup_github_hook: $scope.githubHookId != 0,
+          setup_github_hook: $scope.githubHookID != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
