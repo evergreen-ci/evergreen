@@ -280,7 +280,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if hook != nil {
+		if hook == nil {
 			hookID, err := uis.setupGithubHook(projectRef)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
