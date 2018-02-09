@@ -2,12 +2,12 @@ package command
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -36,6 +36,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	catcher := grip.NewBasicCatcher()
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
+	post := [][]byte{}
 	for _, fn := range c.Files {
 		if ctx.Err() != nil {
 			catcher.Add(ctx.Err())
@@ -51,13 +52,14 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			catcher.Add(errors.Wrapf(err, "Couldn't open file '%s'", fn))
 			continue
 		}
-		jsonData := map[string]interface{}{}
-		err = util.ReadJSONInto(jsonFile, &jsonData)
+		var data []byte
+		data, err = ioutil.ReadAll(jsonFile)
 		if err != nil {
-			catcher.Add(errors.Wrapf(err, "File '%s' contained invalid json", fn))
+			catcher.Add(errors.Wrapf(err, "Problem reading from file '%s'", fn))
 			continue
 		}
-		catcher.Add(errors.Wrap(comm.GenerateTasks(ctx, td, jsonData), "Problem posting task data"))
+		post = append(post, data)
 	}
+	catcher.Add(errors.Wrap(comm.GenerateTasks(ctx, td, post), "Problem posting task data"))
 	return catcher.Resolve()
 }

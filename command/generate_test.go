@@ -89,20 +89,6 @@ func (s *generateSuite) TestExecuteFileDoesNotExist() {
 	s.Error(c.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-func (s *generateSuite) TestExecuteBadJSON() {
-	f, err := ioutil.TempFile(s.tmpDirName, "")
-	s.Require().NoError(err)
-	tmpFile := f.Name()
-	tmpFileBase := filepath.Base(tmpFile)
-	defer os.Remove(tmpFile)
-	s.json = s.json + "}"
-	f.WriteString(s.json)
-	f.Close()
-
-	c := &generateTask{Files: []string{tmpFileBase}}
-	s.Error(c.Execute(s.ctx, s.comm, s.logger, s.conf))
-}
-
 func (s *generateSuite) TestExecuteSuccess() {
 	f, err := ioutil.TempFile(s.tmpDirName, "")
 	s.Require().NoError(err)
