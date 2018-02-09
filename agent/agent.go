@@ -193,7 +193,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
 	}
 	tc.setCurrentCommand(factory())
 
-	heartbeat := make(chan string)
+	heartbeat := make(chan string, 1)
 	go a.startHeartbeat(ctx, tc, heartbeat)
 
 	var innerCtx context.Context
