@@ -264,7 +264,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 							"distro":  h.Distro.Id,
 							"hostid":  h.Id,
 						}))
-
+						r
 						// notify the admins of the failure
 						subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
 							notify.ProvisionFailurePreface, h.Distro.Id)
@@ -548,6 +548,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			})
 			return nil
 		}
+		event.LogProvisionFailed(h.Id, output)
 
 		incErr := h.IncProvisionAttempts()
 		if incErr != nil {
