@@ -40,6 +40,14 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 	}
 
 	tracker, err := getTracker(conf, project)
+	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"project": project.Identifier,
+			"message": "problem fetching repotracker",
+			"runner":  RunnerName,
+		}))
+		return errors.Wrap(err, "problem fetching repotracker")
+	}
 
 	if err = tracker.FetchRevisions(num); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
