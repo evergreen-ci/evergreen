@@ -1,5 +1,11 @@
 {{define "scripts"}}
 <script type="text/javascript" src="/static/app/perfdiscovery/PerformanceDiscoveryCtrl.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/perfdiscovery/PerfDiscoveryService.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/perfdiscovery/constants.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/common/ApiV1.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/common/ApiTaskdata.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/common/ApiUtil.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/common/constants.js?hash={{ StaticsMD5 }}"></script>
 {{end}}
 
 {{define "title"}}
@@ -9,6 +15,7 @@ Performance Discovery
 {{define "content"}}
 <div ng-controller="PerformanceDiscoveryCtrl as $ctrl">
   <ui-select ng-model="$ctrl.revisionSelect.selected"
+             ng-change="$ctrl.changeRevision($select.selected.name)"
              style="width: 250px; display: inline-block;"
              title="Choose revision...">
     <ui-select-match>

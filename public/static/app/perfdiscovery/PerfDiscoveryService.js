@@ -195,6 +195,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
               })
               .value(),
           }
+          appendix.avgVsSelf = [d3.mean(appendix.trendData), appendix.ratio]
           return _.extend({}, item, appendix)
         })
         .value()
