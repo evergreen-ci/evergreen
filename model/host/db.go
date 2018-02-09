@@ -55,6 +55,7 @@ var (
 	ZoneKey                    = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey                 = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey        = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
+	ProvisionAttemptsKey       = bsonutil.MustHaveTag(Host{}, "ProvisionedAttempts")
 	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
 )
 

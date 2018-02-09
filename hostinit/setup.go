@@ -277,14 +277,16 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						}
 						continue
 					}
-					grip.Info(message.Fields{
-						"GUID":    init.GUID,
-						"message": "successfully finished provisioning host",
-						"hostid":  h.Id,
-						"DNS":     h.Host,
-						"distro":  h.Distro.Id,
-						"runner":  RunnerName,
-						"runtime": time.Since(setupStartTime),
+
+					grip.InfoWhen(h.Status != evergreen.HostStarting, message.Fields{
+						"GUID":     init.GUID,
+						"message":  "successfully finished provisioning host",
+						"hostid":   h.Id,
+						"DNS":      h.Host,
+						"distro":   h.Distro.Id,
+						"runner":   RunnerName,
+						"attempts": h.ProvisionAttempts,
+						"runtime":  time.Since(setupStartTime),
 					})
 				}
 			}
@@ -547,16 +549,31 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			return nil
 		}
 
+		incErr := h.IncProvisionAttempts()
+		if incErr != nil {
+			grip.Critical(message.WrapError(incErr, message.Fields{
+				"runner":    RunnerName,
+				"host":      h.Id,
+				"operation": "increment provisioning errors failed",
+			}))
+		} else {
+			if h.ProvisionAttempts <= 10 {
+				return nil
+			}
+		}
+
 		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
 			"operation": "running host provisioning alert trigger",
 			"runner":    RunnerName,
 			"host":      h.Id,
+			"attempts":  h.ProvisionAttempts,
 		}))
 		event.LogProvisionFailed(h.Id, output)
 
 		// mark the host's provisioning as failed
 		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
+			"attempts":  h.ProvisionAttempts,
 			"runner":    RunnerName,
 			"host":      h.Id,
 		}))
