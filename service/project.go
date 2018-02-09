@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/github_hook"
 	"github.com/evergreen-ci/evergreen/model/user"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
@@ -116,7 +115,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	hook, err := github_hook.FindHook(projRef.Owner, projRef.Repo)
+	hook, err := model.FindGithubHook(projRef.Owner, projRef.Repo)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -275,7 +274,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.SetupGithubHook {
-		hook, err := github_hook.FindHook(responseRef.Owner, responseRef.Repo)
+		hook, err := model.FindGithubHook(responseRef.Owner, responseRef.Repo)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -296,7 +295,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				// one that we have no access to
 
 			} else {
-				hook := github_hook.Hook{
+				hook := model.GithubHook{
 					HookID: hookID,
 					Owner:  responseRef.Owner,
 					Repo:   responseRef.Repo,

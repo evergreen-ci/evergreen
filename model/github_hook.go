@@ -1,4 +1,4 @@
-package github_hook
+package model
 
 import (
 	"errors"
@@ -13,22 +13,22 @@ const (
 	Collection = "github_hooks"
 )
 
-type Hook struct {
+type GithubHook struct {
 	HookID int    `bson:"_id"`
 	Owner  string `bson:"owner"`
 	Repo   string `bson:"repo"`
 }
 
 var (
-	hookIDKey = bsonutil.MustHaveTag(Hook{}, "HookID") //nolint: deadcode, megacheck
+	hookIDKey = bsonutil.MustHaveTag(GithubHook{}, "HookID") //nolint: deadcode, megacheck
 
-	ownerKey = bsonutil.MustHaveTag(Hook{}, "Owner")
-	repoKey  = bsonutil.MustHaveTag(Hook{}, "Repo")
+	ownerKey = bsonutil.MustHaveTag(GithubHook{}, "Owner")
+	repoKey  = bsonutil.MustHaveTag(GithubHook{}, "Repo")
 )
 
-func (h *Hook) Insert() error {
+func (h *GithubHook) Insert() error {
 	if h.HookID == 0 {
-		return errors.New("Hook ID must not be 0")
+		return errors.New("GithubHook ID must not be 0")
 	}
 	if len(h.Owner) == 0 || len(h.Repo) == 0 {
 		return errors.New("Owner and repository must not be empty strings")
@@ -37,12 +37,12 @@ func (h *Hook) Insert() error {
 	return db.Insert(Collection, h)
 }
 
-func FindHook(owner, repo string) (*Hook, error) {
+func FindGithubHook(owner, repo string) (*GithubHook, error) {
 	if len(owner) == 0 || len(repo) == 0 {
 		return nil, errors.New("Owner and repository must not be empty strings")
 	}
 
-	hook := &Hook{}
+	hook := &GithubHook{}
 	err := db.FindOneQ(Collection, db.Query(bson.M{
 		ownerKey: owner,
 		repoKey:  repo,

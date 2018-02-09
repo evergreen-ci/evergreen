@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/model/github_hook"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/pkg/errors"
 )
 
@@ -14,7 +14,7 @@ type APIGithubHook struct {
 }
 
 func (a *APIGithubHook) BuildFromService(h interface{}) error {
-	v, ok := h.(github_hook.Hook)
+	v, ok := h.(model.GithubHook)
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting build type")
 	}

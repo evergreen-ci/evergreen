@@ -1,4 +1,4 @@
-package github_hook
+package model
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ type hookSuite struct {
 	suite.Suite
 }
 
-func TestHookSuite(t *testing.T) {
+func TestGithubHookSuite(t *testing.T) {
 	suite.Run(t, new(hookSuite))
 }
 
@@ -26,7 +26,7 @@ func (s *hookSuite) SetupTest() {
 }
 
 func (s *hookSuite) TestInsert() {
-	hook := Hook{
+	hook := GithubHook{
 		HookID: 1,
 		Owner:  "evergreen-ci",
 		Repo:   "evergreen",
@@ -49,32 +49,32 @@ func (s *hookSuite) TestInsert() {
 	hook.HookID = 0
 	err = hook.Insert()
 	s.Error(err)
-	s.Equal("Hook ID must not be 0", err.Error())
+	s.Equal("GithubHook ID must not be 0", err.Error())
 }
 
 func (s *hookSuite) TestFind() {
 	s.TestInsert()
 
-	hook, err := FindHook("", "")
+	hook, err := FindGithubHook("", "")
 	s.Error(err)
 	s.Equal("Owner and repository must not be empty strings", err.Error())
 	s.Nil(hook)
 
-	hook, err = FindHook("evergreen-ci", "")
+	hook, err = FindGithubHook("evergreen-ci", "")
 	s.Error(err)
 	s.Equal("Owner and repository must not be empty strings", err.Error())
 	s.Nil(hook)
 
-	hook, err = FindHook("", "evergreen")
+	hook, err = FindGithubHook("", "evergreen")
 	s.Error(err)
 	s.Equal("Owner and repository must not be empty strings", err.Error())
 	s.Nil(hook)
 
-	hook, err = FindHook("doesntexist", "evergreen")
+	hook, err = FindGithubHook("doesntexist", "evergreen")
 	s.NoError(err)
 	s.Nil(hook)
 
-	hook, err = FindHook("evergreen-ci", "evergreen")
+	hook, err = FindGithubHook("evergreen-ci", "evergreen")
 	s.NoError(err)
 	s.NotNil(hook)
 	s.Equal(1, hook.HookID)
