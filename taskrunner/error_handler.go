@@ -125,7 +125,7 @@ func (c *errorCollectorImpl) report() error {
 	reports := []string{}
 
 	for rec, errors := range c.cache {
-		if reachedThreshold(rec.provider, errors.count) {
+		if errors.count >= 10 {
 			reports = append(reports, processErrorItem(rec, errors))
 			delete(c.cache, rec)
 		}
@@ -137,8 +137,4 @@ func (c *errorCollectorImpl) report() error {
 	}
 
 	return nil
-}
-
-func reachedThreshold(provider string, count int) bool {
-	return count >= 10
 }

@@ -121,7 +121,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 				"message":   "Setting host as reachable",
 				"host":      host.Id,
 			})
-		} else if host.Status != evergreen.HoestUnreachable && !reachable {
+		} else if host.Status != evergreen.HostUnreachable && !reachable {
 			grip.Info(message.Fields{
 				"runner":    RunnerName,
 				"operation": "monitorReachability",
