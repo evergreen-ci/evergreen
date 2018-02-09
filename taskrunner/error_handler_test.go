@@ -31,14 +31,13 @@ func TestErrorHandlerIntegration(t *testing.T) {
 	assert.NoError(ec.report())
 
 	// push the error count on this "host" and make sure it produces an error
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 40; i++ {
 		ec.add(h, errors.New("foo"))
 		assert.Len(ec.cache, 1)
 	}
 	err := ec.report()
 
 	assert.Error(err)
-
 	assert.Contains(err.Error(), "foo")
 	errParts := strings.Split(err.Error(), "\n")
 	count := 0
@@ -50,7 +49,7 @@ func TestErrorHandlerIntegration(t *testing.T) {
 	}
 	assert.Len(ec.cache, 0)
 
-	assert.Equal(5, count, "%s", errParts)
+	assert.Equal(41, count, "%s", errParts)
 
 	// rerun the test but pass a nil error at the end, which is
 	// like a host recovering, and therefore clearing the error
