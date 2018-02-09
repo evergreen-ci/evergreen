@@ -875,11 +875,19 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 	}
 
 	if alias != "" {
-		aliasPairs, err := p.BuildProjectTVPairsWithAlias(alias)
+		aliasPairs, displayTaskPairs, err := p.BuildProjectTVPairsWithAlias(alias)
 		if err != nil {
 			grip.Error(errors.Wrap(err, "failed to get task/variant pairs for alias"))
 		} else {
 			pairs = append(pairs, aliasPairs...)
+			for _, pair := range displayTaskPairs {
+				if !util.StringSliceContains(patchDoc.BuildVariants, pair.Variant) {
+					patchDoc.BuildVariants = append(patchDoc.BuildVariants, pair.Variant)
+				}
+				if !util.StringSliceContains(patchDoc.Tasks, pair.TaskName) {
+					patchDoc.Tasks = append(patchDoc.Tasks, pair.TaskName)
+				}
+			}
 		}
 	}
 
@@ -911,35 +919,55 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 }
 
 // BuildProjectTVPairsWithAlias returns variants and tasks for a project alias.
-func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, error) {
-	var pairs []TVPair
+func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair, error) {
 	vars, err := FindAliasInProject(p.Identifier, alias)
-	if err != nil || len(vars) == 0 {
-		return pairs, err
+	if err != nil || vars == nil {
+		return nil, nil, err
 	}
+
+	pairs := []TVPair{}
+	displayTaskPairs := []TVPair{}
 	for _, v := range vars {
 		var variantRegex *regexp.Regexp
 		variantRegex, err = regexp.Compile(v.Variant)
 		if err != nil {
-			return pairs, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
+			return nil, nil, errors.Wrapf(err, "Error compiling regex: %s", v.Variant)
 		}
+
 		var taskRegex *regexp.Regexp
 		taskRegex, err = regexp.Compile(v.Task)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Error compiling regex: %s", v.Task)
+			return nil, nil, errors.Wrapf(err, "Error compiling regex: %s", v.Task)
 		}
 
 		for _, variant := range p.BuildVariants {
 			if variantRegex.MatchString(variant.Name) {
 				for _, task := range p.Tasks {
-					if ((v.Task != "" && taskRegex.MatchString(task.Name)) ||
-						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) &&
-						(p.FindTaskForVariant(task.Name, variant.Name) != nil) {
+					if task.Patchable != nil && !(*task.Patchable) {
+						continue
+					}
+					if !((v.Task != "" && taskRegex.MatchString(task.Name)) ||
+						(len(v.Tags) > 0 && len(util.StringSliceIntersection(task.Tags, v.Tags)) > 0)) {
+						continue
+					}
+
+					if p.FindTaskForVariant(task.Name, variant.Name) != nil {
 						pairs = append(pairs, TVPair{variant.Name, task.Name})
 					}
+				}
+
+				if v.Task == "" {
+					continue
+				}
+				for _, displayTask := range variant.DisplayTasks {
+					if !taskRegex.MatchString(displayTask.Name) {
+						continue
+					}
+					displayTaskPairs = append(displayTaskPairs, TVPair{variant.Name, displayTask.Name})
 				}
 			}
 		}
 	}
-	return pairs, err
+
+	return pairs, displayTaskPairs, err
 }

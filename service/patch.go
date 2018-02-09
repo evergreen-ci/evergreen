@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -103,11 +104,17 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	patchUpdateReq := patchVariantsTasksRequest{}
-
 	if err = util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	grip.InfoWhen(len(patchUpdateReq.Tasks) > 0 || len(patchUpdateReq.Variants) > 0, message.Fields{
+		"source":     "ui_update_patch",
+		"message":    "legacy structure is being used",
+		"update_req": patchUpdateReq,
+		"patch_id":   projCtx.Patch.Id.Hex(),
+		"version":    projCtx.Patch.Version,
+	})
 
 	tasks := model.TaskVariantPairs{}
 	if len(patchUpdateReq.VariantsTasks) > 0 {
@@ -171,6 +178,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, struct {
 			VersionId string `json:"version"`
 		}{projCtx.Version.Id})
+
 	} else {
 		githubOauthToken, err := uis.Settings.GetGithubOauthToken()
 		if err != nil {
