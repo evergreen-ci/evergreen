@@ -7,9 +7,7 @@ import (
 
 // AddTestIndexes drops and adds indexes for a given collection
 func AddTestIndexes(collection string, unique, sparse bool, key ...string) error {
-	if err := db.DropIndex(collection, key...); err != nil {
-		return err
-	}
+	_ = db.DropIndex(collection, key...)
 	return db.EnsureIndex(collection, mgo.Index{
 		Key:    key,
 		Unique: unique,
