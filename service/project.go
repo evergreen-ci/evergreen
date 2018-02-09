@@ -11,7 +11,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/github_hook"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
@@ -113,12 +115,24 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	hook, err := github_hook.FindHook(projRef.Owner, projRef.Repo)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	apiHook := restModel.APIGithubHook{}
+	if hook != nil {
+		apiHook.BuildFromService(hook)
+	}
+
 	data := struct {
 		ProjectRef      *model.ProjectRef
 		ProjectVars     *model.ProjectVars
-		ProjectAliases  []model.ProjectAlias `json:"aliases,omitempty"`
-		ConflictingRefs []string             `json:"pr_testing_conflicting_refs,omitempty"`
-	}{projRef, projVars, projectAliases, conflictingRefs}
+		ProjectAliases  []model.ProjectAlias    `json:"aliases,omitempty"`
+		ConflictingRefs []string                `json:"pr_testing_conflicting_refs,omitempty"`
+		GithubHook      restModel.APIGithubHook `json:"github_hook,omitempty"`
+	}{projRef, projVars, projectAliases, conflictingRefs, apiHook}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
