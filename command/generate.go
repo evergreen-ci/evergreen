@@ -48,6 +48,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			continue
 		}
 		jsonFile, err := os.Open(fileLoc)
+		defer jsonFile.Close()
 		if err != nil {
 			catcher.Add(errors.Wrapf(err, "Couldn't open file '%s'", fn))
 			continue
