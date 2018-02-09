@@ -7,11 +7,12 @@ import (
 
 // AddTestIndexes drops and adds indexes for a given collection
 func AddTestIndexes(collection string, unique, sparse bool, key ...string) error {
-	db.DropIndex(collection, key...)
-	err := db.EnsureIndex(collection, mgo.Index{
+	if err := db.DropIndex(collection, key...); err != nil {
+		return err
+	}
+	return db.EnsureIndex(collection, mgo.Index{
 		Key:    key,
 		Unique: unique,
 		Sparse: sparse,
 	})
-	return err
 }
