@@ -641,8 +641,6 @@ tasks:
   - <<: *run-lint
     name: lint-hostinit
   - <<: *run-lint
-    name: lint-hostutil
-  - <<: *run-lint
     name: lint-migrations
   - <<: *run-lint
     name: lint-model

@@ -82,9 +82,11 @@ func (h *Host) RunSSHCommand(ctx context.Context, cmd string, sshOptions []strin
 	}
 
 	grip.Info(message.Fields{
-		"command": proc,
-		"host_id": h.Id,
-		"message": "running command over ssh",
+		"command":  cmd,
+		"hostname": hostInfo.Hostname,
+		"user":     h.User,
+		"host_id":  h.Id,
+		"message":  "running command over ssh",
 	})
 
 	var cancel context.CancelFunc
