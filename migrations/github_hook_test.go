@@ -85,6 +85,11 @@ func (s *githubHookMigrationSuite) SetupTest() {
 			Repo:       "grip",
 			Identifier: "grip3",
 		},
+		{
+			Owner:      "mongodb",
+			Repo:       "grip",
+			Identifier: "grip4",
+		},
 	}
 	for _, ref := range s.projectRefs {
 		s.NoError(ref.Insert())
@@ -110,6 +115,11 @@ func (s *githubHookMigrationSuite) SetupTest() {
 			"_id":            "grip3",
 			"github_hook_id": 9003,
 		},
+		// deliberately a duplicate hook id #
+		{
+			"_id":            "grip4",
+			"github_hook_id": 9002,
+		},
 	}
 	for _, vars := range s.projectVars {
 		s.NoError(db.Insert(model.ProjectVarsCollection, vars))
@@ -130,6 +140,7 @@ func (s *githubHookMigrationSuite) TestMigration() {
 	out := []model.ProjectVars{}
 	s.NoError(db.FindAllQ(model.ProjectVarsCollection, db.Q{}, &out))
 
+	saw := 0
 	for _, vars := range out {
 		if vars.Id == "mci" {
 			s.Empty(vars.Vars)
@@ -137,6 +148,7 @@ func (s *githubHookMigrationSuite) TestMigration() {
 
 		} else if vars.Id == "mci2" {
 			s.Len(vars.Vars, 1)
+			s.Equal("bye", vars.Vars["hi"])
 			s.Empty(vars.PrivateVars)
 
 		} else if vars.Id == "grip2" {
@@ -147,19 +159,26 @@ func (s *githubHookMigrationSuite) TestMigration() {
 			s.Empty(vars.Vars)
 			s.Empty(vars.PrivateVars)
 
+		} else if vars.Id == "grip4" {
+			s.Empty(vars.Vars)
+			s.Empty(vars.PrivateVars)
+
 		} else {
-			s.T().Fail()
+			s.T().Errorf("Unknown ID: %s", vars.Id)
+			continue
 		}
+		saw += 1
 	}
+	s.Equal(5, saw)
 
 	hook, err := model.FindGithubHook("evergreen-ci", "evergreen")
 	s.NoError(err)
-	s.NotNil(hook)
+	s.Require().NotNil(hook)
 	s.Equal(9001, hook.HookID)
 
 	hook, err = model.FindGithubHook("mongodb", "grip")
 	s.NoError(err)
-	s.NotNil(hook)
+	s.Require().NotNil(hook)
 	s.Equal(9002, hook.HookID)
 }
 

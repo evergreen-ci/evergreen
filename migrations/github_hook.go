@@ -9,7 +9,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func githubHooksToCollectionGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+func githubHooksToCollectionGenerator(env anser.Environment, db string, _ int) (anser.Generator, error) {
 	const (
 		projectVarsCollection = "project_vars"
 		migrationName         = "github_hooks_to_collection_generator"
@@ -25,7 +25,7 @@ func githubHooksToCollectionGenerator(env anser.Environment, db string, limit in
 			DB:         db,
 			Collection: projectVarsCollection,
 		},
-		Limit: limit,
+		Limit: 50,
 		Query: bson.M{
 			githubHookIDKey: bson.M{
 				"$exists": true,
@@ -79,12 +79,16 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 			identifierKey: projectVarsID,
 		})
 		ref := struct {
-			Owner string `bson:"owner_name"`
-			Repo  string `bson:"repo_name"`
+			Identifier string `bson:"identifier"`
+			Owner      string `bson:"owner_name"`
+			Repo       string `bson:"repo_name"`
 		}{}
 		err := query.One(&ref)
 		if err != nil {
 			return err
+		}
+		if ref.Owner == "" || ref.Repo == "" {
+			return errors.New("Missing owner or repo")
 		}
 
 		// check if there is an existing github hook for the same repo
