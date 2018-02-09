@@ -219,15 +219,7 @@ func (s *OpenStackSuite) TestGetSSHOptions() {
 		},
 	}
 
-	opts, err := s.manager.GetSSHOptions(host, "")
-	s.Error(err)
-	s.Empty(opts)
-
-	ok, err := s.manager.IsSSHReachable(host, "")
-	s.Error(err)
-	s.False(ok)
-
-	opts, err = s.manager.GetSSHOptions(host, s.keyname)
+	opts, err := s.manager.GetSSHOptions(host, s.keyname)
 	s.NoError(err)
 	s.Equal([]string{"-i", s.keyname, "-o", opt}, opts)
 }
