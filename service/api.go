@@ -371,12 +371,6 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Debug(message.Fields{
-		"message": "inserting artifacts in db",
-		"task":    t.Id,
-		"entry":   entry,
-	})
-
 	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", t.Id, err)
 		grip.Error(message)
