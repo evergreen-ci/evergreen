@@ -91,10 +91,10 @@ func (p *ProjectAlias) Upsert() error {
 		variantKey:   p.Variant,
 	}
 	if p.Task != "" {
-		update["task"] = p.Task
+		update[taskKey] = p.Task
 	}
 	if len(p.Tags) > 0 {
-		update["tags"] = p.Tags
+		update[tagsKey] = p.Tags
 	}
 
 	_, err := db.Upsert(ProjectAliasCollection, bson.M{

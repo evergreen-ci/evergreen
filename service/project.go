@@ -211,7 +211,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.PRTestingEnabled {
-		conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+		var conflictingRefs []model.ProjectRef
+		conflictingRefs, err = model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

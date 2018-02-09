@@ -108,7 +108,7 @@ func addExecutionToTasksGenerator(env anser.Environment, db string, limit int) (
 	return anser.NewSimpleMigrationGenerator(env, opts, bson.M{"$set": bson.M{"execution": 0}}), nil
 }
 
-func testResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+func testResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "tasks_testresults"
 
 	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(db, tasksCollection)); err != nil {
@@ -132,7 +132,7 @@ func testResultsGenerator(env anser.Environment, db string, limit int) (anser.Ge
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-func oldTestResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+func oldTestResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "old_tasks_testresults"
 
 	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(db, oldTasksCollection)); err != nil {
