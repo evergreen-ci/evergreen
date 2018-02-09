@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -210,7 +209,7 @@ func runHostTeardown(ctx context.Context, h *host.Host, cloudHost *cloud.CloudHo
 	}
 	startTime := time.Now()
 	// run the teardown script with the agent
-	logs, err := hostutil.RunSSHCommand(ctx, hostutil.TearDownCommand(h), sshOptions, *h)
+	logs, err := h.RunSSHCommand(ctx, h.TearDownCommand(), sshOptions)
 	if err != nil {
 		event.LogHostTeardown(h.Id, logs, false, time.Since(startTime))
 		return errors.Wrapf(err, "error running teardown script on remote host: %s", logs)

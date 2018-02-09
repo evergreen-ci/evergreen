@@ -3,6 +3,7 @@ package distro
 import (
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -62,4 +63,17 @@ func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "win")
+}
+
+func (d *Distro) BinaryName() string {
+	name := "evergreen"
+	if d.IsWindows() {
+		return name + ".exe"
+	}
+	return name
+}
+
+// ExecutableSubPath returns the directory containing the compiled agents.
+func (d *Distro) ExecutableSubPath() string {
+	return filepath.Join(d.Arch, d.BinaryName())
 }

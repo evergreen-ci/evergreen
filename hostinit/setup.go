@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -617,7 +616,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
-		if logs, err := hostutil.RunSSHCommand(ctx, hostutil.SetupCommand(h), sshOptions, *h); err != nil {
+		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"runner":    RunnerName,
@@ -770,7 +769,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	// place the binary into the directory
 	curlSetupCmd := subprocess.NewRemoteCommand(
-		hostutil.CurlCommand(init.Settings.Ui.Url, target),
+		target.CurlCommand(init.Settings.Ui.Url),
 		hostSSHInfo.Hostname,
 		target.User,
 		nil,   // env
