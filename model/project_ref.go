@@ -32,6 +32,8 @@ type ProjectRef struct {
 	// Github PushEvents for this project, instead of the Repotracker runner
 	TracksPushEvents bool `bson:"tracks_push_events" json:"tracks_push_events" yaml:"tracks_push_events"`
 
+	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
+
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 
@@ -94,6 +96,7 @@ var (
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
+	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
 )
 
 const (
@@ -169,6 +172,8 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+// FindProjectRefsByRepoAndBranch finds ProjectRefs with matching repo/branch
+// that are enabled and setup for PR testing
 func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRef, error) {
 	projectRefs := []ProjectRef{}
 
@@ -193,6 +198,9 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 	return projectRefs, err
 }
 
+// FindOneProjectRefByRepoAndBranch finds a signle ProjectRef with matching
+// repo/branch that is enabled and setup for PR testing. If more than one
+// is found, an error is returned
 func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
@@ -200,17 +208,28 @@ func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, 
 			owner, repo, branch)
 	}
 	l := len(projectRefs)
+	target := 0
 	if l > 1 {
-		err = errors.Errorf("attempt to fetch project ref for "+
-			"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
-			owner, repo, branch, l)
-		return nil, err
+		count := 0
+		for i := range projectRefs {
+			if projectRefs[i].PRTestingEnabled {
+				target = i
+				count += 1
+			}
+		}
+
+		if count > 1 {
+			err = errors.Errorf("attempt to fetch project ref for "+
+				"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
+				owner, repo, branch, l)
+			return nil, err
+		}
 
 	} else if l == 0 {
 		return nil, nil
 	}
 
-	return &projectRefs[0], nil
+	return &projectRefs[target], nil
 }
 
 // FindProjectRefs returns limit refs starting at project identifier key
@@ -284,6 +303,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
+				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
 			},
 		},
 	)

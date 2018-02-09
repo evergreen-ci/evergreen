@@ -170,6 +170,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
+        $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
+        $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
 
         $scope.aliases = data.aliases || [];
         $scope.aliases = _.sortBy($scope.aliases, function(v) {
@@ -208,6 +210,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           admins : $scope.projectRef.admins || [],
           setup_github_hook: $scope.githubHookId != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
+          pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
           delete_aliases: []
         };
