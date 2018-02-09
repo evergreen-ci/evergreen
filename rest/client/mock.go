@@ -486,3 +486,14 @@ func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, er
 		LatestRevision: evergreen.ClientVersion,
 	}, nil
 }
+
+// GenerateTasks posts new tasks for the `generate.tasks` command.
+func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, json interface{}) error {
+	if td.ID != "mock_id" {
+		return errors.New("mock failed, wrong id")
+	}
+	if td.Secret != "mock_secret" {
+		return errors.New("mock failed, wrong secret")
+	}
+	return nil
+}
