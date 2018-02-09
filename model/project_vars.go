@@ -23,7 +23,7 @@ const (
 //yml files.
 type ProjectVars struct {
 
-	//Should match the _id in the project it refers to
+	//Should match the identifier of the project it refers to
 	Id string `bson:"_id" json:"_id"`
 
 	//The actual mapping of variables for this project

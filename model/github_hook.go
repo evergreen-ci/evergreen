@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	Collection = "github_hooks"
+	GithubHooksCollection = "github_hooks"
 )
 
 type GithubHook struct {
@@ -34,7 +34,7 @@ func (h *GithubHook) Insert() error {
 		return errors.New("Owner and repository must not be empty strings")
 	}
 
-	return db.Insert(Collection, h)
+	return db.Insert(GithubHooksCollection, h)
 }
 
 func FindGithubHook(owner, repo string) (*GithubHook, error) {
@@ -43,7 +43,7 @@ func FindGithubHook(owner, repo string) (*GithubHook, error) {
 	}
 
 	hook := &GithubHook{}
-	err := db.FindOneQ(Collection, db.Query(bson.M{
+	err := db.FindOneQ(GithubHooksCollection, db.Query(bson.M{
 		ownerKey: owner,
 		repoKey:  repo,
 	}), hook)
