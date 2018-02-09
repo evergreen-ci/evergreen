@@ -198,10 +198,6 @@ func (h *Host) SetTerminated(user string) error {
 	return h.SetStatus(evergreen.HostTerminated, user)
 }
 
-func (h *Host) SetUnreachable(user string) error {
-	return h.SetStatus(evergreen.HostUnreachable, user)
-}
-
 func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
@@ -533,6 +529,10 @@ func (h *Host) UpdateReachability(reachable bool) error {
 		h.UnreachableSince = util.ZeroTime
 	}
 	update["$set"] = setUpdate
+
+	if status == h.Status {
+		return nil
+	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, status, evergreen.User)
 

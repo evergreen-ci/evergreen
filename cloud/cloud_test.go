@@ -3,8 +3,6 @@ package cloud
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -53,39 +51,6 @@ func TestGetCloudManager(t *testing.T) {
 			So(err, ShouldNotBeNil)
 		})
 
-	})
-
-}
-
-func TestIsHostReachable(t *testing.T) {
-	t.Skip("Test cannot SSH into local host without a valid key file. ")
-	Convey("A reachable static host should return true", t, func() {
-		// try with a reachable static host
-		reachableHost := &host.Host{
-			Host:        "localhost",
-			Provisioned: true,
-			Provider:    evergreen.HostTypeStatic,
-		}
-		cloudManager, err := GetCloudManager(reachableHost.Provider, testutil.TestConfig())
-		So(err, ShouldBeNil)
-
-		reachable, err := cloudManager.IsSSHReachable(reachableHost, "")
-		So(reachable, ShouldBeTrue)
-		So(err, ShouldBeNil)
-	})
-	Convey("An unreachable static host should return false", t, func() {
-		// try with an unreachable static host
-		reachableHost := &host.Host{
-			Host:        "fakehost",
-			Provisioned: true,
-			Provider:    evergreen.HostTypeStatic,
-		}
-		cloudManager, err := GetCloudManager(reachableHost.Provider, testutil.TestConfig())
-		So(err, ShouldBeNil)
-
-		reachable, err := cloudManager.IsSSHReachable(reachableHost, "")
-		So(reachable, ShouldBeFalse)
-		So(err, ShouldBeNil)
 	})
 
 }

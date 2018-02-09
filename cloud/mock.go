@@ -200,17 +200,6 @@ func (mockMgr *mockManager) Configure(settings *evergreen.Settings) error {
 	return nil
 }
 
-func (mockMgr *mockManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
-	l := mockMgr.mutex
-	l.RLock()
-	instance, ok := mockMgr.Instances[host.Id]
-	l.RUnlock()
-	if !ok {
-		return false, errors.Errorf("unable to fetch host: %s", host.Id)
-	}
-	return instance.IsSSHReachable, nil
-}
-
 func (mockMgr *mockManager) IsUp(host *host.Host) (bool, error) {
 	l := mockMgr.mutex
 	l.RLock()

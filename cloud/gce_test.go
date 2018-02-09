@@ -298,10 +298,6 @@ func (s *GCESuite) TestGetSSHOptions() {
 	s.Error(err)
 	s.Empty(opts)
 
-	ok, err := s.manager.IsSSHReachable(host, "")
-	s.Error(err)
-	s.False(ok)
-
 	opts, err = s.manager.GetSSHOptions(host, keyname)
 	s.NoError(err)
 	s.Equal([]string{"-i", keyname, "-o", opt}, opts)

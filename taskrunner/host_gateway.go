@@ -11,7 +11,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -155,7 +154,7 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 // Prepare the remote machine to run a task.
 func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
 	// copy over the correct agent binary to the remote host
-	if logs, err := hostutil.RunSSHCommand(ctx, hostutil.CurlCommand(settings.Ui.Url, &hostObj), sshOptions, hostObj); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
 		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
@@ -165,7 +164,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 	}
 
 	// run the setup script with the agent
-	if logs, err := hostutil.RunSSHCommand(ctx, hostutil.SetupCommand(&hostObj), sshOptions, hostObj); err != nil {
+	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.SetupCommand(), sshOptions); err != nil {
 		event.LogProvisionFailed(hostObj.Id, logs)
 
 		grip.Error(message.WrapError(err, message.Fields{
@@ -191,7 +190,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join("~", "evergreen")
-	if hostutil.IsWindows(&hostObj.Distro) {
+	if hostObj.Distro.IsWindows() {
 		pathToExecutable += ".exe"
 	}
 

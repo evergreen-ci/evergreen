@@ -3,13 +3,11 @@
 package cloud
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -231,16 +229,6 @@ func (m *dockerManager) Configure(s *evergreen.Settings) error {
 	}
 
 	return nil
-}
-
-//IsSSHReachable checks if a container appears to be reachable via SSH by
-//attempting to contact the host directly.
-func (m *dockerManager) IsSSHReachable(h *host.Host, keyPath string) (bool, error) {
-	sshOpts, err := m.GetSSHOptions(h, keyPath)
-	if err != nil {
-		return false, err
-	}
-	return hostutil.CheckSSHResponse(context.TODO(), h, sshOpts)
 }
 
 //IsUp checks the container's state by querying the Docker API and

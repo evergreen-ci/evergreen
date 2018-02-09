@@ -1,7 +1,6 @@
 package cloud
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -628,21 +626,6 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 		}
 	}
 	return nil
-}
-
-// IsSSHReachable returns whether or not the host can be reached via SSH.
-func (m *ec2Manager) IsSSHReachable(h *host.Host, keyName string) (bool, error) {
-	opts, err := m.GetSSHOptions(h, keyName)
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":       "error getting ssh options",
-			"host":          h.Id,
-			"host_provider": h.Distro.Provider,
-			"distro":        h.Distro.Id,
-		}))
-		return false, err
-	}
-	return hostutil.CheckSSHResponse(context.TODO(), h, opts)
 }
 
 // GetDNSName returns the DNS name for the host.

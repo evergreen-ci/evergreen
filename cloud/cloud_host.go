@@ -41,10 +41,6 @@ func GetCloudHost(host *host.Host, settings *evergreen.Settings) (*CloudHost, er
 	return &CloudHost{host, keyPath, mgr}, nil
 }
 
-func (cloudHost *CloudHost) IsSSHReachable() (bool, error) {
-	return cloudHost.CloudMgr.IsSSHReachable(cloudHost.Host, cloudHost.KeyPath)
-}
-
 func (cloudHost *CloudHost) IsUp() (bool, error) {
 	return cloudHost.CloudMgr.IsUp(cloudHost.Host)
 }

@@ -140,9 +140,5 @@ func (c *errorCollectorImpl) report() error {
 }
 
 func reachedThreshold(provider string, count int) bool {
-	if provider == evergreen.ProviderNameStatic {
-		return count >= 10
-	}
-
-	return count >= 5
+	return count >= 10
 }

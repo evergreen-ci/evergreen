@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -361,26 +360,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		}
 	}
 
-	// check if the host is reachable via SSH
-	cloudHost, err := cloud.GetCloudHost(host, init.Settings)
-	if err != nil {
-		return false, errors.Wrapf(err, "failed to get cloud host for %s", host.Id)
-	}
-
-	var reachable bool
-	for i := 0; i < 6; i++ {
-		reachable, err = cloudHost.IsSSHReachable()
-		if err != nil {
-			err = errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
-			break
-		}
-		if !reachable {
-			break
-		}
-		sleep := time.Duration(rand.Float64() * 2 * float64(time.Second))
-		time.Sleep(sleep)
-	}
-	return reachable, err
+	return true, nil
 }
 
 // setupHost runs the specified setup script for an individual host. Returns
@@ -636,7 +616,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
-		if logs, err := hostutil.RunSSHCommand(ctx, hostutil.SetupCommand(h), sshOptions, *h); err != nil {
+		if logs, err := h.RunSSHCommand(ctx, h.SetupCommand(), sshOptions); err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
 				"runner":    RunnerName,
@@ -789,7 +769,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 
 	// place the binary into the directory
 	curlSetupCmd := subprocess.NewRemoteCommand(
-		hostutil.CurlCommand(init.Settings.Ui.Url, target),
+		target.CurlCommand(init.Settings.Ui.Url),
 		hostSSHInfo.Hostname,
 		target.User,
 		nil,   // env
