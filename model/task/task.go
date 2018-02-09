@@ -476,6 +476,8 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 func UnscheduleStaleUnderwaterTasks() (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0
+	query[ActivatedByKey] = ""
+
 	query["$and"] = []bson.M{
 		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
 		{CreateTimeKey: bson.M{"$gt": util.ZeroTime}},
