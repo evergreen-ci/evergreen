@@ -117,7 +117,7 @@ func (s *githubStatusUpdateSuite) TestForBuild() {
 
 	s.Equal(fmt.Sprintf("/build/%s", s.buildDoc.Id), status.URLPath)
 	s.Equal("no tasks were run", status.Description)
-	s.Equal("evergreen-testvariant", status.Context)
+	s.Equal("evergreen/testvariant", status.Context)
 	s.Equal("failure", status.State)
 }
 

@@ -183,7 +183,7 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		}
 
 		patchVersion = b.Version
-		status.Context = fmt.Sprintf("evergreen-%s", b.BuildVariant)
+		status.Context = fmt.Sprintf("evergreen/%s", b.BuildVariant)
 		status.Description = taskStatusToDesc(b)
 		status.URLPath = fmt.Sprintf("/build/%s", b.Id)
 
