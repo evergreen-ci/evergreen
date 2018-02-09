@@ -335,7 +335,9 @@ Evergreen Projects
             <div class="col-lg-6">
                 Github Pull Request Testing cannot be enabled on this repository: only one Evergreen project
                 per Repository/Branch combination can track Pull Requests. To enable PR Testing in this
-                repository, please turn it off in <span ng-repeat="x in prTestingConflicts"> "[[x]]"<span ng-show="!$last">, </span> </span>
+                repository, please turn it off
+                <span ng-show="prTestingEnabled">in this repository, or</span>
+                <span> in <span ng-repeat="x in prTestingConflicts"> "[[x]]"<span ng-show="!$last">, </span> </span></span>
             </div>
           </div>
           <div id="patch-variants-list-header" class="form-group" ng-show="prTestingEnabled || prTestingConflicts.length === 0">

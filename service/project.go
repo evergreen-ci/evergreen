@@ -108,7 +108,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 	conflictingRefs := []string{}
 	for _, ref := range prConflictingRefs {
-		if ref.Identifier != projRef.Identifier {
+		if ref.PRTestingEnabled && ref.Identifier != projRef.Identifier {
 			conflictingRefs = append(conflictingRefs, ref.Identifier)
 		}
 	}
@@ -210,15 +210,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	for _, ref := range conflictingRefs {
-		if ref.Identifier != id {
-			uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", id))
+	if responseRef.PRTestingEnabled {
+		conflictingRefs, err := model.FindProjectRefsByRepoAndBranch(responseRef.Owner, responseRef.Repo, responseRef.Branch)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
+		}
+		for _, ref := range conflictingRefs {
+			if ref.Identifier != id {
+				uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Cannot enable PR Testing in this repo, must disable in '%s' first", id))
+				return
+			}
 		}
 	}
 
