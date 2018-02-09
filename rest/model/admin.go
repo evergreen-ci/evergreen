@@ -43,7 +43,6 @@ type APIAdminSettings struct {
 // BuildFromService builds a model from the service layer
 func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case evergreen.Settings:
 	case *evergreen.Settings:
 		if v == nil {
 			return errors.New("evergreen settings object is nil")
