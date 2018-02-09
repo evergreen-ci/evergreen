@@ -137,36 +137,33 @@ func (s *githubHookMigrationSuite) TestMigration() {
 		s.NoError(j.Error())
 	}
 
-	out := []model.ProjectVars{}
+	out := []bson.M{}
 	s.NoError(db.FindAllQ(model.ProjectVarsCollection, db.Q{}, &out))
 
 	saw := 0
 	for _, vars := range out {
-		if vars.Id == "mci" {
-			s.Empty(vars.Vars)
-			s.Empty(vars.PrivateVars)
+		if vars["_id"] == "mci" {
+			s.Empty(vars["vars"])
 
-		} else if vars.Id == "mci2" {
-			s.Len(vars.Vars, 1)
-			s.Equal("bye", vars.Vars["hi"])
-			s.Empty(vars.PrivateVars)
+		} else if vars["_id"] == "mci2" {
+			s.Len(vars["vars"], 1)
 
-		} else if vars.Id == "grip2" {
-			s.Empty(vars.Vars)
-			s.Empty(vars.PrivateVars)
+		} else if vars["_id"] == "grip2" {
+			s.Empty(vars["vars"])
 
-		} else if vars.Id == "grip3" {
-			s.Empty(vars.Vars)
-			s.Empty(vars.PrivateVars)
+		} else if vars["_id"] == "grip3" {
+			s.Empty(vars["vars"])
 
-		} else if vars.Id == "grip4" {
-			s.Empty(vars.Vars)
-			s.Empty(vars.PrivateVars)
+		} else if vars["_id"] == "grip4" {
+			s.Empty(vars["vars"])
 
 		} else {
-			s.T().Errorf("Unknown ID: %s", vars.Id)
+			s.T().Errorf("Unknown ID: %s", vars["_id"])
 			continue
 		}
+		_, ok := vars["github_hook_id"]
+		s.False(ok)
+		s.Empty(vars["private_vars"])
 		saw += 1
 	}
 	s.Equal(5, saw)
