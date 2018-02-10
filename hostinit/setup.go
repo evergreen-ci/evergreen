@@ -278,7 +278,11 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						continue
 					}
 
-					grip.InfoWhen(h.Status != evergreen.HostStarting, message.Fields{
+					if h.Status == evergreen.HostStarting {
+						continue
+					}
+
+					grip.Info(message.Fields{
 						"GUID":     init.GUID,
 						"message":  "successfully finished provisioning host",
 						"hostid":   h.Id,
@@ -550,16 +554,22 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 		}
 
 		incErr := h.IncProvisionAttempts()
-		if incErr != nil {
-			grip.Critical(message.WrapError(incErr, message.Fields{
-				"runner":    RunnerName,
-				"host":      h.Id,
-				"operation": "increment provisioning errors failed",
-			}))
-		} else {
-			if h.ProvisionAttempts <= 10 {
-				return nil
-			}
+		grip.Critical(message.WrapError(incErr, message.Fields{
+			"runner":    RunnerName,
+			"host":      h.Id,
+			"operation": "increment provisioning errors failed",
+		}))
+
+		if h.ProvisionAttempts <= 10 {
+			grip.Debug(message.Fields{
+				"runner":   RunnerName,
+				"host":     h.Id,
+				"attempts": h.ProvisionAttempts,
+				"output":   output,
+				"error":    err.Error(),
+				"message":  "provisioning failed, but will retry",
+			})
+			return nil
 		}
 
 		grip.Warning(message.WrapError(alerts.RunHostProvisionFailTriggers(h), message.Fields{
