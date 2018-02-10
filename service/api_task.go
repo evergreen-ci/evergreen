@@ -406,11 +406,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grip.Warning(message.WrapError(h.UpdateLastCommunicated(), message.Fields{
-		"host":      h.Id,
-		"operation": "updating last communication time",
-	}))
-
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
 		err = errors.Wrap(err, "error retrieving admin settings")

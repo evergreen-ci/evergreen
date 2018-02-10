@@ -261,12 +261,16 @@ func (h *Host) UpdateLastCommunicated() error {
 	now := time.Now()
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{LastCommunicationTimeKey: now}},
-	)
+		bson.M{"$set": bson.M{
+			LastCommunicationTimeKey: now,
+			LastReachabilityCheckKey: now,
+		}})
+
 	if err != nil {
 		return err
 	}
 	h.LastCommunicationTime = now
+	h.LastReachabilityCheck = now
 	return nil
 }
 

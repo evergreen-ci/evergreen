@@ -548,7 +548,6 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			})
 			return nil
 		}
-		event.LogProvisionFailed(h.Id, output)
 
 		incErr := h.IncProvisionAttempts()
 		if incErr != nil {
