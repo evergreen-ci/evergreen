@@ -136,6 +136,7 @@ func TestHostIsReady(t *testing.T) {
 			for id := range mockCloud.IterIDs() {
 				instance := mockCloud.Get(id)
 				instance.Status = cloud.StatusInitializing
+				instance.DNSName = "evergreen.example.net"
 				mockCloud.Set(id, instance)
 			}
 

@@ -300,7 +300,6 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 // IsHostReady returns whether or not the specified host is ready for its setup script
 // to be run.
 func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
-
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := cloud.GetCloudManager(host.Distro.Provider, init.Settings)
 	if err != nil {
