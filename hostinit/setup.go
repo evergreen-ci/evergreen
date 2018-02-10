@@ -29,7 +29,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 )
 
 const (
@@ -377,9 +376,14 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	// mark the host as initializing
-	if err = targetHost.SetInitializing(); err != mgo.ErrNotFound {
-		return "", errors.Wrapf(err, "database error")
-	}
+	grip.Notice(message.WrapError(targetHost.SetInitializing(), message.Fields{
+		"message":    "encountered issue transitioning from starting to initializing",
+		"indication": "host setup retry",
+		"action":     "none",
+		"host":       targetHost.Id,
+		"provider":   targetHost.Distro.Provider,
+		"distro":     targetHost.Distro.Id,
+	}))
 
 	// run the function scheduled for when the host is up
 	err = cloudMgr.OnUp(targetHost)
