@@ -57,6 +57,8 @@ const (
 	// These are private custom types to avoid key collisions.
 	RequestTask           reqTaskKey           = 0
 	RequestProjectContext reqProjectContextKey = 0
+
+	remoteAddrHeaderName = "X-Cluster-Client-Ip"
 )
 
 // MustHaveProjectContext gets the projectContext from the request,
@@ -441,10 +443,15 @@ func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 	start := time.Now()
 	reqID := <-l.ids
 
+	remote := r.Header.Get(remoteAddrHeaderName)
+	if remote == "" {
+		remote = r.RemoteAddr
+	}
+
 	grip.Debug(message.Fields{
 		"action":  "started",
 		"method":  r.Method,
-		"remote":  r.RemoteAddr,
+		"remote":  remote,
 		"request": reqID,
 		"path":    r.URL.Path,
 	})
@@ -474,7 +481,7 @@ func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next
 
 	grip.Info(message.Fields{
 		"method":   r.Method,
-		"remote":   r.RemoteAddr,
+		"remote":   remote,
 		"request":  reqID,
 		"path":     r.URL.Path,
 		"duration": time.Since(start),
