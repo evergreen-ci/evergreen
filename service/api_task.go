@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -213,15 +212,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		grip.Errorln("Error updating expected duration:", err)
 	}
-	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
-	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
-	if err != nil {
-		grip.Errorf("error getting current agent revision %+v", err)
-		as.WriteJSON(w, http.StatusInternalServerError, err)
-		return
-	}
 
-	shouldExit, message := checkHostHealth(currentHost, agentRevision)
+	shouldExit, message := checkHostHealth(currentHost, evergreen.BuildRevision)
 	if shouldExit {
 		// set the needs new agent flag on the host
 		if err := currentHost.SetNeedsNewAgent(true); err != nil {
@@ -383,20 +375,17 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		ShouldExit: false,
 	}
 
-	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
-	// check host health before getting next task
-	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
-	if err != nil {
-		grip.Errorf("error getting current agent revision %+v", err)
-		as.WriteJSON(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	shouldExit, msg := checkHostHealth(h, agentRevision)
+	shouldExit, msg := checkHostHealth(h, evergreen.BuildRevision)
 	if shouldExit {
 		// set the needs new agent flag on the host
-		if err = h.SetNeedsNewAgent(true); err != nil {
-			grip.Errorf("error indicating host %s needs new agent: %+v", h.Id, err)
+		if err := h.SetNeedsNewAgent(true); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
+				"host":      h.Id,
+				"operation": "next_task",
+				"message":   "problem indicating that host needs new agent",
+				"source":    "database error",
+				"revision":  evergreen.BuildRevision,
+			}))
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -405,11 +394,6 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		as.WriteJSON(w, http.StatusOK, response)
 		return
 	}
-
-	grip.Warning(message.WrapError(h.UpdateLastCommunicated(), message.Fields{
-		"host":      h.Id,
-		"operation": "updating last communication time",
-	}))
 
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {

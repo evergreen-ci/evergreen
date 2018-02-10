@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,8 +31,6 @@ type HostGateway interface {
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
 	StartAgentOnHost(context.Context, *evergreen.Settings, host.Host) error
-	// gets the current revision of the agent
-	GetAgentRevision() (string, error)
 }
 
 // Implementation of the HostGateway that builds and copies over the MCI
@@ -97,10 +94,10 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 	grip.Info(message.Fields{"runner": RunnerName,
 		"message": "prepping host for agent",
 		"host":    hostObj.Id})
-	agentRevision, err := agbh.prepRemoteHost(ctx, hostObj, sshOptions, settings)
-	if err != nil {
+	if err := agbh.prepRemoteHost(ctx, hostObj, sshOptions, settings); err != nil {
 		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
+
 	grip.Info(message.Fields{"runner": RunnerName, "message": "prepping host finished successfully", "host": hostObj.Id})
 
 	// generate the host secret if none exists
@@ -128,7 +125,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 	}
 	grip.Info(message.Fields{"runner": RunnerName, "message": "agent successfully started for host", "host": hostObj.Id})
 
-	if err = hostObj.SetAgentRevision(agentRevision); err != nil {
+	if err = hostObj.SetAgentRevision(evergreen.BuildRevision); err != nil {
 		return errors.Wrapf(err, "error setting agent revision on host %s", hostObj.Id)
 	}
 	if err = hostObj.UpdateLastCommunicated(); err != nil {
@@ -140,27 +137,16 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 	return nil
 }
 
-// Gets the git revision of the currently built agent
-func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
-	versionFile := filepath.Join(agbh.ExecutablesDir, "version")
-	hashBytes, err := ioutil.ReadFile(versionFile)
-	if err != nil {
-		return "", errors.Wrap(err, "error reading agent version file")
-	}
-
-	return strings.TrimSpace(string(hashBytes)), nil
-}
-
 // Prepare the remote machine to run a task.
-func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) (string, error) {
+func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.Host, sshOptions []string, settings *evergreen.Settings) error {
 	// copy over the correct agent binary to the remote host
 	if logs, err := hostObj.RunSSHCommand(ctx, hostObj.CurlCommand(settings.Ui.Url), sshOptions); err != nil {
-		return "", errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
+		return errors.Wrapf(err, "error downloading agent binary on remote host: %s", logs)
 	}
 
 	// return early if we do not need to run the setup script
 	if hostObj.Distro.Setup == "" {
-		return agbh.GetAgentRevision()
+		return nil
 	}
 
 	// run the setup script with the agent
@@ -177,13 +163,13 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 
 		// there is no guarantee setup scripts are idempotent, so we terminate the host if the setup script fails
 		if disableErr := hostObj.DisablePoisonedHost(); disableErr != nil {
-			return "", errors.Wrapf(disableErr, "error terminating host %s", hostObj.Id)
+			return errors.Wrapf(disableErr, "error terminating host %s", hostObj.Id)
 		}
 
-		return "", errors.Wrapf(err, "error running setup script on remote host: %s", logs)
+		return errors.Wrapf(err, "error running setup script on remote host: %s", logs)
 	}
 
-	return agbh.GetAgentRevision()
+	return nil
 }
 
 // Start the agent process on the specified remote host.
