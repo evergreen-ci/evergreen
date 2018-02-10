@@ -171,7 +171,6 @@ var IsStarting = db.Query(
 
 func NeedsProvisioning() db.Q {
 	return db.Query(bson.M{StatusKey: bson.M{"$in": []string{
-		evergreen.HostProvisioning,
 		evergreen.HostStarting,
 		evergreen.HostInitializing,
 	}}})
