@@ -16,7 +16,7 @@ import (
 const (
 	// how long to wait in between reachability checks
 	ReachabilityCheckInterval = 10 * time.Minute
-	NumReachabilityWorkers    = 100
+	NumReachabilityWorkers    = 10
 )
 
 // responsible for monitoring and checking in on hosts
