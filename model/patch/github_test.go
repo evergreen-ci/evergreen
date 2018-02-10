@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -91,7 +92,6 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(fmt.Sprintf("'%s' pull request #%d by %s: %s (https://github.com/evergreen-ci/evergreen/pull/5)", s.baseRepo, s.pr, s.user, s.title), patchDoc.Description)
 	s.Equal(evergreen.GithubPatchUser, patchDoc.Author)
 	s.Equal(evergreen.PatchCreated, patchDoc.Status)
-	s.NotZero(patchDoc.Id)
 
 	s.Equal(s.pr, patchDoc.GithubPatchData.PRNumber)
 	s.Equal(baseRepo[0], patchDoc.GithubPatchData.BaseOwner)
@@ -122,6 +122,23 @@ func (s *GithubSuite) TestInsert() {
 	s.Equal(GithubIntentType, found.GetType())
 }
 
+func (s *GithubSuite) TestFindIntentSpecifically() {
+	intent, err := NewGithubIntent("300", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	found, err := FindIntent(intent.ID(), intent.GetType())
+	s.NoError(err)
+	s.NotNil(found)
+
+	// the documents themselves aren't equal because of roundtrip db timestamp issues
+	s.Equal(intent.NewPatch(), found.NewPatch())
+	s.Equal(intent.ID(), found.ID())
+	s.Equal(intent.GetType(), found.GetType())
+	s.Equal(intent.RequesterIdentity(), found.RequesterIdentity())
+}
+
 func (s *GithubSuite) TestSetProcessed() {
 	intent, err := NewGithubIntent("1", testutil.NewGithubPREvent(s.pr, s.baseRepo, s.headRepo, s.hash, s.user, s.title))
 	s.NoError(err)
@@ -150,35 +167,35 @@ func (s *GithubSuite) TestSetProcessed() {
 func (s *GithubSuite) TestFindUnprocessedGithubIntents() {
 	intents := []githubIntent{
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 			Processed:  true,
 		},
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 		},
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 		},
 		githubIntent{
-			DocumentID: bson.NewObjectId(),
+			DocumentID: util.RandomString(),
 			IntentType: GithubIntentType,
 		},
 	}
@@ -199,7 +216,6 @@ func (s *GithubSuite) TestNewPatch() {
 
 	patchDoc := intent.NewPatch()
 	s.NotNil(patchDoc)
-	s.NotZero(patchDoc.Id)
 	s.Equal("'evergreen-ci/evergreen' pull request #5 by octocat: Art of Pull Requests (https://github.com/evergreen-ci/evergreen/pull/5)", patchDoc.Description)
 	s.Empty(patchDoc.Project)
 	s.Empty(patchDoc.Githash)

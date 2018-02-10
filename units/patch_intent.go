@@ -46,19 +46,24 @@ type patchIntentProcessor struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
 
-	Intent  patch.Intent  `bson:"intent" json:"intent"`
-	PatchID bson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
-	user    *user.DBUser
+	IntentID   string        `bson:"intent_id" json:"intent_id" yaml:"intent_id"`
+	IntentType string        `bson:"intent_type" json:"intent_type" yaml:"intent_type"`
+	PatchID    bson.ObjectId `bson:"patch_id,omitempty" json:"patch_id" yaml:"patch_id"`
+
+	user   *user.DBUser
+	intent patch.Intent
 }
 
 // NewPatchIntentProcessor creates an amboy job to create a patch from the
 // given patch intent with the given object ID for the patch
 func NewPatchIntentProcessor(patchID bson.ObjectId, intent patch.Intent) amboy.Job {
 	j := makePatchIntentProcessor()
-	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, intent.GetType(), intent.ID()))
-
-	j.Intent = intent
+	j.IntentID = intent.ID()
+	j.IntentType = intent.GetType()
 	j.PatchID = patchID
+	j.intent = intent
+
+	j.SetID(fmt.Sprintf("%s-%s-%s", patchIntentJobName, j.IntentType, j.IntentID))
 	return j
 }
 
@@ -67,7 +72,7 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 		Base: job.Base{
 			JobType: amboy.JobType{
 				Name:    patchIntentJobName,
-				Version: 0,
+				Version: 1,
 				Format:  amboy.BSON,
 			},
 		},
@@ -88,21 +93,23 @@ func (j *patchIntentProcessor) Run() {
 	if err != nil {
 		j.AddError(err)
 	}
-	if j.Intent == nil {
-		j.AddError(errors.New("nil intent"))
+	if j.intent == nil {
+		j.intent, err = patch.FindIntent(j.IntentID, j.IntentType)
+		j.AddError(err)
 	}
+
 	if j.HasErrors() {
 		return
 	}
 
-	patchDoc := j.Intent.NewPatch()
+	patchDoc := j.intent.NewPatch()
 
 	if err := j.finishPatch(patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
 		return
 	}
 
-	if j.Intent.GetType() == patch.GithubIntentType {
+	if j.IntentType == patch.GithubIntentType {
 		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		err = j.env.LocalQueue().Put(update)
 		j.AddError(err)
@@ -112,8 +119,8 @@ func (j *patchIntentProcessor) Run() {
 			"patch_id":           j.PatchID,
 			"update_id":          update.ID(),
 			"update_for_version": patchDoc.Version,
-			"intent_type":        j.Intent.GetType(),
-			"intent_id":          j.Intent.ID(),
+			"intent_type":        j.IntentType,
+			"intent_id":          j.IntentID,
 		}))
 
 		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
@@ -125,7 +132,7 @@ func (j *patchIntentProcessor) Run() {
 func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthToken string) error {
 	catcher := grip.NewBasicCatcher()
 
-	switch j.Intent.GetType() {
+	switch j.IntentType {
 	case patch.CliIntentType:
 		catcher.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
@@ -133,7 +140,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		catcher.Add(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
 
 	default:
-		return errors.Errorf("Intent type '%s' is unknown", j.Intent.GetType())
+		return errors.Errorf("Intent type '%s' is unknown", j.IntentType)
 	}
 	if len := len(patchDoc.Patches); len != 1 {
 		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
@@ -144,8 +151,8 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 			"message":     "Failed to build patch document",
 			"job":         j.ID(),
 			"patch_id":    j.PatchID,
-			"intent_type": j.Intent.GetType(),
-			"intent_id":   j.Intent.ID(),
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
 		}))
 
 		return err
@@ -198,7 +205,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	}
 	patchDoc.PatchedConfig = string(projectYamlBytes)
 
-	project.BuildProjectTVPairs(patchDoc, j.Intent.GetAlias())
+	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
@@ -213,14 +220,14 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		return err
 	}
 
-	if j.Intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(patchDoc, j.Intent.RequesterIdentity(), githubOauthToken); err != nil {
+	if j.intent.ShouldFinalizePatch() {
+		if _, err := model.FinalizePatch(patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
 				"patch_id":    j.PatchID,
-				"intent_type": j.Intent.GetType(),
-				"intent_id":   j.Intent.ID(),
+				"intent_type": j.IntentType,
+				"intent_id":   j.IntentID,
 			}))
 			return err
 		}
@@ -299,7 +306,7 @@ func doGithubRequest(client *http.Client, req *http.Request, accept string) (str
 }
 
 func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) error {
-	defer j.Intent.SetProcessed()
+	defer j.intent.SetProcessed()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
 		return errors.Wrapf(err, "Could not find project ref '%s'", patchDoc.Project)
@@ -349,12 +356,12 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 			"job":     patchIntentJobName,
 			"message": "github pr testing is disabled, not processing pull request",
 
-			"intent_type": j.Intent.GetType(),
-			"intent_id":   j.Intent.ID(),
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
 		})
 		return errors.New("github pr testing is disabled, not processing pull request")
 	}
-	defer j.Intent.SetProcessed()
+	defer j.intent.SetProcessed()
 
 	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {
@@ -386,16 +393,15 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"message":   "github API failure",
-			"source":    "patch intents",
-			"job":       j.ID(),
-			"patch_id":  j.PatchID,
-			"base_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
-			"head_repo": fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
-			"pr_number": patchDoc.GithubPatchData.PRNumber,
-
-			"intent_type": j.Intent.GetType(),
-			"intent_id":   j.Intent.ID(),
+			"message":     "github API failure",
+			"source":      "patch intents",
+			"job":         j.ID(),
+			"patch_id":    j.PatchID,
+			"base_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":   fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":   patchDoc.GithubPatchData.PRNumber,
+			"intent_type": j.IntentType,
+			"intent_id":   j.IntentID,
 		}))
 		return err
 	}

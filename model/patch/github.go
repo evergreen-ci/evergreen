@@ -24,48 +24,16 @@ const (
 	GithubAlias = "__github"
 )
 
-// Intent represents an intent to create a patch build and is processed by an amboy queue.
-type Intent interface {
-	// ID returns an identifier such that the tuple
-	// (intent type, ID()) is unique in the collection.
-	ID() string
-
-	// Insert inserts a patch intent in the database.
-	Insert() error
-
-	// SetProcessed should be called by an amboy queue after creating a patch from an intent.
-	SetProcessed() error
-
-	// IsProcessed returns whether a patch exists for this intent.
-	IsProcessed() bool
-
-	// GetType returns the patch intent, e.g., GithubIntentType.
-	GetType() string
-
-	// NewPatch creates a patch from the intent
-	NewPatch() *Patch
-
-	// Finalize indicates whether or not the patch created from this
-	// intent should be finalized
-	ShouldFinalizePatch() bool
-
-	// GetAlias defines the variants and tasks this intent should run on.
-	GetAlias() string
-
-	// RequesterIdentity supplies a valid requester type, that is recorded
-	// in patches, versions, builds, and tasks to denote the origin of the
-	// patch
-	RequesterIdentity() string
-}
-
 // githubIntent represents an intent to create a patch build as a result of a
 // PullRequestEvent webhook. These intents are processed asynchronously by an
 // amboy queue.
 type githubIntent struct {
-	// ID is created by the driver and has no special meaning to the application.
-	DocumentID bson.ObjectId `bson:"_id"`
+	// TODO: migrate/remove all documents to use the MsgID as the _id
 
-	// MsgId is the unique message id as provided by Github (X-Github-Delivery)
+	// ID is created by the driver and has no special meaning to the application.
+	DocumentID string `bson:"_id"`
+
+	// MsgId is a GUID provided by Github (X-Github-Delivery) for the event.
 	MsgID string `bson:"msg_id"`
 
 	// BaseRepoName is the full repository name, ex: mongodb/mongo, that
@@ -158,7 +126,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 	}
 
 	return &githubIntent{
-		DocumentID:   bson.NewObjectId(),
+		DocumentID:   msgDeliveryID,
 		MsgID:        msgDeliveryID,
 		BaseRepoName: *event.Repo.FullName,
 		BaseBranch:   *event.PullRequest.Base.Ref,
@@ -242,7 +210,6 @@ func (g *githubIntent) NewPatch() *Patch {
 	headRepo := strings.Split(g.HeadRepoName, "/")
 	pullURL := fmt.Sprintf("https://github.com/%s/pull/%d", g.BaseRepoName, g.PRNumber)
 	patchDoc := &Patch{
-		Id:          bson.NewObjectId(),
 		Alias:       GithubAlias,
 		Description: fmt.Sprintf("'%s' pull request #%d by %s: %s (%s)", g.BaseRepoName, g.PRNumber, g.User, g.Title, pullURL),
 		Author:      evergreen.GithubPatchUser,
