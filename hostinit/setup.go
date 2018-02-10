@@ -29,16 +29,11 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
+	mgo "gopkg.in/mgo.v2"
 )
 
 const (
 	SCPTimeout = time.Minute
-)
-
-// Error indicating another hostinit got to the setup first.
-var (
-	ErrHostAlreadyInitializing = errors.New("Host already initializing")
 )
 
 // HostInit is responsible for running setup scripts on Evergreen hosts.
@@ -169,7 +164,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	// find all hosts in the uninitialized state
-	uninitializedHosts, err := host.Find(host.IsStarting)
+	uninitializedHosts, err := host.Find(host.NeedsProvisioning())
 	if err != nil {
 		return errors.Wrap(err, "error fetching starting hosts")
 	}
@@ -339,11 +334,6 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		return false, errors.Errorf("host %s terminated due to failure before setup", host.Id)
 	}
 
-	// if the host isn't up yet, we can't do anything
-	if hostStatus != cloud.StatusRunning {
-		return false, nil
-	}
-
 	// set the host's dns name, if it is not set
 	if host.Host == "" {
 		var hostDNS string
@@ -366,6 +356,11 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		}
 	}
 
+	// if the host isn't up yet, we can't do anything
+	if hostStatus != cloud.StatusRunning {
+		return false, nil
+	}
+
 	return true, nil
 }
 
@@ -382,10 +377,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	// mark the host as initializing
-	if err = targetHost.SetInitializing(); err != nil {
-		if err == mgo.ErrNotFound {
-			return "", ErrHostAlreadyInitializing
-		}
+	if err = targetHost.SetInitializing(); err != mgo.ErrNotFound {
 		return "", errors.Wrapf(err, "database error")
 	}
 
@@ -543,16 +535,6 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 	output, err := init.setupHost(ctx, h)
 	if err != nil {
-		// another hostinit process beat us there
-		if err == ErrHostAlreadyInitializing {
-			grip.Debug(message.Fields{
-				"message": "attempted to initialize already initializing host",
-				"runner":  RunnerName,
-				"host":    h.Id,
-			})
-			return nil
-		}
-
 		incErr := h.IncProvisionAttempts()
 		grip.Critical(message.WrapError(incErr, message.Fields{
 			"runner":    RunnerName,

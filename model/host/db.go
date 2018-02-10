@@ -169,6 +169,14 @@ var IsStarting = db.Query(
 	bson.M{StatusKey: evergreen.HostStarting},
 )
 
+func NeedsProvisioning() db.Q {
+	return db.Query(bson.M{StatusKey: bson.M{"$in": []string{
+		evergreen.HostProvisioning,
+		evergreen.HostStarting,
+		evergreen.HostInitializing,
+	}}})
+}
+
 // ByUnproductiveSince produces a query that returns all hosts that
 // are not doing work and were created before the given time.
 func ByUnproductiveSince(threshold time.Time) db.Q {

@@ -108,7 +108,7 @@ type StatsByDistro struct {
 }
 
 const (
-	MaxLCTInterval = time.Minute * 10
+	MaxLCTInterval = 5 * time.Minute
 )
 
 // IdleTime returns how long has this host been idle
@@ -209,10 +209,6 @@ func (h *Host) SetStarting() error {
 
 func (h *Host) SetDecommissioned(user string) error {
 	return h.SetStatus(evergreen.HostDecommissioned, user)
-}
-
-func (h *Host) SetUninitialized(user string) error {
-	return h.SetStatus(evergreen.HostUninitialized, user)
 }
 
 func (h *Host) SetRunning(user string) error {
