@@ -1,6 +1,7 @@
 package units
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -58,6 +59,7 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j.HostID = h.Id
 	j.task = t
 	j.host = h
+	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.HostID, job.GetNumber()))
 	return j
 }
 
@@ -114,7 +116,7 @@ func (j *collectTaskEndDataJob) Run() {
 	manager, err := cloud.GetCloudManager(j.host.Provider, settings)
 	if err != nil {
 		j.AddError(err)
-		grip.Errorf("Error loading provider for host %s cost calculation: %+v", j.task.HostId, err)
+		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
 		return
 	}
 	if calc, ok := manager.(cloud.CloudCostCalculator); ok {

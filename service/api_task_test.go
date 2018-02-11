@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +24,7 @@ import (
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -510,14 +512,17 @@ func TestCheckHostHealth(t *testing.T) {
 
 func TestEndTaskEndpoint(t *testing.T) {
 	conf := testutil.TestConfig()
-	queue := evergreen.GetEnvironment().LocalQueue()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	q := queue.NewLocalLimitedSize(4, 2048)
+	q.Start(ctx)
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
 			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		as, err := NewAPIServer(conf, queue)
+		as, err := NewAPIServer(conf, q)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -552,6 +557,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 			Id:            hostId,
 			Secret:        hostSecret,
 			RunningTask:   task1.Id,
+			Provider:      evergreen.ProviderNameStatic,
 			Status:        evergreen.HostRunning,
 			AgentRevision: evergreen.BuildRevision,
 		}
