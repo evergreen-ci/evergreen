@@ -619,7 +619,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	oldID := h.Id
 
 	// Find the host document in the database with the old ID.
-	host, err := FindOne(ById(oldID))
+	host, err := FindOneId(oldID)
 	if host == nil {
 		err = errors.Errorf("Could not locate record inserted for host '%s'", oldID)
 		grip.Error(err)
