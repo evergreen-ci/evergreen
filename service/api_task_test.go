@@ -22,7 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -263,9 +262,6 @@ func TestNextTask(t *testing.T) {
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
-		taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
-		agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
-		So(err, ShouldBeNil)
 
 		distroId := "testDistro"
 		buildId := "buildId"
@@ -285,7 +281,7 @@ func TestNextTask(t *testing.T) {
 			},
 			Secret:        hostSecret,
 			Status:        evergreen.HostRunning,
-			AgentRevision: agentRevision,
+			AgentRevision: evergreen.BuildRevision,
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
 
@@ -366,7 +362,7 @@ func TestNextTask(t *testing.T) {
 					Id:            "anotherHost",
 					Secret:        hostSecret,
 					RunningTask:   "existingTask",
-					AgentRevision: agentRevision,
+					AgentRevision: evergreen.BuildRevision,
 					Status:        evergreen.HostRunning,
 				}
 				So(h2.Insert(), ShouldBeNil)
@@ -404,7 +400,7 @@ func TestNextTask(t *testing.T) {
 						Id:            "sampleHost",
 						Secret:        hostSecret,
 						RunningTask:   t1.Id,
-						AgentRevision: agentRevision,
+						AgentRevision: evergreen.BuildRevision,
 						Status:        evergreen.HostRunning,
 					}
 					anotherBuild := build.Build{
@@ -444,7 +440,7 @@ func TestNextTask(t *testing.T) {
 							Secret:        hostSecret,
 							RunningTask:   inactiveTask.Id,
 							Status:        evergreen.HostRunning,
-							AgentRevision: agentRevision,
+							AgentRevision: evergreen.BuildRevision,
 						}
 						So(h3.Insert(), ShouldBeNil)
 						anotherBuild := build.Build{
@@ -525,9 +521,6 @@ func TestEndTaskEndpoint(t *testing.T) {
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
-		taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
-		agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
-		So(err, ShouldBeNil)
 
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
@@ -560,7 +553,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 			Secret:        hostSecret,
 			RunningTask:   task1.Id,
 			Status:        evergreen.HostRunning,
-			AgentRevision: agentRevision,
+			AgentRevision: evergreen.BuildRevision,
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
 
@@ -656,7 +649,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 				Secret:        hostSecret,
 				RunningTask:   task2.Id,
 				Status:        evergreen.HostRunning,
-				AgentRevision: agentRevision,
+				AgentRevision: evergreen.BuildRevision,
 			}
 			So(sampleHost.Insert(), ShouldBeNil)
 
@@ -712,7 +705,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 				Secret:        hostSecret,
 				RunningTask:   execTask.Id,
 				Status:        evergreen.HostRunning,
-				AgentRevision: agentRevision,
+				AgentRevision: evergreen.BuildRevision,
 			}
 			So(sampleHost.Insert(), ShouldBeNil)
 
