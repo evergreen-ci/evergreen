@@ -232,14 +232,17 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// more work if they appear to be in a bad state
 	// (e.g. encountered 5 consecutive system failures)
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
-		env := evergreen.GetEnvironment()
-		queue := env.LocalQueue()
-		message := "host encountered consecutive system failures"
+		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
 			err := currentHost.DisablePoisonedHost()
 
-			job := units.NewDecoHostNotifyJob(env, currentHost, err, message)
-			grip.Critical(queue.Put(job))
+			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
+			grip.Critical(message.WrapError(as.queue.Put(job),
+				message.Fields{
+					"host_id": currentHost.Id,
+					"task_id": t.Id,
+					"message": msg,
+				}))
 
 			if err != nil {
 				as.WriteJSON(w, http.StatusInternalServerError, err)
@@ -252,7 +255,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	grip.Infof("Successfully marked task %s as finished", t.Id)
 	as.WriteJSON(w, http.StatusOK, endTaskResp)
-
 }
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
