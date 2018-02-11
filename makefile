@@ -79,13 +79,7 @@ cli:$(localClientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	@./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
-$(clientBuildDir)/version:
-	@mkdir -p $(dir $@)
-	git rev-parse HEAD >| $@
-phony += $(clientBuildDir)/version cli clis
-$(buildDir)/test.service $(buildDir)/race.service:$(clientBuildDir)/version
-$(buildDir)/test.agent $(buildDir)/race.agent:$(clientBuildDir)/version
-$(buildDir)/test.proto $(buildDir)/race.proto:$(clientBuildDir)/version
+phony += cli clis
 # end client build directives
 
 
@@ -170,7 +164,7 @@ $(buildDir)/make-tarball:scripts/make-tarball.go
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball clis $(clientBuildDir)/version
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball clis
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item))
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) # $(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
