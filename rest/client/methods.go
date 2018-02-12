@@ -600,3 +600,9 @@ func (c *communicatorImpl) SendSystemInfo(ctx context.Context, td TaskData, sysi
 
 	return errors.Wrap(err, "problem sending sysinfo results")
 }
+
+// GenerateTasks posts new tasks for the `generate.tasks` command.
+func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, json [][]byte) error {
+	// TODO EVG-2483
+	return nil
+}

@@ -23,6 +23,7 @@ func init() {
 		"attach.artifacts":      attachArtifactsFactory,
 		"expansions.fetch_vars": fetchVarsFactory,
 		"expansions.update":     updateExpansionsFactory,
+		"generate.tasks":        generateTaskFactory,
 		"git.apply_patch":       gitApplyPatchFactory,
 		"git.get_project":       gitFetchProjectFactory,
 		"gotest.parse_files":    goTestFactory,

@@ -95,6 +95,9 @@ type Communicator interface {
 	GetJSONData(context.Context, TaskData, string, string, string) ([]byte, error)
 	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)
 
+	// GenerateTasks posts new tasks for the `generate.tasks` command.
+	GenerateTasks(context.Context, TaskData, [][]byte) error
+
 	// ---------------------------------------------------------------------
 	// End legacy API methods
 	// ---------------------------------------------------------------------
