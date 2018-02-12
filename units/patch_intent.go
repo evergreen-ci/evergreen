@@ -121,6 +121,7 @@ func (j *patchIntentProcessor) Run() {
 			"update_for_version": patchDoc.Version,
 			"intent_type":        j.IntentType,
 			"intent_id":          j.IntentID,
+			"source":             "patch intents",
 		}))
 
 		j.AddError(model.AbortPatchesWithGithubPatchData(patchDoc.CreateTime,
@@ -153,6 +154,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 			"patch_id":    j.PatchID,
 			"intent_type": j.IntentType,
 			"intent_id":   j.IntentID,
+			"source":      "patch intents",
 		}))
 
 		return err
@@ -228,6 +230,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 				"patch_id":    j.PatchID,
 				"intent_type": j.IntentType,
 				"intent_id":   j.IntentID,
+				"source":      "patch intents",
 			}))
 			return err
 		}

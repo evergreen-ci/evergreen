@@ -8,8 +8,8 @@ import (
 
 // Intent represents an intent to create a patch build and is processed by an amboy queue.
 type Intent interface {
-	// ID returns an identifier such that the tuple
-	// (intent type, ID()) is unique in the collection.
+	// ID returns a unique identifier for the patch. Should
+	// correspond to the _id for the patch in database.
 	ID() string
 
 	// Insert inserts a patch intent in the database.
