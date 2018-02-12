@@ -22,7 +22,7 @@ func (s *hookSuite) SetupSuite() {
 }
 
 func (s *hookSuite) SetupTest() {
-	s.NoError(db.Clear(Collection))
+	s.NoError(db.Clear(GithubHooksCollection))
 }
 
 func (s *hookSuite) TestInsert() {
