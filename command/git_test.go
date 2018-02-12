@@ -262,6 +262,20 @@ func (s *GitGetProjectSuite) TestBuildModuleCommand() {
 	s.Equal("GIT_ASKPASS='true' git -c 'credential.https://github.com.username=GITHUBTOKEN' clone 'https://github.com/deafgoat/mci_test.git' 'module'", cmds[4])
 }
 
+func (s *GitGetProjectSuite) TestIsMailboxPatch() {
+	isMBP, err := isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "filethatdoesntexist.txt"))
+	s.Error(err)
+	s.False(isMBP)
+
+	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.patch"))
+	s.NoError(err)
+	s.True(isMBP)
+
+	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.diff"))
+	s.NoError(err)
+	s.False(isMBP)
+}
+
 func (s *GitGetProjectSuite) TearDownSuite() {
 	if s.modelData1.TaskConfig != nil {
 		s.NoError(os.RemoveAll(s.modelData1.TaskConfig.WorkDir))

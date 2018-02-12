@@ -1,11 +1,13 @@
 package command
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -334,8 +336,42 @@ func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Comm
 	return nil
 }
 
+// isMailboxPatch checks if the first line of a patch file
+// has "From ". If so, it's assumed to be a mailbox-style patch, otherwise
+// it's a diff
+func isMailboxPatch(patchFile string) (bool, error) {
+	file, err := os.Open(patchFile)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to read patch file")
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	var line string
+	line, err = reader.ReadString('\n')
+	if err != nil {
+		return false, errors.Wrap(err, "failed to buffer patch line 1")
+	}
+
+	return strings.HasPrefix(line, "From "), nil
+}
+
+func getApplyCommand(patchFile string) (string, error) {
+	isMBP, err := isMailboxPatch(patchFile)
+	if err != nil {
+		return "", errors.Wrap(err, "can't check patch type")
+	}
+
+	if isMBP {
+		return fmt.Sprintf("git am < '%s'", patchFile), nil
+	}
+
+	return fmt.Sprintf("git apply --binary --whitespace=fix --index < '%v'", patchFile), nil
+}
+
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
-// need to be executed. If the patch is empty it will not apply the patch.
+// need to be executed, except for apply. If the patch is empty it will not apply the patch.
 func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []string {
 	patchCommands := []string{
 		fmt.Sprintf("set -o xtrace"),
@@ -349,7 +385,6 @@ func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []st
 	}
 	return append(patchCommands, []string{
 		fmt.Sprintf("git apply --stat '%v' || true", patchPath),
-		fmt.Sprintf("git apply --binary --whitespace=fix --index < '%v'", patchPath),
 	}...)
 }
 
@@ -413,6 +448,12 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 		// this applies the patch using the patch files in the temp directory
 		patchCommandStrings := getPatchCommands(patchPart, dir, tempAbsPath)
+		applyCommand, err := getApplyCommand(tempAbsPath)
+		if err != nil {
+			logger.Execution().Error("Could not to determine patch type")
+			return errors.WithStack(err)
+		}
+		patchCommandStrings = append(patchCommandStrings, applyCommand)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 
 		patchCmd := subprocess.NewLocalCommand(cmdsJoined, conf.WorkDir, "bash", nil, true)

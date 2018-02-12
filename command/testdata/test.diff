@@ -1,0 +1,4 @@
+diff --git a/migrations/anser.go b/migrations/anser.go
+index e11ae935..116da030 100644
+--- a/migrations/anser.go
++++ b/migrations/anser.go
