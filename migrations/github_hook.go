@@ -1,10 +1,13 @@
 package migrations
 
 import (
+	"fmt"
+
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -108,8 +111,13 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 		}
 
 		if existingHook.HookID != 0 {
-			grip.Infof("Hook for %s/%s already exists as Hook #%d. Please delete %d",
-				existingHook.Owner, existingHook.Repo, existingHook.HookID, hookID)
+			grip.Infof(message.Fields{
+				"source":  "migrations",
+				"hook_id": existingHook.HookID,
+				"owner":   existingHook.Owner,
+				"repo":    existingHook.Repo,
+				"message": fmt.Sprintf("hook already exists as Hook #%d; please delete hook #%d", existingHook.HookID, hookID),
+			})
 
 		} else if existingHook.HookID != hookID {
 			hook := bson.M{
