@@ -213,10 +213,10 @@ func (s *OrderedQueueSuite) TestInternalRunnerCannotBeChangedAfterStartingAQueue
 }
 
 func (s *OrderedQueueSuite) TestResultsChannelProducesPointersToConsistentJobObjects() {
-	job := job.NewShellJob("echo true", "")
-	s.False(job.Status().Completed)
+	j := job.NewShellJob("echo true", "")
+	s.False(j.Status().Completed)
 
-	s.NoError(s.queue.Put(job))
+	s.NoError(s.queue.Put(j))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -228,7 +228,7 @@ func (s *OrderedQueueSuite) TestResultsChannelProducesPointersToConsistentJobObj
 
 	result, ok := <-s.queue.Results(ctx)
 	if s.True(ok, "%+v", s.queue.Stats()) {
-		s.Equal(job.ID(), result.ID())
+		s.Equal(j.ID(), result.ID())
 		s.True(result.Status().Completed)
 	}
 }

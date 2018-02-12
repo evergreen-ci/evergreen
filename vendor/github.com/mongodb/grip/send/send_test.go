@@ -162,7 +162,7 @@ func (s *SenderSuite) SetupTest() {
 	s.NoError(s.senders["gh-comment-mocked"].SetFormatter(MakeDefaultFormatter()))
 }
 
-func (s *SenderSuite) TeardownTest() {
+func (s *SenderSuite) TearDownTest() {
 	s.Require().NoError(os.RemoveAll(s.tempDir))
 	for _, sender := range s.senders {
 		s.NoError(sender.Close())
@@ -184,7 +184,7 @@ func (s *SenderSuite) functionalMockSenders() map[string]Sender {
 	return out
 }
 
-func (s *SenderSuite) TeardownSuite() {
+func (s *SenderSuite) TearDownSuite() {
 	s.NoError(s.senders["internal"].Close())
 }
 

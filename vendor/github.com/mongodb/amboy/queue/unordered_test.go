@@ -88,17 +88,17 @@ func (s *LocalQueueSuite) TestResultsChannelProducesPointersToConsistentJobObjec
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	job := job.NewShellJob("true", "")
-	s.False(job.Status().Completed)
+	j := job.NewShellJob("true", "")
+	s.False(j.Status().Completed)
 
 	s.NoError(s.queue.Start(ctx))
-	s.NoError(s.queue.Put(job))
+	s.NoError(s.queue.Put(j))
 
 	amboy.Wait(s.queue)
 
 	result, ok := <-s.queue.Results(ctx)
 	s.True(ok)
-	s.Equal(job.ID(), result.ID())
+	s.Equal(j.ID(), result.ID())
 	s.True(result.Status().Completed)
 }
 
@@ -113,8 +113,8 @@ func (s *LocalQueueSuite) TestJobsChannelProducesJobObjects() {
 	s.NoError(s.queue.Start(ctx))
 
 	for name := range names {
-		job := job.NewShellJob("echo "+name, "")
-		s.NoError(s.queue.Put(job))
+		j := job.NewShellJob("echo "+name, "")
+		s.NoError(s.queue.Put(j))
 	}
 
 	amboy.Wait(s.queue)

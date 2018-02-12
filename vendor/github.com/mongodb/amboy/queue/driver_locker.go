@@ -26,9 +26,10 @@ type LockManager interface {
 // tracked locks at an interval, less than the configured lockTimeout
 // to avoid locks growing stale.
 type lockManager struct {
-	name string
-	d    Driver
-	ops  chan func(lockPings)
+	name    string
+	d       Driver
+	timeout time.Duration
+	ops     chan func(lockPings)
 }
 
 // NewLockManager configures a Lock manager for use in Driver
@@ -36,15 +37,21 @@ type lockManager struct {
 // thread. The name *must* be unique per driver/queue combination, to
 // ensure that each driver/queue can have exclusive locks over jobs.
 func NewLockManager(ctx context.Context, name string, d Driver) LockManager {
-	l := &lockManager{
-		name: name,
-		d:    d,
-		ops:  make(chan func(lockPings)),
-	}
-	go l.lockPinger(ctx)
-
+	l := newLockManager(name, d)
+	l.start(ctx)
 	return l
 }
+
+func newLockManager(name string, d Driver) *lockManager {
+	return &lockManager{
+		name:    name,
+		d:       d,
+		ops:     make(chan func(lockPings)),
+		timeout: lockTimeout,
+	}
+}
+
+func (l *lockManager) start(ctx context.Context) { go l.lockPinger(ctx) }
 
 func (l *lockManager) lockPinger(ctx context.Context) {
 	activeLocks := lockPings{}
@@ -60,7 +67,7 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 			op(activeLocks)
 		case <-timer.C:
 			startAt := time.Now()
-			nextLoopAt := time.Now().Add(lockTimeout / 2)
+			nextLoopAt := time.Now().Add(l.timeout / 2)
 			for name, ts := range activeLocks {
 				if nextLoopAt.After(ts) {
 					// make sure that we loop
@@ -96,7 +103,7 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					continue
 				}
 
-				activeLocks[name] = time.Now().Add(lockTimeout / 2)
+				activeLocks[name] = time.Now().Add(l.timeout / 2)
 			}
 
 			timer.Reset(-time.Since(nextLoopAt))
@@ -107,10 +114,9 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 func (l *lockManager) addPing(name string) {
 	wait := make(chan struct{})
 	l.ops <- func(pings lockPings) {
-		pings[name] = time.Now().Add(lockTimeout)
+		pings[name] = time.Now().Add(l.timeout)
 		close(wait)
 	}
-
 	<-wait
 }
 
@@ -144,7 +150,7 @@ func (l *lockManager) Lock(j amboy.Job) error {
 	// deadlock/bug in queue implementations in marking jobs
 	// complete, *and* allowed queues implementations with more
 	// than one worker, to potentially repeat work.
-	if stat.InProgress && stat.ModificationTime.Add(lockTimeout).After(time.Now()) {
+	if stat.InProgress && stat.ModificationTime.Add(l.timeout).After(time.Now()) {
 		return errors.Errorf("cannot take lock, job locked at %s by %s, for job: '%s'",
 			stat.ModificationTime, stat.Owner, j.ID())
 	}

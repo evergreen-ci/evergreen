@@ -184,13 +184,18 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 	duration := time.Since(start)
 
 	interval := p.getNextTime(duration)
+	r := message.Fields{
+		"id":            j.ID(),
+		"job_type":      j.Type().Name,
+		"duration_secs": duration.Seconds(),
+		"interval_secs": interval.Seconds(),
+		"pool":          "rate limiting, moving average",
+	}
+	if err := j.Error(); err != nil {
+		r["error"] = err.Error()
+	}
 
-	grip.Debug(message.Fields{
-		"message":  "rate limiting pool job stats",
-		"id":       j.ID(),
-		"duration": duration,
-		"interval": interval,
-	})
+	grip.Debug(r)
 
 	return interval
 }

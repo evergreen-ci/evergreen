@@ -22,7 +22,6 @@ package job
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -68,7 +67,7 @@ func (b *Base) AddError(err error) {
 		b.mutex.Lock()
 		defer b.mutex.Unlock()
 
-		b.Errors = append(b.Errors, fmt.Sprintf("%+v", err))
+		b.Errors = append(b.Errors, err.Error())
 	}
 }
 

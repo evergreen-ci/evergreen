@@ -107,11 +107,11 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: 79f9ca49e45f128fb1cf4e7b61aa5b92f969cbf0
+    version: ffba6116c87ed19483c0bba0cb127aa5a9cdc81e
   - name: github.com/mongodb/anser
     version: bd4fe7221ab54dbda35d2346cc2fe92a8dc87a8a
   - name: github.com/mongodb/amboy
-    version: 275b5d64ef696d0396168bc35bb590b4d47be436
+    version: af1f29c2f25579d4801a1f5a02462faecc30f9fb
   - name: github.com/google/go-github
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring

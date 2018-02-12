@@ -15,6 +15,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -130,6 +131,16 @@ func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.
 			ti.End = time.Now()
 			job.UpdateTimeInfo(ti)
 			q.Complete(ctx, job)
+
+			r := message.Fields{
+				"job":           job.ID(),
+				"job_type":      job.Type().Name,
+				"duration_secs": ti.Duration().Seconds(),
+			}
+			if err := job.Error(); err != nil {
+				r["error"] = err.Error()
+			}
+			grip.Debug(r)
 		}
 	}
 }

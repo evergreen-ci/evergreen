@@ -18,6 +18,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 )
 
@@ -214,7 +215,17 @@ func groupWorker(ctx context.Context, wg *sync.WaitGroup, name string, work <-ch
 
 			unit.j.UpdateTimeInfo(ti)
 			unit.q.Complete(ctx, unit.j)
+			r := message.Fields{
+				"job_type":      unit.j.Type().Name,
+				"job":           unit.j.ID(),
+				"duration_secs": ti.Duration().Seconds(),
+			}
+			if err := unit.j.Error(); err != nil {
+				r["error"] = err.Error()
+			}
+			grip.Debug(r)
 		}
+
 	}
 	grip.Debugf("worker (%s) exiting", name)
 }
