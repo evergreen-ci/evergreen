@@ -69,7 +69,7 @@ func (s *CliIntentSuite) TestNewCliIntent() {
 	s.Equal(s.tasks, cIntent.Tasks)
 	s.Zero(cIntent.ProcessedAt)
 	s.Zero(cIntent.CreatedAt)
-	s.Equal(cIntent.DocumentID.Hex(), intent.ID())
+	s.Equal(cIntent.DocumentID, intent.ID())
 	s.Equal(s.alias, cIntent.Alias)
 
 	intent, err = NewCliIntent(s.user, s.projectID, s.hash, "", s.patchContent, "", false, []string{}, []string{}, "")
@@ -111,6 +111,20 @@ func (s *CliIntentSuite) TestNewCliIntentRejectsInvalidIntents() {
 	s.Error(err)
 }
 
+func (s *CliIntentSuite) TestFindIntentSpecifically() {
+	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, "", s.description, true, s.variants, s.tasks, s.alias)
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	found, err := FindIntent(intent.ID(), intent.GetType())
+	s.NoError(err)
+	s.NotNil(found)
+
+	s.Equal(intent, found)
+	s.Equal(intent.NewPatch(), found.NewPatch())
+}
+
 func (s *CliIntentSuite) TestInsert() {
 	intent, err := NewCliIntent(s.user, s.projectID, s.hash, s.module, s.patchContent, s.description, true, s.variants, s.tasks, s.alias)
 	s.NoError(err)
@@ -122,7 +136,7 @@ func (s *CliIntentSuite) TestInsert() {
 	intents, err = findCliIntents(false)
 	s.NoError(err)
 	s.Len(intents, 1)
-	s.Equal(intent.ID(), intents[0].DocumentID.Hex())
+	s.Equal(intent.ID(), intents[0].DocumentID)
 }
 
 func (s *CliIntentSuite) TestSetProcessed() {

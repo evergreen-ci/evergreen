@@ -15,7 +15,7 @@ const CliIntentType = "cli"
 
 type cliIntent struct {
 	// ID is created by the driver and has no special meaning to the application.
-	DocumentID bson.ObjectId `bson:"_id"`
+	DocumentID string `bson:"_id"`
 
 	// PatchFileID is the object id of the patch file created in gridfs
 	PatchFileID bson.ObjectId `bson:"patch_file_id"`
@@ -93,7 +93,7 @@ func (c *cliIntent) Insert() error {
 
 	c.PatchContent = ""
 	c.PatchFileID = patchFileID
-	c.CreatedAt = time.Now()
+	c.CreatedAt = time.Now().Round(time.Millisecond)
 
 	if err := db.Insert(IntentCollection, c); err != nil {
 		c.CreatedAt = time.Time{}
@@ -105,7 +105,7 @@ func (c *cliIntent) Insert() error {
 
 func (c *cliIntent) SetProcessed() error {
 	c.Processed = true
-	c.ProcessedAt = time.Now()
+	c.ProcessedAt = time.Now().Round(time.Millisecond)
 	return updateOneIntent(
 		bson.M{cliDocumentIDKey: c.DocumentID},
 		bson.M{"$set": bson.M{
@@ -124,7 +124,7 @@ func (c *cliIntent) GetType() string {
 }
 
 func (c *cliIntent) ID() string {
-	return c.DocumentID.Hex()
+	return c.DocumentID
 }
 
 func (c *cliIntent) ShouldFinalizePatch() bool {
@@ -180,7 +180,7 @@ func NewCliIntent(user, project, baseHash, module, patchContent, description str
 	}
 
 	return &cliIntent{
-		DocumentID:    bson.NewObjectId(),
+		DocumentID:    bson.NewObjectId().Hex(),
 		IntentType:    CliIntentType,
 		PatchContent:  patchContent,
 		Description:   description,
