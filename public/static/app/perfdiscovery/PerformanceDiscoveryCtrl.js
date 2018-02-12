@@ -1,29 +1,70 @@
-mciModule.controller('PerformanceDiscoveryCtrl', function($scope) {
+mciModule.controller('PerformanceDiscoveryCtrl', function(
+  $scope, $q, ApiTaskdata, ApiV1, PerfDiscoveryService, PERF_DISCOVERY
+) {
   var vm = this;
 
   vm.revisionSelect = {
-    options: [
-      {id: 1, name: '4ef5fx',},
-      {id: 2, name: 'v52fe3',},
-      {id: 3, name: 'd43ap0',},
-    ],
+    options: [],
+    selected: null,
   }
-
-  vm.revisionSelect.selected = vm.revisionSelect.options[0]
 
   vm.tagSelect = {
-    options: [
-      {id: 1, name: 'v3.6.1',},
-      {id: 2, name: 'v3.6.0',},
-      {id: 3, name: 'v3.5.2',},
-    ],
+    options: [],
+    selected: null,
   }
 
-  vm.tagSelect.selected = vm.tagSelect.options[0]
+  // TODO use globally defined project id
+  var projectId = 'sys-perf'
+
+  ApiV1.getProjectVersions(projectId).then(function(data) {
+    vm.versions = data.data.versions
+    vm.revisionSelect.options = _.map(data.data.versions, function(d, i) {
+      return {id: i, name: d.revision}
+    })
+    vm.revisionSelect.selected = vm.revisionSelect.options[0]
+
+    vm.tagSelect.options = _.map(data.data.versions, function(d, i) {
+      return {id: i, name: d.revision}
+    })
+    // Choose the second item, if exists, or the first if no
+    vm.tagSelect.selected = vm.tagSelect.options[
+      _.min([1, vm.tagSelect.options.length - 1])
+    ]
+    vm.changeRevision(data.data.versions[0].revision)
+  })
+
+  vm.changeRevision = function(revision) {
+    version = _.findWhere(vm.versions, {
+      revision: revision
+    })
+
+    var buildTaskData = _.reduce(version.builds, function(items, build) {
+      var taskItems = _.map(build.tasks, function(v, k) {
+        return {
+          build: build.name,
+          task: k,
+          task_id: v.task_id,
+        }
+      })
+      return items.concat(taskItems)
+    }, [])
+
+    var ctx = PerfDiscoveryService.extractTasks(version)
+
+    PerfDiscoveryService.getRows(
+      PerfDiscoveryService.processData(
+        PerfDiscoveryService.queryData(
+          ctx, version, vm.versions[1]
+        )
+      )
+    ).then(function(res) {
+      vm.gridOptions.data = res
+    })
+
+  }
 
   vm.gridOptions = {
-    enableSorting: true,
-    coumnDefs: [{
+    columnDefs: [{
         name: 'Link',
         field: 'link',
         enableFiltering: true,
@@ -33,7 +74,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function($scope) {
         enableFiltering: true,
       }, {
         name: 'Storage Engine',
-        field: 'storage_engine',
+        field: 'storageEngine',
         enableFiltering: true,
       }, {
         name: 'Task',
@@ -50,44 +91,25 @@ mciModule.controller('PerformanceDiscoveryCtrl', function($scope) {
       }, {
         name: 'Ratio',
         field: 'ratio',
+        cellFilter: 'number:2',
       }, {
         name: 'Trend',
-        field: 'trend',
+        field: 'trendData',
         enableSorting: false,
+        width: PERF_DISCOVERY.TREND_COL_WIDTH,
       }, {
         name: 'Avg and Self',
-        field: 'avg_and_self',
+        field: 'avgVsSelf',
         enableSorting: false,
       }, {
         name: 'ops/sec',
-        field: 'ops_per_sec',
+        field: 'speed',
+        cellFilter: 'number:2',
       }, {
         name: 'Baseline',
-        field: 'baseline',
+        field: 'baseSpeed',
+        cellFilter: 'number:2',
       },
-    ],
-    data: [{
-      link: 'some link',
-      build: 'build',
-      storage_engine: 'st eng',
-      task: 'some data',
-      test: 'some data',
-      threads: '16',
-      trend: '',
-      avg_and_self: '',
-      ops_per_sec: 15302,
-      baseline: 23597,
-    }, {
-      link: 'some link 2',
-      build: 'build 2',
-      storage_engine: 'st eng 2',
-      task: 'some data',
-      test: 'some data',
-      threads: '32',
-      trend: '',
-      avg_and_self: '',
-      ops_per_sec: 15303,
-      baseline: 23591,
-    }]
+    ]
   }
 })
