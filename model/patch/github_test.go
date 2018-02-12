@@ -132,11 +132,8 @@ func (s *GithubSuite) TestFindIntentSpecifically() {
 	s.NoError(err)
 	s.NotNil(found)
 
-	// the documents themselves aren't equal because of roundtrip db timestamp issues
+	s.Equal(intent, found)
 	s.Equal(intent.NewPatch(), found.NewPatch())
-	s.Equal(intent.ID(), found.ID())
-	s.Equal(intent.GetType(), found.GetType())
-	s.Equal(intent.RequesterIdentity(), found.RequesterIdentity())
 }
 
 func (s *GithubSuite) TestSetProcessed() {
