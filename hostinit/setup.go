@@ -29,16 +29,10 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2"
 )
 
 const (
 	SCPTimeout = time.Minute
-)
-
-// Error indicating another hostinit got to the setup first.
-var (
-	ErrHostAlreadyInitializing = errors.New("Host already initializing")
 )
 
 // HostInit is responsible for running setup scripts on Evergreen hosts.
@@ -169,7 +163,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	// find all hosts in the uninitialized state
-	uninitializedHosts, err := host.Find(host.IsStarting)
+	uninitializedHosts, err := host.Find(host.NeedsProvisioning())
 	if err != nil {
 		return errors.Wrap(err, "error fetching starting hosts")
 	}
@@ -277,14 +271,26 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						}
 						continue
 					}
+
+					// ProvisionHost allows hosts to fail provisioning a few
+					// times during host start up, to account for the fact
+					// that hosts often need extra time to come up.
+					//
+					// In these cases, ProvisionHost returns a nil error but
+					// does not change the host status.
+					if h.Status == evergreen.HostStarting {
+						continue
+					}
+
 					grip.Info(message.Fields{
-						"GUID":    init.GUID,
-						"message": "successfully finished provisioning host",
-						"hostid":  h.Id,
-						"DNS":     h.Host,
-						"distro":  h.Distro.Id,
-						"runner":  RunnerName,
-						"runtime": time.Since(setupStartTime),
+						"GUID":     init.GUID,
+						"message":  "successfully finished provisioning host",
+						"hostid":   h.Id,
+						"DNS":      h.Host,
+						"distro":   h.Distro.Id,
+						"runner":   RunnerName,
+						"attempts": h.ProvisionAttempts,
+						"runtime":  time.Since(setupStartTime),
 					})
 				}
 			}
@@ -300,7 +306,6 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 // IsHostReady returns whether or not the specified host is ready for its setup script
 // to be run.
 func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
-
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := cloud.GetCloudManager(host.Distro.Provider, init.Settings)
 	if err != nil {
@@ -333,11 +338,6 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		return false, errors.Errorf("host %s terminated due to failure before setup", host.Id)
 	}
 
-	// if the host isn't up yet, we can't do anything
-	if hostStatus != cloud.StatusRunning {
-		return false, nil
-	}
-
 	// set the host's dns name, if it is not set
 	if host.Host == "" {
 		var hostDNS string
@@ -360,6 +360,11 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		}
 	}
 
+	// if the host isn't up yet, we can't do anything
+	if hostStatus != cloud.StatusRunning {
+		return false, nil
+	}
+
 	return true, nil
 }
 
@@ -376,12 +381,14 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}
 
 	// mark the host as initializing
-	if err = targetHost.SetInitializing(); err != nil {
-		if err == mgo.ErrNotFound {
-			return "", ErrHostAlreadyInitializing
-		}
-		return "", errors.Wrapf(err, "database error")
-	}
+	grip.Notice(message.WrapError(targetHost.SetInitializing(), message.Fields{
+		"message":    "encountered issue transitioning from starting to initializing",
+		"indication": "host setup retry",
+		"action":     "none",
+		"host":       targetHost.Id,
+		"provider":   targetHost.Distro.Provider,
+		"distro":     targetHost.Distro.Id,
+	}))
 
 	// run the function scheduled for when the host is up
 	err = cloudMgr.OnUp(targetHost)
@@ -537,12 +544,21 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 
 	output, err := init.setupHost(ctx, h)
 	if err != nil {
-		// another hostinit process beat us there
-		if err == ErrHostAlreadyInitializing {
+		incErr := h.IncProvisionAttempts()
+		grip.Critical(message.WrapError(incErr, message.Fields{
+			"runner":    RunnerName,
+			"host":      h.Id,
+			"operation": "increment provisioning errors failed",
+		}))
+
+		if h.ProvisionAttempts <= 10 {
 			grip.Debug(message.Fields{
-				"message": "attempted to initialize already initializing host",
-				"runner":  RunnerName,
-				"host":    h.Id,
+				"runner":   RunnerName,
+				"host":     h.Id,
+				"attempts": h.ProvisionAttempts,
+				"output":   output,
+				"error":    err.Error(),
+				"message":  "provisioning failed, but will retry",
 			})
 			return nil
 		}
@@ -551,12 +567,14 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			"operation": "running host provisioning alert trigger",
 			"runner":    RunnerName,
 			"host":      h.Id,
+			"attempts":  h.ProvisionAttempts,
 		}))
 		event.LogProvisionFailed(h.Id, output)
 
 		// mark the host's provisioning as failed
 		grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 			"operation": "setting host unprovisioned",
+			"attempts":  h.ProvisionAttempts,
 			"runner":    RunnerName,
 			"host":      h.Id,
 		}))

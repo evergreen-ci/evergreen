@@ -55,6 +55,7 @@ var (
 	ZoneKey                    = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey                 = bsonutil.MustHaveTag(Host{}, "Project")
 	ProvisionOptionsKey        = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
+	ProvisionAttemptsKey       = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
 )
 
@@ -167,6 +168,18 @@ var IsUninitialized = db.Query(
 var IsStarting = db.Query(
 	bson.M{StatusKey: evergreen.HostStarting},
 )
+
+// NeedsProvisioning returns a query used by the hostinit process to
+// determine hosts that have been started, but need additional provisioning.
+//
+// It's likely true that Starting and Initializing are redundant, and
+// EVG-2754 will address this issue.
+func NeedsProvisioning() db.Q {
+	return db.Query(bson.M{StatusKey: bson.M{"$in": []string{
+		evergreen.HostStarting,
+		evergreen.HostInitializing,
+	}}})
+}
 
 // ByUnproductiveSince produces a query that returns all hosts that
 // are not doing work and were created before the given time.

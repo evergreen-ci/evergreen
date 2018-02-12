@@ -62,7 +62,7 @@ func (d *Distro) GenerateName() string {
 func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
-	return strings.Contains(d.Arch, "win")
+	return strings.Contains(d.Arch, "windows")
 }
 
 func (d *Distro) BinaryName() string {

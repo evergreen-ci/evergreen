@@ -31,7 +31,8 @@ type Host struct {
 	Zone    string `bson:"zone" json:"zone"`
 
 	// true if the host has been set up properly
-	Provisioned bool `bson:"provisioned" json:"provisioned"`
+	Provisioned       bool `bson:"provisioned" json:"provisioned"`
+	ProvisionAttempts int  `bson:"priv_attempts" json:"provision_attempts"`
 
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
@@ -107,7 +108,7 @@ type StatsByDistro struct {
 }
 
 const (
-	MaxLCTInterval = time.Minute * 10
+	MaxLCTInterval = 5 * time.Minute
 )
 
 // IdleTime returns how long has this host been idle
@@ -168,6 +169,30 @@ func (h *Host) SetInitializing() error {
 	)
 }
 
+func (h *Host) IncProvisionAttempts() error {
+	query := bson.M{
+		IdKey: h.Id,
+	}
+
+	change := mgo.Change{
+		ReturnNew: true,
+		Update: bson.M{
+			"$inc": bson.M{ProvisionAttemptsKey: 1},
+		},
+	}
+
+	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if info.Updated != 1 {
+		return errors.Errorf("could not find host document to update, %s", h.Id)
+	}
+
+	return nil
+}
+
 func (h *Host) SetStarting() error {
 	return UpdateOne(
 		bson.M{
@@ -184,10 +209,6 @@ func (h *Host) SetStarting() error {
 
 func (h *Host) SetDecommissioned(user string) error {
 	return h.SetStatus(evergreen.HostDecommissioned, user)
-}
-
-func (h *Host) SetUninitialized(user string) error {
-	return h.SetStatus(evergreen.HostUninitialized, user)
 }
 
 func (h *Host) SetRunning(user string) error {
@@ -236,12 +257,16 @@ func (h *Host) UpdateLastCommunicated() error {
 	now := time.Now()
 	err := UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{LastCommunicationTimeKey: now}},
-	)
+		bson.M{"$set": bson.M{
+			LastCommunicationTimeKey: now,
+			LastReachabilityCheckKey: now,
+		}})
+
 	if err != nil {
 		return err
 	}
 	h.LastCommunicationTime = now
+	h.LastReachabilityCheck = now
 	return nil
 }
 
