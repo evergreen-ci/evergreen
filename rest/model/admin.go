@@ -33,36 +33,36 @@ func NewConfigModel() *APIAdminSettings {
 
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts             *APIAlertsConfig                  `json:"alerts"`
-	Amboy              *APIAmboyConfig                   `json:"amboy"`
-	Api                *APIapiConfig                     `json:"api"`
-	ApiUrl             *string                           `json:"api_url"`
-	AuthConfig         *APIAuthConfig                    `json:"auth"`
-	Banner             *string                           `json:"banner"`
-	BannerTheme        *string                           `json:"banner_theme"`
-	ClientBinariesDir  *string                           `json:"client_binaries_dir"`
-	ConfigDir          *string                           `json:"configdir"`
-	Credentials        map[string]string                 `json:"credentials"`
-	Expansions         map[string]string                 `json:"expansions"`
-	GithubPRCreatorOrg *string                           `json:"github_pr_creator_org"`
-	HostInit           *APIHostInitConfig                `json:"hostinit"`
-	IsNonProd          *bool                             `json:"isnonprod"`
-	Jira               *APIJiraConfig                    `json:"jira"`
-	Keys               map[string]string                 `json:"keys"`
-	LoggerConfig       *APILoggerConfig                  `json:"logger_config"`
-	LogPath            *string                           `json:"log_path"`
-	NewRelic           *APINewRelicConfig                `json:"new_relic"`
-	Notify             *APINotifyConfig                  `json:"notify"`
-	Plugins            map[string]map[string]interface{} `json:"plugins"`
-	PprofPort          *string                           `json:"pprof_port"`
-	Providers          *APICloudProviders                `json:"providers"`
-	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker"`
-	Scheduler          *APISchedulerConfig               `json:"scheduler"`
-	ServiceFlags       *APIServiceFlags                  `json:"service_flags"`
-	Slack              *APISlackConfig                   `json:"slack"`
-	Splunk             *APISplunkConnectionInfo          `json:"splunk"`
-	SuperUsers         []string                          `json:"superusers"`
-	Ui                 *APIUIConfig                      `json:"ui"`
+	Alerts             *APIAlertsConfig                  `json:"alerts,omitempty"`
+	Amboy              *APIAmboyConfig                   `json:"amboy,omitempty"`
+	Api                *APIapiConfig                     `json:"api,omitempty"`
+	ApiUrl             *string                           `json:"api_url,omitempty"`
+	AuthConfig         *APIAuthConfig                    `json:"auth,omitempty"`
+	Banner             *string                           `json:"banner,omitempty"`
+	BannerTheme        *string                           `json:"banner_theme,omitempty"`
+	ClientBinariesDir  *string                           `json:"client_binaries_dir,omitempty"`
+	ConfigDir          *string                           `json:"configdir,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	Expansions         map[string]string                 `json:"expansions,omitempty"`
+	GithubPRCreatorOrg *string                           `json:"github_pr_creator_org,omitempty"`
+	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
+	IsNonProd          *bool                             `json:"isnonprod,omitempty"`
+	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
+	Keys               map[string]string                 `json:"keys,omitempty"`
+	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
+	LogPath            *string                           `json:"log_path,omitempty"`
+	NewRelic           *APINewRelicConfig                `json:"new_relic,omitempty"`
+	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
+	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PprofPort          *string                           `json:"pprof_port,omitempty"`
+	Providers          *APICloudProviders                `json:"providers,omitempty"`
+	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	Scheduler          *APISchedulerConfig               `json:"scheduler,omitempty"`
+	ServiceFlags       *APIServiceFlags                  `json:"service_flags,omitempty"`
+	Slack              *APISlackConfig                   `json:"slack,omitempty"`
+	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	SuperUsers         []string                          `json:"superusers,omitempty"`
+	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
