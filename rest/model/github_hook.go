@@ -16,7 +16,16 @@ type APIGithubHook struct {
 func (a *APIGithubHook) BuildFromService(h interface{}) error {
 	v, ok := h.(model.GithubHook)
 	if !ok {
-		return fmt.Errorf("incorrect type when fetching converting build type")
+		return fmt.Errorf("incorrect type when converting github hook")
+	}
+	if v.HookID == 0 {
+		return errors.New("HookID cannot be 0")
+	}
+	if v.Owner == "" {
+		return errors.New("Owner cannot be empty string")
+	}
+	if v.Repo == "" {
+		return errors.New("Repo cannot be empty string")
 	}
 
 	a.HookID = v.HookID
