@@ -62,7 +62,7 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		post = append(post, data)
 	}
 	if catcher.HasErrors() {
-		return catcher.Resolve()
+		return errors.WithStack(catcher.Resolve())
 	}
 	return errors.Wrap(comm.GenerateTasks(ctx, td, post), "Problem posting task data")
 }
