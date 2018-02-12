@@ -123,7 +123,10 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
 	apiHook := restModel.APIGithubHook{}
 	if hook != nil {
-		apiHook.BuildFromService(hook)
+		if err = apiHook.BuildFromService(*hook); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	data := struct {

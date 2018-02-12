@@ -131,7 +131,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         function(resp) {
           var data_put = resp.data;
           item = Object.assign({}, $scope.settingsFormData);
-          item["setup_github_hook"] = false;
+          item.setup_github_hook = false;
+          item.pr_testing_enabled = false;
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
@@ -169,7 +170,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.projectRef = data.ProjectRef;
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.privateVars = data.ProjectVars.private_vars || {};
-        $scope.githubHookID = data.github_hook.hook_id|| 0;
+        $scope.githubHookID = data.github_hook.hook_id || 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
 
