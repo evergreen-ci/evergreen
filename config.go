@@ -920,7 +920,7 @@ func GetConfig() (*Settings, error) {
 	}
 
 	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
+		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return config, nil
 }
@@ -964,7 +964,7 @@ func UpdateConfig(config *Settings) error {
 		catcher.Add(section.set())
 	}
 
-	return catcher.Resolve()
+	return errors.WithStack(catcher.Resolve())
 }
 
 // Validate checks the settings and returns nil if the config is valid,
@@ -1023,7 +1023,7 @@ func (settings *Settings) Validate() error {
 		}
 		propAddr.Set(sectionVal)
 	}
-	return catcher.Resolve()
+	return errors.WithStack(catcher.Resolve())
 }
 
 func (s *Settings) GetSender(env Environment) (send.Sender, error) {
