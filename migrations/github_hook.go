@@ -44,7 +44,8 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 		projectVarsCollection = "project_vars"
 		githubHooksCollection = "github_hooks"
 
-		idKey = "_id"
+		idKey     = "_id"
+		hookIDKey = "hook_id"
 
 		// project_vars
 		githubHookIDKey = "github_hook_id"
@@ -97,7 +98,7 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 			repoKey:  ref.Repo,
 		})
 		existingHook := struct {
-			HookID int    `bson:"_id"`
+			HookID int    `bson:"hook_id"`
 			Owner  string `bson:"owner"`
 			Repo   string `bson:"repo"`
 		}{}
@@ -107,15 +108,14 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 		}
 
 		if existingHook.HookID != 0 {
-			// Not calling this an error, since it's technically done now.
 			grip.Infof("Hook for %s/%s already exists as Hook #%d. Please delete %d",
 				existingHook.Owner, existingHook.Repo, existingHook.HookID, hookID)
 
 		} else if existingHook.HookID != hookID {
 			hook := bson.M{
-				idKey:    hookID,
-				ownerKey: ref.Owner,
-				repoKey:  ref.Repo,
+				hookIDKey: hookID,
+				ownerKey:  ref.Owner,
+				repoKey:   ref.Repo,
 			}
 
 			err = session.DB(database).C(githubHooksCollection).Insert(hook)

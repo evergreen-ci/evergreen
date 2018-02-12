@@ -115,7 +115,7 @@ func (s *githubHookMigrationSuite) SetupTest() {
 			"_id":            "grip3",
 			"github_hook_id": 9003,
 		},
-		// deliberately a duplicate hook id #
+		// a deliberately duplicate hook id #
 		{
 			"_id":            "grip4",
 			"github_hook_id": 9002,

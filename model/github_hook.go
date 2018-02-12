@@ -14,7 +14,7 @@ const (
 )
 
 type GithubHook struct {
-	HookID int    `bson:"_id"`
+	HookID int    `bson:"hook_id"`
 	Owner  string `bson:"owner"`
 	Repo   string `bson:"repo"`
 }
