@@ -393,6 +393,10 @@ func FindOne(query db.Q) (*Host, error) {
 	return host, err
 }
 
+func FindOneId(id string) (*Host, error) {
+	return FindOne(ById(id))
+}
+
 // Find gets all Hosts for the given query.
 func Find(query db.Q) ([]Host, error) {
 	hosts := []Host{}

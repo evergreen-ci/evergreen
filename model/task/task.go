@@ -585,33 +585,6 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 		})
 	}
 
-	historicRuntime, err := t.GetHistoricRuntime()
-	if err != nil {
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":      "problem computing historic runtime",
-			"task_id":      t.Id,
-			"task":         t.DisplayName,
-			"execution":    t.Execution,
-			"requester":    t.Requester,
-			"activated_by": t.ActivatedBy,
-			"project":      t.Project,
-			"variant":      t.BuildVariant,
-		}))
-	} else {
-		grip.Info(message.Fields{
-			"stat":                 "average-task-runtime",
-			"task_id":              t.Id,
-			"task":                 t.DisplayName,
-			"execution":            t.Execution,
-			"requester":            t.Requester,
-			"activated_by":         t.ActivatedBy,
-			"project":              t.Project,
-			"variant":              t.BuildVariant,
-			"average_runtime_secs": historicRuntime.Seconds(),
-			"current_runtime_secs": t.FinishTime.Sub(t.StartTime).Seconds(),
-		})
-	}
-
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
 	return UpdateOne(

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/bookkeeping"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -188,8 +187,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// task cost calculations have no impact on task results, so do them in their own goroutine
-	go as.updateTaskCost(t, currentHost, finishTime)
+	job := units.NewCollectTaskEndDataJob(t, currentHost)
+	if err = as.queue.Put(job); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrap(err, "couldn't queue job to update task cost accounting"))
+		return
+	}
 
 	if !evergreen.IsPatchRequester(t.Requester) {
 		if t.IsPartOfDisplay() {
@@ -213,7 +216,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		grip.Errorln("Error updating expected duration:", err)
 	}
 
-	shouldExit, message := checkHostHealth(currentHost, evergreen.BuildRevision)
+	shouldExit, msg := checkHostHealth(currentHost, evergreen.BuildRevision)
 	if shouldExit {
 		// set the needs new agent flag on the host
 		if err := currentHost.SetNeedsNewAgent(true); err != nil {
@@ -222,21 +225,25 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		endTaskResp.ShouldExit = true
-		endTaskResp.Message = message
+		endTaskResp.Message = msg
 	}
 
 	// we should disable hosts and prevent them from performing
 	// more work if they appear to be in a bad state
 	// (e.g. encountered 5 consecutive system failures)
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
-		env := evergreen.GetEnvironment()
-		queue := env.LocalQueue()
-		message := "host encountered consecutive system failures"
+		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
 			err := currentHost.DisablePoisonedHost()
+			env := evergreen.GetEnvironment()
 
-			job := units.NewDecoHostNotifyJob(env, currentHost, err, message)
-			grip.Critical(queue.Put(job))
+			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
+			grip.Critical(message.WrapError(as.queue.Put(job),
+				message.Fields{
+					"host_id": currentHost.Id,
+					"task_id": t.Id,
+					"message": msg,
+				}))
 
 			if err != nil {
 				as.WriteJSON(w, http.StatusInternalServerError, err)
@@ -244,36 +251,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		endTaskResp.ShouldExit = true
-		endTaskResp.Message = message
+		endTaskResp.Message = msg
 	}
 
 	grip.Infof("Successfully marked task %s as finished", t.Id)
 	as.WriteJSON(w, http.StatusOK, endTaskResp)
-
-}
-
-// updateTaskCost determines a task's cost based on the host it ran on. Hosts that
-// are unable to calculate their own costs will not set a task's Cost field. Errors
-// are logged but not returned, since any number of API failures could happen and
-// we shouldn't sacrifice a task's status for them.
-func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.Time) {
-	manager, err := cloud.GetCloudManager(h.Provider, &as.Settings)
-	if err != nil {
-		grip.Errorf("Error loading provider for host %s cost calculation: %+v", t.HostId, err)
-		return
-	}
-	if calc, ok := manager.(cloud.CloudCostCalculator); ok {
-		grip.Infoln("Calculating cost for task:", t.Id)
-		cost, err := calc.CostForDuration(h, t.StartTime, finishTime)
-		if err != nil {
-			grip.Errorf("calculating cost for task %s: %+v ", t.Id, err)
-			return
-		}
-		if err := t.SetCost(cost); err != nil {
-			grip.Errorf("Error updating cost for task %s: %+v ", t.Id, err)
-			return
-		}
-	}
 }
 
 // assignNextAvailableTask gets the next task from the queue and sets the running task field
