@@ -23,16 +23,17 @@ func (ac *DBAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) 
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func (ac *DBAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
-	if err := evergreen.UpdateConfig(settings); err != nil {
-		return err
-	}
+	//TODO: remove these 3 after all the models have changed
 	if err := ac.SetAdminBanner(settings.Banner, u); err != nil {
 		return err
 	}
 	if err := ac.SetBannerTheme(string(settings.BannerTheme), u); err != nil {
 		return err
 	}
-	return ac.SetServiceFlags(settings.ServiceFlags, u)
+	if err := ac.SetServiceFlags(settings.ServiceFlags, u); err != nil {
+		return err
+	}
+	return evergreen.UpdateConfig(settings)
 }
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
