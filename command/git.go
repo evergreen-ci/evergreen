@@ -357,6 +357,9 @@ func isMailboxPatch(patchFile string) (bool, error) {
 	return strings.HasPrefix(line, "From "), nil
 }
 
+// getApplyCommand determines the patch type. If the patch is a mailbox-style
+// patch, it uses git-am (see https://git-scm.com/docs/git-am), otherwise
+// it uses git apply
 func getApplyCommand(patchFile string) (string, error) {
 	isMBP, err := isMailboxPatch(patchFile)
 	if err != nil {
@@ -367,7 +370,7 @@ func getApplyCommand(patchFile string) (string, error) {
 		return fmt.Sprintf("git am < '%s'", patchFile), nil
 	}
 
-	return fmt.Sprintf("git apply --binary --whitespace=fix --index < '%v'", patchFile), nil
+	return fmt.Sprintf("git apply --binary --whitespace=fix --index < '%s'", patchFile), nil
 }
 
 // getPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
