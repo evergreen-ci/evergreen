@@ -274,6 +274,11 @@ func (s *GitGetProjectSuite) TestIsMailboxPatch() {
 	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.diff"))
 	s.NoError(err)
 	s.False(isMBP)
+
+	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "emptyfile.txt"))
+	s.Error(err)
+	s.Equal("patch file appears to be empty", err.Error())
+	s.False(isMBP)
 }
 
 func (s *GitGetProjectSuite) TearDownSuite() {

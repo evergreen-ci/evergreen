@@ -346,13 +346,11 @@ func isMailboxPatch(patchFile string) (bool, error) {
 	}
 	defer file.Close()
 
-	reader := bufio.NewReader(file)
-
-	var line string
-	line, err = reader.ReadString('\n')
-	if err != nil {
-		return false, errors.Wrap(err, "failed to buffer patch line 1")
+	scanner := bufio.NewScanner(file)
+	if !scanner.Scan() {
+		return false, errors.New("patch file appears to be empty")
 	}
+	line := scanner.Text()
 
 	return strings.HasPrefix(line, "From "), nil
 }
