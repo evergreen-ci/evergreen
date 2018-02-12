@@ -111,7 +111,7 @@ func makeGithubHooksMigration(database string) db.MigrationOperation {
 		}
 
 		if existingHook.HookID != 0 {
-			grip.Infof(message.Fields{
+			grip.Info(message.Fields{
 				"source":  "migrations",
 				"hook_id": existingHook.HookID,
 				"owner":   existingHook.Owner,
