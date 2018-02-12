@@ -153,7 +153,6 @@ func TestGetPatchCommands(t *testing.T) {
 
 	modulePatch.PatchSet.Patch = "bestest code"
 	cmds = getPatchCommands(modulePatch, "/teapot", "/tmp/bestest.patch")
-	assert.Len(cmds, 7)
+	assert.Len(cmds, 6)
 	assert.Equal("git apply --stat '/tmp/bestest.patch' || true", cmds[5])
-	assert.Equal("git apply --binary --whitespace=fix --index < '/tmp/bestest.patch'", cmds[6])
 }
