@@ -91,7 +91,6 @@ type parserTask struct {
 	Name            string              `yaml:"name"`
 	Priority        int64               `yaml:"priority"`
 	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs"`
-	DisableCleanup  bool                `yaml:"disable_cleanup"`
 	DependsOn       parserDependencies  `yaml:"depends_on"`
 	Requires        taskSelectors       `yaml:"requires"`
 	Commands        []PluginCommandConf `yaml:"commands"`

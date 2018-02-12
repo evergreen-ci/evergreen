@@ -213,6 +213,11 @@ func FindOne(query db.Q) (*Build, error) {
 	return build, err
 }
 
+// FindOneId returns one build by Id.
+func FindOneId(id string) (*Build, error) {
+	return FindOne(ById(id))
+}
+
 // Find returns all builds that satisfy the query.
 func Find(query db.Q) ([]Build, error) {
 	builds := []Build{}
