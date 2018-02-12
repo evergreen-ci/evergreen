@@ -216,7 +216,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		grip.Errorln("Error updating expected duration:", err)
 	}
 
-	shouldExit, message := checkHostHealth(currentHost, evergreen.BuildRevision)
+	shouldExit, msg := checkHostHealth(currentHost, evergreen.BuildRevision)
 	if shouldExit {
 		// set the needs new agent flag on the host
 		if err := currentHost.SetNeedsNewAgent(true); err != nil {
@@ -225,7 +225,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		endTaskResp.ShouldExit = true
-		endTaskResp.Message = message
+		endTaskResp.Message = msg
 	}
 
 	// we should disable hosts and prevent them from performing
@@ -235,6 +235,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
 			err := currentHost.DisablePoisonedHost()
+			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
 			grip.Critical(message.WrapError(as.queue.Put(job),
@@ -250,7 +251,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		endTaskResp.ShouldExit = true
-		endTaskResp.Message = message
+		endTaskResp.Message = msg
 	}
 
 	grip.Infof("Successfully marked task %s as finished", t.Id)
