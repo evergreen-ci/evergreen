@@ -24,8 +24,6 @@ type AdminDataSuite struct {
 }
 
 func TestDataConnectorSuite(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestDataConnectorSuite")
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
@@ -92,8 +90,6 @@ func TestDataConnectorSuite(t *testing.T) {
 }
 
 func TestMockConnectorSuite(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestMockConnectorSuite")
 	s := new(AdminDataSuite)
 	s.ctx = &MockConnector{}
 	suite.Run(t, s)
@@ -107,23 +103,45 @@ func (s *AdminDataSuite) SetupSuite() {
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
 	u := &user.DBUser{Id: "user"}
-	settings := &evergreen.Settings{
-		Banner:      "test banner",
-		BannerTheme: evergreen.Warning,
-		ServiceFlags: evergreen.ServiceFlags{
-			NotificationsDisabled: true,
-			TaskrunnerDisabled:    true,
-		},
-	}
-
-	err := s.ctx.SetEvergreenSettings(settings, u)
+	testSettings := testutil.MockConfig()
+	err := s.ctx.SetEvergreenSettings(testSettings, u)
 	s.NoError(err)
 
 	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
 	s.NoError(err)
-	s.Equal(settings.Banner, settingsFromConnector.Banner)
-	s.Equal(settings.ServiceFlags, settingsFromConnector.ServiceFlags)
-	s.Equal(evergreen.Warning, string(settings.BannerTheme))
+	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
+	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
+	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
+	s.EqualValues(testSettings.Alerts.SMTP.From, settingsFromConnector.Alerts.SMTP.From)
+	s.EqualValues(testSettings.Alerts.SMTP.Port, settingsFromConnector.Alerts.SMTP.Port)
+	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settingsFromConnector.Alerts.SMTP.AdminEmail))
+	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
+	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
+	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
+	s.EqualValues(testSettings.AuthConfig.Crowd.Username, settingsFromConnector.AuthConfig.Crowd.Username)
+	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
+	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
+	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settingsFromConnector.HostInit.SSHTimeoutSeconds)
+	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
+	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
+	s.EqualValues(testSettings.NewRelic.ApplicationName, settingsFromConnector.NewRelic.ApplicationName)
+	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
+	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
+	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
+	s.EqualValues(testSettings.Providers.AWS.Id, settingsFromConnector.Providers.AWS.Id)
+	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
+	s.EqualValues(testSettings.Providers.GCE.PrivateKey, settingsFromConnector.Providers.GCE.PrivateKey)
+	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settingsFromConnector.Providers.OpenStack.IdentityEndpoint)
+	s.EqualValues(testSettings.Providers.VSphere.Host, settingsFromConnector.Providers.VSphere.Host)
+	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
+	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
+	s.EqualValues(testSettings.ServiceFlags.HostinitDisabled, settingsFromConnector.ServiceFlags.HostinitDisabled)
+	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
+	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
+	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
+	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 }
 
 func (s *AdminDataSuite) TestRestart() {

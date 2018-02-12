@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	
+
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -48,27 +49,13 @@ func TestAdminRouteSuite(t *testing.T) {
 func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
-
-	// test parsing the POST body
-	body := evergreen.Settings{
-		Banner:      "banner text",
-		BannerTheme: evergreen.Information,
-		ServiceFlags: evergreen.ServiceFlags{
-			TaskDispatchDisabled: true,
-			RepotrackerDisabled:  true,
-		},
-	}
-	jsonBody, err := json.Marshal(&body)
+	testSettings := testutil.MockConfig()
+	jsonBody, err := json.Marshal(testSettings)
 	s.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin", buffer)
 	s.NoError(err)
 	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	h := s.postHandler.RequestHandler.(*adminPostHandler)
-	s.Equal(body.Banner, string(h.Banner))
-	s.Equal(string(body.BannerTheme), string(h.BannerTheme))
-	s.Equal(body.ServiceFlags.TaskDispatchDisabled, h.ServiceFlags.TaskDispatchDisabled)
-	s.Equal(body.ServiceFlags.RepotrackerDisabled, h.ServiceFlags.RepotrackerDisabled)
 
 	// test executing the POST request
 	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
@@ -84,10 +71,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.NoError(err)
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
-	s.Equal(body.Banner, settings.Banner)
-	s.Equal(body.BannerTheme, settings.BannerTheme)
-	s.Equal(body.ServiceFlags.TaskDispatchDisabled, settings.ServiceFlags.TaskDispatchDisabled)
-	s.Equal(body.ServiceFlags.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
+	s.Equal(*testSettings, settings)
 }
 
 func (s *AdminRouteSuite) TestGetAuthentication() {

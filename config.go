@@ -53,7 +53,7 @@ type CrowdConfig struct {
 // ClientID, ClientSecret and CallbackUri which are given when registering the application
 // Furthermore,
 type GithubAuthConfig struct {
-	ClientId     string   `bson:"client_id" bson:"client_id" yaml:"client_id"`
+	ClientId     string   `bson:"client_id" json:"client_id" yaml:"client_id"`
 	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
 	Users        []string `bson:"users" json:"users" yaml:"users"`
 	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
@@ -553,8 +553,8 @@ func (c *LoggerConfig) validateAndDefault() error {
 }
 
 type LogBuffering struct {
-	DurationSeconds int `yaml:"duration_seconds"`
-	Count           int `yaml:"count"`
+	DurationSeconds int `bson:"duration_seconds" json:"duration_seconds" yaml:"duration_seconds"`
+	Count           int `bson:"count" json:"count" yaml:"count"`
 }
 
 type AmboyConfig struct {
@@ -873,7 +873,7 @@ func NewSettings(filename string) (*Settings, error) {
 	return settings, nil
 }
 
-// GetSettings retrieves the Evergreen config document. If no document is
+// GetConfig retrieves the Evergreen config document. If no document is
 // present in the DB, it will return the defaults
 func GetConfig() (*Settings, error) {
 	config := &Settings{}
@@ -920,9 +920,51 @@ func GetConfig() (*Settings, error) {
 	}
 
 	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
+		return nil, errors.WithStack(catcher.Resolve())
 	}
 	return config, nil
+}
+
+// UpdateConfig updates all evergreen settings documents in DB
+func UpdateConfig(config *Settings) error {
+	// update the root config document
+	if err := config.set(); err != nil {
+		return err
+	}
+
+	// update the other config sub-documents
+	catcher := grip.NewSimpleCatcher()
+	valConfig := reflect.ValueOf(*config)
+
+	//iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
+		}
+
+		// get the property name and find its value within the settings struct
+		propName := valConfig.Type().Field(i).Name
+		propVal := valConfig.FieldByName(propName)
+
+		// create a reflective copy of the struct
+		valPointer := reflect.Indirect(reflect.New(propVal.Type()))
+		valPointer.Set(propVal)
+
+		// convert the pointer to that struct to an empty interface
+		propInterface := valPointer.Addr().Interface()
+
+		// type assert to the configSection interface
+		section, ok := propInterface.(configSection)
+		if !ok {
+			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			continue
+		}
+		catcher.Add(section.set())
+	}
+
+	return errors.WithStack(catcher.Resolve())
 }
 
 // Validate checks the settings and returns nil if the config is valid,
@@ -981,7 +1023,7 @@ func (settings *Settings) Validate() error {
 		}
 		propAddr.Set(sectionVal)
 	}
-	return catcher.Resolve()
+	return errors.WithStack(catcher.Resolve())
 }
 
 func (s *Settings) GetSender(env Environment) (send.Sender, error) {

@@ -2,6 +2,7 @@ package data
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -22,6 +23,9 @@ func (ac *DBAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) 
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func (ac *DBAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
+	if err := evergreen.UpdateConfig(settings); err != nil {
+		return err
+	}
 	if err := ac.SetAdminBanner(settings.Banner, u); err != nil {
 		return err
 	}
@@ -104,16 +108,21 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 }
 
 type MockAdminConnector struct {
+	mu           sync.RWMutex
 	MockSettings *evergreen.Settings
 }
 
 // GetEvergreenSettings retrieves the admin settings document from the mock connector
 func (ac *MockAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) {
+	ac.mu.RLock()
+	defer ac.mu.RUnlock()
 	return ac.MockSettings, nil
 }
 
 // SetEvergreenSettings sets the admin settings document in the mock connector
 func (ac *MockAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
 	ac.MockSettings = settings
 	return nil
 }
