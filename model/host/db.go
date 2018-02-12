@@ -169,6 +169,11 @@ var IsStarting = db.Query(
 	bson.M{StatusKey: evergreen.HostStarting},
 )
 
+// NeedsProvisioning returns a query used by the hostinit process to
+// determine hosts that have been started, but need additional provisioning.
+//
+// It's likely true that Starting and Initializing are redundant, and
+// EVG-2754 will address this issue.
 func NeedsProvisioning() db.Q {
 	return db.Query(bson.M{StatusKey: bson.M{"$in": []string{
 		evergreen.HostStarting,

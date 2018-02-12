@@ -272,6 +272,12 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						continue
 					}
 
+					// ProvisionHost allows hosts to fail provisioning a few
+					// times during host start up, to account for the fact
+					// that hosts often need extra time to come up.
+					//
+					// In these cases, ProvisionHost returns a nil error but
+					// does not change the host status.
 					if h.Status == evergreen.HostStarting {
 						continue
 					}
