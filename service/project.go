@@ -115,10 +115,13 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	hook, err := model.FindGithubHook(projRef.Owner, projRef.Repo)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
+	var hook *model.GithubHook
+	if projRef.Owner != "" && projRef.Repo != "" {
+		hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	apiHook := restModel.APIGithubHook{}
@@ -134,7 +137,7 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		ProjectVars     *model.ProjectVars
 		ProjectAliases  []model.ProjectAlias    `json:"aliases,omitempty"`
 		ConflictingRefs []string                `json:"pr_testing_conflicting_refs,omitempty"`
-		GithubHook      restModel.APIGithubHook `json:"github_hook,omitempty"`
+		GithubHook      restModel.APIGithubHook `json:"github_hook"`
 	}{projRef, projVars, projectAliases, conflictingRefs, apiHook}
 
 	// the project context has all projects so make the ui list using all projects

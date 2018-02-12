@@ -168,6 +168,12 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         var data = resp.data;
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
+        if(data.ProjectVars === null) {
+            data.ProjectVars = {}
+        }
+        if(data.ProjectRef === null) {
+            data.ProjectRef = {}
+        }
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.privateVars = data.ProjectVars.private_vars || {};
         $scope.githubHookID = data.github_hook.hook_id || 0;
@@ -289,8 +295,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         $scope.refreshTrackedProjects(data.AllProjects);
         $scope.settingsForm.$setPristine();
         $scope.settingsFormData.force_repotracker_run = false;
-        $scope.loadProject($scope.settingsFormData.identifier)
         $scope.isDirty = false;
+        $scope.loadProject($scope.settingsFormData.identifier)
       },
       function(resp) {
         $scope.saveMessage = "Couldn't save project: " + resp.data.error;
