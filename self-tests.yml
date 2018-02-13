@@ -43,15 +43,6 @@ post:
 #         YAML Templates              #
 #######################################
 variables:
-  - &generic-linux-distros
-    - rhel62-test
-    - rhel70-small
-    - rhel62-small
-    - linux-64-amzn-test
-    - debian81-test
-    - debian71-test
-    - ubuntu1604-test
-    - ubuntu1404-test
   - &run-build
     # runs a build operations. The task name in evergreen should
     # correspond to a make target for the build operation.
@@ -740,7 +731,6 @@ buildvariants:
   - name: ubuntu1604
     display_name: Ubuntu 16.04
     run_on:
-      - ubuntu1604-build
       - ubuntu1604-test
     expansions:
       build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
@@ -754,7 +744,6 @@ buildvariants:
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
     run_on:
-      - ubuntu1604-build
       - ubuntu1604-test
     expansions:
       build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
@@ -773,13 +762,9 @@ buildvariants:
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.7.tgz
     tasks:
       - name: "dist"
-        distros:
-          - archlinux-build
       - name: ".race"
       - name: ".report"
       - name: ".lint"
-        distros:
-          - archlinux-build
     display_tasks:
       - name: lint
         execution_tasks:
@@ -822,7 +807,7 @@ buildvariants:
     tasks:
       - name: "dist-test"
         distros:
-          *generic-linux-distros
+          - ubuntu1604-test
       - name: ".xc"
 
   - name: rhel72-s390x
@@ -836,7 +821,7 @@ buildvariants:
     tasks:
       - name: "dist-test"
         distros:
-          *generic-linux-distros
+          - ubuntu1604-test
       - name: ".xc"
 
   - name: ubuntu1604-arm64
@@ -850,5 +835,5 @@ buildvariants:
     tasks:
       - name: "dist-test"
         distros:
-          *generic-linux-distros
+          - ubuntu1604-test
       - name: ".xc"
