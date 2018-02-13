@@ -55,8 +55,17 @@ func (j *hostStatsCollector) Run() {
 		return
 	}
 
+	tasks := 0
+	count := 0
+	for _, h := range hosts {
+		count += h.Count
+		tasks += h.NumTasks
+	}
+
 	j.logger.Info(message.Fields{
-		"report": "host stats by distro",
-		"data":   hosts,
+		"report":        "host stats by distro",
+		"hosts_total":   count,
+		"running_tasks": tasks,
+		"data":          hosts,
 	})
 }
