@@ -735,7 +735,7 @@ func TestMarkEnd(t *testing.T) {
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	assert.NoError(MarkEnd(testTask, userName, time.Now(), &details, p, false, &updates))
+	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, p, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 
 	Convey("with a task that is part of a display task", t, func() {
