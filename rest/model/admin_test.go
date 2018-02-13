@@ -11,36 +11,36 @@ import (
 func TestModelConversion(t *testing.T) {
 	assert := assert.New(t)
 	testSettings := testutil.MockConfig()
-	apiSettings := APIAdminSettings{}
+	apiSettings := NewConfigModel()
 
 	// test converting from a db model to an API model
 	assert.NoError(apiSettings.BuildFromService(testSettings))
-	assert.EqualValues(testSettings.ApiUrl, apiSettings.ApiUrl)
-	assert.EqualValues(testSettings.Banner, apiSettings.Banner)
-	assert.EqualValues(testSettings.BannerTheme, apiSettings.BannerTheme)
-	assert.EqualValues(testSettings.ClientBinariesDir, apiSettings.ClientBinariesDir)
-	assert.EqualValues(testSettings.ConfigDir, apiSettings.ConfigDir)
-	assert.EqualValues(testSettings.GithubPRCreatorOrg, apiSettings.GithubPRCreatorOrg)
-	assert.EqualValues(testSettings.IsNonProd, apiSettings.IsNonProd)
-	assert.EqualValues(testSettings.LogPath, apiSettings.LogPath)
-	assert.EqualValues(testSettings.PprofPort, apiSettings.PprofPort)
+	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
+	assert.Equal(testSettings.Banner, *apiSettings.Banner)
+	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
+	assert.Equal(testSettings.ClientBinariesDir, *apiSettings.ClientBinariesDir)
+	assert.Equal(testSettings.ConfigDir, *apiSettings.ConfigDir)
+	assert.Equal(testSettings.GithubPRCreatorOrg, *apiSettings.GithubPRCreatorOrg)
+	assert.Equal(testSettings.IsNonProd, *apiSettings.IsNonProd)
+	assert.Equal(testSettings.LogPath, *apiSettings.LogPath)
+	assert.Equal(testSettings.PprofPort, *apiSettings.PprofPort)
 	for k, v := range testSettings.Credentials {
 		assert.Contains(apiSettings.Credentials, k)
-		assert.EqualValues(v, apiSettings.Credentials[k])
+		assert.Equal(v, apiSettings.Credentials[k])
 	}
 	for k, v := range testSettings.Expansions {
 		assert.Contains(apiSettings.Expansions, k)
-		assert.EqualValues(v, apiSettings.Expansions[k])
+		assert.Equal(v, apiSettings.Expansions[k])
 	}
 	for k, v := range testSettings.Keys {
 		assert.Contains(apiSettings.Keys, k)
-		assert.EqualValues(v, apiSettings.Keys[k])
+		assert.Equal(v, apiSettings.Keys[k])
 	}
 	for k, v := range testSettings.Plugins {
 		assert.Contains(apiSettings.Plugins, k)
 		for k2, v2 := range v {
 			assert.Contains(apiSettings.Plugins[k], k2)
-			assert.EqualValues(v2, apiSettings.Plugins[k][k2])
+			assert.Equal(v2, apiSettings.Plugins[k][k2])
 		}
 	}
 

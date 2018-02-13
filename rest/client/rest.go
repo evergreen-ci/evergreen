@@ -226,7 +226,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
-	return string(settings.Banner), nil
+	return *settings.Banner, nil
 }
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
@@ -261,7 +261,7 @@ func (c *communicatorImpl) GetServiceFlags(ctx context.Context) (*model.APIServi
 		return nil, errors.Wrap(err, "problem parsing service flag response")
 	}
 
-	return &settings.ServiceFlags, nil
+	return settings.ServiceFlags, nil
 }
 
 func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endAt time.Time) error {

@@ -6,38 +6,63 @@ import (
 	"github.com/pkg/errors"
 )
 
+func NewConfigModel() *APIAdminSettings {
+	return &APIAdminSettings{
+		Alerts:       &APIAlertsConfig{},
+		Amboy:        &APIAmboyConfig{},
+		Api:          &APIapiConfig{},
+		AuthConfig:   &APIAuthConfig{},
+		Credentials:  map[string]string{},
+		Expansions:   map[string]string{},
+		HostInit:     &APIHostInitConfig{},
+		Jira:         &APIJiraConfig{},
+		Keys:         map[string]string{},
+		LoggerConfig: &APILoggerConfig{},
+		NewRelic:     &APINewRelicConfig{},
+		Notify:       &APINotifyConfig{},
+		Plugins:      map[string]map[string]interface{}{},
+		Providers:    &APICloudProviders{},
+		RepoTracker:  &APIRepoTrackerConfig{},
+		Scheduler:    &APISchedulerConfig{},
+		ServiceFlags: &APIServiceFlags{},
+		Slack:        &APISlackConfig{},
+		Splunk:       &APISplunkConnectionInfo{},
+		Ui:           &APIUIConfig{},
+	}
+}
+
 // APIAdminSettings is the structure of a response to the admin route
 type APIAdminSettings struct {
-	Alerts             APIAlertsConfig                   `json:"alerts"`
-	Amboy              APIAmboyConfig                    `json:"amboy"`
-	Api                APIapiConfig                      `json:"api"`
-	ApiUrl             APIString                         `json:"api_url"`
-	AuthConfig         APIAuthConfig                     `json:"auth"`
-	Banner             APIString                         `json:"banner"`
-	BannerTheme        APIString                         `json:"banner_theme"`
-	ClientBinariesDir  APIString                         `json:"client_binaries_dir"`
-	ConfigDir          APIString                         `json:"configdir"`
-	Credentials        map[string]APIString              `json:"credentials"`
-	Expansions         map[string]APIString              `json:"expansions"`
-	GithubPRCreatorOrg APIString                         `json:"github_pr_creator_org"`
-	HostInit           APIHostInitConfig                 `json:"hostinit"`
-	IsNonProd          bool                              `json:"isnonprod"`
-	Jira               APIJiraConfig                     `json:"jira"`
-	Keys               map[string]APIString              `json:"keys"`
-	LoggerConfig       APILoggerConfig                   `json:"logger_config"`
-	LogPath            APIString                         `json:"log_path"`
-	NewRelic           APINewRelicConfig                 `json:"new_relic"`
-	Notify             APINotifyConfig                   `json:"notify"`
-	Plugins            map[string]map[string]interface{} `json:"plugins"`
-	PprofPort          APIString                         `json:"pprof_port"`
-	Providers          APICloudProviders                 `json:"providers"`
-	RepoTracker        APIRepoTrackerConfig              `json:"repotracker"`
-	Scheduler          APISchedulerConfig                `json:"scheduler"`
-	ServiceFlags       APIServiceFlags                   `json:"service_flags"`
-	Slack              APISlackConfig                    `json:"slack"`
-	Splunk             APISplunkConnectionInfo           `json:"splunk"`
-	SuperUsers         []APIString                       `json:"superusers"`
-	Ui                 APIUIConfig                       `json:"ui"`
+	Alerts             *APIAlertsConfig                  `json:"alerts,omitempty"`
+	Amboy              *APIAmboyConfig                   `json:"amboy,omitempty"`
+	Api                *APIapiConfig                     `json:"api,omitempty"`
+	ApiUrl             *string                           `json:"api_url,omitempty"`
+	AuthConfig         *APIAuthConfig                    `json:"auth,omitempty"`
+	Banner             *string                           `json:"banner,omitempty"`
+	BannerTheme        *string                           `json:"banner_theme,omitempty"`
+	ClientBinariesDir  *string                           `json:"client_binaries_dir,omitempty"`
+	ConfigDir          *string                           `json:"configdir,omitempty"`
+	Credentials        map[string]string                 `json:"credentials,omitempty"`
+	Expansions         map[string]string                 `json:"expansions,omitempty"`
+	GithubPRCreatorOrg *string                           `json:"github_pr_creator_org,omitempty"`
+	HostInit           *APIHostInitConfig                `json:"hostinit,omitempty"`
+	IsNonProd          *bool                             `json:"isnonprod,omitempty"`
+	Jira               *APIJiraConfig                    `json:"jira,omitempty"`
+	Keys               map[string]string                 `json:"keys,omitempty"`
+	LoggerConfig       *APILoggerConfig                  `json:"logger_config,omitempty"`
+	LogPath            *string                           `json:"log_path,omitempty"`
+	NewRelic           *APINewRelicConfig                `json:"new_relic,omitempty"`
+	Notify             *APINotifyConfig                  `json:"notify,omitempty"`
+	Plugins            map[string]map[string]interface{} `json:"plugins,omitempty"`
+	PprofPort          *string                           `json:"pprof_port,omitempty"`
+	Providers          *APICloudProviders                `json:"providers,omitempty"`
+	RepoTracker        *APIRepoTrackerConfig             `json:"repotracker,omitempty"`
+	Scheduler          *APISchedulerConfig               `json:"scheduler,omitempty"`
+	ServiceFlags       *APIServiceFlags                  `json:"service_flags,omitempty"`
+	Slack              *APISlackConfig                   `json:"slack,omitempty"`
+	Splunk             *APISplunkConnectionInfo          `json:"splunk,omitempty"`
+	SuperUsers         []string                          `json:"superusers,omitempty"`
+	Ui                 *APIUIConfig                      `json:"ui,omitempty"`
 }
 
 // BuildFromService builds a model from the service layer
@@ -95,31 +120,21 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		if err := as.Ui.BuildFromService(v.Ui); err != nil {
 			return err
 		}
-		as.ApiUrl = APIString(v.ApiUrl)
-		as.Banner = APIString(v.Banner)
-		as.BannerTheme = APIString(v.BannerTheme)
-		as.ClientBinariesDir = APIString(v.ClientBinariesDir)
-		as.ConfigDir = APIString(v.ConfigDir)
-		as.GithubPRCreatorOrg = APIString(v.GithubPRCreatorOrg)
-		as.IsNonProd = v.IsNonProd
-		as.LogPath = APIString(v.LogPath)
+		as.ApiUrl = &v.ApiUrl
+		as.Banner = &v.Banner
+		tmp := string(v.BannerTheme)
+		as.BannerTheme = &tmp
+		as.ClientBinariesDir = &v.ClientBinariesDir
+		as.ConfigDir = &v.ConfigDir
+		as.GithubPRCreatorOrg = &v.GithubPRCreatorOrg
+		as.IsNonProd = &v.IsNonProd
+		as.LogPath = &v.LogPath
 		as.Plugins = v.Plugins
-		as.PprofPort = APIString(v.PprofPort)
-		as.Credentials = map[string]APIString{}
-		for k, v := range v.Credentials {
-			as.Credentials[k] = APIString(v)
-		}
-		as.Expansions = map[string]APIString{}
-		for k, v := range v.Expansions {
-			as.Expansions[k] = APIString(v)
-		}
-		as.Keys = map[string]APIString{}
-		for k, v := range v.Keys {
-			as.Keys[k] = APIString(v)
-		}
-		for _, user := range v.SuperUsers {
-			as.SuperUsers = append(as.SuperUsers, APIString(user))
-		}
+		as.PprofPort = &v.PprofPort
+		as.Credentials = v.Credentials
+		as.Expansions = v.Expansions
+		as.Keys = v.Keys
+		as.SuperUsers = v.SuperUsers
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
@@ -196,25 +211,25 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Alerts:             alerts.(evergreen.AlertsConfig),
 		Amboy:              amboy.(evergreen.AmboyConfig),
 		Api:                api.(evergreen.APIConfig),
-		ApiUrl:             string(as.ApiUrl),
+		ApiUrl:             *as.ApiUrl,
 		AuthConfig:         auth.(evergreen.AuthConfig),
-		Banner:             string(as.Banner),
-		BannerTheme:        evergreen.BannerTheme(string(as.BannerTheme)),
-		ClientBinariesDir:  string(as.ClientBinariesDir),
-		ConfigDir:          string(as.ConfigDir),
+		Banner:             *as.Banner,
+		BannerTheme:        evergreen.BannerTheme(*as.BannerTheme),
+		ClientBinariesDir:  *as.ClientBinariesDir,
+		ConfigDir:          *as.ConfigDir,
 		Credentials:        map[string]string{},
 		Expansions:         map[string]string{},
-		GithubPRCreatorOrg: string(as.GithubPRCreatorOrg),
+		GithubPRCreatorOrg: *as.GithubPRCreatorOrg,
 		HostInit:           hostinit.(evergreen.HostInitConfig),
-		IsNonProd:          as.IsNonProd,
+		IsNonProd:          *as.IsNonProd,
 		Jira:               jira.(evergreen.JiraConfig),
 		Keys:               map[string]string{},
 		LoggerConfig:       logger.(evergreen.LoggerConfig),
-		LogPath:            string(as.LogPath),
+		LogPath:            *as.LogPath,
 		NewRelic:           newrelic.(evergreen.NewRelicConfig),
 		Notify:             notify.(evergreen.NotifyConfig),
 		Plugins:            evergreen.PluginConfig{},
-		PprofPort:          string(as.PprofPort),
+		PprofPort:          *as.PprofPort,
 		Providers:          cloud.(evergreen.CloudProviders),
 		RepoTracker:        repotracker.(evergreen.RepoTrackerConfig),
 		Scheduler:          scheduler.(evergreen.SchedulerConfig),
