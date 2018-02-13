@@ -245,7 +245,7 @@ func verifyPullRequestEventForAbort(event *github.PullRequestEvent) (string, str
 	}
 
 	baseRepo := strings.Split(*event.Repo.FullName, "/")
-	if len(baseRepo) == 2 {
+	if len(baseRepo) != 2 {
 		return "", "", &rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message:    "repository name is invalid",
