@@ -11,7 +11,6 @@ var (
 	projectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
 	projectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 	privateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
-	githubHookIDKey   = bsonutil.MustHaveTag(ProjectVars{}, "GithubHookID")
 )
 
 const (
@@ -24,7 +23,7 @@ const (
 //yml files.
 type ProjectVars struct {
 
-	//Should match the _id in the project it refers to
+	//Should match the identifier of the project it refers to
 	Id string `bson:"_id" json:"_id"`
 
 	//The actual mapping of variables for this project
@@ -33,10 +32,6 @@ type ProjectVars struct {
 	//PrivateVars keeps track of which variables are private and should therefore not
 	//be returned to the UI server.
 	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
-
-	// GithubHookID is the unique number for the Github Hook configuration
-	// of this repository
-	GithubHookID int `bson:"github_hook_id,omitempty" json:"github_hook_id,omitempty"`
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
@@ -69,7 +64,6 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 			"$set": bson.M{
 				projectVarsMapKey: projectVars.Vars,
 				privateVarsMapKey: projectVars.PrivateVars,
-				githubHookIDKey:   projectVars.GithubHookID,
 			},
 		},
 	)

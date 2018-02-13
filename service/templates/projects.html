@@ -217,7 +217,7 @@ Evergreen Projects
               <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
             </div>
           </div>
-          <div ng-show="githubHookId !== 0">
+          <div ng-show="githubHookID !== 0">
             <div class="h3">Repotracker Settings</div>
             <div class="form-group">
                 <div class="col-lg-5 col-header">
@@ -235,7 +235,7 @@ Evergreen Projects
                     </div>
                 </div>
                 <br />
-                <div class="col-lg-8 col-header" ng-show="githubHookId !== 0">
+                <div class="col-lg-8 col-header" ng-show="githubHookID !== 0">
                     <label class="control-label">Force run Repotracker on Save&nbsp;&nbsp;
                         <input type="checkbox" name="force_repotracker_run" ng-model="settingsFormData.force_repotracker_run" />
                     </label>
@@ -311,22 +311,22 @@ Evergreen Projects
 
         <div class="variables" ng-show="isSuperUser">
           <div class="form-group">
-            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Configuration </h3>
-                <div class="muted small" ng-show="githubHookId === 0">Github webhooks have not been enabled for this repository. In order to use Github Pull Request testing, tick the box below, and save the project to set up the webhook in this
+            <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Webhook Installation </h3>
+                <div class="muted small" ng-show="githubHookID === 0">Github webhooks have not been enabled for this repository. In order to use Github Pull Request testing, tick the box below, and save the project to set up the webhook in this
                 repository.</div>
-                <div class="muted small" ng-show="githubHookId !== 0">Github webhooks are enabled!. You can uncheck the box to remove the webhook at any time.</div>
+                <div class="muted small" ng-show="githubHookID !== 0">Github webhooks are enabled!</div>
             </div>
           </div>
 
           <div id="patch-variants-list" class="form-group">
             <div class="col-lg-6">
-                <input type="checkbox" id="githubhook-checkbox" ng-model="settingsFormData.setup_github_hook" />
+                <input type="checkbox" id="githubhook-checkbox" ng-disabled="githubHookID !== 0" ng-model="settingsFormData.setup_github_hook" />
                 <label for="githubhook-checkbox">Enable Github Webhooks</label>
             </div>
           </div>
         </div>
 
-        <div class="variables" ng-show="githubHookId !== 0">
+        <div class="variables" ng-show="githubHookID !== 0">
           <div class="form-group">
             <div class="col-header col-lg-6 form-control-static"> <h3> GitHub Pull Request Testing</h3> </div>
           </div>

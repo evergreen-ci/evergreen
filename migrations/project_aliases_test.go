@@ -106,6 +106,6 @@ func (s *projectAliasMigration) TestMigration() {
 	s.Equal("lint", a[1].Tags[0])
 }
 
-func (s *projectAliasMigration) TearDownTest() {
+func (s *projectAliasMigration) TearDownSuite() {
 	s.cancel()
 }

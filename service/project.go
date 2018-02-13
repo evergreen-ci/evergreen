@@ -12,12 +12,14 @@ import (
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -113,12 +115,30 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var hook *model.GithubHook
+	if projRef.Owner != "" && projRef.Repo != "" {
+		hook, err = model.FindGithubHook(projRef.Owner, projRef.Repo)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	apiHook := restModel.APIGithubHook{}
+	if hook != nil {
+		if err = apiHook.BuildFromService(*hook); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
 	data := struct {
 		ProjectRef      *model.ProjectRef
 		ProjectVars     *model.ProjectVars
-		ProjectAliases  []model.ProjectAlias `json:"aliases,omitempty"`
-		ConflictingRefs []string             `json:"pr_testing_conflicting_refs,omitempty"`
-	}{projRef, projVars, projectAliases, conflictingRefs}
+		ProjectAliases  []model.ProjectAlias    `json:"aliases,omitempty"`
+		ConflictingRefs []string                `json:"pr_testing_conflicting_refs,omitempty"`
+		GithubHook      restModel.APIGithubHook `json:"github_hook"`
+	}{projRef, projVars, projectAliases, conflictingRefs, apiHook}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
@@ -261,26 +281,52 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.SetupGithubHook {
-		if projectVars.GithubHookID == 0 {
-			if projectVars.GithubHookID, err = uis.setupGithubHook(projectRef); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
-			}
+		hook, err := model.FindGithubHook(responseRef.Owner, responseRef.Repo)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
 		}
 
-	} else {
-		if projectVars.GithubHookID != 0 {
-			if err = uis.deleteGithubHook(projectRef, projectVars.GithubHookID); err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, err)
-				return
+		if hook == nil {
+			hookID, err := uis.setupGithubHook(projectRef)
+			if err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"source":  "project edit",
+					"message": "can't setup webhook",
+					"project": id,
+					"owner":   responseRef.Owner,
+					"repo":    responseRef.Repo,
+				}))
+				// don't kill it here, sometimes people change
+				// Evergreen to track a personal branch,
+				// one that we have no access to
+
+			} else {
+				hook := model.GithubHook{
+					HookID: hookID,
+					Owner:  responseRef.Owner,
+					Repo:   responseRef.Repo,
+				}
+				if err = hook.Insert(); err != nil {
+					// A github hook as been created, but we couldn't
+					// save the hook ID in our database. This needs
+					// manual attention for clean up
+					grip.Alert(message.WrapError(err, message.Fields{
+						"source":  "project edit",
+						"message": "can't save hook",
+						"project": id,
+						"owner":   responseRef.Owner,
+						"repo":    responseRef.Repo,
+						"hook_id": hookID,
+					}))
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+					return
+				}
 			}
-			projectVars.GithubHookID = 0
-			projectRef.TracksPushEvents = false
-			projectRef.PRTestingEnabled = false
 		}
 	}
 
-	if projectVars.GithubHookID != 0 && responseRef.ForceRepotrackerRun {
+	if responseRef.ForceRepotrackerRun {
 		j := units.NewRepotrackerJob(fmt.Sprintf("ui-triggered-job-%d", job.GetNumber()), projectRef.Identifier)
 		if err = uis.queue.Put(j); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -475,36 +521,4 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 	}
 
 	return *hook.ID, nil
-}
-
-func (uis *UIServer) deleteGithubHook(projectRef *model.ProjectRef, hookID int) error {
-	token, err := uis.Settings.GetGithubOauthToken()
-	if err != nil {
-		return err
-	}
-
-	if uis.Settings.Api.GithubWebhookSecret == "" {
-		return errors.New("Evergreen is not configured for Github Webhooks")
-	}
-
-	httpClient, err := util.GetHttpClientForOauth2(token)
-	if err != nil {
-		return err
-	}
-	defer util.PutHttpClientForOauth2(httpClient)
-	client := github.NewClient(httpClient)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	resp, err := client.Repositories.DeleteHook(ctx, projectRef.Owner, projectRef.Repo, hookID)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
-		return errors.Errorf("unexpected data from github: status code was %d %s",
-			resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
-	return nil
 }

@@ -131,7 +131,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         function(resp) {
           var data_put = resp.data;
           item = Object.assign({}, $scope.settingsFormData);
-          item["setup_github_hook"] = false;
+          item.setup_github_hook = false;
+          item.pr_testing_enabled = false;
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
@@ -167,9 +168,15 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         var data = resp.data;
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
+        if(data.ProjectVars === null) {
+            data.ProjectVars = {}
+        }
+        if(data.ProjectRef === null) {
+            data.ProjectRef = {}
+        }
         $scope.projectVars = data.ProjectVars.vars || {};
         $scope.privateVars = data.ProjectVars.private_vars || {};
-        $scope.githubHookId = data.ProjectVars.github_hook_id || 0;
+        $scope.githubHookID = data.github_hook.hook_id || 0;
         $scope.prTestingConflicts = data.pr_testing_conflicting_refs || [];
         $scope.prTestingEnabled = data.ProjectRef.pr_testing_enabled || false,
 
@@ -208,7 +215,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
           admins : $scope.projectRef.admins || [],
-          setup_github_hook: $scope.githubHookId != 0,
+          setup_github_hook: $scope.githubHookID != 0,
           tracks_push_events: data.ProjectRef.tracks_push_events || false,
           pr_testing_enabled: data.ProjectRef.pr_testing_enabled || false,
           force_repotracker_run: false,
