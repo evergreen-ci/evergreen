@@ -147,7 +147,7 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 			grip.Debugln(message, "marking as failed")
 			if detail != nil {
 				updates := StatusChanges{}
-				return errors.WithStack(MarkEnd(t.Id, origin, time.Now(), detail, p, false, &updates))
+				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, p, false, &updates))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -337,16 +337,8 @@ func doStepback(t *task.Task) error {
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
-func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
+func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
 	p *Project, deactivatePrevious bool, updates *StatusChanges) error {
-
-	t, err := task.FindOne(task.ById(taskId))
-	if err != nil {
-		return err
-	}
-	if t == nil {
-		return errors.Errorf("Task not found for taskId: %s", taskId)
-	}
 
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
@@ -360,7 +352,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		return nil
 	}
 
-	err = t.MarkEnd(finishTime, detail)
+	err := t.MarkEnd(finishTime, detail)
 	if err != nil {
 		return err
 	}

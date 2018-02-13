@@ -139,7 +139,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// mark task as finished
 	updates := model.StatusChanges{}
-	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details,
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details,
 		project, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
