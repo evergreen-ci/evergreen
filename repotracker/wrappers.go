@@ -9,10 +9,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// use sentinel error values to provide compatibility with the original system
-var (
-	errProjectDisabled  = errors.New("project disabled")
-	errEncounteredError = errors.New("repotracker encountered error")
+const (
+	// the repotracker polls version control (github) for new commits
+	RunnerName = "repotracker"
+
+	// githubAPILimitCeiling is arbitrary but corresponds to when we start logging errors in
+	// thirdparty/github.go/getGithubRateLimit
+	githubAPILimitCeiling = 20
 )
 
 func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracker, error) {
@@ -36,7 +39,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 
 func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef, num int) error {
 	if !project.Enabled {
-		return errors.Wrap(errProjectDisabled, project.String())
+		return errors.Errorf("project disabled: %s", project.Identifier)
 	}
 
 	tracker, err := getTracker(conf, project)
@@ -56,7 +59,7 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 			"runner":  RunnerName,
 		}))
 
-		return errors.Wrap(errEncounteredError, err.Error())
+		return errors.Wrap(err, "repotracker encoutnered error")
 	}
 
 	return nil
@@ -64,7 +67,7 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 
 func ActivateBuildsForProject(conf *evergreen.Settings, project model.ProjectRef) error {
 	if !project.Enabled {
-		return errors.Wrap(errProjectDisabled, project.String())
+		return errors.Errorf("project disabled: %s", project.Identifier)
 	}
 
 	tracker, err := getTracker(conf, project)
