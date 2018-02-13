@@ -380,6 +380,29 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {
 	s.NoError(s.ctx.AbortPatchesFromPullRequest(event))
 }
 
+func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
+	eventInterface, err := github.ParseWebHook("pull_request", s.prBody)
+	s.NoError(err)
+	event, ok := eventInterface.(*github.PullRequestEvent)
+	s.True(ok)
+	owner, repo, err := verifyPullRequestEventForAbort(event)
+	s.Equal("pull request data is malformed", err.Error())
+
+	now := time.Now().Round(time.Millisecond)
+	event.PullRequest.ClosedAt = &now
+	event.Repo.FullName = github.String("somethingmalformed")
+	owner, repo, err = verifyPullRequestEventForAbort(event)
+	s.Error(err)
+	s.Empty(owner)
+	s.Empty(repo)
+
+	event.Repo.FullName = github.String("baxterthehacker/public-repo")
+	owner, repo, err = verifyPullRequestEventForAbort(event)
+	s.NoError(err)
+	s.Equal("baxterthehacker", owner)
+	s.Equal("public-repo", repo)
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Tests for change patch status route
