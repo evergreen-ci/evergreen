@@ -95,8 +95,11 @@ func (s *generateSuite) TestExecuteSuccess() {
 	tmpFile := f.Name()
 	tmpFileBase := filepath.Base(tmpFile)
 	defer os.Remove(tmpFile)
-	f.WriteString(s.json)
-	f.Close()
+
+	n, err := f.WriteString(s.json)
+	s.NoError(err)
+	s.Equal(len(s.json), n)
+	s.NoError(f.Close())
 
 	c := &generateTask{Files: []string{tmpFileBase}}
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))

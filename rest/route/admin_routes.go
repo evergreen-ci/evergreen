@@ -2,6 +2,7 @@ package route
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -82,8 +83,12 @@ func (h *adminPostHandler) Handler() RequestHandler {
 
 func (h *adminPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	if err := util.ReadJSONInto(r.Body, &h.model); err != nil {
-		return err
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf("error reading request: %s", err.Error()),
+		}
 	}
+
 	return nil
 }
 

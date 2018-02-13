@@ -59,6 +59,8 @@ lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
+lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
+lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
 # end lint configuration
 
 

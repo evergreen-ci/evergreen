@@ -281,7 +281,8 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		as.WriteJSON(w, http.StatusOK, "patch updated")
 	case "finalize":
-		githubOauthToken, err := as.Settings.GetGithubOauthToken()
+		var githubOauthToken string
+		githubOauthToken, err = as.Settings.GetGithubOauthToken()
 		if err != nil {
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return

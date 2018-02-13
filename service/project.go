@@ -281,7 +281,8 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if responseRef.SetupGithubHook {
-		hook, err := model.FindGithubHook(responseRef.Owner, responseRef.Repo)
+		var hook *model.GithubHook
+		hook, err = model.FindGithubHook(responseRef.Owner, responseRef.Repo)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

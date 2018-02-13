@@ -21,8 +21,9 @@ type GithubHook struct {
 
 var (
 	hookIDKey = bsonutil.MustHaveTag(GithubHook{}, "HookID") //nolint: deadcode, megacheck
-	ownerKey  = bsonutil.MustHaveTag(GithubHook{}, "Owner")
-	repoKey   = bsonutil.MustHaveTag(GithubHook{}, "Repo")
+
+	ownerKey = bsonutil.MustHaveTag(GithubHook{}, "Owner")
+	repoKey  = bsonutil.MustHaveTag(GithubHook{}, "Repo")
 )
 
 func (h *GithubHook) Insert() error {
