@@ -1,7 +1,6 @@
 package units
 
 import (
-	"context"
 	"errors"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,7 +15,6 @@ import (
 
 const (
 	amboyStatsCollectorJobName = "amboy-stats-collector"
-	numAmboyJobsToReport       = 128
 )
 
 func init() {
@@ -25,9 +23,11 @@ func init() {
 }
 
 type amboyStatsCollector struct {
-	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	env      evergreen.Environment
-	logger   grip.Journaler
+	ExcludeLocal  bool `bson:"exclude_local" json:"exclude_local" yaml:"exclude_local"`
+	ExcludeRemote bool `bson:"exclude_remote" json:"exclude_remote" yaml:"exclude_remote"`
+	job.Base      `bson:"job_base" json:"job_base" yaml:"job_base"`
+	env           evergreen.Environment
+	logger        grip.Journaler
 }
 
 // NewAmboyStatsCollector reports the status of the local and remote
@@ -37,6 +37,26 @@ func NewAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
 	j.env = env
 	j.SetID(id)
 
+	return j
+}
+
+// NewLocalAmboyStatsCollector reports the status of only the local queue
+// registered in the evergreen service Environment.
+func NewLocalAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
+	j := makeAmboyStatsCollector()
+	j.ExcludeRemote = true
+	j.env = env
+	j.SetID(id)
+	return j
+}
+
+// NewRemoteAmboyStatsCollector reports the status of only the remote queue
+// registered in the evergreen service Environment.
+func NewRemoteAmboyStatsCollector(env evergreen.Environment, id string) amboy.Job {
+	j := makeAmboyStatsCollector()
+	j.ExcludeLocal = true
+	j.env = env
+	j.SetID(id)
 	return j
 }
 
@@ -59,27 +79,25 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 
 func (j *amboyStatsCollector) Run() {
 	defer j.MarkComplete()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	if j.env == nil {
 		j.AddError(errors.New("environment is not configured"))
 		return
 	}
 
-	if localQueue := j.env.LocalQueue(); localQueue.Started() {
+	localQueue := j.env.LocalQueue()
+	if !j.ExcludeLocal && (localQueue != nil && localQueue.Started()) {
 		j.logger.Info(message.Fields{
 			"message": "amboy local queue stats",
 			"stats":   localQueue.Stats(),
-			"report":  amboy.Report(ctx, localQueue, numAmboyJobsToReport),
 		})
 	}
 
-	if remoteQueue := j.env.RemoteQueue(); remoteQueue.Started() {
+	remoteQueue := j.env.RemoteQueue()
+	if !j.ExcludeRemote && (remoteQueue != nil && remoteQueue.Started()) {
 		j.logger.Info(message.Fields{
 			"message": "amboy remote queue stats",
 			"stats":   remoteQueue.Stats(),
-			// "report":  amboy.Report(ctx, remoteQueue, numAmboyJobsToReport),
 		})
 	}
 }
