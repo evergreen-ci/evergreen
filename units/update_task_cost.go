@@ -79,58 +79,57 @@ func (j *collectTaskEndDataJob) Run() {
 		return
 	}
 
-	historicRuntime, err := j.task.GetHistoricRuntime()
-	if err != nil {
-		j.AddError(err)
-		grip.Warning(message.WrapError(err, message.Fields{
-			"message":      "problem computing historic runtime",
-			"task_id":      j.task.Id,
-			"task":         j.task.DisplayName,
-			"execution":    j.task.Execution,
-			"requester":    j.task.Requester,
-			"activated_by": j.task.ActivatedBy,
-			"project":      j.task.Project,
-			"variant":      j.task.BuildVariant,
-		}))
-	} else {
-		grip.Info(message.Fields{
-			"stat":                 "average-task-runtime",
-			"task_id":              j.task.Id,
-			"task":                 j.task.DisplayName,
-			"execution":            j.task.Execution,
-			"requester":            j.task.Requester,
-			"activated_by":         j.task.ActivatedBy,
-			"project":              j.task.Project,
-			"variant":              j.task.BuildVariant,
-			"average_runtime_secs": historicRuntime.Seconds(),
-			"current_runtime_secs": j.task.FinishTime.Sub(j.task.StartTime).Seconds(),
-		})
-	}
-
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
 	settings := j.env.Settings()
 
+	var cost float64
+
 	manager, err := cloud.GetCloudManager(j.host.Provider, settings)
 	if err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
-		return
+	} else {
+		if calc, ok := manager.(cloud.CloudCostCalculator); ok {
+			cost, err = calc.CostForDuration(j.host, j.task.StartTime, j.task.FinishTime)
+			if err != nil {
+				j.AddError(err)
+			} else {
+				if err = j.task.SetCost(cost); err != nil {
+					j.AddError(err)
+				}
+			}
+		}
 	}
-	if calc, ok := manager.(cloud.CloudCostCalculator); ok {
-		grip.Infoln("Calculating cost for task:", j.task.Id)
-		cost, err := calc.CostForDuration(j.host, j.task.StartTime, j.task.FinishTime)
-		if err != nil {
-			j.AddError(err)
-			grip.Errorf("calculating cost for task %s: %+v ", j.task.Id, err)
-			return
-		}
-		if err := j.task.SetCost(cost); err != nil {
-			j.AddError(err)
-			grip.Errorf("Error updating cost for task %s: %+v ", j.task.Id, err)
-			return
-		}
+
+	msg := message.Fields{
+		"stat":         "task-end-stats",
+		"task_id":      j.task.Id,
+		"task":         j.task.DisplayName,
+		"execution":    j.task.Execution,
+		"requester":    j.task.Requester,
+		"activated_by": j.task.ActivatedBy,
+		"project":      j.task.Project,
+		"variant":      j.task.BuildVariant,
+		"distro":       j.host.Distro.Id,
+		"provider":     j.host.Distro.Provider,
+		"host":         j.host.Id,
+	}
+
+	if cost != 0 {
+		msg["cost"] = cost
+	}
+
+	historicRuntime, err := j.task.GetHistoricRuntime()
+	if err != nil {
+		msg[message.FieldsMsgName] = "problem computing historic runtime"
+		grip.Warning(message.WrapError(err, msg))
+		j.AddError(err)
+	} else {
+		msg["average_runtime_secs"] = historicRuntime.Seconds()
+		msg["current_runtime_secs"] = j.task.FinishTime.Sub(j.task.StartTime).Seconds()
+		grip.Info(msg)
 	}
 }

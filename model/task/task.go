@@ -1289,7 +1289,7 @@ func (t *Task) GetDisplayTask() (*Task, error) {
 }
 
 func (t *Task) GetHistoricRuntime() (time.Duration, error) {
-	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-30*24*7*time.Hour), t.FinishTime.Add(-time.Second))
+	runtimes, err := getExpectedDurationsForWindow(t.DisplayName, t.Project, t.BuildVariant, t.FinishTime.Add(-oneMonthIsh), t.FinishTime.Add(-time.Second))
 	if err != nil {
 		return 0, errors.WithStack(err)
 	}
