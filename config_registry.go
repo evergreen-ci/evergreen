@@ -8,7 +8,7 @@ import (
 	"github.com/mongodb/grip"
 )
 
-var configRegistry *configSectionRegistry
+var configRegistry *ConfigSectionRegistry
 
 func init() {
 
@@ -17,14 +17,14 @@ func init() {
 	}
 }
 
-type configSectionRegistry struct {
+type ConfigSectionRegistry struct {
 	mu       sync.RWMutex
-	sections map[string]configSection
+	sections map[string]ConfigSection
 }
 
 func resetRegistry() error {
 	// add any new config sections to the variable below to register them
-	configSections := []configSection{
+	ConfigSections := []ConfigSection{
 		&AlertsConfig{},
 		&AmboyConfig{},
 		&APIConfig{},
@@ -45,20 +45,20 @@ func resetRegistry() error {
 	configRegistry = newConfigSectionRegistry()
 	catcher := grip.NewSimpleCatcher()
 
-	for _, section := range configSections {
+	for _, section := range ConfigSections {
 		catcher.Add(configRegistry.registerSection(section.id(), section))
 	}
 
 	return catcher.Resolve()
 }
 
-func newConfigSectionRegistry() *configSectionRegistry {
-	return &configSectionRegistry{
-		sections: map[string]configSection{},
+func newConfigSectionRegistry() *ConfigSectionRegistry {
+	return &ConfigSectionRegistry{
+		sections: map[string]ConfigSection{},
 	}
 }
 
-func (r *configSectionRegistry) registerSection(id string, section configSection) error {
+func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -73,7 +73,7 @@ func (r *configSectionRegistry) registerSection(id string, section configSection
 	return nil
 }
 
-func (r *configSectionRegistry) getSections() map[string]configSection {
+func (r *ConfigSectionRegistry) getSections() map[string]ConfigSection {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

@@ -140,7 +140,7 @@ func (s *AdminSuite) TestBaseConfig() {
 		SuperUsers: []string{"user"},
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -177,7 +177,7 @@ func (s *AdminSuite) TestServiceFlags() {
 		GithubStatusAPIDisabled:      true,
 	}
 
-	err := testFlags.set()
+	err := testFlags.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -198,7 +198,7 @@ func (s *AdminSuite) TestAlertsConfig() {
 		},
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -215,7 +215,7 @@ func (s *AdminSuite) TestAmboyConfig() {
 		LocalStorage:   30,
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -229,7 +229,7 @@ func (s *AdminSuite) TestApiConfig() {
 		GithubWebhookSecret: "secret",
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -255,7 +255,7 @@ func (s *AdminSuite) TestAuthConfig() {
 		},
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -268,7 +268,7 @@ func (s *AdminSuite) TestHostinitConfig() {
 		SSHTimeoutSeconds: 10,
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -284,7 +284,7 @@ func (s *AdminSuite) TestJiraConfig() {
 		DefaultProject: "proj",
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -298,7 +298,7 @@ func (s *AdminSuite) TestNewRelicConfig() {
 		LicenseKey:      "key",
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -319,7 +319,7 @@ func (s *AdminSuite) TestNotifyConfig() {
 		},
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -358,7 +358,7 @@ func (s *AdminSuite) TestProvidersConfig() {
 		},
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -373,7 +373,7 @@ func (s *AdminSuite) TestRepotrackerConfig() {
 		MaxConcurrentRequests:      30,
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -387,7 +387,7 @@ func (s *AdminSuite) TestSchedulerConfig() {
 		TaskFinder:  "task_finder",
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -406,7 +406,7 @@ func (s *AdminSuite) TestSlackConfig() {
 		Level: "info",
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)
@@ -426,7 +426,7 @@ func (s *AdminSuite) TestUiConfig() {
 		CsrfKey:        "csrf",
 	}
 
-	err := config.set()
+	err := config.Set()
 	s.NoError(err)
 	settings, err := GetConfig()
 	s.NoError(err)

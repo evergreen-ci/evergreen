@@ -67,14 +67,14 @@ type AuthConfig struct {
 }
 
 func (c *AuthConfig) id() string { return "auth" }
-func (c *AuthConfig) get() error {
+func (c *AuthConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *AuthConfig) set() error {
+func (c *AuthConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"crowd":  c.Crowd,
@@ -84,7 +84,7 @@ func (c *AuthConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *AuthConfig) validateAndDefault() error {
+func (c *AuthConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	if c.Crowd == nil && c.Naive == nil && c.Github == nil {
 		catcher.Add(errors.New("You must specify one form of authentication"))
@@ -114,14 +114,14 @@ type RepoTrackerConfig struct {
 }
 
 func (c *RepoTrackerConfig) id() string { return "repotracker" }
-func (c *RepoTrackerConfig) get() error {
+func (c *RepoTrackerConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *RepoTrackerConfig) set() error {
+func (c *RepoTrackerConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"revs_to_fetch":      c.NumNewRepoRevisionsToFetch,
@@ -131,7 +131,7 @@ func (c *RepoTrackerConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *RepoTrackerConfig) validateAndDefault() error { return nil }
+func (c *RepoTrackerConfig) ValidateAndDefault() error { return nil }
 
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
@@ -151,14 +151,14 @@ type APIConfig struct {
 }
 
 func (c *APIConfig) id() string { return "api" }
-func (c *APIConfig) get() error {
+func (c *APIConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *APIConfig) set() error {
+func (c *APIConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"http_listen_addr":      c.HttpListenAddr,
@@ -167,7 +167,7 @@ func (c *APIConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *APIConfig) validateAndDefault() error { return nil }
+func (c *APIConfig) ValidateAndDefault() error { return nil }
 
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
@@ -193,14 +193,14 @@ type UIConfig struct {
 }
 
 func (c *UIConfig) id() string { return "ui" }
-func (c *UIConfig) get() error {
+func (c *UIConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *UIConfig) set() error {
+func (c *UIConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"url":              c.Url,
@@ -215,7 +215,7 @@ func (c *UIConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *UIConfig) validateAndDefault() error {
+func (c *UIConfig) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
 	if c.Secret == "" {
 		catcher.Add(errors.New("UI Secret must not be empty"))
@@ -238,14 +238,14 @@ type HostInitConfig struct {
 }
 
 func (c *HostInitConfig) id() string { return "hostinit" }
-func (c *HostInitConfig) get() error {
+func (c *HostInitConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *HostInitConfig) set() error {
+func (c *HostInitConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"ssh_timeout_secs": c.SSHTimeoutSeconds,
@@ -253,7 +253,7 @@ func (c *HostInitConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *HostInitConfig) validateAndDefault() error { return nil }
+func (c *HostInitConfig) ValidateAndDefault() error { return nil }
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
@@ -261,14 +261,14 @@ type NotifyConfig struct {
 }
 
 func (c *NotifyConfig) id() string { return "notify" }
-func (c *NotifyConfig) get() error {
+func (c *NotifyConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *NotifyConfig) set() error {
+func (c *NotifyConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"smtp": c.SMTP,
@@ -276,7 +276,7 @@ func (c *NotifyConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *NotifyConfig) validateAndDefault() error {
+func (c *NotifyConfig) ValidateAndDefault() error {
 	notifyConfig := c.SMTP
 
 	if notifyConfig == nil {
@@ -316,14 +316,14 @@ type SchedulerConfig struct {
 }
 
 func (c *SchedulerConfig) id() string { return "scheduler" }
-func (c *SchedulerConfig) get() error {
+func (c *SchedulerConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *SchedulerConfig) set() error {
+func (c *SchedulerConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"merge_toggle": c.MergeToggle,
@@ -332,7 +332,7 @@ func (c *SchedulerConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *SchedulerConfig) validateAndDefault() error {
+func (c *SchedulerConfig) ValidateAndDefault() error {
 	finders := []string{"legacy", "alternate", "parallel", "pipeline"}
 
 	if c.TaskFinder == "" {
@@ -359,14 +359,14 @@ type CloudProviders struct {
 }
 
 func (c *CloudProviders) id() string { return "providers" }
-func (c *CloudProviders) get() error {
+func (c *CloudProviders) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *CloudProviders) set() error {
+func (c *CloudProviders) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"aws":       c.AWS,
@@ -378,7 +378,7 @@ func (c *CloudProviders) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *CloudProviders) validateAndDefault() error { return nil }
+func (c *CloudProviders) ValidateAndDefault() error { return nil }
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
@@ -433,14 +433,14 @@ type JiraConfig struct {
 }
 
 func (c *JiraConfig) id() string { return "jira" }
-func (c *JiraConfig) get() error {
+func (c *JiraConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *JiraConfig) set() error {
+func (c *JiraConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"host":            c.Host,
@@ -451,7 +451,7 @@ func (c *JiraConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *JiraConfig) validateAndDefault() error { return nil }
+func (c *JiraConfig) ValidateAndDefault() error { return nil }
 func (j JiraConfig) GetHostURL() string {
 	if strings.HasPrefix("http", j.Host) {
 		return j.Host
@@ -469,14 +469,14 @@ type AlertsConfig struct {
 }
 
 func (c *AlertsConfig) id() string { return "alerts" }
-func (c *AlertsConfig) get() error {
+func (c *AlertsConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *AlertsConfig) set() error {
+func (c *AlertsConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"smtp": c.SMTP,
@@ -484,7 +484,7 @@ func (c *AlertsConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *AlertsConfig) validateAndDefault() error { return nil }
+func (c *AlertsConfig) ValidateAndDefault() error { return nil }
 
 type WriteConcern struct {
 	W        int    `yaml:"w"`
@@ -514,14 +514,14 @@ func (c LoggerConfig) Info() send.LevelInfo {
 	}
 }
 func (c *LoggerConfig) id() string { return "logger_config" }
-func (c *LoggerConfig) get() error {
+func (c *LoggerConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *LoggerConfig) set() error {
+func (c *LoggerConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"buffer":          c.Buffer,
@@ -531,7 +531,7 @@ func (c *LoggerConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *LoggerConfig) validateAndDefault() error {
+func (c *LoggerConfig) ValidateAndDefault() error {
 	if c.Buffer.DurationSeconds == 0 {
 		c.Buffer.DurationSeconds = defaultLogBufferingDuration
 	}
@@ -566,14 +566,14 @@ type AmboyConfig struct {
 }
 
 func (c *AmboyConfig) id() string { return "amboy" }
-func (c *AmboyConfig) get() error {
+func (c *AmboyConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *AmboyConfig) set() error {
+func (c *AmboyConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"name":               c.Name,
@@ -585,7 +585,7 @@ func (c *AmboyConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *AmboyConfig) validateAndDefault() error {
+func (c *AmboyConfig) ValidateAndDefault() error {
 	if c.Name == "" {
 		c.Name = defaultAmboyQueueName
 	}
@@ -616,14 +616,14 @@ type SlackConfig struct {
 }
 
 func (c *SlackConfig) id() string { return "slack" }
-func (c *SlackConfig) get() error {
+func (c *SlackConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *SlackConfig) set() error {
+func (c *SlackConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"options": c.Options,
@@ -633,7 +633,7 @@ func (c *SlackConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *SlackConfig) validateAndDefault() error {
+func (c *SlackConfig) ValidateAndDefault() error {
 	if c.Options == nil {
 		c.Options = &send.SlackOptions{}
 	}
@@ -665,14 +665,14 @@ type NewRelicConfig struct {
 }
 
 func (c *NewRelicConfig) id() string { return "new_relic" }
-func (c *NewRelicConfig) get() error {
+func (c *NewRelicConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *NewRelicConfig) set() error {
+func (c *NewRelicConfig) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			"application_name": c.ApplicationName,
@@ -681,7 +681,7 @@ func (c *NewRelicConfig) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *NewRelicConfig) validateAndDefault() error { return nil }
+func (c *NewRelicConfig) ValidateAndDefault() error { return nil }
 
 // ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
@@ -700,14 +700,14 @@ type ServiceFlags struct {
 }
 
 func (c *ServiceFlags) id() string { return "service_flags" }
-func (c *ServiceFlags) get() error {
+func (c *ServiceFlags) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *ServiceFlags) set() error {
+func (c *ServiceFlags) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			taskDispatchKey:                 c.TaskDispatchDisabled,
@@ -726,7 +726,7 @@ func (c *ServiceFlags) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *ServiceFlags) validateAndDefault() error { return nil }
+func (c *ServiceFlags) ValidateAndDefault() error { return nil }
 
 // supported banner themes in Evergreen
 type BannerTheme string
@@ -793,14 +793,14 @@ type Settings struct {
 }
 
 func (c *Settings) id() string { return configDocID }
-func (c *Settings) get() error {
+func (c *Settings) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.id())), c)
 	if err != nil && err.Error() == errNotFound {
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.id())
 }
-func (c *Settings) set() error {
+func (c *Settings) Set() error {
 	_, err := legacyDB.Upsert(ConfigCollection, byId(c.id()), bson.M{
 		"$set": bson.M{
 			apiUrlKey:             c.ApiUrl,
@@ -822,11 +822,8 @@ func (c *Settings) set() error {
 	})
 	return errors.Wrapf(err, "error updating section %s", c.id())
 }
-func (c *Settings) validateAndDefault() error {
+func (c *Settings) ValidateAndDefault() error {
 	catcher := grip.NewSimpleCatcher()
-	if c.Database.Url == "" || c.Database.DB == "" {
-		catcher.Add(errors.New("DBUrl and DB must not be empty"))
-	}
 	if c.ApiUrl == "" {
 		catcher.Add(errors.New("API hostname must not be empty"))
 	}
@@ -845,17 +842,17 @@ func (c *Settings) validateAndDefault() error {
 	return nil
 }
 
-// configSection defines a sub-document in the evegreen config
+// ConfigSection defines a sub-document in the evegreen config
 // any config sections must also be added to registry.go
-type configSection interface {
+type ConfigSection interface {
 	// id() returns the ID of the section to be used in the database document and struct tag
 	id() string
-	// get() populates the section from the DB
-	get() error
-	// set() upserts the section document into the DB
-	set() error
-	// validateAndDefault() validates input and sets defaults
-	validateAndDefault() error
+	// Get() populates the section from the DB
+	Get() error
+	// Set() upserts the section document into the DB
+	Set() error
+	// ValidateAndDefault() validates input and sets defaults
+	ValidateAndDefault() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -879,7 +876,7 @@ func GetConfig() (*Settings, error) {
 	config := &Settings{}
 
 	// retrieve the root config document
-	if err := config.get(); err != nil {
+	if err := config.Get(); err != nil {
 		return nil, err
 	}
 
@@ -904,7 +901,7 @@ func GetConfig() (*Settings, error) {
 		}
 
 		// retrieve the section's document from the db
-		if err := section.get(); err != nil {
+		if err := section.Get(); err != nil {
 			catcher.Add(errors.Wrapf(err, "error populating section %s", sectionId))
 			continue
 		}
@@ -928,7 +925,7 @@ func GetConfig() (*Settings, error) {
 // UpdateConfig updates all evergreen settings documents in DB
 func UpdateConfig(config *Settings) error {
 	// update the root config document
-	if err := config.set(); err != nil {
+	if err := config.Set(); err != nil {
 		return err
 	}
 
@@ -955,13 +952,13 @@ func UpdateConfig(config *Settings) error {
 		// convert the pointer to that struct to an empty interface
 		propInterface := valPointer.Addr().Interface()
 
-		// type assert to the configSection interface
-		section, ok := propInterface.(configSection)
+		// type assert to the ConfigSection interface
+		section, ok := propInterface.(ConfigSection)
 		if !ok {
 			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
 			continue
 		}
-		catcher.Add(section.set())
+		catcher.Add(section.Set())
 	}
 
 	return errors.WithStack(catcher.Resolve())
@@ -973,7 +970,7 @@ func (settings *Settings) Validate() error {
 	catcher := grip.NewSimpleCatcher()
 
 	// validate the root-level settings struct
-	catcher.Add(settings.validateAndDefault())
+	catcher.Add(settings.ValidateAndDefault())
 
 	// validate each sub-document
 	valConfig := reflect.ValueOf(*settings)
@@ -989,7 +986,7 @@ func (settings *Settings) Validate() error {
 		propName := valConfig.Type().Field(i).Name
 		propVal := valConfig.FieldByName(propName)
 
-		// the goal is to convert this struct which we know implements configSection
+		// the goal is to convert this struct which we know implements ConfigSection
 		// from a reflection data structure back to the interface
 		// the below creates a copy and takes the address of it as a workaround because
 		// you can't take the address of it via reflection for some reason
@@ -1002,13 +999,13 @@ func (settings *Settings) Validate() error {
 		// convert the pointer to that struct to an empty interface
 		propInterface := valPointer.Addr().Interface()
 
-		// type assert to the configSection interface
-		section, ok := propInterface.(configSection)
+		// type assert to the ConfigSection interface
+		section, ok := propInterface.(ConfigSection)
 		if !ok {
 			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
 			continue
 		}
-		err := section.validateAndDefault()
+		err := section.ValidateAndDefault()
 		if err != nil {
 			catcher.Add(err)
 			continue

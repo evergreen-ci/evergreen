@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
@@ -104,9 +106,18 @@ func (s *AdminDataSuite) SetupSuite() {
 func (s *AdminDataSuite) TestSetAndGetSettings() {
 	u := &user.DBUser{Id: "user"}
 	testSettings := testutil.MockConfig()
-	err := s.ctx.SetEvergreenSettings(testSettings, u)
+	// convert the DB model to an API model
+	restSettings := restModel.NewConfigModel()
+	err := restSettings.BuildFromService(testSettings)
 	s.NoError(err)
 
+	// try to set the DB model with this API model
+	oldSettings, err := evergreen.GetConfig()
+	s.NoError(err)
+	_, err = s.ctx.SetEvergreenSettings(restSettings, oldSettings, u, true)
+	s.NoError(err)
+
+	// read the settings and spot check values
 	settingsFromConnector, err := s.ctx.GetEvergreenSettings()
 	s.NoError(err)
 	s.EqualValues(testSettings.Banner, settingsFromConnector.Banner)
@@ -123,6 +134,64 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
 	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.EqualValues(testSettings.HostInit.SSHTimeoutSeconds, settingsFromConnector.HostInit.SSHTimeoutSeconds)
+	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
+	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
+	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)
+	s.EqualValues(testSettings.NewRelic.ApplicationName, settingsFromConnector.NewRelic.ApplicationName)
+	s.EqualValues(testSettings.Notify.SMTP.From, settingsFromConnector.Notify.SMTP.From)
+	s.EqualValues(testSettings.Notify.SMTP.Port, settingsFromConnector.Notify.SMTP.Port)
+	s.Equal(len(testSettings.Notify.SMTP.AdminEmail), len(settingsFromConnector.Notify.SMTP.AdminEmail))
+	s.EqualValues(testSettings.Providers.AWS.Id, settingsFromConnector.Providers.AWS.Id)
+	s.EqualValues(testSettings.Providers.Docker.APIVersion, settingsFromConnector.Providers.Docker.APIVersion)
+	s.EqualValues(testSettings.Providers.GCE.PrivateKey, settingsFromConnector.Providers.GCE.PrivateKey)
+	s.EqualValues(testSettings.Providers.OpenStack.IdentityEndpoint, settingsFromConnector.Providers.OpenStack.IdentityEndpoint)
+	s.EqualValues(testSettings.Providers.VSphere.Host, settingsFromConnector.Providers.VSphere.Host)
+	s.EqualValues(testSettings.RepoTracker.MaxConcurrentRequests, settingsFromConnector.RepoTracker.MaxConcurrentRequests)
+	s.EqualValues(testSettings.Scheduler.TaskFinder, settingsFromConnector.Scheduler.TaskFinder)
+	s.EqualValues(testSettings.ServiceFlags.HostinitDisabled, settingsFromConnector.ServiceFlags.HostinitDisabled)
+	s.EqualValues(testSettings.Slack.Level, settingsFromConnector.Slack.Level)
+	s.EqualValues(testSettings.Slack.Options.Channel, settingsFromConnector.Slack.Options.Channel)
+	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
+	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
+
+	// test that updating the model with nil values does not change them. Not implemented for the mock connector
+	if reflect.TypeOf(s.ctx).String() == "*data.MockConnector" {
+		return
+	}
+
+	newBanner := "new banner"
+	newExpansions := map[string]string{"newkey": "newval"}
+	newHostinit := restModel.APIHostInitConfig{
+		SSHTimeoutSeconds: 999,
+	}
+	updatedSettings := restModel.APIAdminSettings{
+		Banner:     &newBanner,
+		Expansions: newExpansions,
+		HostInit:   &newHostinit,
+	}
+	oldSettings, err = evergreen.GetConfig()
+	s.NoError(err)
+	_, err = s.ctx.SetEvergreenSettings(&updatedSettings, oldSettings, u, true)
+	s.NoError(err)
+	settingsFromConnector, err = s.ctx.GetEvergreenSettings()
+	s.NoError(err)
+	// new values should be set
+	s.EqualValues(newBanner, settingsFromConnector.Banner)
+	s.EqualValues(newExpansions, settingsFromConnector.Expansions)
+	s.EqualValues(newHostinit, settingsFromConnector.HostInit)
+	// old values should still be there
+	s.EqualValues(testSettings.ServiceFlags, settingsFromConnector.ServiceFlags)
+	s.EqualValues(evergreen.Important, testSettings.BannerTheme)
+	s.EqualValues(testSettings.Alerts.SMTP.From, settingsFromConnector.Alerts.SMTP.From)
+	s.EqualValues(testSettings.Alerts.SMTP.Port, settingsFromConnector.Alerts.SMTP.Port)
+	s.Equal(len(testSettings.Alerts.SMTP.AdminEmail), len(settingsFromConnector.Alerts.SMTP.AdminEmail))
+	s.EqualValues(testSettings.Amboy.Name, settingsFromConnector.Amboy.Name)
+	s.EqualValues(testSettings.Amboy.LocalStorage, settingsFromConnector.Amboy.LocalStorage)
+	s.EqualValues(testSettings.Api.HttpListenAddr, settingsFromConnector.Api.HttpListenAddr)
+	s.EqualValues(testSettings.AuthConfig.Crowd.Username, settingsFromConnector.AuthConfig.Crowd.Username)
+	s.EqualValues(testSettings.AuthConfig.Naive.Users[0].Username, settingsFromConnector.AuthConfig.Naive.Users[0].Username)
+	s.EqualValues(testSettings.AuthConfig.Github.ClientId, settingsFromConnector.AuthConfig.Github.ClientId)
+	s.Equal(len(testSettings.AuthConfig.Github.Users), len(settingsFromConnector.AuthConfig.Github.Users))
 	s.EqualValues(testSettings.Jira.Username, settingsFromConnector.Jira.Username)
 	s.EqualValues(testSettings.LoggerConfig.DefaultLevel, settingsFromConnector.LoggerConfig.DefaultLevel)
 	s.EqualValues(testSettings.LoggerConfig.Buffer.Count, settingsFromConnector.LoggerConfig.Buffer.Count)

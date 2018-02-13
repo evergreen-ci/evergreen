@@ -82,22 +82,30 @@ func (h *adminPostHandler) Handler() RequestHandler {
 
 func (h *adminPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	if err := util.ReadJSONInto(r.Body, &h.model); err != nil {
-		return err
+		return errors.Wrap(err, "error parsing request body")
 	}
+
 	return nil
 }
 
 func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	settingsModel, err := h.model.ToService()
+	oldSettings, err := sc.GetEvergreenSettings()
 	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
+		return ResponseData{}, errors.Wrap(err, "error retrieving existing settings")
 	}
-	settings := settingsModel.(evergreen.Settings)
-	err = sc.SetEvergreenSettings(&settings, u)
+
+	// validate the changes
+	newSettings, err := sc.SetEvergreenSettings(h.model, oldSettings, u, false)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "error applying new settings")
+	}
+	err = newSettings.Validate()
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Validation error")
+	}
+
+	_, err = sc.SetEvergreenSettings(h.model, oldSettings, u, true)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
