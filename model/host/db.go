@@ -520,6 +520,35 @@ func statsByDistroPipeline() []bson.M {
 	}
 }
 
+func statsByProviderPipeline() []bson.M {
+	return []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": evergreen.UphostStatus,
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": bson.M{
+					"provider": "$" + bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey),
+				},
+				"count": bson.M{
+					"$sum": 1,
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				"provider": "$_id.provider",
+				"count":    1,
+				"_id":      0,
+			},
+		},
+	}
+}
+
 // QueryWithFullTaskPipeline returns a pipeline to match hosts and embeds the
 // task document within the host, if it's running a task
 func QueryWithFullTaskPipeline(match bson.M) []bson.M {

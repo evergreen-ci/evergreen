@@ -107,6 +107,13 @@ type StatsByDistro struct {
 	NumTasks int `bson:"num_tasks_running" json:"num_tasks_running"`
 }
 
+type StatsByProvider struct {
+	// the name of a host provider
+	Provider string `bson:"provider" json:"provider"`
+	// Number of hosts with this provider
+	Count int `bson:"count" json:"count"`
+}
+
 const (
 	MaxLCTInterval = 5 * time.Minute
 )
@@ -701,6 +708,15 @@ func (h *Host) DisablePoisonedHost() error {
 func GetStatsByDistro() ([]StatsByDistro, error) {
 	stats := []StatsByDistro{}
 	if err := db.Aggregate(Collection, statsByDistroPipeline(), &stats); err != nil {
+		return nil, err
+	}
+	return stats, nil
+}
+
+// GetProvierCounts returns data on the number of hosts by different provider stats.
+func GetProviderCounts() ([]StatsByProvider, error) {
+	stats := []StatsByProvider{}
+	if err := db.Aggregate(Collection, statsByProviderPipeline(), &stats); err != nil {
 		return nil, err
 	}
 	return stats, nil

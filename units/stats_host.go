@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const hostStatsCollectorJobName = "host-stats-collector"
@@ -49,10 +50,14 @@ func makeHostStatsCollector() *hostStatsCollector {
 func (j *hostStatsCollector) Run() {
 	defer j.MarkComplete()
 
+	j.AddError(j.statsByDistro())
+	j.AddError(j.statsByProvider())
+}
+
+func (j *hostStatsCollector) statsByDistro() {
 	hosts, err := host.GetStatsByDistro()
 	if err != nil {
-		j.AddError(err)
-		return
+		return errors.Wrap(err, "problem getting stats by distro")
 	}
 
 	tasks := 0
@@ -67,5 +72,17 @@ func (j *hostStatsCollector) Run() {
 		"hosts_total":   count,
 		"running_tasks": tasks,
 		"data":          hosts,
+	})
+}
+
+func (j *hostStatsCollector) statsByProvider() {
+	providers, err := host.GetProviderCounts()
+	if err != nil {
+		return errors.Wrap(err, "problem getting stats by provider")
+	}
+
+	j.logger.Info(message.Fields{
+		"report": "host stats by provider",
+		"data":   providers,
 	})
 }
