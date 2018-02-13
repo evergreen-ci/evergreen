@@ -77,6 +77,7 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
 	}
 	r.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
+
 	return r, nil
 }
 

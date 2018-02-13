@@ -598,7 +598,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Convey("task should not fail if there are no failed test", func() {
 			reset()
 			updates := StatusChanges{}
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -628,7 +628,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			})
 			So(err, ShouldBeNil)
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -653,7 +653,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -674,7 +674,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			updates := StatusChanges{}
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
@@ -735,7 +735,7 @@ func TestMarkEnd(t *testing.T) {
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	assert.NoError(MarkEnd(testTask.Id, userName, time.Now(), &details, p, false, &updates))
+	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, p, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 
 	Convey("with a task that is part of a display task", t, func() {
@@ -777,7 +777,7 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskFailed,
 			Type:   "system",
 		}
-		So(MarkEnd(t1.Id, "test", time.Now(), detail, p, false, &updates), ShouldBeNil)
+		So(MarkEnd(t1, "test", time.Now(), detail, p, false, &updates), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskFailed)
