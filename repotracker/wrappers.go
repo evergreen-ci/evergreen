@@ -59,7 +59,7 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 			"runner":  RunnerName,
 		}))
 
-		return errors.Wrap(err, "repotracker encoutnered error")
+		return errors.Wrap(err, "repotracker encountered error")
 	}
 
 	return nil
