@@ -164,17 +164,11 @@ type processRunner interface {
 var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&notify.Runner{},
-
-	// Note: commented out while exploring moving to amboy-based
-	// schedule.
-	//
-	// &repotracker.Runner{},
+	&monitor.Runner{},
 
 	&scheduler.Runner{},
 	&hostinit.Runner{},
 	&taskrunner.Runner{},
-
-	&monitor.Runner{},
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -197,7 +191,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	infrequentRunners := []string{
 		alerts.RunnerName,
 		notify.RunnerName,
-		// repotracker.RunnerName,
 	}
 
 	grip.Notice(message.Fields{
