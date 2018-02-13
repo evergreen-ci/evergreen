@@ -1,12 +1,15 @@
 package data
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -264,6 +267,8 @@ type PatchConnectorAbortByIdSuite struct {
 	mock     bool
 	setup    func() error
 	teardown func() error
+	prBody   []byte
+
 	suite.Suite
 }
 
@@ -322,7 +327,13 @@ func TestMockPatchConnectorAbortByIdSuite(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func (s *PatchConnectorAbortByIdSuite) SetupSuite() { s.Require().NoError(s.setup()) }
+func (s *PatchConnectorAbortByIdSuite) SetupSuite() {
+	s.Require().NoError(s.setup())
+	var err error
+	s.prBody, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "..", "route", "testdata", "pull_request.json"))
+	s.NoError(err)
+	s.Len(s.prBody, 24743)
+}
 
 func (s *PatchConnectorAbortByIdSuite) TearDownSuite() {
 	s.Require().NoError(s.teardown())
@@ -355,6 +366,41 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
 	}
 	err := s.ctx.AbortPatch(new_id.Hex(), "user")
 	s.Error(err)
+}
+
+func (s *PatchConnectorAbortByIdSuite) TestAbortByPullRequest() {
+	eventInterface, err := github.ParseWebHook("pull_request", s.prBody)
+	s.NoError(err)
+	event, ok := eventInterface.(*github.PullRequestEvent)
+	s.True(ok)
+	s.Equal("pull request data is malformed", s.ctx.AbortPatchesFromPullRequest(event).Error())
+
+	now := time.Now().Round(time.Millisecond)
+	event.PullRequest.ClosedAt = &now
+	s.NoError(s.ctx.AbortPatchesFromPullRequest(event))
+}
+
+func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
+	eventInterface, err := github.ParseWebHook("pull_request", s.prBody)
+	s.NoError(err)
+	event, ok := eventInterface.(*github.PullRequestEvent)
+	s.True(ok)
+	owner, repo, err := verifyPullRequestEventForAbort(event)
+	s.Equal("pull request data is malformed", err.Error())
+
+	now := time.Now().Round(time.Millisecond)
+	event.PullRequest.ClosedAt = &now
+	event.Repo.FullName = github.String("somethingmalformed")
+	owner, repo, err = verifyPullRequestEventForAbort(event)
+	s.Error(err)
+	s.Empty(owner)
+	s.Empty(repo)
+
+	event.Repo.FullName = github.String("baxterthehacker/public-repo")
+	owner, repo, err = verifyPullRequestEventForAbort(event)
+	s.NoError(err)
+	s.Equal("baxterthehacker", owner)
+	s.Equal("public-repo", repo)
 }
 
 ////////////////////////////////////////////////////////////////////////
