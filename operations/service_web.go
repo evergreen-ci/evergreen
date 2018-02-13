@@ -58,6 +58,10 @@ func startWebService() cli.Command {
 				return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 			})
 
+			amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
+				return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
+			})
+
 			router := mux.NewRouter()
 
 			apiHandler, err := getHandlerAPI(settings, queue, router)
