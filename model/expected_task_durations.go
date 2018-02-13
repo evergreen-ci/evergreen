@@ -18,7 +18,7 @@ const (
 	// indicates the window of completed tasks we want to use in computing
 	// average task duration. By default we use tasks that have
 	// completed within the last 7 days
-	TaskCompletionEstimateWindow = time.Duration(24*7) * time.Hour
+	TaskCompletionEstimateWindow = 24 * 7 * time.Hour
 )
 
 // ProjectTaskDurations maintans a mapping of a given project's name

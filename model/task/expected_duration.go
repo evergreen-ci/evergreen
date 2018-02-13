@@ -12,6 +12,9 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// this is about a month.
+const oneMonthIsh = 30 * 24 * time.Hour
+
 type expectedDurationResults struct {
 	DisplayName      string `bson:"_id"`
 	ExpectedDuration int64  `bson:"exp_dur"`
@@ -27,18 +30,28 @@ func getExpectedDurationsForWindow(name, project, buildvariant string, start, en
 		bsonutil.GetDottedKeyName(DetailsKey, TaskEndDetailTimedOut): bson.M{
 			"$ne": true,
 		},
-		FinishTimeKey: bson.M{
-			"$gte": end,
-		},
 		StartTimeKey: bson.M{
-			// make sure all documents have a valid start time so we don't
-			// return tasks with runtimes of multiple years
 			"$gt": start,
 		},
 	}
 
 	if name != "" {
 		match[DisplayNameKey] = name
+	}
+
+	// If we pass zerotime as a starting point then the end time
+	// means "all tasks that finshed after this point," otherwise
+	// it's a window in the conventional sense. The scheduler and
+	// the public function (ExpectedTaskDuration) use the
+	// unconventional sense of window.
+	if start == util.ZeroTime {
+		match[FinishTimeKey] = bson.M{
+			"$gte": end,
+		}
+	} else {
+		match[FinishTimeKey] = bson.M{
+			"$lte": end,
+		}
 	}
 
 	pipeline := []bson.M{
