@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -25,7 +24,6 @@ const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
 	testResultsKey    = "test_results"
-	numQueryThreads   = 16
 
 	// this regex either matches against the exact 'test' string, or
 	// against the 'test' string at the end of some kind of filepath.
@@ -781,49 +779,10 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 	tasks = append(tasks, oldTasks...)
 
 	// to join the test results, merge test results for all the tasks
-	out := []task.Task{}
-	taskChan := make(chan task.Task, len(tasks))
-	for _, t := range tasks {
-		taskChan <- t
-	}
-	close(taskChan)
-	wg := sync.WaitGroup{}
-	wg.Add(numQueryThreads)
-	resultChan := make(chan task.Task)
-	catcher := grip.NewSimpleCatcher()
-	for i := 0; i < numQueryThreads; i++ {
-		go func() {
-			defer wg.Done()
-			for t := range taskChan {
-				err := t.MergeNewTestResults() //nolint
-				if err != nil {
-					catcher.Add(errors.Wrapf(err, "error merging test results for task %s", t.Id))
-					continue
-				}
-				// strip out any test results that don't match input params
-				for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
-					result := t.LocalTestResults[j]
-					if (len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status)) ||
-						(len(params.TestNames) > 0 && !util.StringSliceContains(params.TestNames, result.TestFile)) {
-						t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-					}
-				}
-				resultChan <- t
-			}
-		}()
-	}
-	doneChan := make(chan bool)
-	go func() {
-		defer close(doneChan)
-		for t := range resultChan {
-			out = append(out, t)
-		}
-	}()
-	wg.Wait()
-	close(resultChan)
-	<-doneChan
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
+	testQuery := db.Query(formTestsQuery(params))
+	out, err := task.MergeTestResultsBulk(tasks, &testQuery)
+	if err != nil {
+		return nil, errors.Wrap(err, "error merging test results")
 	}
 	return out, nil
 }
@@ -865,6 +824,22 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 	}
 
 	return query, nil
+}
+
+func formTestsQuery(params *TestHistoryParameters) bson.M {
+	query := bson.M{}
+	if len(params.TestNames) > 0 {
+		query[testresult.TestFileKey] = bson.M{
+			"$in": params.TestNames,
+		}
+	}
+	if len(params.TestStatuses) > 0 {
+		query[testresult.StatusKey] = bson.M{
+			"$in": params.TestStatuses,
+		}
+	}
+
+	return query
 }
 
 func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
