@@ -646,6 +646,9 @@ func (p *Project) FindTaskGroup(name string) *TaskGroup {
 
 // GetTaskGroup returns the task group for a given task from its project
 func GetTaskGroup(tc *TaskConfig) (*TaskGroup, error) {
+	if tc == nil {
+		return nil, errors.New("unable to get task group: TaskConfig is nil")
+	}
 	if tc.Task == nil {
 		return nil, errors.New("unable to get task group: task is nil")
 	}
