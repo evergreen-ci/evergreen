@@ -41,7 +41,7 @@ func TestSetupReadyHosts(t *testing.T) {
 
 		hostsForTest := make([]host.Host, 10)
 		for i := 0; i < 10; i++ {
-			mockHost, err := spawnMockHost()
+			mockHost, err := spawnMockHost(ctx)
 			So(err, ShouldBeNil)
 			hostsForTest[i] = *mockHost
 		}
@@ -118,6 +118,9 @@ func TestHostIsReady(t *testing.T) {
 	}
 	mockCloud := cloud.GetMockProvider()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When hosts are spawned", t, func() {
 		testutil.HandleTestingErr(
 			db.ClearCollections(host.Collection), t, "error clearing test collections")
@@ -126,7 +129,7 @@ func TestHostIsReady(t *testing.T) {
 		hostsForTest := make([]host.Host, 10)
 		// Spawn 10 hosts
 		for i := 0; i < 10; i++ {
-			mockHost, err := spawnMockHost()
+			mockHost, err := spawnMockHost(ctx)
 			So(err, ShouldBeNil)
 			hostsForTest[i] = *mockHost
 		}
@@ -143,7 +146,7 @@ func TestHostIsReady(t *testing.T) {
 			Convey("then checking for readiness should return false", func() {
 				for i := range hostsForTest {
 					h := hostsForTest[i]
-					ready, err := hostInit.IsHostReady(&h)
+					ready, err := hostInit.IsHostReady(ctx, &h)
 					So(err, ShouldBeNil)
 					So(ready, ShouldBeFalse)
 				}
@@ -166,7 +169,7 @@ func TestHostIsReady(t *testing.T) {
 				Convey("then checking for readiness should return true", func() {
 					for i := range hostsForTest {
 						h := hostsForTest[i]
-						ready, err := hostInit.IsHostReady(&h)
+						ready, err := hostInit.IsHostReady(ctx, &h)
 						So(err, ShouldBeNil)
 						So(ready, ShouldBeTrue)
 					}
@@ -182,7 +185,7 @@ func TestHostIsReady(t *testing.T) {
 				Convey("then checking for readiness should error", func() {
 					for i := range hostsForTest {
 						h := hostsForTest[i]
-						ready, err := hostInit.IsHostReady(&h)
+						ready, err := hostInit.IsHostReady(ctx, &h)
 						So(err, ShouldNotBeNil)
 						So(ready, ShouldBeFalse)
 					}
@@ -201,7 +204,7 @@ func TestHostIsReady(t *testing.T) {
 			Convey("then checking for readiness should terminate", func() {
 				for i := range hostsForTest {
 					h := hostsForTest[i]
-					ready, err := hostInit.IsHostReady(&h)
+					ready, err := hostInit.IsHostReady(ctx, &h)
 					So(err, ShouldNotBeNil)
 					So(ready, ShouldBeFalse)
 					So(h.Status, ShouldEqual, evergreen.HostTerminated)
@@ -215,7 +218,7 @@ func TestHostIsReady(t *testing.T) {
 
 }
 
-func spawnMockHost() (*host.Host, error) {
+func spawnMockHost(ctx context.Context) (*host.Host, error) {
 	mockDistro := distro.Distro{
 		Id:       "mock_distro",
 		Arch:     "mock_arch",
@@ -229,7 +232,7 @@ func spawnMockHost() (*host.Host, error) {
 		UserHost: false,
 	}
 
-	cloudManager, err := cloud.GetCloudManager(evergreen.ProviderNameMock, testutil.TestConfig())
+	cloudManager, err := cloud.GetCloudManager(ctx, evergreen.ProviderNameMock, testutil.TestConfig())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -244,7 +247,7 @@ func spawnMockHost() (*host.Host, error) {
 	})
 
 	newHost := cloud.NewIntent(mockDistro, cloudManager.GetInstanceName(&mockDistro), evergreen.ProviderNameMock, hostOptions)
-	newHost, err = cloudManager.SpawnHost(newHost)
+	newHost, err = cloudManager.SpawnHost(ctx, newHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error spawning instance")
 	}
