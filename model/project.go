@@ -88,9 +88,9 @@ type DisplayTask struct {
 
 type BuildVariants []BuildVariant
 
-func (b BuildVariants) Len() int      { return len(b) }
-func (b BuildVariants) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
-func (b BuildVariants) Less(i, j int) { return b[i].DisplayName < b[j].DisplayName }
+func (b BuildVariants) Len() int           { return len(b) }
+func (b BuildVariants) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b BuildVariants) Less(i, j int) bool { return b[i].DisplayName < b[j].DisplayName }
 
 // Populate updates the base fields of the BuildVariantTaskUnit with
 // fields from the project task definition.
