@@ -52,7 +52,7 @@ func resetRegistry() error {
 	catcher := grip.NewSimpleCatcher()
 
 	for _, section := range ConfigSections {
-		catcher.Add(configRegistry.registerSection(section.id(), section))
+		catcher.Add(configRegistry.registerSection(section.SectionId(), section))
 	}
 
 	return catcher.Resolve()
