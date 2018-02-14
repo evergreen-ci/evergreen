@@ -177,6 +177,7 @@ func checkTask(client *http.Client, username, key string, builds []apimodels.API
 		return task, errors.Wrap(err, "error getting task data")
 	}
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(err, "error reading response body")
