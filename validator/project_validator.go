@@ -62,6 +62,7 @@ var projectSyntaxValidators = []projectValidator{
 var projectSemanticValidators = []projectValidator{
 	checkTaskCommands,
 	checkTaskGroups,
+	checkRunOnOnlyOneDistro,
 }
 
 func (vr ValidationError) Error() string {
@@ -86,7 +87,6 @@ func getDistroIds() ([]string, error) {
 
 // verify that the project configuration semantics is valid
 func CheckProjectSemantics(project *model.Project) []ValidationError {
-
 	validationErrs := []ValidationError{}
 	for _, projectSemanticValidator := range projectSemanticValidators {
 		validationErrs = append(validationErrs,
@@ -97,7 +97,6 @@ func CheckProjectSemantics(project *model.Project) []ValidationError {
 
 // verify that the project configuration syntax is valid
 func CheckProjectSyntax(project *model.Project) ([]ValidationError, error) {
-
 	validationErrs := []ValidationError{}
 	for _, projectSyntaxValidator := range projectSyntaxValidators {
 		validationErrs = append(validationErrs,
@@ -449,6 +448,44 @@ func validateBVNames(project *model.Project) []ValidationError {
 
 		}
 	}
+	return errs
+}
+
+// produce a deprecation warning for specifying more than one distro for a task or build variant.
+func checkRunOnOnlyOneDistro(project *model.Project) []ValidationError {
+	errs := []ValidationError{}
+
+	offendingBVs := []string{}
+	offendingTasks := []string{}
+
+	for _, bv := range project.BuildVariants {
+		if len(bv.RunOn) > 1 {
+			offendingBVs = append(offendingBVs, bv.Name)
+		}
+		for _, t := range bv.Tasks {
+			if len(t.Distros) > 1 {
+				offendingTasks = append(offendingTasks, fmt.Sprintf("%s.%s",
+					bv.Name, t.Name))
+			}
+		}
+	}
+
+	if len(offendingBVs) > 0 {
+		errs = append(errs, ValidationError{
+			Level: Warning,
+			Message: fmt.Sprintf("deprecated: multiple run-on distros for a single build variant. [%s]",
+				strings.Join(offendingBVs, ", ")),
+		})
+	}
+
+	if len(offendingTasks) > 0 {
+		errs = append(errs, ValidationError{
+			Level: Warning,
+			Message: fmt.Sprintf("deprecated: multiple distros specified for a single build variant task. [%s]",
+				strings.Join(offendingTasks, ", ")),
+		})
+	}
+
 	return errs
 }
 
