@@ -89,6 +89,8 @@ func ActivateBuildsForProject(conf *evergreen.Settings, project model.ProjectRef
 	return nil
 }
 
+// CheckGithubAPIResources returns true when the github API is ready,
+// accessible and with sufficient quota to satisfy our needs
 func CheckGithubAPIResources(githubToken string) bool {
 	status, err := thirdparty.GetGithubAPIStatus()
 	if err != nil {

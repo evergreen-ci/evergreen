@@ -99,9 +99,11 @@ func (j *repotrackerJob) Run() {
 	}
 
 	if !repotracker.CheckGithubAPIResources(token) {
-		j.AddError(errors.New("Github API is not ready"))
+		j.AddError(errors.Errorf("skipping repotracker run [%s] for %s because of github limit issues",
+			j.ID(), j.ProjectID))
 		return
 	}
+
 	err = repotracker.CollectRevisionsForProject(settings, *ref,
 		settings.RepoTracker.MaxRepoRevisionsToSearch)
 
