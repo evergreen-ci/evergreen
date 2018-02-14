@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -40,17 +41,17 @@ func (s *StaticSettings) Validate() error {
 	return nil
 }
 
-func (staticMgr *staticManager) SpawnHost(*host.Host) (*host.Host, error) {
+func (staticMgr *staticManager) SpawnHost(context.Context, *host.Host) (*host.Host, error) {
 	return nil, errors.New("cannot start new instances with static provider")
 }
 
 // get the status of an instance
-func (staticMgr *staticManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
+func (staticMgr *staticManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	return StatusRunning, nil
 }
 
 // get instance DNS
-func (staticMgr *staticManager) GetDNSName(host *host.Host) (string, error) {
+func (staticMgr *staticManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	return host.Id, nil
 }
 
@@ -63,7 +64,7 @@ func (staticMgr *staticManager) CanSpawn() (bool, error) {
 }
 
 // terminate an instance
-func (staticMgr *staticManager) TerminateInstance(host *host.Host, user string) error {
+func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
 		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User)
@@ -87,11 +88,11 @@ func (staticMgr *staticManager) Configure(settings *evergreen.Settings) error {
 	return nil
 }
 
-func (staticMgr *staticManager) IsUp(host *host.Host) (bool, error) {
+func (staticMgr *staticManager) IsUp(context.Context, *host.Host) (bool, error) {
 	return true, nil
 }
 
-func (staticMgr *staticManager) OnUp(host *host.Host) error {
+func (staticMgr *staticManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 

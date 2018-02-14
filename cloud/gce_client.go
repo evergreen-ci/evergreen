@@ -20,7 +20,7 @@ const (
 
 // The gceClient interface wraps the Google Compute gceClient interaction.
 type gceClient interface {
-	Init(*jwt.Config) error
+	Init(context.Context, *jwt.Config) error
 	CreateInstance(*host.Host, *GCESettings) (string, error)
 	GetInstance(*host.Host) (*compute.Instance, error)
 	DeleteInstance(*host.Host) error
@@ -32,8 +32,7 @@ type gceClientImpl struct {
 
 // Init establishes a connection to a Google Compute endpoint and creates a gceClient that
 // can be used to manage instances.
-func (c *gceClientImpl) Init(config *jwt.Config) error {
-	ctx := context.TODO()
+func (c *gceClientImpl) Init(ctx context.Context, config *jwt.Config) error {
 	ts := config.TokenSource(ctx)
 
 	client := oauth2.NewClient(ctx, ts)
