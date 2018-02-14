@@ -365,7 +365,7 @@ func getApplyCommand(patchFile string) (string, error) {
 	}
 
 	if isMBP {
-		return fmt.Sprintf("git am < '%s'", patchFile), nil
+		return fmt.Sprintf(`git -c "user.name=Evergreen Agent" -c "user.email=no-reply@evergreen.mongodb.com" am < '%s'`, patchFile), nil
 	}
 
 	return fmt.Sprintf("git apply --binary --whitespace=fix --index < '%s'", patchFile), nil
