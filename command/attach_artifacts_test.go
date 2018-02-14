@@ -107,6 +107,13 @@ func (s *ArtifactsSuite) TestArtifactErrorsIfDoesNotExist() {
 	s.Len(s.cmd.Files, 0)
 }
 
+func (s *ArtifactsSuite) TestArtifactSkipsErrorWithOptionalArgument() {
+	s.cmd.Files = []string{"foo"}
+	s.cmd.Optional = true
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.Len(s.cmd.Files, 0)
+}
+
 func (s *ArtifactsSuite) TestReadFileFailsIfTasksDoesNotExist() {
 	result, err := readArtifactsFile(s.tmpdir, "does-not-exist")
 	s.Error(err)
