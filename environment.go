@@ -98,6 +98,7 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
+	catcher.Add(e.persistSettings())
 
 	return catcher.Resolve()
 }
@@ -186,6 +187,14 @@ func (e *envState) initClientConfig() (err error) {
 		grip.Warning("No clients are available for this server")
 	}
 	return errors.WithStack(err)
+}
+
+func (e *envState) persistSettings() error {
+	if e.settings == nil {
+		return errors.New("no settings object, cannot persist to DB")
+	}
+
+	return UpdateConfig(e.settings)
 }
 
 func (e *envState) Settings() *Settings {

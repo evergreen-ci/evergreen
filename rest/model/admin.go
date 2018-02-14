@@ -266,9 +266,11 @@ type APIAlertsConfig struct {
 func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AlertsConfig:
-		a.SMTP = &APISMTPConfig{}
-		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-			return err
+		if v.SMTP != nil {
+			a.SMTP = &APISMTPConfig{}
+			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -403,17 +405,23 @@ type APIAuthConfig struct {
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AuthConfig:
-		a.Crowd = &APICrowdConfig{}
-		a.Naive = &APINaiveAuthConfig{}
-		a.Github = &APIGithubAuthConfig{}
-		if err := a.Crowd.BuildFromService(v.Crowd); err != nil {
-			return err
+		if v.Crowd != nil {
+			a.Crowd = &APICrowdConfig{}
+			if err := a.Crowd.BuildFromService(v.Crowd); err != nil {
+				return err
+			}
 		}
-		if err := a.Naive.BuildFromService(v.Naive); err != nil {
-			return err
+		if v.Github != nil {
+			a.Github = &APIGithubAuthConfig{}
+			if err := a.Github.BuildFromService(v.Github); err != nil {
+				return err
+			}
 		}
-		if err := a.Github.BuildFromService(v.Github); err != nil {
-			return err
+		if v.Naive != nil {
+			a.Naive = &APINaiveAuthConfig{}
+			if err := a.Naive.BuildFromService(v.Naive); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -742,9 +750,11 @@ type APINotifyConfig struct {
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.NotifyConfig:
-		a.SMTP = &APISMTPConfig{}
-		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-			return err
+		if v.SMTP != nil {
+			a.SMTP = &APISMTPConfig{}
+			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
