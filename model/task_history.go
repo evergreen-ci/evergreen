@@ -782,59 +782,60 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 
 	// to join the test results, merge test results for all the tasks
 	if len(params.TestNames) > 0 {
+		// if test names are specified, find just those test names and merge results
 		testQuery := db.Query(formTestsQuery(params))
 		out, err := task.MergeTestResultsBulk(tasks, &testQuery)
 		if err != nil {
 			return nil, errors.Wrap(err, "error merging test results")
 		}
 		return out, nil
-	} else {
-		out := []task.Task{}
-		taskChan := make(chan task.Task, len(tasks))
-		for _, t := range tasks {
-			taskChan <- t
-		}
-		close(taskChan)
-		wg := sync.WaitGroup{}
-		wg.Add(numQueryThreads)
-		resultChan := make(chan task.Task)
-		catcher := grip.NewSimpleCatcher()
-		for i := 0; i < numQueryThreads; i++ {
-			go func() {
-				defer wg.Done()
-				for t := range taskChan {
-					err := t.MergeNewTestResults() //nolint
-					if err != nil {
-						catcher.Add(errors.Wrapf(err, "error merging test results for task %s", t.Id))
-						continue
-					}
-					// strip out any test results that don't match input params
-					for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
-						result := t.LocalTestResults[j]
-						if (len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status)) ||
-							(len(params.TestNames) > 0 && !util.StringSliceContains(params.TestNames, result.TestFile)) {
-							t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
-						}
-					}
-					resultChan <- t
-				}
-			}()
-		}
-		doneChan := make(chan bool)
+	}
+	// otherwise, merge test results for each task individually
+	out := []task.Task{}
+	taskChan := make(chan task.Task, len(tasks))
+	for _, t := range tasks {
+		taskChan <- t
+	}
+	close(taskChan)
+	wg := sync.WaitGroup{}
+	wg.Add(numQueryThreads)
+	resultChan := make(chan task.Task)
+	catcher := grip.NewSimpleCatcher()
+	for i := 0; i < numQueryThreads; i++ {
 		go func() {
-			defer close(doneChan)
-			for t := range resultChan {
-				out = append(out, t)
+			defer wg.Done()
+			for t := range taskChan {
+				mergeErr := t.MergeNewTestResults()
+				if mergeErr != nil {
+					catcher.Add(errors.Wrapf(mergeErr, "error merging test results for task %s", t.Id))
+					continue
+				}
+				// strip out any test results that don't match input params
+				for j := len(t.LocalTestResults) - 1; j >= 0; j-- {
+					result := t.LocalTestResults[j]
+					if (len(params.TestStatuses) > 0 && !util.StringSliceContains(params.TestStatuses, result.Status)) ||
+						(len(params.TestNames) > 0 && !util.StringSliceContains(params.TestNames, result.TestFile)) {
+						t.LocalTestResults = append(t.LocalTestResults[:j], t.LocalTestResults[j+1:]...)
+					}
+				}
+				resultChan <- t
 			}
 		}()
-		wg.Wait()
-		close(resultChan)
-		<-doneChan
-		if catcher.HasErrors() {
-			return nil, catcher.Resolve()
-		}
-		return out, nil
 	}
+	doneChan := make(chan bool)
+	go func() {
+		defer close(doneChan)
+		for t := range resultChan {
+			out = append(out, t)
+		}
+	}()
+	wg.Wait()
+	close(resultChan)
+	<-doneChan
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+	return out, nil
 }
 
 func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
