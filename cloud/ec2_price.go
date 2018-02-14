@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"strconv"
@@ -40,10 +41,10 @@ func init() {
 	pkgCachingPriceFetcher = new(cachingPriceFetcher)
 }
 
-func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
+func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	os := getOsName(h)
 	if isHostOnDemand(h) {
-		instance, err := client.GetInstanceInfo(h.Id)
+		instance, err := client.GetInstanceInfo(ctx, h.Id)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting instance info")
 		}
@@ -55,17 +56,17 @@ func (cpf *cachingPriceFetcher) getEC2Cost(client AWSClient, h *host.Host, t tim
 		}
 		return price * dur.Hours(), nil
 	}
-	spotDetails, err := client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+	spotDetails, err := client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	})
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting spot info")
 	}
-	instance, err := client.GetInstanceInfo(*spotDetails.SpotInstanceRequests[0].InstanceId)
+	instance, err := client.GetInstanceInfo(ctx, *spotDetails.SpotInstanceRequests[0].InstanceId)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
-	return cpf.calculateSpotCost(client, instance, os, t)
+	return cpf.calculateSpotCost(ctx, client, instance, os, t)
 }
 
 func (cpf *cachingPriceFetcher) getEC2OnDemandCost(os osType, instance, region string) (float64, error) {
@@ -140,7 +141,7 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 	return nil
 }
 
-func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
+func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(ctx context.Context, client AWSClient, settings *EC2ProviderSettings, os osType) (float64, string, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
 	osName := string(os)
@@ -152,7 +153,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSCli
 		"instance_type": settings.InstanceType,
 		"os_name":       osName,
 	})
-	prices, err := client.DescribeSpotPriceHistory(&ec2.DescribeSpotPriceHistoryInput{
+	prices, err := client.DescribeSpotPriceHistory(ctx, &ec2.DescribeSpotPriceHistoryInput{
 		// passing a future start time gets the latest price only
 		StartTime:           makeTimePtr(time.Now().UTC().Add(24 * time.Hour)),
 		InstanceTypes:       []*string{makeStringPtr(settings.InstanceType)},
@@ -179,7 +180,7 @@ func (cpf *cachingPriceFetcher) getLatestLowestSpotCostForInstance(client AWSCli
 	return min, az, nil
 }
 
-func (m *ec2Manager) getProvider(h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
+func (m *ec2Manager) getProvider(ctx context.Context, h *host.Host, ec2settings *EC2ProviderSettings) (ec2ProviderType, error) {
 	if h.UserHost {
 		h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
 		return onDemandProvider, nil
@@ -198,14 +199,14 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *EC2ProviderSettings)
 			return 0, errors.Wrap(err, "error getting ec2 on-demand cost")
 		}
 
-		spotPrice, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(m.client, ec2settings, getOsName(h))
+		spotPrice, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, m.client, ec2settings, getOsName(h))
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting latest lowest spot price")
 		}
 		if spotPrice < onDemandPrice {
 			ec2settings.BidPrice = onDemandPrice
 			if ec2settings.VpcName != "" {
-				subnetID, err := m.getSubnetForAZ(az, ec2settings.VpcName)
+				subnetID, err := m.getSubnetForAZ(ctx, az, ec2settings.VpcName)
 				if err != nil {
 					return 0, errors.Wrap(err, "error settings dynamic subnet for spot")
 				}
@@ -220,8 +221,8 @@ func (m *ec2Manager) getProvider(h *host.Host, ec2settings *EC2ProviderSettings)
 	return 0, errors.Errorf("provider is %d, expected %d, %d, or %d", m.provider, onDemandProvider, spotProvider, autoProvider)
 }
 
-func (m *ec2Manager) getSubnetForAZ(azName, vpcName string) (string, error) {
-	vpcs, err := m.client.DescribeVpcs(&ec2.DescribeVpcsInput{
+func (m *ec2Manager) getSubnetForAZ(ctx context.Context, azName, vpcName string) (string, error) {
+	vpcs, err := m.client.DescribeVpcs(ctx, &ec2.DescribeVpcsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
 				Name: makeStringPtr("tag:Name"),
@@ -236,7 +237,7 @@ func (m *ec2Manager) getSubnetForAZ(azName, vpcName string) (string, error) {
 	}
 	vpcID := *vpcs.Vpcs[0].VpcId
 
-	subnets, err := m.client.DescribeSubnets(&ec2.DescribeSubnetsInput{
+	subnets, err := m.client.DescribeSubnets(ctx, &ec2.DescribeSubnetsInput{
 		Filters: []*ec2.Filter{
 			&ec2.Filter{
 				Name:   makeStringPtr("vpc-id"),
@@ -258,12 +259,12 @@ func (m *ec2Manager) getSubnetForAZ(azName, vpcName string) (string, error) {
 	return *subnets.Subnets[0].SubnetId, nil
 }
 
-func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t timeRange) (float64, error) {
+func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient, h *host.Host, t timeRange) (float64, error) {
 	cpf.Lock()
 	defer cpf.Unlock()
 	instanceID := h.Id
 	if isHostSpot(h) {
-		spotDetails, err := client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+		spotDetails, err := client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 		})
 		if err != nil {
@@ -271,7 +272,7 @@ func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t tim
 		}
 		instanceID = *spotDetails.SpotInstanceRequests[0].InstanceId
 	}
-	instance, err := client.GetInstanceInfo(instanceID)
+	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
@@ -283,7 +284,7 @@ func (cpf *cachingPriceFetcher) getEBSCost(client AWSClient, h *host.Host, t tim
 		for i := range devices {
 			volumeIds = append(volumeIds, devices[i].Ebs.VolumeId)
 		}
-		vols, err := client.DescribeVolumes(&ec2.DescribeVolumesInput{
+		vols, err := client.DescribeVolumes(ctx, &ec2.DescribeVolumesInput{
 			VolumeIds: volumeIds,
 		})
 		if err != nil {
@@ -392,8 +393,8 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 
 // calculateSpotCost is a helper for fetching spot price history and computing the
 // cost of a task across a host's billing cycles.
-func (cpf *cachingPriceFetcher) calculateSpotCost(client AWSClient, i *ec2.Instance, os osType, t timeRange) (float64, error) {
-	rates, err := cpf.describeHourlySpotPriceHistory(client, hourlySpotPriceHistoryInput{
+func (cpf *cachingPriceFetcher) calculateSpotCost(ctx context.Context, client AWSClient, i *ec2.Instance, os osType, t timeRange) (float64, error) {
+	rates, err := cpf.describeHourlySpotPriceHistory(ctx, client, hourlySpotPriceHistoryInput{
 		iType: *i.InstanceType,
 		zone:  *i.Placement.AvailabilityZone,
 		os:    os,
@@ -417,7 +418,7 @@ type hourlySpotPriceHistoryInput struct {
 // describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
 // simplifies that history into hourly billing rates starting from the supplied
 // start time. Returns a slice of hour-separated spot prices or any errors that occur.
-func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
+func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(ctx context.Context, client AWSClient, input hourlySpotPriceHistoryInput) ([]spotRate, error) {
 	// expand times to contain the full runtime of the host
 	startFilter, endFilter := input.start.Add(-time.Hour), input.end.Add(time.Hour)
 	osStr := string(input.os)
@@ -431,7 +432,7 @@ func (cpf *cachingPriceFetcher) describeHourlySpotPriceHistory(client AWSClient,
 	// iterate through all pages of results (the helper that does this for us appears to be broken)
 	history := []*ec2.SpotPrice{}
 	for {
-		h, err := client.DescribeSpotPriceHistory(filter)
+		h, err := client.DescribeSpotPriceHistory(ctx, filter)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

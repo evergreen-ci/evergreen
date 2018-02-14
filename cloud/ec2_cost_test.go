@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -112,14 +113,18 @@ func (s *CostUnitSuite) TestOnDemandPriceCalculation() {
 			}: 1.0,
 		},
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	now := time.Now()
-	cost, err := cpf.getEC2Cost(client, h, timeRange{now.Add(-30 * time.Minute), now})
+	cost, err := cpf.getEC2Cost(ctx, client, h, timeRange{now.Add(-30 * time.Minute), now})
 	s.NoError(err)
 	s.Equal(.50, cost)
-	cost, err = cpf.getEC2Cost(client, h, timeRange{now.Add(-time.Hour), now})
+	cost, err = cpf.getEC2Cost(ctx, client, h, timeRange{now.Add(-time.Hour), now})
 	s.NoError(err)
 	s.Equal(1.0, cost)
-	cost, err = cpf.getEC2Cost(client, h, timeRange{now.Add(-2 * time.Hour), now})
+	cost, err = cpf.getEC2Cost(ctx, client, h, timeRange{now.Add(-2 * time.Hour), now})
 	s.NoError(err)
 	s.Equal(2.0, cost)
 }
@@ -174,9 +179,10 @@ func TestCostIntegrationSuite(t *testing.T) {
 func (s *CostIntegrationSuite) SetupSuite() {
 	settings := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(s.T(), settings, "CostIntegrationSuite")
+
 	m := NewEC2Manager(&EC2ManagerOptions{client: &awsClientImpl{}})
 	s.m = m.(*ec2Manager)
-	s.NoError(s.m.Configure(settings))
+	s.NoError(s.m.Configure(context.TODO(), settings))
 	s.NoError(s.m.client.Create(s.m.credentials))
 	s.client = s.m.client
 }
@@ -190,7 +196,11 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 		start: time.Now().Add(-2 * time.Hour),
 		end:   time.Now(),
 	}
-	ps, err := cpf.describeHourlySpotPriceHistory(s.client, input)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ps, err := cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
 	s.NoError(err)
 	s.True(len(ps) > 2)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
@@ -206,7 +216,7 @@ func (s *CostIntegrationSuite) TestSpotPriceHistory() {
 		start: time.Now().Add(-240 * time.Hour),
 		end:   time.Now(),
 	}
-	ps, err = cpf.describeHourlySpotPriceHistory(s.client, input)
+	ps, err = cpf.describeHourlySpotPriceHistory(ctx, s.client, input)
 	s.NoError(err)
 	s.True(len(ps) > 240)
 	s.True(ps[len(ps)-1].Time.Before(time.Now()))
@@ -254,22 +264,25 @@ func (s *CostIntegrationSuite) TestGetProviderStatic() {
 	h := &host.Host{}
 	settings := &EC2ProviderSettings{}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	s.m.provider = onDemandProvider
-	provider, err := s.m.getProvider(h, settings)
+	provider, err := s.m.getProvider(ctx, h, settings)
 	s.NoError(err)
 	s.Equal(onDemandProvider, provider)
 
 	s.m.provider = spotProvider
-	provider, err = s.m.getProvider(h, settings)
+	provider, err = s.m.getProvider(ctx, h, settings)
 	s.NoError(err)
 	s.Equal(spotProvider, provider)
 
 	s.m.provider = 5
-	_, err = s.m.getProvider(h, settings)
+	_, err = s.m.getProvider(ctx, h, settings)
 	s.Error(err)
 
 	s.m.provider = -5
-	_, err = s.m.getProvider(h, settings)
+	_, err = s.m.getProvider(ctx, h, settings)
 	s.Error(err)
 }
 
@@ -281,6 +294,9 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 	}
 	settings := &EC2ProviderSettings{}
 	s.m.provider = autoProvider
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	m4LargeOnDemand, err := pkgCachingPriceFetcher.getEC2OnDemandCost(getOsName(h), "m4.large", defaultRegion)
 	s.InDelta(.1, m4LargeOnDemand, .05)
@@ -296,28 +312,28 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
-	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	m4LargeSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
 	s.Contains(az, "us-east")
 	s.True(m4LargeSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
-	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	t2MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
 	s.Contains(az, "us-east")
 	s.True(t2MicroSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "t1.micro"
 	settings.IsVpc = false
-	t1MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(s.m.client, settings, getOsName(h))
+	t1MicroSpot, az, err := pkgCachingPriceFetcher.getLatestLowestSpotCostForInstance(ctx, s.m.client, settings, getOsName(h))
 	s.Contains(az, "us-east")
 	s.True(t1MicroSpot > 0)
 	s.NoError(err)
 
 	settings.InstanceType = "m4.large"
 	settings.IsVpc = true
-	provider, err := s.m.getProvider(h, settings)
+	provider, err := s.m.getProvider(ctx, h, settings)
 	s.NoError(err)
 	if m4LargeSpot < m4LargeOnDemand {
 		s.Equal(spotProvider, provider)
@@ -329,7 +345,7 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 
 	settings.InstanceType = "t2.micro"
 	settings.IsVpc = true
-	provider, err = s.m.getProvider(h, settings)
+	provider, err = s.m.getProvider(ctx, h, settings)
 	s.NoError(err)
 	if t2MicroSpot < t2MicroOnDemand {
 		s.Equal(spotProvider, provider)
@@ -341,7 +357,7 @@ func (s *CostIntegrationSuite) TestGetProviderAuto() {
 
 	settings.InstanceType = "t1.micro"
 	settings.IsVpc = false
-	provider, err = s.m.getProvider(h, settings)
+	provider, err = s.m.getProvider(ctx, h, settings)
 	s.NoError(err)
 	if t1MicroSpot < t1MicroOnDemand {
 		s.Equal(spotProvider, provider)

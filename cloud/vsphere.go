@@ -181,7 +181,7 @@ func (m *vsphereManager) OnUp(ctx context.Context, host *host.Host) error {
 
 // GetDNSName returns the IPv4 address of the host.
 func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
-	ip, err := m.client.GetIP(h)
+	ip, err := m.client.GetIP(ctx, h)
 	if err != nil {
 		return "", errors.Wrapf(err, "client failed to get IP for host %s", h.Id)
 	}

@@ -30,7 +30,7 @@ type authOptions struct {
 // The client interface wraps interaction with the vCenter server.
 type vsphereClient interface {
 	Init(context.Context, *authOptions) error
-	GetIP(*host.Host) (string, error)
+	GetIP(context.Context, *host.Host) (string, error)
 	GetPowerState(context.Context, *host.Host) (types.VirtualMachinePowerState, error)
 	CreateInstance(context.Context, *host.Host, *vsphereSettings) (string, error)
 	DeleteInstance(context.Context, *host.Host) error
@@ -78,8 +78,9 @@ func (c *vsphereClientImpl) Init(ctx context.Context, ao *authOptions) error {
 	return nil
 }
 
-func (c *vsphereClientImpl) GetIP(h *host.Host) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func (c *vsphereClientImpl) GetIP(ctx context.Context, h *host.Host) (string, error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	vm, err := c.getInstance(ctx, h.Id)

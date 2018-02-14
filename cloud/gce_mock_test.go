@@ -1,8 +1,7 @@
-// +build go1.7
-
 package cloud
 
 import (
+	"context"
 	"errors"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -22,7 +21,7 @@ type gceClientMock struct {
 	hasAccessConfig bool
 }
 
-func (c *gceClientMock) Init(_ *jwt.Config) error {
+func (c *gceClientMock) Init(context.Context, *jwt.Config) error {
 	if c.failInit {
 		return errors.New("failed to initialize Client")
 	}
