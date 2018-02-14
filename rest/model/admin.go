@@ -239,13 +239,13 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Ui:                 ui.(evergreen.UIConfig),
 	}
 	for k, v := range as.Credentials {
-		settings.Credentials[k] = v
+		settings.Credentials[k] = string(v)
 	}
 	for k, v := range as.Expansions {
-		settings.Expansions[k] = v
+		settings.Expansions[k] = string(v)
 	}
 	for k, v := range as.Keys {
-		settings.Keys[k] = v
+		settings.Keys[k] = string(v)
 	}
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]interface{}{}
@@ -253,8 +253,9 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 			settings.Plugins[k][k2] = v2
 		}
 	}
-	settings.SuperUsers = append(settings.SuperUsers, as.SuperUsers...)
-
+	for _, user := range as.SuperUsers {
+		settings.SuperUsers = append(settings.SuperUsers, string(user))
+	}
 	return settings, nil
 }
 
