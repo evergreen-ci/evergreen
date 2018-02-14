@@ -61,6 +61,9 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	if len(c.Files) == 0 {
 		err = errors.New("expanded file specification had no items")
 		logger.Task().Error(err)
+		if c.Optional {
+			return nil
+		}
 		return err
 	}
 

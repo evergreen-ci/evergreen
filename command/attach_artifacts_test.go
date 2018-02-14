@@ -110,7 +110,7 @@ func (s *ArtifactsSuite) TestArtifactErrorsIfDoesNotExist() {
 func (s *ArtifactsSuite) TestArtifactSkipsErrorWithOptionalArgument() {
 	s.cmd.Files = []string{"foo"}
 	s.cmd.Optional = true
-	s.Error(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
+	s.NoError(s.cmd.Execute(s.ctx, s.comm, s.logger, s.conf))
 	s.Len(s.cmd.Files, 0)
 }
 
