@@ -176,22 +176,34 @@ func TestFindOneProjectRefByRepoAndBranch(t *testing.T) {
 		Enabled:          false,
 		BatchTime:        10,
 		Identifier:       "ident0",
-		PRTestingEnabled: true,
+		PRTestingEnabled: false,
 	}
 	require.NoError(doc.Insert())
+
+	// 1 disabled document = no match
 	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	doc.Identifier = "ident1"
+	// 2 docs, 1 enabled, but the enabled one has pr testing disabled = no match
+	doc.Identifier = "ident_"
+	doc.PRTestingEnabled = false
 	doc.Enabled = true
 	require.NoError(doc.Insert())
+	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
+	assert.NoError(err)
+	require.Nil(projectRef)
 
+	// 3 docs, 2 enabled, but only 1 has pr testing enabled = match
+	doc.Identifier = "ident1"
+	doc.PRTestingEnabled = true
+	require.NoError(doc.Insert())
 	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Identifier)
 
+	// 2 matching documents, error!
 	doc.Identifier = "ident2"
 	require.NoError(doc.Insert())
 	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")

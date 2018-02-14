@@ -221,11 +221,13 @@ func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, 
 		if count > 1 {
 			err = errors.Errorf("attempt to fetch project ref for "+
 				"'%s/%s' on branch '%s' found %d project refs, when 1 was expected",
-				owner, repo, branch, l)
+				owner, repo, branch, count)
 			return nil, err
 		}
 
-	} else if l == 0 {
+	}
+
+	if l == 0 || !projectRefs[target].PRTestingEnabled {
 		return nil, nil
 	}
 
