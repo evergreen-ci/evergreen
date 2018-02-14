@@ -1560,4 +1560,31 @@ buildvariants:
 	validationErrs = validateTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "attach.results cannot be used in the group teardown stage")
+
+	// check that having max_hosts > 50% of the number of tasks generates a warning
+	largeMaxHostYml := `
+tasks:
+- name: example_task_1
+- name: example_task_2
+- name: example_task_3
+task_groups:
+- name: example_task_group
+  max_hosts: 2
+  tasks:
+  - example_task_1
+  - example_task_2
+  - example_task_3
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: example_task_group
+`
+	err = model.LoadProjectInto([]byte(largeMaxHostYml), "", &proj)
+	assert.NotNil(proj)
+	assert.NoError(err)
+	validationErrs = checkTaskGroups(&proj)
+	assert.Len(validationErrs, 1)
+	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts greater than half the number of tasks")
+	assert.Equal(validationErrs[0].Level, Warning)
+
 }
