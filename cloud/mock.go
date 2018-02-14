@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -120,7 +121,7 @@ func makeMockManager() CloudManager {
 	}
 }
 
-func (mockMgr *mockManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (mockMgr *mockManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -136,7 +137,7 @@ func (mockMgr *mockManager) SpawnHost(h *host.Host) (*host.Host, error) {
 }
 
 // get the status of an instance
-func (mockMgr *mockManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
+func (mockMgr *mockManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -149,7 +150,7 @@ func (mockMgr *mockManager) GetInstanceStatus(host *host.Host) (CloudStatus, err
 }
 
 // get instance DNS
-func (mockMgr *mockManager) GetDNSName(host *host.Host) (string, error) {
+func (mockMgr *mockManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -177,7 +178,7 @@ func (*mockManager) GetInstanceName(d *distro.Distro) string {
 }
 
 // terminate an instance
-func (mockMgr *mockManager) TerminateInstance(host *host.Host, user string) error {
+func (mockMgr *mockManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
@@ -195,12 +196,12 @@ func (mockMgr *mockManager) TerminateInstance(host *host.Host, user string) erro
 	return errors.WithStack(host.Terminate(user))
 }
 
-func (mockMgr *mockManager) Configure(settings *evergreen.Settings) error {
+func (mockMgr *mockManager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	//no-op. maybe will need to load something from settings in the future.
 	return nil
 }
 
-func (mockMgr *mockManager) IsUp(host *host.Host) (bool, error) {
+func (mockMgr *mockManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
 	l := mockMgr.mutex
 	l.RLock()
 	instance, ok := mockMgr.Instances[host.Id]
@@ -211,7 +212,7 @@ func (mockMgr *mockManager) IsUp(host *host.Host) (bool, error) {
 	return instance.IsUp, nil
 }
 
-func (mockMgr *mockManager) OnUp(host *host.Host) error {
+func (mockMgr *mockManager) OnUp(ctx context.Context, host *host.Host) error {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()

@@ -29,11 +29,11 @@ type authOptions struct {
 
 // The client interface wraps interaction with the vCenter server.
 type vsphereClient interface {
-	Init(*authOptions) error
+	Init(context.Context, *authOptions) error
 	GetIP(*host.Host) (string, error)
-	GetPowerState(*host.Host) (types.VirtualMachinePowerState, error)
-	CreateInstance(*host.Host, *vsphereSettings) (string, error)
-	DeleteInstance(*host.Host) error
+	GetPowerState(context.Context, *host.Host) (types.VirtualMachinePowerState, error)
+	CreateInstance(context.Context, *host.Host, *vsphereSettings) (string, error)
+	DeleteInstance(context.Context, *host.Host) error
 }
 
 type vsphereClientImpl struct {
@@ -42,8 +42,7 @@ type vsphereClientImpl struct {
 	Finder     *find.Finder
 }
 
-func (c *vsphereClientImpl) Init(ao *authOptions) error {
-	ctx := context.TODO()
+func (c *vsphereClientImpl) Init(ctx context.Context, ao *authOptions) error {
 	u := &url.URL{
 		Scheme: "https",
 		User:   url.UserPassword(ao.Username, ao.Password),
@@ -96,9 +95,7 @@ func (c *vsphereClientImpl) GetIP(h *host.Host) (string, error) {
 	return ip, nil
 }
 
-func (c *vsphereClientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePowerState, error) {
-	ctx := context.TODO()
-
+func (c *vsphereClientImpl) GetPowerState(ctx context.Context, h *host.Host) (types.VirtualMachinePowerState, error) {
 	vm, err := c.getInstance(ctx, h.Id)
 	if err != nil {
 		err = errors.Wrap(err, "API call to get instance failed")
@@ -114,9 +111,7 @@ func (c *vsphereClientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePow
 	return state, nil
 }
 
-func (c *vsphereClientImpl) CreateInstance(h *host.Host, s *vsphereSettings) (string, error) {
-	ctx := context.TODO()
-
+func (c *vsphereClientImpl) CreateInstance(ctx context.Context, h *host.Host, s *vsphereSettings) (string, error) {
 	// Locate and organize resources for creating a virtual machine.
 	grip.Info(message.Fields{
 		"message":       "locating and organizing resources for creating a vm",
@@ -138,7 +133,7 @@ func (c *vsphereClientImpl) CreateInstance(h *host.Host, s *vsphereSettings) (st
 		return "", errors.Wrapf(err, "error getting folders from datacenter %v", c.Datacenter)
 	}
 
-	spec, err := c.cloneSpec(s)
+	spec, err := c.cloneSpec(ctx, s)
 	if err != nil {
 		err = errors.Wrap(err, "error making spec to clone vm")
 		grip.Error(err)
@@ -161,9 +156,7 @@ func (c *vsphereClientImpl) CreateInstance(h *host.Host, s *vsphereSettings) (st
 	return h.Id, nil
 }
 
-func (c *vsphereClientImpl) DeleteInstance(h *host.Host) error {
-	ctx := context.TODO()
-
+func (c *vsphereClientImpl) DeleteInstance(ctx context.Context, h *host.Host) error {
 	vm, err := c.getInstance(ctx, h.Id)
 	if err != nil {
 		return errors.Wrap(err, "API call to get instance failed")

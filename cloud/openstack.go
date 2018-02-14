@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -62,7 +63,7 @@ func (*openStackManager) GetInstanceName(d *distro.Distro) string {
 }
 
 // Configure loads the necessary credentials from the global config object.
-func (m *openStackManager) Configure(s *evergreen.Settings) error {
+func (m *openStackManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	config := s.Providers.OpenStack
 
 	m.authOptions = &gophercloud.AuthOptions{
@@ -97,7 +98,7 @@ func (m *openStackManager) Configure(s *evergreen.Settings) error {
 //     - FlavorName:    like an AWS instance type i.e. m1.large
 //     - KeyName:       (optional) keypair name associated with the account
 //     - SecurityGroup: (optional) security group name
-func (m *openStackManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameOpenstack {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameOpenstack, h.Distro.Id, h.Distro.Provider)
@@ -144,7 +145,7 @@ func (m *openStackManager) CanSpawn() (bool, error) {
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
-func (m *openStackManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
+func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	server, err := m.client.GetInstance(host.Id)
 	if err != nil {
 		return StatusUnknown, err
@@ -154,7 +155,7 @@ func (m *openStackManager) GetInstanceStatus(host *host.Host) (CloudStatus, erro
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *openStackManager) TerminateInstance(host *host.Host, user string) error {
+func (m *openStackManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -170,8 +171,8 @@ func (m *openStackManager) TerminateInstance(host *host.Host, user string) error
 }
 
 // IsUp checks whether the provisioned host is running.
-func (m *openStackManager) IsUp(host *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(host)
+func (m *openStackManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
+	status, err := m.GetInstanceStatus(ctx, host)
 	if err != nil {
 		return false, err
 	}
@@ -180,12 +181,12 @@ func (m *openStackManager) IsUp(host *host.Host) (bool, error) {
 }
 
 // OnUp does nothing since tags are attached in SpawnInstance.
-func (m *openStackManager) OnUp(host *host.Host) error {
+func (m *openStackManager) OnUp(ctx context.Context, host *host.Host) error {
 	return nil
 }
 
 // GetDNSName returns the private IP address of the host.
-func (m *openStackManager) GetDNSName(host *host.Host) (string, error) {
+func (m *openStackManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	server, err := m.client.GetInstance(host.Id)
 	if err != nil {
 		return "", err

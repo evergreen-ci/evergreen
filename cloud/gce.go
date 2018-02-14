@@ -3,6 +3,8 @@
 package cloud
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -80,7 +82,7 @@ func (*gceManager) GetInstanceName(d *distro.Distro) string {
 }
 
 // Configure loads the necessary credentials from the global config object.
-func (m *gceManager) Configure(s *evergreen.Settings) error {
+func (m *gceManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	config := s.Providers.GCE
 
 	jwtConfig := &jwt.Config{
@@ -95,7 +97,7 @@ func (m *gceManager) Configure(s *evergreen.Settings) error {
 		m.client = &gceClientImpl{}
 	}
 
-	if err := m.client.Init(jwtConfig); err != nil {
+	if err := m.client.Init(ctx, jwtConfig); err != nil {
 		return errors.Wrap(err, "Failed to initialize client connection")
 	}
 
@@ -123,7 +125,7 @@ func (m *gceManager) Configure(s *evergreen.Settings) error {
 //
 //     - NetworkTags: (optional) security groups
 //     - SSHKeys:     username-key pairs
-func (m *gceManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != ProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			ProviderName, h.Distro.Id, h.Distro.Provider)
@@ -166,7 +168,7 @@ func (m *gceManager) CanSpawn() (bool, error) {
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
-func (m *gceManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
+func (m *gceManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	instance, err := m.client.GetInstance(host)
 	if err != nil {
 		return StatusUnknown, err
@@ -176,7 +178,7 @@ func (m *gceManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *gceManager) TerminateInstance(host *host.Host, user string) error {
+func (m *gceManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
@@ -192,8 +194,8 @@ func (m *gceManager) TerminateInstance(host *host.Host, user string) error {
 }
 
 // IsUp checks whether the provisioned host is running.
-func (m *gceManager) IsUp(host *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(host)
+func (m *gceManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
+	status, err := m.GetInstanceStatus(ctx, host)
 	if err != nil {
 		return false, err
 	}
@@ -202,12 +204,12 @@ func (m *gceManager) IsUp(host *host.Host) (bool, error) {
 }
 
 // OnUp does nothing since tags are attached in SpawnInstance.
-func (m *gceManager) OnUp(host *host.Host) error {
+func (m *gceManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 
 // GetDNSName returns the external IPv4 address of the host.
-func (m *gceManager) GetDNSName(host *host.Host) (string, error) {
+func (m *gceManager) GetDNSName(ctx context.Context, host *host.Host) (string, error) {
 	instance, err := m.client.GetInstance(host)
 	if err != nil {
 		return "", err

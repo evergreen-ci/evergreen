@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -92,7 +93,7 @@ func (*dockerManager) GetInstanceName(_ *distro.Distro) string {
 }
 
 // SpawnHost creates and starts a new Docker container
-func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameDocker {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameDocker, h.Distro.Id, h.Distro.Provider)
@@ -119,17 +120,17 @@ func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(h.Id, &h.Distro, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, h.Id, &h.Distro, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
 		grip.Error(err)
 		return nil, err
 	}
 
 	// Start container
-	if err := m.client.StartContainer(h); err != nil {
+	if err := m.client.StartContainer(ctx, h); err != nil {
 		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", settings.HostIP)
 		// Clean up
-		if err2 := m.client.RemoveContainer(h); err2 != nil {
+		if err2 := m.client.RemoveContainer(ctx, h); err2 != nil {
 			err = errors.Wrapf(err, "Unable to cleanup: %+v", err2)
 		}
 		grip.Error(err)
@@ -143,7 +144,7 @@ func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	event.LogHostStarted(h.Id)
 
 	// Retrieve container details
-	newContainer, err := m.client.GetContainer(h)
+	newContainer, err := m.client.GetContainer(ctx, h)
 	if err != nil {
 		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", settings.HostIP)
 		grip.Error(err)
@@ -170,8 +171,8 @@ func (m *dockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 
 // GetInstanceStatus returns a universal status code representing the state
 // of a container.
-func (m *dockerManager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
-	container, err := m.client.GetContainer(h)
+func (m *dockerManager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
+	container, err := m.client.GetContainer(ctx, h)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", h.Id)
 	}
@@ -181,7 +182,7 @@ func (m *dockerManager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 
 //GetDNSName gets the DNS hostname of a container by reading it directly from
 //the Docker API
-func (m *dockerManager) GetDNSName(h *host.Host) (string, error) {
+func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	if h.Host == "" {
 		return "", errors.New("DNS name is empty")
 	}
@@ -195,14 +196,14 @@ func (m *dockerManager) CanSpawn() (bool, error) {
 }
 
 //TerminateInstance destroys a container.
-func (m *dockerManager) TerminateInstance(h *host.Host, user string) error {
+func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", h.Id)
 		grip.Error(err)
 		return err
 	}
 
-	if err := m.client.RemoveContainer(h); err != nil {
+	if err := m.client.RemoveContainer(ctx, h); err != nil {
 		return errors.Wrap(err, "API call to remove container failed")
 	}
 
@@ -217,7 +218,7 @@ func (m *dockerManager) TerminateInstance(h *host.Host, user string) error {
 
 //Configure populates a dockerManager by reading relevant settings from the
 //config object.
-func (m *dockerManager) Configure(s *evergreen.Settings) error {
+func (m *dockerManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	config := s.Providers.Docker
 
 	if m.client == nil {
@@ -233,8 +234,8 @@ func (m *dockerManager) Configure(s *evergreen.Settings) error {
 
 //IsUp checks the container's state by querying the Docker API and
 //returns true if the host should be available to connect with SSH.
-func (m *dockerManager) IsUp(h *host.Host) (bool, error) {
-	cloudStatus, err := m.GetInstanceStatus(h)
+func (m *dockerManager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
+	cloudStatus, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
 		return false, err
 	}
@@ -242,7 +243,7 @@ func (m *dockerManager) IsUp(h *host.Host) (bool, error) {
 }
 
 // OnUp does nothing.
-func (m *dockerManager) OnUp(_ *host.Host) error {
+func (m *dockerManager) OnUp(context.Context, *host.Host) error {
 	return nil
 }
 

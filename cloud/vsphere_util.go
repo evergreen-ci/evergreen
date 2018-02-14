@@ -40,8 +40,7 @@ func (c *vsphereClientImpl) getInstance(ctx context.Context, name string) (*obje
 }
 
 // relocateSpec creates a spec for where the new machine will be located.
-func (c *vsphereClientImpl) relocateSpec(s *vsphereSettings) (types.VirtualMachineRelocateSpec, error) {
-	ctx := context.TODO()
+func (c *vsphereClientImpl) relocateSpec(ctx context.Context, s *vsphereSettings) (types.VirtualMachineRelocateSpec, error) {
 	var spec types.VirtualMachineRelocateSpec
 	var morRP types.ManagedObjectReference
 	var morDS types.ManagedObjectReference
@@ -95,11 +94,11 @@ func (c *vsphereClientImpl) configSpec(s *vsphereSettings) types.VirtualMachineC
 
 // cloneSpec creates a spec for a new virtual machine, specifying
 // where it will start up and its hardware configurations.
-func (c *vsphereClientImpl) cloneSpec(s *vsphereSettings) (types.VirtualMachineCloneSpec, error) {
+func (c *vsphereClientImpl) cloneSpec(ctx context.Context, s *vsphereSettings) (types.VirtualMachineCloneSpec, error) {
 	var spec types.VirtualMachineCloneSpec
 
 	cs := c.configSpec(s)
-	rs, err := c.relocateSpec(s)
+	rs, err := c.relocateSpec(ctx, s)
 	if err != nil {
 		return spec, errors.Wrap(err, "error making relocate spec")
 	}

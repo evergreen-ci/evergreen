@@ -22,7 +22,7 @@ type CloudManager interface {
 	GetSettings() ProviderSettings
 
 	//Load credentials or other settings from the config file
-	Configure(*evergreen.Settings) error
+	Configure(context.Context, *evergreen.Settings) error
 
 	// SpawnHost attempts to create a new host by requesting one from the
 	// provider's API.
@@ -72,7 +72,7 @@ type CloudCostCalculator interface {
 
 // GetCloudManager returns an implementation of CloudManager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudManager, error) {
+func GetCloudManager(ctx context.Context, providerName string, settings *evergreen.Settings) (CloudManager, error) {
 	var provider CloudManager
 
 	switch providerName {
@@ -98,7 +98,7 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (CloudMa
 		return nil, errors.Errorf("No known provider for '%v'", providerName)
 	}
 
-	if err := provider.Configure(settings); err != nil {
+	if err := provider.Configure(ctx, settings); err != nil {
 		return nil, errors.Wrap(err, "Failed to configure cloud provider")
 	}
 

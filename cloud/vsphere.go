@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -64,14 +65,14 @@ func (m *vsphereManager) GetSettings() ProviderSettings {
 }
 
 // Configure loads the necessary credentials from the global config object.
-func (m *vsphereManager) Configure(s *evergreen.Settings) error {
+func (m *vsphereManager) Configure(ctx context.Context, s *evergreen.Settings) error {
 	ao := authOptions(s.Providers.VSphere)
 
 	if m.client == nil {
 		m.client = &vsphereClientImpl{}
 	}
 
-	if err := m.client.Init(&ao); err != nil {
+	if err := m.client.Init(ctx, &ao); err != nil {
 		return errors.Wrap(err, "Failed to initialize client connection")
 	}
 
@@ -90,7 +91,7 @@ func (m *vsphereManager) Configure(s *evergreen.Settings) error {
 //
 // Optional fields use the default values of the template vm if not specified.
 //     -
-func (m *vsphereManager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameVsphere {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
 			evergreen.ProviderNameVsphere, h.Distro.Id, h.Distro.Provider)
@@ -106,7 +107,7 @@ func (m *vsphereManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	}
 
 	// Start the instance, and remove the intent host document if unsuccessful.
-	if _, err := m.client.CreateInstance(h, s); err != nil {
+	if _, err := m.client.CreateInstance(ctx, h, s); err != nil {
 		if rmErr := h.Remove(); rmErr != nil {
 			grip.Errorf("Could not remove intent host '%s': %+v", h.Id, rmErr)
 		}
@@ -132,8 +133,8 @@ func (m *vsphereManager) CanSpawn() (bool, error) {
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
-func (m *vsphereManager) GetInstanceStatus(host *host.Host) (CloudStatus, error) {
-	state, err := m.client.GetPowerState(host)
+func (m *vsphereManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
+	state, err := m.client.GetPowerState(ctx, host)
 	if err != nil {
 		return StatusUnknown, errors.Wrapf(err,
 			"client failed to get power state for host %s", host.Id)
@@ -143,14 +144,14 @@ func (m *vsphereManager) GetInstanceStatus(host *host.Host) (CloudStatus, error)
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
-func (m *vsphereManager) TerminateInstance(host *host.Host, user string) error {
+func (m *vsphereManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
 		grip.Error(err)
 		return err
 	}
 
-	if err := m.client.DeleteInstance(host); err != nil {
+	if err := m.client.DeleteInstance(ctx, host); err != nil {
 		return errors.Wrapf(err, "API call to delete instance %s failed", host.Id)
 	}
 
@@ -163,8 +164,8 @@ func (m *vsphereManager) TerminateInstance(host *host.Host, user string) error {
 }
 
 // IsUp checks whether the provisioned host is running.
-func (m *vsphereManager) IsUp(host *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(host)
+func (m *vsphereManager) IsUp(ctx context.Context, host *host.Host) (bool, error) {
+	status, err := m.GetInstanceStatus(ctx, host)
 	if err != nil {
 		return false, errors.Wrapf(err,
 			"manager failed to get instance status for host %s", host.Id)
@@ -174,15 +175,15 @@ func (m *vsphereManager) IsUp(host *host.Host) (bool, error) {
 }
 
 // OnUp does nothing since tags are attached in SpawnInstance.
-func (m *vsphereManager) OnUp(host *host.Host) error {
+func (m *vsphereManager) OnUp(ctx context.Context, host *host.Host) error {
 	return nil //TODO
 }
 
 // GetDNSName returns the IPv4 address of the host.
-func (m *vsphereManager) GetDNSName(host *host.Host) (string, error) {
-	ip, err := m.client.GetIP(host)
+func (m *vsphereManager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
+	ip, err := m.client.GetIP(h)
 	if err != nil {
-		return "", errors.Wrapf(err, "client failed to get IP for host %s", host.Id)
+		return "", errors.Wrapf(err, "client failed to get IP for host %s", h.Id)
 	}
 
 	return ip, nil

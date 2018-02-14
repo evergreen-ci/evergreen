@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -20,11 +21,11 @@ const (
 )
 
 // responsible for monitoring and checking in on hosts
-type hostMonitoringFunc func(*evergreen.Settings) []error
+type hostMonitoringFunc func(context.Context, *evergreen.Settings) []error
 
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
-func monitorReachability(settings *evergreen.Settings) []error {
+func monitorReachability(ctx context.Context, settings *evergreen.Settings) []error {
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
 		"operation": "monitorReachability",
@@ -58,10 +59,13 @@ func monitorReachability(settings *evergreen.Settings) []error {
 	for i := 0; i < workers; i++ {
 		go func() {
 			defer wg.Done()
-			for host := range hostsChan {
-				if err := checkHostReachability(host, settings); err != nil {
+			select {
+			case h := <-hostsChan:
+				if err := checkHostReachability(ctx, h, settings); err != nil {
 					errChan <- errors.WithStack(err)
 				}
+			case <-ctx.Done():
+				return
 			}
 		}()
 	}
@@ -69,8 +73,11 @@ func monitorReachability(settings *evergreen.Settings) []error {
 	errDone := make(chan struct{})
 	go func() {
 		defer close(errDone)
-		for err := range errChan {
+		select {
+		case err := <-errChan:
 			errs = append(errs, errors.Wrap(err, "error checking reachability"))
+		case <-ctx.Done():
+			return
 		}
 	}()
 
@@ -84,11 +91,15 @@ func monitorReachability(settings *evergreen.Settings) []error {
 	close(errChan)
 
 	<-errDone
+	if ctx.Err() != nil {
+		return append(errs, errors.New("host checks aborted"))
+	}
+
 	return errs
 }
 
 // check reachability for a single host, and take any necessary action
-func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
+func checkHostReachability(ctx context.Context, host host.Host, settings *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"runner":    RunnerName,
 		"operation": "monitorReachability",
@@ -97,13 +108,13 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 	})
 
 	// get a cloud version of the host
-	cloudHost, err := cloud.GetCloudHost(&host, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, &host, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud host for host %v: %v", host.Id)
 	}
 
 	// get the cloud status for the host
-	cloudStatus, err := cloudHost.GetInstanceStatus()
+	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud status for host %s", host.Id)
 	}

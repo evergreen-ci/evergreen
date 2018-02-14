@@ -83,7 +83,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			"runner":  RunnerName,
 		})
 
-		cloudManager, err := cloud.GetCloudManager(h.Provider, init.Settings)
+		cloudManager, err := cloud.GetCloudManager(ctx, h.Provider, init.Settings)
 		if err != nil {
 			grip.Warning(message.WrapError(err, message.Fields{
 				"message": "problem getting cloud provider for host",
@@ -105,7 +105,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			continue
 		}
 
-		_, err = cloudManager.SpawnHost(&h)
+		_, err = cloudManager.SpawnHost(ctx, &h)
 		if err != nil {
 			// we should maybe try and continue-on-error
 			// here, if we get many errors, but the chance
@@ -215,7 +215,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 					// check whether or not the host is ready for its setup script to be run
 					// if the host isn't ready (for instance, it might not be up yet), skip it
-					if ready, err := init.IsHostReady(&h); !ready {
+					if ready, err := init.IsHostReady(ctx, &h); !ready {
 						m := message.Fields{
 							"GUID":    init.GUID,
 							"message": "host not ready for setup",
@@ -305,16 +305,16 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 // IsHostReady returns whether or not the specified host is ready for its setup script
 // to be run.
-func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
+func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, error) {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetCloudManager(host.Distro.Provider, init.Settings)
+	cloudMgr, err := cloud.GetCloudManager(ctx, host.Distro.Provider, init.Settings)
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to get cloud manager for provider %s",
 			host.Distro.Provider)
 	}
 
 	// ask for the instance's status
-	hostStatus, err := cloudMgr.GetInstanceStatus(host)
+	hostStatus, err := cloudMgr.GetInstanceStatus(ctx, host)
 	if err != nil {
 		return false, errors.Wrapf(err, "error checking instance status of host %s", host.Id)
 	}
@@ -331,7 +331,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// if the host has failed, terminate it and return that this host is not ready
 	if hostStatus == cloud.StatusFailed {
-		err = errors.WithStack(cloudMgr.TerminateInstance(host, evergreen.User))
+		err = errors.WithStack(cloudMgr.TerminateInstance(ctx, host, evergreen.User))
 		if err != nil {
 			return false, err
 		}
@@ -343,7 +343,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		var hostDNS string
 
 		// get the DNS name for the host
-		hostDNS, err = cloudMgr.GetDNSName(host)
+		hostDNS, err = cloudMgr.GetDNSName(ctx, host)
 		if err != nil {
 			return false, errors.Wrapf(err, "error checking DNS name for host %s", host.Id)
 		}
@@ -373,7 +373,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
 func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (string, error) {
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := cloud.GetCloudManager(targetHost.Provider, init.Settings)
+	cloudMgr, err := cloud.GetCloudManager(ctx, targetHost.Provider, init.Settings)
 	if err != nil {
 		return "", errors.Wrapf(err,
 			"failed to get cloud manager for host %s with provider %s",
@@ -391,8 +391,7 @@ func (init *HostInit) setupHost(ctx context.Context, targetHost *host.Host) (str
 	}))
 
 	// run the function scheduled for when the host is up
-	err = cloudMgr.OnUp(targetHost)
-	if err != nil {
+	if err = cloudMgr.OnUp(ctx, targetHost); err != nil {
 		err = errors.Wrapf(err, "OnUp callback failed for host %s", targetHost.Id)
 		grip.Error(err)
 		return "", err
@@ -470,7 +469,7 @@ func (init *HostInit) copyScript(ctx context.Context, target *host.Host, name, s
 		return errors.Wrap(err, "error writing local script")
 	}
 
-	cloudHost, err := cloud.GetCloudHost(target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, init.Settings)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
 	}
@@ -601,7 +600,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			return errors.Wrapf(err, "Failed to load client binary onto host %s: %+v", h.Id, err)
 		}
 
-		cloudHost, err := cloud.GetCloudHost(h, init.Settings)
+		cloudHost, err := cloud.GetCloudHost(ctx, h, init.Settings)
 		if err != nil {
 			grip.Error(message.WrapError(h.SetUnprovisioned(), message.Fields{
 				"operation": "setting host unprovisioned",
@@ -742,7 +741,7 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, init.Settings)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get cloud host for %s", target.Id)
 	}
@@ -877,7 +876,7 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
-	cloudHost, err := cloud.GetCloudHost(target, init.Settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, target, init.Settings)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %v", target.Id)
 	}

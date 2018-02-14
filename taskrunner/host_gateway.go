@@ -75,7 +75,7 @@ func getHostMessage(h host.Host) message.Fields {
 func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
-	cloudHost, err := cloud.GetCloudHost(&hostObj, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, &hostObj, settings)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
 	}

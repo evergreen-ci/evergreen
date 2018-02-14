@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -86,14 +87,16 @@ func (j *collectTaskEndDataJob) Run() {
 	settings := j.env.Settings()
 
 	var cost float64
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	manager, err := cloud.GetCloudManager(j.host.Provider, settings)
+	manager, err := cloud.GetCloudManager(ctx, j.host.Provider, settings)
 	if err != nil {
 		j.AddError(err)
 		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.task.HostId))
 	} else {
 		if calc, ok := manager.(cloud.CloudCostCalculator); ok {
-			cost, err = calc.CostForDuration(j.host, j.task.StartTime, j.task.FinishTime)
+			cost, err = calc.CostForDuration(ctx, j.host, j.task.StartTime, j.task.FinishTime)
 			if err != nil {
 				j.AddError(err)
 			} else {

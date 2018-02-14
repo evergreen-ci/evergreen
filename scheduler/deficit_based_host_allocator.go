@@ -1,6 +1,8 @@
 package scheduler
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -19,7 +21,7 @@ type DeficitBasedHostAllocator struct{}
 // NewHostsNeeded decides how many new hosts are needed for a distro by seeing if
 // the number of tasks that need to be run for the distro is greater than the number
 // of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
-func (self *DeficitBasedHostAllocator) NewHostsNeeded(
+func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (map[string]int, error) {
 
 	newHostsNeeded := make(map[string]int)
@@ -37,7 +39,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 				distroId)
 		}
 
-		newHostsNeeded[distroId] = self.numNewHostsForDistro(
+		newHostsNeeded[distroId] = self.numNewHostsForDistro(ctx,
 			&hostAllocatorData, distro, settings)
 	}
 
@@ -46,10 +48,10 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
-func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
+func (self *DeficitBasedHostAllocator) numNewHostsForDistro(ctx context.Context,
 	hostAllocatorData *HostAllocatorData, distro distro.Distro, settings *evergreen.Settings) int {
 
-	cloudManager, err := cloud.GetCloudManager(distro.Provider, settings)
+	cloudManager, err := cloud.GetCloudManager(ctx, distro.Provider, settings)
 
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

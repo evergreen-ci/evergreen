@@ -263,7 +263,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	// figure out how many new hosts we need
-	newHostsNeeded, err := s.NewHostsNeeded(hostAllocatorData, s.Settings)
+	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData, s.Settings)
 	if err != nil {
 		return errors.Wrap(err, "Error determining how many new hosts are needed")
 	}
@@ -565,7 +565,7 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 				continue
 			}
 
-			cloudManager, err := cloud.GetCloudManager(d.Provider, s.Settings)
+			cloudManager, err := cloud.GetCloudManager(ctx, d.Provider, s.Settings)
 			if err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"distro":  distroId,

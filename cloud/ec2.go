@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -116,7 +117,7 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 }
 
 // Configure loads credentials or other settings from the config file.
-func (m *ec2Manager) Configure(settings *evergreen.Settings) error {
+func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return errors.New("AWS ID and Secret must not be blank")
 	}
@@ -288,7 +289,7 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSetting
 }
 
 // SpawnHost spawns a new host.
-func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand &&
 		h.Distro.Provider != evergreen.ProviderNameEc2Spot &&
 		h.Distro.Provider != evergreen.ProviderNameEc2Auto {
@@ -410,7 +411,7 @@ func (m *ec2Manager) CanSpawn() (bool, error) {
 }
 
 // GetInstanceStatus returns the current status of an EC2 instance.
-func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
+func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	if err := m.client.Create(m.credentials); err != nil {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
@@ -434,7 +435,7 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 }
 
 // TerminateInstance terminates the EC2 instance.
-func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
+func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
 	// terminate the instance
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as "+
@@ -547,8 +548,8 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
 }
 
 // IsUp returns whether a host is up.
-func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(h)
+func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
+	status, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking if instance is up")
 	}
@@ -559,7 +560,7 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 }
 
 // OnUp is called when the host is up.
-func (m *ec2Manager) OnUp(h *host.Host) error {
+func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	if isHostSpot(h) {
 		grip.Debug(message.Fields{
 			"message":       "spot host is up, attaching tags",
@@ -632,7 +633,7 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 }
 
 // GetDNSName returns the DNS name for the host.
-func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
+func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	var instance *ec2.Instance
 	var err error
 

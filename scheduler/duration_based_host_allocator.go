@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"math"
 	"sort"
 	"time"
@@ -99,7 +100,7 @@ type sortableDistroByNumStaticHost struct {
 // NewHostsNeeded decides if new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
 // consideration. Returns a map of distro to number of hosts to spawn.
-func (self *DurationBasedHostAllocator) NewHostsNeeded(
+func (self *DurationBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (newHostsNeeded map[string]int, err error) {
 
 	queueDistros := make([]distro.Distro, 0,
@@ -144,7 +145,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	// now, for each distro, see if we need to spin up any new hosts
 	for _, d := range distros {
 		newHostsNeeded[d.Id], err = self.
-			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
+			numNewHostsForDistro(ctx, &hostAllocatorData, d, tasksAccountedFor,
 				distroScheduleData, settings)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -431,7 +432,7 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro.
-func (self *DurationBasedHostAllocator) numNewHostsForDistro(
+func (self *DurationBasedHostAllocator) numNewHostsForDistro(ctx context.Context,
 	hostAllocatorData *HostAllocatorData, distro distro.Distro,
 	tasksAccountedFor map[string]bool,
 	distroScheduleData map[string]DistroScheduleData, settings *evergreen.Settings) (numNewHosts int,
@@ -496,7 +497,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	}
 	distroScheduleData[distro.Id] = distroData
 
-	cloudManager, err := cloud.GetCloudManager(distro.Provider, settings)
+	cloudManager, err := cloud.GetCloudManager(ctx, distro.Provider, settings)
 	if err != nil {
 		err = errors.Wrapf(err, "Couldn't get cloud manager for %s (%s)",
 			distro.Provider, distro.Id)
