@@ -7,7 +7,7 @@ import (
 
 type SafeCounter struct {
 	value int
-	mutex sync.Mutex
+	mutex sync.RWMutex
 }
 
 func (s *SafeCounter) Inc() {
@@ -17,8 +17,8 @@ func (s *SafeCounter) Inc() {
 }
 
 func (s *SafeCounter) Value() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return s.value
 }
 
