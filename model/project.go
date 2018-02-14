@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -48,7 +49,7 @@ type Project struct {
 	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
 	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules         []Module                   `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants   []BuildVariant             `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	BuildVariants   BuildVariants              `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	TaskGroups      []TaskGroup                `yaml:"task_groups,omitempty" bson:"task_groups"`
 	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
@@ -84,6 +85,12 @@ type DisplayTask struct {
 	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
 	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
 }
+
+type BuildVariants []BuildVariant
+
+func (b BuildVariants) Len() int      { return len(b) }
+func (b BuildVariants) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b BuildVariants) Less(i, j int) { return b[i].DisplayName < b[j].DisplayName }
 
 // Populate updates the base fields of the BuildVariantTaskUnit with
 // fields from the project task definition.
@@ -420,6 +427,9 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 	// init the variant map
 	execTable := TaskIdTable{}
 	displayTable := TaskIdTable{}
+
+	sort.Stable(p.BuildVariants)
+
 	for _, bv := range p.BuildVariants {
 		rev := v.Revision
 		if evergreen.IsPatchRequester(v.Requester) {

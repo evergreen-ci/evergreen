@@ -579,7 +579,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	}
 
 	// create and insert all of the actual tasks
-	tasks := make([]*task.Task, 0)
+	tasks := task.Tasks{}
 	displayTasks := make(map[string]*task.Task)
 
 	// Create display tasks
@@ -680,6 +680,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	// Set the NumDependents field
 	// Existing tasks in the db and tasks in other builds are not updated
 	setNumDeps(tasks)
+
+	sort.Stable(tasks)
 
 	// return all of the tasks created
 	return tasks, nil
