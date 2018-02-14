@@ -86,8 +86,11 @@ phony += cli clis
 # start smoke test specific rules
 $(buildDir)/load-smoke-data:scripts/load-smoke-data.go
 	go build -o $@ $<
+$(buildDir)/set-var:scripts/set-var.go
+	go build -o $@ $<
 $(buildDir)/set-project-var:scripts/set-project-var.go
 	go build -o $@ $<
+set-var:$(buildDir)/set-var
 set-project-var:$(buildDir)/set-project-var
 load-smoke-data:$(buildDir)/.load-smoke-data
 $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data

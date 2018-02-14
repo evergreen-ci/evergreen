@@ -74,6 +74,9 @@ func LoadTaskQueue(distro string) (TaskQueueAccessor, error) {
 }
 
 func (self *TaskQueue) Length() int {
+	if self == nil {
+		return 0
+	}
 	return len(self.Queue)
 }
 
