@@ -467,6 +467,9 @@ func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
 		}
 	}
 
+	if !strings.HasPrefix(instanceId, "i-") {
+		return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
+	}
 	resp, err := m.client.TerminateInstances(&ec2.TerminateInstancesInput{
 		InstanceIds: []*string{makeStringPtr(instanceId)},
 	})
