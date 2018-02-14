@@ -1124,13 +1124,15 @@ func (t *Task) MergeNewTestResults() error {
 // MergeTestResultsBulk takes a slice of task structs and returns the slice with
 // test results populated. Note that the order may change. The second parameter
 // can be used to use a specific test result filtering query, otherwise all test
-// results for the passed in tasks will be merged
+// results for the passed in tasks will be merged. Display tasks will have
+// the execution task results merged
 func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	out := []Task{}
 	if query == nil {
 		taskIds := []string{}
 		for _, t := range tasks {
 			taskIds = append(taskIds, t.Id)
+			taskIds = append(taskIds, t.ExecutionTasks...)
 		}
 		q := testresult.ByTaskIDs(taskIds)
 		query = &q
@@ -1142,7 +1144,7 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 
 	for _, t := range tasks {
 		for _, result := range results {
-			if result.TaskID == t.Id && result.Execution == t.Execution {
+			if (result.TaskID == t.Id || util.StringSliceContains(t.ExecutionTasks, result.TaskID)) && result.Execution == t.Execution {
 				t.LocalTestResults = append(t.LocalTestResults, ConvertToOld(&result))
 			}
 		}

@@ -454,7 +454,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 		revisionSort = "-" + revisionSort
 	}
 
-	tasks, err := task.Find(task.ByVersionsForNameAndVariant(versionIds, displayName, variant).Sort([]string{revisionSort}))
+	tasks, err := task.FindWithDisplayTasks(task.ByVersionsForNameAndVariant(versionIds, displayName, variant).Sort([]string{revisionSort}))
 
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting sibling tasks")
@@ -463,6 +463,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 	taskIds := []string{}
 	for _, t := range tasks {
 		taskIds = append(taskIds, t.Id)
+		taskIds = append(taskIds, t.ExecutionTasks...) // also add test results of exuection tasks to the parent
 	}
 	query := db.Query(bson.M{
 		testresult.TaskIDKey: bson.M{
