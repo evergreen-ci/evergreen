@@ -16,6 +16,12 @@ import (
 
 type attachArtifacts struct {
 	Files []string `mapstructure:"files" plugin:"expand"`
+
+	// Optional, when set to true, causes this command to be skipped over without an error when
+	// the path specified in files does not exist. Defaults to false, which triggers errors
+	// for missing files.
+	Optional bool `mapstructure:"optional"`
+
 	base
 }
 
@@ -65,7 +71,11 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 	for idx := range c.Files {
 		segment, err = readArtifactsFile(conf.WorkDir, c.Files[idx])
 		if err != nil {
-			catcher.Add(err)
+			if c.Optional && os.IsNotExist(errors.Cause(err)) {
+				// pass;
+			} else {
+				catcher.Add(err)
+			}
 			continue
 		}
 
@@ -104,6 +114,10 @@ func (c *attachArtifacts) Execute(ctx context.Context,
 func readArtifactsFile(wd, fn string) ([]*artifact.File, error) {
 	if !filepath.IsAbs(fn) {
 		fn = filepath.Join(wd, fn)
+	}
+
+	if _, err := os.Stat(fn); os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "file '%s' does not exist", fn)
 	}
 
 	file, err := os.Open(fn)
