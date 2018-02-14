@@ -158,13 +158,13 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 	assert.Len(projectRefs, 2)
 }
 
-func TestFindOneProjectRefByRepoAndBranch(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
+func TestFindOneProjectRefByRepoAndBranchWithPRTesting(t *testing.T) {
+	assert := assert.New(t)   //nolint
+	require := require.New(t) //nolint
 
 	require.NoError(db.Clear(ProjectRefCollection))
 
-	projectRef, err := FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
+	projectRef, err := FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
@@ -176,25 +176,37 @@ func TestFindOneProjectRefByRepoAndBranch(t *testing.T) {
 		Enabled:          false,
 		BatchTime:        10,
 		Identifier:       "ident0",
-		PRTestingEnabled: true,
+		PRTestingEnabled: false,
 	}
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
+
+	// 1 disabled document = no match
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
 	assert.NoError(err)
 	assert.Nil(projectRef)
 
-	doc.Identifier = "ident1"
+	// 2 docs, 1 enabled, but the enabled one has pr testing disabled = no match
+	doc.Identifier = "ident_"
+	doc.PRTestingEnabled = false
 	doc.Enabled = true
 	require.NoError(doc.Insert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
+	assert.NoError(err)
+	require.Nil(projectRef)
 
-	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
+	// 3 docs, 2 enabled, but only 1 has pr testing enabled = match
+	doc.Identifier = "ident1"
+	doc.PRTestingEnabled = true
+	require.NoError(doc.Insert())
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
 	assert.NoError(err)
 	require.NotNil(projectRef)
 	assert.Equal("ident1", projectRef.Identifier)
 
+	// 2 matching documents, error!
 	doc.Identifier = "ident2"
 	require.NoError(doc.Insert())
-	projectRef, err = FindOneProjectRefByRepoAndBranch("mongodb", "mci", "master")
+	projectRef, err = FindOneProjectRefByRepoAndBranchWithPRTesting("mongodb", "mci", "master")
 	assert.Error(err)
 	assert.Contains(err.Error(), "found 2 project refs, when 1 was expected")
 	require.Nil(projectRef)
