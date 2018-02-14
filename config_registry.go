@@ -8,6 +8,13 @@ import (
 	"github.com/mongodb/grip"
 )
 
+// In order to add a new config section:
+// 1. modify the struct in config.go to add whatever you need to add
+// 2. add the struct to the ConfigSections variable below
+// 3. add a copy of the struct you added in 1 to rest/model/admin.go and implement the conversion methods
+// 4. call the conversion logic you added in 1 to the SetEvergreenSettings function of rest/data/admin.go
+// 5. add it to MockConfig in testutil/config.go for testing, if desired
+
 var configRegistry *ConfigSectionRegistry
 
 func init() {
@@ -23,7 +30,6 @@ type ConfigSectionRegistry struct {
 }
 
 func resetRegistry() error {
-	// add any new config sections to the variable below to register them
 	ConfigSections := []ConfigSection{
 		&AlertsConfig{},
 		&AmboyConfig{},
