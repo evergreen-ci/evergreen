@@ -50,7 +50,7 @@ func githubCommitToRevision(githubCommit *thirdparty.GithubCommit) model.Revisio
 		AuthorEmail:     githubCommit.Commit.Author.Email,
 		RevisionMessage: githubCommit.Commit.Message,
 		Revision:        githubCommit.SHA,
-		CreateTime:      githubCommit.Committer.Date,
+		CreateTime:      githubCommit.Committer.Date.Time(),
 	}
 }
 
