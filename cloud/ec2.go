@@ -656,7 +656,9 @@ func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
-
+		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
 		if *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
 			instance, err = m.client.GetInstanceInfo(*spotDetails.SpotInstanceRequests[0].InstanceId)
 			if err != nil {
