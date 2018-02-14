@@ -177,7 +177,7 @@ var (
 	}
 
 	// Hosts in "initializing" status aren't actually running yet:
-	// they're just intents, so this list omits those values
+	// they're just intents, so this list omits that value.
 	ActiveStatus = []string{
 		HostRunning,
 		HostStarting,
