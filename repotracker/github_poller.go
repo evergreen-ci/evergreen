@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -51,7 +50,7 @@ func githubCommitToRevision(githubCommit *thirdparty.GithubCommit) model.Revisio
 		AuthorEmail:     githubCommit.Commit.Author.Email,
 		RevisionMessage: githubCommit.Commit.Message,
 		Revision:        githubCommit.SHA,
-		CreateTime:      time.Now(),
+		CreateTime:      githubCommit.Committer.Date,
 	}
 }
 

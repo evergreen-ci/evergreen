@@ -688,20 +688,6 @@ func (t *Task) UpdateDisplayTask() error {
 	return nil
 }
 
-type byPriority []string
-
-func (p byPriority) Len() int {
-	return len(p)
-}
-
-func (p byPriority) Swap(i, j int) {
-	p[i], p[j] = p[j], p[i]
-}
-
-func (p byPriority) Less(i, j int) bool {
-	return displayTaskPriority(p[i]) < displayTaskPriority(p[j])
-}
-
 func displayTaskPriority(status string) int {
 	switch status {
 	case evergreen.TaskStarted:
