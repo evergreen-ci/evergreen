@@ -54,7 +54,7 @@ func (j *hostStatsCollector) Run() {
 	j.AddError(j.statsByProvider())
 }
 
-func (j *hostStatsCollector) statsByDistro() {
+func (j *hostStatsCollector) statsByDistro() error {
 	hosts, err := host.GetStatsByDistro()
 	if err != nil {
 		return errors.Wrap(err, "problem getting stats by distro")
@@ -73,9 +73,11 @@ func (j *hostStatsCollector) statsByDistro() {
 		"running_tasks": tasks,
 		"data":          hosts,
 	})
+
+	return nil
 }
 
-func (j *hostStatsCollector) statsByProvider() {
+func (j *hostStatsCollector) statsByProvider() error {
 	providers, err := host.GetProviderCounts()
 	if err != nil {
 		return errors.Wrap(err, "problem getting stats by provider")
@@ -83,6 +85,10 @@ func (j *hostStatsCollector) statsByProvider() {
 
 	j.logger.Info(message.Fields{
 		"report": "host stats by provider",
-		"data":   providers,
+		// or we could make providers a map of provider names
+		// (string) to counts, by calling .Map() on the providers value.
+		"providers": providers,
 	})
+
+	return nil
 }
