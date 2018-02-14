@@ -184,11 +184,13 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 	}
 	close(hosts)
 
-	numThreads := 16
-	if len(uninitializedHosts) < 16 {
+	numThreads := 24
+	if len(uninitializedHosts) < numThreads {
 		numThreads = len(uninitializedHosts)
 	}
 
+	hostsProvisioned := 0
+	startAt := time.Now()
 	for i := 0; i < numThreads; i++ {
 		wg.Add(1)
 		go func() {
@@ -292,6 +294,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						"attempts": h.ProvisionAttempts,
 						"runtime":  time.Since(setupStartTime),
 					})
+					hostsProvisioned++
 				}
 			}
 		}()
@@ -299,6 +302,15 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 
 	// let all setup routines finish
 	wg.Wait()
+	grip.Info(message.Fields{
+		"GUID":              init.GUID,
+		"duration_secs":     time.Since(startAt).Seconds(),
+		"runner":            RunnerName,
+		"num_hosts":         len(uninitializedHosts),
+		"num_errors":        catcher.Len(),
+		"provisioned_hosts": hostsProvisioned,
+		"workers":           numThreads,
+	})
 
 	return catcher.Resolve()
 }

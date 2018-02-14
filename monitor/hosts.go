@@ -114,8 +114,13 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 		work <- &hosts[i]
 	}
 	close(work)
-
-	for i := 0; i < 12; i++ {
+	workers := 24
+	if len(hosts) > workers {
+		workers = len(hosts)
+	}
+	startAt := time.Now()
+	terminated := 0
+	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -124,18 +129,29 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
 
 				func() { // use a function so that the defer works
-					funcCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+					funcCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 					defer cancel()
 
 					if err := terminateHost(funcCtx, hostToTerminate, settings); err != nil {
 						catcher.Add(errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id))
+						return
 					}
+					terminated++
 				}()
 			}
 		}()
 	}
-
 	wg.Wait()
+
+	grip.Info(message.Fields{
+		"runner":        RunnerName,
+		"operation":     "host termination",
+		"duration_secs": time.Since(startAt).Seconds(),
+		"workers":       workers,
+		"num_hosts":     len(hosts),
+		"terminated":    terminated,
+		"num_errors":    catcher.Len(),
+	})
 
 	return catcher.Resolve()
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/rand"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 
@@ -69,9 +68,13 @@ func (tr *TaskRunner) Run() error {
 	// close the free hosts channel
 	close(freeHostChan)
 	wg := sync.WaitGroup{}
-	workers := runtime.NumCPU() * 2
+	workers := 24
+	if len(freeHosts) > workers {
+		workers = len(freeHosts)
+	}
 	wg.Add(workers)
 
+	startAt := time.Now()
 	// for each worker create a new goroutine
 	for i := 0; i < workers; i++ {
 		go func() {
@@ -82,6 +85,12 @@ func (tr *TaskRunner) Run() error {
 		}()
 	}
 	wg.Wait()
-
+	grip.Info(message.Fields{
+		"runner":        RunnerName,
+		"message":       "task runner complete",
+		"hosts":         len(freeHosts),
+		"workers":       workers,
+		"duration_secs": time.Since(startAt).Seconds(),
+	})
 	return errorCollector.report()
 }
