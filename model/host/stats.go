@@ -8,6 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+type DistroStats []StatsByDistro
 type StatsByDistro struct {
 	// ID of the distro the below stats are for
 	Distro string `bson:"distro" json:"distro,omitempty"`
@@ -37,8 +38,28 @@ func (p ProviderStats) Map() map[string]int {
 	return out
 }
 
+func (d DistroStats) CountMap() map[string]int {
+	out := map[string]int{}
+
+	for _, s := range d {
+		out[s.Distro] += s.Count
+	}
+
+	return out
+}
+
+func (d DistroStats) TasksMap() map[string]int {
+	out := map[string]int{}
+
+	for _, s := range d {
+		out[s.Distro] += s.NumTasks
+	}
+
+	return out
+}
+
 // GetStatsByDistro returns counts of up hosts broken down by distro
-func GetStatsByDistro() ([]StatsByDistro, error) {
+func GetStatsByDistro() (DistroStats, error) {
 	stats := []StatsByDistro{}
 	if err := db.Aggregate(Collection, statsByDistroPipeline(), &stats); err != nil {
 		return nil, err
