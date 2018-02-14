@@ -223,7 +223,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
-						Name:      "bv2",
+						Name:  "bv2",
 						Tasks: []model.BuildVariantTaskUnit{{Name: "testSpecial"}}},
 				},
 			}
@@ -363,7 +363,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:      "bv",
+						Name:  "bv",
 						Tasks: []model.BuildVariantTaskUnit{{Name: "compile"}, {Name: "testOne"}},
 					},
 				},
@@ -1368,7 +1368,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "projectId",
 				BuildVariants: []model.BuildVariant{
 					{
-						RunOn:     []string{"mongo"},
+						RunOn: []string{"mongo"},
 						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
@@ -1398,8 +1398,8 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "projectId",
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:      "import",
-						RunOn:     []string{"export"},
+						Name:  "import",
+						RunOn: []string{"export"},
 						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
@@ -1414,7 +1414,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "projectId",
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:      "import",
+						Name:  "import",
 						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
@@ -1447,6 +1447,42 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				ShouldResemble, []ValidationError{})
 		})
 	})
+}
+
+func TestRunOnDeprecationWarnings(t *testing.T) {
+	assert := assert.New(t) //nolint
+
+	project := &model.Project{
+		Identifier: "projectId",
+		BuildVariants: []model.BuildVariant{
+			{
+				Name: "import",
+				Tasks: []model.BuildVariantTaskUnit{
+					{
+						Name: "silhouettes",
+						Distros: []string{
+							"foo",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	errs := checkRunOnOnlyOneDistro(project)
+	assert.Len(errs, 0)
+
+	project.BuildVariants[0].Tasks[0].Distros = []string{"foo", "bar"}
+	errs = checkRunOnOnlyOneDistro(project)
+	assert.Len(errs, 1)
+
+	project.BuildVariants[0].RunOn = []string{"foo", "bar", "baz"}
+	errs = checkRunOnOnlyOneDistro(project)
+	assert.Len(errs, 2)
+
+	project.BuildVariants[0].Tasks[0].Distros = []string{"foo"}
+	errs = checkRunOnOnlyOneDistro(project)
+	assert.Len(errs, 1)
 }
 
 func TestTaskGroupValidation(t *testing.T) {
@@ -1550,4 +1586,5 @@ buildvariants:
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts greater than half the number of tasks")
 	assert.Equal(validationErrs[0].Level, Warning)
+
 }
