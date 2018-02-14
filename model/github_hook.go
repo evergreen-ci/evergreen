@@ -19,8 +19,9 @@ type GithubHook struct {
 	Repo   string `bson:"repo"`
 }
 
+//nolint: deadcode, megacheck
 var (
-	hookIDKey = bsonutil.MustHaveTag(GithubHook{}, "HookID") //nolint: deadcode, megacheck
+	hookIDKey = bsonutil.MustHaveTag(GithubHook{}, "HookID")
 	ownerKey  = bsonutil.MustHaveTag(GithubHook{}, "Owner")
 	repoKey   = bsonutil.MustHaveTag(GithubHook{}, "Repo")
 )

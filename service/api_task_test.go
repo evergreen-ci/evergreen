@@ -515,7 +515,9 @@ func TestEndTaskEndpoint(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	q := queue.NewLocalLimitedSize(4, 2048)
-	q.Start(ctx)
+	if err := q.Start(ctx); err != nil {
+		t.Error(err)
+	}
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,

@@ -386,6 +386,8 @@ func (s *PatchConnectorAbortByIdSuite) TestVerifyPullRequestEventForAbort() {
 	event, ok := eventInterface.(*github.PullRequestEvent)
 	s.True(ok)
 	owner, repo, err := verifyPullRequestEventForAbort(event)
+	s.Empty(owner)
+	s.Empty(repo)
 	s.Equal("pull request data is malformed", err.Error())
 
 	now := time.Now().Round(time.Millisecond)

@@ -17,8 +17,7 @@ func TestGithubHookSuite(t *testing.T) {
 }
 
 func (s *hookSuite) SetupSuite() {
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
 func (s *hookSuite) SetupTest() {

@@ -42,21 +42,9 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			catcher.Add(ctx.Err())
 			break
 		}
-		fileLoc := filepath.Join(conf.WorkDir, fn)
-		if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
-			catcher.Add(errors.Wrapf(err, "File '%s' does not exist", fn))
-			continue
-		}
-		jsonFile, err := os.Open(fileLoc)
-		defer jsonFile.Close()
+		data, err := generateTaskForFile(fn, conf)
 		if err != nil {
-			catcher.Add(errors.Wrapf(err, "Couldn't open file '%s'", fn))
-			continue
-		}
-		var data []byte
-		data, err = ioutil.ReadAll(jsonFile)
-		if err != nil {
-			catcher.Add(errors.Wrapf(err, "Problem reading from file '%s'", fn))
+			catcher.Add(err)
 			continue
 		}
 		post = append(post, data)
@@ -65,4 +53,24 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 		return errors.WithStack(catcher.Resolve())
 	}
 	return errors.Wrap(comm.GenerateTasks(ctx, td, post), "Problem posting task data")
+}
+
+func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {
+	fileLoc := filepath.Join(conf.WorkDir, fn)
+	if _, err := os.Stat(fileLoc); os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "File '%s' does not exist", fn)
+	}
+	jsonFile, err := os.Open(fileLoc)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Couldn't open file '%s'", fn)
+	}
+	defer jsonFile.Close()
+
+	var data []byte
+	data, err = ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Problem reading from file '%s'", fn)
+	}
+
+	return data, nil
 }
