@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -42,11 +43,7 @@ func (t *GithubTime) UnmarshalJSON(b []byte) error {
 func (t *GithubTime) MarshalJSON() ([]byte, error) {
 	timeStr := t.Time().Format(githubTimeFormat)
 
-	b := []byte{0x22}
-	b = append(b, []byte(timeStr)...)
-	b = append(b, 0x22)
-
-	return b, nil
+	return []byte(fmt.Sprintf(`"%s"`, timeStr)), nil
 }
 
 func (t *GithubTime) Time() time.Time {
