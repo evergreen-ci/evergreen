@@ -13,13 +13,13 @@ type SafeCounter struct {
 func (s *SafeCounter) Inc() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	value++
+	s.value++
 }
 
 func (s *SafeCounter) Value() int {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return value
+	return s.value
 }
 
 func (s *SafeCounter) String() string {
