@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -15,6 +16,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 	var hostIds []string
 	var dist distro.Distro
 	var hostAllocator *DeficitBasedHostAllocator
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("With a deficit based host allocator,"+
 		" determining the number of new hosts to spin up...", t, func() {
@@ -43,7 +47,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					},
 				}
 
-				So(hostAllocator.numNewHostsForDistro(hostAllocatorData,
+				So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData,
 					dist, hostAllocatorTestConf), ShouldEqual, 0)
 			})
 
@@ -64,7 +68,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 			hosts := []host.Host{
 				{Id: hostIds[0]},
@@ -83,7 +87,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 		})
 
@@ -114,7 +118,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 		})
 
@@ -144,7 +148,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 
 		})
@@ -175,7 +179,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 		})
 
@@ -210,7 +214,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 3)
 
 			dist.PoolSize = 8
@@ -225,7 +229,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 3)
 			dist.PoolSize = 7
 			hostAllocatorData = &HostAllocatorData{
@@ -239,7 +243,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 2)
 			dist.PoolSize = 6
 			hostAllocatorData = &HostAllocatorData{
@@ -253,7 +257,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 1)
 		})
 
@@ -280,7 +284,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 		})
 

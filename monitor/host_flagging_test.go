@@ -533,6 +533,9 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
 		// reset the db
@@ -616,7 +619,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			expired, err := Flagexpiredhosts(ctx, nil, nil)
+			expired, err := flagExpiredHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 0)
 

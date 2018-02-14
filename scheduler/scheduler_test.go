@@ -68,7 +68,7 @@ func MockGetExpectedDurations(runnableTasks []task.Task) (model.ProjectTaskDurat
 
 type MockHostAllocator struct{}
 
-func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *evergreen.Settings) (
+func (self *MockHostAllocator) NewHostsNeeded(ctx context.Context, d HostAllocatorData, s *evergreen.Settings) (
 	map[string]int, error) {
 	return nil, errors.New("NewHostsNeeded not implemented")
 }

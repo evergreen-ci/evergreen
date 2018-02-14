@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -17,6 +18,9 @@ func TestMonitorReachability(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When checking the reachability of hosts", t, func() {
 		mockCloud := cloud.GetMockProvider()
@@ -42,7 +46,7 @@ func TestMonitorReachability(t *testing.T) {
 			// would be updated to be reachable
 			testutil.HandleTestingErr(h.Insert(), t, "error inserting host")
 
-			So(monitorReachability(nil), ShouldBeNil)
+			So(monitorReachability(ctx, nil), ShouldBeNil)
 
 			// refresh the host - its status should not have been updated
 			h, err := host.FindOne(host.ById("h1"))
@@ -88,7 +92,7 @@ func TestMonitorReachability(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			So(monitorReachability(nil), ShouldBeNil)
+			So(monitorReachability(ctx, nil), ShouldBeNil)
 
 			// refresh the first host - its status should have been updated
 			host1, err := host.FindOne(host.ById("h1"))
