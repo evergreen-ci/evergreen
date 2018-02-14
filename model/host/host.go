@@ -96,17 +96,6 @@ type ProvisionOptions struct {
 	OwnerId string `bson:"owner_id" json:"owner_id"`
 }
 
-type StatsByDistro struct {
-	// ID of the distro the below stats are for
-	Distro string `bson:"distro" json:"distro,omitempty"`
-	// Host status that the below stats are for
-	Status string `bson:"status" json:"status"`
-	// Number of hosts in this status
-	Count int `bson:"count" json:"count"`
-	// Number of tasks running on hosts in the above group (should only be nonzero for running hosts)
-	NumTasks int `bson:"num_tasks_running" json:"num_tasks_running"`
-}
-
 const (
 	MaxLCTInterval = 5 * time.Minute
 )
@@ -695,13 +684,4 @@ func (h *Host) DisablePoisonedHost() error {
 	}
 
 	return errors.WithStack(h.SetDecommissioned(evergreen.User))
-}
-
-// GetStatsByDistro returns counts of up hosts broken down by distro
-func GetStatsByDistro() ([]StatsByDistro, error) {
-	stats := []StatsByDistro{}
-	if err := db.Aggregate(Collection, statsByDistroPipeline(), &stats); err != nil {
-		return nil, err
-	}
-	return stats, nil
 }

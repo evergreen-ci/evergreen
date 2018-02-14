@@ -166,11 +166,20 @@ const (
 const NameTimeFormat = "20060102150405"
 
 var (
-	// UphostStatus is a list of all hostb statuses that are considered "up."
+	// UphostStatus is a list of all host statuses that are considered "up."
 	// This is used for query building.
 	UphostStatus = []string{
 		HostRunning,
 		HostUninitialized,
+		HostStarting,
+		HostInitializing,
+		HostProvisionFailed,
+	}
+
+	// Hosts in "initializing" status aren't actually running yet:
+	// they're just intents, so this list omits that value.
+	ActiveStatus = []string{
+		HostRunning,
 		HostStarting,
 		HostInitializing,
 		HostProvisionFailed,
