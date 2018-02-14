@@ -66,7 +66,7 @@ func statsByDistroPipeline() []bson.M {
 		{
 			"$match": bson.M{
 				StatusKey: bson.M{
-					"$in": evergreen.UphostStatus,
+					"$in": evergreen.ActiveStatus,
 				},
 			},
 		},
@@ -101,7 +101,7 @@ func statsByProviderPipeline() []bson.M {
 		{
 			"$match": bson.M{
 				StatusKey: bson.M{
-					"$in": evergreen.UphostStatus,
+					"$in": evergreen.ActiveStatus,
 				},
 			},
 		},
