@@ -55,8 +55,8 @@ func fetchTestDistro() *distro.Distro {
 // $0.0116 per hour / 60 minutes). Since the price is low, we run this each time
 // the integration cloud tests are run.
 func TestSpawnEC2InstanceOnDemand(t *testing.T) {
-	assert := assert.New(t)   // nolint
-	require := require.New(t) // nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
@@ -121,8 +121,8 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 }
 
 func TestSpawnEC2InstanceSpot(t *testing.T) {
-	assert := assert.New(t)   // nolint
-	require := require.New(t) // nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())

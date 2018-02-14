@@ -60,7 +60,7 @@ func insertTestDocuments() error {
 }
 
 func TestHostStatsByProvider(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	assert.NoError(insertTestDocuments())
 
@@ -81,7 +81,7 @@ func TestHostStatsByProvider(t *testing.T) {
 }
 
 func TestHostStatsByDistro(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection))
 	assert.NoError(insertTestDocuments())
 

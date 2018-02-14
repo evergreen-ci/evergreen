@@ -9,7 +9,7 @@ import (
 )
 
 func TestRDPPasswordValidation(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	goodPasswords := []string{
 		"地火風水心CP!",
@@ -28,7 +28,7 @@ func TestRDPPasswordValidation(t *testing.T) {
 }
 
 func TestMakeExtendedHostExpiration(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	h := host.Host{
 		ExpirationTime: time.Now().Add(12 * time.Hour),
@@ -40,7 +40,7 @@ func TestMakeExtendedHostExpiration(t *testing.T) {
 }
 
 func TestMakeExtendedHostExpirationFailsBeyondOneWeek(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	h := host.Host{
 		ExpirationTime: time.Now().Add(12 * time.Hour),

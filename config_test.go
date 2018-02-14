@@ -33,7 +33,7 @@ func testConfig() *Settings {
 //Checks that the test settings file can be parsed
 //and returns a settings object.
 func TestInitSettings(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	settings, err := NewSettings(filepath.Join(FindEvergreenHome(),
 		"testdata", "mci_settings.yml"))
@@ -43,7 +43,7 @@ func TestInitSettings(t *testing.T) {
 
 //Checks that trying to parse a non existent file returns non-nil err
 func TestBadInit(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	settings, err := NewSettings(filepath.Join(FindEvergreenHome(),
 		"testdata", "blahblah.yml"))
@@ -53,7 +53,7 @@ func TestBadInit(t *testing.T) {
 }
 
 func TestGetGithubSettings(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	settings, err := NewSettings(filepath.Join(FindEvergreenHome(),
 		"testdata", "mci_settings.yml"))

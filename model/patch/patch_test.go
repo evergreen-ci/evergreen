@@ -12,7 +12,7 @@ import (
 )
 
 func TestConfigChanged(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	remoteConfigPath := "config/evergreen.yml"
 	p := &Patch{
 		Patches: []ModulePatch{{

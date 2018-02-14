@@ -258,8 +258,8 @@ func TestTestResultsLegacyTask(t *testing.T) {
 }
 
 func TestAddExecutionMigration(t *testing.T) {
-	assert := assert.New(t)   // nolint
-	require := require.New(t) // nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

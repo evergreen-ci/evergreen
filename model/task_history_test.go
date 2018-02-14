@@ -1089,7 +1089,7 @@ func TestGetTestHistory(t *testing.T) {
 }
 
 func TestCompareQueryRunTimes(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	rand.Seed(time.Now().UnixNano())
 	numTasks := 1000  // # of tasks to insert into the db
 	maxNumTests := 50 // max # of tests per task to insert (randomized per task)
@@ -1211,7 +1211,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 
 func TestTaskHistoryPickaxe(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, testresult.Collection), t, "error clearing collections")
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	proj := Project{
 		Identifier: "proj",
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 func TestAPIPatch(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	baseTime := time.Now()
 	p := patch.Patch{
 		Id:            bson.NewObjectId(),
@@ -88,7 +88,7 @@ func TestAPIPatch(t *testing.T) {
 }
 
 func TestGithubPatch(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	p := patch.GithubPatch{
 		PRNumber:  123,
 		BaseOwner: "evergreen-ci",

@@ -26,7 +26,7 @@ type projectAliasMigration struct {
 }
 
 func TestProjectAliasMigration(t *testing.T) {
-	require := require.New(t) // nolint
+	require := require.New(t)
 
 	mgoSession, database, err := evgdb.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)

@@ -223,7 +223,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 							{Name: "compile"}, {Name: "testOne"}},
 					},
 					{
-						Name:      "bv2",
+						Name:  "bv2",
 						Tasks: []model.BuildVariantTaskUnit{{Name: "testSpecial"}}},
 				},
 			}
@@ -363,7 +363,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 				},
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:      "bv",
+						Name:  "bv",
 						Tasks: []model.BuildVariantTaskUnit{{Name: "compile"}, {Name: "testOne"}},
 					},
 				},
@@ -1238,7 +1238,7 @@ func TestValidatePluginCommands(t *testing.T) {
 }
 
 func TestCheckProjectSyntax(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	assert.NoError(db.Clear(version.Collection))
 
 	distros := []distro.Distro{
@@ -1368,7 +1368,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "projectId",
 				BuildVariants: []model.BuildVariant{
 					{
-						RunOn:     []string{"mongo"},
+						RunOn: []string{"mongo"},
 						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
@@ -1398,8 +1398,8 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "projectId",
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:      "import",
-						RunOn:     []string{"export"},
+						Name:  "import",
+						RunOn: []string{"export"},
 						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
@@ -1414,7 +1414,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 				Identifier: "projectId",
 				BuildVariants: []model.BuildVariant{
 					{
-						Name:      "import",
+						Name:  "import",
 						Tasks: []model.BuildVariantTaskUnit{{Name: "db"}},
 					},
 				},
@@ -1450,7 +1450,7 @@ func TestEnsureHasNecessaryBVFields(t *testing.T) {
 }
 
 func TestTaskGroupValidation(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	// check that yml with a task group with a duplicate task errors
 	duplicateYml := `

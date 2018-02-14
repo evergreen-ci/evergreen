@@ -30,7 +30,7 @@ type githubHookMigrationSuite struct {
 }
 
 func TestGithubHookMigration(t *testing.T) {
-	require := require.New(t) // nolint
+	require := require.New(t)
 
 	mgoSession, database, err := db.GetGlobalSessionFactory().GetSession()
 	require.NoError(err)

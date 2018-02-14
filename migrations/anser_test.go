@@ -13,7 +13,7 @@ import (
 )
 
 func TestAnserBasicPlaceholder(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	mgoSession, _, err := evg.GetGlobalSessionFactory().GetSession()
 	assert.NoError(err)
 	session := db.WrapSession(mgoSession.Clone())

@@ -10,7 +10,7 @@ import (
 )
 
 func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	for id := range registry.JobTypeNames() {
 		grip.Infoln("testing job is remote ready:", id)

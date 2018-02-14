@@ -122,7 +122,7 @@ func (s *UserConnectorSuite) TestAddDuplicateSshKeyFails() {
 }
 
 func TestKeyValidationFailsWithInvalidKeys(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	err := validateKeyName("    ")
 	assert.Error(err)
@@ -138,7 +138,7 @@ func TestKeyValidationFailsWithInvalidKeys(t *testing.T) {
 }
 
 func TestKeyValidation(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	err := validateKeyName("key1 ")
 	assert.NoError(err)

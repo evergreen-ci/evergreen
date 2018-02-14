@@ -9,7 +9,7 @@ import (
 )
 
 func TestFindOneProjectVar(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	testutil.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
 		"Error clearing collection")
@@ -34,7 +34,7 @@ func TestFindOneProjectVar(t *testing.T) {
 }
 
 func TestProjectVarsInsert(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	testutil.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
 		"Error clearing collection")
@@ -53,7 +53,7 @@ func TestProjectVarsInsert(t *testing.T) {
 }
 
 func TestRedactPrivateVars(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	vars := map[string]string{
 		"a": "a",

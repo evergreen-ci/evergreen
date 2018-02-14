@@ -10,7 +10,7 @@ import (
 )
 
 func TestErrorHandlerIntegration(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	h := &host.Host{}
 
 	// confirm the global error collector is initialized.

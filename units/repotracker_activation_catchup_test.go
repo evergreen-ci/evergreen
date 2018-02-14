@@ -12,7 +12,7 @@ func TestVersionActivationJob(t *testing.T) {
 	// different IDs, somehow. Internally this is just glue code
 	// to get the job to execute in the right place.
 
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	factory, err := registry.GetJobFactory(versionActivationCatchupJobName)
 	assert.NoError(err)

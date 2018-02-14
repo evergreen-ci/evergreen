@@ -354,8 +354,8 @@ func TestCalculateActualMakespan(t *testing.T) {
 }
 
 func TestAverageTaskLatencyLastMinuteByDistro(t *testing.T) {
-	require := require.New(t) // nolint
-	assert := assert.New(t)   // nolint
+	require := require.New(t)
+	assert := assert.New(t)
 	require.NoError(db.ClearCollections(task.Collection, distro.Collection))
 	distroName := "sampleDistro"
 	d := distro.Distro{Id: distroName}

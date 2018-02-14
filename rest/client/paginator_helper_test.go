@@ -27,7 +27,7 @@ func TestConstructor(t *testing.T) {
 }
 
 func TestLinkParsing(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	test1 := `<http://localhost:8080/api/rest/v2/users/admin/hosts?host_id=foo>; rel="next"`
 	expected1 := `/users/admin/hosts?host_id=foo`

@@ -846,7 +846,7 @@ func TestHostElapsedCommTime(t *testing.T) {
 }
 
 func TestHostUpsert(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	const hostID = "upsertTest"
 	testHost := &Host{
 		Id:             hostID,
@@ -895,7 +895,7 @@ func TestHostUpsert(t *testing.T) {
 }
 
 func TestHostStats(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	const d1 = "distro1"
 	const d2 = "distro2"
@@ -979,7 +979,7 @@ func TestHostStats(t *testing.T) {
 
 func TestHostFindingWithTask(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(Collection, task.Collection), t, "error clearing collections")
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	task1 := task.Task{
 		Id: "task1",
 	}
