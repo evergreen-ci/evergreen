@@ -44,7 +44,7 @@ func init() {
 
 func TestGetGithubCommits(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetGithubCommits")
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	githubCommits, _, err := GetGithubCommits("", commitsURL)
 	assert.NoError(err)
@@ -52,7 +52,7 @@ func TestGetGithubCommits(t *testing.T) {
 }
 
 func TestGetPatchSummaries(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	summaries, err := GetPatchSummaries(patchText)
 	assert.NoError(err)

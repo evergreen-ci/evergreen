@@ -16,7 +16,7 @@ func init() {
 }
 
 func TestValidatePushEvent(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	branch, err := validatePushEvent(nil)
 	assert.Error(err)
@@ -47,7 +47,7 @@ func TestValidatePushEvent(t *testing.T) {
 }
 
 func TestValidateProjectRefs(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	assert.NoError(db.Clear(model.ProjectRefCollection))
 

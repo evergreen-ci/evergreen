@@ -241,7 +241,7 @@ func TestEnsureValidSSHOptions(t *testing.T) {
 }
 
 func TestEnsureNonZeroID(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	assert.NotNil(ensureHasNonZeroID(nil, conf))
 	assert.NotNil(ensureHasNonZeroID(&distro.Distro{}, conf))

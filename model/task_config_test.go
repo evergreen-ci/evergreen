@@ -9,7 +9,7 @@ import (
 )
 
 func TestTaskConfig(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	curdir := testutil.GetDirectoryOfFile()
 

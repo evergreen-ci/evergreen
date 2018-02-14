@@ -336,7 +336,7 @@ func TestVariantTasksToTVPairs(t *testing.T) {
 }
 
 func TestAddNewPatch(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	testutil.HandleTestingErr(db.ClearCollections(patch.Collection, version.Collection, build.Collection, task.Collection), t, "problem clearing collections")
 	p := &patch.Patch{

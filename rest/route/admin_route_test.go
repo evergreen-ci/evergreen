@@ -107,7 +107,7 @@ func (s *AdminRouteSuite) TestPostAuthentication() {
 }
 
 func TestRestartRoute(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
 	const route = "/admin/restart"

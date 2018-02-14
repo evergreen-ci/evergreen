@@ -136,7 +136,7 @@ func TestPatchPlugin(t *testing.T) {
 }
 
 func TestGetPatchCommands(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	modulePatch := patch.ModulePatch{
 		Githash: "a4aa03d0472d8503380479b76aef96c044182822",

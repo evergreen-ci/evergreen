@@ -48,7 +48,7 @@ type DistroCostConnectorSuite struct {
 
 // Initialize the ConnectorSuites
 func TestDistroCostConnectorSuite(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	// Set up
 	s := new(DistroCostConnectorSuite)

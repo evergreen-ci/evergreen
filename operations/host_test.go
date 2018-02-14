@@ -62,7 +62,7 @@ func TestHostSetupScript(t *testing.T) {
 }
 
 func TestHostSudoShHelper(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	cmd := getShCommandWithSudo(context.Background(), "foo", false)
 	assert.Equal([]string{"sh", "foo"}, cmd.Args)
@@ -72,8 +72,8 @@ func TestHostSudoShHelper(t *testing.T) {
 }
 
 func TestHostTeardownScript(t *testing.T) {
-	assert := assert.New(t)   // nolint
-	require := require.New(t) // nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	dir, err := ioutil.TempDir("", "")
 	require.NoError(err)

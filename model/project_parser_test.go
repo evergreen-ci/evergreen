@@ -551,7 +551,7 @@ func TestParserTaskSelectorEvaluation(t *testing.T) {
 }
 
 func TestDisplayTaskParsing(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	yml := `
 buildvariants:
 - name: "bv1"
@@ -595,7 +595,7 @@ tasks:
 }
 
 func TestDisplayTaskValidation(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	// check that yml with valid display tasks does not error
 	validYml := `
@@ -785,7 +785,7 @@ tasks:
 }
 
 func TestTaskGroupParsing(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	// check that yml with valid task group does not error and parses correctly
 	validYml := `

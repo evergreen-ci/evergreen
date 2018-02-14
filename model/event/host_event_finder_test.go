@@ -8,7 +8,7 @@ import (
 )
 
 func TestRecentHostStatusFinder(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	const hostID = "host-one"
 

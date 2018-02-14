@@ -1238,7 +1238,7 @@ func TestValidatePluginCommands(t *testing.T) {
 }
 
 func TestCheckProjectSyntax(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	assert.NoError(db.Clear(version.Collection))
 
 	distros := []distro.Distro{
@@ -1486,7 +1486,7 @@ func TestRunOnDeprecationWarnings(t *testing.T) {
 }
 
 func TestTaskGroupValidation(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	// check that yml with a task group with a duplicate task errors
 	duplicateYml := `

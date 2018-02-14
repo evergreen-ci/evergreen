@@ -506,7 +506,7 @@ func TestDBUtils(t *testing.T) {
 }
 
 func TestClearGridFSCollections(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	assert.NoError(WriteGridFile("testfiles", "test.txt", strings.NewReader("lorem ipsum")))
 

@@ -77,7 +77,7 @@ func TestGeneratedTasksFromYAML(t *testing.T) {
 }
 
 `
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	g, err := GeneratedTasksFromJSON([]byte(jsonTestDoc))
 	assert.NotNil(g)
 	assert.Nil(err)

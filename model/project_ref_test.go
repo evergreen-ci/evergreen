@@ -43,7 +43,7 @@ func TestFindOneProjectRef(t *testing.T) {
 }
 
 func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	projectRef := &ProjectRef{
 		Owner:      "mongodb",
@@ -67,7 +67,7 @@ func TestGetBatchTimeDoesNotExceedMaxInt32(t *testing.T) {
 }
 
 func TestProjectRefHTTPLocation(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	projectRef := &ProjectRef{
 		Owner: "mongodb",
@@ -95,7 +95,7 @@ func TestProjectRefHTTPLocation(t *testing.T) {
 }
 
 func TestProjectRefLocation(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	projectRef := &ProjectRef{
 		Owner: "mongodb",
@@ -120,7 +120,7 @@ func TestProjectRefLocation(t *testing.T) {
 }
 
 func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	assert.NoError(db.Clear(ProjectRefCollection))
 
@@ -159,8 +159,8 @@ func TestFindProjectRefsByRepoAndBranch(t *testing.T) {
 }
 
 func TestFindOneProjectRefByRepoAndBranch(t *testing.T) {
-	assert := assert.New(t)   //nolint
-	require := require.New(t) //nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	require.NoError(db.Clear(ProjectRefCollection))
 

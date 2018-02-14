@@ -695,7 +695,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 }
 
 func TestMarkEnd(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection),
 		"Error clearing task and build collections")
 
@@ -1309,7 +1309,7 @@ func TestGetstepback(t *testing.T) {
 }
 
 func TestFailedTaskRestart(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
 		"Error clearing task and build collections")
 	userName := "testUser"
@@ -1422,7 +1422,7 @@ func TestFailedTaskRestart(t *testing.T) {
 }
 
 func TestStepback(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection, version.Collection), t,
 		"Error clearing task and build collections")
 	b1 := &build.Build{

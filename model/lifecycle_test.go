@@ -1045,7 +1045,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 }
 
 func TestCreateTaskGroup(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t, "Error clearing collection")
 	projYml := `
   tasks:
@@ -1373,7 +1373,7 @@ func TestSortTasks(t *testing.T) {
 }
 
 func TestVersionRestart(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	assert.NoError(resetTaskData())
 
 	// test that restarting a version restarts its tasks
@@ -1410,7 +1410,7 @@ func TestVersionRestart(t *testing.T) {
 }
 
 func TestDisplayTaskRestart(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	displayTasks := []string{"displayTask"}
 	allTasks := []string{"displayTask", "task5", "task6"}
 

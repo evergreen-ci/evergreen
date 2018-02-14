@@ -78,7 +78,7 @@ func TestDequeueTask(t *testing.T) {
 }
 
 func TestFindTask(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	q := &TaskQueue{
 		Queue: []TaskQueueItem{
@@ -110,8 +110,8 @@ func TestFindTask(t *testing.T) {
 }
 
 func TestFindNextTaskEmptySpec(t *testing.T) {
-	assert := assert.New(t)   // nolint
-	require := require.New(t) // nolint
+	assert := assert.New(t)
+	require := require.New(t)
 
 	require.NoError(db.ClearCollections(host.Collection, task.Collection))
 	defer db.ClearCollections(host.Collection, task.Collection)

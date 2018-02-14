@@ -798,7 +798,7 @@ func TestTaskResultOutcome(t *testing.T) {
 
 func TestDisplayTaskUpdates(t *testing.T) {
 	testutil.HandleTestingErr(db.Clear(Collection), t, "error clearing task collection")
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 	dt := Task{
 		Id:          "dt",
 		DisplayOnly: true,
@@ -894,7 +894,7 @@ func TestDisplayTaskUpdates(t *testing.T) {
 
 func TestMergeTestResultsBulk(t *testing.T) {
 	testutil.HandleTestingErr(db.Clear(testresult.Collection), t, "error clearing collections")
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 
 	tasks := []Task{
 		{
@@ -966,7 +966,7 @@ func TestMergeTestResultsBulk(t *testing.T) {
 }
 
 func TestFindOldTasksByID(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	assert.NoError(db.ClearCollections(Collection, OldCollection))
 
 	taskDoc := Task{

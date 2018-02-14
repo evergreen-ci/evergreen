@@ -7,7 +7,7 @@ import (
 )
 
 func TestCommandRegistry(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	r := newCommandRegistry()
 	assert.NotNil(r.cmds)
@@ -34,7 +34,7 @@ func TestCommandRegistry(t *testing.T) {
 }
 
 func TestGlobalCommandRegistryNamesMatchExpectedValues(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	evgRegistry.mu.Lock()
 	defer evgRegistry.mu.Unlock()

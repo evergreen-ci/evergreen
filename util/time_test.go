@@ -9,7 +9,7 @@ import (
 )
 
 func TestTimeJitter(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	for i := 0; i < 100; i++ {
 		t := JitterInterval(time.Second * 15)
@@ -19,7 +19,7 @@ func TestTimeJitter(t *testing.T) {
 }
 
 func TestTimeRoundPart(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	// make sure the fixtures work:
 	for i := 0; i < 60; i++ {

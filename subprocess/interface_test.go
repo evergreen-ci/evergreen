@@ -10,7 +10,7 @@ import (
 )
 
 func TestInterfaceCompliance(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	assert.Implements((*Command)(nil), &localCmd{})
 	assert.Implements((*Command)(nil), &remoteCmd{})
@@ -19,7 +19,7 @@ func TestInterfaceCompliance(t *testing.T) {
 }
 
 func TestOutputOptions(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	opts := OutputOptions{}
 	assert.NoError(opts.Validate())
@@ -71,7 +71,7 @@ func TestOutputOptions(t *testing.T) {
 
 func TestOutputOptionsIntegrationTableTest(t *testing.T) {
 	// these are integration tests to test various output configurations used throughout the code base
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	buf := &bytes.Buffer{}
 	shouldFail := []OutputOptions{

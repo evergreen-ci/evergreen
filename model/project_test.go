@@ -279,7 +279,7 @@ func boolPtr(b bool) *bool {
 }
 
 func TestGetTaskGroup(t *testing.T) {
-	assert := assert.New(t) //nolint
+	assert := assert.New(t)
 	testutil.HandleTestingErr(db.ClearCollections(version.Collection), t, "failed to clear collections")
 	tgName := "example_task_group"
 	projYml := `
@@ -333,7 +333,7 @@ task_groups:
 }
 
 func TestPopulateExpansions(t *testing.T) {
-	assert := assert.New(t) // nolint
+	assert := assert.New(t)
 
 	d := &distro.Distro{
 		Id:      "d1",
