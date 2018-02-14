@@ -189,7 +189,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 		numThreads = len(uninitializedHosts)
 	}
 
-	hostsProvisioned := 0
+	hostsProvisioned := &util.SafeCounter{}
 	startAt := time.Now()
 	for i := 0; i < numThreads; i++ {
 		wg.Add(1)
@@ -294,7 +294,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 						"attempts": h.ProvisionAttempts,
 						"runtime":  time.Since(setupStartTime),
 					})
-					hostsProvisioned++
+					hostsProvisioned.Inc()
 				}
 			}
 		}()
@@ -308,7 +308,7 @@ func (init *HostInit) setupReadyHosts(ctx context.Context) error {
 		"runner":            RunnerName,
 		"num_hosts":         len(uninitializedHosts),
 		"num_errors":        catcher.Len(),
-		"provisioned_hosts": hostsProvisioned,
+		"provisioned_hosts": hostsProvisioned.Value(),
 		"workers":           numThreads,
 	})
 

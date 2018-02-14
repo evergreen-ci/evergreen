@@ -69,7 +69,7 @@ func (tr *TaskRunner) Run() error {
 	close(freeHostChan)
 	wg := sync.WaitGroup{}
 	workers := 24
-	if len(freeHosts) > workers {
+	if len(freeHosts) < workers {
 		workers = len(freeHosts)
 	}
 	wg.Add(workers)

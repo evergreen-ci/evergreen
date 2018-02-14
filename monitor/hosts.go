@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -115,11 +116,11 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 	}
 	close(work)
 	workers := 24
-	if len(hosts) > workers {
+	if len(hosts) < workers {
 		workers = len(hosts)
 	}
 	startAt := time.Now()
-	terminated := 0
+	terminated := &util.SafeCounter{}
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
@@ -136,7 +137,7 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 						catcher.Add(errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id))
 						return
 					}
-					terminated++
+					terminated.Inc()
 				}()
 			}
 		}()
@@ -149,7 +150,7 @@ func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.
 		"duration_secs": time.Since(startAt).Seconds(),
 		"workers":       workers,
 		"num_hosts":     len(hosts),
-		"terminated":    terminated,
+		"terminated":    terminated.Value(),
 		"num_errors":    catcher.Len(),
 	})
 
