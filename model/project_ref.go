@@ -201,7 +201,7 @@ func FindProjectRefsByRepoAndBranch(owner, repoName, branch string) ([]ProjectRe
 // FindOneProjectRefByRepoAndBranch finds a signle ProjectRef with matching
 // repo/branch that is enabled and setup for PR testing. If more than one
 // is found, an error is returned
-func FindOneProjectRefByRepoAndBranch(owner, repo, branch string) (*ProjectRef, error) {
+func FindOneProjectRefByRepoAndBranchWithPRTesting(owner, repo, branch string) (*ProjectRef, error) {
 	projectRefs, err := FindProjectRefsByRepoAndBranch(owner, repo, branch)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
