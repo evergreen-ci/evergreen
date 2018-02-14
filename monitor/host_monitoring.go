@@ -75,7 +75,9 @@ func monitorReachability(ctx context.Context, settings *evergreen.Settings) []er
 		defer close(errDone)
 		select {
 		case err := <-errChan:
-			errs = append(errs, errors.Wrap(err, "error checking reachability"))
+			if err != nil {
+				errs = append(errs, errors.Wrap(err, "error checking reachability"))
+			}
 		case <-ctx.Done():
 			return
 		}
