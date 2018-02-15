@@ -2,11 +2,13 @@ package repotracker
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
 )
@@ -97,6 +99,16 @@ func TestGetRevisionsSince(t *testing.T) {
 				revisions, err := self.GetRevisionsSince(firstRevision, 10)
 				testutil.HandleTestingErr(err, t, "Error fetching github revisions")
 				So(len(revisions), ShouldEqual, 2)
+
+				// Friday, February 15, 2008 2:59:14 PM GMT-05:00
+				minTime := time.Unix(1203105554, 0)
+
+				Convey("date for author commit should never be prior to 2008", func() {
+					for _, revision := range revisions {
+						So(util.IsZeroTime(revision.CreateTime), ShouldBeFalse)
+						So(revision.CreateTime.After(minTime), ShouldBeTrue)
+					}
+				})
 			})
 
 		Convey("There should be no revisions since the last revision", func() {
@@ -248,15 +260,22 @@ func TestGetChangedFiles(t *testing.T) {
 
 func TestIsLastRevision(t *testing.T) {
 	Convey("When calling isLastRevision...", t, func() {
+		Convey("it should not panic on nil SHA hash", func() {
+			githubCommit := &github.RepositoryCommit{}
+			So(isLastRevision(firstRevision, githubCommit), ShouldBeFalse)
+		})
 		Convey("it should return false if the commit SHA does not match "+
 			"the revision string passed in", func() {
-			githubCommit := &thirdparty.GithubCommit{}
+			githubCommit := &github.RepositoryCommit{
+				SHA: github.String("someotherhash"),
+			}
 			So(isLastRevision(firstRevision, githubCommit), ShouldBeFalse)
 		})
 		Convey("it should return true if the commit SHA matches "+
 			"the revision string passed in", func() {
-			githubCommit := &thirdparty.GithubCommit{}
-			githubCommit.SHA = firstRevision
+			githubCommit := &github.RepositoryCommit{
+				SHA: github.String(firstRevision),
+			}
 			So(isLastRevision(firstRevision, githubCommit), ShouldBeTrue)
 		})
 	})

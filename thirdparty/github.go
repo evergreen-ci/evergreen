@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
@@ -43,7 +44,7 @@ type GithubUser struct {
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
 func GetGithubCommits(oauthToken, commitsURL string) (
-	githubCommits []GithubCommit, header http.Header, err error) {
+	githubCommits []github.RepositoryCommit, header http.Header, err error) {
 	resp, err := tryGithubGet(oauthToken, commitsURL)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -146,7 +147,7 @@ func GetGithubFile(oauthToken, fileURL string) (githubFile *GithubFile, err erro
 	return
 }
 
-func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string, currentCommit *GithubCommit) (string, error) {
+func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string, currentCommit *github.RepositoryCommit) (string, error) {
 	if currentCommit == nil {
 		return "", errors.New("no recent commit found")
 	}
@@ -157,7 +158,7 @@ func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string
 		repoOwner,
 		baseRevision,
 		repoOwner,
-		currentCommit.SHA)
+		*currentCommit.SHA)
 
 	resp, err := tryGithubGet(oauthToken, url)
 	if resp != nil {
