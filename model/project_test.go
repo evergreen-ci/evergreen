@@ -773,6 +773,32 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 	}
 }
 
+func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
+	patchDoc := patch.Patch{
+		BuildVariants: []string{"bv_1", "bv_2", "totallynotreal"},
+		Tasks:         []string{"a_task_1", "b_task_1"},
+	}
+
+	s.project.BuildProjectTVPairs(&patchDoc, "")
+
+	s.Require().Len(patchDoc.Tasks, 2)
+	s.Contains(patchDoc.Tasks, "a_task_1")
+	s.Contains(patchDoc.Tasks, "b_task_1")
+	s.Contains(patchDoc.BuildVariants, "bv_1")
+	s.Contains(patchDoc.BuildVariants, "bv_2")
+	s.Len(patchDoc.VariantsTasks, 2)
+	for _, vt := range patchDoc.VariantsTasks {
+		if vt.Variant == "bv_1" || vt.Variant == "bv_2" {
+			s.Len(vt.Tasks, 2)
+			s.Contains(vt.Tasks, "a_task_1")
+			s.Contains(vt.Tasks, "b_task_1")
+		} else {
+			s.T().Fail()
+		}
+		s.Empty(vt.DisplayTasks)
+	}
+}
+
 func (s *projectSuite) TestBuildProjectTVPairsWithAliasWithTags() {
 	patchDoc := patch.Patch{}
 
