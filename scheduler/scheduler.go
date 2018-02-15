@@ -217,6 +217,17 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		return catcher.Resolve()
 	}
 
+	totalQueueSize := 0
+	for _, queue := range taskQueueItems {
+		totalQueueSize += len(queue)
+	}
+
+	grip.Info(message.Fiels{
+		"runner": RunnerName,
+		"stat":   "total-queue-size",
+		"size":   totalQueueSize,
+	})
+
 	// split distros by name
 	distrosByName := make(map[string]distro.Distro)
 	for _, d := range distros {
