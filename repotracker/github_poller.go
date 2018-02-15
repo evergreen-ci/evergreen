@@ -7,7 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
@@ -39,19 +39,22 @@ func getCommitURL(projectRef *model.ProjectRef) string {
 
 // isLastRevision compares a Github Commit's sha with a revision and returns
 // true if they are the same
-func isLastRevision(revision string, githubCommit *thirdparty.GithubCommit) bool {
-	return githubCommit.SHA == revision
+func isLastRevision(revision string, repoCommit *github.RepositoryCommit) bool {
+	if repoCommit.SHA == nil {
+		return false
+	}
+	return *repoCommit.SHA == revision
 }
 
 // githubCommitToRevision converts a GithubCommit struct to a
 // model.Revision struct
-func githubCommitToRevision(githubCommit *thirdparty.GithubCommit) model.Revision {
+func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision {
 	return model.Revision{
-		Author:          githubCommit.Commit.Author.Name,
-		AuthorEmail:     githubCommit.Commit.Author.Email,
-		RevisionMessage: githubCommit.Commit.Message,
-		Revision:        githubCommit.SHA,
-		CreateTime:      util.RoundPartOfMinute(0),
+		Author:          *repoCommit.Commit.Author.Name,
+		AuthorEmail:     *repoCommit.Commit.Author.Email,
+		RevisionMessage: *repoCommit.Commit.Message,
+		Revision:        *repoCommit.SHA,
+		CreateTime:      *repoCommit.Commit.Author.Date,
 	}
 }
 
@@ -113,8 +116,8 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 	revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
 
 	var foundLatest bool
-	var commits []thirdparty.GithubCommit
-	var firstCommit *thirdparty.GithubCommit // we track this for later error handling
+	var commits []github.RepositoryCommit
+	var firstCommit *github.RepositoryCommit // we track this for later error handling
 	var header http.Header
 	commitURL := getCommitURL(gRepoPoller.ProjectRef)
 	revisions := []model.Revision{}
@@ -131,6 +134,16 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 			if firstCommit == nil {
 				firstCommit = commit
 			}
+
+			if commit.Commit == nil || commit.Commit.Author == nil ||
+				commit.Commit.Author.Name == nil ||
+				commit.Commit.Author.Email == nil ||
+				commit.Commit.Message == nil ||
+				commit.SHA == nil ||
+				commit.Commit.Author.Date == nil {
+				return nil, errors.Errorf("github returned commit history with missing information for url: %s", commitURL)
+			}
+
 			if isLastRevision(revision, commit) {
 				foundLatest = true
 				break
@@ -152,14 +165,22 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 	if !foundLatest {
 		var revisionDetails *model.RepositoryErrorDetails
 		var revisionError error
+		var err error
+		var baseRevision string
+
 		// attempt to get the merge base commit
-		baseRevision, err := thirdparty.GetGitHubMergeBaseRevision(
-			gRepoPoller.OauthToken,
-			gRepoPoller.ProjectRef.Owner,
-			gRepoPoller.ProjectRef.Repo,
-			revision,
-			firstCommit,
-		)
+		if firstCommit != nil {
+			baseRevision, err = thirdparty.GetGitHubMergeBaseRevision(
+				gRepoPoller.OauthToken,
+				gRepoPoller.ProjectRef.Owner,
+				gRepoPoller.ProjectRef.Repo,
+				revision,
+				*firstCommit.SHA,
+			)
+
+		} else {
+			err = errors.New("no recent commit found")
+		}
 		if len(revision) < 10 {
 			return nil, errors.Errorf("invalid revision: %v", revision)
 		}
@@ -201,13 +222,13 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 	commitURL := getCommitURL(gRepoPoller.ProjectRef)
 
 	for {
-		githubCommits, header, err := thirdparty.GetGithubCommits(
+		repoCommits, header, err := thirdparty.GetGithubCommits(
 			gRepoPoller.OauthToken, commitURL)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, commit := range githubCommits {
+		for _, commit := range repoCommits {
 			if len(revisions) == maxRevisions {
 				break
 			}
