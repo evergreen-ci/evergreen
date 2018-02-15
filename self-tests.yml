@@ -120,9 +120,7 @@ variables:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-mongodb
       - func: run-make
-        vars: { target: "set-project-var" }
-      - func: run-make
-        vars: { target: "load-smoke-data" }
+        vars: { target: "set-var set-project-var load-smoke-data" }
       - command: shell.exec
         params:
           silent: true
@@ -132,7 +130,6 @@ variables:
 
             cd gopath/src/github.com/evergreen-ci/evergreen
             mkdir -p clients
-            echo "foo" >| clients/version
 
             cat >> testdata/smoke_config.yml <<EOF
             log_path: "STDOUT"
@@ -143,6 +140,7 @@ variables:
 
             ./bin/set-project-var -dbName mci_smoke -key aws_key -value ${aws_key}
             ./bin/set-project-var -dbName mci_smoke -key aws_secret -value ${aws_secret}
+            ./bin/set-var -dbName mci_smoke -collection hosts -id localhost -key agent_revision -value $(git rev-parse HEAD)
       - func: run-make
         vars:
           target: "${task_name}"
