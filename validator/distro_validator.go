@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,7 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type distroValidator func(*distro.Distro, *evergreen.Settings) []ValidationError
+type distroValidator func(context.Context, *distro.Distro, *evergreen.Settings) []ValidationError
 
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
@@ -23,7 +24,7 @@ var distroSyntaxValidators = []distroValidator{
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
 // a slice of any validation errors found.
-func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]ValidationError, error) {
+func CheckDistro(ctx context.Context, d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]ValidationError, error) {
 	validationErrs := []ValidationError{}
 	distroIds := []string{}
 	var err error
@@ -37,13 +38,13 @@ func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]Val
 	validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
 
 	for _, v := range distroSyntaxValidators {
-		validationErrs = append(validationErrs, v(d, s)...)
+		validationErrs = append(validationErrs, v(ctx, d, s)...)
 	}
 	return validationErrs, nil
 }
 
 // ensureStaticHostsAreNotSpawnable makes sure that any static distro cannot also be spawnable.
-func ensureStaticHostsAreNotSpawnable(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureStaticHostsAreNotSpawnable(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	if d.SpawnAllowed && d.Provider == evergreen.ProviderNameStatic {
 		return []ValidationError{
 			{
@@ -57,7 +58,7 @@ func ensureStaticHostsAreNotSpawnable(d *distro.Distro, s *evergreen.Settings) [
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
-func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	errs := []ValidationError{}
 
 	if d.Id == "" {
@@ -103,7 +104,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 		return errs
 	}
 
-	mgr, err := cloud.GetCloudManager(d.Provider, s)
+	mgr, err := cloud.GetCloudManager(ctx, d.Provider, s)
 	if err != nil {
 		errs = append(errs, ValidationError{
 			Message: err.Error(),
@@ -138,7 +139,7 @@ func ensureUniqueId(d *distro.Distro, distroIds []string) []ValidationError {
 }
 
 // ensureValidExpansions checks that no expansion option key is blank.
-func ensureValidExpansions(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureValidExpansions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	for _, e := range d.Expansions {
 		if e.Key == "" {
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank expansion key")}}
@@ -148,7 +149,7 @@ func ensureValidExpansions(d *distro.Distro, s *evergreen.Settings) []Validation
 }
 
 // ensureValidSSHOptions checks that no SSH option key is blank.
-func ensureValidSSHOptions(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureValidSSHOptions(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	for _, o := range d.SSHOptions {
 		if o == "" {
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}
@@ -157,7 +158,7 @@ func ensureValidSSHOptions(d *distro.Distro, s *evergreen.Settings) []Validation
 	return nil
 }
 
-func ensureHasNonZeroID(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureHasNonZeroID(ctx context.Context, d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	if d == nil {
 		return []ValidationError{{Error, "distro cannot be nil"}}
 	}

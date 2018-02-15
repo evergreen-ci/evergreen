@@ -388,7 +388,7 @@ func (h *hostTerminateHandler) Execute(ctx context.Context, sc data.Connector) (
 		}
 
 	} else {
-		if err := sc.TerminateHost(host, u.Id); err != nil {
+		if err := sc.TerminateHost(ctx, host, u.Id); err != nil {
 			return ResponseData{}, &rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

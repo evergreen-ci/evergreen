@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -28,39 +29,39 @@ type AWSClient interface {
 	Close()
 
 	// RunInstances is a wrapper for ec2.RunInstances.
-	RunInstances(*ec2.RunInstancesInput) (*ec2.Reservation, error)
+	RunInstances(context.Context, *ec2.RunInstancesInput) (*ec2.Reservation, error)
 
 	// DescribeInstances is a wrapper for ec2.DescribeInstances.
-	DescribeInstances(*ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error)
+	DescribeInstances(context.Context, *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error)
 
 	// CreateTags is a wrapper for ec2.CreateTags.
-	CreateTags(*ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
+	CreateTags(context.Context, *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error)
 
 	// TerminateInstances is a wrapper for ec2.TerminateInstances.
-	TerminateInstances(*ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
+	TerminateInstances(context.Context, *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error)
 
 	// RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
-	RequestSpotInstances(*ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
+	RequestSpotInstances(context.Context, *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error)
 
 	// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-	DescribeSpotInstanceRequests(*ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
+	DescribeSpotInstanceRequests(context.Context, *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
-	CancelSpotInstanceRequests(*ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
+	CancelSpotInstanceRequests(context.Context, *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
 
 	// DescribeVolumes is a wrapper for ec2.DescribeVolumes.
-	DescribeVolumes(*ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
+	DescribeVolumes(context.Context, *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error)
 
 	// DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
-	DescribeSpotPriceHistory(*ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
+	DescribeSpotPriceHistory(context.Context, *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error)
 
 	// DescribeSubnets is a wrapper for ec2.DescribeSubnets.
-	DescribeSubnets(*ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
+	DescribeSubnets(context.Context, *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error)
 
 	// DescribeVpcs is a wrapper for ec2.DescribeVpcs.
-	DescribeVpcs(*ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
+	DescribeVpcs(context.Context, *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error)
 
-	GetInstanceInfo(string) (*ec2.Instance, error)
+	GetInstanceInfo(context.Context, string) (*ec2.Instance, error)
 }
 
 // awsClientImpl wraps ec2.EC2.
@@ -104,7 +105,7 @@ func (c *awsClientImpl) Close() {
 }
 
 // RunInstances is a wrapper for ec2.RunInstances.
-func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
+func (c *awsClientImpl) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	var output *ec2.Reservation
 	var err error
 	grip.Debug(message.Fields{
@@ -114,7 +115,7 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.RunInstances(input)
+			output, err = c.EC2.RunInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -134,7 +135,7 @@ func (c *awsClientImpl) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 }
 
 // DescribeInstances is a wrapper for ec2.DescribeInstances
-func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
+func (c *awsClientImpl) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	var output *ec2.DescribeInstancesOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -144,7 +145,7 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.DescribeInstances(input)
+			output, err = c.EC2.DescribeInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -164,7 +165,7 @@ func (c *awsClientImpl) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 }
 
 // CreateTags is a wrapper for ec2.CreateTags.
-func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
+func (c *awsClientImpl) CreateTags(ctx context.Context, input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	var output *ec2.CreateTagsOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -174,7 +175,7 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.CreateTags(input)
+			output, err = c.EC2.CreateTagsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -194,7 +195,7 @@ func (c *awsClientImpl) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsO
 }
 
 // TerminateInstances is a wrapper for ec2.TerminateInstances.
-func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
+func (c *awsClientImpl) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	var output *ec2.TerminateInstancesOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -204,7 +205,7 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.TerminateInstances(input)
+			output, err = c.EC2.TerminateInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					if strings.Contains(ec2err.Code(), EC2ErrorNotFound) {
@@ -235,7 +236,7 @@ func (c *awsClientImpl) TerminateInstances(input *ec2.TerminateInstancesInput) (
 }
 
 // RequestSpotInstances is a wrapper for ec2.RequestSpotInstances.
-func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
+func (c *awsClientImpl) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	var output *ec2.RequestSpotInstancesOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -245,7 +246,7 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.RequestSpotInstances(input)
+			output, err = c.EC2.RequestSpotInstancesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -265,7 +266,7 @@ func (c *awsClientImpl) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 }
 
 // DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	var output *ec2.DescribeSpotInstanceRequestsOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -275,7 +276,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.DescribeSpotInstanceRequests(input)
+			output, err = c.EC2.DescribeSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -295,7 +296,7 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 }
 
 // CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
-func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
+func (c *awsClientImpl) CancelSpotInstanceRequests(ctx context.Context, input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	var output *ec2.CancelSpotInstanceRequestsOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -305,7 +306,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.CancelSpotInstanceRequests(input)
+			output, err = c.EC2.CancelSpotInstanceRequestsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -325,7 +326,7 @@ func (c *awsClientImpl) CancelSpotInstanceRequests(input *ec2.CancelSpotInstance
 }
 
 // DescribeVolumes is a wrapper for ec2.DescribeVolumes.
-func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
+func (c *awsClientImpl) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	var output *ec2.DescribeVolumesOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -335,7 +336,7 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.DescribeVolumes(input)
+			output, err = c.EC2.DescribeVolumesWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -355,7 +356,7 @@ func (c *awsClientImpl) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.D
 }
 
 // DescribeSpotPriceHistory is a wrapper for ec2.DescribeSpotPriceHistory.
-func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
+func (c *awsClientImpl) DescribeSpotPriceHistory(ctx context.Context, input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	var output *ec2.DescribeSpotPriceHistoryOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -365,7 +366,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.DescribeSpotPriceHistory(input)
+			output, err = c.EC2.DescribeSpotPriceHistoryWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -385,7 +386,7 @@ func (c *awsClientImpl) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 }
 
 // DescribeSubnets is a wrapper for ec2.DescribeSubnets.
-func (c *awsClientImpl) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+func (c *awsClientImpl) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	var output *ec2.DescribeSubnetsOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -395,7 +396,7 @@ func (c *awsClientImpl) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.D
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.DescribeSubnets(input)
+			output, err = c.EC2.DescribeSubnetsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -415,7 +416,7 @@ func (c *awsClientImpl) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.D
 }
 
 // DescribeVpcs is a wrapper for ec2.DescribeVpcs.
-func (c *awsClientImpl) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
+func (c *awsClientImpl) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
 	var output *ec2.DescribeVpcsOutput
 	var err error
 	grip.Debug(message.Fields{
@@ -425,7 +426,7 @@ func (c *awsClientImpl) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.Describ
 	})
 	_, err = util.Retry(
 		func() (bool, error) {
-			output, err = c.EC2.DescribeVpcs(input)
+			output, err = c.EC2.DescribeVpcsWithContext(ctx, input)
 			if err != nil {
 				if ec2err, ok := err.(awserr.Error); ok {
 					grip.Error(message.WrapError(ec2err, message.Fields{
@@ -444,11 +445,11 @@ func (c *awsClientImpl) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.Describ
 	return output, nil
 }
 
-func (c *awsClientImpl) GetInstanceInfo(id string) (*ec2.Instance, error) {
+func (c *awsClientImpl) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
 	if strings.HasPrefix(id, "sir") {
 		return nil, errors.Errorf("id appears to be a spot instance request ID, not a host ID (%s)", id)
 	}
-	resp, err := c.DescribeInstances(&ec2.DescribeInstancesInput{
+	resp, err := c.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{makeStringPtr(id)},
 	})
 	if err != nil {
@@ -495,7 +496,7 @@ func (c *awsClientMock) Create(creds *credentials.Credentials) error {
 func (c *awsClientMock) Close() {}
 
 // RunInstances is a mock for ec2.RunInstances.
-func (c *awsClientMock) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
+func (c *awsClientMock) RunInstances(ctx context.Context, input *ec2.RunInstancesInput) (*ec2.Reservation, error) {
 	c.RunInstancesInput = input
 	return &ec2.Reservation{
 		Instances: []*ec2.Instance{
@@ -508,7 +509,7 @@ func (c *awsClientMock) RunInstances(input *ec2.RunInstancesInput) (*ec2.Reserva
 }
 
 // DescribeInstances is a mock for ec2.DescribeInstances
-func (c *awsClientMock) DescribeInstances(input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
+func (c *awsClientMock) DescribeInstances(ctx context.Context, input *ec2.DescribeInstancesInput) (*ec2.DescribeInstancesOutput, error) {
 	c.DescribeInstancesInput = input
 	return &ec2.DescribeInstancesOutput{
 		Reservations: []*ec2.Reservation{
@@ -529,19 +530,19 @@ func (c *awsClientMock) DescribeInstances(input *ec2.DescribeInstancesInput) (*e
 }
 
 // CreateTags is a mock for ec2.CreateTags.
-func (c *awsClientMock) CreateTags(input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
+func (c *awsClientMock) CreateTags(ctx context.Context, input *ec2.CreateTagsInput) (*ec2.CreateTagsOutput, error) {
 	c.CreateTagsInput = input
 	return nil, nil
 }
 
 // TerminateInstances is a mock for ec2.TerminateInstances.
-func (c *awsClientMock) TerminateInstances(input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
+func (c *awsClientMock) TerminateInstances(ctx context.Context, input *ec2.TerminateInstancesInput) (*ec2.TerminateInstancesOutput, error) {
 	c.TerminateInstancesInput = input
 	return &ec2.TerminateInstancesOutput{}, nil
 }
 
 // RequestSpotInstances is a mock for ec2.RequestSpotInstances.
-func (c *awsClientMock) RequestSpotInstances(input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
+func (c *awsClientMock) RequestSpotInstances(ctx context.Context, input *ec2.RequestSpotInstancesInput) (*ec2.RequestSpotInstancesOutput, error) {
 	c.RequestSpotInstancesInput = input
 	return &ec2.RequestSpotInstancesOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
@@ -555,7 +556,7 @@ func (c *awsClientMock) RequestSpotInstances(input *ec2.RequestSpotInstancesInpu
 }
 
 // DescribeSpotInstanceRequests is a mock for ec2.DescribeSpotInstanceRequests.
-func (c *awsClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
 	c.DescribeSpotInstanceRequestsInput = input
 	return &ec2.DescribeSpotInstanceRequestsOutput{
 		SpotInstanceRequests: []*ec2.SpotInstanceRequest{
@@ -569,19 +570,19 @@ func (c *awsClientMock) DescribeSpotInstanceRequests(input *ec2.DescribeSpotInst
 }
 
 // CancelSpotInstanceRequests is a mock for ec2.CancelSpotInstanceRequests.
-func (c *awsClientMock) CancelSpotInstanceRequests(input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
+func (c *awsClientMock) CancelSpotInstanceRequests(ctx context.Context, input *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error) {
 	c.CancelSpotInstanceRequestsInput = input
 	return nil, nil
 }
 
 // DescribeVolumes is a mock for ec2.DescribeVolumes.
-func (c *awsClientMock) DescribeVolumes(input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
+func (c *awsClientMock) DescribeVolumes(ctx context.Context, input *ec2.DescribeVolumesInput) (*ec2.DescribeVolumesOutput, error) {
 	c.DescribeVolumesInput = input
 	return &ec2.DescribeVolumesOutput{}, nil
 }
 
 // DescribeSpotPriceHistory is a mock for ec2.DescribeSpotPriceHistory.
-func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
+func (c *awsClientMock) DescribeSpotPriceHistory(ctx context.Context, input *ec2.DescribeSpotPriceHistoryInput) (*ec2.DescribeSpotPriceHistoryOutput, error) {
 	c.DescribeSpotPriceHistoryInput = input
 	return &ec2.DescribeSpotPriceHistoryOutput{
 		SpotPriceHistory: []*ec2.SpotPrice{
@@ -594,7 +595,7 @@ func (c *awsClientMock) DescribeSpotPriceHistory(input *ec2.DescribeSpotPriceHis
 }
 
 // DescribeSubnets is a mock for ec2.DescribeSubnets.
-func (c *awsClientMock) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
+func (c *awsClientMock) DescribeSubnets(ctx context.Context, input *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	c.DescribeSubnetsInput = input
 	return &ec2.DescribeSubnetsOutput{
 		Subnets: []*ec2.Subnet{
@@ -606,7 +607,7 @@ func (c *awsClientMock) DescribeSubnets(input *ec2.DescribeSubnetsInput) (*ec2.D
 }
 
 // DescribeVpcs is a mock for ec2.DescribeVpcs.
-func (c *awsClientMock) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
+func (c *awsClientMock) DescribeVpcs(ctx context.Context, input *ec2.DescribeVpcsInput) (*ec2.DescribeVpcsOutput, error) {
 	c.DescribeVpcsInput = input
 	return &ec2.DescribeVpcsOutput{
 		Vpcs: []*ec2.Vpc{
@@ -615,7 +616,7 @@ func (c *awsClientMock) DescribeVpcs(input *ec2.DescribeVpcsInput) (*ec2.Describ
 	}, nil
 }
 
-func (c *awsClientMock) GetInstanceInfo(id string) (*ec2.Instance, error) {
+func (c *awsClientMock) GetInstanceInfo(ctx context.Context, id string) (*ec2.Instance, error) {
 	instance := &ec2.Instance{}
 	instance.Placement = &ec2.Placement{}
 	instance.Placement.AvailabilityZone = makeStringPtr("us-east-1a")

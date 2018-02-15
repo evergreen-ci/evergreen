@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -205,13 +206,15 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, message, http.StatusBadRequest)
 			return
 		}
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
 
-		cloudHost, err := cloud.GetCloudHost(h, &as.Settings)
+		cloudHost, err := cloud.GetCloudHost(ctx, h, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if err = cloudHost.TerminateInstance(user.Id); err != nil {
+		if err = cloudHost.TerminateInstance(ctx, user.Id); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Failed to terminate spawn host"))
 			return
 		}

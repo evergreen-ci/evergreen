@@ -39,7 +39,7 @@ func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergr
 		}
 
 		// continue on error to allow the other monitoring functions to run
-		if flagErrs := f(settings); errs != nil {
+		if flagErrs := f(ctx, settings); errs != nil {
 			errs = append(errs, flagErrs...)
 		}
 	}
@@ -65,7 +65,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 			"reason":  flagger.Reason,
 		})
 		// find the next batch of hosts to terminate
-		hostsToTerminate, err := flagger.hostFlaggingFunc(distros, settings)
+		hostsToTerminate, err := flagger.hostFlaggingFunc(ctx, distros, settings)
 		hostIdsToTerminate := []string{}
 		for _, h := range hostsToTerminate {
 			hostIdsToTerminate = append(hostIdsToTerminate, h.Id)
@@ -177,7 +177,7 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 		}
 	}
 	// convert the host to a cloud host
-	cloudHost, err := cloud.GetCloudHost(h, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, h, settings)
 	if err != nil {
 		return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
 	}
@@ -212,7 +212,7 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 	}
 
 	// terminate the instance
-	if err := cloudHost.TerminateInstance(evergreen.User); err != nil {
+	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {
 		return errors.Wrapf(err, "error terminating host %s", h.Id)
 	}
 

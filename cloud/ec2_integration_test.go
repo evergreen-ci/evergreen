@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -67,8 +68,12 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		client:   &awsClientImpl{},
 		provider: onDemandProvider,
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := NewEC2Manager(opts).(*ec2Manager)
-	require.NoError(m.Configure(testConfig))
+	require.NoError(m.Configure(ctx, testConfig))
 	require.NoError(m.client.Create(m.credentials))
 
 	d := fetchTestDistro()
@@ -77,15 +82,15 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 		UserName: evergreen.User,
 		UserHost: false,
 	})
-	h, err := m.SpawnHost(h)
+	h, err := m.SpawnHost(ctx, h)
 	assert.NoError(err)
 	assert.NoError(h.Insert())
 	foundHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
-	assert.NoError(m.OnUp(h))
+	assert.NoError(m.OnUp(ctx, h))
 	foundHost := foundHosts[0]
-	out, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
+	out, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{makeStringPtr(foundHost.Id)},
 	})
 	assert.NoError(err)
@@ -110,12 +115,12 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 	for requiredKey, requiredValue := range requiredTags {
 		assert.NotEmptyf(requiredValue, "%s is empty", requiredKey)
 	}
-	assert.NoError(m.TerminateInstance(h, evergreen.User))
+	assert.NoError(m.TerminateInstance(ctx, h, evergreen.User))
 	foundHosts, err = host.Find(host.IsTerminated)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
 
-	instance, err := m.client.GetInstanceInfo(h.Id)
+	instance, err := m.client.GetInstanceInfo(ctx, h.Id)
 	assert.NoError(err)
 	assert.NotContains([]int64{running, stopping, stopped}, *instance.State.Code)
 }
@@ -132,8 +137,11 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 		client:   &awsClientImpl{},
 		provider: spotProvider,
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	m := NewEC2Manager(opts).(*ec2Manager)
-	require.NoError(m.Configure(testConfig))
+	require.NoError(m.Configure(ctx, testConfig))
 	require.NoError(m.client.Create(m.credentials))
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2Spot
@@ -141,13 +149,13 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 		UserName: evergreen.User,
 		UserHost: false,
 	})
-	h, err := m.SpawnHost(h)
+	h, err := m.SpawnHost(ctx, h)
 	assert.NoError(err)
 	assert.NoError(h.Insert())
 	foundHosts, err := host.Find(host.IsUninitialized)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
-	assert.NoError(m.TerminateInstance(h, evergreen.User))
+	assert.NoError(m.TerminateInstance(ctx, h, evergreen.User))
 	foundHosts, err = host.Find(host.IsTerminated)
 	assert.NoError(err)
 	assert.Len(foundHosts, 1)
@@ -159,7 +167,10 @@ func (s *EC2Suite) TestGetInstanceInfoFailsEarlyForSpotInstanceRequests() {
 		provider: spotProvider,
 	}
 	m := NewEC2Manager(opts).(*ec2Manager)
-	info, err := m.client.GetInstanceInfo("sir-123456")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	info, err := m.client.GetInstanceInfo(ctx, "sir-123456")
 	s.Nil(info)
 	s.Errorf(err, "id appears to be a spot instance request ID, not a host ID (\"sir-123456\")")
 }

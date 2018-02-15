@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -19,6 +20,9 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When flagging decommissioned hosts", t, func() {
 
@@ -62,7 +66,7 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
 			// flag the decommissioned hosts - there should be 2 of them
-			decommissioned, err := flagDecommissionedHosts(nil, testConfig)
+			decommissioned, err := flagDecommissionedHosts(ctx, nil, testConfig)
 			So(err, ShouldBeNil)
 			So(len(decommissioned), ShouldEqual, 2)
 			var ids []string
@@ -82,6 +86,9 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When flagging idle hosts to be terminated", t, func() {
 
@@ -106,7 +113,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// finding idle hosts should not return the host
-			idle, err := flagIdleHosts(nil, nil)
+			idle, err := flagIdleHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 0)
 
@@ -122,7 +129,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				}
 				testutil.HandleTestingErr(h2.Insert(), t, "error inserting host")
 				// finding idle hosts should not return the host
-				idle, err := flagIdleHosts(nil, nil)
+				idle, err := flagIdleHosts(ctx, nil, nil)
 				So(err, ShouldBeNil)
 				So(len(idle), ShouldEqual, 0)
 
@@ -160,7 +167,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			// finding idle hosts should only return the first host
-			idle, err := flagIdleHosts(nil, nil)
+			idle, err := flagIdleHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 1)
 			So(idle[0].Id, ShouldEqual, "h2")
@@ -177,7 +184,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
 			// finding idle hosts should only return the first host
-			idle, err := flagIdleHosts(nil, nil)
+			idle, err := flagIdleHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 1)
 			So(idle[0].Id, ShouldEqual, "h1")
@@ -192,6 +199,9 @@ func TestFlaggingExcessHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When flagging excess hosts to be terminated", t, func() {
 
@@ -237,7 +247,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 				// flag the excess hosts - there should not be any
-				excess, err := flagExcessHosts(distros, nil)
+				excess, err := flagExcessHosts(ctx, distros, nil)
 				So(err, ShouldBeNil)
 				So(len(excess), ShouldEqual, 0)
 
@@ -287,7 +297,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				// flag the excess hosts - there should be 2, both from
 				// the second distro
-				excess, err := flagExcessHosts(distros, nil)
+				excess, err := flagExcessHosts(ctx, distros, nil)
 				So(err, ShouldBeNil)
 				So(len(excess), ShouldEqual, 2)
 				for _, host := range excess {
@@ -357,7 +367,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				// find the excess hosts - there should be one for the first
 				// distro and two for the second
-				excess, err := flagExcessHosts(distros, nil)
+				excess, err := flagExcessHosts(ctx, distros, nil)
 				So(err, ShouldBeNil)
 				So(len(excess), ShouldEqual, 3)
 				excessFirst := 0
@@ -422,7 +432,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				// find the excess hosts - there should be none, since all of
 				// the hosts are running tasks and cannot safely be terminated
-				excess, err := flagExcessHosts(distros, nil)
+				excess, err := flagExcessHosts(ctx, distros, nil)
 				So(err, ShouldBeNil)
 				So(len(excess), ShouldEqual, 0)
 
@@ -440,6 +450,9 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
 		// reset the db
@@ -456,7 +469,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
+			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 0)
 
@@ -472,7 +485,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
+			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 0)
 
@@ -488,7 +501,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
+			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 0)
 
@@ -504,7 +517,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
+			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 1)
 			So(unprovisioned[0].Id, ShouldEqual, "h1")
@@ -519,6 +532,9 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
@@ -547,7 +563,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagProvisioningFailedHosts(nil, nil)
+			unprovisioned, err := flagProvisioningFailedHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 1)
 			So(unprovisioned[0].Id, ShouldEqual, "h3")
@@ -562,6 +578,9 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
@@ -579,7 +598,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			expired, err := flagExpiredHosts(nil, nil)
+			expired, err := flagExpiredHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 0)
 
@@ -600,7 +619,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			expired, err := flagExpiredHosts(nil, nil)
+			expired, err := flagExpiredHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 0)
 
@@ -625,7 +644,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			expired, err := flagExpiredHosts(nil, nil)
+			expired, err := flagExpiredHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 1)
 			So(expired[0].Id, ShouldEqual, "h2")

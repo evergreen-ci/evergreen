@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -170,7 +171,7 @@ type Connector interface {
 	SetHostExpirationTime(*host.Host, time.Time) error
 
 	// TerminateHost terminates the given host via the cloud provider's API
-	TerminateHost(*host.Host, string) error
+	TerminateHost(context.Context, *host.Host, string) error
 
 	// FindProjectAliases queries the database to find all aliases.
 	FindProjectAliases(string) ([]model.ProjectAlias, error)

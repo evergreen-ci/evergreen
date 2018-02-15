@@ -180,7 +180,7 @@ func CreateHost(so Options) (*host.Host, error) {
 }
 
 func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) error {
-	pwdUpdateCmd, err := constructPwdUpdateCommand(evergreen.GetEnvironment().Settings(), host, password)
+	pwdUpdateCmd, err := constructPwdUpdateCommand(ctx, evergreen.GetEnvironment().Settings(), host, password)
 	if err != nil {
 		return errors.Wrap(err, "Error constructing host RDP password")
 	}
@@ -216,8 +216,8 @@ func SetHostRDPPassword(ctx context.Context, host *host.Host, password string) e
 
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host, password string) (subprocess.Command, error) {
-	cloudHost, err := cloud.GetCloudHost(hostObj, settings)
+func constructPwdUpdateCommand(ctx context.Context, settings *evergreen.Settings, hostObj *host.Host, password string) (subprocess.Command, error) {
+	cloudHost, err := cloud.GetCloudHost(ctx, hostObj, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -250,18 +250,18 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	return remoteCommand, nil
 }
 
-func TerminateHost(host *host.Host, settings *evergreen.Settings, user string) error {
+func TerminateHost(ctx context.Context, host *host.Host, settings *evergreen.Settings, user string) error {
 	if host.Status == evergreen.HostTerminated {
 		return errors.New("Host is already terminated")
 	}
 	if host.Status == evergreen.HostUninitialized {
 		return host.SetTerminated(user)
 	}
-	cloudHost, err := cloud.GetCloudHost(host, settings)
+	cloudHost, err := cloud.GetCloudHost(ctx, host, settings)
 	if err != nil {
 		return err
 	}
-	if err = cloudHost.TerminateInstance(user); err != nil {
+	if err = cloudHost.TerminateInstance(ctx, user); err != nil {
 		return err
 	}
 	return nil

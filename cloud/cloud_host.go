@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -28,8 +29,8 @@ type CloudHost struct {
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
-func GetCloudHost(host *host.Host, settings *evergreen.Settings) (*CloudHost, error) {
-	mgr, err := GetCloudManager(host.Provider, settings)
+func GetCloudHost(ctx context.Context, host *host.Host, settings *evergreen.Settings) (*CloudHost, error) {
+	mgr, err := GetCloudManager(ctx, host.Provider, settings)
 	if err != nil {
 		return nil, err
 	}
@@ -41,20 +42,20 @@ func GetCloudHost(host *host.Host, settings *evergreen.Settings) (*CloudHost, er
 	return &CloudHost{host, keyPath, mgr}, nil
 }
 
-func (cloudHost *CloudHost) IsUp() (bool, error) {
-	return cloudHost.CloudMgr.IsUp(cloudHost.Host)
+func (cloudHost *CloudHost) IsUp(ctx context.Context) (bool, error) {
+	return cloudHost.CloudMgr.IsUp(ctx, cloudHost.Host)
 }
 
-func (cloudHost *CloudHost) TerminateInstance(user string) error {
-	return cloudHost.CloudMgr.TerminateInstance(cloudHost.Host, user)
+func (cloudHost *CloudHost) TerminateInstance(ctx context.Context, user string) error {
+	return cloudHost.CloudMgr.TerminateInstance(ctx, cloudHost.Host, user)
 }
 
-func (cloudHost *CloudHost) GetInstanceStatus() (CloudStatus, error) {
-	return cloudHost.CloudMgr.GetInstanceStatus(cloudHost.Host)
+func (cloudHost *CloudHost) GetInstanceStatus(ctx context.Context) (CloudStatus, error) {
+	return cloudHost.CloudMgr.GetInstanceStatus(ctx, cloudHost.Host)
 }
 
-func (cloudHost *CloudHost) GetDNSName() (string, error) {
-	return cloudHost.CloudMgr.GetDNSName(cloudHost.Host)
+func (cloudHost *CloudHost) GetDNSName(ctx context.Context) (string, error) {
+	return cloudHost.CloudMgr.GetDNSName(ctx, cloudHost.Host)
 }
 
 func (cloudHost *CloudHost) GetSSHOptions() ([]string, error) {

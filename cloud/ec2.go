@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -116,7 +117,7 @@ func (m *ec2Manager) GetSettings() ProviderSettings {
 }
 
 // Configure loads credentials or other settings from the config file.
-func (m *ec2Manager) Configure(settings *evergreen.Settings) error {
+func (m *ec2Manager) Configure(ctx context.Context, settings *evergreen.Settings) error {
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return errors.New("AWS ID and Secret must not be blank")
 	}
@@ -129,7 +130,7 @@ func (m *ec2Manager) Configure(settings *evergreen.Settings) error {
 	return nil
 }
 
-func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	input := &ec2.RunInstancesInput{
 		MinCount:            makeInt64Ptr(1),
 		MaxCount:            makeInt64Ptr(1),
@@ -159,7 +160,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSet
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
-	reservation, err := m.client.RunInstances(input)
+	reservation, err := m.client.RunInstances(ctx, input)
 	if err != nil || reservation == nil {
 		msg := "RunInstances API call returned an error"
 		grip.Error(message.WrapError(err, message.Fields{
@@ -199,7 +200,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSet
 		"host_provider": h.Distro.Provider,
 	})
 
-	resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
+	resp, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{instance.InstanceId},
 	})
 	if err != nil {
@@ -237,7 +238,7 @@ func (m *ec2Manager) spawnOnDemandHost(h *host.Host, ec2Settings *EC2ProviderSet
 	return resources, nil
 }
 
-func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
+func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Settings *EC2ProviderSettings, blockDevices []*ec2.BlockDeviceMapping) ([]*string, error) {
 	spotRequest := &ec2.RequestSpotInstancesInput{
 		SpotPrice:     makeStringPtr(fmt.Sprintf("%v", ec2Settings.BidPrice)),
 		InstanceCount: makeInt64Ptr(1),
@@ -269,7 +270,7 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSetting
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
-	spotResp, err := m.client.RequestSpotInstances(spotRequest)
+	spotResp, err := m.client.RequestSpotInstances(ctx, spotRequest)
 	if err != nil {
 		grip.Error(errors.Wrapf(h.Remove(), "error removing intent host %s", h.Id))
 		return nil, errors.Wrap(err, "RequestSpotInstances API call returned an error")
@@ -288,7 +289,7 @@ func (m *ec2Manager) spawnSpotHost(h *host.Host, ec2Settings *EC2ProviderSetting
 }
 
 // SpawnHost spawns a new host.
-func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameEc2OnDemand &&
 		h.Distro.Provider != evergreen.ProviderNameEc2Spot &&
 		h.Distro.Provider != evergreen.ProviderNameEc2Auto {
@@ -317,7 +318,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 	defer m.client.Close()
 
 	var resources []*string
-	provider, err := m.getProvider(h, ec2Settings)
+	provider, err := m.getProvider(ctx, h, ec2Settings)
 	if err != nil {
 		msg := "error getting provider"
 		grip.Error(message.WrapError(err, message.Fields{
@@ -329,7 +330,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		return nil, errors.Wrap(err, msg)
 	}
 	if provider == onDemandProvider {
-		resources, err = m.spawnOnDemandHost(h, ec2Settings, blockDevices)
+		resources, err = m.spawnOnDemandHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning on-demand host"
 			grip.Error(message.WrapError(err, message.Fields{
@@ -347,7 +348,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 			"distro":        h.Distro.Id,
 		})
 	} else if provider == spotProvider {
-		resources, err = m.spawnSpotHost(h, ec2Settings, blockDevices)
+		resources, err = m.spawnSpotHost(ctx, h, ec2Settings, blockDevices)
 		if err != nil {
 			msg := "error spawning spot host"
 			grip.Error(message.WrapError(err, message.Fields{
@@ -379,7 +380,7 @@ func (m *ec2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
 		val := tags[tag]
 		tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
 	}
-	if _, err = m.client.CreateTags(&ec2.CreateTagsInput{
+	if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 		Resources: resources,
 		Tags:      tagSlice,
 	}); err != nil {
@@ -410,13 +411,13 @@ func (m *ec2Manager) CanSpawn() (bool, error) {
 }
 
 // GetInstanceStatus returns the current status of an EC2 instance.
-func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
+func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	if err := m.client.Create(m.credentials); err != nil {
 		return StatusUnknown, errors.Wrap(err, "error creating client")
 	}
 	defer m.client.Close()
 	if isHostOnDemand(h) {
-		info, err := m.client.GetInstanceInfo(h.Id)
+		info, err := m.client.GetInstanceInfo(ctx, h.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error getting instance info",
@@ -428,13 +429,13 @@ func (m *ec2Manager) GetInstanceStatus(h *host.Host) (CloudStatus, error) {
 		}
 		return ec2StatusToEvergreenStatus(*info.State.Name), nil
 	} else if isHostSpot(h) {
-		return m.getSpotInstanceStatus(h.Id)
+		return m.getSpotInstanceStatus(ctx, h.Id)
 	}
 	return StatusUnknown, errors.New("type must be on-demand or spot")
 }
 
 // TerminateInstance terminates the EC2 instance.
-func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
+func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
 	// terminate the instance
 	if h.Status == evergreen.HostTerminated {
 		err := errors.Errorf("Can not terminate %s - already marked as "+
@@ -450,7 +451,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
 	instanceId := h.Id
 	var err error
 	if isHostSpot(h) {
-		instanceId, err = m.cancelSpotRequest(h)
+		instanceId, err = m.cancelSpotRequest(ctx, h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error canceling spot request",
@@ -470,7 +471,7 @@ func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
 	if !strings.HasPrefix(instanceId, "i-") {
 		return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 	}
-	resp, err := m.client.TerminateInstances(&ec2.TerminateInstancesInput{
+	resp, err := m.client.TerminateInstances(ctx, &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{makeStringPtr(instanceId)},
 	})
 	if err != nil {
@@ -498,8 +499,8 @@ func (m *ec2Manager) TerminateInstance(h *host.Host, user string) error {
 	return errors.Wrap(h.Terminate(user), "failed to terminate instance in db")
 }
 
-func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
-	spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (string, error) {
+	spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	})
 	if err != nil {
@@ -522,7 +523,7 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
 		"host_provider": h.Distro.Provider,
 		"distro":        h.Distro.Id,
 	})
-	if _, err = m.client.CancelSpotInstanceRequests(&ec2.CancelSpotInstanceRequestsInput{
+	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
 		grip.Error(message.Fields{
@@ -547,8 +548,8 @@ func (m *ec2Manager) cancelSpotRequest(h *host.Host) (string, error) {
 }
 
 // IsUp returns whether a host is up.
-func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
-	status, err := m.GetInstanceStatus(h)
+func (m *ec2Manager) IsUp(ctx context.Context, h *host.Host) (bool, error) {
+	status, err := m.GetInstanceStatus(ctx, h)
 	if err != nil {
 		return false, errors.Wrap(err, "error checking if instance is up")
 	}
@@ -559,7 +560,7 @@ func (m *ec2Manager) IsUp(h *host.Host) (bool, error) {
 }
 
 // OnUp is called when the host is up.
-func (m *ec2Manager) OnUp(h *host.Host) error {
+func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 	if isHostSpot(h) {
 		grip.Debug(message.Fields{
 			"message":       "spot host is up, attaching tags",
@@ -571,7 +572,7 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 			return errors.Wrap(err, "error creating client")
 		}
 		defer m.client.Close()
-		spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+		spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 		})
 		if err != nil {
@@ -595,7 +596,7 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 			tagSlice = append(tagSlice, &ec2.Tag{Key: &key, Value: &val})
 		}
 
-		resp, err := m.client.DescribeInstances(&ec2.DescribeInstancesInput{
+		resp, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 			InstanceIds: []*string{spotDetails.SpotInstanceRequests[0].InstanceId},
 		})
 		if err != nil {
@@ -614,7 +615,7 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 			resources = append(resources, vol.Ebs.VolumeId)
 		}
 
-		if _, err = m.client.CreateTags(&ec2.CreateTagsInput{
+		if _, err = m.client.CreateTags(ctx, &ec2.CreateTagsInput{
 			Resources: resources,
 			Tags:      tagSlice,
 		}); err != nil {
@@ -632,7 +633,7 @@ func (m *ec2Manager) OnUp(h *host.Host) error {
 }
 
 // GetDNSName returns the DNS name for the host.
-func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
+func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, error) {
 	var instance *ec2.Instance
 	var err error
 
@@ -642,7 +643,7 @@ func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 	defer m.client.Close()
 
 	if isHostOnDemand(h) {
-		instance, err = m.client.GetInstanceInfo(h.Id)
+		instance, err = m.client.GetInstanceInfo(ctx, h.Id)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error getting instance info",
@@ -653,7 +654,7 @@ func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 			return "", errors.Wrap(err, "error getting instance info")
 		}
 	} else {
-		spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+		spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 		})
 		if err != nil {
@@ -663,7 +664,7 @@ func (m *ec2Manager) GetDNSName(h *host.Host) (string, error) {
 			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
 		if *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
-			instance, err = m.client.GetInstanceInfo(*spotDetails.SpotInstanceRequests[0].InstanceId)
+			instance, err = m.client.GetInstanceInfo(ctx, *spotDetails.SpotInstanceRequests[0].InstanceId)
 			if err != nil {
 				return "", errors.Wrap(err, "error getting instance info")
 			}
@@ -704,8 +705,8 @@ func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
-func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
-	spotDetails, err := m.client.DescribeSpotInstanceRequests(&ec2.DescribeSpotInstanceRequestsInput{
+func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, id string) (CloudStatus, error) {
+	spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(id)},
 	})
 	if err != nil {
@@ -716,7 +717,7 @@ func (m *ec2Manager) getSpotInstanceStatus(id string) (CloudStatus, error) {
 	spotInstance := spotDetails.SpotInstanceRequests[0]
 	//Spot request has been fulfilled, so get status of the instance itself
 	if spotInstance.InstanceId != nil && *spotInstance.InstanceId != "" {
-		instanceInfo, err := m.client.GetInstanceInfo(*spotInstance.InstanceId)
+		instanceInfo, err := m.client.GetInstanceInfo(ctx, *spotInstance.InstanceId)
 		if err != nil {
 			return StatusUnknown, errors.Wrap(err, "Got an error checking spot details")
 		}
@@ -750,7 +751,7 @@ func cloudStatusFromSpotStatus(id, state string) CloudStatus {
 	}
 }
 
-func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, end time.Time) (float64, error) {
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
 	}
@@ -760,11 +761,11 @@ func (m *ec2Manager) CostForDuration(h *host.Host, start, end time.Time) (float6
 	defer m.client.Close()
 
 	t := timeRange{start: start, end: end}
-	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(m.client, h, t)
+	ec2Cost, err := pkgCachingPriceFetcher.getEC2Cost(ctx, m.client, h, t)
 	if err != nil {
 		return 0, errors.Wrap(err, "error fetching ec2 cost")
 	}
-	ebsCost, err := pkgCachingPriceFetcher.getEBSCost(m.client, h, t)
+	ebsCost, err := pkgCachingPriceFetcher.getEBSCost(ctx, m.client, h, t)
 	if err != nil {
 		return 0, errors.Wrap(err, "error fetching ebs cost")
 	}

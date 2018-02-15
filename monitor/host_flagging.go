@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -36,11 +37,11 @@ type hostFlagger struct {
 // function that takes in all distros - specified as a map of
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
-type hostFlaggingFunc func([]distro.Distro, *evergreen.Settings) ([]host.Host, error)
+type hostFlaggingFunc func(context.Context, []distro.Distro, *evergreen.Settings) ([]host.Host, error)
 
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
-func flagDecommissionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagDecommissionedHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	hosts, err := host.Find(host.IsDecommissioned)
 	if err != nil {
 		return nil, errors.Wrap(err, "error finding decommissioned hosts")
@@ -50,7 +51,7 @@ func flagDecommissionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.H
 
 // flagUnreachableHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are unreachable
-func flagUnreachableHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagUnreachableHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	threshold := time.Now().Add(-1 * UnreachableCutoff)
 	hosts, err := host.Find(host.ByUnreachableBefore(threshold))
 	if err != nil {
@@ -59,7 +60,7 @@ func flagUnreachableHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host
 
 	unreachables := []host.Host{}
 	for _, host := range hosts {
-		canTerminate, err := hostCanBeTerminated(host, s)
+		canTerminate, err := hostCanBeTerminated(ctx, host, s)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error checking if host %v can be terminated", host.Id)
 		}
@@ -74,7 +75,7 @@ func flagUnreachableHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
-func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagIdleHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	// will ultimately contain all of the hosts determined to be idle
 	idleHosts := []host.Host{}
 
@@ -95,14 +96,14 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 		communicationTime := freeHost.GetElapsedCommunicationTime()
 
 		// get a cloud manager for the host
-		cloudManager, err := cloud.GetCloudManager(freeHost.Provider, s)
+		cloudManager, err := cloud.GetCloudManager(ctx, freeHost.Provider, s)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error getting cloud manager for host %v", freeHost.Id)
 		}
 
 		// if the host is not dynamically spun up (and can thus be terminated),
 		// skip it
-		canTerminate, err := hostCanBeTerminated(freeHost, s)
+		canTerminate, err := hostCanBeTerminated(ctx, freeHost, s)
 		if err != nil {
 			return nil, errors.Wrapf(err, "error checking if host %v can be terminated", freeHost.Id)
 		}
@@ -140,7 +141,7 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
-func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagExcessHosts(ctx context.Context, distros []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	// will ultimately contain all the hosts that can be terminated
 	excessHosts := []host.Host{}
 
@@ -165,7 +166,7 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 
 				// if the host is not dynamically spun up (and can
 				// thus be terminated), skip it
-				canTerminate, err := hostCanBeTerminated(host, s)
+				canTerminate, err := hostCanBeTerminated(ctx, host, s)
 				if err != nil {
 					return nil, errors.Wrapf(err, "error checking if host %s can be terminated", host.Id)
 				}
@@ -193,7 +194,7 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
-func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagUnprovisionedHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-ProvisioningCutoff)
 	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))
@@ -205,7 +206,7 @@ func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Ho
 
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
-func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagProvisioningFailedHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	// fetch all hosts whose provisioning failed
 	hosts, err := host.Find(host.IsProvisioningFailure)
 	if err != nil {
@@ -217,7 +218,7 @@ func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.Settings) ([]ho
 
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
-func flagExpiredHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+func flagExpiredHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 	// fetch the expired hosts
 	hosts, err := host.Find(host.ByExpiredSince(time.Now()))
 	if err != nil {
@@ -228,9 +229,9 @@ func flagExpiredHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, er
 }
 
 // helper to check if a host can be terminated
-func hostCanBeTerminated(h host.Host, s *evergreen.Settings) (bool, error) {
+func hostCanBeTerminated(ctx context.Context, h host.Host, s *evergreen.Settings) (bool, error) {
 	// get a cloud manager for the host
-	cloudManager, err := cloud.GetCloudManager(h.Provider, s)
+	cloudManager, err := cloud.GetCloudManager(ctx, h.Provider, s)
 	if err != nil {
 		return false, errors.Wrapf(err, "error getting cloud manager for host %s", h.Id)
 	}

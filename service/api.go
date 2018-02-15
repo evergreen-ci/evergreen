@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -549,8 +550,10 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Initializing host %v failed", hostObj.Id))
 		return
 	}
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
-	cloudManager, err := cloud.GetCloudManager(hostObj.Provider, &as.Settings)
+	cloudManager, err := cloud.GetCloudManager(ctx, hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",
@@ -563,7 +566,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dns, err := cloudManager.GetDNSName(hostObj)
+	dns, err := cloudManager.GetDNSName(ctx, hostObj)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

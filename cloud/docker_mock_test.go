@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -32,21 +33,21 @@ func (c *dockerClientMock) generateContainerID() string {
 	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
-func (c *dockerClientMock) Init(_ string) error {
+func (c *dockerClientMock) Init(string) error {
 	if c.failInit {
 		return errors.New("failed to initialize client")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) CreateContainer(_ string, _ *distro.Distro, _ *dockerSettings) error {
+func (c *dockerClientMock) CreateContainer(context.Context, string, *distro.Distro, *dockerSettings) error {
 	if c.failCreate {
 		return errors.New("failed to create container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) GetContainer(_ *host.Host) (*types.ContainerJSON, error) {
+func (c *dockerClientMock) GetContainer(context.Context, *host.Host) (*types.ContainerJSON, error) {
 	if c.failGet {
 		return nil, errors.New("failed to inspect container")
 	}
@@ -77,7 +78,7 @@ func (c *dockerClientMock) GetContainer(_ *host.Host) (*types.ContainerJSON, err
 	return container, nil
 }
 
-func (c *dockerClientMock) ListContainers(_ *distro.Distro) ([]types.Container, error) {
+func (c *dockerClientMock) ListContainers(context.Context, *distro.Distro) ([]types.Container, error) {
 	if c.failList {
 		return nil, errors.New("failed to list containers")
 	}
@@ -90,14 +91,14 @@ func (c *dockerClientMock) ListContainers(_ *distro.Distro) ([]types.Container, 
 	return []types.Container{container}, nil
 }
 
-func (c *dockerClientMock) RemoveContainer(_ *host.Host) error {
+func (c *dockerClientMock) RemoveContainer(context.Context, *host.Host) error {
 	if c.failRemove {
 		return errors.New("failed to remove container")
 	}
 	return nil
 }
 
-func (c *dockerClientMock) StartContainer(_ *host.Host) error {
+func (c *dockerClientMock) StartContainer(context.Context, *host.Host) error {
 	if c.failStart {
 		return errors.New("failed to start container")
 	}

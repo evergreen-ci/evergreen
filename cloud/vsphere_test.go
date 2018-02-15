@@ -3,6 +3,7 @@
 package cloud
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -84,11 +85,14 @@ func (s *VSphereSuite) TestConfigureAPICall() {
 	s.True(ok)
 	s.False(mock.failInit)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	settings := &evergreen.Settings{}
-	s.NoError(s.manager.Configure(settings))
+	s.NoError(s.manager.Configure(ctx, settings))
 
 	mock.failInit = true
-	s.Error(s.manager.Configure(settings))
+	s.Error(s.manager.Configure(ctx, settings))
 }
 
 func (s *VSphereSuite) TestIsUpFailAPICall() {
@@ -97,11 +101,14 @@ func (s *VSphereSuite) TestIsUpFailAPICall() {
 
 	host := &host.Host{}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mock.failPowerState = true
-	_, err := s.manager.GetInstanceStatus(host)
+	_, err := s.manager.GetInstanceStatus(ctx, host)
 	s.Error(err)
 
-	active, err := s.manager.IsUp(host)
+	active, err := s.manager.IsUp(ctx, host)
 	s.Error(err)
 	s.False(active)
 }
@@ -113,34 +120,40 @@ func (s *VSphereSuite) TestIsUpStatuses() {
 
 	host := &host.Host{}
 
-	status, err := s.manager.GetInstanceStatus(host)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	status, err := s.manager.GetInstanceStatus(ctx, host)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 
-	active, err := s.manager.IsUp(host)
+	active, err := s.manager.IsUp(ctx, host)
 	s.NoError(err)
 	s.True(active)
 
 	mock.isActive = false
-	status, err = s.manager.GetInstanceStatus(host)
+	status, err = s.manager.GetInstanceStatus(ctx, host)
 	s.NoError(err)
 	s.NotEqual(StatusRunning, status)
 
-	active, err = s.manager.IsUp(host)
+	active, err = s.manager.IsUp(ctx, host)
 	s.NoError(err)
 	s.False(active)
 }
 
 func (s *VSphereSuite) TestTerminateInstanceAPICall() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	hostA := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
-	hostA, err := s.manager.SpawnHost(hostA)
+	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	err = hostA.Insert()
 	s.NoError(err)
 
 	hostB := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
-	hostB, err = s.manager.SpawnHost(hostB)
+	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
 	err = hostB.Insert()
@@ -150,18 +163,21 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 	s.True(ok)
 	s.False(mock.failDelete)
 
-	s.NoError(s.manager.TerminateInstance(hostA, evergreen.User))
+	s.NoError(s.manager.TerminateInstance(ctx, hostA, evergreen.User))
 
 	mock.failDelete = true
-	s.Error(s.manager.TerminateInstance(hostB, evergreen.User))
+	s.Error(s.manager.TerminateInstance(ctx, hostB, evergreen.User))
 }
 
 func (s *VSphereSuite) TestTerminateInstanceDB() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Spawn the instance - check the host is not terminated in DB.
 	myHost := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	err := myHost.Insert()
 	s.NoError(err)
-	myHost, err = s.manager.SpawnHost(myHost)
+	myHost, err = s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
 
@@ -170,7 +186,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate the instance - check the host is terminated in DB.
-	err = s.manager.TerminateInstance(myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
 	s.NoError(err)
 
 	dbHost, err = host.FindOne(host.ById(myHost.Id))
@@ -178,21 +194,24 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	s.NoError(err)
 
 	// Terminate again - check we cannot remove twice.
-	err = s.manager.TerminateInstance(myHost, evergreen.User)
+	err = s.manager.TerminateInstance(ctx, myHost, evergreen.User)
 	s.Error(err)
 }
 
 func (s *VSphereSuite) TestGetDNSNameAPICall() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.False(mock.failIP)
 
 	host := &host.Host{Id: "hostID"}
-	_, err := s.manager.GetDNSName(host)
+	_, err := s.manager.GetDNSName(ctx, host)
 	s.NoError(err)
 
 	mock.failIP = true
-	dns, err := s.manager.GetDNSName(host)
+	dns, err := s.manager.GetDNSName(ctx, host)
 	s.Error(err)
 	s.Empty(dns)
 }
@@ -212,16 +231,19 @@ func (s *VSphereSuite) TestGetSSHOptions() {
 }
 
 func (s *VSphereSuite) TestSpawnInvalidSettings() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	dProviderName := &distro.Distro{Provider: "ec2"}
 	host := NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
 	s.NotNil(host)
-	host, err := s.manager.SpawnHost(host)
+	host, err := s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "vsphere"}
 	host = NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(host)
+	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
 
@@ -230,38 +252,44 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 		ProviderSettings: &map[string]interface{}{"template": ""},
 	}
 	host = NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
-	host, err = s.manager.SpawnHost(host)
+	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
 }
 
 func (s *VSphereSuite) TestSpawnDuplicateHostID() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
 	hostOne := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
-	hostOne, err := s.manager.SpawnHost(hostOne)
+	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
 	hostTwo := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
-	hostTwo, err = s.manager.SpawnHost(hostTwo)
+	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
 }
 
 func (s *VSphereSuite) TestSpawnAPICall() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mock, ok := s.client.(*vsphereClientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
 	host := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(host)
+	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
 	host = NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
-	_, err = s.manager.SpawnHost(host)
+	_, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 }
 

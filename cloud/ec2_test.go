@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -140,20 +141,23 @@ func (s *EC2Suite) TestGetSettings() {
 
 func (s *EC2Suite) TestConfigure() {
 	settings := &evergreen.Settings{}
-	err := s.onDemandManager.Configure(settings)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
 	settings.Providers.AWS.Id = "id"
-	err = s.onDemandManager.Configure(settings)
+	err = s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
 	settings.Providers.AWS.Id = ""
 	settings.Providers.AWS.Secret = "secret"
-	err = s.onDemandManager.Configure(settings)
+	err = s.onDemandManager.Configure(ctx, settings)
 	s.Error(err)
 
 	settings.Providers.AWS.Id = "id"
-	err = s.onDemandManager.Configure(settings)
+	err = s.onDemandManager.Configure(ctx, settings)
 	s.NoError(err)
 	ec2m := s.onDemandManager.(*ec2Manager)
 	creds, err := ec2m.credentials.Get()
@@ -170,7 +174,10 @@ func (s *EC2Suite) TestSpawnHostInvalidInput() {
 		},
 	}
 
-	spawned, err := s.onDemandManager.SpawnHost(h)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	spawned, err := s.onDemandManager.SpawnHost(ctx, h)
 	s.Nil(spawned)
 	s.Error(err)
 	s.EqualError(err, "Can't spawn instance for distro id: provider is foo")
@@ -191,7 +198,10 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		"subnet_id":      "subnet-123456",
 	}
 
-	_, err := s.onDemandManager.SpawnHost(h)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.onDemandManager.SpawnHost(ctx, h)
 	s.NoError(err)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
@@ -245,7 +255,10 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"is_vpc":         true,
 	}
 
-	_, err := s.onDemandManager.SpawnHost(h)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.onDemandManager.SpawnHost(ctx, h)
 	s.NoError(err)
 
 	manager, ok := s.onDemandManager.(*ec2Manager)
@@ -298,7 +311,10 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		"subnet_id":      "subnet-123456",
 	}
 
-	_, err := s.spotManager.SpawnHost(h)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, err := s.spotManager.SpawnHost(ctx, h)
 	s.NoError(err)
 
 	manager, ok := s.spotManager.(*ec2Manager)
@@ -350,7 +366,9 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"is_vpc":         true,
 	}
 
-	_, err := s.spotManager.SpawnHost(h)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := s.spotManager.SpawnHost(ctx, h)
 	s.NoError(err)
 
 	manager, ok := s.spotManager.(*ec2Manager)
@@ -393,49 +411,57 @@ func (s *EC2Suite) TestCanSpawn() {
 }
 
 func (s *EC2Suite) TestGetInstanceStatus() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := &host.Host{}
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	status, err := s.onDemandManager.GetInstanceStatus(h)
+	status, err := s.onDemandManager.GetInstanceStatus(ctx, h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	status, err = s.onDemandManager.GetInstanceStatus(h)
+	status, err = s.onDemandManager.GetInstanceStatus(ctx, h)
 	s.NoError(err)
 	s.Equal(StatusRunning, status)
 }
 
 func (s *EC2Suite) TestTerminateInstance() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := &host.Host{Id: "host_id"}
 	s.NoError(h.Insert())
-	s.NoError(s.onDemandManager.TerminateInstance(h, evergreen.User))
+	s.NoError(s.onDemandManager.TerminateInstance(ctx, h, evergreen.User))
 	found, err := host.FindOne(host.ById("host_id"))
 	s.Equal(evergreen.HostTerminated, found.Status)
 	s.NoError(err)
 }
 
 func (s *EC2Suite) TestIsUp() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	h := &host.Host{
 		Distro: distro.Distro{},
 	}
 	h.Distro.Provider = evergreen.ProviderNameEc2OnDemand
-	up, err := s.onDemandManager.IsUp(h)
+	up, err := s.onDemandManager.IsUp(ctx, h)
 	s.True(up)
 	s.NoError(err)
 
 	h.Distro.Provider = evergreen.ProviderNameEc2Spot
-	up, err = s.onDemandManager.IsUp(h)
+	up, err = s.onDemandManager.IsUp(ctx, h)
 	s.True(up)
 	s.NoError(err)
-
 }
 
 func (s *EC2Suite) TestOnUp() {
-	s.NoError(s.onDemandManager.OnUp(&host.Host{}))
+	s.NoError(s.onDemandManager.OnUp(context.Background(), &host.Host{}))
 }
 
 func (s *EC2Suite) TestGetDNSName() {
-	dns, err := s.onDemandManager.GetDNSName(&host.Host{})
+	dns, err := s.onDemandManager.GetDNSName(context.Background(), &host.Host{})
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 }
@@ -506,9 +532,13 @@ func (s *EC2Suite) TestGetProvider() {
 		SubnetId:     "subnet-123456",
 		VpcName:      "vpc_name",
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	manager, ok := s.autoManager.(*ec2Manager)
 	s.True(ok)
-	provider, err := manager.getProvider(h, ec2Settings)
+	provider, err := manager.getProvider(ctx, h, ec2Settings)
 	s.NoError(err)
 	s.Equal(spotProvider, provider)
 	// subnet should be set based on vpc name
@@ -516,7 +546,7 @@ func (s *EC2Suite) TestGetProvider() {
 	s.Equal(h.Distro.Provider, evergreen.ProviderNameEc2Spot)
 
 	h.UserHost = true
-	provider, err = manager.getProvider(h, ec2Settings)
+	provider, err = manager.getProvider(ctx, h, ec2Settings)
 	s.NoError(err)
 	s.Equal(onDemandProvider, provider)
 }
