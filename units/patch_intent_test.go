@@ -66,13 +66,14 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 	s.NoError(db.ClearGridCollections(patch.GridFSPrefix))
 
 	s.NoError((&model.ProjectRef{
-		Owner:      "evergreen-ci",
-		Repo:       "evergreen",
-		Identifier: "mci",
-		Enabled:    true,
-		Branch:     "master",
-		RemotePath: "self-tests.yml",
-		RepoKind:   "github",
+		Owner:            "evergreen-ci",
+		Repo:             "evergreen",
+		Identifier:       "mci",
+		Enabled:          true,
+		Branch:           "master",
+		RemotePath:       "self-tests.yml",
+		RepoKind:         "github",
+		PRTestingEnabled: true,
 	}).Insert())
 
 	s.NoError((&user.DBUser{
