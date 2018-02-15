@@ -39,7 +39,7 @@ func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergr
 		}
 
 		// continue on error to allow the other monitoring functions to run
-		catcher.Extend(f(settings))
+		catcher.Extend(f(ctx, settings))
 	}
 
 	return catcher.Resolve()
@@ -91,7 +91,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 		})
 
 		// find the next batch of hosts to terminate
-		flaggedHosts, err := flagger.hostFlaggingFunc(distros, settings)
+		flaggedHosts, err := flagger.hostFlaggingFunc(ctx, distros, settings)
 
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
