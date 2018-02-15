@@ -123,25 +123,24 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 		flaggingFuncs:   defaultHostFlaggingFuncs,
 		monitoringFuncs: defaultHostMonitoringFuncs,
 	}
+
 	// clean up any necessary hosts
-	for _, err := range hostMonitor.CleanupHosts(ctx, distros, settings) {
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":  RunnerName,
-			"message": "Error cleaning up hosts",
-		}))
-	}
+	err = hostMonitor.CleanupHosts(ctx, distros, settings)
+	grip.Error(message.WrapError(err, message.Fields{
+		"runner":  RunnerName,
+		"message": "Error cleaning up hosts",
+	}))
 
 	if ctx.Err() != nil {
 		return errors.New("monitor canceled")
 	}
 
 	// run monitoring checks
-	for _, err := range hostMonitor.RunMonitoringChecks(ctx, settings) {
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":  RunnerName,
-			"message": "Error running host monitor checks",
-		}))
-	}
+	err = hostMonitor.RunMonitoringChecks(ctx, settings)
+	grip.Error(message.WrapError(err, message.Fields{
+		"runner":  RunnerName,
+		"message": "Error running host monitor checks",
+	}))
 
 	if ctx.Err() != nil {
 		return errors.New("monitor canceled")
@@ -153,12 +152,11 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	// send notifications
-	for _, err := range notifier.Notify(settings) {
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":  RunnerName,
-			"message": "Error sending notifications",
-		}))
-	}
+	err = notifier.Notify(settings)
+	grip.Error(message.WrapError(err, message.Fields{
+		"runner":  RunnerName,
+		"message": "Error sending notifications",
+	}))
 
 	// Do alerts for spawnhosts - collect all hosts expiring in the next 12 hours.
 	// The trigger logic will filter out any hosts that aren't in a notification window, or have
@@ -171,7 +169,7 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	}
 
 	for _, h := range expiringSoonHosts {
-		if err := alerts.RunSpawnWarningTriggers(&h); err != nil {
+		if err = alerts.RunSpawnWarningTriggers(&h); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  RunnerName,
 				"message": "Error queuing alert",
