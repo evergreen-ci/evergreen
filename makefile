@@ -39,12 +39,17 @@ ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.B
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
 
+gopath := $(shell go env GOPATH)
+ifeq ($(OS),Windows_NT)
+gopath := $(shell cygpath -m $(gopath))
+endif
 
 # start linting configuration
 #   package, testing, and linter dependencies specified
 #   separately. This is a temporary solution: eventually we should
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
+lintDeps += github.com/richardsamuels/evg-lint/...
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=5m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
@@ -62,6 +67,7 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 lintArgs += --exclude="should check returned error before deferring .* (SA5001) (megacheck)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
+lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
 # end lint configuration
 
 
@@ -121,10 +127,6 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 #   implementation details for being able to lazily install dependencies.
 #   this block has no project specific configuration but defines
 #   variables that project specific information depends on
-gopath := $(shell go env GOPATH)
-ifeq ($(OS),Windows_NT)
-gopath := $(shell cygpath -m $(gopath))
-endif
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
 raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
 testBin := $(foreach target,$(packages),$(buildDir)/test.$(target))

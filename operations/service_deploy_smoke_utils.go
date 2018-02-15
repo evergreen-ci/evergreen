@@ -124,26 +124,11 @@ func checkTaskByCommit(username, key, commit string) error {
 		}
 		time.Sleep(10 * time.Second)
 		grip.Infof("checking for task %s (%d/30)", builds[0].Tasks[0], i+1)
-		r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[0], nil)
+
+		var err error
+		task, err = checkTask(client, username, key, builds)
 		if err != nil {
-			return errors.Wrap(err, "failed to make request")
-		}
-		r.Header.Add(evergreen.APIUserHeader, username)
-		r.Header.Add(evergreen.APIKeyHeader, key)
-		resp, err := client.Do(r)
-		if err != nil {
-			return errors.Wrap(err, "error getting task data")
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = errors.Wrap(err, "error reading response body")
-			grip.Error(err)
-			return err
-		}
-		err = json.Unmarshal(body, &task)
-		if err != nil {
-			return errors.Wrap(err, "error unmarshaling json")
+			return errors.WithStack(err)
 		}
 
 		if task.Status == evergreen.TaskFailed {
@@ -177,6 +162,34 @@ func checkTaskByCommit(username, key, commit string) error {
 
 	grip.Info("Successfully checked task by commit")
 	return nil
+}
+
+func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild) (apimodels.APITask, error) {
+	task := apimodels.APITask{}
+	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[0], nil)
+	if err != nil {
+		return task, errors.Wrap(err, "failed to make request")
+	}
+	r.Header.Add(evergreen.APIUserHeader, username)
+	r.Header.Add(evergreen.APIKeyHeader, key)
+	resp, err := client.Do(r)
+	if err != nil {
+		return task, errors.Wrap(err, "error getting task data")
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = errors.Wrap(err, "error reading response body")
+		grip.Error(err)
+		return task, err
+	}
+	err = json.Unmarshal(body, &task)
+	if err != nil {
+		return task, errors.Wrap(err, "error unmarshaling json")
+	}
+
+	return task, nil
 }
 
 func makeSmokeRequest(client *http.Client, url string, expected []string) error {
