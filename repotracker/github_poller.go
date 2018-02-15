@@ -165,14 +165,22 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 	if !foundLatest {
 		var revisionDetails *model.RepositoryErrorDetails
 		var revisionError error
+		var err error
+		var baseRevision string
+
 		// attempt to get the merge base commit
-		baseRevision, err := thirdparty.GetGitHubMergeBaseRevision(
-			gRepoPoller.OauthToken,
-			gRepoPoller.ProjectRef.Owner,
-			gRepoPoller.ProjectRef.Repo,
-			revision,
-			firstCommit,
-		)
+		if firstCommit != nil {
+			baseRevision, err = thirdparty.GetGitHubMergeBaseRevision(
+				gRepoPoller.OauthToken,
+				gRepoPoller.ProjectRef.Owner,
+				gRepoPoller.ProjectRef.Repo,
+				revision,
+				*firstCommit.SHA,
+			)
+
+		} else {
+			err = errors.New("no recent commit found")
+		}
 		if len(revision) < 10 {
 			return nil, errors.Errorf("invalid revision: %v", revision)
 		}
