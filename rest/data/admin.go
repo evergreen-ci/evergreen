@@ -12,6 +12,7 @@ import (
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -52,25 +53,85 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 	newSettings := i.(evergreen.Settings)
 
 	if persist {
-		return &newSettings, evergreen.UpdateConfig(&newSettings)
+		err = evergreen.UpdateConfig(&newSettings)
+		if err != nil {
+			return nil, errors.Wrap(err, "error saving new settings")
+		}
+		return &newSettings, LogConfigChanges(&newSettings, oldSettings, u)
 	}
 
 	return &newSettings, nil
 }
 
+func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
+	// log the root config document here
+	catcher := grip.NewSimpleCatcher()
+	changes, err := newSettings.GetChanges(oldSettings)
+	if err != nil {
+		catcher.Add(errors.Wrap(err, "error getting changes for root document"))
+	}
+	if err := event.LogAdminEvent(newSettings.SectionId(), changes, u.Username()); err != nil {
+		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
+	}
+
+	// log the other config sub-documents
+	valConfig := reflect.ValueOf(*newSettings)
+	var oldStruct reflect.Value
+	if oldSettings != nil {
+		oldStruct = reflect.ValueOf(*oldSettings)
+	}
+
+	//iterate over each field in the config struct
+	for i := 0; i < valConfig.NumField(); i++ {
+		// retrieve the 'id' struct tag
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" { // no 'id' tag means this is a simple field that we can skip
+			continue
+		}
+
+		// get the property name and find its value within the settings struct
+		propName := valConfig.Type().Field(i).Name
+		propVal := valConfig.FieldByName(propName)
+
+		// create a reflective copy of the struct
+		valPointer := reflect.Indirect(reflect.New(propVal.Type()))
+		valPointer.Set(propVal)
+
+		// convert the pointer to that struct to an empty interface
+		propInterface := valPointer.Addr().Interface()
+
+		// type assert to the ConfigSection interface
+		section, ok := propInterface.(evergreen.ConfigSection)
+		if !ok {
+			catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+			continue
+		}
+
+		// save changes in the event log
+		if oldSettings != nil {
+			oldVal := oldStruct.FieldByName(propName)
+			changes, err = section.GetChanges(oldVal.Interface())
+			if err != nil {
+				catcher.Add(errors.Wrapf(err, "error logging events for %s", propName))
+				continue
+			}
+			if len(changes) == 0 {
+				continue
+			}
+			catcher.Add(event.LogAdminEvent(section.SectionId(), changes, u.Username()))
+		}
+	}
+	return errors.WithStack(catcher.Resolve())
+}
+
 // SetAdminBanner sets the admin banner in the DB and event logs it
 func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
-	oldSettings, err := evergreen.GetConfig()
+	err := evergreen.SetBanner(text)
 	if err != nil {
 		return err
 	}
 
-	err = evergreen.SetBanner(text)
-	if err != nil {
-		return err
-	}
-
-	return event.LogBannerChanged(oldSettings.Banner, text, u)
+	return nil
 }
 
 // SetBannerTheme sets the banner theme in the DB and event logs it
@@ -80,32 +141,22 @@ func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) e
 		return fmt.Errorf("%s is not a valid banner theme type", themeString)
 	}
 
-	oldSettings, err := evergreen.GetConfig()
+	err := evergreen.SetBannerTheme(theme)
 	if err != nil {
 		return err
 	}
 
-	err = evergreen.SetBannerTheme(theme)
-	if err != nil {
-		return err
-	}
-
-	return event.LogBannerThemeChanged(oldSettings.BannerTheme, theme, u)
+	return nil
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
 func (ac *DBAdminConnector) SetServiceFlags(flags evergreen.ServiceFlags, u *user.DBUser) error {
-	oldSettings, err := evergreen.GetConfig()
+	err := evergreen.SetServiceFlags(flags)
 	if err != nil {
 		return err
 	}
 
-	err = evergreen.SetServiceFlags(flags)
-	if err != nil {
-		return err
-	}
-
-	return event.LogServiceChanged(oldSettings.ServiceFlags, flags, u)
+	return nil
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times

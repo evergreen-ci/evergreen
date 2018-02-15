@@ -183,6 +183,16 @@ func (s *AdminSuite) TestServiceFlags() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(testFlags, settings.ServiceFlags)
+
+	newFlags := ServiceFlags{
+		MonitorDisabled:     true,
+		RepotrackerDisabled: true,
+	}
+	changes, err := newFlags.GetChanges(testFlags)
+	s.NoError(err)
+	s.Contains(changes, "Alerts")
+	s.NotContains(changes, "Monitor")
+	s.Equal(changes["Alerts"], ConfigDataChange{Before: "disabled", After: "enabled"})
 }
 
 func (s *AdminSuite) TestAlertsConfig() {
