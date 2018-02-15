@@ -52,12 +52,18 @@ func TestTimeRoundPartMinute(t *testing.T) {
 		{20, 28, 10},
 		{24, 25, 2},
 		{30, 48, 30},
+		{0, 0, -1},
 	}
 
 	for _, c := range cases {
 		assert.Equal(c.expectedValue, findPartMin(getTimeWithMin(c.actualMins), c.interval).Minute(),
 			fmt.Sprintf("%+v", c))
 	}
+
+	assert.NotPanics(func() {
+		findPartMin(getTimeWithMin(0), 0)
+	})
+
 }
 
 func TestTimeRoundPartSecond(t *testing.T) {
@@ -94,12 +100,17 @@ func TestTimeRoundPartSecond(t *testing.T) {
 		{20, 28, 10},
 		{24, 25, 2},
 		{30, 48, 30},
+		{0, 0, -1},
 	}
 
 	for _, c := range cases {
 		assert.Equal(c.expectedValue, findPartSec(getTimeWithSec(c.actualSecs), c.interval).Second(),
 			fmt.Sprintf("%+v", c))
 	}
+
+	assert.NotPanics(func() {
+		findPartSec(getTimeWithSec(0), 0)
+	})
 }
 
 func getTimeWithMin(min int) time.Time {
