@@ -745,7 +745,7 @@ func (s *projectSuite) TestBuildProjectTVPairs() {
 	s.project.BuildProjectTVPairs(&patchDoc, "")
 
 	s.Len(patchDoc.BuildVariants, 2)
-	s.Len(patchDoc.Tasks, 2)
+	s.Len(patchDoc.Tasks, 5)
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
@@ -770,36 +770,6 @@ func (s *projectSuite) TestBuildProjectTVPairsWithAlias() {
 		if vt.Variant != "bv_1" && vt.Variant != "bv_2" {
 			s.T().Fail()
 		}
-	}
-}
-
-func (s *projectSuite) TestBuildProjectTVPairsWithBadBuildVariant() {
-	patchDoc := patch.Patch{
-		BuildVariants: []string{"bv_1", "bv_2", "totallynotreal"},
-		Tasks:         []string{"wow_task"},
-	}
-
-	s.project.BuildProjectTVPairs(&patchDoc, "")
-
-	s.Require().Len(patchDoc.Tasks, 2)
-	s.Contains(patchDoc.Tasks, "wow_task")
-	s.Contains(patchDoc.Tasks, "a_task_1")
-	s.Contains(patchDoc.BuildVariants, "bv_1")
-	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.VariantsTasks, 2)
-	for _, vt := range patchDoc.VariantsTasks {
-		if vt.Variant == "bv_1" {
-			s.Len(vt.Tasks, 2)
-			s.Contains(vt.Tasks, "a_task_1")
-			s.Contains(vt.Tasks, "wow_task")
-
-		} else if vt.Variant == "bv_2" {
-			s.Equal([]string{"a_task_1"}, vt.Tasks)
-
-		} else {
-			s.T().Fail()
-		}
-		s.Empty(vt.DisplayTasks)
 	}
 }
 
@@ -928,9 +898,6 @@ func (s *projectSuite) TestBuildProjectTVPairsWithDisplayTaskWithDependencies() 
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
-	// TODO: See EVG-2722 this behaviour is wrong. Requesting a tag that
-	// contains a single execution task from a display task should make the
-	// patch include the entire display task
 	patchDoc := patch.Patch{}
 	s.project.BuildProjectTVPairs(&patchDoc, "part_of_memes")
 	s.Len(patchDoc.BuildVariants, 2)
@@ -960,8 +927,6 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTaskFromTags() {
 }
 
 func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
-	// TODO: See EVG-2722 this behaviour is wrong. This should NOT create
-	// any Build variants or tasks
 	patchDoc := patch.Patch{
 		BuildVariants: []string{"bv_1"},
 		Tasks:         []string{"wow_task"},
@@ -970,7 +935,7 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
 	s.Len(patchDoc.BuildVariants, 2)
 	s.Contains(patchDoc.BuildVariants, "bv_1")
 	s.Contains(patchDoc.BuildVariants, "bv_2")
-	s.Len(patchDoc.Tasks, 2)
+	s.Len(patchDoc.Tasks, 5)
 	s.Contains(patchDoc.Tasks, "wow_task")
 	s.Contains(patchDoc.Tasks, "a_task_1")
 	s.Require().Len(patchDoc.VariantsTasks, 2)
