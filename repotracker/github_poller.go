@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +51,7 @@ func githubCommitToRevision(githubCommit *thirdparty.GithubCommit) model.Revisio
 		AuthorEmail:     githubCommit.Commit.Author.Email,
 		RevisionMessage: githubCommit.Commit.Message,
 		Revision:        githubCommit.SHA,
-		CreateTime:      githubCommit.Committer.Date.Time(),
+		CreateTime:      util.RoundPartOfMinute(0),
 	}
 }
 
