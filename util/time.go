@@ -67,7 +67,7 @@ func RoundPartOfMinute(num int) time.Time { return findPartSec(time.Now(), num) 
 func findPartMin(now time.Time, num int) time.Time {
 	var min int
 
-	if num > now.Minute() || num > 30 {
+	if num > now.Minute() || num > 30 || num <= 0 {
 		min = 0
 	} else {
 		min = now.Minute() - (now.Minute() % num)
@@ -81,7 +81,7 @@ func findPartMin(now time.Time, num int) time.Time {
 func findPartSec(now time.Time, num int) time.Time {
 	var sec int
 
-	if num > now.Second() || num > 30 {
+	if num > now.Second() || num > 30 || num <= 0 {
 		sec = 0
 	} else {
 		sec = now.Second() - (now.Second() % num)
