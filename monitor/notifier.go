@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/mongodb/grip"
@@ -15,14 +17,15 @@ type Notifier struct {
 }
 
 // create and send any notifications that need to be sent
-func (self *Notifier) Notify(settings *evergreen.Settings) []error {
+func (self *Notifier) Notify(settings *evergreen.Settings) error {
 	grip.Debug(message.Fields{
 		"runner":  RunnerName,
 		"message": "building and sending notifications",
 	})
 
 	// used to store any errors that occur
-	var errs []error
+	catcher := grip.NewBasicCatcher()
+	startAt := time.Now()
 
 	for _, f := range self.notificationBuilders {
 
@@ -32,26 +35,25 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 		// continue on error so that one wonky function doesn't stop the others
 		// from running
 		if err != nil {
-			errs = append(errs, errors.Wrap(err,
+			catcher.Add(errors.Wrap(err,
 				"error building notifications to be sent"))
 			continue
 		}
 
 		// send the actual notifications. continue on error to allow further
 		// notifications to be sent
-		if newErrs := sendNotifications(notifications, settings); errs != nil {
-			for _, err := range newErrs {
-				errs = append(errs, errors.Wrap(err,
-					"error sending notifications"))
-			}
-			continue
-		}
-
+		catcher.Extend(sendNotifications(notifications, settings))
 	}
 
-	grip.Info("Done building and sending notifications")
+	grip.Debug(message.Fields{
+		"runner":        RunnerName,
+		"message":       "completed monitor notifications",
+		"num_builders":  len(self.notificationBuilders),
+		"num_errors":    catcher.Len(),
+		"duration_secs": time.Since(startAt).Seconds(),
+	})
 
-	return errs
+	return catcher.Resolve()
 }
 
 // send all of the specified notifications, and execute the callbacks for any

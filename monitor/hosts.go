@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -29,129 +28,98 @@ type HostMonitor struct {
 
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
-func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergreen.Settings) []error {
+func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergreen.Settings) error {
 	// used to store any errors that occur
-	var errs []error
+	catcher := grip.NewBasicCatcher()
 
 	for _, f := range hm.monitoringFuncs {
 		if ctx.Err() != nil {
-			return append(errs, errors.New("host monitor canceled"))
+			catcher.Add(errors.New("host monitor canceled"))
+			break
 		}
 
 		// continue on error to allow the other monitoring functions to run
-		if flagErrs := f(ctx, settings); errs != nil {
-			errs = append(errs, flagErrs...)
-		}
+		catcher.Extend(f(settings))
 	}
 
-	return errs
+	return catcher.Resolve()
 }
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro, settings *evergreen.Settings) []error {
+func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro, settings *evergreen.Settings) error {
+	startAt := time.Now()
+	catcher := grip.NewBasicCatcher()
+	hostIdsToTerminate := []string{}
+	hosts := make(chan *host.Host)
+	wg := &sync.WaitGroup{}
 
-	// used to store any errors that occur
-	var errs []error
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
+
+	for i := 0; i < 24; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case h := <-hosts:
+					if h == nil {
+						return
+					}
+
+					catcher.Add(errors.Wrapf(terminateHost(ctx, h, settings),
+						"problem terminating host %s", h.Id))
+				}
+			}
+		}()
+	}
 
 	for _, flagger := range hm.flaggingFuncs {
 		if ctx.Err() != nil {
-			return append(errs, errors.New("host monitor canceled"))
+			catcher.Add(errors.New("host monitor canceled"))
+			break
 		}
 
-		grip.Info(message.Fields{
+		grip.Debug(message.Fields{
 			"runner":  RunnerName,
 			"message": "Running flagging function for hosts",
 			"reason":  flagger.Reason,
 		})
+
 		// find the next batch of hosts to terminate
-		hostsToTerminate, err := flagger.hostFlaggingFunc(ctx, distros, settings)
-		hostIdsToTerminate := []string{}
-		for _, h := range hostsToTerminate {
-			hostIdsToTerminate = append(hostIdsToTerminate, h.Id)
-		}
-		grip.Info(message.Fields{
-			"runner":  RunnerName,
-			"message": "found hosts for termination",
-			"reason":  flagger.Reason,
-			"count":   len(hostIdsToTerminate),
-			"hosts":   hostIdsToTerminate,
-		})
+		flaggedHosts, err := flagger.hostFlaggingFunc(distros, settings)
+
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
 		if err != nil {
-			errs = append(errs, errors.Wrap(err, "error flagging hosts to be terminated"))
+			catcher.Add(errors.Wrapf(err, "error flagging [%s] hosts to be terminated", flagger.Reason))
 			continue
 		}
 
-		// terminate all of the dead hosts. continue on error to allow further
-		// termination to work
-		if err = terminateHosts(ctx, hostsToTerminate, settings, flagger.Reason); err != nil {
-			errs = append(errs, errors.Wrap(err, "error terminating host"))
-			continue
-		}
-
-		grip.Info(message.Fields{
-			"runner":  RunnerName,
-			"message": "terminated flagged hosts",
-			"reason":  flagger.Reason,
-			"count":   len(hostIdsToTerminate),
-			"hosts":   hostIdsToTerminate,
-		})
-	}
-
-	return errs
-}
-
-// terminate the passed-in slice of hosts. returns any errors that occur
-// terminating the hosts
-func terminateHosts(ctx context.Context, hosts []host.Host, settings *evergreen.Settings, reason string) error {
-	catcher := grip.NewBasicCatcher()
-	work := make(chan *host.Host, len(hosts))
-	wg := &sync.WaitGroup{}
-
-	// The naive range case does not work with pointers https://play.golang.org/p/JL17Ah7HdU.
-	for i := range hosts {
-		work <- &hosts[i]
-	}
-	close(work)
-	workers := 24
-	if len(hosts) < workers {
-		workers = len(hosts)
-	}
-	startAt := time.Now()
-	terminated := &util.SafeCounter{}
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for hostToTerminate := range work {
-				event.LogMonitorOperation(hostToTerminate.Id, reason)
-
-				func() { // use a function so that the defer works
-					funcCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-					defer cancel()
-
-					if err := terminateHost(funcCtx, hostToTerminate, settings); err != nil {
-						catcher.Add(errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id))
-						return
-					}
-					terminated.Inc()
-				}()
+		for _, h := range flaggedHosts {
+			if ctx.Err() != nil {
+				catcher.Add(errors.New("host monitor canceled"))
+				break
 			}
-		}()
+
+			hostIdsToTerminate = append(hostIdsToTerminate, h.Id)
+			hosts <- &h
+		}
 	}
+	close(hosts)
 	wg.Wait()
 
 	grip.Info(message.Fields{
 		"runner":        RunnerName,
-		"operation":     "host termination",
-		"duration_secs": time.Since(startAt).Seconds(),
-		"workers":       workers,
-		"num_hosts":     len(hosts),
-		"terminated":    terminated.Value(),
+		"message":       "terminated flagged hosts",
+		"num_hosts":     len(hostIdsToTerminate),
 		"num_errors":    catcher.Len(),
+		"hosts":         hostIdsToTerminate,
+		"duration_secs": time.Since(startAt).Seconds(),
 	})
 
 	return catcher.Resolve()
