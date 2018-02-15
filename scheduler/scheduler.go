@@ -222,7 +222,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		totalQueueSize += len(queue)
 	}
 
-	grip.Info(message.Fiels{
+	grip.Info(message.Fields{
 		"runner": RunnerName,
 		"stat":   "total-queue-size",
 		"size":   totalQueueSize,
