@@ -48,7 +48,8 @@ endif
 #   package, testing, and linter dependencies specified
 #   separately. This is a temporary solution: eventually we should
 #   vendorize all of these dependencies.
-lintDeps := github.com/alecthomas/gometalinter github.com/richardsamuels/evg-lint/...
+lintDeps := github.com/alecthomas/gometalinter
+lintDeps += github.com/richardsamuels/evg-lint/...
 #   include test files and give linters 40s to run to avoid timeouts
 lintArgs := --tests --deadline=5m --vendor --aggregate --sort=line
 lintArgs += --vendored-linters --enable-gc
