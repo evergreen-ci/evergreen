@@ -24,7 +24,6 @@ const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
 	testResultsKey    = "test_results"
-	numQueryThreads   = 8
 
 	// this regex either matches against the exact 'test' string, or
 	// against the 'test' string at the end of some kind of filepath.

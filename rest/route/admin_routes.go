@@ -81,11 +81,7 @@ func (h *adminPostHandler) Handler() RequestHandler {
 }
 
 func (h *adminPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	if err := util.ReadJSONInto(r.Body, &h.model); err != nil {
-		return errors.Wrap(err, "error parsing request body")
-	}
-
-	return nil
+	return errors.Wrap(util.ReadJSONInto(r.Body, &h.model), "error parsing request body")
 }
 
 func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {

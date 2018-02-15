@@ -156,13 +156,13 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		dbModelReflect.FieldByName(propName).Set(valToSet)
 	}
 	for k, v := range as.Credentials {
-		settings.Credentials[k] = string(v)
+		settings.Credentials[k] = v
 	}
 	for k, v := range as.Expansions {
-		settings.Expansions[k] = string(v)
+		settings.Expansions[k] = v
 	}
 	for k, v := range as.Keys {
-		settings.Keys[k] = string(v)
+		settings.Keys[k] = v
 	}
 	for k, v := range as.Plugins {
 		settings.Plugins[k] = map[string]interface{}{}
@@ -171,7 +171,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		}
 	}
 	for _, user := range as.SuperUsers {
-		settings.SuperUsers = append(settings.SuperUsers, string(user))
+		settings.SuperUsers = append(settings.SuperUsers, user)
 	}
 	return settings, nil
 }
