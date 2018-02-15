@@ -56,11 +56,15 @@ func JitterInterval(interval time.Duration) time.Duration {
 
 // ParseRoundPartOfHour produces a time value with the minute value
 // rounded down to the most recent interval.
-func RoundPartOfHour(num int) time.Time { return findPart(time.Now(), num) }
+func RoundPartOfHour(num int) time.Time { return findPartMin(time.Now(), num) }
+
+// ParseRoundPartOfMinute produces a time value with the second value
+// rounded down to the most recent interval.
+func RoundPartOfMinute(num int) time.Time { return findPartSec(time.Now(), num) }
 
 // this implements the logic of RoundPartOfHour, but takes time as an
 // argument for testability.
-func findPart(now time.Time, num int) time.Time {
+func findPartMin(now time.Time, num int) time.Time {
 	var min int
 
 	if num > now.Minute() || num > 30 {
@@ -70,4 +74,19 @@ func findPart(now time.Time, num int) time.Time {
 	}
 
 	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), min, 0, 0, time.UTC)
+}
+
+// this implements the logic of RoundPartOfMinute, but takes time as an
+// argument for testability.
+func findPartSec(now time.Time, num int) time.Time {
+	var sec int
+
+	if num > now.Second() || num > 30 {
+		sec = 0
+	} else {
+		sec = now.Second() - (now.Second() % num)
+	}
+
+	return time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), sec, 0, time.UTC)
+
 }
