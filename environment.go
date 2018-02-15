@@ -194,7 +194,7 @@ func (e *envState) persistSettings() error {
 		return errors.New("no settings object, cannot persist to DB")
 	}
 
-	return UpdateConfig(e.settings)
+	return errors.WithStack(UpdateConfig(e.settings))
 }
 
 func (e *envState) Settings() *Settings {
