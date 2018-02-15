@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -25,25 +26,37 @@ type AdminRouteSuite struct {
 	postHandler MethodHandler
 }
 
-func TestAdminRouteSuite(t *testing.T) {
-	assert := assert.New(t)
+func TestAdminRouteSuiteWithDB(t *testing.T) {
+	s := new(AdminRouteSuite)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	s.sc = &data.DBConnector{}
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection), t,
+		"Error clearing collections")
+
+	// run the rest of the tests
+	suite.Run(t, s)
+}
+
+func TestAdminRouteSuiteWithMock(t *testing.T) {
 	s := new(AdminRouteSuite)
 	s.sc = &data.MockConnector{}
 
+	// run the rest of the tests
+	suite.Run(t, s)
+}
+
+func (s *AdminRouteSuite) SetupSuite() {
 	// test getting the route handler
 	const route = "/admin"
 	const version = 2
 	routeManager := getAdminSettingsManager(route, version)
-	assert.NotNil(routeManager)
-	assert.Equal(route, routeManager.Route)
-	assert.Equal(version, routeManager.Version)
+	s.NotNil(routeManager)
+	s.Equal(route, routeManager.Route)
+	s.Equal(version, routeManager.Version)
 	s.getHandler = routeManager.Methods[0]
 	s.postHandler = routeManager.Methods[1]
-	assert.IsType(&adminGetHandler{}, s.getHandler.RequestHandler)
-	assert.IsType(&adminPostHandler{}, s.postHandler.RequestHandler)
-
-	// run the rest of the tests
-	suite.Run(t, s)
+	s.IsType(&adminGetHandler{}, s.getHandler.RequestHandler)
+	s.IsType(&adminPostHandler{}, s.postHandler.RequestHandler)
 }
 
 func (s *AdminRouteSuite) TestAdminRoute() {
@@ -72,6 +85,22 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	settings, ok := settingsResp.(evergreen.Settings)
 	s.True(ok)
 	s.Equal(*testSettings, settings)
+
+	// test that invalid input errors
+	testSettings.ApiUrl = ""
+	testSettings.Ui.CsrfKey = "12345"
+	testSettings.Notify.SMTP.Port = 0
+	jsonBody, err = json.Marshal(testSettings)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
+	s.Contains(err.Error(), "API hostname must not be empty")
+	s.Contains(err.Error(), "CSRF key must be 32 characters long")
+	s.Contains(err.Error(), "You must specify a SMTP server and port")
+	s.NotNil(resp)
 }
 
 func (s *AdminRouteSuite) TestGetAuthentication() {

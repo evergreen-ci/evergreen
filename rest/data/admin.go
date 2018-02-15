@@ -2,6 +2,7 @@ package data
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,18 +23,39 @@ func (ac *DBAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) 
 }
 
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
-func (ac *DBAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
-	//TODO: remove these 3 after all the models have changed
-	if err := ac.SetAdminBanner(settings.Banner, u); err != nil {
-		return err
+func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSettings,
+	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
+	settingsAPI := restModel.NewConfigModel()
+	err := settingsAPI.BuildFromService(oldSettings)
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting existing settings")
 	}
-	if err := ac.SetBannerTheme(string(settings.BannerTheme), u); err != nil {
-		return err
+	changesReflect := reflect.ValueOf(*changes)
+	settingsReflect := reflect.ValueOf(settingsAPI)
+
+	//iterate over each field in the changes struct and apply any changes to the existing settings
+	for i := 0; i < changesReflect.NumField(); i++ {
+		// get the property name and find its value within the settings struct
+		propName := changesReflect.Type().Field(i).Name
+		changedVal := changesReflect.FieldByName(propName)
+		if changedVal.IsNil() {
+			continue
+		}
+
+		settingsReflect.Elem().FieldByName(propName).Set(changedVal)
 	}
-	if err := ac.SetServiceFlags(settings.ServiceFlags, u); err != nil {
-		return err
+
+	i, err := settingsAPI.ToService()
+	if err != nil {
+		return nil, errors.Wrap(err, "error converting to DB model")
 	}
-	return evergreen.UpdateConfig(settings)
+	newSettings := i.(evergreen.Settings)
+
+	if persist {
+		return &newSettings, evergreen.UpdateConfig(&newSettings)
+	}
+
+	return &newSettings, nil
 }
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
@@ -121,11 +143,17 @@ func (ac *MockAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error
 }
 
 // SetEvergreenSettings sets the admin settings document in the mock connector
-func (ac *MockAdminConnector) SetEvergreenSettings(settings *evergreen.Settings, u *user.DBUser) error {
+func (ac *MockAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSettings,
+	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
-	ac.MockSettings = settings
-	return nil
+	i, err := changes.ToService()
+	if err != nil {
+		return nil, err
+	}
+	settingsModel := i.(evergreen.Settings)
+	ac.MockSettings = &settingsModel
+	return ac.MockSettings, nil
 }
 
 // SetAdminBanner sets the admin banner in the mock connector

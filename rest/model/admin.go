@@ -1,6 +1,8 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -72,53 +74,25 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 		if v == nil {
 			return errors.New("evergreen settings object is nil")
 		}
-		if err := as.Alerts.BuildFromService(v.Alerts); err != nil {
-			return err
-		}
-		if err := as.Amboy.BuildFromService(v.Amboy); err != nil {
-			return err
-		}
-		if err := as.Api.BuildFromService(v.Api); err != nil {
-			return err
-		}
-		if err := as.AuthConfig.BuildFromService(v.AuthConfig); err != nil {
-			return err
-		}
-		if err := as.HostInit.BuildFromService(v.HostInit); err != nil {
-			return err
-		}
-		if err := as.Jira.BuildFromService(v.Jira); err != nil {
-			return err
-		}
-		if err := as.LoggerConfig.BuildFromService(v.LoggerConfig); err != nil {
-			return err
-		}
-		if err := as.NewRelic.BuildFromService(v.NewRelic); err != nil {
-			return err
-		}
-		if err := as.Notify.BuildFromService(v.Notify); err != nil {
-			return err
-		}
-		if err := as.Providers.BuildFromService(v.Providers); err != nil {
-			return err
-		}
-		if err := as.RepoTracker.BuildFromService(v.RepoTracker); err != nil {
-			return err
-		}
-		if err := as.Scheduler.BuildFromService(v.Scheduler); err != nil {
-			return err
-		}
-		if err := as.ServiceFlags.BuildFromService(v.ServiceFlags); err != nil {
-			return err
-		}
-		if err := as.Slack.BuildFromService(v.Slack); err != nil {
-			return err
-		}
-		if err := as.Splunk.BuildFromService(v.Splunk); err != nil {
-			return err
-		}
-		if err := as.Ui.BuildFromService(v.Ui); err != nil {
-			return err
+		apiModelReflect := reflect.ValueOf(*as)
+		dbModelReflect := reflect.ValueOf(*v)
+		for i := 0; i < apiModelReflect.NumField(); i++ {
+			propName := apiModelReflect.Type().Field(i).Name
+			val := apiModelReflect.FieldByName(propName)
+			if val.IsNil() {
+				continue
+			}
+
+			// check to see if this property is an API model itself
+			interfaceVal := val.Interface()
+			model, ok := interfaceVal.(Model)
+			if !ok {
+				continue
+			}
+			// build the sub-model from the DB model. assumes that the 2 fields are named the same thing
+			if err := model.BuildFromService(dbModelReflect.FieldByName(propName).Interface()); err != nil {
+				return errors.Wrapf(err, "error converting model section %s", propName)
+			}
 		}
 		as.ApiUrl = &v.ApiUrl
 		as.Banner = &v.Banner
@@ -143,76 +117,8 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
-	alerts, err := as.Alerts.ToService()
-	if err != nil {
-		return nil, err
-	}
-	amboy, err := as.Amboy.ToService()
-	if err != nil {
-		return nil, err
-	}
-	api, err := as.Api.ToService()
-	if err != nil {
-		return nil, err
-	}
-	auth, err := as.AuthConfig.ToService()
-	if err != nil {
-		return nil, err
-	}
-	hostinit, err := as.HostInit.ToService()
-	if err != nil {
-		return nil, err
-	}
-	jira, err := as.Jira.ToService()
-	if err != nil {
-		return nil, err
-	}
-	logger, err := as.LoggerConfig.ToService()
-	if err != nil {
-		return nil, err
-	}
-	newrelic, err := as.NewRelic.ToService()
-	if err != nil {
-		return nil, err
-	}
-	notify, err := as.Notify.ToService()
-	if err != nil {
-		return nil, err
-	}
-	cloud, err := as.Providers.ToService()
-	if err != nil {
-		return nil, err
-	}
-	repotracker, err := as.RepoTracker.ToService()
-	if err != nil {
-		return nil, err
-	}
-	scheduler, err := as.Scheduler.ToService()
-	if err != nil {
-		return nil, err
-	}
-	flags, err := as.ServiceFlags.ToService()
-	if err != nil {
-		return nil, err
-	}
-	slack, err := as.Slack.ToService()
-	if err != nil {
-		return nil, err
-	}
-	splunk, err := as.Splunk.ToService()
-	if err != nil {
-		return nil, err
-	}
-	ui, err := as.Ui.ToService()
-	if err != nil {
-		return nil, err
-	}
 	settings := evergreen.Settings{
-		Alerts:             alerts.(evergreen.AlertsConfig),
-		Amboy:              amboy.(evergreen.AmboyConfig),
-		Api:                api.(evergreen.APIConfig),
 		ApiUrl:             *as.ApiUrl,
-		AuthConfig:         auth.(evergreen.AuthConfig),
 		Banner:             *as.Banner,
 		BannerTheme:        evergreen.BannerTheme(*as.BannerTheme),
 		ClientBinariesDir:  *as.ClientBinariesDir,
@@ -220,23 +126,34 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		Credentials:        map[string]string{},
 		Expansions:         map[string]string{},
 		GithubPRCreatorOrg: *as.GithubPRCreatorOrg,
-		HostInit:           hostinit.(evergreen.HostInitConfig),
 		IsNonProd:          *as.IsNonProd,
-		Jira:               jira.(evergreen.JiraConfig),
 		Keys:               map[string]string{},
-		LoggerConfig:       logger.(evergreen.LoggerConfig),
 		LogPath:            *as.LogPath,
-		NewRelic:           newrelic.(evergreen.NewRelicConfig),
-		Notify:             notify.(evergreen.NotifyConfig),
 		Plugins:            evergreen.PluginConfig{},
 		PprofPort:          *as.PprofPort,
-		Providers:          cloud.(evergreen.CloudProviders),
-		RepoTracker:        repotracker.(evergreen.RepoTrackerConfig),
-		Scheduler:          scheduler.(evergreen.SchedulerConfig),
-		ServiceFlags:       flags.(evergreen.ServiceFlags),
-		Slack:              slack.(evergreen.SlackConfig),
-		Splunk:             splunk.(send.SplunkConnectionInfo),
-		Ui:                 ui.(evergreen.UIConfig),
+	}
+	apiModelReflect := reflect.ValueOf(*as)
+	dbModelReflect := reflect.ValueOf(&settings).Elem()
+	for i := 0; i < apiModelReflect.NumField(); i++ {
+		propName := apiModelReflect.Type().Field(i).Name
+		val := apiModelReflect.FieldByName(propName)
+		if val.IsNil() {
+			continue
+		}
+
+		// check to see if this property is an API model itself
+		interfaceVal := val.Interface()
+		model, ok := interfaceVal.(Model)
+		if !ok {
+			continue
+		}
+		// set the corresponding DB model field. assumes that the 2 fields are named the same thing
+		i, err := model.ToService()
+		if err != nil {
+			return nil, errors.Wrapf(err, "error converting model section %s", propName)
+		}
+		valToSet := reflect.ValueOf(i)
+		dbModelReflect.FieldByName(propName).Set(valToSet)
 	}
 	for k, v := range as.Credentials {
 		settings.Credentials[k] = string(v)
@@ -266,9 +183,11 @@ type APIAlertsConfig struct {
 func (a *APIAlertsConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AlertsConfig:
-		a.SMTP = &APISMTPConfig{}
-		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-			return err
+		if v.SMTP != nil {
+			a.SMTP = &APISMTPConfig{}
+			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -403,17 +322,23 @@ type APIAuthConfig struct {
 func (a *APIAuthConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.AuthConfig:
-		a.Crowd = &APICrowdConfig{}
-		a.Naive = &APINaiveAuthConfig{}
-		a.Github = &APIGithubAuthConfig{}
-		if err := a.Crowd.BuildFromService(v.Crowd); err != nil {
-			return err
+		if v.Crowd != nil {
+			a.Crowd = &APICrowdConfig{}
+			if err := a.Crowd.BuildFromService(v.Crowd); err != nil {
+				return err
+			}
 		}
-		if err := a.Naive.BuildFromService(v.Naive); err != nil {
-			return err
+		if v.Github != nil {
+			a.Github = &APIGithubAuthConfig{}
+			if err := a.Github.BuildFromService(v.Github); err != nil {
+				return err
+			}
 		}
-		if err := a.Github.BuildFromService(v.Github); err != nil {
-			return err
+		if v.Naive != nil {
+			a.Naive = &APINaiveAuthConfig{}
+			if err := a.Naive.BuildFromService(v.Naive); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -742,9 +667,11 @@ type APINotifyConfig struct {
 func (a *APINotifyConfig) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.NotifyConfig:
-		a.SMTP = &APISMTPConfig{}
-		if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
-			return err
+		if v.SMTP != nil {
+			a.SMTP = &APISMTPConfig{}
+			if err := a.SMTP.BuildFromService(v.SMTP); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)
@@ -1043,9 +970,11 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 	case evergreen.SlackConfig:
 		a.Token = APIString(v.Token)
 		a.Level = APIString(v.Level)
-		a.Options = APISlackOptions{}
-		if err := a.Options.BuildFromService(*v.Options); err != nil {
-			return err
+		if v.Options != nil {
+			a.Options = APISlackOptions{}
+			if err := a.Options.BuildFromService(*v.Options); err != nil {
+				return err
+			}
 		}
 	default:
 		return errors.Errorf("%T is not a supported type", h)

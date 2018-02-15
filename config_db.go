@@ -95,5 +95,5 @@ func SetBannerTheme(theme BannerTheme) error {
 
 // SetServiceFlags sets whether each of the runner/API server processes is enabled
 func SetServiceFlags(flags ServiceFlags) error {
-	return flags.set()
+	return flags.Set()
 }

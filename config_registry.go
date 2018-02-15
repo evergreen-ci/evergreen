@@ -8,7 +8,14 @@ import (
 	"github.com/mongodb/grip"
 )
 
-var configRegistry *configSectionRegistry
+// In order to add a new config section:
+// 1. modify the struct in config.go to add whatever you need to add
+// 2. add the struct to the ConfigSections variable below
+// 3. add a copy of the struct you added in 1 to rest/model/admin.go and implement the
+//    conversion methods. The property name must be exactly the same in the DB/API model
+// 4. add it to MockConfig in testutil/config.go for testing, if desired
+
+var configRegistry *ConfigSectionRegistry
 
 func init() {
 
@@ -17,14 +24,13 @@ func init() {
 	}
 }
 
-type configSectionRegistry struct {
+type ConfigSectionRegistry struct {
 	mu       sync.RWMutex
-	sections map[string]configSection
+	sections map[string]ConfigSection
 }
 
 func resetRegistry() error {
-	// add any new config sections to the variable below to register them
-	configSections := []configSection{
+	ConfigSections := []ConfigSection{
 		&AlertsConfig{},
 		&AmboyConfig{},
 		&APIConfig{},
@@ -45,20 +51,20 @@ func resetRegistry() error {
 	configRegistry = newConfigSectionRegistry()
 	catcher := grip.NewSimpleCatcher()
 
-	for _, section := range configSections {
-		catcher.Add(configRegistry.registerSection(section.id(), section))
+	for _, section := range ConfigSections {
+		catcher.Add(configRegistry.registerSection(section.SectionId(), section))
 	}
 
 	return catcher.Resolve()
 }
 
-func newConfigSectionRegistry() *configSectionRegistry {
-	return &configSectionRegistry{
-		sections: map[string]configSection{},
+func newConfigSectionRegistry() *ConfigSectionRegistry {
+	return &ConfigSectionRegistry{
+		sections: map[string]ConfigSection{},
 	}
 }
 
-func (r *configSectionRegistry) registerSection(id string, section configSection) error {
+func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -73,7 +79,7 @@ func (r *configSectionRegistry) registerSection(id string, section configSection
 	return nil
 }
 
-func (r *configSectionRegistry) getSections() map[string]configSection {
+func (r *ConfigSectionRegistry) getSections() map[string]ConfigSection {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

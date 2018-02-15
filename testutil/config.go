@@ -140,7 +140,7 @@ func MockConfig() *evergreen.Settings {
 		},
 		Scheduler: evergreen.SchedulerConfig{
 			MergeToggle: 10,
-			TaskFinder:  "task_finder",
+			TaskFinder:  "legacy",
 		},
 		ServiceFlags: evergreen.ServiceFlags{
 			TaskDispatchDisabled:         true,
@@ -179,7 +179,7 @@ func MockConfig() *evergreen.Settings {
 			DefaultProject: "mci",
 			CacheTemplates: true,
 			SecureCookies:  true,
-			CsrfKey:        "csrf",
+			CsrfKey:        "12345678901234567890123456789012",
 		},
 	}
 }

@@ -35,6 +35,7 @@ func startWebService() cli.Command {
 		Flags: serviceConfigFlags(),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
+			// TODO: ensure that there is a database set
 
 			ctx, cancel := context.WithCancel(context.Background())
 
