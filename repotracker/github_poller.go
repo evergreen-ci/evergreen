@@ -54,7 +54,7 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 		AuthorEmail:     *repoCommit.Commit.Author.Email,
 		RevisionMessage: *repoCommit.Commit.Message,
 		Revision:        *repoCommit.SHA,
-		CreateTime:      *repoCommit.Commit.Author.Date,
+		CreateTime:      *repoCommit.Commit.Committer.Date,
 	}
 }
 
@@ -140,7 +140,8 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 				commit.Commit.Author.Email == nil ||
 				commit.Commit.Message == nil ||
 				commit.SHA == nil ||
-				commit.Commit.Author.Date == nil {
+				commit.Commit.Committer == nil ||
+				commit.Commit.Committer.Date == nil {
 				return nil, errors.Errorf("github returned commit history with missing information for url: %s", commitURL)
 			}
 
