@@ -140,16 +140,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	// mark task as finished
 	updates := model.StatusChanges{}
-	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details,
-		project, projectRef.DeactivatePrevious, &updates)
+	err = model.MarkEnd(t, APIServerLockTitle, finishTime, details, projectRef.DeactivatePrevious, &updates)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)

@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
@@ -56,58 +55,13 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 		return errors.Wrap(err, "error finding distros")
 	}
 
-	// fetch the project refs, which we will use to get all of the projects
-	projectRefs, err := model.FindAllProjectRefs()
-	if err != nil {
-		return errors.Wrap(err, "error loading in project refs")
-	}
-
-	// turn the project refs into a map of the project id -> project
-	projects := map[string]model.Project{}
-	var project *model.Project
-
-	for _, ref := range projectRefs {
-		// only monitor projects that are enabled
-		if !ref.Enabled {
-			continue
-		}
-
-		if ctx.Err() != nil {
-			return errors.New("monitor canceled")
-		}
-
-		project, err = model.FindProject("", &ref)
-
-		// continue on error to stop the whole monitoring process from
-		// being held up
-		if err != nil {
-			grip.Error(message.WrapError(err, message.Fields{
-				"message": "error finding project",
-				"runner":  RunnerName,
-				"project": ref.Identifier,
-			}))
-			continue
-		}
-
-		if project == nil {
-			grip.Error(message.Fields{
-				"message": "no project entry found",
-				"runner":  RunnerName,
-				"project": ref.Identifier,
-			})
-			continue
-		}
-
-		projects[project.Identifier] = *project
-	}
-
 	// initialize the task monitor
 	taskMonitor := &TaskMonitor{
 		flaggingFuncs: defaultTaskFlaggingFuncs,
 	}
 
 	// clean up any necessary tasks
-	for _, err := range taskMonitor.CleanupTasks(ctx, projects) {
+	for _, err := range taskMonitor.CleanupTasks(ctx) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
 			"message": "Error cleaning up tasks",

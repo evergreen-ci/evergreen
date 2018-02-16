@@ -687,6 +687,23 @@ func GetTaskGroup(tc *TaskConfig) (*TaskGroup, error) {
 	return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
 }
 
+func FindProjectFromTask(t *task.Task) (*Project, error) {
+	ref, err := FindOneProjectRef(t.Project)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching project %s", t.Project)
+	}
+	if ref == nil {
+		return nil, errors.Errorf("problem finding project: %s", t.Project)
+	}
+
+	p, err := FindProject("", ref)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
+	}
+
+	return p, nil
+}
+
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if projectRef == nil {
 		return nil, errors.New("projectRef given is nil")

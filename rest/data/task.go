@@ -158,8 +158,8 @@ func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool)
 
 // ResetTask sets the task to be in an unexecuted state and prepares it to be
 // run again.
-func (tc *DBTaskConnector) ResetTask(taskId, username string, proj *serviceModel.Project) error {
-	return errors.Wrap(serviceModel.TryResetTask(taskId, username, evergreen.RESTV2Package, proj, nil),
+func (tc *DBTaskConnector) ResetTask(taskId, username string) error {
+	return errors.Wrap(serviceModel.TryResetTask(taskId, username, evergreen.RESTV2Package, nil),
 		"Reset task error")
 }
 
@@ -314,7 +314,7 @@ func (mtc *MockTaskConnector) SetTaskActivated(taskId, user string, activated bo
 	return mtc.StoredError
 }
 
-func (mtc *MockTaskConnector) ResetTask(taskId, username string, proj *serviceModel.Project) error {
+func (mtc *MockTaskConnector) ResetTask(taskId, username string) error {
 	for ix, t := range mtc.CachedTasks {
 		if t.Id == taskId {
 			t.Activated = true

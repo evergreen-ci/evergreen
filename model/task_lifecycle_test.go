@@ -598,7 +598,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		Convey("task should not fail if there are no failed test", func() {
 			reset()
 			updates := StatusChanges{}
-			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -628,7 +628,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				},
 			})
 			So(err, ShouldBeNil)
-			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildSucceeded)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -653,7 +653,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -674,7 +674,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			updates := StatusChanges{}
 			So(err, ShouldBeNil)
 			detail.Status = evergreen.TaskFailed
-			So(MarkEnd(testTask, "", time.Now(), detail, p, true, &updates), ShouldBeNil)
+			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)

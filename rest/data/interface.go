@@ -45,7 +45,7 @@ type Connector interface {
 	FindTasksByIds([]string) ([]task.Task, error)
 	SetTaskPriority(*task.Task, string, int64) error
 	SetTaskActivated(string, string, bool) error
-	ResetTask(string, string, *model.Project) error
+	ResetTask(string, string) error
 	AbortTask(string, string) error
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same

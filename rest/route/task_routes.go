@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
-	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -415,8 +414,7 @@ func (hgh *tasksByBuildHandler) Handler() RequestHandler {
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
 type taskRestartHandler struct {
-	taskId  string
-	project *serviceModel.Project
+	taskId string
 
 	username string
 }
@@ -438,11 +436,6 @@ func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Req
 		}
 	}
 	trh.taskId = projCtx.Task.Id
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil {
-		return errors.Wrap(err, "Unable to fetch associated project")
-	}
-	trh.project = project
 	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
 	return nil
@@ -451,7 +444,7 @@ func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Req
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
 func (trh *taskRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	err := sc.ResetTask(trh.taskId, trh.username, trh.project)
+	err := sc.ResetTask(trh.taskId, trh.username)
 	if err != nil {
 		return ResponseData{},
 			rest.APIError{

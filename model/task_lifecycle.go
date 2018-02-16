@@ -129,7 +129,7 @@ func resetTask(taskId string) error {
 }
 
 // TryResetTask resets a task
-func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.TaskEndDetail) error {
+func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) error {
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
@@ -147,7 +147,7 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 			grip.Debugln(message, "marking as failed")
 			if detail != nil {
 				updates := StatusChanges{}
-				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, p, false, &updates))
+				return errors.WithStack(MarkEnd(t, origin, time.Now(), detail, false, &updates))
 			} else {
 				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
@@ -276,13 +276,15 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 // Returns true if the task should stepback upon failure, and false
 // otherwise. Note that the setting is obtained from the top-level
 // project, if not explicitly set on the task.
-func getStepback(taskId string, project *Project) (bool, error) {
-	if project == nil {
-		return false, errors.New("error getting stepback decision: project is nil")
-	}
+func getStepback(taskId string) (bool, error) {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "problem finding task %s", taskId)
+	}
+
+	project, err := FindProjectFromTask(t)
+	if err != nil {
+		return false, errors.WithStack(err)
 	}
 
 	projectTask := project.FindProjectTask(t.DisplayName)
@@ -338,7 +340,7 @@ func doStepback(t *task.Task) error {
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	p *Project, deactivatePrevious bool, updates *StatusChanges) error {
+	deactivatePrevious bool, updates *StatusChanges) error {
 
 	if t.HasFailedTests() {
 		detail.Status = evergreen.TaskFailed
@@ -379,9 +381,9 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 			"Error updating build status (1)")
 	}
 	if t.IsPartOfDisplay() {
-		err = evalStepback(t.DisplayTask, p, caller, t.DisplayTask.Status, deactivatePrevious)
+		err = evalStepback(t.DisplayTask, caller, t.DisplayTask.Status, deactivatePrevious)
 	} else {
-		err = evalStepback(t, p, caller, status, deactivatePrevious)
+		err = evalStepback(t, caller, status, deactivatePrevious)
 	}
 	if err != nil {
 		return err
@@ -395,10 +397,10 @@ func MarkEnd(t *task.Task, caller string, finishTime time.Time, detail *apimodel
 	return nil
 }
 
-func evalStepback(t *task.Task, p *Project, caller, status string, deactivatePrevious bool) error {
+func evalStepback(t *task.Task, caller, status string, deactivatePrevious bool) error {
 	if status == evergreen.TaskFailed {
 		var shouldStepBack bool
-		shouldStepBack, err := getStepback(t.Id, p)
+		shouldStepBack, err := getStepback(t.Id)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -820,7 +822,7 @@ func doRestartFailedTasks(tasks []task.Task, user string, results RestartTaskRes
 			})
 			continue
 		}
-		err = TryResetTask(t.Id, user, evergreen.RESTV2Package, p, nil)
+		err = TryResetTask(t.Id, user, evergreen.RESTV2Package, nil)
 		if err != nil {
 			tasksErrored = append(tasksErrored, t.Id)
 			grip.Error(message.Fields{
