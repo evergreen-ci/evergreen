@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,7 +47,7 @@ func TestGenerateParseAndValidate(t *testing.T) {
 func TestGenerateExecute(t *testing.T) {
 	assert := assert.New(t)
 	h := &generateHandler{}
-	r, err := h.Execute(context.Background(), nil)
+	r, err := h.Execute(context.Background(), &data.MockConnector{})
 	assert.Equal(ResponseData{}, r)
 	assert.NoError(err)
 }
