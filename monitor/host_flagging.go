@@ -25,7 +25,7 @@ const (
 	MaxTimeTilNextPayment = 5 * time.Minute
 
 	// idleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
-	idleTimeCutoff            = 7 * time.Minute
+	idleTimeCutoff            = 4 * time.Minute
 	idleWaitingForAgentCutoff = 10 * time.Minute
 )
 
