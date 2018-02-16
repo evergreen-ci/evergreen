@@ -759,6 +759,17 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	return nil
 }
 
+func (bv *BuildVariant) GetDisplayTaskNamek(execTask string) string {
+	for _, dt := range bv.DisplayTasks {
+		for _, et := range dt.ExecutionTasks {
+			if et == execTask {
+				return dt.Name
+			}
+		}
+	}
+	return ""
+}
+
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {
@@ -914,9 +925,17 @@ func (p *Project) BuildProjectTVPairs(patchDoc *patch.Patch, alias string) {
 
 func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *Project) TaskVariantPairs {
 	displayTasks := []TVPair{}
+	alreadyAdded := map[string]bool{}
 	for _, bv := range p.BuildVariants {
 		if !util.StringSliceContains(variants, bv.Name) {
 			continue
+		}
+		for _, taskName := range tasks {
+			dt := bv.GetDisplayTaskNamek(taskName)
+			if dt != "" && !alreadyAdded[dt] {
+				alreadyAdded[dt] = true
+				tasks = append(tasks, dt)
+			}
 		}
 		for _, dt := range bv.DisplayTasks {
 			if util.StringSliceContains(tasks, dt.Name) {
