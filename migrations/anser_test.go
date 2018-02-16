@@ -2,10 +2,13 @@ package migrations
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	evg "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/mock"
@@ -20,6 +23,9 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	defer session.Close()
 
 	anser.ResetEnvironment()
+
+	ctx := context.Background()
+	assert.NoError(evergreen.GetEnvironment().Configure(context.Background(), filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
 
 	opts := Options{
 		Database: "mci_test",
