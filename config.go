@@ -33,7 +33,7 @@ var (
 type AuthUser struct {
 	Username    string `bson:"username" json:"username" yaml:"username"`
 	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Password    string `bson:"password" json:"password" yaml:"password"`
+	Password    string `bson:"password" json:"password" yaml:"password" secure:"true"`
 	Email       string `bson:"email" json:"email" yaml:"email"`
 }
 
@@ -45,7 +45,7 @@ type NaiveAuthConfig struct {
 // CrowdConfig holds settings for interacting with Atlassian Crowd.
 type CrowdConfig struct {
 	Username string `bson:"username" json:"username" yaml:"username"`
-	Password string `bson:"password" json:"password" yaml:"password"`
+	Password string `bson:"password" json:"password" yaml:"password" secure:"true"`
 	Urlroot  string `bson:"url_root" json:"url_root" yaml:"urlroot"`
 }
 
@@ -105,19 +105,6 @@ func (c *AuthConfig) ValidateAndDefault() error {
 	}
 	return catcher.Resolve()
 }
-func (newVal *AuthConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	oldVal, ok := before.(AuthConfig)
-	if !ok {
-		return nil, fmt.Errorf("unable to convert section %s", newVal.SectionId())
-	}
-	changes := map[string]ConfigDataChange{}
-	if newVal.Crowd != nil {
-		if oldVal.Crowd != nil {
-
-		}
-	}
-	return changes, nil
-}
 
 // RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
@@ -145,9 +132,6 @@ func (c *RepoTrackerConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *RepoTrackerConfig) ValidateAndDefault() error { return nil }
-func (newVal *RepoTrackerConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 type ClientBinary struct {
 	Arch string `yaml:"arch" json:"arch"`
@@ -184,9 +168,6 @@ func (c *APIConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *APIConfig) ValidateAndDefault() error { return nil }
-func (newVal *APIConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
@@ -250,9 +231,6 @@ func (c *UIConfig) ValidateAndDefault() error {
 	}
 	return catcher.Resolve()
 }
-func (newVal *UIConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
@@ -276,9 +254,6 @@ func (c *HostInitConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *HostInitConfig) ValidateAndDefault() error { return nil }
-func (newVal *HostInitConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
@@ -321,9 +296,6 @@ func (c *NotifyConfig) ValidateAndDefault() error {
 	}
 
 	return nil
-}
-func (newVal *NotifyConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
 }
 
 // SMTPConfig holds SMTP email settings.
@@ -376,9 +348,6 @@ func (c *SchedulerConfig) ValidateAndDefault() error {
 	}
 	return nil
 }
-func (newVal *SchedulerConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
 type CloudProviders struct {
@@ -410,9 +379,6 @@ func (c *CloudProviders) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *CloudProviders) ValidateAndDefault() error { return nil }
-func (newVal *CloudProviders) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
@@ -493,9 +459,6 @@ func (j JiraConfig) GetHostURL() string {
 
 	return "https://" + j.Host
 }
-func (newVal *JiraConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // PluginConfig holds plugin-specific settings, which are handled.
 // manually by their respective plugins
@@ -522,9 +485,6 @@ func (c *AlertsConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *AlertsConfig) ValidateAndDefault() error { return nil }
-func (newVal *AlertsConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 type WriteConcern struct {
 	W        int    `yaml:"w"`
@@ -591,9 +551,6 @@ func (c *LoggerConfig) ValidateAndDefault() error {
 
 	return nil
 }
-func (newVal *LoggerConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 type LogBuffering struct {
 	DurationSeconds int `bson:"duration_seconds" json:"duration_seconds" yaml:"duration_seconds"`
@@ -651,9 +608,6 @@ func (c *AmboyConfig) ValidateAndDefault() error {
 
 	return nil
 }
-func (newVal *AmboyConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 type SlackConfig struct {
 	Options *send.SlackOptions `bson:"options" json:"options" yaml:"options"`
@@ -704,9 +658,6 @@ func (c *SlackConfig) ValidateAndDefault() error {
 
 	return nil
 }
-func (newVal *SlackConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 type NewRelicConfig struct {
 	ApplicationName string `bson:"application_name" json:"application_name" yaml:"application_name"`
@@ -731,9 +682,6 @@ func (c *NewRelicConfig) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *NewRelicConfig) ValidateAndDefault() error { return nil }
-func (newVal *NewRelicConfig) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
@@ -779,62 +727,6 @@ func (c *ServiceFlags) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *ServiceFlags) ValidateAndDefault() error { return nil }
-func (newVal *ServiceFlags) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	oldVal, ok := before.(ServiceFlags)
-	if !ok {
-		return nil, fmt.Errorf("unable to convert section %s", newVal.SectionId())
-	}
-	changes := map[string]ConfigDataChange{}
-	if oldVal.TaskDispatchDisabled != newVal.TaskDispatchDisabled {
-		changes["Task Dispatch"] = ConfigDataChange{Before: flagState(oldVal.TaskDispatchDisabled),
-			After: flagState(newVal.TaskDispatchDisabled)}
-	}
-	if oldVal.HostinitDisabled != newVal.HostinitDisabled {
-		changes["Hostinit"] = ConfigDataChange{Before: flagState(oldVal.HostinitDisabled),
-			After: flagState(newVal.HostinitDisabled)}
-	}
-	if oldVal.MonitorDisabled != newVal.MonitorDisabled {
-		changes["Monitor"] = ConfigDataChange{Before: flagState(oldVal.MonitorDisabled),
-			After: flagState(newVal.MonitorDisabled)}
-	}
-	if oldVal.NotificationsDisabled != newVal.NotificationsDisabled {
-		changes["Notify"] = ConfigDataChange{Before: flagState(oldVal.NotificationsDisabled),
-			After: flagState(newVal.NotificationsDisabled)}
-	}
-	if oldVal.AlertsDisabled != newVal.AlertsDisabled {
-		changes["Alerts"] = ConfigDataChange{Before: flagState(oldVal.AlertsDisabled),
-			After: flagState(newVal.AlertsDisabled)}
-	}
-	if oldVal.TaskrunnerDisabled != newVal.TaskrunnerDisabled {
-		changes["Task Runner"] = ConfigDataChange{Before: flagState(oldVal.TaskrunnerDisabled),
-			After: flagState(newVal.TaskrunnerDisabled)}
-	}
-	if oldVal.RepotrackerDisabled != newVal.RepotrackerDisabled {
-		changes["Repotracker"] = ConfigDataChange{Before: flagState(oldVal.RepotrackerDisabled),
-			After: flagState(newVal.RepotrackerDisabled)}
-	}
-	if oldVal.SchedulerDisabled != newVal.SchedulerDisabled {
-		changes["Scheduler"] = ConfigDataChange{Before: flagState(oldVal.SchedulerDisabled),
-			After: flagState(newVal.SchedulerDisabled)}
-	}
-	if oldVal.GithubPRTestingDisabled != newVal.GithubPRTestingDisabled {
-		changes["Github PR Testing"] = ConfigDataChange{Before: flagState(oldVal.GithubPRTestingDisabled),
-			After: flagState(newVal.GithubPRTestingDisabled)}
-	}
-	if oldVal.RepotrackerPushEventDisabled != newVal.RepotrackerPushEventDisabled {
-		changes["Repotracker Push Events"] = ConfigDataChange{Before: flagState(oldVal.RepotrackerPushEventDisabled),
-			After: flagState(newVal.RepotrackerPushEventDisabled)}
-	}
-	if oldVal.CLIUpdatesDisabled != newVal.CLIUpdatesDisabled {
-		changes["CLI Updates"] = ConfigDataChange{Before: flagState(oldVal.CLIUpdatesDisabled),
-			After: flagState(newVal.CLIUpdatesDisabled)}
-	}
-	if oldVal.GithubStatusAPIDisabled != newVal.GithubStatusAPIDisabled {
-		changes["Github Status API"] = ConfigDataChange{Before: flagState(oldVal.GithubStatusAPIDisabled),
-			After: flagState(newVal.GithubStatusAPIDisabled)}
-	}
-	return changes, nil
-}
 
 func flagState(disabled bool) string {
 	if disabled {
@@ -868,11 +760,6 @@ func IsValidBannerTheme(input string) (bool, BannerTheme) {
 	default:
 		return false, ""
 	}
-}
-
-type ConfigDataChange struct {
-	Before string `bson:"before" json:"before"`
-	After  string `bson:"after" json:"after"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
@@ -961,9 +848,6 @@ func (c *Settings) ValidateAndDefault() error {
 	}
 	return nil
 }
-func (newVal *Settings) GetChanges(before interface{}) (map[string]ConfigDataChange, error) {
-	return nil, nil
-}
 
 // ConfigSection defines a sub-document in the evegreen config
 // any config sections must also be added to registry.go
@@ -976,8 +860,6 @@ type ConfigSection interface {
 	Set() error
 	// ValidateAndDefault() validates input and sets defaults
 	ValidateAndDefault() error
-	// GetChanges returns a diff between new and old values for the section
-	GetChanges(interface{}) (map[string]ConfigDataChange, error)
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -1007,7 +889,7 @@ func GetConfig() (*Settings, error) {
 
 	// retrieve the other config sub-documents and form the whole struct
 	catcher := grip.NewSimpleCatcher()
-	sections := configRegistry.getSections()
+	sections := ConfigRegistry.GetSections()
 	valConfig := reflect.ValueOf(*config)
 	//iterate over each field in the config struct
 	for i := 0; i < valConfig.NumField(); i++ {

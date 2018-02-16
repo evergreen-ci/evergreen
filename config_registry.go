@@ -15,7 +15,7 @@ import (
 //    conversion methods. The property name must be exactly the same in the DB/API model
 // 4. add it to MockConfig in testutil/config.go for testing, if desired
 
-var configRegistry *ConfigSectionRegistry
+var ConfigRegistry *ConfigSectionRegistry
 
 func init() {
 
@@ -46,13 +46,14 @@ func resetRegistry() error {
 		&ServiceFlags{},
 		&SlackConfig{},
 		&UIConfig{},
+		&Settings{},
 	}
 
-	configRegistry = newConfigSectionRegistry()
+	ConfigRegistry = newConfigSectionRegistry()
 	catcher := grip.NewSimpleCatcher()
 
 	for _, section := range ConfigSections {
-		catcher.Add(configRegistry.registerSection(section.SectionId(), section))
+		catcher.Add(ConfigRegistry.registerSection(section.SectionId(), section))
 	}
 
 	return catcher.Resolve()
@@ -79,9 +80,16 @@ func (r *ConfigSectionRegistry) registerSection(id string, section ConfigSection
 	return nil
 }
 
-func (r *ConfigSectionRegistry) getSections() map[string]ConfigSection {
+func (r *ConfigSectionRegistry) GetSections() map[string]ConfigSection {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	return r.sections
+}
+
+func (r *ConfigSectionRegistry) GetSection(id string) ConfigSection {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.sections[id]
 }

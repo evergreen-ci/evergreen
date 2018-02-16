@@ -66,11 +66,7 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
 	// log the root config document here
 	catcher := grip.NewSimpleCatcher()
-	changes, err := newSettings.GetChanges(oldSettings)
-	if err != nil {
-		catcher.Add(errors.Wrap(err, "error getting changes for root document"))
-	}
-	if err := event.LogAdminEvent(newSettings.SectionId(), changes, u.Username()); err != nil {
+	if err := event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()); err != nil {
 		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
 	}
 
@@ -109,16 +105,11 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 
 		// save changes in the event log
 		if oldSettings != nil {
-			oldVal := oldStruct.FieldByName(propName)
-			changes, err = section.GetChanges(oldVal.Interface())
-			if err != nil {
-				catcher.Add(errors.Wrapf(err, "error logging events for %s", propName))
-				continue
-			}
-			if len(changes) == 0 {
-				continue
-			}
-			catcher.Add(event.LogAdminEvent(section.SectionId(), changes, u.Username()))
+			field := oldStruct.FieldByName(propName)
+			oldPointer := reflect.Indirect(reflect.New(field.Type()))
+			oldPointer.Set(field)
+			oldInterface := oldPointer.Addr().Interface()
+			catcher.Add(event.LogAdminEvent(section.SectionId(), oldInterface.(evergreen.ConfigSection), section, u.Username()))
 		}
 	}
 	return errors.WithStack(catcher.Resolve())

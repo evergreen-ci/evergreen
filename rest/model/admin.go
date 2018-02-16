@@ -128,12 +128,18 @@ func scrubSecureFields(input Model) error {
 		field := reflectInput.Type().Field(i)
 		propName := field.Name
 		propVal := reflect.ValueOf(input).Elem().FieldByName(propName)
+		if !propVal.CanSet() {
+			continue
+		}
 
 		// if this is a secure field, swap the value with asterisks. All secure types must be string
 		secure := field.Tag.Get("secure")
 		if secure != "" {
 			if propVal.Kind() != reflect.String {
 				catcher.Add(fmt.Errorf("secure field %s is not a string", propName))
+				continue
+			}
+			if propVal.String() == "" {
 				continue
 			}
 			propVal.SetString("***")
@@ -148,6 +154,20 @@ func scrubSecureFields(input Model) error {
 				continue
 			}
 			catcher.Add(scrubSecureFields(section))
+		} else if propVal.Kind() == reflect.Slice {
+			// if this is a slice, scrub each of its elements
+			for j := 0; j < propVal.Len(); j++ {
+				elem := propVal.Index(j)
+				if reflect.Indirect(elem).Kind() == reflect.Struct {
+					elemInterface := elem.Interface()
+					section, ok := elemInterface.(Model)
+					if !ok {
+						catcher.Add(fmt.Errorf("unable to convert config section %+v", elem))
+						continue
+					}
+					catcher.Add(scrubSecureFields(section))
+				}
+			}
 		}
 	}
 

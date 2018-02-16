@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -29,8 +30,8 @@ func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, version.Collection), t,
-		"Error clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection,
+		task.OldCollection, build.Collection, version.Collection, event.AllLogCollection), t, "Error clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -154,11 +155,26 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 
-	// test that updating the model with nil values does not change them. Not implemented for the mock connector
+	// the tests below do not apply to the mock connector
 	if reflect.TypeOf(s.ctx).String() == "*data.MockConnector" {
 		return
 	}
 
+	events, err := event.FindAndScrub(event.RecentAdminEvents(1000))
+	s.NoError(err)
+	foundFlagsEvent := false
+	for _, evt := range events {
+		s.Equal(event.EventTypeValueChanged, evt.EventType)
+		data := evt.Data.Data.(*event.AdminEventData)
+		s.Equal(u.Id, data.User)
+		switch data.Section {
+		case "service_flags":
+			foundFlagsEvent = true
+		}
+	}
+	s.True(foundFlagsEvent)
+
+	// test that updating the model with nil values does not change them
 	newBanner := "new banner"
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostinit := restModel.APIHostInitConfig{
