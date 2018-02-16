@@ -9,6 +9,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func Admin() cli.Command {
@@ -19,6 +20,7 @@ func Admin() cli.Command {
 			adminSetBanner(),
 			adminDisableService(),
 			adminEnableService(),
+			viewSettings(),
 		},
 	}
 }
@@ -170,4 +172,43 @@ func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFla
 	}
 
 	return catcher.Resolve()
+}
+
+func viewSettings() cli.Command {
+	return cli.Command{
+		Name:   "get-settings",
+		Usage:  "view the evergreen configuration settings",
+		Action: doViewSettings(),
+	}
+}
+
+func doViewSettings() cli.ActionFunc {
+	return func(c *cli.Context) error {
+		confPath := c.Parent().String(confFlagName)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		conf, err := NewClientSetttings(confPath)
+		if err != nil {
+			return errors.Wrap(err, "problem loading configuration")
+		}
+		client := conf.GetRestCommunicator(ctx)
+		defer client.Close()
+
+		settings, err := client.GetSettings(ctx)
+		if err != nil {
+			return errors.Wrap(err, "problem getting evergreen settings")
+		}
+
+		// marshal the struct into yaml so that the output comes out nicely indented
+		settingsYaml, err := yaml.Marshal(settings)
+		if err != nil {
+			return errors.Wrap(err, "problem marshalling evergreen settings")
+		}
+
+		grip.Info(settingsYaml)
+
+		return nil
+	}
 }

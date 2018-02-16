@@ -118,6 +118,7 @@ type Communicator interface {
 	SetServiceFlags(context.Context, *restmodel.APIServiceFlags) error
 	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
+	GetSettings(context.Context) (*evergreen.Settings, error)
 
 	// Host methods
 	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)
