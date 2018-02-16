@@ -112,6 +112,28 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, http.StatusOK, "")
 }
 
+// Wrapper `GetDistinctTagNames` model function
+// requires HTTP GET param `project_id`
+// Return distinct list of tags for given `project_id`
+func uiGetProjectTags(w http.ResponseWriter, r *http.Request) {
+	vals, ok := r.URL.Query()["project_id"]
+
+	if !ok || len(vals) < 1 {
+		http.Error(w, "project_id GET param is required", http.StatusBadRequest)
+		return
+	}
+
+	projectId := vals[0]
+	data, err := model.GetDistinctTagNames(projectId)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, http.StatusOK, data)
+}
+
 func uiGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
 	projectId := mux.Vars(r)["project_id"]
 	tag := mux.Vars(r)["tag"]

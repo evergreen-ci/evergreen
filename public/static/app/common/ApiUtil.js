@@ -7,7 +7,7 @@ mciModule.factory('ApiUtil', function($http) {
         return $http.get(
           // Interpolate endpoint template with params
           endpointTpl(_.extend({base: base}, endpointTplParams)),
-          httpParams
+          {params: httpParams}
         )
       }
     }

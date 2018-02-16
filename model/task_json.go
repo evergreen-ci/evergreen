@@ -53,6 +53,32 @@ var (
 	TaskJSONTagKey                 = bsonutil.MustHaveTag(TaskJSON{}, "Tag")
 )
 
+// Returns distinct list of all tags for given `projectId`
+// returns [{
+//   _id: <tag name>,
+//   obj: {
+//     created: <ISO dateime>,
+//     revision: <associated revision>,
+//   }
+// }, ...]
+func GetDistinctTagNames(projectId string) ([]interface{}, error) {
+	out := []interface{}{}
+
+	return out, db.Aggregate(TaskJSONCollection, []bson.M{
+		{"$match": bson.M{
+			TaskJSONProjectIdKey: projectId,
+			TaskJSONTagKey:       bson.M{"$exists": true, "$ne": ""}}},
+		{"$group": bson.M{
+			"_id": "$" + TaskJSONTagKey,
+			"obj": bson.M{"$first": bson.M{
+				"created":  "$$ROOT." + TaskJSONCreateTimeKey,
+				"revision": "$$ROOT." + TaskJSONRevisionKey,
+			}},
+		}},
+		{"$sort": bson.M{"obj.created": -1}},
+	}, &out)
+}
+
 // GetTags finds TaskJSONs that have tags in the project associated with a
 // given task.
 func GetTaskJSONTags(taskId string) ([]TagContainer, error) {

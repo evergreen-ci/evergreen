@@ -15,7 +15,7 @@ Performance Discovery
 {{define "content"}}
 <div ng-controller="PerformanceDiscoveryCtrl as $ctrl">
   <ui-select ng-model="$ctrl.revisionSelect.selected"
-             ng-change="$ctrl.changeRevision($select.selected.name)"
+             ng-change="$ctrl.updateData()"
              style="width: 250px; display: inline-block;"
              title="Choose revision...">
     <ui-select-match>
@@ -27,12 +27,13 @@ Performance Discovery
   </ui-select>
 
   <ui-select ng-model="$ctrl.tagSelect.selected"
+             ng-change="$ctrl.updateData()"
              style="width: 250px; display: inline-block;"
              title="Choose tag...">
     <ui-select-match>
       <span ng-bind="$select.selected.name"></span>
     </ui-select-match>
-    <ui-select-choices repeat="item in ($ctrl.tagSelect.options | filter: $select.search) track by item.id">
+    <ui-select-choices repeat="item in ($ctrl.tagSelect.options | filter: $select.search) track by item.name">
       <span ng-bind="item.name"></span>
     </ui-select-choices>
   </ui-select>
