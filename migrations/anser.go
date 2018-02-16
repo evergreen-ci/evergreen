@@ -60,7 +60,7 @@ type migrationGeneratorFactory func(anser.Environment, string, int) (anser.Gener
 // before being handed off to another calling environment for
 // execution. See the anser documentation and the
 // anser/example_test.go for an example.
-func (opts Options) Application(env anser.Environment) (*anser.Application, error) {
+func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environment) (*anser.Application, error) {
 	app := &anser.Application{
 		Options: model.ApplicationOptions{
 			Limit:  opts.Limit,
@@ -68,7 +68,7 @@ func (opts Options) Application(env anser.Environment) (*anser.Application, erro
 		},
 	}
 
-	githubToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+	githubToken, err := evgEnv.Settings().GetGithubOauthToken()
 	if err != nil {
 		return nil, err
 	}

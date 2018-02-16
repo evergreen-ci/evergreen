@@ -29,6 +29,7 @@ type fixZeroDateSuite struct {
 	session  anserdb.Session
 	cancel   func()
 
+	utc          *time.Location
 	expectedTime time.Time
 	nowTime      time.Time
 	patches      []patch.Patch
@@ -83,10 +84,15 @@ func (s *fixZeroDateSuite) SetupTest() {
 	s.NoError(ref.Insert())
 
 	var err error
-	s.expectedTime, err = time.Parse(time.RFC3339Nano, "2018-02-15T20:35:24-05:00")
+	s.utc, err = time.LoadLocation("UTC")
+	s.NoError(err)
+	s.NotNil(s.utc)
+
+	s.expectedTime, err = time.ParseInLocation(time.RFC3339Nano, "2018-02-15T20:35:24-05:00", s.utc)
 	s.NoError(err)
 
-	s.nowTime = time.Now().Truncate(0).Round(time.Millisecond)
+	s.nowTime = time.Now().Truncate(0).Round(time.Millisecond).In(s.utc)
+	zeroTime := time.Time{}.In(s.utc)
 
 	s.patches = []patch.Patch{
 		{
@@ -97,7 +103,7 @@ func (s *fixZeroDateSuite) SetupTest() {
 		{
 			Id:         bson.NewObjectId(),
 			Version:    "v1",
-			CreateTime: time.Time{},
+			CreateTime: zeroTime,
 		},
 	}
 	for i := range s.patches {
@@ -114,7 +120,7 @@ func (s *fixZeroDateSuite) SetupTest() {
 		{
 			Id:         "v1",
 			Identifier: "mci",
-			CreateTime: time.Time{},
+			CreateTime: zeroTime,
 			Revision:   "d3eac475f28d638e83c30863a2dce30986055d8a",
 		},
 	}
@@ -131,7 +137,7 @@ func (s *fixZeroDateSuite) SetupTest() {
 		{
 			Id:         "b-v1",
 			Version:    "v1",
-			CreateTime: time.Time{},
+			CreateTime: zeroTime,
 		},
 	}
 	for i := range s.builds {
@@ -147,7 +153,7 @@ func (s *fixZeroDateSuite) SetupTest() {
 		{
 			Id:         "t-v1",
 			Version:    "v1",
-			CreateTime: time.Time{},
+			CreateTime: zeroTime,
 		},
 	}
 	for i := range s.tasks {
@@ -176,10 +182,10 @@ func (s *fixZeroDateSuite) TestMigration() {
 
 	for i := range patches {
 		if strings.HasSuffix(patches[i].Version, "no-errors") {
-			s.Equal(s.nowTime, patches[i].CreateTime)
+			s.True(s.nowTime.Equal(patches[i].CreateTime))
 
 		} else if strings.HasSuffix(patches[i].Version, "v1") {
-			s.Equal(s.expectedTime, patches[i].CreateTime)
+			s.True(s.expectedTime.Equal(patches[i].CreateTime))
 
 		} else {
 			s.T().Errorf("patch with unknown version id: %s", patches[i].Version)
@@ -192,10 +198,10 @@ func (s *fixZeroDateSuite) TestMigration() {
 
 	for i := range versions {
 		if strings.HasSuffix(versions[i].Id, "no-errors") {
-			s.Equal(s.nowTime, versions[i].CreateTime)
+			s.True(s.nowTime.Equal(versions[i].CreateTime))
 
 		} else if strings.HasSuffix(versions[i].Id, "v1") {
-			s.Equal(s.expectedTime, versions[i].CreateTime)
+			s.True(s.expectedTime.Equal(versions[i].CreateTime))
 
 		} else {
 			s.T().Errorf("version with unknown version id: %s", versions[i].Id)
@@ -208,10 +214,10 @@ func (s *fixZeroDateSuite) TestMigration() {
 
 	for i := range builds {
 		if strings.HasSuffix(builds[i].Id, "no-errors") {
-			s.Equal(s.nowTime, builds[i].CreateTime)
+			s.True(s.nowTime.Equal(builds[i].CreateTime))
 
 		} else if strings.HasSuffix(builds[i].Id, "v1") {
-			s.Equal(s.expectedTime, builds[i].CreateTime)
+			s.True(s.expectedTime.Equal(builds[i].CreateTime))
 
 		} else {
 			s.T().Errorf("unknown build id: %s", builds[i].Id)
@@ -224,10 +230,10 @@ func (s *fixZeroDateSuite) TestMigration() {
 
 	for i := range tasks {
 		if strings.HasSuffix(tasks[i].Id, "no-errors") {
-			s.Equal(s.nowTime, tasks[i].CreateTime)
+			s.True(s.nowTime.Equal(tasks[i].CreateTime))
 
 		} else if strings.HasSuffix(tasks[i].Version, "v1") {
-			s.Equal(s.expectedTime, tasks[i].CreateTime)
+			s.True(s.expectedTime.Equal(tasks[i].CreateTime))
 
 		} else {
 			s.T().Errorf("unknown task id: %s", tasks[i].Id)

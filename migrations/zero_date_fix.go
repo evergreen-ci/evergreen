@@ -16,7 +16,7 @@ import (
 )
 
 func zeroDateFixGenerator(githubToken string) migrationGeneratorFactory {
-	return func(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	return func(env anser.Environment, dbName string, limit int) (anser.Generator, error) {
 		const (
 			versionCollection = "versions"
 			createTimeKey     = "create_time"
@@ -24,7 +24,7 @@ func zeroDateFixGenerator(githubToken string) migrationGeneratorFactory {
 			migrationName = "zero-date-fix"
 		)
 
-		if err := env.RegisterManualMigrationOperation(migrationName, makeZeroDateMigration(db, githubToken)); err != nil {
+		if err := env.RegisterManualMigrationOperation(migrationName, makeZeroDateMigration(dbName, githubToken)); err != nil {
 			return nil, err
 		}
 
@@ -40,12 +40,12 @@ func zeroDateFixGenerator(githubToken string) migrationGeneratorFactory {
 
 		opts := model.GeneratorOptions{
 			NS: model.Namespace{
-				DB:         db,
+				DB:         dbName,
 				Collection: versionCollection,
 			},
 			Limit: limit,
-			Query: bson.M{
-				createTimeKey: bson.M{
+			Query: db.Document{
+				createTimeKey: db.Document{
 					"$lte": minTime,
 				},
 			},
@@ -100,10 +100,10 @@ func makeZeroDateMigration(database, githubToken string) db.MigrationOperation {
 		}
 
 		// find project ref with identifier
-		query := session.DB(database).C(projectRefCollection).Find(bson.M{
+		query := session.DB(database).C(projectRefCollection).Find(db.Document{
 			projectIDKey: projectID,
 		})
-		out := bson.M{}
+		out := db.Document{}
 		if err := query.One(&out); err != nil {
 			return errors.Wrapf(err, "can't find project ref: %s", projectID)
 		}
@@ -136,8 +136,8 @@ func makeZeroDateMigration(database, githubToken string) db.MigrationOperation {
 		}
 
 		return session.DB(database).C(versionCollection).UpdateId(versionID,
-			bson.M{
-				"$set": bson.M{
+			db.Document{
+				"$set": db.Document{
 					createTimeKey: *newTime,
 				},
 			})
@@ -178,10 +178,10 @@ func updateBuildCreateTime(dbs db.Database, versionID string, newTime time.Time)
 		createTimeKey = "create_time"
 	)
 
-	change, err := dbs.C(buildCollection).UpdateAll(bson.M{
+	change, err := dbs.C(buildCollection).UpdateAll(db.Document{
 		versionKey: versionID,
-	}, bson.M{
-		"$set": bson.M{
+	}, db.Document{
+		"$set": db.Document{
 			createTimeKey: newTime,
 		},
 	})
@@ -211,10 +211,10 @@ func updatePatchCreateTime(dbs db.Database, versionID string, newTime time.Time)
 		createTimeKey = "create_time"
 	)
 
-	change, err := dbs.C(tasksCollection).UpdateAll(bson.M{
+	change, err := dbs.C(tasksCollection).UpdateAll(db.Document{
 		versionKey: versionID,
-	}, bson.M{
-		"$set": bson.M{
+	}, db.Document{
+		"$set": db.Document{
 			createTimeKey: newTime,
 		},
 	})
@@ -244,10 +244,10 @@ func updateTaskCreateTime(dbs db.Database, versionID string, newTime time.Time) 
 		createTimeKey = "create_time"
 	)
 
-	change, err := dbs.C(patchesCollection).UpdateAll(bson.M{
+	change, err := dbs.C(patchesCollection).UpdateAll(db.Document{
 		versionKey: versionID,
-	}, bson.M{
-		"$set": bson.M{
+	}, db.Document{
+		"$set": db.Document{
 			createTimeKey: newTime,
 		},
 	})

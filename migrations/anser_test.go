@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	evg "github.com/evergreen-ci/evergreen/db"
+	evgmock "github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
@@ -24,8 +25,9 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 
 	anser.ResetEnvironment()
 
+	evgEnv := &evgmock.Environment{}
 	ctx := context.Background()
-	assert.NoError(evergreen.GetEnvironment().Configure(context.Background(), filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	assert.NoError(evgEnv.Configure(context.Background(), filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
 
 	opts := Options{
 		Database: "mci_test",
@@ -35,7 +37,7 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 		Session:  session,
 	}
 
-	app, err := opts.Application(mock.NewEnvironment())
+	app, err := opts.Application(mock.NewEnvironment(), evgEnv)
 	assert.NoError(err)
 	assert.NotNil(app)
 
