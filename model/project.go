@@ -759,10 +759,10 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	return nil
 }
 
-func (bv *BuildVariant) InDisplayTask(taskName string) string {
+func (bv *BuildVariant) GetDisplayTaskNamek(execTask string) string {
 	for _, dt := range bv.DisplayTasks {
 		for _, et := range dt.ExecutionTasks {
-			if et == taskName {
+			if et == execTask {
 				return dt.Name
 			}
 		}
@@ -931,7 +931,7 @@ func extractDisplayTasks(pairs []TVPair, tasks []string, variants []string, p *P
 			continue
 		}
 		for _, taskName := range tasks {
-			dt := bv.InDisplayTask(taskName)
+			dt := bv.GetDisplayTaskNamek(taskName)
 			if dt != "" && !alreadyAdded[dt] {
 				alreadyAdded[dt] = true
 				tasks = append(tasks, dt)
