@@ -175,8 +175,7 @@ var backgroundRunners = []processRunner{
 // returns a channel on which all runners listen on, for when to terminate.
 func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct{}) {
 	const (
-		frequentRunInterval   = 20 * time.Second
-		defaultRunInterval    = 60 * time.Second
+		frequentRunInterval   = 10 * time.Second
 		infrequentRunInterval = 300 * time.Second
 	)
 
@@ -186,6 +185,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 		scheduler.RunnerName,
 		hostinit.RunnerName,
 		taskrunner.RunnerName,
+		monitor.RunnerName,
 	}
 
 	infrequentRunners := []string{
@@ -193,9 +193,14 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 		notify.RunnerName,
 	}
 
+	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
+		"cause":        "programmer error",
+		"frequent":     frequentRunners,
+		"infrequent":   infrequentRunners,
+		"runner_count": len(backgroundRunners),
+	})
+
 	grip.Notice(message.Fields{
-		"default_interval": defaultRunInterval,
-		"default_span":     defaultRunInterval.String(),
 		"frequent": message.Fields{
 			"interval": frequentRunInterval,
 			"span":     frequentRunInterval.String(),
@@ -214,8 +219,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
 		} else if util.StringSliceContains(infrequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, infrequentRunInterval, wg)
-		} else {
-			go runnerBackgroundWorker(ctx, r, s, defaultRunInterval, wg)
 		}
 	}
 
