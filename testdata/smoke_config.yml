@@ -55,3 +55,7 @@ providers:
 
 keys:
       test: "/dev/null"
+
+repotracker:
+    numnewreporevisionstofetch: 10
+    maxreporevisionstosearch: 10
