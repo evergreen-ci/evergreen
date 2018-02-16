@@ -85,7 +85,7 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 // checkHostHealth checks that host is running and creates a task response that is sent back to the agent after the task ends.
 func checkHostHealth(h *host.Host, agentRevision string) (bool, string) {
 	if h.Status != evergreen.HostRunning {
-		grip.Error(message.Fields{
+		grip.Info(message.Fields{
 			"message": "host is not running, so agent should exit",
 			"host_id": h.Id,
 		})
@@ -93,7 +93,7 @@ func checkHostHealth(h *host.Host, agentRevision string) (bool, string) {
 			h.Id, h.Status)
 	}
 	if h.AgentRevision != agentRevision {
-		grip.Error(message.Fields{
+		grip.Info(message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
 			"host_revision":  h.AgentRevision,
 			"agent_revision": agentRevision,
