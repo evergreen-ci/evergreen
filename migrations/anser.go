@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
@@ -67,12 +68,18 @@ func (opts Options) Application(env anser.Environment) (*anser.Application, erro
 		},
 	}
 
+	githubToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()
+	if err != nil {
+		return nil, err
+	}
+
 	generatorFactories := []migrationGeneratorFactory{
 		//addExecutionToTasksGenerator,
 		//oldTestResultsGenerator,
 		//testResultsGenerator,
 		projectAliasesToCollectionGenerator,
 		githubHooksToCollectionGenerator,
+		zeroDateFixGenerator(githubToken),
 	}
 
 	catcher := grip.NewBasicCatcher()
