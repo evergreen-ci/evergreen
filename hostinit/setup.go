@@ -66,7 +66,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 		if h.UserHost {
 			// pass:
 			//    always start spawn hosts asap
-		} else if started > 8 {
+		} else if started > 12 {
 			// throttle hosts, so that we're starting very
 			// few hosts on every pass. Hostinit runs very
 			// frequently, lets not start too many all at
