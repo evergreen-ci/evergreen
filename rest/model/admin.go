@@ -131,6 +131,7 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		LogPath:            *as.LogPath,
 		Plugins:            evergreen.PluginConfig{},
 		PprofPort:          *as.PprofPort,
+		SuperUsers:         as.SuperUsers,
 	}
 	apiModelReflect := reflect.ValueOf(*as)
 	dbModelReflect := reflect.ValueOf(&settings).Elem()
@@ -169,9 +170,6 @@ func (as *APIAdminSettings) ToService() (interface{}, error) {
 		for k2, v2 := range v {
 			settings.Plugins[k][k2] = v2
 		}
-	}
-	for _, user := range as.SuperUsers {
-		settings.SuperUsers = append(settings.SuperUsers, user)
 	}
 	return settings, nil
 }
