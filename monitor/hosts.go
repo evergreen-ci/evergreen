@@ -51,7 +51,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 	startAt := time.Now()
 	catcher := grip.NewBasicCatcher()
 	hostIdsToTerminate := []string{}
-	hosts := make(chan *host.Host)
+	hosts := make(chan host.Host)
 	wg := &sync.WaitGroup{}
 
 	var cancel context.CancelFunc
@@ -67,11 +67,11 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 				case <-ctx.Done():
 					return
 				case h := <-hosts:
-					if h == nil {
+					if h.Id == "" {
 						return
 					}
 
-					catcher.Add(errors.Wrapf(terminateHost(ctx, h, settings),
+					catcher.Add(errors.Wrapf(terminateHost(ctx, &h, settings),
 						"problem terminating host %s", h.Id))
 				}
 			}
@@ -107,7 +107,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 			}
 
 			hostIdsToTerminate = append(hostIdsToTerminate, h.Id)
-			hosts <- &h
+			hosts <- h
 		}
 	}
 	close(hosts)
