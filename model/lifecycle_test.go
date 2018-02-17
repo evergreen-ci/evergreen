@@ -1465,7 +1465,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that execution tasks cannot be restarted
 	assert.NoError(resetTaskData())
-	assert.Error(TryResetTask("task5", "", "", nil, nil))
+	assert.Error(TryResetTask("task5", "", "", nil))
 }
 
 func resetTaskData() error {

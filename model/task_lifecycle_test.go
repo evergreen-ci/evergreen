@@ -699,15 +699,17 @@ func TestMarkEnd(t *testing.T) {
 	assert.NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection),
 		"Error clearing task and build collections")
 
+	ref := &ProjectRef{
+		Identifier: "sample",
+	}
+	assert.NoError(ref.Insert())
+
 	displayName := "testName"
 	userName := "testUser"
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
 		Version: "abc",
-	}
-	p := &Project{
-		Identifier: "sample",
 	}
 	v := &version.Version{
 		Id:     b.Version,
@@ -735,7 +737,7 @@ func TestMarkEnd(t *testing.T) {
 	details := apimodels.TaskEndDetail{
 		Status: evergreen.TaskFailed,
 	}
-	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, p, false, &updates))
+	assert.NoError(MarkEnd(&testTask, userName, time.Now(), &details, false, &updates))
 	assert.Equal(evergreen.BuildFailed, updates.BuildNewStatus)
 
 	Convey("with a task that is part of a display task", t, func() {
@@ -777,7 +779,7 @@ func TestMarkEnd(t *testing.T) {
 			Status: evergreen.TaskFailed,
 			Type:   "system",
 		}
-		So(MarkEnd(t1, "test", time.Now(), detail, p, false, &updates), ShouldBeNil)
+		So(MarkEnd(t1, "test", time.Now(), detail, false, &updates), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskFailed)
@@ -815,9 +817,6 @@ func TestTryResetTask(t *testing.T) {
 				Project:     "sample",
 				Status:      evergreen.TaskSucceeded,
 			}
-			p := &Project{
-				Identifier: "sample",
-			}
 			detail := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
@@ -834,7 +833,7 @@ func TestTryResetTask(t *testing.T) {
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
 			Convey("should reset and add a task to the old tasks collection", func() {
-				So(TryResetTask(testTask.Id, userName, "", p, detail), ShouldBeNil)
+				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
@@ -874,9 +873,6 @@ func TestTryResetTask(t *testing.T) {
 				Project:     "sample",
 				Status:      evergreen.TaskSucceeded,
 			}
-			p := &Project{
-				Identifier: "sample",
-			}
 			detail := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
@@ -905,7 +901,7 @@ func TestTryResetTask(t *testing.T) {
 			var err error
 
 			Convey("should not reset if an origin other than the ui package tries to reset", func() {
-				So(TryResetTask(testTask.Id, userName, "", p, detail), ShouldBeNil)
+				So(TryResetTask(testTask.Id, userName, "", detail), ShouldBeNil)
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, *detail)
@@ -913,7 +909,7 @@ func TestTryResetTask(t *testing.T) {
 				So(testTask.FinishTime, ShouldNotResemble, util.ZeroTime)
 			})
 			Convey("should reset and use detail information if the UI package passes in a detail ", func() {
-				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, p, detail), ShouldBeNil)
+				So(TryResetTask(anotherTask.Id, userName, evergreen.UIPackage, detail), ShouldBeNil)
 				a, err := task.FindOne(task.ById(anotherTask.Id))
 				So(err, ShouldBeNil)
 				So(a.Details, ShouldResemble, apimodels.TaskEndDetail{})
@@ -958,7 +954,7 @@ func TestTryResetTask(t *testing.T) {
 		}
 		So(t1.Insert(), ShouldBeNil)
 
-		So(TryResetTask(dt.Id, "user", "test", p, nil), ShouldBeNil)
+		So(TryResetTask(dt.Id, "user", "test", nil), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -1219,37 +1215,12 @@ func TestMarkDispatched(t *testing.T) {
 
 func TestGetstepback(t *testing.T) {
 	Convey("When the project has a stepback policy set to true", t, func() {
-		_true, _false := true, false
-		project := &Project{
-			Stepback: true,
-			BuildVariants: []BuildVariant{
-				{
-					Name: "sbnil",
-				},
-				{
-					Name:     "sbtrue",
-					Stepback: &_true,
-				},
-				{
-					Name:     "sbfalse",
-					Stepback: &_false,
-				},
-			},
-			Tasks: []ProjectTask{
-				{Name: "nil"},
-				{Name: "true", Stepback: &_true},
-				{Name: "false", Stepback: &_false},
-				{Name: "bvnil"},
-				{Name: "bvtrue"},
-				{Name: "bvfalse"},
-			},
-		}
 
 		Convey("if the task does not override the setting", func() {
 			testTask := &task.Task{Id: "t1", DisplayName: "nil"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(testTask.Id, project)
+				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
 				So(val, ShouldBeTrue)
 			})
@@ -1259,7 +1230,7 @@ func TestGetstepback(t *testing.T) {
 			testTask := &task.Task{Id: "t2", DisplayName: "true"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(testTask.Id, project)
+				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
 				So(val, ShouldBeTrue)
 			})
@@ -1269,7 +1240,7 @@ func TestGetstepback(t *testing.T) {
 			testTask := &task.Task{Id: "t3", DisplayName: "false"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
-				val, err := getStepback(testTask.Id, project)
+				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
 				So(val, ShouldBeFalse)
 			})
@@ -1279,7 +1250,7 @@ func TestGetstepback(t *testing.T) {
 			testTask := &task.Task{Id: "t4", DisplayName: "bvnil", BuildVariant: "sbnil"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(testTask.Id, project)
+				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
 				So(val, ShouldBeTrue)
 			})
@@ -1289,7 +1260,7 @@ func TestGetstepback(t *testing.T) {
 			testTask := &task.Task{Id: "t5", DisplayName: "bvtrue", BuildVariant: "sbtrue"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
-				val, err := getStepback(testTask.Id, project)
+				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
 				So(val, ShouldBeTrue)
 			})
@@ -1299,7 +1270,7 @@ func TestGetstepback(t *testing.T) {
 			testTask := &task.Task{Id: "t6", DisplayName: "bvfalse", BuildVariant: "sbfalse"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
-				val, err := getStepback(testTask.Id, project)
+				val, err := getStepback(testTask.Id)
 				So(err, ShouldBeNil)
 				So(val, ShouldBeFalse)
 			})

@@ -1087,7 +1087,6 @@ func TestTaskResetExecute(t *testing.T) {
 
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
-				project:  &serviceModel.Project{},
 				username: "testUser",
 			}
 
@@ -1103,7 +1102,6 @@ func TestTaskResetExecute(t *testing.T) {
 
 			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
-				project:  &serviceModel.Project{},
 				username: "testUser",
 			}
 
