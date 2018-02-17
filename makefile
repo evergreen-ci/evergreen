@@ -28,7 +28,7 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 clientSource := main/evergreen.go
 
 distArtifacts :=  ./public ./service/templates ./alerts/templates ./notify/templates
-distContents := $(clientBuildDir) $(distArtifacts)
+distContents := $(clientBinaries) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
@@ -172,9 +172,9 @@ $(buildDir)/make-tarball:scripts/make-tarball.go
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball clis
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball $(clientBinaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(distContents),--item $(item))
-$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) # $(distTestRaceContents)
+$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(distTestContents) $(clientBinaries) # $(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/"
