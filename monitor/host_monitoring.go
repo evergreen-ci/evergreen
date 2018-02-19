@@ -86,6 +86,10 @@ func monitorReachability(ctx context.Context, settings *evergreen.Settings) []er
 	// check all of the hosts. continue on error so that other hosts can be
 	// checked successfully
 	for _, host := range hosts {
+		if ctx.Err() != nil {
+			close(hostsChan)
+			return append(errs, errors.New("host checks aborted"))
+		}
 		hostsChan <- host
 	}
 	close(hostsChan)
