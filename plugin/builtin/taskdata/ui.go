@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
@@ -116,15 +117,14 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 // requires HTTP GET param `project_id`
 // Return distinct list of tags for given `project_id`
 func uiGetProjectTags(w http.ResponseWriter, r *http.Request) {
-	vals, ok := r.URL.Query()["project_id"]
+	projectIdCookie, err := r.Cookie(service.ProjectCookieName)
 
-	if !ok || len(vals) < 1 {
-		http.Error(w, "project_id GET param is required", http.StatusBadRequest)
+	if err != nil {
+		http.Error(w, "Cannot determine current project id", http.StatusInternalServerError)
 		return
 	}
 
-	projectId := vals[0]
-	data, err := model.GetDistinctTagNames(projectId)
+	data, err := model.GetDistinctTagNames(projectIdCookie.Value)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

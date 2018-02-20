@@ -24,10 +24,10 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     vm.revisionSelect.selected = _.first(vm.revisionSelect.options)
   })
 
-  var whenQueryTags = ApiTaskdata.getProjectTags(projectId).then(function(res){
+  var whenQueryTags = ApiTaskdata.getProjectTags().then(function(res){
     vm.tags = res.data
     vm.tagSelect.options = _.map(res.data, function(d, i) {
-      return {id: d.obj.revision, name: d._id}
+      return {id: d.obj.revision, name: d.name}
     })
     vm.tagSelect.selected = _.first(vm.tagSelect.options)
   })

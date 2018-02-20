@@ -36,6 +36,16 @@ type TagContainer struct {
 	Tag string `bson:"_id" json:"tag"`
 }
 
+type TagMeta struct {
+	Created  time.Time `bson:"created" json:"created"`
+	Revision string    `bson:"revision" json:"revision"`
+}
+
+type Tag struct {
+	Name string  `bson:"_id" json:"name"`
+	Meta TagMeta `bson:"obj" json:"obj"`
+}
+
 var (
 	// BSON fields for the TaskJSON struct
 	TaskJSONNameKey                = bsonutil.MustHaveTag(TaskJSON{}, "Name")
@@ -61,8 +71,8 @@ var (
 //     revision: <associated revision>,
 //   }
 // }, ...]
-func GetDistinctTagNames(projectId string) ([]interface{}, error) {
-	out := []interface{}{}
+func GetDistinctTagNames(projectId string) ([]Tag, error) {
+	out := []Tag{}
 
 	return out, db.Aggregate(TaskJSONCollection, []bson.M{
 		{"$match": bson.M{
