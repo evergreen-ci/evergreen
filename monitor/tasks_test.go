@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -36,10 +35,9 @@ func TestCleanupTask(t *testing.T) {
 					Project: "proj",
 				},
 			}
-			projects := map[string]model.Project{}
-			err := cleanUpTask(wrapper, projects)
+			err := cleanUpTask(wrapper)
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "could not find project")
+			So(err.Error(), ShouldContainSubstring, "not found")
 
 		})
 
@@ -74,13 +72,6 @@ func TestCleanupTask(t *testing.T) {
 					task:   *newTask,
 				}
 
-				projects := map[string]model.Project{
-					"proj": {
-						Identifier: "proj",
-						Stepback:   false,
-					},
-				}
-
 				host := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
@@ -100,7 +91,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTask(wrapper, projects), ShouldBeNil)
+				So(cleanUpTask(wrapper), ShouldBeNil)
 
 				// refresh the task - it should be reset
 				newTask, err := task.FindOne(task.ById("t1"))
@@ -138,14 +129,8 @@ func TestCleanupTask(t *testing.T) {
 						reason: HeartbeatTimeout,
 						task:   *et,
 					}
-					projects := map[string]model.Project{
-						"proj": {
-							Identifier: "proj",
-							Stepback:   false,
-						},
-					}
 
-					So(cleanUpTask(wrapper, projects), ShouldBeNil)
+					So(cleanUpTask(wrapper), ShouldBeNil)
 					dbTask, err := task.FindOne(task.ById(dt.Id))
 					So(err, ShouldBeNil)
 					So(dbTask.Status, ShouldEqual, evergreen.TaskUnstarted)
@@ -170,13 +155,6 @@ func TestCleanupTask(t *testing.T) {
 					task:   *newTask,
 				}
 
-				projects := map[string]model.Project{
-					"proj": {
-						Identifier: "proj",
-						Stepback:   false,
-					},
-				}
-
 				h := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
@@ -194,7 +172,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTask(wrapper, projects), ShouldBeNil)
+				So(cleanUpTask(wrapper), ShouldBeNil)
 
 				// refresh the host, make sure its running task field has
 				// been reset

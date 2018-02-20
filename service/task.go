@@ -589,11 +589,6 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 // avoids type-checking json params for the below function
 func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	project, err := projCtx.GetProject()
-	if err != nil || project == nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
-		return
-	}
 
 	if projCtx.Task == nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -629,7 +624,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "restart":
-		if err = model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, project, nil); err != nil {
+		if err = model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}

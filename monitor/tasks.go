@@ -23,7 +23,7 @@ type TaskMonitor struct {
 // run through the list of task flagging functions, finding all tasks that
 // need to be cleaned up and taking appropriate action. takes in a map
 // of project name -> project info
-func (tm *TaskMonitor) CleanupTasks(ctx context.Context, projects map[string]model.Project) []error {
+func (tm *TaskMonitor) CleanupTasks(ctx context.Context) []error {
 
 	// used to store any errors that occur
 	var errs []error
@@ -45,7 +45,7 @@ func (tm *TaskMonitor) CleanupTasks(ctx context.Context, projects map[string]mod
 
 		// clean up all of the tasks. continue on error to allow further cleanup
 		// to progress
-		for _, err := range cleanUpTasks(tasksToCleanUp, projects) {
+		for _, err := range cleanUpTasks(tasksToCleanUp) {
 			errs = append(errs, errors.Wrap(err, "error cleaning up tasks"))
 		}
 	}
@@ -54,7 +54,7 @@ func (tm *TaskMonitor) CleanupTasks(ctx context.Context, projects map[string]mod
 }
 
 // clean up the passed-in slice of tasks
-func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Project) []error {
+func cleanUpTasks(taskWrappers []doomedTaskWrapper) []error {
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"message": "Cleaning up tasks",
@@ -67,7 +67,7 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Pr
 	for _, wrapper := range taskWrappers {
 
 		// clean up the task. continue on error to let others be cleaned up
-		if err := cleanUpTask(wrapper, projects); err != nil {
+		if err := cleanUpTask(wrapper); err != nil {
 			errs = append(errs, errors.Wrapf(err,
 				"error cleaning up task %v", wrapper.task.Id))
 			continue
@@ -83,15 +83,7 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Pr
 }
 
 // function to clean up a single task
-func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) error {
-
-	// find the appropriate project for the task
-	project, ok := projects[wrapper.task.Project]
-	if !ok {
-		return errors.Errorf("could not find project %v for task %v",
-			wrapper.task.Project, wrapper.task.Id)
-	}
-
+func cleanUpTask(wrapper doomedTaskWrapper) error {
 	// get the host for the task
 	host, err := host.FindOne(host.ById(wrapper.task.HostId))
 	if err != nil {
@@ -121,7 +113,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 	// take different action, depending on the type of task death
 	switch wrapper.reason {
 	case HeartbeatTimeout:
-		err = cleanUpTimedOutHeartbeat(wrapper.task, project)
+		err = cleanUpTimedOutHeartbeat(wrapper.task)
 	default:
 		return errors.Errorf("unknown reason for cleaning up task: %v", wrapper.reason)
 	}
@@ -135,7 +127,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 }
 
 // clean up a task whose heartbeat has timed out
-func cleanUpTimedOutHeartbeat(t task.Task, project model.Project) error {
+func cleanUpTimedOutHeartbeat(t task.Task) error {
 	// mock up the failure details of the task
 	detail := &apimodels.TaskEndDetail{
 		Description: task.AgentHeartbeat,
@@ -148,7 +140,7 @@ func cleanUpTimedOutHeartbeat(t task.Task, project model.Project) error {
 	if t.IsPartOfDisplay() {
 		taskId = t.DisplayTask.Id
 	}
-	if err := model.TryResetTask(taskId, "", RunnerName, &project, detail); err != nil {
+	if err := model.TryResetTask(taskId, "", RunnerName, detail); err != nil {
 		return errors.Wrapf(err, "error trying to reset task %s", t.Id)
 	}
 	// success
