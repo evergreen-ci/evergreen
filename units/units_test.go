@@ -22,7 +22,6 @@ func TestAllRegisteredUnitsAreRemoteSafe(t *testing.T) {
 		assert.NotNil(job)
 
 		assert.Equal(id, job.Type().Name)
-		assert.Equal(amboy.BSON, job.Type().Format)
 
 		var dbjob *registry.JobInterchange
 
