@@ -2,14 +2,16 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
 )
 
 func Admin() cli.Command {
@@ -201,10 +203,18 @@ func doViewSettings() cli.ActionFunc {
 			return errors.Wrap(err, "problem getting evergreen settings")
 		}
 
-		// marshal the struct into yaml so that the output comes out nicely indented
-		settingsYaml, err := yaml.Marshal(settings)
+		settingsYaml, err := json.MarshalIndent(settings, " ", " ")
 		if err != nil {
 			return errors.Wrap(err, "problem marshalling evergreen settings")
+		}
+
+		sender, err := send.NewPlainLogger("", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
+		if err != nil {
+			return errors.Wrap(err, "problem creating a sender")
+		}
+
+		if err = grip.SetSender(sender); err != nil {
+			return errors.Wrap(err, "problem setting up logger")
 		}
 
 		grip.Info(settingsYaml)
