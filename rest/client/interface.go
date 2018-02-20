@@ -67,7 +67,7 @@ type Communicator interface {
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
-	GetNextTask(context.Context) (*apimodels.NextTaskResponse, error)
+	GetNextTask(context.Context, *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error)
 
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(context.Context, TaskData) LoggerProducer
