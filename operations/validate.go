@@ -55,7 +55,12 @@ func Validate() cli.Command {
 					fmt.Printf("%v) %v: %v\n\n", i+1, e.Level, e.Message)
 				}
 
-				return errors.Errorf("Project file has %d warnings, %d errors.", numWarnings, numErrors)
+				if numErrors > 0 {
+					return errors.Errorf("Project file has %d warnings, %d errors.", numWarnings, numErrors)
+				}
+
+				fmt.Printf("Project file has %d unresolved warnings! Please address these soon.\n", numWarnings)
+				return nil
 			}
 			fmt.Println("Valid!")
 			return nil
