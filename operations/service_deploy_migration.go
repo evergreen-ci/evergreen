@@ -45,7 +45,7 @@ func deployMigration() cli.Command {
 			}
 			defer anserEnv.Close()
 
-			app, err := opts.Application(anserEnv)
+			app, err := opts.Application(anserEnv, env)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring migration application")
 			}
