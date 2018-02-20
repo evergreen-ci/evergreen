@@ -98,6 +98,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	defer timer.Stop()
 	var tc taskContext
 	var exit bool
+LOOP:
 	for {
 		select {
 		case <-ctx.Done():
@@ -116,7 +117,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				if exit {
 					// Query for next task, this time with an empty task group,
 					// to get a ShouldExit from the API, and set NeedsNewAgent.
-					continue
+					continue LOOP
 				}
 				if err := a.resetLogging(lgrCtx, &tc); err != nil {
 					return errors.WithStack(err)
@@ -125,7 +126,7 @@ func (a *Agent) loop(ctx context.Context) error {
 					return errors.WithStack(err)
 				}
 				timer.Reset(0)
-				continue
+				continue LOOP
 			}
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)

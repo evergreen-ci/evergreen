@@ -392,6 +392,17 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				as.WriteJSON(w, http.StatusInternalServerError, err)
 				return
 			}
+			if err := h.UnsetRunningTask(); err != nil {
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem unsetting running task",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				as.WriteJSON(w, http.StatusInternalServerError, err)
+				return
+			}
 			response.ShouldExit = true
 			as.WriteJSON(w, http.StatusOK, response)
 			return
