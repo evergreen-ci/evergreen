@@ -581,6 +581,9 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				BuildId:     b.Id,
 				Project:     "sample",
 			}
+			ref := &ProjectRef{
+				Identifier: "sample",
+			}
 			p = &Project{
 				Identifier: "sample",
 			}
@@ -588,11 +591,12 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Status: evergreen.TaskSucceeded,
 			}
 
-			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+			testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, version.Collection), t,
 				"Error clearing task and build collections")
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
+			So(ref.Insert(), ShouldBeNil)
 		}
 
 		Convey("task should not fail if there are no failed test", func() {
