@@ -125,10 +125,10 @@ func makeZeroDateMigration(database, githubToken string) db.MigrationOperation {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if err = updateBuildCreateTime(session.DB(database), versionID, *newTime); err != nil {
+		if err = updateTaskCreateTime(session.DB(database), versionID, *newTime); err != nil {
 			return errors.WithStack(err)
 		}
-		if err = updateTaskCreateTime(session.DB(database), versionID, *newTime); err != nil {
+		if err = updateBuildCreateTime(session.DB(database), versionID, *newTime); err != nil {
 			return errors.WithStack(err)
 		}
 		if err = updatePatchCreateTime(session.DB(database), versionID, *newTime); err != nil {
@@ -202,7 +202,7 @@ func updateBuildCreateTime(dbs db.Database, versionID string, newTime time.Time)
 	return nil
 }
 
-func updatePatchCreateTime(dbs db.Database, versionID string, newTime time.Time) error {
+func updateTaskCreateTime(dbs db.Database, versionID string, newTime time.Time) error {
 	const (
 		tasksCollection = "tasks"
 
@@ -235,7 +235,7 @@ func updatePatchCreateTime(dbs db.Database, versionID string, newTime time.Time)
 	return nil
 }
 
-func updateTaskCreateTime(dbs db.Database, versionID string, newTime time.Time) error {
+func updatePatchCreateTime(dbs db.Database, versionID string, newTime time.Time) error {
 	const (
 		patchesCollection = "patches"
 
