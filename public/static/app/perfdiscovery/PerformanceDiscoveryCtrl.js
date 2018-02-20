@@ -1,5 +1,6 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $scope, $q, ApiTaskdata, ApiV1, PerfDiscoveryService, PERF_DISCOVERY
+  $q, $scope, $window, ApiTaskdata, ApiV1, PERF_DISCOVERY,
+  PerfDiscoveryService
 ) {
   var vm = this;
 
@@ -13,27 +14,33 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     selected: null,
   }
 
-  // TODO use globally defined project id
-  var projectId = 'sys-perf'
+  var projectId = $window.project
 
-  ApiV1.getProjectVersions(projectId).then(function(data) {
-    vm.versions = data.data.versions
-    vm.revisionSelect.options = _.map(data.data.versions, function(d, i) {
-      return {id: i, name: d.revision}
+  var whenQueryRevisions = ApiV1.getProjectVersions(projectId).then(function(res) {
+    vm.versions = res.data.versions
+    vm.revisionSelect.options = _.map(res.data.versions, function(d) {
+      return {id: d.revision, name: d.revision}
     })
-    vm.revisionSelect.selected = vm.revisionSelect.options[0]
-
-    vm.tagSelect.options = _.map(data.data.versions, function(d, i) {
-      return {id: i, name: d.revision}
-    })
-    // Choose the second item, if exists, or the first if no
-    vm.tagSelect.selected = vm.tagSelect.options[
-      _.min([1, vm.tagSelect.options.length - 1])
-    ]
-    vm.changeRevision(data.data.versions[0].revision)
+    vm.revisionSelect.selected = _.first(vm.revisionSelect.options)
   })
 
-  vm.changeRevision = function(revision) {
+  var whenQueryTags = ApiTaskdata.getProjectTags(projectId).then(function(res){
+    vm.tags = res.data
+    vm.tagSelect.options = _.map(res.data, function(d, i) {
+      return {id: d.obj.revision, name: d.name}
+    })
+    vm.tagSelect.selected = _.first(vm.tagSelect.options)
+  })
+
+  $q.all([whenQueryRevisions, whenQueryTags]).then(function() {
+    // Load grid data once revisions and tags loaded
+    vm.updateData()
+  })
+
+  vm.updateData = function() {
+    var revision = vm.revisionSelect.selected.id;
+    var baselineRev = vm.tagSelect.selected.id;
+
     version = _.findWhere(vm.versions, {
       revision: revision
     })
@@ -54,16 +61,18 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     PerfDiscoveryService.getRows(
       PerfDiscoveryService.processData(
         PerfDiscoveryService.queryData(
-          ctx, version, vm.versions[1]
+          ctx, baselineRev
         )
       )
     ).then(function(res) {
       vm.gridOptions.data = res
     })
-
   }
 
   vm.gridOptions = {
+    //flatEntityAccess: true,
+    minRowsToShow: 18,
+    enableFiltering: true,
     columnDefs: [{
         name: 'Link',
         field: 'link',

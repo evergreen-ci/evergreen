@@ -20,5 +20,9 @@ mciModule.factory('ApiTaskdata', function($http, ApiUtil, API_TASKDATA) {
         name: param.name,
       })
     },
+
+    getProjectTags: function(projectId) {
+      return get(API_TASKDATA.PROJECT_TAGS, {}, {project_id: projectId})
+    },
   }
 })

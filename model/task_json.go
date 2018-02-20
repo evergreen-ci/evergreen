@@ -36,6 +36,26 @@ type TagContainer struct {
 	Tag string `bson:"_id" json:"tag"`
 }
 
+type TaskJSONTagMeta struct {
+	Created  time.Time `bson:"created" json:"created"`
+	Revision string    `bson:"revision" json:"revision"`
+}
+
+var (
+	TaskJSONTagMetaCreatedKey  = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "Created")
+	TaskJSONTagMetaRevisionKey = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "Revision")
+)
+
+type TaskJSONTag struct {
+	Name string          `bson:"_id" json:"name"`
+	Obj  TaskJSONTagMeta `bson:"obj" json:"obj"`
+}
+
+var (
+	TaskJSONTagNameKey = bsonutil.MustHaveTag(TaskJSONTag{}, "Name")
+	TaskJSONTagObjKey  = bsonutil.MustHaveTag(TaskJSONTag{}, "Obj")
+)
+
 var (
 	// BSON fields for the TaskJSON struct
 	TaskJSONNameKey                = bsonutil.MustHaveTag(TaskJSON{}, "Name")
@@ -52,6 +72,31 @@ var (
 	TaskJSONDataKey                = bsonutil.MustHaveTag(TaskJSON{}, "Data")
 	TaskJSONTagKey                 = bsonutil.MustHaveTag(TaskJSON{}, "Tag")
 )
+
+// Returns distinct list of all tags for given `projectId`
+func GetDistinctTagNames(projectId string) ([]TaskJSONTag, error) {
+	out := []TaskJSONTag{}
+
+	err := db.Aggregate(TaskJSONCollection, []bson.M{
+		{"$match": bson.M{
+			TaskJSONProjectIdKey: projectId,
+			TaskJSONTagKey:       bson.M{"$exists": true, "$ne": ""}}},
+		{"$group": bson.M{
+			"_id": "$" + TaskJSONTagKey,
+			"obj": bson.M{"$first": bson.M{
+				"created":  "$$ROOT." + TaskJSONCreateTimeKey,
+				"revision": "$$ROOT." + TaskJSONRevisionKey,
+			}},
+		}},
+		{"$sort": bson.M{"obj.created": -1}},
+	}, &out)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "An error occured during db query execution")
+	}
+
+	return out, nil
+}
 
 // GetTags finds TaskJSONs that have tags in the project associated with a
 // given task.

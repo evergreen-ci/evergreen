@@ -21,7 +21,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
 
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasks, version, baseline) {
+  function queryData(tasks, baselineRev) {
     var promise = $q.all(_.map(tasks, function(task) {
       return ApiTaskdata.getTaskById(task.taskId, 'perf')
         .then(respData, function() { return null })
@@ -34,7 +34,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
                 .then(respData, function(e) { return [] }),
               baseline: ApiTaskdata.getTaskCommit({
                 projectId: data.project_id,
-                revision: baseline.revision,
+                revision: baselineRev,
                 variant: data.variant,
                 taskName: task.taskName,
                 name: 'perf',
@@ -130,19 +130,13 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
 
     return promise.then(function(data) {
       _.each(data.tasks, function(d) {
-        _.each(d && d.current.data.results, function(result) {
+        _.each(d.current && d.current.data.results, function(result) {
           processItem(result, now, d.ctx)
         })
-      })
-
-      _.each(data.tasks, function(d) {
-        _.each(d && d.baseline.data.results, function(result) {
+        _.each(d.baseline && d.baseline.data.results, function(result) {
           processItem(result, baseline, d.ctx)
         })
-      })
-
-      _.each(data.tasks, function(d) {
-        _.each(d && d.history, function(histItems) {
+        _.each(d.history, function(histItems) {
           _.each(histItems.data.results, function(result) {
             processItem(result, history, d.ctx)
           })

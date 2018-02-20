@@ -40,6 +40,7 @@ func (hwp *TaskJSONPlugin) GetUIHandler() http.Handler {
 	r.HandleFunc("/task/{task_id}/{name}/tags", uiGetTags)
 	r.HandleFunc("/task/{task_id}/{name}/tag", uiHandleTaskTag).Methods("POST", "DELETE")
 
+	r.HandleFunc("/tags/", uiGetProjectTags)
 	r.HandleFunc("/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", uiGetTaskJSONByTag)
 	r.HandleFunc("/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", uiGetCommit)
 	r.HandleFunc("/history/{task_id}/{name}", uiGetTaskHistory)
