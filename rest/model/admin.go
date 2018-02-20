@@ -1,9 +1,11 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -112,7 +114,44 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
-	return nil
+	return scrubSecureFields(as)
+}
+
+func scrubSecureFields(input Model) error {
+	if input == nil {
+		return errors.New("API settings model is nil")
+	}
+	catcher := grip.NewSimpleCatcher()
+	reflectInput := reflect.Indirect(reflect.ValueOf(input))
+	for i := 0; i < reflectInput.NumField(); i++ {
+		// get the field name + value
+		field := reflectInput.Type().Field(i)
+		propName := field.Name
+		propVal := reflect.ValueOf(input).Elem().FieldByName(propName)
+
+		// if this is a secure field, swap the value with asterisks. All secure types must be string
+		secure := field.Tag.Get("secure")
+		if secure != "" {
+			if propVal.Kind() != reflect.String {
+				catcher.Add(fmt.Errorf("secure field %s is not a string", propName))
+				continue
+			}
+			propVal.SetString("***")
+		}
+
+		// if this is a struct, recursively scrub its secure fields
+		if reflect.Indirect(propVal).Kind() == reflect.Struct {
+			propInterface := propVal.Interface()
+			section, ok := propInterface.(Model)
+			if !ok {
+				catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
+				continue
+			}
+			catcher.Add(scrubSecureFields(section))
+		}
+	}
+
+	return catcher.Resolve()
 }
 
 // ToService returns a service model from an API model
@@ -212,7 +251,7 @@ type APISMTPConfig struct {
 	Port       int         `json:"port"`
 	UseSSL     bool        `json:"use_ssl"`
 	Username   APIString   `json:"username"`
-	Password   APIString   `json:"password"`
+	Password   APIString   `json:"password" secure:"true"`
 	From       APIString   `json:"from"`
 	AdminEmail []APIString `json:"admin_email"`
 }
@@ -290,7 +329,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 
 type APIapiConfig struct {
 	HttpListenAddr      APIString `json:"http_listen_addr"`
-	GithubWebhookSecret APIString `json:"github_webhook_secret"`
+	GithubWebhookSecret APIString `json:"github_webhook_secret" secure:"true"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
@@ -378,7 +417,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 
 type APICrowdConfig struct {
 	Username APIString `json:"username"`
-	Password APIString `json:"password"`
+	Password APIString `json:"password" secure:"true"`
 	Urlroot  APIString `json:"url_root"`
 }
 
@@ -450,7 +489,7 @@ func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
 type APIAuthUser struct {
 	Username    APIString `json:"username"`
 	DisplayName APIString `json:"display_name"`
-	Password    APIString `json:"password"`
+	Password    APIString `json:"password" secure:"true"`
 	Email       APIString `json:"email"`
 }
 
@@ -484,7 +523,7 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 
 type APIGithubAuthConfig struct {
 	ClientId     APIString   `json:"client_id"`
-	ClientSecret APIString   `json:"client_secret"`
+	ClientSecret APIString   `json:"client_secret" secure:"true"`
 	Users        []APIString `json:"users"`
 	Organization APIString   `json:"organization"`
 }
@@ -551,7 +590,7 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 type APIJiraConfig struct {
 	Host           APIString `json:"host"`
 	Username       APIString `json:"username"`
-	Password       APIString `json:"password"`
+	Password       APIString `json:"password" secure:"true"`
 	DefaultProject APIString `json:"default_project"`
 }
 
@@ -578,9 +617,9 @@ func (a *APIJiraConfig) ToService() (interface{}, error) {
 }
 
 type APILoggerConfig struct {
-	Buffer         APILogBuffering `json:"buffer"`
-	DefaultLevel   APIString       `json:"default_level"`
-	ThresholdLevel APIString       `json:"threshold_level"`
+	Buffer         *APILogBuffering `json:"buffer"`
+	DefaultLevel   APIString        `json:"default_level"`
+	ThresholdLevel APIString        `json:"threshold_level"`
 }
 
 func (a *APILoggerConfig) BuildFromService(h interface{}) error {
@@ -588,7 +627,7 @@ func (a *APILoggerConfig) BuildFromService(h interface{}) error {
 	case evergreen.LoggerConfig:
 		a.DefaultLevel = APIString(v.DefaultLevel)
 		a.ThresholdLevel = APIString(v.ThresholdLevel)
-		a.Buffer = APILogBuffering{}
+		a.Buffer = &APILogBuffering{}
 		if err := a.Buffer.BuildFromService(v.Buffer); err != nil {
 			return err
 		}
@@ -692,16 +731,21 @@ func (a *APINotifyConfig) ToService() (interface{}, error) {
 }
 
 type APICloudProviders struct {
-	AWS       APIAWSConfig       `json:"aws"`
-	Docker    APIDockerConfig    `json:"docker"`
-	GCE       APIGCEConfig       `json:"gce"`
-	OpenStack APIOpenStackConfig `json:"openstack"`
-	VSphere   APIVSphereConfig   `json:"vsphere"`
+	AWS       *APIAWSConfig       `json:"aws"`
+	Docker    *APIDockerConfig    `json:"docker"`
+	GCE       *APIGCEConfig       `json:"gce"`
+	OpenStack *APIOpenStackConfig `json:"openstack"`
+	VSphere   *APIVSphereConfig   `json:"vsphere"`
 }
 
 func (a *APICloudProviders) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case evergreen.CloudProviders:
+		a.AWS = &APIAWSConfig{}
+		a.Docker = &APIDockerConfig{}
+		a.GCE = &APIGCEConfig{}
+		a.OpenStack = &APIOpenStackConfig{}
+		a.VSphere = &APIVSphereConfig{}
 		if err := a.AWS.BuildFromService(v.AWS); err != nil {
 			return err
 		}
@@ -754,7 +798,7 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	Secret APIString `json:"aws_secret"`
+	Secret APIString `json:"aws_secret" secure:"true"`
 	Id     APIString `json:"aws_id"`
 }
 
@@ -798,7 +842,7 @@ func (a *APIDockerConfig) ToService() (interface{}, error) {
 
 type APIGCEConfig struct {
 	ClientEmail  APIString `json:"client_email"`
-	PrivateKey   APIString `json:"private_key"`
+	PrivateKey   APIString `json:"private_key" secure:"true"`
 	PrivateKeyID APIString `json:"private_key_id"`
 	TokenURI     APIString `json:"token_uri"`
 }
@@ -829,7 +873,7 @@ type APIOpenStackConfig struct {
 	IdentityEndpoint APIString `json:"identity_endpoint"`
 
 	Username   APIString `json:"username"`
-	Password   APIString `json:"password"`
+	Password   APIString `json:"password" secure:"true"`
 	DomainName APIString `json:"domain_name"`
 
 	ProjectName APIString `json:"project_name"`
@@ -869,7 +913,7 @@ func (a *APIOpenStackConfig) ToService() (interface{}, error) {
 type APIVSphereConfig struct {
 	Host     APIString `json:"host"`
 	Username APIString `json:"username"`
-	Password APIString `json:"password"`
+	Password APIString `json:"password" secure:"true"`
 }
 
 func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
@@ -958,9 +1002,9 @@ type APIServiceFlags struct {
 }
 
 type APISlackConfig struct {
-	Options APISlackOptions `json:"options"`
-	Token   APIString       `json:"token"`
-	Level   APIString       `json:"level"`
+	Options *APISlackOptions `json:"options"`
+	Token   APIString        `json:"token" secure:"true"`
+	Level   APIString        `json:"level"`
 }
 
 func (a *APISlackConfig) BuildFromService(h interface{}) error {
@@ -969,7 +1013,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		a.Token = APIString(v.Token)
 		a.Level = APIString(v.Level)
 		if v.Options != nil {
-			a.Options = APISlackOptions{}
+			a.Options = &APISlackOptions{}
 			if err := a.Options.BuildFromService(*v.Options); err != nil {
 				return err
 			}
@@ -1061,11 +1105,11 @@ type APIUIConfig struct {
 	Url            APIString `json:"url"`
 	HelpUrl        APIString `json:"help_url"`
 	HttpListenAddr APIString `json:"http_listen_addr"`
-	Secret         APIString `json:"secret"`
+	Secret         APIString `json:"secret" secure:"true"`
 	DefaultProject APIString `json:"default_project"`
 	CacheTemplates bool      `json:"cache_templates"`
 	SecureCookies  bool      `json:"secure_cookies"`
-	CsrfKey        APIString `json:"csrf_key"`
+	CsrfKey        APIString `json:"csrf_key" secure:"true"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
