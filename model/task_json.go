@@ -64,13 +64,6 @@ var (
 )
 
 // Returns distinct list of all tags for given `projectId`
-// returns [{
-//   _id: <tag name>,
-//   obj: {
-//     created: <ISO dateime>,
-//     revision: <associated revision>,
-//   }
-// }, ...]
 func GetDistinctTagNames(projectId string) ([]Tag, error) {
 	out := []Tag{}
 
