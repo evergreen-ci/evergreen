@@ -55,6 +55,8 @@ func startWebService() cli.Command {
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
+			startWebTierBackgroundJobs(ctx, env)
+
 			router := mux.NewRouter()
 
 			apiHandler, err := getHandlerAPI(settings, queue, router)
