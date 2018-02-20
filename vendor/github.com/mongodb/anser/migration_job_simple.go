@@ -30,7 +30,6 @@ func makeSimpleMigration() *simpleMigrationJob {
 			JobType: amboy.JobType{
 				Name:    "simple-migration",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

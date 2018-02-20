@@ -47,7 +47,6 @@ func newMockJob() *mockJob {
 			JobType: amboy.JobType{
 				Name:    "mock",
 				Version: 1,
-				Format:  amboy.BSON,
 			},
 		},
 	}

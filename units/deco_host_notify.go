@@ -39,7 +39,6 @@ func makeDecoHostsNotifyJob() *decoHostNotifyJob {
 			JobType: amboy.JobType{
 				Name:    decoHostNotifyJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

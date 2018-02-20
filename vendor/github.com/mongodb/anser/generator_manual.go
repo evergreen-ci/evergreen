@@ -38,7 +38,6 @@ func makeManualGenerator() *manualMigrationGenerator {
 			JobType: amboy.JobType{
 				Name:    "manual-migration-generator",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

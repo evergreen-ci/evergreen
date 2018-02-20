@@ -3,6 +3,7 @@ package rest
 import (
 	"net/http"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/tychoish/gimlet"
@@ -20,7 +21,7 @@ func (s *Service) Fetch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := registry.MakeJobInterchange(job)
+	resp, err := registry.MakeJobInterchange(job, amboy.JSON)
 	if err != nil {
 		grip.Warningf("problem converting job %s to interchange format", name)
 		gimlet.WriteJSONResponse(w, http.StatusInternalServerError, resp)

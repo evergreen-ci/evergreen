@@ -68,7 +68,6 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 			JobType: amboy.JobType{
 				Name:    amboyStatsCollectorJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

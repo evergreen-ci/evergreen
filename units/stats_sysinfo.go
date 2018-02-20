@@ -37,7 +37,6 @@ func makeSysInfoStatsCollector() *sysInfoStatsCollector {
 			JobType: amboy.JobType{
 				Name:    sysInfoStatsCollectorJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

@@ -42,7 +42,6 @@ func makeLatencyStatsCollector() *latencyStatsCollector {
 			JobType: amboy.JobType{
 				Name:    latencyStatsCollectorJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 		Duration: latencyStatsCollectorInterval,

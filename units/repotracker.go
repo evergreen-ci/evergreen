@@ -36,7 +36,6 @@ func makeRepotrackerJob() *repotrackerJob {
 			JobType: amboy.JobType{
 				Name:    repotrackerJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

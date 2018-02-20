@@ -38,7 +38,6 @@ func makeSimpleGenerator() *simpleMigrationGenerator {
 			JobType: amboy.JobType{
 				Name:    "simple-migration-generator",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

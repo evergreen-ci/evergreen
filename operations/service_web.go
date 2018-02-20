@@ -55,14 +55,6 @@ func startWebService() cli.Command {
 			grip.SetName("evergreen.service")
 			grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
-			amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
-				return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
-			})
-
-			amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
-				return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
-			})
-
 			router := mux.NewRouter()
 
 			apiHandler, err := getHandlerAPI(settings, queue, router)
@@ -134,7 +126,28 @@ func startWebService() cli.Command {
 			return catcher.Resolve()
 		},
 	}
+}
 
+func startWebTierBackgroundJobs(ctx context.Context, env evergreen.Environment) {
+	opts := amboy.QueueOperationConfig{
+		ContinueOnError: true,
+		LogErrors:       false,
+		DebugLogging:    false,
+	}
+
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), opts, func(queue amboy.Queue) error {
+		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
+	})
+
+	opts = amboy.QueueOperationConfig{
+		ContinueOnError: false,
+		LogErrors:       true,
+		DebugLogging:    false,
+	}
+
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
+		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))
+	})
 }
 
 func gracefulShutdownForSIGTERM(ctx context.Context, servers []*http.Server, wait chan struct{}, catcher grip.Catcher) {

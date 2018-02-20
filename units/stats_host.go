@@ -39,7 +39,6 @@ func makeHostStatsCollector() *hostStatsCollector {
 			JobType: amboy.JobType{
 				Name:    hostStatsCollectorJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

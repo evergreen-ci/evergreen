@@ -30,7 +30,6 @@ func makeManualMigration() *manualMigrationJob {
 			JobType: amboy.JobType{
 				Name:    "manual-migration",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

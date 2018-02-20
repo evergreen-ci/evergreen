@@ -73,7 +73,6 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 			JobType: amboy.JobType{
 				Name:    patchIntentJobName,
 				Version: 1,
-				Format:  amboy.BSON,
 			},
 		},
 	}

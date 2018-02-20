@@ -23,6 +23,20 @@ const (
 	JSON
 )
 
+// String implements fmt.Stringer and pretty prints the format name.
+func (f Format) String() string {
+	switch f {
+	case JSON:
+		return "json"
+	case BSON:
+		return "bson"
+	case YAML:
+		return "yaml"
+	default:
+		return "INVALID"
+	}
+}
+
 // ConvertTo takes a Format specification and interface and returns a
 // serialized byte sequence according to that Format value. If there
 // is an issue with the serialization, or the Format value is not

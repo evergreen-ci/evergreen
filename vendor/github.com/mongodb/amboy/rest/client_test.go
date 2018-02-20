@@ -527,13 +527,13 @@ func (s *ClientSuite) TestSubmitDuplicateJobReturnsError() {
 
 	// first time works
 	name, err := s.client.SubmitJob(ctx, j)
-	s.Equal(j.ID(), name)
 	s.NoError(err)
+	s.Equal(j.ID(), name)
 
 	// second time doesn't
 	name, err = s.client.SubmitJob(ctx, j)
-	s.Equal("", name)
 	s.Error(err)
+	s.Equal("", name)
 }
 
 func (s *ClientSuite) TestWhenWaitMethodReturnsJobsAreComplete() {
@@ -597,9 +597,10 @@ func (s *ClientSuite) TestFetchJobReturnsEquivalentJob() {
 
 	for _, j := range jobs {
 		rj, err := s.client.FetchJob(ctx, j.ID())
-		s.NoError(err)
-		s.Equal(j.ID(), rj.ID())
-		s.Equal(j.Command, rj.(*job.ShellJob).Command)
+		if s.NoError(err) {
+			s.Equal(j.ID(), rj.ID())
+			s.Equal(j.Command, rj.(*job.ShellJob).Command)
+		}
 	}
 }
 
