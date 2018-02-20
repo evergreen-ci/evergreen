@@ -34,7 +34,6 @@ func makeVersionActivationCatchupJob() *versionActivationCatchup {
 			JobType: amboy.JobType{
 				Name:    versionActivationCatchupJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

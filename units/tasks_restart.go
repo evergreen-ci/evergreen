@@ -34,7 +34,6 @@ func makeTaskRestartJob() *restartTasksJob {
 			JobType: amboy.JobType{
 				Name:    restartTasksJobName,
 				Version: 1,
-				Format:  amboy.BSON,
 			},
 		},
 	}

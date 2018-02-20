@@ -28,7 +28,6 @@ func makeStreamProducer() *streamMigrationJob {
 			JobType: amboy.JobType{
 				Name:    "stream-migration",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

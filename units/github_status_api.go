@@ -80,7 +80,6 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 			JobType: amboy.JobType{
 				Name:    githubStatusUpdateJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

@@ -71,7 +71,6 @@ type Job interface {
 type JobType struct {
 	Name    string `json:"name" bson:"name" yaml:"name"`
 	Version int    `json:"version" bson:"version" yaml:"version"`
-	Format  Format `json:"format" bson:"format" yaml:"format"`
 }
 
 // JobStatusInfo contains information about the current status of a

@@ -50,7 +50,6 @@ func NewShellJobInstance() *ShellJob {
 			JobType: amboy.JobType{
 				Name:    "shell",
 				Version: 1,
-				Format:  amboy.BSON,
 			},
 		},
 	}

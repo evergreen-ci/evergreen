@@ -38,7 +38,6 @@ func makeStreamGenerator() *streamMigrationGenerator {
 			JobType: amboy.JobType{
 				Name:    "stream-migration-generator",
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}
@@ -103,6 +102,7 @@ func (j *streamMigrationGenerator) generateJobs(env Environment, iter db.Iterato
 			ProcessorName: j.ProcessorName,
 			Migration:     j.ID(),
 			Namespace:     j.NS,
+			Query:         j.Query,
 		}).(*streamMigrationJob)
 
 		m.SetDependency(env.NewDependencyManager(j.ID()))

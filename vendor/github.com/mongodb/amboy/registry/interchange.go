@@ -18,24 +18,24 @@ type JobInterchange struct {
 	Job        *rawJob                `json:"job,omitempty" bson:"job,omitempty" yaml:"job,omitempty"`
 	Dependency *DependencyInterchange `json:"dependency,omitempty" bson:"dependency,omitempty" yaml:"dependency,omitempty"`
 	Status     amboy.JobStatusInfo    `bson:"status" json:"status" yaml:"status"`
-	TimeInfo   amboy.JobTimeInfo      `bson:"time_info" json:"time_info" yaml:"time_info"`
+	TimeInfo   amboy.JobTimeInfo      `bson:"time_info" json:"time_info,omitempty" yaml:"time_info,omitempty"`
 }
 
 // MakeJobInterchange changes a Job interface into a JobInterchange
 // structure, for easier serialization.
-func MakeJobInterchange(j amboy.Job) (*JobInterchange, error) {
+func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 	typeInfo := j.Type()
 
 	if typeInfo.Version < 0 {
 		return nil, errors.New("cannot use jobs with versions less than 0 with job interchange")
 	}
 
-	dep, err := makeDependencyInterchange(typeInfo.Format, j.Dependency())
+	dep, err := makeDependencyInterchange(f, j.Dependency())
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := amboy.ConvertTo(j.Type().Format, j)
+	data, err := amboy.ConvertTo(f, j)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func MakeJobInterchange(j amboy.Job) (*JobInterchange, error) {
 // JobInterchange object isn't registered or the current version of
 // the job produced by the registry is *not* the same as the version
 // of the Job.
-func ConvertToJob(j *JobInterchange) (amboy.Job, error) {
+func ConvertToJob(j *JobInterchange, f amboy.Format) (amboy.Job, error) {
 	factory, err := GetJobFactory(j.Type)
 	if err != nil {
 		return nil, err
@@ -77,12 +77,12 @@ func ConvertToJob(j *JobInterchange) (amboy.Job, error) {
 			j.Name, j.Version, job.Type().Version, j.Type)
 	}
 
-	dep, err := convertToDependency(job.Type().Format, j.Dependency)
+	dep, err := convertToDependency(f, j.Dependency)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	err = amboy.ConvertFrom(job.Type().Format, j.Job.Body, job)
+	err = amboy.ConvertFrom(f, j.Job.Body, job)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting job body")
 	}

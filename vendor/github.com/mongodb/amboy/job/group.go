@@ -38,7 +38,6 @@ func newGroupInstance() *Group {
 			JobType: amboy.JobType{
 				Name:    "group",
 				Version: 1,
-				Format:  amboy.BSON,
 			},
 		},
 	}
@@ -61,7 +60,7 @@ func (g *Group) Add(j amboy.Job) error {
 			name, g.ID())
 	}
 
-	job, err := registry.MakeJobInterchange(j)
+	job, err := registry.MakeJobInterchange(j, amboy.JSON)
 	if err != nil {
 		return err
 	}
@@ -84,7 +83,7 @@ func (g *Group) Run() {
 
 	g.mutex.RLock()
 	for _, job := range g.Jobs {
-		runnableJob, err := registry.ConvertToJob(job)
+		runnableJob, err := registry.ConvertToJob(job, amboy.JSON)
 		if err != nil {
 			g.AddError(err)
 			continue
@@ -110,7 +109,7 @@ func (g *Group) Run() {
 			jobErr := j.Error()
 			g.AddError(jobErr)
 
-			job, err := registry.MakeJobInterchange(j)
+			job, err := registry.MakeJobInterchange(j, amboy.JSON)
 			if err != nil {
 				g.AddError(err)
 				return

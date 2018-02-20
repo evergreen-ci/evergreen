@@ -3,6 +3,7 @@ package rest
 import (
 	"net/http"
 
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/tychoish/gimlet"
@@ -26,7 +27,7 @@ func (s *Service) createJobResponseBase() *createResponse {
 func (s *Service) createJob(payload *registry.JobInterchange) (*createResponse, error) {
 	resp := s.createJobResponseBase()
 
-	j, err := registry.ConvertToJob(payload)
+	j, err := registry.ConvertToJob(payload, amboy.JSON)
 	if err != nil {
 		resp.Error = err.Error()
 		return resp, err

@@ -40,7 +40,6 @@ func newTaskEndJob() *collectTaskEndDataJob {
 			JobType: amboy.JobType{
 				Name:    collectTaskEndDataJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}

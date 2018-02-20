@@ -130,12 +130,18 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	// repotracker operations. Generally the intervals are half the
 	// actual frequency of the job, which are controlled by the
 	// population functions.
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), true, units.PopulateActivationJobs())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), true, units.PopulateCatchupJobs())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), true, units.PopulateRepotrackerPollingJobs())
+	opts := amboy.QueueOperationConfig{
+		ContinueOnError: true,
+		LogErrors:       false,
+		DebugLogging:    false,
+	}
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, units.PopulateActivationJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs())
 
 	// add jobs to a local queue every minute for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), true, func(queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		ts := time.Now().Unix()
 
@@ -148,7 +154,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	})
 
 	// Add jobs to a local queue, every 15 seconds for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), true, func(queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), opts, func(queue amboy.Queue) error {
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
 	})
 }

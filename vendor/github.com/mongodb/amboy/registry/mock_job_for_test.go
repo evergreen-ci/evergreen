@@ -35,7 +35,6 @@ func NewTestJob(content string) *JobTest {
 		dep:     dependency.NewAlways(),
 		T: amboy.JobType{
 			Name:    "test",
-			Format:  amboy.BSON,
 			Version: 0,
 		},
 	}
@@ -45,7 +44,6 @@ func jobTestFactory() amboy.Job {
 	return &JobTest{
 		T: amboy.JobType{
 			Name:    "test",
-			Format:  amboy.BSON,
 			Version: 0,
 		},
 	}

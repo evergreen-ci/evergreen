@@ -42,7 +42,6 @@ func makeTaskStatsCollector() *taskStatsCollector {
 			JobType: amboy.JobType{
 				Name:    taskStatsCollectorJobName,
 				Version: 0,
-				Format:  amboy.BSON,
 			},
 		},
 	}
