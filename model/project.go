@@ -759,6 +759,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			return nil, errors.Wrap(err, "Error loading project from version")
 		}
 	}
+
 	return project, nil
 }
 

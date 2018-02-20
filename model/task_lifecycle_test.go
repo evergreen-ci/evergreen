@@ -1213,11 +1213,35 @@ func TestMarkDispatched(t *testing.T) {
 	})
 }
 
-func TestGetstepback(t *testing.T) {
+func TestGetStepback(t *testing.T) {
+	config := `
+stepback: true
+tasks:
+ - name: true
+   stepback: true
+ - name: false
+   stepback: false
+buildvariants:
+ - name: sbnil
+ - name: sbtrue
+   stepback: true
+ - name: sbfalse
+   stepback: false
+`
+
 	Convey("When the project has a stepback policy set to true", t, func() {
+		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, task.Collection, build.Collection, version.Collection), t,
+			"Error clearing collections")
+
+		ref := &ProjectRef{
+			Identifier:  "sample",
+			LocalConfig: config,
+		}
+
+		So(ref.Insert(), ShouldBeNil)
 
 		Convey("if the task does not override the setting", func() {
-			testTask := &task.Task{Id: "t1", DisplayName: "nil"}
+			testTask := &task.Task{Id: "t1", DisplayName: "nil", Project: "sample"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -1227,7 +1251,7 @@ func TestGetstepback(t *testing.T) {
 		})
 
 		Convey("if the task overrides the setting with true", func() {
-			testTask := &task.Task{Id: "t2", DisplayName: "true"}
+			testTask := &task.Task{Id: "t2", DisplayName: "true", Project: "sample"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -1237,7 +1261,7 @@ func TestGetstepback(t *testing.T) {
 		})
 
 		Convey("if the task overrides the setting with false", func() {
-			testTask := &task.Task{Id: "t3", DisplayName: "false"}
+			testTask := &task.Task{Id: "t3", DisplayName: "false", Project: "sample"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
@@ -1247,7 +1271,7 @@ func TestGetstepback(t *testing.T) {
 		})
 
 		Convey("if the buildvariant does not override the setting", func() {
-			testTask := &task.Task{Id: "t4", DisplayName: "bvnil", BuildVariant: "sbnil"}
+			testTask := &task.Task{Id: "t4", DisplayName: "bvnil", BuildVariant: "sbnil", Project: "sample"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -1257,7 +1281,7 @@ func TestGetstepback(t *testing.T) {
 		})
 
 		Convey("if the buildvariant overrides the setting with true", func() {
-			testTask := &task.Task{Id: "t5", DisplayName: "bvtrue", BuildVariant: "sbtrue"}
+			testTask := &task.Task{Id: "t5", DisplayName: "bvtrue", BuildVariant: "sbtrue", Project: "sample"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be true", func() {
 				val, err := getStepback(testTask.Id)
@@ -1267,7 +1291,7 @@ func TestGetstepback(t *testing.T) {
 		})
 
 		Convey("if the buildvariant overrides the setting with false", func() {
-			testTask := &task.Task{Id: "t6", DisplayName: "bvfalse", BuildVariant: "sbfalse"}
+			testTask := &task.Task{Id: "t6", DisplayName: "bvfalse", BuildVariant: "sbfalse", Project: "sample"}
 			So(testTask.Insert(), ShouldBeNil)
 			Convey("then the value should be false", func() {
 				val, err := getStepback(testTask.Id)
