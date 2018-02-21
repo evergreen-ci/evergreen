@@ -108,6 +108,10 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		}
 		return ResponseData{}, err
 	}
+	err = h.model.BuildFromService(newSettings)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "error building API model")
+	}
 	return ResponseData{
 		Result: []model.Model{h.model},
 	}, nil
