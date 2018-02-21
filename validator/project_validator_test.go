@@ -14,6 +14,7 @@ import (
 	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -1586,5 +1587,72 @@ buildvariants:
 	assert.Len(validationErrs, 1)
 	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts greater than half the number of tasks")
 	assert.Equal(validationErrs[0].Level, Warning)
+
+}
+
+func TestValidateGenerateTasks(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+
+	yml := `
+  tasks:
+  - name: gen_1
+    commands:
+    - command: generate.tasks
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: gen_1
+  `
+	var p model.Project
+	err := model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs := validateGenerateTasks(&p)
+	assert.Len(errs, 0)
+
+	yml = `
+  tasks:
+  - name: gen_1
+    commands:
+    - command: generate.tasks
+  - name: gen_2
+    commands:
+    - command: generate.tasks
+  buildvariants:
+  - name: "bv"
+    tasks:
+    - name: gen_1
+    - name: gen_2
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateGenerateTasks(&p)
+	assert.Len(errs, 1)
+
+	yml = `
+  functions:
+    gen_func:
+      command: generate.tasks
+  tasks:
+  - name: gen_1
+    commands:
+    - command: generate.tasks
+  - name: gen_2
+    commands:
+    - func: gen_func
+  buildvariants:
+  - name: "bv_1"
+    tasks:
+    - name: gen_1
+    - name: gen_2
+  - name: "bv_2"
+    tasks:
+    - name: gen_1
+    - name: gen_2
+  `
+	err = model.LoadProjectInto([]byte(yml), "id", &p)
+	require.NoError(err)
+	errs = validateGenerateTasks(&p)
+	assert.Len(errs, 2)
 
 }
