@@ -19,6 +19,10 @@ type MetricsSuite struct {
 }
 
 func TestMetricsSuite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		s.T().Skip("skipping metrics tests on windows")
+	}
+
 	suite.Run(t, new(MetricsSuite))
 }
 
@@ -32,9 +36,6 @@ func (s *MetricsSuite) SetupTest() {
 }
 
 func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
-	if runtime.GOOS == "windows" {
-		s.T().Skip("skipping on windows")
-	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -76,9 +77,6 @@ func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
 }
 
 func (s *MetricsSuite) TestCollectSubProcesses() {
-	if runtime.GOOS == "windows" {
-		s.T().Skip("skipping on windows")
-	}
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
 	s.NoError(cmd.Start())
