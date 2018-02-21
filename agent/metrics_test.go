@@ -20,7 +20,7 @@ type MetricsSuite struct {
 
 func TestMetricsSuite(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		s.T().Skip("skipping metrics tests on windows")
+		t.Skip("skipping metrics tests on windows")
 	}
 
 	suite.Run(t, new(MetricsSuite))
