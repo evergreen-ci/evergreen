@@ -88,6 +88,9 @@ func (a *Agent) loop(ctx context.Context) error {
 		tskCtx        context.Context
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
+
+		exit bool
+		tc   *taskContext
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -96,8 +99,9 @@ func (a *Agent) loop(ctx context.Context) error {
 
 	timer := time.NewTimer(0)
 	defer timer.Stop()
-	var tc taskContext
-	var exit bool
+
+	tc = &taskContext{}
+
 LOOP:
 	for {
 		select {
@@ -113,16 +117,16 @@ LOOP:
 				if nextTask.TaskSecret == "" {
 					return errors.New("task response missing secret")
 				}
-				tc, exit = a.prepareNextTask(ctx, nextTask, &tc)
+				tc, exit = a.prepareNextTask(ctx, nextTask, tc)
 				if exit {
 					// Query for next task, this time with an empty task group,
 					// to get a ShouldExit from the API, and set NeedsNewAgent.
 					continue LOOP
 				}
-				if err := a.resetLogging(lgrCtx, &tc); err != nil {
+				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
-				if err := a.runTask(tskCtx, &tc); err != nil {
+				if err := a.runTask(tskCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
 				timer.Reset(0)
@@ -135,7 +139,7 @@ LOOP:
 	}
 }
 
-func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (taskContext, bool) {
+func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (*taskContext, bool) {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
 	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
@@ -144,10 +148,10 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
 		if nextTask.NewAgent {
-			return taskContext{}, true
+			return &taskContext{}, true
 		}
 	}
-	return taskContext{
+	return &taskContext{
 		task: client.TaskData{
 			ID:     nextTask.TaskId,
 			Secret: nextTask.TaskSecret,

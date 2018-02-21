@@ -18,10 +18,12 @@ func TestTerminateHosts(t *testing.T) {
 	assert := assert.New(t)
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 	testutil.HandleTestingErr(db.Clear(host.Collection), t, "error clearing host collection")
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	env := &mock.Environment{}
 	assert.NoError(env.Configure(ctx, ""))
+	assert.NoError(env.Local.Start(ctx))
 
 	// test that trying to terminate a host that does not exist is handled gracecfully
 	h := &host.Host{
