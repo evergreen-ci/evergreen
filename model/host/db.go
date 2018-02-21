@@ -48,9 +48,7 @@ var (
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	NotificationsKey           = bsonutil.MustHaveTag(Host{}, "Notifications")
 	UserDataKey                = bsonutil.MustHaveTag(Host{}, "UserData")
-	LastReachabilityCheckKey   = bsonutil.MustHaveTag(Host{}, "LastReachabilityCheck")
 	LastCommunicationTimeKey   = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
-	UnreachableSinceKey        = bsonutil.MustHaveTag(Host{}, "UnreachableSince")
 	UserHostKey                = bsonutil.MustHaveTag(Host{}, "UserHost")
 	ZoneKey                    = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey                 = bsonutil.MustHaveTag(Host{}, "Project")
@@ -326,8 +324,8 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 			}},
 			{StartedByKey: evergreen.User},
 			{"$or": []bson.M{
-				{LastReachabilityCheckKey: bson.M{"$lte": threshold}},
-				{LastReachabilityCheckKey: bson.M{"$exists": false}},
+				{LastCommunicationTimeKey: bson.M{"$lte": threshold}},
+				{LastCommunicationTimeKey: bson.M{"$exists": false}},
 			}},
 		},
 	})
@@ -350,8 +348,14 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 // given time threshold.
 func ByUnreachableBefore(threshold time.Time) db.Q {
 	return db.Query(bson.M{
-		StatusKey:           evergreen.HostUnreachable,
-		UnreachableSinceKey: bson.M{"$gt": time.Unix(0, 0), "$lt": threshold},
+		StatusKey: evergreen.HostUnreachable,
+		"$or": []bson.M{
+			{LastCommunicationTimeKey: bson.M{"$lt": threshold}},
+			{
+				NeedsNewAgentKey:         false,
+				LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
+			},
+		},
 	})
 }
 
