@@ -241,7 +241,7 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 
 		// if the task is attached to the context, check host-task relationship
 		t := GetTask(r)
-		if t != nil && h.RunningTask != t.Id {
+		if !as.checkHostTaskRelationship(h, t) {
 			as.LoggedError(w, r, http.StatusConflict,
 				errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
 			return
@@ -255,6 +255,19 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 		r = setAPIHostContext(r, h)
 		next(w, r)
 	}
+}
+
+func (as *APIServer) checkHostTaskRelationship(h *host.Host, t *task.Task) bool {
+	if t == nil {
+		return true
+	}
+	if t.Id == h.RunningTask {
+		return true
+	}
+	if t.Id == h.LastTaskCompleted && h.RunningTask == "" {
+		return true
+	}
+	return false
 }
 
 func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
