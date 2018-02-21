@@ -80,6 +80,11 @@ type Host struct {
 
 	// if set, the time at which the host first became unreachable
 	UnreachableSince time.Time `bson:"unreachable_since,omitempty" json:"unreachable_since"`
+
+	// incremented by task start and end stats collectors and
+	// should reflect hosts total costs. Only populated for build-hosts
+	// where host providers report costs.
+	TotalCost float64 `bson:"total_cost,omitempty" json:"total_cost,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -664,6 +669,24 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	}
 
 	return host, nil
+}
+
+func (h *Host) IncCost(amt float64) error {
+	info, err := db.FindAndModify(Collection, bson.M{IdKey: h.Id}, []string{},
+		mgo.Change{
+			Update:    bson.M{TotalCostKey: bson.M{"$inc": amt}},
+			ReturnNew: true,
+		}, h)
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if info.Updated != 1 {
+		return errors.New("cost increment operation failed")
+	}
+
+	return nil
 }
 
 func (h *Host) DisablePoisonedHost() error {

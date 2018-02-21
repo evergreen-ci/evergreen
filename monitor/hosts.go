@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -49,6 +50,7 @@ func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergr
 // need to be terminated and terminating them
 func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro, settings *evergreen.Settings) error {
 	startAt := time.Now()
+	env := evergreen.GetEnvironment()
 	catcher := grip.NewBasicCatcher()
 	hostIdsToTerminate := []string{}
 	hosts := make(chan host.Host)
@@ -71,7 +73,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 						return
 					}
 
-					catcher.Add(errors.Wrapf(terminateHost(ctx, &h, settings),
+					catcher.Add(errors.Wrapf(terminateHost(ctx, env, &h, settings),
 						"problem terminating host %s", h.Id))
 				}
 			}
@@ -126,7 +128,10 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 }
 
 // helper to terminate a single host
-func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settings) error {
+func terminateHost(ctx context.Context, env evergreen.Environment, h *host.Host, settings *evergreen.Settings) error {
+	// record the last task completed time, if we clear the running task this value gets changed
+	lastTaskEnd := h.LastTaskCompletedTime
+
 	// clear the running task of the host in case one has been assigned.
 	if h.RunningTask != "" {
 		grip.Warning(message.Fields{
@@ -182,6 +187,11 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 	// terminate the instance
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {
 		return errors.Wrapf(err, "error terminating host %s", h.Id)
+	}
+
+	job := units.NewCollectHostIdleDataJob(h, lastTaskEnd, h.TerminationTime)
+	if err := env.LocalQueue().Put(job); err != nil {
+		return errors.Wrap(err, "problem queuing host end stats job")
 	}
 
 	return nil

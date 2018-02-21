@@ -57,6 +57,7 @@ var (
 	ProvisionOptionsKey        = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
 	ProvisionAttemptsKey       = bsonutil.MustHaveTag(Host{}, "ProvisionAttempts")
 	StartTimeKey               = bsonutil.MustHaveTag(Host{}, "StartTime")
+	TotalCostKey               = bsonutil.MustHaveTag(Host{}, "TotalCost")
 )
 
 // === Queries ===
