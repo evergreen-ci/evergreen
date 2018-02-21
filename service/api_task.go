@@ -71,12 +71,13 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
+
 	idleTimeStartAt := h.LastTaskCompletedTime
 	if idleTimeStartAt.IsZero() || idleTimeStartAt == util.ZeroTime {
 		idleTimeStartAt = h.StartTime
 	}
 
-	job := units.NewCollectHostIdleDataJob(h, idldTimeStartAt, t.StartTime)
+	job := units.NewCollectHostIdleDataJob(h, idleTimeStartAt, t.StartTime)
 	if err := as.queue.Put(job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing task start stats"))
 		return
