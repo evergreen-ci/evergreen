@@ -98,6 +98,21 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
 }
 
+func (s *AdminEventSuite) TestNoChanges() {
+	before := evergreen.SchedulerConfig{
+		MergeToggle: 5,
+		TaskFinder:  "legacy",
+	}
+	after := evergreen.SchedulerConfig{
+		MergeToggle: 5,
+		TaskFinder:  "legacy",
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	s.Len(dbEvents, 0)
+}
+
 func (s *AdminEventSuite) TestEventScrubbing() {
 	before := evergreen.AuthConfig{}
 	after := evergreen.AuthConfig{
