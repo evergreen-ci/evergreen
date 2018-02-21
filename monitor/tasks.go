@@ -55,12 +55,6 @@ func (tm *TaskMonitor) CleanupTasks(ctx context.Context) []error {
 
 // clean up the passed-in slice of tasks
 func cleanUpTasks(taskWrappers []doomedTaskWrapper) []error {
-	grip.Info(message.Fields{
-		"runner":  RunnerName,
-		"message": "Cleaning up tasks",
-		"count":   len(taskWrappers),
-	})
-
 	// used to store any errors that occur
 	var errs []error
 

@@ -18,11 +18,6 @@ type Notifier struct {
 
 // create and send any notifications that need to be sent
 func (self *Notifier) Notify(settings *evergreen.Settings) error {
-	grip.Debug(message.Fields{
-		"runner":  RunnerName,
-		"message": "building and sending notifications",
-	})
-
 	// used to store any errors that occur
 	catcher := grip.NewBasicCatcher()
 	startAt := time.Now()
@@ -45,7 +40,7 @@ func (self *Notifier) Notify(settings *evergreen.Settings) error {
 		catcher.Extend(sendNotifications(notifications, settings))
 	}
 
-	grip.Debug(message.Fields{
+	grip.Info(message.Fields{
 		"runner":        RunnerName,
 		"message":       "completed monitor notifications",
 		"num_builders":  len(self.notificationBuilders),
@@ -60,13 +55,6 @@ func (self *Notifier) Notify(settings *evergreen.Settings) error {
 // that are successfully sent. returns an aggregate list of any errors
 // that occur
 func sendNotifications(notifications []notification, settings *evergreen.Settings) []error {
-
-	grip.Debug(message.Fields{
-		"runner":            RunnerName,
-		"message":           "sending notifications",
-		"num_notifications": len(notifications),
-	})
-
 	// used to store any errors that occur
 	var errs []error
 
