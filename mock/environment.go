@@ -45,6 +45,9 @@ func (e *Environment) Configure(ctx context.Context, path string) error {
 	e.Local = queue.NewLocalUnordered(2)
 
 	edb.SetGlobalSessionProvider(e.EvergreenSettings.SessionFactory())
+	if err := e.Local.Start(ctx); err != nil {
+		return err
+	}
 
 	return nil
 }
