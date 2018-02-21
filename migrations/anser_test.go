@@ -43,9 +43,6 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(app)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	env, err := opts.Setup(ctx)
 	assert.NoError(err)
 	assert.NotNil(env)
