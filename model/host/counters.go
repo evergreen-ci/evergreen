@@ -41,7 +41,7 @@ func (h *Host) IncIdleTime(dur time.Duration) error {
 	change := mgo.Change{
 		ReturnNew: true,
 		Update: bson.M{
-			"$inc": bson.M{TotalIdleTimeKey: 1},
+			"$inc": bson.M{TotalIdleTimeKey: dur},
 		},
 	}
 
