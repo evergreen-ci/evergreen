@@ -1594,6 +1594,7 @@ func TestValidateGenerateTasks(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
+// passing case
 	yml := `
   tasks:
   - name: gen_1
@@ -1610,6 +1611,7 @@ func TestValidateGenerateTasks(t *testing.T) {
 	errs := validateGenerateTasks(&p)
 	assert.Len(errs, 0)
 
+// buildvariant that calls two tasks that call `generate.tasks`
 	yml = `
   tasks:
   - name: gen_1
@@ -1629,6 +1631,7 @@ func TestValidateGenerateTasks(t *testing.T) {
 	errs = validateGenerateTasks(&p)
 	assert.Len(errs, 1)
 
+// buildvariants that call a task with a function and a task with a command with `generate.tasks`
 	yml = `
   functions:
     gen_func:
