@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -68,10 +67,6 @@ func (j *collecHostIdleDataJob) Run() {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	if j.StartTime.IsZero() || j.StartTime == util.ZeroTime {
-		j.StartTime = j.host.StartTime
-	}
-
 	settings := j.env.Settings()
 
 	var cost float64
@@ -101,7 +96,7 @@ func (j *collecHostIdleDataJob) Run() {
 	}
 
 	msg := message.Fields{
-		"stat":      "host-idle-stat",
+		"stat":      "host-idle",
 		"distro":    j.host.Distro.Id,
 		"provider":  j.host.Distro.Provider,
 		"host":      j.host.Id,
