@@ -35,11 +35,6 @@ type doomedTaskWrapper struct {
 // flagTimedOutHeartbeats is a taskFlaggingFunc to flag any tasks whose
 // heartbeats have timed out
 func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
-	grip.Info(message.Fields{
-		"runner":  RunnerName,
-		"message": "Finding tasks with timed-out heartbeats",
-	})
-
 	// fetch any running tasks whose last heartbeat was too long in the past
 	threshold := time.Now().Add(-HeartbeatTimeoutThreshold)
 

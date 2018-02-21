@@ -47,14 +47,7 @@ type notification struct {
 
 // spawnHostExpirationWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that will be expiring soon (but haven't expired yet)
-func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
-	error) {
-
-	grip.Debug(message.Fields{
-		"runner":  RunnerName,
-		"message": "building spawned host expiration warnings",
-	})
-
+func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification, error) {
 	// sanity check, since the thresholds are supplied in code
 	if len(spawnWarningThresholds) == 0 {
 		grip.Warning(message.Fields{
@@ -94,13 +87,6 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 		if h.Notifications[thresholdKey] {
 			continue
 		}
-
-		grip.Debug(message.Fields{
-			"message":   "warning needed for threshold",
-			"host":      h.Id,
-			"threshold": thresholdKey,
-			"runner":    RunnerName,
-		})
 
 		// fetch information about the user we are notifying
 		userToNotify, err := user.FindOne(user.ById(h.StartedBy))
@@ -149,12 +135,6 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 		warnings = append(warnings, hostNotification)
 	}
 
-	grip.Debug(message.Fields{
-		"runner":       RunnerName,
-		"message":      "built warnings about imminently expiring hosts",
-		"num_warnings": len(warnings),
-	})
-
 	return warnings, nil
 }
 
@@ -180,12 +160,6 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 // slowProvisioningWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that are taking a long time to provision
 func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, error) {
-
-	grip.Debug(message.Fields{
-		"runner":    RunnerName,
-		"operation": "building slow provisioning warnings",
-	})
-
 	if settings.Notify.SMTP == nil {
 		return []notification{}, errors.New("no notification emails configured")
 	}
@@ -207,13 +181,6 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, err
 			continue
 		}
 
-		grip.Debug(message.Fields{
-			"message": "creating warning",
-			"warning": "slow provisioning host",
-			"runner":  RunnerName,
-			"host":    h.Id,
-		})
-
 		// build the notification
 		hostNotification := notification{
 			recipient: settings.Notify.SMTP.AdminEmail[0],
@@ -232,12 +199,6 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification, err
 		warnings = append(warnings, hostNotification)
 
 	}
-
-	grip.Debug(message.Fields{
-		"runner":       RunnerName,
-		"message":      "built warnings about slow provisioning hosts",
-		"num_warnings": len(warnings),
-	})
 
 	return warnings, nil
 }

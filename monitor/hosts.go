@@ -84,12 +84,6 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 			break
 		}
 
-		grip.Debug(message.Fields{
-			"runner":  RunnerName,
-			"message": "Running flagging function for hosts",
-			"reason":  flagger.Reason,
-		})
-
 		// find the next batch of hosts to terminate
 		flaggedHosts, err := flagger.hostFlaggingFunc(ctx, distros, settings)
 
@@ -152,12 +146,6 @@ func terminateHost(ctx context.Context, h *host.Host, settings *evergreen.Settin
 
 	// run teardown script if we have one, sending notifications if things go awry
 	if h.Distro.Teardown != "" && h.Provisioned {
-		grip.Info(message.Fields{
-			"runner":  RunnerName,
-			"message": "running teardown script for host",
-			"host":    h.Id,
-		})
-
 		if err := runHostTeardown(ctx, h, cloudHost); err != nil {
 			grip.Error(message.Fields{
 				"runner":  RunnerName,

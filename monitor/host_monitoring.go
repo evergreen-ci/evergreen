@@ -26,12 +26,6 @@ type hostMonitoringFunc func(context.Context, *evergreen.Settings) []error
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
 func monitorReachability(ctx context.Context, settings *evergreen.Settings) []error {
-	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"operation": "monitorReachability",
-		"message":   "Running reachability checks",
-	})
-
 	// used to store any errors that occur
 	var errs []error
 
@@ -106,13 +100,6 @@ func monitorReachability(ctx context.Context, settings *evergreen.Settings) []er
 
 // check reachability for a single host, and take any necessary action
 func checkHostReachability(ctx context.Context, host host.Host, settings *evergreen.Settings) error {
-	grip.Info(message.Fields{
-		"runner":    RunnerName,
-		"operation": "monitorReachability",
-		"message":   "Running reachability check for host",
-		"host":      host.Id,
-	})
-
 	// get a cloud version of the host
 	cloudHost, err := cloud.GetCloudHost(ctx, &host, settings)
 	if err != nil {
@@ -128,27 +115,8 @@ func checkHostReachability(ctx context.Context, host host.Host, settings *evergr
 	// take different action, depending on how the cloud provider reports the host's status
 	switch cloudStatus {
 	case cloud.StatusRunning:
-		reachable := true
-
-		// log the status update if the reachability of the host is changing
-		if host.Status == evergreen.HostUnreachable && reachable {
-			grip.Info(message.Fields{
-				"runner":    RunnerName,
-				"operation": "monitorReachability",
-				"message":   "Setting host as reachable",
-				"host":      host.Id,
-			})
-		} else if host.Status != evergreen.HostUnreachable && !reachable {
-			grip.Info(message.Fields{
-				"runner":    RunnerName,
-				"operation": "monitorReachability",
-				"message":   "Setting host as unreachable",
-				"host":      host.Id,
-			})
-		}
-
 		// mark the host appropriately; this is a noop if the host status hasn't changed.
-		if err := host.UpdateReachability(reachable); err != nil {
+		if err := host.UpdateReachability(true); err != nil {
 			return errors.Wrapf(err, "error updating reachability for host %s", host.Id)
 		}
 
