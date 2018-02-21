@@ -38,7 +38,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 		RepotrackerDisabled: true,
 	}
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
-	dbEvents, err := FindAndScrub(RecentAdminEvents(1))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
 	eventData := dbEvents[0].Data.Data.(*AdminEventData)
 	s.True(eventData.IsValid())
@@ -48,6 +48,54 @@ func (s *AdminEventSuite) TestEventLogging() {
 	s.Equal(false, afterVal.AlertsDisabled)
 	s.Equal(true, afterVal.MonitorDisabled)
 	s.Equal(true, afterVal.RepotrackerDisabled)
+}
+
+func (s *AdminEventSuite) TestEventLogging2() {
+	before := evergreen.Settings{
+		ApiUrl:     "api",
+		Keys:       map[string]string{"k1": "v1"},
+		SuperUsers: []string{"a", "b", "c"},
+	}
+	after := evergreen.Settings{}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	s.True(eventData.IsValid())
+	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
+	afterVal := eventData.Changes.After.(*evergreen.Settings)
+	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
+	s.Equal(before.Keys, beforeVal.Keys)
+	s.Equal(before.SuperUsers, beforeVal.SuperUsers)
+	s.Equal("", afterVal.ApiUrl)
+	s.Equal(map[string]string{}, afterVal.Keys)
+	s.Equal([]string{}, afterVal.SuperUsers)
+}
+
+func (s *AdminEventSuite) TestEventLogging3() {
+	before := evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			Port:     10,
+			Password: "pass",
+		},
+	}
+	after := evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			Port:     20,
+			Password: "nope",
+		},
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	s.True(eventData.IsValid())
+	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
+	afterVal := eventData.Changes.After.(*evergreen.NotifyConfig)
+	s.Equal(before.SMTP.Port, beforeVal.SMTP.Port)
+	s.Equal(before.SMTP.Password, beforeVal.SMTP.Password)
+	s.Equal(after.SMTP.Port, afterVal.SMTP.Port)
+	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
 }
 
 func (s *AdminEventSuite) TestEventScrubbing() {

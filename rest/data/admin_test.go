@@ -160,19 +160,46 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		return
 	}
 
-	events, err := event.FindAndScrub(event.RecentAdminEvents(1000))
+	// spot check events in the event log
+	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
 	s.NoError(err)
+	foundAlertsEvent := false
 	foundFlagsEvent := false
+	foundProvidersEvent := false
+	foundRootEvent := false
+	foundUiEvent := false
 	for _, evt := range events {
 		s.Equal(event.EventTypeValueChanged, evt.EventType)
 		data := evt.Data.Data.(*event.AdminEventData)
 		s.Equal(u.Id, data.User)
-		switch data.Section {
-		case "service_flags":
+		switch v := data.Changes.After.(type) {
+		case *evergreen.AlertsConfig:
+			foundAlertsEvent = true
+			s.Equal(testSettings.Alerts.SMTP.From, v.SMTP.From)
+			s.Equal(testSettings.Alerts.SMTP.Username, v.SMTP.Username)
+		case *evergreen.ServiceFlags:
 			foundFlagsEvent = true
+			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
+		case *evergreen.CloudProviders:
+			foundProvidersEvent = true
+			s.Equal(testSettings.Providers.AWS.Id, v.AWS.Id)
+			s.Equal(testSettings.Providers.GCE.ClientEmail, v.GCE.ClientEmail)
+		case *evergreen.Settings:
+			foundRootEvent = true
+			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
+			s.Equal(testSettings.Credentials, v.Credentials)
+			s.Equal(testSettings.SuperUsers, v.SuperUsers)
+		case *evergreen.UIConfig:
+			foundUiEvent = true
+			s.Equal(testSettings.Ui.Url, v.Url)
+			s.Equal(testSettings.Ui.CacheTemplates, v.CacheTemplates)
 		}
 	}
+	s.True(foundAlertsEvent)
 	s.True(foundFlagsEvent)
+	s.True(foundProvidersEvent)
+	s.True(foundRootEvent)
+	s.True(foundUiEvent)
 
 	// test that updating the model with nil values does not change them
 	newBanner := "new banner"

@@ -74,7 +74,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 	return nil
 }
 
-func FindAndScrub(query db.Q) ([]Event, error) {
+func FindAdmin(query db.Q) ([]Event, error) {
 	eventsRaw, err := Find(AllLogCollection, query)
 	if err != nil {
 		return nil, err
@@ -88,14 +88,30 @@ func FindAndScrub(query db.Q) ([]Event, error) {
 			catcher.Add(err)
 			continue
 		}
-		catcher.Add(scrubConfig(eventData.Changes.Before.(evergreen.ConfigSection)))
-		catcher.Add(scrubConfig(eventData.Changes.After.(evergreen.ConfigSection)))
 		events = append(events, Event{
 			Timestamp:  event.Timestamp,
 			ResourceId: event.ResourceId,
 			EventType:  event.EventType,
 			Data:       DataWrapper{eventData},
 		})
+	}
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	return events, nil
+}
+
+func FindAndScrub(query db.Q) ([]Event, error) {
+	events, err := FindAdmin(query)
+	if err != nil {
+		return nil, err
+	}
+	catcher := grip.NewSimpleCatcher()
+	for _, event := range events {
+		eventData := event.Data.Data.(*AdminEventData)
+		catcher.Add(scrubConfig(eventData.Changes.Before.(evergreen.ConfigSection)))
+		catcher.Add(scrubConfig(eventData.Changes.After.(evergreen.ConfigSection)))
 	}
 	if catcher.HasErrors() {
 		return nil, catcher.Resolve()
