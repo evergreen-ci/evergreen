@@ -176,8 +176,9 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 		return timeTilNextHourlyPayment(h)
 	}
 
-	if time.Since(h.StartTime) < time.Minute {
-		return time.Minute - time.Now().Sub(h.StartTime)
+	upTime := time.Since(h.StartTime)
+	if upTime < time.Minute {
+		return time.Minute - upTime
 	}
 
 	return time.Second
