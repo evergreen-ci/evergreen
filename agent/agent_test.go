@@ -432,7 +432,7 @@ func (s *AgentSuite) TestWaitIdleTimeout() {
 
 func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask := &apimodels.NextTaskResponse{}
-	tc := taskContext{}
+	tc := &taskContext{}
 	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 	tc.taskConfig = &model.TaskConfig{
 		Task: &task.Task{
@@ -441,7 +441,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.taskDirectory = "task_directory"
 	var exit bool
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
 	s.True(tc.runGroupSetup, "if the next task is not in a group, runGroupSetup should be true")
 	s.Equal("", tc.taskGroup)
@@ -457,16 +457,16 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
 	s.False(tc.runGroupSetup, "if the next task is in the same group as the previous task, runGroupSetup should be false")
 	s.Equal("foo", tc.taskGroup)
 	s.Equal("task_directory", tc.taskDirectory)
 
 	nextTask.NewAgent = true
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.True(exit, "if NewAgent is true and we're in a task group, exit should be true")
-	s.Equal(taskContext{}, tc, "if NewAgent is true and we're in a task group, the task context should be empty")
+	s.Equal(&taskContext{}, tc, "if NewAgent is true and we're in a task group, the task context should be empty")
 	nextTask.NewAgent = false // reset NewAgent
 
 	nextTask.TaskGroup = "foo"
@@ -479,7 +479,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	}
 	tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
 	s.True(tc.runGroupSetup, "if the next task is a different group from the previous task, runGroupSetup should be false")
 	s.Equal("foo", tc.taskGroup)
@@ -494,7 +494,7 @@ func (s *AgentSuite) TestPrepareNextTask() {
 	nextTask.TaskGroup = "bar"
 	tc.taskGroup = "foo"
 	tc.taskDirectory = "task_directory"
-	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, &tc)
+	tc, exit = s.a.prepareNextTask(context.Background(), nextTask, tc)
 	s.False(exit)
 	s.True(tc.runGroupSetup, "if the next task is in a different group from the previous task, runGroupSetup should be true")
 	s.Equal("bar", tc.taskGroup)

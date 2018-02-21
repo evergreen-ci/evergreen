@@ -84,13 +84,13 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	m1, ok1 := s.sender.GetMessageSafe()
 	if s.True(ok1) {
 		s.True(m1.Logged)
-		s.True(strings.Contains(m1.Message.String(), "local queue stats"), m1.Message)
+		s.True(strings.Contains(m1.Message.String(), "local queue stats"), m1.Message.String())
 	}
 
 	m2, ok2 := s.sender.GetMessageSafe()
 	if s.True(ok2) {
 		s.True(m2.Logged)
-		s.True(strings.Contains(m2.Message.String(), "remote queue stats"), m2.Message)
+		s.True(strings.Contains(m2.Message.String(), "remote queue stats"), m2.Message.String())
 	}
 }
 
