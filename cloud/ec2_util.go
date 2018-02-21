@@ -175,6 +175,11 @@ func timeTilNextEC2Payment(h *host.Host) time.Duration {
 	if usesHourlyBilling(h) {
 		return timeTilNextHourlyPayment(h)
 	}
+
+	if time.Since(h.StartTime) < time.Minute {
+		return time.Minute - time.Now().Sub(h.StartTime)
+	}
+
 	return time.Second
 }
 

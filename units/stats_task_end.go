@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -23,10 +22,9 @@ const collectTaskEndDataJobName = "collect-task-end-data"
 // are logged but not returned, since any number of API failures could happen and
 // we shouldn't sacrifice a task's status for them.
 type collectTaskEndDataJob struct {
-	TaskID     string    `bson:"task_id" json:"task_id" yaml:"task_id"`
-	HostID     string    `bson:"host_id" json:"host_id" yaml:"host_id"`
-	FinishTime time.Time `bson:"finish_time" json:"finish_time" yaml:"finish_time"`
-	job.Base   `bson:"metadata" json:"metadata" yaml:"metadata"`
+	TaskID   string `bson:"task_id" json:"task_id" yaml:"task_id"`
+	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
+	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	// internal cache
 	task *task.Task
@@ -100,6 +98,9 @@ func (j *collectTaskEndDataJob) Run() {
 				j.AddError(err)
 			} else {
 				if err = j.task.SetCost(cost); err != nil {
+					j.AddError(err)
+				}
+				if err = j.host.IncCost(cost); err != nil {
 					j.AddError(err)
 				}
 			}

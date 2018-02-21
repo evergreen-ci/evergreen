@@ -72,6 +72,12 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	job := units.NewCollectHostIdleDataJob(h, h.LastTaskCompletedTime, t.StartTime)
+	if err := as.queue.Put(job); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing task start stats"))
+		return
+	}
+
 	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Task %v started on host %v", t.Id, h.Id))
 }
 
