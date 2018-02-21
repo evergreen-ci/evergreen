@@ -3,7 +3,6 @@ package thirdparty
 import (
 	"crypto/hmac"
 	"crypto/sha1"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -47,9 +45,9 @@ var s3ParamsToSign = map[string]bool{
 }
 
 const (
-	S3ConnectTimeout = 2 * time.Minute
-	S3ReadTimeout    = 10 * time.Minute
-	S3WriteTimeout   = 10 * time.Minute
+	s3ConnectTimeout = 2 * time.Minute
+	s3ReadTimeout    = 10 * time.Minute
+	s3WriteTimeout   = 10 * time.Minute
 )
 
 // For our S3 copy operations, S3 either returns an CopyObjectResult or
@@ -74,6 +72,15 @@ func (e CopyObjectError) Error() string {
 	return fmt.Sprintf("Code: %v\nMessage: %v\nResource: %v"+
 		"\nRequestId: %v\nErrMsg: %v\n",
 		e.Code, e.Message, e.Resource, e.RequestId, e.ErrMsg)
+}
+
+// NewS3Session returns a configures s3 session.
+func NewS3Session(auth *aws.Auth, region aws.Region, client *http.Client) *s3.S3 {
+	s3Session := s3.New(*auth, region, client)
+	s3Session.ReadTimeout = s3ReadTimeout
+	s3Session.WriteTimeout = s3WriteTimeout
+	s3Session.ConnectTimeout = s3ConnectTimeout
+	return s3Session
 }
 
 func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path, toS3Bucket, toS3Path, permissionACL string) error {
@@ -263,41 +270,4 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 	} else {
 		headers["Authorization"] = []string{"AWS " + auth.AccessKey + ":" + string(signature)}
 	}
-}
-
-// NewS3Session checks the OS of the agent if darwin, adds InsecureSkipVerify to the TLSConfig.
-// This workaround is meant to fix
-//"x509: failed to load system roots and no roots provided". This happens since cross-compiling
-// disables cgo - however cgo is required to find system root
-// certificates on darwin machines. Note that the client
-// returned can only connect successfully to the
-// supplied s3's region.
-func NewS3Session(auth *aws.Auth, region aws.Region, client *http.Client) *s3.S3 {
-	var s3Session *s3.S3
-	cert := x509.Certificate{}
-	// go's systemVerify panics with no verify options set
-	// TODO: EVG-483
-	if runtime.GOOS == "windows" {
-		s3Session = s3.New(*auth, region)
-		s3Session.ReadTimeout = S3ReadTimeout
-		s3Session.WriteTimeout = S3WriteTimeout
-		s3Session.ConnectTimeout = S3ConnectTimeout
-		return s3Session
-	}
-
-	// no verify options so system root ca will be used
-	_, err := cert.Verify(x509.VerifyOptions{})
-	rootsError := x509.SystemRootsError{}
-	if err != nil && err.Error() == rootsError.Error() {
-		// create a Transport which includes our TLSConfig with InsecureSkipVerify
-		// and client timeouts.
-		client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
-		s3Session = s3.New(*auth, region, client)
-	} else {
-		s3Session = s3.New(*auth, region)
-	}
-	s3Session.ReadTimeout = S3ReadTimeout
-	s3Session.WriteTimeout = S3WriteTimeout
-	s3Session.ConnectTimeout = S3ConnectTimeout
-	return s3Session
 }
