@@ -83,10 +83,10 @@ func NewClientSetttings(fn string) (*ClientSettings, error) {
 	}
 
 	conf := &ClientSettings{}
-
 	if err = yaml.Unmarshal(data, conf); err != nil {
 		return nil, errors.Wrap(err, "problem reading yaml data from configuration file")
 	}
+	conf.LoadedFrom = path
 
 	return conf, nil
 }
