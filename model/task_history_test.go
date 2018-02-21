@@ -1086,6 +1086,40 @@ func TestGetTestHistory(t *testing.T) {
 		assert.Equal("test2", testResults[0].TestFile)
 		assert.Equal("system", testResults[0].TaskDetailsType)
 	}
+
+	// succeeded tasks should always be returned if asked for (only implemented in V2)
+	successfulTask := task.Task{
+		Id:                  "success",
+		DisplayName:         "test",
+		Project:             "proj",
+		StartTime:           time.Now(),
+		RevisionOrderNumber: 1,
+		Status:              evergreen.TaskSucceeded,
+		Details: apimodels.TaskEndDetail{
+			Type: "system",
+		},
+	}
+	assert.NoError(successfulTask.Insert())
+	successfulResult := testresult.TestResult{
+		TaskID:    successfulTask.Id,
+		Execution: successfulTask.Execution,
+		Status:    evergreen.TestSucceededStatus,
+		TestFile:  "test1",
+	}
+	assert.NoError(testresult.InsertMany([]testresult.TestResult{successfulResult}))
+	params := TestHistoryParameters{
+		Project:      "proj",
+		TaskNames:    []string{"test"},
+		TaskStatuses: []string{evergreen.TaskSucceeded},
+		TestStatuses: []string{evergreen.TestSucceededStatus},
+		Limit:        10,
+	}
+	assert.NoError(params.SetDefaultsAndValidate())
+	testResults, err := GetTestHistoryV2(&params)
+	assert.NoError(err)
+	assert.Len(testResults, 1)
+	assert.Equal(successfulResult.TestFile, testResults[0].TestFile)
+	assert.Equal(successfulTask.Id, testResults[0].TaskId)
 }
 
 func TestCompareQueryRunTimes(t *testing.T) {
