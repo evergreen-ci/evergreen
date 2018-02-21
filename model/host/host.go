@@ -86,7 +86,7 @@ type Host struct {
 	// where host providers report costs.
 	TotalCost float64 `bson:"total_cost,omitempty" json:"total_cost,omitempty"`
 
-	// accures the value of idle time.
+	// accrues the value of idle time.
 	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
 }
 
