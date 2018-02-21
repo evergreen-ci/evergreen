@@ -514,20 +514,9 @@ func (h *Host) SetTaskPid(pid string) error {
 // is also set to the current time if it is unset.
 func (h *Host) UpdateReachability(reachable bool) error {
 	status := evergreen.HostRunning
-	setUpdate := bson.M{
-		StatusKey: status,
-	}
-
-	update := bson.M{}
 	if !reachable {
 		status = evergreen.HostUnreachable
-		setUpdate[StatusKey] = status
-	} else {
-		setUpdate[LastCommunicationTimeKey] = time.Now()
-
 	}
-
-	update["$set"] = setUpdate
 
 	if status == h.Status {
 		return nil
@@ -537,7 +526,9 @@ func (h *Host) UpdateReachability(reachable bool) error {
 
 	h.Status = status
 
-	return UpdateOne(bson.M{IdKey: h.Id}, update)
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{StatusKey: status}})
 }
 
 func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
