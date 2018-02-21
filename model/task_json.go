@@ -92,7 +92,7 @@ func GetDistinctTagNames(projectId string) ([]TaskJSONTag, error) {
 	}, &out)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "An error occured during db query execution")
+		return nil, errors.Wrap(err, "An error occurred during db query execution")
 	}
 
 	return out, nil
