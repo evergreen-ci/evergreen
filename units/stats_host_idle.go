@@ -96,7 +96,7 @@ func (j *collecHostIdleDataJob) Run() {
 
 	idleTime := j.FinishTime.Sub(j.StartTime)
 
-	if err = j.Host.IncIdleTime(idleTime); err != nil {
+	if err = j.host.IncIdleTime(idleTime); err != nil {
 		j.AddError(err)
 	}
 
