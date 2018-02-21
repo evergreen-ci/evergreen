@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/units"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -130,7 +131,10 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 // helper to terminate a single host
 func terminateHost(ctx context.Context, env evergreen.Environment, h *host.Host, settings *evergreen.Settings) error {
 	// record the last task completed time, if we clear the running task this value gets changed
-	lastTaskEnd := h.LastTaskCompletedTime
+	idleTimeStartsAt := h.LastTaskCompletedTime
+	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
+		idleTimeStartsAt = h.StartTime
+	}
 
 	// clear the running task of the host in case one has been assigned.
 	if h.RunningTask != "" {
@@ -189,7 +193,14 @@ func terminateHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		return errors.Wrapf(err, "error terminating host %s", h.Id)
 	}
 
-	job := units.NewCollectHostIdleDataJob(h, lastTaskEnd, h.TerminationTime)
+	hostBillingEnds := h.TerminationTime
+
+	pad := cloudHost.CloudMgr.TimeTilNextPayment(h)
+	if pad > time.Second {
+		hostBillingEnds = hostBillingEnds.Add(pad)
+	}
+
+	job := units.NewCollectHostIdleDataJob(h, idleTimeStartsAt, hostBillingEnds)
 	if err := env.LocalQueue().Put(job); err != nil {
 		return errors.Wrap(err, "problem queuing host end stats job")
 	}
