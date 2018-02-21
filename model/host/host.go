@@ -672,18 +672,22 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 }
 
 func (h *Host) IncCost(amt float64) error {
-	info, err := db.FindAndModify(Collection, bson.M{IdKey: h.Id}, []string{},
-		mgo.Change{
-			Update:    bson.M{TotalCostKey: bson.M{"$inc": amt}},
-			ReturnNew: true,
-		}, h)
+	query := bson.M{IdKey: h.Id}
 
+	change := mgo.Change{
+		ReturnNew: true,
+		Update: bson.M{
+			"$inc": bson.M{TotalCostKey: amt},
+		},
+	}
+
+	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	if info.Updated != 1 {
-		return errors.New("cost increment operation failed")
+		return errors.Errorf("could not find host document to update %s", h.Id)
 	}
 
 	return nil
