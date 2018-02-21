@@ -558,7 +558,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			b        *build.Build
 			v        *version.Version
 			testTask *task.Task
-			p        *Project
 			detail   *apimodels.TaskEndDetail
 		)
 
@@ -582,9 +581,6 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 				Project:     "sample",
 			}
 			ref := &ProjectRef{
-				Identifier: "sample",
-			}
-			p = &Project{
 				Identifier: "sample",
 			}
 			detail = &apimodels.TaskEndDetail{
