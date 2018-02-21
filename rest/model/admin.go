@@ -114,6 +114,13 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	default:
 		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
+	return nil
+}
+
+func (as *APIAdminSettings) BuildFromServiceAndScrub(h interface{}) error {
+	if err := as.BuildFromService(h); err != nil {
+		return err
+	}
 	return scrubSecureFields(as)
 }
 

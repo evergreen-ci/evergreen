@@ -60,7 +60,7 @@ func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 		return ResponseData{}, err
 	}
 	settingsModel := model.NewConfigModel()
-	err = settingsModel.BuildFromService(settings)
+	err = settingsModel.BuildFromServiceAndScrub(settings)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
