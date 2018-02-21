@@ -52,6 +52,7 @@ type Host struct {
 	// duplicate of the DispatchTime field in the above task
 	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
 	ExpirationTime   time.Time `bson:"expiration_time,omitempty" json:"expiration_time"`
+
 	// creation is when the host document was inserted to the DB, start is when it was started on the cloud provider
 	CreationTime    time.Time `bson:"creation_time" json:"creation_time"`
 	StartTime       time.Time `bson:"start_time" json:"start_time"`
@@ -74,12 +75,6 @@ type Host struct {
 
 	// stores userdata that was placed on the host at spawn time
 	UserData string `bson:"userdata" json:"userdata,omitempty"`
-
-	// the last time that the host's reachability was checked
-	LastReachabilityCheck time.Time `bson:"last_reachability_check" json:"last_reachability_check"`
-
-	// if set, the time at which the host first became unreachable
-	UnreachableSince time.Time `bson:"unreachable_since,omitempty" json:"unreachable_since"`
 
 	// incremented by task start and end stats collectors and
 	// should reflect hosts total costs. Only populated for build-hosts
@@ -232,14 +227,12 @@ func (h *Host) UpdateLastCommunicated() error {
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{
 			LastCommunicationTimeKey: now,
-			LastReachabilityCheckKey: now,
 		}})
 
 	if err != nil {
 		return err
 	}
 	h.LastCommunicationTime = now
-	h.LastReachabilityCheck = now
 	return nil
 }
 
@@ -522,27 +515,18 @@ func (h *Host) SetTaskPid(pid string) error {
 func (h *Host) UpdateReachability(reachable bool) error {
 	status := evergreen.HostRunning
 	setUpdate := bson.M{
-		StatusKey:                status,
-		LastReachabilityCheckKey: time.Now(),
+		StatusKey: status,
 	}
 
 	update := bson.M{}
 	if !reachable {
 		status = evergreen.HostUnreachable
 		setUpdate[StatusKey] = status
-
-		// If the host is being switched to unreachable for the first time, then
-		// "unreachable since" will be unset, so we set it to the current time.
-		if h.UnreachableSince.Equal(util.ZeroTime) || h.UnreachableSince.Before(util.ZeroTime) {
-			now := time.Now()
-			setUpdate[UnreachableSinceKey] = now
-			h.UnreachableSince = now
-		}
 	} else {
-		// host is reachable, so unset the unreachable_since field
-		update["$unset"] = bson.M{UnreachableSinceKey: 1}
-		h.UnreachableSince = util.ZeroTime
+		setUpdate[LastCommunicationTimeKey] = time.Now()
+
 	}
+
 	update["$set"] = setUpdate
 
 	if status == h.Status {

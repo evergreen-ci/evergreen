@@ -35,7 +35,7 @@ func TestMonitorReachability(t *testing.T) {
 
 			h := &host.Host{
 				Id: "h1",
-				LastReachabilityCheck: time.Now().Add(-time.Minute),
+				LastCommunicationTime: time.Now().Add(-time.Minute),
 				Status:                evergreen.HostUnreachable,
 				Provider:              evergreen.ProviderNameMock,
 				StartedBy:             evergreen.User,
@@ -68,7 +68,7 @@ func TestMonitorReachability(t *testing.T) {
 			// this host should be picked up and updated to running
 			host1 := &host.Host{
 				Id: "h1",
-				LastReachabilityCheck: time.Now().Add(-15 * time.Minute),
+				LastCommunicationTime: time.Now().Add(-15 * time.Minute),
 				Status:                evergreen.HostUnreachable,
 				Provider:              evergreen.ProviderNameMock,
 				StartedBy:             evergreen.User,
@@ -85,7 +85,7 @@ func TestMonitorReachability(t *testing.T) {
 			// this host should not be picked up, since it is quarantined
 			host2 := &host.Host{
 				Id: "h2",
-				LastReachabilityCheck: time.Now().Add(-15 * time.Minute),
+				LastCommunicationTime: time.Now().Add(-15 * time.Minute),
 				Status:                evergreen.HostQuarantined,
 				Provider:              evergreen.ProviderNameMock,
 				StartedBy:             evergreen.User,
