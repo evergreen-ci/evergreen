@@ -85,6 +85,9 @@ type Host struct {
 	// should reflect hosts total costs. Only populated for build-hosts
 	// where host providers report costs.
 	TotalCost float64 `bson:"total_cost,omitempty" json:"total_cost,omitempty"`
+
+	// accures the value of idle time.
+	TotalIdleTime time.Duration `bson:"total_idle_time,omitempty" json:"total_idle_time,omitempty" yaml:"total_idle_time,omitempty"`
 }
 
 // ProvisionOptions is struct containing options about how a new host should be set up.
@@ -161,30 +164,6 @@ func (h *Host) SetInitializing() error {
 			},
 		},
 	)
-}
-
-func (h *Host) IncProvisionAttempts() error {
-	query := bson.M{
-		IdKey: h.Id,
-	}
-
-	change := mgo.Change{
-		ReturnNew: true,
-		Update: bson.M{
-			"$inc": bson.M{ProvisionAttemptsKey: 1},
-		},
-	}
-
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update, %s", h.Id)
-	}
-
-	return nil
 }
 
 func (h *Host) SetStarting() error {
@@ -669,28 +648,6 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	}
 
 	return host, nil
-}
-
-func (h *Host) IncCost(amt float64) error {
-	query := bson.M{IdKey: h.Id}
-
-	change := mgo.Change{
-		ReturnNew: true,
-		Update: bson.M{
-			"$inc": bson.M{TotalCostKey: amt},
-		},
-	}
-
-	info, err := db.FindAndModify(Collection, query, []string{}, change, h)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	if info.Updated != 1 {
-		return errors.Errorf("could not find host document to update %s", h.Id)
-	}
-
-	return nil
 }
 
 func (h *Host) DisablePoisonedHost() error {

@@ -94,13 +94,19 @@ func (j *collecHostIdleDataJob) Run() {
 		}
 	}
 
+	idleTime := j.FinishTime.Sub(j.StartTime)
+
+	if err = j.Host.IncIdleTime(idleTime); err != nil {
+		j.AddError(err)
+	}
+
 	msg := message.Fields{
 		"stat":      "host-idle-stat",
 		"distro":    j.host.Distro.Id,
 		"provider":  j.host.Distro.Provider,
 		"host":      j.host.Id,
 		"status":    j.host.Status,
-		"idle_secs": j.FinishTime.Sub(j.StartTime).Seconds(),
+		"idle_secs": idleTime.Seconds(),
 	}
 
 	if cost != 0 {
