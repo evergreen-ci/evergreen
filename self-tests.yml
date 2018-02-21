@@ -762,7 +762,9 @@ buildvariants:
       - name: "dist"
       - name: ".race"
       - name: ".report"
+        stepback: false
       - name: ".lint"
+        stepback: false
     display_tasks:
       - name: lint
         execution_tasks:
