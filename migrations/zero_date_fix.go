@@ -173,7 +173,6 @@ func updateBuildCreateTime(dbs db.Database, versionID string, newTime time.Time)
 	const (
 		buildCollection = "builds"
 
-		idKey         = "_id"
 		versionKey    = "version"
 		createTimeKey = "create_time"
 	)
@@ -206,7 +205,6 @@ func updateTaskCreateTime(dbs db.Database, versionID string, newTime time.Time) 
 	const (
 		tasksCollection = "tasks"
 
-		idKey         = "_id"
 		versionKey    = "version"
 		createTimeKey = "create_time"
 	)
@@ -239,7 +237,6 @@ func updatePatchCreateTime(dbs db.Database, versionID string, newTime time.Time)
 	const (
 		patchesCollection = "patches"
 
-		idKey         = "_id"
 		versionKey    = "version"
 		createTimeKey = "create_time"
 	)

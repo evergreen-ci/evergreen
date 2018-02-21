@@ -26,8 +26,10 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	anser.ResetEnvironment()
 
 	evgEnv := &evgmock.Environment{}
-	ctx := context.Background()
-	assert.NoError(evgEnv.Configure(context.Background(), filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	assert.NoError(evgEnv.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
 
 	opts := Options{
 		Database: "mci_test",
