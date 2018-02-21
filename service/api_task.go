@@ -30,25 +30,35 @@ const consecutiveSystemFailureThreshold = 3
 // It then updates the host document with relevant information, including the pid
 // of the agent, and ensures that the host has the running task field set.
 func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
+	var err error
+
 	t := MustHaveTask(r)
 
 	grip.Infoln("Marking task started:", t.Id)
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
+	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
 		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
 		return
 	}
 	updates := model.StatusChanges{}
-	if err := model.MarkStart(t.Id, &updates); err != nil {
+	if err = model.MarkStart(t.Id, &updates); err != nil {
 		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
+		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		return
+	}
+
+	// in the future perhaps model.MarkStart can
+	t, err = task.FindOne(task.ById(t.Id))
+	if err != nil {
+		message := errors.Wrapf(err, "Error finding task %s", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	if t.Requester == evergreen.GithubPRRequester && updates.PatchNewStatus == evergreen.PatchStarted {
 		job := units.NewGithubStatusUpdateJobForPatchWithVersion(t.Version)
-		if err := as.queue.Put(job); err != nil {
+		if err = as.queue.Put(job); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing github status api update"))
 			return
 		}
@@ -60,7 +70,6 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
-
 	if h == nil {
 		message := errors.Errorf("No host found running task %v", t.Id)
 		if t.HostId != "" {
@@ -78,7 +87,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	job := units.NewCollectHostIdleDataJob(h, idleTimeStartAt, t.StartTime)
-	if err := as.queue.Put(job); err != nil {
+	if err = as.queue.Put(job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing task start stats"))
 		return
 	}
