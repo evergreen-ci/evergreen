@@ -854,6 +854,7 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 	// separate out pass/fail from timeouts and system failures
 	isTimeout := false
 	isSysFail := false
+	isSuccess := false
 	taskStatuses := []string{}
 	for _, status := range params.TaskStatuses {
 		switch status {
@@ -861,6 +862,8 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 			isTimeout = true
 		case TaskSystemFailure:
 			isSysFail = true
+		case evergreen.TaskSucceeded:
+			isSuccess = true
 		default:
 			taskStatuses = append(taskStatuses, status)
 		}
@@ -891,6 +894,11 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 		statusQuery = append(statusQuery, bson.M{
 			task.StatusKey:                                 evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailType: "system",
+		})
+	}
+	if isSuccess {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey: evergreen.TaskSucceeded,
 		})
 	}
 
