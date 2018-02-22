@@ -71,7 +71,7 @@ checkLoop:
 			event.LogHostTerminatedExternally(h.Id)
 
 			// the instance was terminated from outside our control
-			if err := host.SetTerminated("external"); err != nil {
+			if err := h.SetTerminated("external"); err != nil {
 				catcher.Add(errors.Wrapf(err, "error setting host %s terminated", h.Id))
 				continue checkLoop
 			}
@@ -86,5 +86,5 @@ checkLoop:
 		"runtime_secs": time.Since(startAt).Seconds(),
 	})
 
-	return catcher.Resovle()
+	return catcher.Resolve()
 }
