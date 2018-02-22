@@ -111,7 +111,7 @@ imports:
   - name: github.com/mongodb/anser
     version: b51e0ec8335cdffbcdbf186fb4b2d385611107aa
   - name: github.com/mongodb/amboy
-    version: 94a0c1a33b65d896e1a34cff7955d142a7f4d852
+    version: 6ab543863b5fcd8c12fafb773f5532da70f836a2
   - name: github.com/google/go-github
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring

@@ -70,10 +70,20 @@ func (q *remoteBase) jobServer(ctx context.Context) {
 			}
 
 			stat := job.Status()
-			if stat.InProgress || stat.Completed {
+
+			// don't return completed jobs for any reason
+			if stat.Completed {
 				continue
 			}
 
+			// don't return an inprogress job if the mod
+			// time is less than the lock timeout
+			if stat.InProgress && time.Since(stat.ModificationTime) < lockTimeout {
+				continue
+			}
+
+			// therefore return any pending job or job
+			// that has a timed out lock.
 			q.channel <- job
 		}
 	}
