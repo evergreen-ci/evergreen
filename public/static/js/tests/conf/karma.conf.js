@@ -29,7 +29,8 @@ module.exports = function(config) {
       'js/tests/*.js',
       'js/ui-grid.min.js',
       'js/select.min.js',
-      'plugins/*/js/*.js'
+      'plugins/*/js/*.js',
+      'app/**/*.js',
     ],
 
 

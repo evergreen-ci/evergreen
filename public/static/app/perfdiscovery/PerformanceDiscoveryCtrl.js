@@ -56,14 +56,9 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       return items.concat(taskItems)
     }, [])
 
-    var ctx = PerfDiscoveryService.extractTasks(version)
 
-    PerfDiscoveryService.getRows(
-      PerfDiscoveryService.processData(
-        PerfDiscoveryService.queryData(
-          ctx, baselineRev
-        )
-      )
+    PerfDiscoveryService.getData(
+      version, baselineRev
     ).then(function(res) {
       vm.gridOptions.data = res
     })
