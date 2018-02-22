@@ -34,6 +34,10 @@ func (h *Host) IncProvisionAttempts() error {
 }
 
 func (h *Host) IncIdleTime(dur time.Duration) error {
+	if dur < 0 {
+		return errors.Errorf("cannot increment by a negative duration value [%s]", dur)
+	}
+
 	query := bson.M{
 		IdKey: h.Id,
 	}
@@ -58,6 +62,10 @@ func (h *Host) IncIdleTime(dur time.Duration) error {
 }
 
 func (h *Host) IncCost(amt float64) error {
+	if amt < 0 {
+		return errors.Errorf("cost must be a postive value [%g]", amt)
+	}
+
 	query := bson.M{IdKey: h.Id}
 
 	change := mgo.Change{

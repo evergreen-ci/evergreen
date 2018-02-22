@@ -94,7 +94,7 @@ func (m *gceManager) TimeTilNextPayment(h *host.Host) time.Duration {
 // platforms (e.g. Skylake VMs), premium images (e.g. SUSE), networks, etc.
 //
 // Source: https://cloud.google.com/compute/pricing
-func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+func (m *gceManager) bCostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// Sanity check.
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
 		return 0, errors.New("task timing data is malformed")
@@ -103,7 +103,7 @@ func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float6
 	// Grab and parse instance details.
 	instance, err := m.client.GetInstance(h)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 
 	duration := end.Sub(start)
@@ -116,6 +116,10 @@ func (m *gceManager) CostForDuration(h *host.Host, start, end time.Time) (float6
 	cost, err := instanceCost(machine, duration)
 	if err != nil {
 		return 0, errors.Wrap(err, "error calculating costs")
+	}
+
+	if cost < 0 {
+		return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", cost)
 	}
 
 	return cost, nil

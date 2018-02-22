@@ -769,5 +769,11 @@ func (m *ec2Manager) CostForDuration(ctx context.Context, h *host.Host, start, e
 	if err != nil {
 		return 0, errors.Wrap(err, "error fetching ebs cost")
 	}
-	return ec2Cost + ebsCost, nil
+	total := ec2Cost + ebsCost
+
+	if total < 0 {
+		return 0, errors.Errorf("cost appears to be less than 0 (%g) which is impossible", total)
+	}
+
+	return total, nil
 }
