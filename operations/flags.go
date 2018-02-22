@@ -57,7 +57,6 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  joinFlagNames(confFlagName, "config", "c"),
 		Usage: "path to the service configuration file",
-		Value: evergreen.DefaultServiceConfigurationFileName, // TODO: remove once everything is passing an explicit file
 	})
 }
 
