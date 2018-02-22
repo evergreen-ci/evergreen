@@ -784,11 +784,10 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 	}
 	if buildVarTask.IsGroup {
 		t.TaskGroup = buildVarTask.GroupName
-		tg, err := GetTaskGroup(&TaskConfig{
+		tg, err := GetTaskGroup(buildVarTask.GroupName, &TaskConfig{
 			Task: &task.Task{
-				Project:   project.Identifier,
-				TaskGroup: buildVarTask.GroupName,
-				Version:   v.Id,
+				Project: project.Identifier,
+				Version: v.Id,
 			},
 			Version: v,
 		})

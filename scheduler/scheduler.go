@@ -409,32 +409,28 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 // Takes in a version id and a map of "key -> buildvariant" (where "key" is of
 // type "versionBuildVariant") and updates the map with an entry for the
 // buildvariants associated with "versionStr"
-func (s *Scheduler) updateVersionBuildVarMap(versionStr string,
-	versionBuildVarMap map[versionBuildVariant]model.BuildVariant) error {
-
+func (s *Scheduler) getProject(versionStr string) (*model.Project, error) {
 	version, err := version.FindOne(version.ById(versionStr))
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	if version == nil {
-		return errors.Errorf("nil version returned for version '%s'", versionStr)
+		return nil, errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
 	project := &model.Project{}
-
 	err = model.LoadProjectInto([]byte(version.Config), version.Identifier, project)
 	if err != nil {
-		return errors.Wrapf(err, "unable to load project config for version %s", versionStr)
+		return nil, errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
+	return project, nil
+}
 
-	// create buildvariant map (for accessing purposes)
-	for _, buildVariant := range project.BuildVariants {
+func updateVersionBuildVarMap(versionStr string, p *model.Project, versionBuildVarMap map[versionBuildVariant]model.BuildVariant) {
+	for _, buildVariant := range p.BuildVariants {
 		key := versionBuildVariant{versionStr, buildVariant.Name}
 		versionBuildVarMap[key] = buildVariant
 	}
-
-	return nil
 }
 
 // Takes in a list of tasks, and splits them by distro.
@@ -452,17 +448,21 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 	// insert the tasks into the appropriate distro's queue in our map
 	for _, task := range tasksToSplit {
 		key := versionBuildVariant{task.Version, task.BuildVariant}
+		var p *model.Project
+		var err error
 		if _, exists := versionBuildVarMap[key]; !exists {
-			err := s.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
+			p, err = s.getProject(task.Version)
 			if err != nil {
 				grip.Info(message.WrapError(err, message.Fields{
 					"runner":  RunnerName,
 					"version": task.Version,
 					"task":    task.Id,
-					"message": "skipping version after problem getting build variant map for task",
+					"message": "skipping version after problem getting project for task",
+					"err":     errors.WithStack(err),
 				}))
 				continue
 			}
+			updateVersionBuildVarMap(task.Version, p, versionBuildVarMap)
 		}
 
 		// get the build variant for the task
@@ -478,17 +478,9 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 			continue
 		}
 
-		// get the task specification for the build variant
-		var taskSpec model.BuildVariantTaskUnit
-		for _, tSpec := range buildVariant.Tasks {
-			if tSpec.Name == task.DisplayName {
-				taskSpec = tSpec
-				break
-			}
-		}
-
-		// if no matching spec was found log it and continue
-		if taskSpec.Name == "" {
+		distros, err := getDistrosForBuildVariant(task, buildVariant, p)
+		// If no matching spec was found, log it and continue.
+		if err != nil {
 			grip.Info(message.Fields{
 				"runner":  RunnerName,
 				"variant": task.BuildVariant,
@@ -502,8 +494,8 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		// use the specified distros for the task, or, if none are specified,
 		// the default distros for the build variant
 		distrosToUse := buildVariant.RunOn
-		if len(taskSpec.Distros) != 0 {
-			distrosToUse = taskSpec.Distros
+		if len(distros) != 0 {
+			distrosToUse = distros
 		}
 		// remove duplicates to avoid scheduling twice
 		distrosToUse = util.UniqueStrings(distrosToUse)
@@ -519,7 +511,32 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 	}
 
 	return tasksByDistro, taskRunDistros, nil
+}
 
+func getDistrosForBuildVariant(task task.Task, bv model.BuildVariant, p *model.Project) ([]string, error) {
+	taskGroups := map[string][]string{}
+	for _, tg := range p.TaskGroups {
+		taskGroups[tg.Name] = tg.Tasks
+	}
+	var taskSpec *model.BuildVariantTaskUnit
+	for _, bvTask := range bv.Tasks {
+		if bvTask.Name == task.DisplayName { // task is listed in buildvariant
+			taskSpec = &bvTask
+			break
+		}
+		if tasksInTaskGroup, ok := taskGroups[bvTask.Name]; ok {
+			for _, t := range tasksInTaskGroup {
+				if t == task.DisplayName { // task is listed in task group
+					taskSpec = &bvTask
+					break
+				}
+			}
+		}
+	}
+	if taskSpec == nil {
+		return []string{}, errors.New("no matching task found for buildvariant")
+	}
+	return taskSpec.Distros, nil
 }
 
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of

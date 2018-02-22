@@ -428,8 +428,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		}
 		// if the task is activated return that task
 		if t.Activated {
-			response.TaskId = t.Id
-			response.TaskSecret = t.Secret
+			setNextTask(t, &response)
 			as.WriteJSON(w, http.StatusOK, response)
 			return
 		}
@@ -487,8 +486,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		as.WriteJSON(w, http.StatusInternalServerError, err)
 		return
 	}
-	response.TaskId = nextTask.Id
-	response.TaskSecret = nextTask.Secret
+	setNextTask(nextTask, &response)
 	grip.Infof("assigned task %s to host %s", nextTask.Id, h.Id)
 	as.WriteJSON(w, http.StatusOK, response)
+}
+
+func setNextTask(t *task.Task, response *apimodels.NextTaskResponse) {
+	response.TaskId = t.Id
+	response.TaskSecret = t.Secret
+	response.TaskGroup = t.TaskGroup
+	response.Version = t.Version
 }
