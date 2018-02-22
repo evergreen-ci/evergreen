@@ -8,8 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -181,6 +179,7 @@ func viewSettings() cli.Command {
 		Name:   "get-settings",
 		Usage:  "view the evergreen configuration settings",
 		Action: doViewSettings(),
+		Before: setPlainLogger,
 	}
 }
 
@@ -206,15 +205,6 @@ func doViewSettings() cli.ActionFunc {
 		settingsYaml, err := json.MarshalIndent(settings, " ", " ")
 		if err != nil {
 			return errors.Wrap(err, "problem marshalling evergreen settings")
-		}
-
-		sender, err := send.NewPlainLogger("", send.LevelInfo{Default: level.Info, Threshold: level.Debug})
-		if err != nil {
-			return errors.Wrap(err, "problem creating a sender")
-		}
-
-		if err = grip.SetSender(sender); err != nil {
-			return errors.Wrap(err, "problem setting up logger")
 		}
 
 		grip.Info(settingsYaml)
