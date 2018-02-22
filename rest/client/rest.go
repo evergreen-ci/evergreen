@@ -293,6 +293,28 @@ func (c *communicatorImpl) RestartRecentTasks(ctx context.Context, startAt, endA
 	return nil
 }
 
+func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    "admin",
+	}
+
+	resp, client_err := c.request(ctx, info, "")
+	if client_err != nil {
+		return nil, errors.Wrap(client_err, "error retrieving settings")
+	}
+	defer resp.Body.Close()
+
+	settings := &evergreen.Settings{}
+
+	err := util.ReadJSONInto(resp.Body, settings)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing evergreen settings")
+	}
+	return settings, nil
+}
+
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	info := requestInfo{
 		method:  get,
