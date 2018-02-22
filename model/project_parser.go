@@ -80,6 +80,7 @@ type parserTaskGroup struct {
 	DependsOn       parserDependencies `yaml:"depends_on"`
 	Requires        taskSelectors      `yaml:"requires"`
 	Tags            parserStringSlice  `yaml:"tags"`
+	ShareProcs      bool               `yaml:"share_processes"`
 }
 
 func (ptg *parserTaskGroup) name() string   { return ptg.Name }
@@ -516,6 +517,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			Timeout:         ptg.Timeout,
 			Patchable:       ptg.Patchable,
 			Stepback:        ptg.Stepback,
+			ShareProcs:      ptg.ShareProcs,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1

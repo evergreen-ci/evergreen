@@ -126,7 +126,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 		return
 	}
 
-	a.killProcs(tc)
+	a.killProcs(tc, false)
 	a.runPreTaskCommands(innerCtx, tc)
 
 	if err = a.runTaskCommands(innerCtx, tc); err != nil {

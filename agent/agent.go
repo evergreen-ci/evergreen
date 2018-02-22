@@ -137,6 +137,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 	taskDirectory := tc.taskDirectory
 	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
 		defer a.removeTaskDirectory(tc)
+		defer a.killProcs(tc, true)
 		setupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
@@ -186,7 +187,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) (err error) {
 	}
 
 	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
-	defer a.killProcs(tc)
+	defer a.killProcs(tc, false)
 	defer cancel()
 
 	// If the heartbeat aborts the task immediately, we should report that
@@ -305,8 +306,8 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string) *apimodels.TaskE
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	start := time.Now()
-	a.killProcs(tc)
-	defer a.killProcs(tc)
+	a.killProcs(tc, false)
+	defer a.killProcs(tc, false)
 	tc.logger.Task().Info("Running post-task commands.")
 	var cancel context.CancelFunc
 	ctx, cancel = a.withCallbackTimeout(ctx, tc)
@@ -334,8 +335,8 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 	if taskGroup.TeardownGroup != nil {
 		grip.Info("Running post-group commands")
-		a.killProcs(tc)
-		defer a.killProcs(tc)
+		a.killProcs(tc, false)
+		defer a.killProcs(tc, false)
 		var cancel context.CancelFunc
 		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
@@ -345,8 +346,8 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-func (a *Agent) killProcs(tc *taskContext) {
-	if a.opts.Cleanup {
+func (a *Agent) killProcs(tc *taskContext, ignoreTaskGroupCheck bool) {
+	if a.shouldKill(tc, ignoreTaskGroupCheck) {
 		grip.Infof("cleaning up processes for task: %s", tc.task.ID)
 
 		if tc.task.ID != "" {
@@ -357,4 +358,29 @@ func (a *Agent) killProcs(tc *taskContext) {
 		}
 		grip.Infof("processes cleaned up for task %s", tc.task.ID)
 	}
+}
+
+func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
+	// never kill if cleanup is false
+	if !a.opts.Cleanup {
+		return false
+	}
+	// kill if the task is not in a task group
+	if tc.taskGroup == "" {
+		return true
+	}
+	// kill if ignoreTaskGroupCheck is true
+	if ignoreTaskGroupCheck {
+		return true
+	}
+	taskGroup, err := model.GetTaskGroup(tc.taskConfig)
+	if err != nil {
+		return false
+	}
+	// do not kill if share_processes is set
+	if taskGroup.ShareProcs {
+		return false
+	}
+	// return true otherwise
+	return true
 }

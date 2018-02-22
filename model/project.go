@@ -305,6 +305,8 @@ type TaskGroup struct {
 	Timeout       *YAMLCommandSet `yaml:"timeout,omitempty" bson:"timeout"`
 	Tasks         []string        `yaml:"tasks" bson:"tasks"`
 	Tags          []string        `yaml:"tags,omitempty" bson:"tags"`
+	// ShareProcs causes processes to persist between task group tasks.
+	ShareProcs bool `yaml:"share_processes"`
 }
 
 // Unmarshalled from the "tasks" list in the project file
