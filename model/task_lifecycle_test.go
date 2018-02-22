@@ -1051,7 +1051,7 @@ func TestMarkStart(t *testing.T) {
 
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
 			updates := StatusChanges{}
-			err := MarkStart(testTask.Id, &updates)
+			err := MarkStart(testTask, &updates)
 			So(updates.BuildNewStatus, ShouldBeEmpty)
 			So(updates.PatchNewStatus, ShouldBeEmpty)
 			So(err, ShouldBeNil)
@@ -1107,7 +1107,7 @@ func TestMarkStart(t *testing.T) {
 		}
 		So(t1.Insert(), ShouldBeNil)
 
-		So(MarkStart(t1.Id, &StatusChanges{}), ShouldBeNil)
+		So(MarkStart(t1, &StatusChanges{}), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
 		So(err, ShouldBeNil)
 		So(t1FromDb.Status, ShouldEqual, evergreen.TaskStarted)
