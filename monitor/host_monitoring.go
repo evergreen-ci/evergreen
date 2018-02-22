@@ -27,7 +27,7 @@ func monitorReachability(ctx context.Context, settings *evergreen.Settings) erro
 	// fetch all hosts that have not been checked recently
 	// (> 10 minutes ago)
 	startAt := time.Now()
-	threshold := time.Now().Add(-reachabilityCheckInterval)
+	threshold := startAt.Add(-reachabilityCheckInterval)
 	hosts, err := host.Find(host.ByNotMonitoredSince(threshold))
 	if err != nil {
 		return errors.Wrap(err, "error finding hosts not monitored recently")
