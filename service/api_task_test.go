@@ -639,7 +639,6 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 		So(testVersion.Insert(), ShouldBeNil)
 
 		Convey("test task should start a background job", func() {
-			const dateFormat = "2006-01-02T15:04:05-07:00"
 			stat := q.Stats()
 			So(stat.Total, ShouldEqual, 0)
 			resp := getStartTaskEndpoint(t, as, hostId, task1.Id)
@@ -656,18 +655,18 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			So(job.Type().Version, ShouldEqual, 0)
 
 			// this is gross, but lets us introspect the private job
-			jobData := map[string]interface{}{}
+			jobData := struct {
+				StartAt  time.Time `json:"start_time"`
+				FinishAt time.Time `json:"finish_time"`
+			}{}
+
 			raw, err := json.Marshal(job)
 			So(err, ShouldBeNil)
 			So(json.Unmarshal(raw, &jobData), ShouldBeNil)
 
-			startedAt, err := time.Parse(dateFormat, fmt.Sprint(jobData["start_time"]))
-			So(err, ShouldBeNil)
-
-			finishedAt, err := time.Parse(dateFormat, fmt.Sprint(jobData["finish_time"]))
-			So(err, ShouldBeNil)
-
-			So(startedAt.Before(finishedAt), ShouldBeTrue)
+			So(jobData.StartAt.Before(jobData.FinishAt), ShouldBeTrue)
+			So(jobData.StartAt.IsZero(), ShouldBeFalse)
+			So(jobData.FinishAt.IsZero(), ShouldBeFalse)
 		})
 		Convey("with a set of task end details indicating that task has succeeded", func() {
 			details := &apimodels.TaskEndDetail{
