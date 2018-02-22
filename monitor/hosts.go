@@ -41,7 +41,7 @@ func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergr
 		}
 
 		// continue on error to allow the other monitoring functions to run
-		catcher.Extend(f(ctx, settings))
+		catcher.Add(f(ctx, settings))
 	}
 
 	return catcher.Resolve()
