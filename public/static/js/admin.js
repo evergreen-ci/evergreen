@@ -28,7 +28,13 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
     }
-    mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
+    // temporary workaround until the admin page has components for every part of the config
+    settings = {
+      banner: $scope.Settings.banner,
+      banner_theme: $scope.Settings.banner_theme,
+      service_flags: $scope.Settings.service_flags,
+    };
+    mciAdminRestService.saveSettings(settings, { success: successHandler, error: errorHandler });
   }
 
   generateEventText = function(events) {
