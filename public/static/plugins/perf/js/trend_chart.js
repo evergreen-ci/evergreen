@@ -64,7 +64,7 @@ mciModule.factory('PerfChartService', function() {
     formatters: {
       large: d3.format(',.0f'), // grouped thousands, no significant digits
       digits_1: d3.format('.01f'), // floating point 1 digits
-      digits_2: d3.format('.03f'), // floating point 3 digits
+      digits_2: d3.format('.02f'), // floating point 2 digits
       digits_3: d3.format('.03f'), // floating point 3 digits
       si: d3.format(',s'), // si notation
     }
@@ -287,19 +287,19 @@ var drawSingleTrendChart = function(params) {
   var yAxis = d3.svg.axis()
       .scale(yScale)
       .orient('left')
-      .ticks(cfg.yAxis.ticks, function(d) {
-        var val = Math.abs(d)
-        if (val == 0) {
+      .ticks(cfg.yAxis.ticks, function(value) {
+        var absolute = Math.abs(value)
+        if (absolute == 0) {
           return "0"
         }
-        if (val < 1) {
-          if ( val >= .1) {
-            return cfg.formatters.digits_1(d);
+        if (absolute < 1) {
+          if ( absolute >= .1) {
+            return cfg.formatters.digits_1(value);
           } else {
-            return cfg.formatters.digits_2(d);
+            return cfg.formatters.digits_2(value);
           }
         } else{
-          return cfg.formatters.si(d);
+          return cfg.formatters.si(value);
         }
       })
   // ## CHART STRUCTURE ##
@@ -591,19 +591,20 @@ var drawSingleTrendChart = function(params) {
     focusedText
       .attr('y', function(d, i) { return opsLabelsY[i] })
       .text(function (d, i) {
-        var val = Math.abs(values[i]);
-        if ( val == 0) {
+        var value = values[i];
+        var absolute = Math.abs(value);
+        if ( absolute == 0) {
           return "0";
-        } else if ( Math.abs(val) < 1) {
-          if ( val >= .1) {
-            return cfg.formatters.digits_1(val);
+        } else if ( absolute < 1) {
+          if ( absolute >= .1) {
+            return cfg.formatters.digits_1(value);
           }  else if ( val >= .01) {
-            return cfg.formatters.digits_2(val);
+            return cfg.formatters.digits_2(value);
           } else {
-            return cfg.formatters.digits_3(val);
+            return cfg.formatters.digits_3(value);
           }
         } else{
-          return cfg.formatters.large(val);
+          return cfg.formatters.large(value);
         }
       });
 
