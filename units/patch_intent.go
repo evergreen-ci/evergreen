@@ -32,7 +32,6 @@ import (
 )
 
 const (
-	githubAcceptPatch  = "application/vnd.github.v3.patch"
 	githubAcceptDiff   = "application/vnd.github.v3.diff"
 	patchIntentJobName = "patch-intent-processor"
 )
@@ -263,11 +262,6 @@ func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.S
 		return "", nil, errors.Wrap(err, "failed to create github request")
 	}
 
-	patchData, err := doGithubRequest(client, req, githubAcceptPatch)
-	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to fetch patch from github")
-	}
-
 	diff, err := doGithubRequest(client, req, githubAcceptDiff)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to fetch diff from github")
@@ -278,7 +272,7 @@ func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.S
 		return "", nil, errors.Wrap(err, "failed to get patch summary")
 	}
 
-	return patchData, summaries, nil
+	return diff, summaries, nil
 }
 
 func doGithubRequest(client *http.Client, req *http.Request, accept string) (string, error) {
@@ -408,7 +402,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return err
 	}
 	if !isMember {
-		return errors.Errorf("user is not a member of %s", mustBeMemberOfOrg)
+		return errors.Errorf("user '%s' is not a member of %s", patchDoc.GithubPatchData.Author, mustBeMemberOfOrg)
 	}
 
 	patchContent, summaries, err := fetchDiffFromGithub(&patchDoc.GithubPatchData, githubOauthToken)
