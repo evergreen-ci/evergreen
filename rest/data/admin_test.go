@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -29,8 +30,8 @@ func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection, task.OldCollection, build.Collection, version.Collection), t,
-		"Error clearing collections")
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, task.Collection,
+		task.OldCollection, build.Collection, version.Collection, event.AllLogCollection), t, "Error clearing collections")
 	b := &build.Build{
 		Id:      "buildtest",
 		Status:  evergreen.BuildStarted,
@@ -154,11 +155,53 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	s.EqualValues(testSettings.Splunk.Channel, settingsFromConnector.Splunk.Channel)
 	s.EqualValues(testSettings.Ui.HttpListenAddr, settingsFromConnector.Ui.HttpListenAddr)
 
-	// test that updating the model with nil values does not change them. Not implemented for the mock connector
+	// the tests below do not apply to the mock connector
 	if reflect.TypeOf(s.ctx).String() == "*data.MockConnector" {
 		return
 	}
 
+	// spot check events in the event log
+	events, err := event.FindAdmin(event.RecentAdminEvents(1000))
+	s.NoError(err)
+	foundAlertsEvent := false
+	foundFlagsEvent := false
+	foundProvidersEvent := false
+	foundRootEvent := false
+	foundUiEvent := false
+	for _, evt := range events {
+		s.Equal(event.EventTypeValueChanged, evt.EventType)
+		data := evt.Data.Data.(*event.AdminEventData)
+		s.Equal(u.Id, data.User)
+		switch v := data.Changes.After.(type) {
+		case *evergreen.AlertsConfig:
+			foundAlertsEvent = true
+			s.Equal(testSettings.Alerts.SMTP.From, v.SMTP.From)
+			s.Equal(testSettings.Alerts.SMTP.Username, v.SMTP.Username)
+		case *evergreen.ServiceFlags:
+			foundFlagsEvent = true
+			s.Equal(testSettings.ServiceFlags.RepotrackerDisabled, v.RepotrackerDisabled)
+		case *evergreen.CloudProviders:
+			foundProvidersEvent = true
+			s.Equal(testSettings.Providers.AWS.Id, v.AWS.Id)
+			s.Equal(testSettings.Providers.GCE.ClientEmail, v.GCE.ClientEmail)
+		case *evergreen.Settings:
+			foundRootEvent = true
+			s.Equal(testSettings.ClientBinariesDir, v.ClientBinariesDir)
+			s.Equal(testSettings.Credentials, v.Credentials)
+			s.Equal(testSettings.SuperUsers, v.SuperUsers)
+		case *evergreen.UIConfig:
+			foundUiEvent = true
+			s.Equal(testSettings.Ui.Url, v.Url)
+			s.Equal(testSettings.Ui.CacheTemplates, v.CacheTemplates)
+		}
+	}
+	s.True(foundAlertsEvent)
+	s.True(foundFlagsEvent)
+	s.True(foundProvidersEvent)
+	s.True(foundRootEvent)
+	s.True(foundUiEvent)
+
+	// test that updating the model with nil values does not change them
 	newBanner := "new banner"
 	newExpansions := map[string]string{"newkey": "newval"}
 	newHostinit := restModel.APIHostInitConfig{

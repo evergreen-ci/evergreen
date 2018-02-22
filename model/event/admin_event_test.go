@@ -2,7 +2,6 @@ package event
 
 import (
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -32,62 +31,109 @@ func (s *AdminEventSuite) SetupTest() {
 	s.Require().NoError(err)
 }
 
-func (s *AdminEventSuite) TestBannerEvent() {
-	const oldText = "hello evergreen users!"
-	const newText = "changed text"
-
-	// test that events log the old and new val correctly
-	s.NoError(LogBannerChanged(oldText, newText, s.u))
-	events, err := Find(AllLogCollection, RecentAdminEvents(1))
+func (s *AdminEventSuite) TestEventLogging() {
+	before := evergreen.ServiceFlags{}
+	after := evergreen.ServiceFlags{
+		MonitorDisabled:     true,
+		RepotrackerDisabled: true,
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData, ok := events[0].Data.Data.(*AdminEventData)
-	s.True(ok)
+	eventData := dbEvents[0].Data.Data.(*AdminEventData)
 	s.True(eventData.IsValid())
-	s.Equal(newText, eventData.NewVal)
-	s.Equal(oldText, eventData.OldVal)
-
-	// test that calling the logger without a change does not log
-	time.Sleep(10 * time.Millisecond) // sleep between logging so that timestamps are different
-	s.NoError(LogBannerChanged(newText, newText, s.u))
-	newEvents, err := Find(AllLogCollection, RecentAdminEvents(1))
-	s.NoError(err)
-	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
-
-	// test that changing the theme logs correctly
-	s.NoError(LogBannerThemeChanged(evergreen.Announcement, evergreen.Important, s.u))
-	events, err = Find(AllLogCollection, RecentAdminEvents(1))
-	s.NoError(err)
-	eventData, ok = events[0].Data.Data.(*AdminEventData)
-	s.True(ok)
-	s.True(eventData.IsValid())
-	s.Equal(string(evergreen.Important), eventData.NewVal)
-	s.Equal(string(evergreen.Announcement), eventData.OldVal)
+	beforeVal := eventData.Changes.Before.(*evergreen.ServiceFlags)
+	afterVal := eventData.Changes.After.(*evergreen.ServiceFlags)
+	s.Equal(before, *beforeVal)
+	s.Equal(false, afterVal.AlertsDisabled)
+	s.Equal(true, afterVal.MonitorDisabled)
+	s.Equal(true, afterVal.RepotrackerDisabled)
 }
 
-func (s *AdminEventSuite) TestFlagsEvent() {
-	oldFlags := evergreen.ServiceFlags{
-		TaskDispatchDisabled: true,
-		HostinitDisabled:     true,
+func (s *AdminEventSuite) TestEventLogging2() {
+	before := evergreen.Settings{
+		ApiUrl:     "api",
+		Keys:       map[string]string{"k1": "v1"},
+		SuperUsers: []string{"a", "b", "c"},
 	}
-	newFlags := evergreen.ServiceFlags{
-		MonitorDisabled: true,
-		AlertsDisabled:  true,
-	}
-
-	// test that events log the old and new val correctly
-	s.NoError(LogServiceChanged(oldFlags, newFlags, s.u))
-	events, err := Find(AllLogCollection, RecentAdminEvents(1))
+	after := evergreen.Settings{}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData, ok := events[0].Data.Data.(*AdminEventData)
-	s.True(ok)
+	eventData := dbEvents[0].Data.Data.(*AdminEventData)
 	s.True(eventData.IsValid())
-	s.Equal(newFlags, eventData.NewFlags)
-	s.Equal(oldFlags, eventData.OldFlags)
+	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
+	afterVal := eventData.Changes.After.(*evergreen.Settings)
+	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
+	s.Equal(before.Keys, beforeVal.Keys)
+	s.Equal(before.SuperUsers, beforeVal.SuperUsers)
+	s.Equal("", afterVal.ApiUrl)
+	s.Equal(map[string]string{}, afterVal.Keys)
+	s.Equal([]string{}, afterVal.SuperUsers)
+}
 
-	// test that calling the logger without a change does not log
-	time.Sleep(10 * time.Millisecond)
-	s.NoError(LogServiceChanged(newFlags, newFlags, s.u))
-	newEvents, err := Find(AllLogCollection, RecentAdminEvents(1))
+func (s *AdminEventSuite) TestEventLogging3() {
+	before := evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			Port:     10,
+			Password: "pass",
+		},
+	}
+	after := evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			Port:     20,
+			Password: "nope",
+		},
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
+	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	s.True(eventData.IsValid())
+	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
+	afterVal := eventData.Changes.After.(*evergreen.NotifyConfig)
+	s.Equal(before.SMTP.Port, beforeVal.SMTP.Port)
+	s.Equal(before.SMTP.Password, beforeVal.SMTP.Password)
+	s.Equal(after.SMTP.Port, afterVal.SMTP.Port)
+	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
+}
+
+func (s *AdminEventSuite) TestNoChanges() {
+	before := evergreen.SchedulerConfig{
+		MergeToggle: 5,
+		TaskFinder:  "legacy",
+	}
+	after := evergreen.SchedulerConfig{
+		MergeToggle: 5,
+		TaskFinder:  "legacy",
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	s.Len(dbEvents, 0)
+}
+
+func (s *AdminEventSuite) TestEventScrubbing() {
+	before := evergreen.AuthConfig{}
+	after := evergreen.AuthConfig{
+		Naive: &evergreen.NaiveAuthConfig{
+			Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pwd"}},
+		},
+		Crowd: &evergreen.CrowdConfig{
+			Username: "crowd",
+			Password: "crowdpw",
+		},
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAndScrub(RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	s.True(eventData.IsValid())
+	beforeVal := eventData.Changes.Before.(*evergreen.AuthConfig)
+	afterVal := eventData.Changes.After.(*evergreen.AuthConfig)
+	s.Equal(before, *beforeVal)
+	s.Equal("user", afterVal.Naive.Users[0].Username)
+	s.Equal("***", afterVal.Naive.Users[0].Password)
+	s.Equal("crowd", afterVal.Crowd.Username)
+	s.Equal("***", afterVal.Crowd.Password)
 }
