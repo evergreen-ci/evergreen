@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -16,127 +15,76 @@ import (
 
 const (
 	// how long to wait in between reachability checks
-	ReachabilityCheckInterval = 10 * time.Minute
-	NumReachabilityWorkers    = 10
+	reachabilityCheckInterval = 10 * time.Minute
 )
 
 // responsible for monitoring and checking in on hosts
-type hostMonitoringFunc func(context.Context, *evergreen.Settings) []error
+type hostMonitoringFunc func(context.Context, *evergreen.Settings) error
 
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
-func monitorReachability(ctx context.Context, settings *evergreen.Settings) []error {
-	// used to store any errors that occur
-	var errs []error
-
+func monitorReachability(ctx context.Context, settings *evergreen.Settings) error {
 	// fetch all hosts that have not been checked recently
 	// (> 10 minutes ago)
-	threshold := time.Now().Add(-ReachabilityCheckInterval)
+	startAt := time.Now()
+	threshold := startAt.Add(-reachabilityCheckInterval)
 	hosts, err := host.Find(host.ByNotMonitoredSince(threshold))
 	if err != nil {
-		errs = append(errs, errors.Wrap(err, "error finding hosts not monitored recently"))
-		return errs
+		return errors.Wrap(err, "error finding hosts not monitored recently")
 	}
 
-	workers := NumReachabilityWorkers
-	if len(hosts) < workers {
-		workers = len(hosts)
-	}
+	catcher := grip.NewBasicCatcher()
 
-	wg := sync.WaitGroup{}
+checkLoop:
+	for _, h := range hosts {
+		// get a cloud version of the host
+		cloudHost, err := cloud.GetCloudHost(ctx, &h, settings)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "error getting cloud host for host %v: %v", h.Id))
+			continue checkLoop
+		}
 
-	wg.Add(workers)
+		// get the cloud status for the host
+		cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
+		if err != nil {
+			catcher.Add(errors.Wrapf(err, "error getting cloud status for host %s", h.Id))
+			continue checkLoop
+		}
 
-	hostsChan := make(chan host.Host, workers)
-	errChan := make(chan error, workers)
-
-	for i := 0; i < workers; i++ {
-		go func() {
-			defer wg.Done()
-			select {
-			case h := <-hostsChan:
-				if err := checkHostReachability(ctx, h, settings); err != nil {
-					errChan <- errors.WithStack(err)
-				}
-			case <-ctx.Done():
-				return
+		// take different action, depending on how the cloud provider reports the host's status
+		switch cloudStatus {
+		case cloud.StatusRunning:
+			// mark the host appropriately; this is a noop if the host status hasn't changed.
+			if err := h.UpdateReachability(true); err != nil {
+				catcher.Add(errors.Wrapf(err, "error updating reachability for host %s", h.Id))
+				continue checkLoop
 			}
-		}()
-	}
 
-	errDone := make(chan struct{})
-	go func() {
-		defer close(errDone)
-		select {
-		case err := <-errChan:
-			if err != nil {
-				errs = append(errs, errors.Wrap(err, "error checking reachability"))
+		case cloud.StatusTerminated:
+			grip.Info(message.Fields{
+				"runner":    RunnerName,
+				"operation": "monitorReachability",
+				"message":   "host terminated externally",
+				"host":      h.Id,
+				"distro":    h.Distro.Id,
+			})
+			event.LogHostTerminatedExternally(h.Id)
+
+			// the instance was terminated from outside our control
+			if err := h.SetTerminated("external"); err != nil {
+				catcher.Add(errors.Wrapf(err, "error setting host %s terminated", h.Id))
+				continue checkLoop
 			}
-		case <-ctx.Done():
-			return
-		}
-	}()
-
-	// check all of the hosts. continue on error so that other hosts can be
-	// checked successfully
-	for _, host := range hosts {
-		if ctx.Err() != nil {
-			close(hostsChan)
-			return append(errs, errors.New("host checks aborted"))
-		}
-		hostsChan <- host
-	}
-	close(hostsChan)
-	wg.Wait()
-	close(errChan)
-
-	<-errDone
-	if ctx.Err() != nil {
-		return append(errs, errors.New("host checks aborted"))
-	}
-
-	return errs
-}
-
-// check reachability for a single host, and take any necessary action
-func checkHostReachability(ctx context.Context, host host.Host, settings *evergreen.Settings) error {
-	// get a cloud version of the host
-	cloudHost, err := cloud.GetCloudHost(ctx, &host, settings)
-	if err != nil {
-		return errors.Wrapf(err, "error getting cloud host for host %v: %v", host.Id)
-	}
-
-	// get the cloud status for the host
-	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
-	if err != nil {
-		return errors.Wrapf(err, "error getting cloud status for host %s", host.Id)
-	}
-
-	// take different action, depending on how the cloud provider reports the host's status
-	switch cloudStatus {
-	case cloud.StatusRunning:
-		// mark the host appropriately; this is a noop if the host status hasn't changed.
-		if err := host.UpdateReachability(true); err != nil {
-			return errors.Wrapf(err, "error updating reachability for host %s", host.Id)
-		}
-
-	case cloud.StatusTerminated:
-		grip.Info(message.Fields{
-			"runner":    RunnerName,
-			"operation": "monitorReachability",
-			"message":   "host terminated externally",
-			"host":      host.Id,
-			"distro":    host.Distro.Id,
-		})
-		event.LogHostTerminatedExternally(host.Id)
-
-		// the instance was terminated from outside our control
-		if err := host.SetTerminated("external"); err != nil {
-			return errors.Wrapf(err, "error setting host %s terminated", host.Id)
 		}
 	}
 
-	// success
-	return nil
+	grip.Info(message.Fields{
+		"runner":       RunnerName,
+		"operation":    "legacy-reachability-stat",
+		"hosts":        len(hosts),
+		"errors":       catcher.Len(),
+		"runtime_secs": time.Since(startAt).Seconds(),
+	})
 
+	return catcher.Resolve()
 }
