@@ -160,7 +160,28 @@
       white-space: nowrap;
       font-size:.8em;
     }
+    div > .toolbar {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      z-index: 999;
+      // background: rgba(0,0,0,.44);
+      padding: 0 1% 0 0;
+      display: block;
+    }
 
+    .md-button.md-primary.md-fab,
+    .md-button.md-default-theme.md-primary.md-raised,
+    .md-button.md-primary.md-raised {
+      background-color: rgb(0,0,0);
+    }
+    md-switch.md-default-theme.md-checked .md-thumb, md-switch.md-checked .md-thumb {
+      background-color: rgb(92,184,92); // green;//rgb(255,64,129);
+    }
+    md-switch.md-default-theme.md-checked .md-bar, md-switch.md-checked .md-bar {
+      background-color: rgba(92,184,92,0.5);
+    }
   </style>
   <div class="panel perf-panel" ng-if="conf.enabled && !!perfSample">
     <div class="pull-right text-right">
@@ -249,6 +270,41 @@
       </table>
     </div>
     <div ng-show="perftab==2">
+      <div class="toolbar" name="toolbar" ng-show="showToolbar">
+        <div class="lock-size" layout="row" layout-align="end end">
+          <md-fab-toolbar
+            md-open="toolBar.isOpen"
+            ng-hide="toolBar.hidden"
+            ng-mouseenter="toolBar.isOpen=true"
+            ng-mouseleave="toolBar.isOpen=false"
+            md-direction="left">
+            <md-fab-trigger class="align-with-text">
+              <md-button aria-label="menu"
+                         class="md-fab md-primary">
+                <md-icon>build</md-icon>
+              </md-button>
+            </md-fab-trigger>
+
+            <md-toolbar>
+              <md-fab-actions class="md-toolbar-tools">
+                <md-button aria-label="comment" class="md-icon-button">
+                  <md-icon>build</md-icon>
+                </md-button>
+                <md-switch ng-model="scaleModel.linearMode"
+                           ng-click="$event.stopPropagation()"
+                           aria-label="Linear" style='margin-left:10px'>
+                  Linear
+                </md-switch>
+                <md-switch ng-model="rangeModel.originMode"
+                           ng-click="$event.stopPropagation()"
+                           aria-label="origin">
+                  Origin
+                </md-switch>
+              </md-fab-actions>
+            </md-toolbar>
+          </md-fab-toolbar>
+        </div>
+      </div>
       <h5>Thread Levels:</h5>
       <div>
         <div ng-repeat="option in threadLevelsRadio.options">

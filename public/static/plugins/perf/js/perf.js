@@ -36,6 +36,7 @@ mciModule.controller('PerfController', function PerfController(
   }, function() {});
   */
 
+  $scope.showToolbar = false
   $scope.hiddenGraphs = {}
   $scope.compareItemList = []
   $scope.perfTagData = {}
@@ -118,6 +119,28 @@ mciModule.controller('PerfController', function PerfController(
   $scope.project = $window.project;
   $scope.compareHash = "ss";
   $scope.comparePerfSamples = [];
+
+  // Linear or Log Scale
+  $scope.scaleModel = {
+    name: 'Linear',
+    linearMode: true
+  }
+  $scope.rangeModel = {
+    name: 'Origin',
+    originMode: false
+  }
+
+  $scope.$watch('scaleModel.linearMode', function(oldVal, newVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    $scope.redrawGraphs()
+  })
+
+  $scope.$watch('rangeModel.originMode', function(oldVal, newVal) {
+    // Force comparison by value
+    if (oldVal === newVal) return;
+    $scope.redrawGraphs()
+  })
 
   $scope.$watch('threadLevelsRadio.value', function(oldVal, newVal) {
     // Force comparison by value
@@ -690,7 +713,11 @@ var drawTrendGraph = function(scope, PerfChartService) {
       scope: scope,
       containerId: containerId,
       compareSamples: compareSamples,
-      threadMode: scope.threadLevelsRadio.value
+      threadMode: scope.threadLevelsRadio.value,
+      linearMode: scope.scaleModel.linearMode,
+      originMode: scope.rangeModel.originMode
     });
+    scope.showToolbar = true
   }
+
 }

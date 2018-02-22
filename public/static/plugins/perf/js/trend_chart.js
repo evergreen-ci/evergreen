@@ -60,6 +60,13 @@ mciModule.factory('PerfChartService', function() {
       128: { colorId: 8 },
       256: { colorId: 6 },
       512: { colorId: 7 },
+    },
+    formatters: {
+      large: d3.format(',.0f'), // grouped thousands, no significant digits
+      digits_1: d3.format('.01f'), // floating point 1 digits
+      digits_2: d3.format('.02f'), // floating point 2 digits
+      digits_3: d3.format('.03f'), // floating point 3 digits
+      si: d3.format(',s'), // si notation
     }
   };
 
@@ -148,7 +155,9 @@ var drawSingleTrendChart = function(params) {
       scope = params.scope,
       containerId = params.containerId,
       compareSamples = params.compareSamples,
-      threadMode = params.threadMode;
+      threadMode = params.threadMode,
+      linearMode = params.linearMode,
+      originMode = params.originMode;
 
   var cfg = PerfChartService.cfg;
   document.getElementById(containerId).innerHTML = '';
@@ -225,17 +234,12 @@ var drawSingleTrendChart = function(params) {
   var multiSeriesMax = d3.max(flatOpsValues)
 
   var compareMax = 0
-  if (compareSamples) {
+  if (compareSamples && compareSamples.length) {
     compareMax = _.chain(compareSamples)
       .map(function(d) { return d.maxThroughputForTest(key) })
       .max()
       .value()
   }
-
-  // If the upper and lower y-axis values are very close to the average
-  // (within 10%) add extra padding to the upper and lower bounds of the graph for display
-  var yAxisUpperBound = d3.max([compareMax, multiSeriesMax, multiSeriesAvg * 1.1])
-  var yAxisLowerBound = d3.min([multiSeriesMin, multiSeriesAvg * .9])
 
   // Calculate X Ticks values
   var idxStep = (series.length / cfg.xAxis.maxTicks + 2) | 0
@@ -243,20 +247,61 @@ var drawSingleTrendChart = function(params) {
     return i % idxStep == 0
   })
 
-  // create extra padding if seriesMax
-  var yScale = d3.scale.linear()
-    .domain([yAxisLowerBound, yAxisUpperBound])
-    .range([cfg.effectiveHeight, 0]);
 
   var xScale = d3.scale.linear()
     .domain([0, ops.length - 1])
     .range([0, cfg.effectiveWidth]);
 
-  var yAxis = d3.svg.axis()
-    .scale(yScale)
-    .orient('left')
-    .ticks(cfg.yAxis.ticks);
 
+  // Zoomed mode / linear scale is default.
+  // If the upper and lower y-axis values are very close to the average (within 10%)
+  // add extra padding to the upper and lower bounds of the graph for display.
+  var yAxisUpperBound = d3.max([compareMax, multiSeriesMax, multiSeriesAvg * 1.1]);
+  var yAxisLowerBound = originMode ? 0 : d3.min([multiSeriesMin, multiSeriesAvg * .9]);
+  var yScale = d3.scale.linear();
+
+  // Create a log based scale, remove any 0 values (log(0) is infinity).
+  if (!linearMode) {
+    yScale = d3.scale.log()
+    if (yAxisUpperBound == 0) {
+      yAxisUpperBound = 1e-1;
+    }
+    if (yAxisLowerBound == 0 ) {
+      yAxisLowerBound = 1e-1;
+    }
+  }
+
+  // We assume values are either all negative or all positive (around 0).
+  // If the average is less than 0 then swap values and negate the
+  // upper bound.
+  if (multiSeriesAvg < 0) {
+    if (!linearMode) {
+      yAxisUpperBound = -yAxisUpperBound;
+    }
+    yAxisLowerBound = d3.min([multiSeriesMin, multiSeriesAvg * 1.1]);
+  }
+
+  yScale = yScale.clamp(true)
+    .domain([yAxisLowerBound, yAxisUpperBound])
+    .range([cfg.effectiveHeight, 0]).nice(5);
+  var yAxis = d3.svg.axis()
+      .scale(yScale)
+      .orient('left')
+      .ticks(cfg.yAxis.ticks, function(value) {
+        var absolute = Math.abs(value)
+        if (absolute == 0) {
+          return "0"
+        }
+        if (absolute < 1) {
+          if ( absolute >= .1) {
+            return cfg.formatters.digits_1(value);
+          } else {
+            return cfg.formatters.digits_2(value);
+          }
+        } else{
+          return cfg.formatters.si(value);
+        }
+      })
   // ## CHART STRUCTURE ##
 
   // multi line
@@ -284,6 +329,7 @@ var drawSingleTrendChart = function(params) {
       class: 'axis',
       transform: d3Translate(cfg.margin.left - cfg.yAxis.gap, cfg.margin.top)
     })
+    .transition()
     .call(yAxis);
 
   var getIdx = function(d) { return _.findIndex(series, d) }
@@ -544,7 +590,23 @@ var drawSingleTrendChart = function(params) {
 
     focusedText
       .attr('y', function(d, i) { return opsLabelsY[i] })
-      .text(function (d, i) { return d3.format(',.0f')(values[i])})
+      .text(function (d, i) {
+        var value = values[i];
+        var absolute = Math.abs(value);
+        if ( absolute == 0) {
+          return "0";
+        } else if ( absolute < 1) {
+          if ( absolute >= .1) {
+            return cfg.formatters.digits_1(value);
+          }  else if ( val >= .01) {
+            return cfg.formatters.digits_2(value);
+          } else {
+            return cfg.formatters.digits_3(value);
+          }
+        } else{
+          return cfg.formatters.large(value);
+        }
+      });
 
     focusedLine.attr({
       y2: yScale(maxOps),
