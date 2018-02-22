@@ -87,7 +87,7 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 
 		Convey("if there are no versions with the given id, an error should "+
 			"be returned", func() {
-			err := schedulerInstance.updateVersionBuildVarMap("versionStr", versionBuildVarMap)
+			_, err := schedulerInstance.getProject("versionStr")
 			So(err, ShouldNotBeNil)
 		})
 
@@ -101,8 +101,9 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 			// insert the test version
 			So(v.Insert(), ShouldBeNil)
 			key := versionBuildVariant{"versionStr", "ubuntu"}
-			err := schedulerInstance.updateVersionBuildVarMap("versionStr", versionBuildVarMap)
+			p, err := schedulerInstance.getProject("versionStr")
 			So(err, ShouldBeNil)
+			updateVersionBuildVarMap("versionStr", p, versionBuildVarMap)
 
 			// check versionBuildVariant map
 			buildVariant, ok := versionBuildVarMap[key]

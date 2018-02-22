@@ -322,7 +322,7 @@ task_groups:
 		Version:   v.Id,
 	}
 
-	tg, err := GetTaskGroup(&TaskConfig{
+	tg, err := GetTaskGroup(tgName, &TaskConfig{
 		Version: &v,
 		Task:    &t1,
 	})
