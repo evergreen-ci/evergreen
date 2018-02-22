@@ -89,8 +89,7 @@ func (a *Agent) loop(ctx context.Context) error {
 		cancel        context.CancelFunc
 		jitteredSleep time.Duration
 
-		exit bool
-		tc   *taskContext
+		tc *taskContext
 	)
 	lgrCtx, cancel = context.WithCancel(ctx)
 	defer cancel()
@@ -102,7 +101,6 @@ func (a *Agent) loop(ctx context.Context) error {
 
 	tc = &taskContext{}
 
-LOOP:
 	for {
 		select {
 		case <-ctx.Done():
