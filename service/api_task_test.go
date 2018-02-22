@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -24,6 +25,7 @@ import (
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -89,6 +91,30 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 	jsonBytes, err := json.Marshal(*details)
 	testutil.HandleTestingErr(err, t, "error marshalling json")
 	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, request)
+	return w
+}
+
+func getStartTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string) *httptest.ResponseRecorder {
+	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+		t.Fatal("could not create client directory required to start the API server:", err.Error())
+	}
+
+	handler, err := as.Handler()
+	if err != nil {
+		t.Fatalf("creating test API handler: %v", err)
+	}
+	url := fmt.Sprintf("/api/2/task/%v/start", taskId)
+
+	request, err := http.NewRequest("POST", url, ioutil.NopCloser(bytes.NewReader([]byte(`{}`))))
+	if err != nil {
+		t.Fatalf("building request: %v", err)
+	}
+	request.Header.Add(evergreen.HostHeader, hostId)
+	request.Header.Add(evergreen.HostSecretHeader, hostSecret)
+	request.Header.Add(evergreen.TaskSecretHeader, taskSecret)
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
@@ -535,24 +561,27 @@ func TestCheckHostHealth(t *testing.T) {
 	})
 }
 
-func TestEndTaskEndpoint(t *testing.T) {
+func TestTaskLifecycleEndpoints(t *testing.T) {
 	conf := testutil.TestConfig()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	q := queue.NewLocalLimitedSize(4, 2048)
-	if err := q.Start(ctx); err != nil {
-		t.Error(err)
-	}
 
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
 			build.Collection, model.ProjectRefCollection, version.Collection, alertrecord.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
+
+		q := queue.NewLocalLimitedSize(4, 2048)
+		if err := q.Start(ctx); err != nil {
+			t.Fatalf("failed to start queue %s", err)
+		}
+
 		as, err := NewAPIServer(conf, q)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
+		So(as.queue, ShouldEqual, q)
 
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
@@ -581,12 +610,13 @@ func TestEndTaskEndpoint(t *testing.T) {
 		So(task1.Insert(), ShouldBeNil)
 
 		sampleHost := host.Host{
-			Id:            hostId,
-			Secret:        hostSecret,
-			RunningTask:   task1.Id,
-			Provider:      evergreen.ProviderNameStatic,
-			Status:        evergreen.HostRunning,
-			AgentRevision: evergreen.BuildRevision,
+			Id:                    hostId,
+			Secret:                hostSecret,
+			RunningTask:           task1.Id,
+			Provider:              evergreen.ProviderNameStatic,
+			Status:                evergreen.HostRunning,
+			AgentRevision:         evergreen.BuildRevision,
+			LastTaskCompletedTime: time.Now().Add(-20 * time.Minute).Round(time.Second),
 		}
 		So(sampleHost.Insert(), ShouldBeNil)
 
@@ -607,6 +637,38 @@ func TestEndTaskEndpoint(t *testing.T) {
 			Branch: projectId,
 		}
 		So(testVersion.Insert(), ShouldBeNil)
+
+		Convey("test task should start a background job", func() {
+			const dateFormat = "2006-01-02T15:04:05-07:00"
+			stat := q.Stats()
+			So(stat.Total, ShouldEqual, 0)
+			resp := getStartTaskEndpoint(t, as, hostId, task1.Id)
+			stat = q.Stats()
+
+			So(resp.Code, ShouldEqual, http.StatusOK)
+			So(resp, ShouldNotBeNil)
+			So(stat.Total, ShouldEqual, 1)
+			amboy.WaitCtxInterval(ctx, q, time.Millisecond)
+
+			job := <-as.queue.Results(ctx)
+			So(job, ShouldNotBeNil)
+
+			So(job.Type().Version, ShouldEqual, 0)
+
+			// this is gross, but lets us introspect the private job
+			jobData := map[string]interface{}{}
+			raw, err := json.Marshal(job)
+			So(err, ShouldBeNil)
+			So(json.Unmarshal(raw, &jobData), ShouldBeNil)
+
+			startedAt, err := time.Parse(dateFormat, fmt.Sprint(jobData["start_time"]))
+			So(err, ShouldBeNil)
+
+			finishedAt, err := time.Parse(dateFormat, fmt.Sprint(jobData["finish_time"]))
+			So(err, ShouldBeNil)
+
+			So(startedAt.Before(finishedAt), ShouldBeTrue)
+		})
 		Convey("with a set of task end details indicating that task has succeeded", func() {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskSucceeded,

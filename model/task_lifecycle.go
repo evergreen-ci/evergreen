@@ -658,11 +658,8 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 }
 
 // MarkStart updates the task, build, version and if necessary, patch documents with the task start time
-func MarkStart(taskId string, updates *StatusChanges) error {
-	t, err := task.FindOne(task.ById(taskId))
-	if err != nil {
-		return errors.WithStack(err)
-	}
+func MarkStart(t *task.Task, updates *StatusChanges) error {
+	var err error
 	startTime := time.Now()
 	if err = t.MarkStart(startTime); err != nil {
 		return errors.WithStack(err)
