@@ -1,6 +1,8 @@
 package operations
 
 import (
+	"os"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/urfave/cli"
 )
@@ -36,15 +38,18 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 	if c == nil {
 		return nil
 	}
+	url := c.String(dbUrlFlagName)
+	envUrl := os.Getenv(evergreen.MongodbUrl)
+	if url == evergreen.DefaultDatabaseUrl && envUrl != "" {
+		url = envUrl
+	}
 	return &evergreen.DBSettings{
-		Url: c.String(dbUrlFlagName),
+		Url: url,
 		SSL: c.Bool(dbSslFlagName),
 		DB:  c.String(dbNameFlagName),
 		WriteConcernSettings: evergreen.WriteConcern{
 			W:     c.Int(dbWriteNumFlagName),
 			WMode: c.String(dbWmodeFlagName),
-			FSync: c.Bool(dbFsyncFlagName),
-			J:     c.Bool(dbJournalAckFlagName),
 		},
 	}
 }

@@ -27,14 +27,12 @@ const (
 	anserWorkersFlagName = "workers"
 	anserPeriodFlagName  = "period"
 
-	dbUrlFlagName        = "url"
-	dbSslFlagName        = "ssl"
-	dbNameFlagName       = "db"
-	dbWriteNumFlagName   = "w"
-	dbWmodeFlagName      = "wmode"
-	dbWTimeoutFlagName   = "wtimeout"
-	dbFsyncFlagName      = "fsync"
-	dbJournalAckFlagName = "j"
+	dbUrlFlagName      = "url"
+	dbSslFlagName      = "ssl"
+	dbNameFlagName     = "db"
+	dbWriteNumFlagName = "w"
+	dbWmodeFlagName    = "wmode"
+	dbWTimeoutFlagName = "wtimeout"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -175,14 +173,6 @@ func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
 		cli.StringFlag{
 			Name:  dbWmodeFlagName,
 			Usage: "Write mode. Only valid values are blank or 'majority'",
-		},
-		cli.BoolFlag{
-			Name:  dbFsyncFlagName,
-			Usage: "True if pending writes should flush to disk",
-		},
-		cli.BoolFlag{
-			Name:  dbJournalAckFlagName,
-			Usage: "True if the journal must acknowledge writes",
 		},
 	)
 }

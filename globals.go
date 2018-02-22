@@ -82,6 +82,7 @@ const (
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
 	EvergreenHome = "EVGHOME"
+	MongodbUrl    = "MONGO_URL"
 
 	// Special logging output targets
 	LocalLoggingOverride          = "LOCAL"
