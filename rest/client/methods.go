@@ -248,14 +248,14 @@ func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData Task
 }
 
 // GetNextTask returns a next task response by getting the next task for a given host.
-func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
+func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
 	nextTask := &apimodels.NextTaskResponse{}
 	info := requestInfo{
 		method:  get,
 		version: v1,
 	}
 	info.path = "agent/next_task"
-	resp, err := c.retryRequest(ctx, info, details)
+	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get task")
 		return nil, err

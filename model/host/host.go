@@ -340,23 +340,6 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 	return nil
 }
 
-// UnsetRunningTask unsets the running task fields. It does NOT set last task completed fields.
-func (host *Host) UnsetRunningTask() error {
-	return UpdateOne(
-		bson.M{
-			IdKey: host.Id,
-		},
-		bson.M{
-			"$unset": bson.M{
-				RunningTaskKey:             1,
-				RunningTaskGroupKey:        1,
-				RunningTaskBuildVariantKey: 1,
-				RunningTaskVersionKey:      1,
-				RunningTaskProjectKey:      1,
-			},
-		})
-}
-
 // UpdateRunningTask takes two id strings - an old task and a new one - finds
 // the host running the task with Id, 'prevTaskId' and updates its running task
 // to 'newTaskId'; also setting the completion time of 'prevTaskId'

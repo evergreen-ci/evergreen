@@ -43,7 +43,7 @@ func insertHostWithRunningTask(hostId, taskId string) (host.Host, error) {
 	return h, h.Insert()
 }
 
-func getNextTaskEndpoint(t *testing.T, as *APIServer, hostId string, details *apimodels.GetNextTaskDetails) *httptest.ResponseRecorder {
+func getNextTaskEndpoint(t *testing.T, as *APIServer, hostId string) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
@@ -60,9 +60,6 @@ func getNextTaskEndpoint(t *testing.T, as *APIServer, hostId string, details *ap
 	}
 	request.Header.Add(evergreen.HostHeader, hostId)
 	request.Header.Add(evergreen.HostSecretHeader, hostSecret)
-	jsonBytes, err := json.Marshal(*details)
-	testutil.HandleTestingErr(err, t, "error marshalling json")
-	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
@@ -357,9 +354,8 @@ func TestNextTask(t *testing.T) {
 
 		So(pref.Insert(), ShouldBeNil)
 
-		sent := &apimodels.GetNextTaskDetails{}
 		Convey("getting the next task api endpoint should work", func() {
-			resp := getNextTaskEndpoint(t, as, sampleHost.Id, sent)
+			resp := getNextTaskEndpoint(t, as, sampleHost.Id)
 			So(resp, ShouldNotBeNil)
 			Convey("should return an http status ok", func() {
 				So(resp.Code, ShouldEqual, http.StatusOK)
@@ -377,7 +373,7 @@ func TestNextTask(t *testing.T) {
 					TaskDispatchDisabled: true,
 				}
 				So(evergreen.SetServiceFlags(serviceFlags), ShouldBeNil)
-				resp = getNextTaskEndpoint(t, as, sampleHost.Id, sent)
+				resp = getNextTaskEndpoint(t, as, sampleHost.Id)
 				So(resp, ShouldNotBeNil)
 				Convey("then the response should not contain a task", func() {
 					So(resp.Code, ShouldEqual, http.StatusOK)
@@ -388,27 +384,6 @@ func TestNextTask(t *testing.T) {
 				})
 				serviceFlags.TaskDispatchDisabled = false // unset degraded mode
 				So(evergreen.SetServiceFlags(serviceFlags), ShouldBeNil)
-			})
-			Convey("with an out of date agent revision and no task group", func() {
-				So(sampleHost.SetAgentRevision("out-of-date-string"), ShouldBeNil)
-				resp := getNextTaskEndpoint(t, as, sampleHost.Id, sent)
-				details := &apimodels.NextTaskResponse{}
-				So(resp.Code, ShouldEqual, http.StatusOK)
-				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
-				So(details.ShouldExit, ShouldEqual, true)
-				So(details.NewAgent, ShouldEqual, false)
-				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
-			})
-			Convey("with an out of date agent revision and a task group", func() {
-				So(sampleHost.SetAgentRevision("out-of-date-string"), ShouldBeNil)
-				sentWithTaskGroup := &apimodels.GetNextTaskDetails{"task_group"}
-				resp := getNextTaskEndpoint(t, as, sampleHost.Id, sentWithTaskGroup)
-				details := &apimodels.NextTaskResponse{}
-				So(resp.Code, ShouldEqual, http.StatusOK)
-				So(json.NewDecoder(resp.Body).Decode(details), ShouldBeNil)
-				So(details.ShouldExit, ShouldEqual, false)
-				So(details.NewAgent, ShouldEqual, true)
-				So(sampleHost.SetAgentRevision(evergreen.BuildRevision), ShouldBeNil) // reset
 			})
 			Convey("with a host that already has a running task", func() {
 				h2 := host.Host{
@@ -427,7 +402,7 @@ func TestNextTask(t *testing.T) {
 				}
 				So(existingTask.Insert(), ShouldBeNil)
 				Convey("getting the next task should return the existing task", func() {
-					resp := getNextTaskEndpoint(t, as, h2.Id, sent)
+					resp := getNextTaskEndpoint(t, as, h2.Id)
 					So(resp, ShouldNotBeNil)
 					Convey("should return http status ok", func() {
 						So(resp.Code, ShouldEqual, http.StatusOK)
@@ -466,7 +441,7 @@ func TestNextTask(t *testing.T) {
 					So(anotherBuild.Insert(), ShouldBeNil)
 					So(anotherHost.Insert(), ShouldBeNil)
 					Convey("t1 should be returned and should be set to dispatched", func() {
-						resp := getNextTaskEndpoint(t, as, anotherHost.Id, sent)
+						resp := getNextTaskEndpoint(t, as, anotherHost.Id)
 						So(resp, ShouldNotBeNil)
 						Convey("should return http status ok", func() {
 							So(resp.Code, ShouldEqual, http.StatusOK)
@@ -504,7 +479,7 @@ func TestNextTask(t *testing.T) {
 						}
 						So(anotherBuild.Insert(), ShouldBeNil)
 						Convey("the inactive task should not be returned and the host running task should be unset", func() {
-							resp := getNextTaskEndpoint(t, as, h3.Id, sent)
+							resp := getNextTaskEndpoint(t, as, h3.Id)
 							So(resp, ShouldNotBeNil)
 							Convey("should return http status ok", func() {
 								So(resp.Code, ShouldEqual, http.StatusOK)
@@ -546,16 +521,16 @@ func TestCheckHostHealth(t *testing.T) {
 			Status:        evergreen.HostRunning,
 			AgentRevision: currentRevision,
 		}
-		shouldExit := checkHostHealth(h)
+		shouldExit, _ := checkHostHealth(h, currentRevision)
 		So(shouldExit, ShouldBeFalse)
 		h.Status = evergreen.HostDecommissioned
-		shouldExit = checkHostHealth(h)
+		shouldExit, _ = checkHostHealth(h, currentRevision)
 		So(shouldExit, ShouldBeTrue)
 		h.Status = evergreen.HostQuarantined
-		shouldExit = checkHostHealth(h)
+		shouldExit, _ = checkHostHealth(h, currentRevision)
 		So(shouldExit, ShouldBeTrue)
 		Convey("With a host that is running but has a different revision", func() {
-			shouldExit := checkAgentRevision(h)
+			shouldExit, _ := checkHostHealth(h, "bcd")
 			So(shouldExit, ShouldBeTrue)
 		})
 	})

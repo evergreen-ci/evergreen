@@ -216,7 +216,7 @@ func (c *Mock) FetchExpansionVars(ctx context.Context, td TaskData) (*apimodels.
 }
 
 // GetNextTask returns a mock NextTaskResponse.
-func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDetails) (*apimodels.NextTaskResponse, error) {
+func (c *Mock) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
 	if c.NextTaskIsNil {
 		return &apimodels.NextTaskResponse{
 				TaskId: "",
@@ -234,6 +234,7 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 		TaskId:     "mock_task_id",
 		TaskSecret: "mock_task_secret",
 		ShouldExit: false,
+		Message:    "mock message",
 	}, nil
 }
 

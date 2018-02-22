@@ -95,29 +95,28 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 		details.Status == evergreen.TaskUndispatched
 }
 
-// checkHostHealth checks that host is running.
-func checkHostHealth(h *host.Host) bool {
+// checkHostHealth checks that host is running and creates a task response that is sent back to the agent after the task ends.
+func checkHostHealth(h *host.Host, agentRevision string) (bool, string) {
 	if h.Status != evergreen.HostRunning {
 		grip.Info(message.Fields{
 			"message": "host is not running, so agent should exit",
 			"host_id": h.Id,
 		})
-		return true
+		return true, fmt.Sprintf("host %s is in state %s and agent should exit",
+			h.Id, h.Status)
 	}
-	return false
-}
-
-// checkAgentRevision checks that the agent revision is current.
-func checkAgentRevision(h *host.Host) bool {
-	if h.AgentRevision != evergreen.BuildRevision {
+	if h.AgentRevision != agentRevision {
 		grip.Info(message.Fields{
 			"message":        "agent has wrong revision, so it should exit",
 			"host_revision":  h.AgentRevision,
-			"agent_revision": evergreen.BuildRevision,
+			"agent_revision": agentRevision,
 		})
-		return true
+		return true, fmt.Sprintf("agent should be rebuilt:"+
+			"host has agent revision %s and latest revision is %s",
+			h.AgentRevision, agentRevision)
 	}
-	return false
+	return false, ""
+
 }
 
 // EndTask creates test results from the request and the project config.
@@ -188,7 +187,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		}
 		message := fmt.Sprintf("task %v has been aborted and will not run", t.Id)
 		grip.Infof(message)
-		endTaskResp = &apimodels.EndTaskResponse{}
+		endTaskResp = &apimodels.EndTaskResponse{
+			Message: message,
+		}
 		as.WriteJSON(w, http.StatusOK, endTaskResp)
 		return
 	}
@@ -230,7 +231,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		grip.Errorln("Error updating expected duration:", err)
 	}
 
-	if checkHostHealth(currentHost) {
+	shouldExit, msg := checkHostHealth(currentHost, evergreen.BuildRevision)
+	if shouldExit {
 		// set the needs new agent flag on the host
 		if err := currentHost.SetNeedsNewAgent(true); err != nil {
 			grip.Errorf("error indicating host %s needs new agent: %+v", currentHost.Id, err)
@@ -238,6 +240,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		endTaskResp.ShouldExit = true
+		endTaskResp.Message = msg
 	}
 
 	// we should disable hosts and prevent them from performing
@@ -254,6 +257,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 				message.Fields{
 					"host_id": currentHost.Id,
 					"task_id": t.Id,
+					"message": msg,
 				}))
 
 			if err != nil {
@@ -262,6 +266,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		endTaskResp.ShouldExit = true
+		endTaskResp.Message = msg
 	}
 
 	grip.Infof("Successfully marked task %s as finished", t.Id)
@@ -363,8 +368,13 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 // and popping the next task off the task queue.
 func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	h := MustHaveHost(r)
-	response := apimodels.NextTaskResponse{}
-	if checkHostHealth(h) {
+	response := apimodels.NextTaskResponse{
+		ShouldExit: false,
+	}
+
+	shouldExit, msg := checkHostHealth(h, evergreen.BuildRevision)
+	if shouldExit {
+		// set the needs new agent flag on the host
 		if err := h.SetNeedsNewAgent(true); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"host":      h.Id,
@@ -377,43 +387,9 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		response.ShouldExit = true
+		response.Message = msg
 		as.WriteJSON(w, http.StatusOK, response)
 		return
-	}
-	if checkAgentRevision(h) {
-		details := &apimodels.GetNextTaskDetails{}
-		if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if details.TaskGroup == "" {
-			if err := h.SetNeedsNewAgent(true); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"host":      h.Id,
-					"operation": "next_task",
-					"message":   "problem indicating that host needs new agent",
-					"source":    "database error",
-					"revision":  evergreen.BuildRevision,
-				}))
-				as.WriteJSON(w, http.StatusInternalServerError, err)
-				return
-			}
-			if err := h.UnsetRunningTask(); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"host":      h.Id,
-					"operation": "next_task",
-					"message":   "problem unsetting running task",
-					"source":    "database error",
-					"revision":  evergreen.BuildRevision,
-				}))
-				as.WriteJSON(w, http.StatusInternalServerError, err)
-				return
-			}
-			response.ShouldExit = true
-			as.WriteJSON(w, http.StatusOK, response)
-			return
-		}
-		response.NewAgent = true
 	}
 
 	adminSettings, err := evergreen.GetConfig()
@@ -482,9 +458,10 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if taskQueue == nil {
-		msg := fmt.Sprintf("Nil task queue found for task '%v's distro queue - '%v'",
+		msg = fmt.Sprintf("Nil task queue found for task '%v's distro queue - '%v'",
 			h.Id, h.Distro.Id)
 		grip.Info(msg)
+		response.Message = msg
 		as.WriteJSON(w, http.StatusOK, response)
 		return
 	}

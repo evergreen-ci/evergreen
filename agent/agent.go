@@ -109,7 +109,7 @@ LOOP:
 			grip.Info("agent loop canceled")
 			return nil
 		case <-timer.C:
-			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{tc.taskGroup})
+			nextTask, err := a.comm.GetNextTask(ctx)
 			if err != nil {
 				return errors.Wrap(err, "error getting next task")
 			}
@@ -117,12 +117,7 @@ LOOP:
 				if nextTask.TaskSecret == "" {
 					return errors.New("task response missing secret")
 				}
-				tc, exit = a.prepareNextTask(ctx, nextTask, tc)
-				if exit {
-					// Query for next task, this time with an empty task group,
-					// to get a ShouldExit from the API, and set NeedsNewAgent.
-					continue LOOP
-				}
+				tc = a.prepareNextTask(ctx, nextTask, tc)
 				if err := a.resetLogging(lgrCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
@@ -130,7 +125,7 @@ LOOP:
 					return errors.WithStack(err)
 				}
 				timer.Reset(0)
-				continue LOOP
+				continue
 			}
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
@@ -139,7 +134,7 @@ LOOP:
 	}
 }
 
-func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) (*taskContext, bool) {
+func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTaskResponse, tc *taskContext) *taskContext {
 	setupGroup := false
 	taskDirectory := tc.taskDirectory
 	if tc.taskConfig == nil || nextTask.TaskGroup == "" || nextTask.TaskGroup != tc.taskGroup || nextTask.Version != tc.taskConfig.Task.Version {
@@ -147,9 +142,6 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		setupGroup = true
 		taskDirectory = ""
 		a.runPostGroupCommands(ctx, tc)
-		if nextTask.NewAgent {
-			return &taskContext{}, true
-		}
 	}
 	return &taskContext{
 		task: client.TaskData{
@@ -159,7 +151,7 @@ func (a *Agent) prepareNextTask(ctx context.Context, nextTask *apimodels.NextTas
 		taskGroup:     nextTask.TaskGroup,
 		runGroupSetup: setupGroup,
 		taskDirectory: taskDirectory,
-	}, false
+	}
 }
 
 func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
@@ -272,7 +264,7 @@ func (a *Agent) runTaskTimeoutCommands(ctx context.Context, tc *taskContext) {
 	}
 }
 
-// finishTask sends the returned EndTaskResponse and error
+// finishTask sends the returned TaskEndResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(tc, status)
 	switch detail.Status {
