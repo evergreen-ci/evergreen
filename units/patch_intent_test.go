@@ -3,6 +3,7 @@ package units
 import (
 	"context"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -96,6 +97,12 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Variant:   "race.*",
 		Task:      "dist.*",
 	}).Upsert())
+	s.NoError((&model.ProjectAlias{
+		ProjectID: "mci",
+		Alias:     "doesntexist",
+		Variant:   "fake",
+		Task:      "fake",
+	}).Upsert())
 
 	s.repo = "evergreen-ci/evergreen"
 	s.headRepo = "tychoish/evergreen"
@@ -142,6 +149,30 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	s.Require().False(j.HasErrors())
 
 	return j
+}
+
+func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
+	resp, err := http.Get(s.diffURL)
+	s.Require().NoError(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	s.Require().NoError(err)
+
+	intent, err := patch.NewCliIntent(s.user, s.project, s.hash, "", string(body), s.desc, true, nil, nil, "doesntexist")
+	s.NoError(err)
+	s.Require().NotNil(intent)
+	s.NoError(intent.Insert())
+
+	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
+	s.Require().NoError(err)
+
+	j := NewPatchIntentProcessor(bson.NewObjectId(), intent).(*patchIntentProcessor)
+	j.env = s.env
+
+	patchDoc := intent.NewPatch()
+	err = j.finishPatch(patchDoc, githubOauthToken)
+	s.Require().Error(err)
+	s.Equal("patch has no build variants or tasks", err.Error())
 }
 
 func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
