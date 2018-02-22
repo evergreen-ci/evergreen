@@ -60,7 +60,7 @@ func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 		return ResponseData{}, err
 	}
 	settingsModel := model.NewConfigModel()
-	err = settingsModel.BuildFromService(settings)
+	err = settingsModel.BuildFromServiceAndScrub(settings)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
@@ -107,6 +107,10 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err
+	}
+	err = h.model.BuildFromService(newSettings)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "error building API model")
 	}
 	return ResponseData{
 		Result: []model.Model{h.model},

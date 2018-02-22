@@ -14,7 +14,7 @@ func TestModelConversion(t *testing.T) {
 	apiSettings := NewConfigModel()
 
 	// test converting from a db model to an API model
-	assert.NoError(apiSettings.BuildFromService(testSettings))
+	assert.NoError(apiSettings.BuildFromServiceAndScrub(testSettings))
 	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
