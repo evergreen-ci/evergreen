@@ -28,11 +28,11 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
     }
-    // temporary workaround until the admin page has components for every part of the config
+    // temporary workaround until the admin page has components for every part of the config (EVG-2684)
     settings = {
       banner: $scope.Settings.banner,
       banner_theme: $scope.Settings.banner_theme,
-      service_flags: $scope.Settings.service_flags,
+      service_flags: $scope.Settings.service_flags
     };
     mciAdminRestService.saveSettings(settings, { success: successHandler, error: errorHandler });
   }
