@@ -24,7 +24,7 @@ func deployMigration() cli.Command {
 			defer cancel()
 
 			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, c.String(confFlagName))
+			err := env.Configure(ctx, c.String(confFlagName), nil)
 
 			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			settings := env.Settings()
@@ -70,7 +70,7 @@ func deployDataTransforms() cli.Command {
 			defer cancel()
 
 			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, confPath)
+			err := env.Configure(ctx, confPath, nil)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring application environment")
 			}

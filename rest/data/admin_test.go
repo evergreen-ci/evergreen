@@ -99,7 +99,7 @@ func TestMockConnectorSuite(t *testing.T) {
 
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(context.Background(), ""))
+	s.Require().NoError(s.env.Configure(context.Background(), "", nil))
 	s.Require().NoError(s.env.Local.Start(context.Background()))
 }
 

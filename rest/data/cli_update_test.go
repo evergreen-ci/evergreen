@@ -26,7 +26,7 @@ func TestUpdateConnector(t *testing.T) {
 	s.setup = func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		s.cancel = cancel
-		s.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+		s.NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 		s.NoError(db.ClearCollections(evergreen.ConfigCollection))
 	}

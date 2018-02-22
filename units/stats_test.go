@@ -30,7 +30,7 @@ func (s *StatUnitsSuite) SetupTest() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.Require().NoError(s.env.Configure(ctx, ""))
+	s.Require().NoError(s.env.Configure(ctx, "", nil))
 }
 
 func (s *StatUnitsSuite) TestAmboyStatsCollector() {

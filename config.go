@@ -789,7 +789,6 @@ type Settings struct {
 	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
 	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
-	WriteConcern       WriteConcern              `yaml:"write_concern"`
 }
 
 func (c *Settings) SectionId() string { return configDocID }
@@ -1128,13 +1127,17 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 // SessionFactory creates a usable SessionFactory from
 // the Evergreen settings.
 func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
+	return CreateSession(settings.Database)
+}
+
+func CreateSession(settings DBSettings) *legacyDB.SessionFactory {
 	safety := mgo.Safe{}
-	safety.W = settings.Database.WriteConcernSettings.W
-	safety.WMode = settings.Database.WriteConcernSettings.WMode
-	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
-	safety.FSync = settings.Database.WriteConcernSettings.FSync
-	safety.J = settings.Database.WriteConcernSettings.J
-	return legacyDB.NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultMgoDialTimeout)
+	safety.W = settings.WriteConcernSettings.W
+	safety.WMode = settings.WriteConcernSettings.WMode
+	safety.WTimeout = settings.WriteConcernSettings.WTimeout
+	safety.FSync = settings.WriteConcernSettings.FSync
+	safety.J = settings.WriteConcernSettings.J
+	return legacyDB.NewSessionFactory(settings.Url, settings.DB, settings.SSL, safety, defaultMgoDialTimeout)
 }
 
 func (s *Settings) GetGithubOauthToken() (string, error) {

@@ -142,6 +142,8 @@ const (
 
 const (
 	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
+	DefaultDatabaseUrl                  = "localhost:27017"
+	DefaultDatabaseName                 = "mci"
 
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"

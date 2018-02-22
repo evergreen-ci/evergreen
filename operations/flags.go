@@ -26,6 +26,15 @@ const (
 	anserTargetFlagName  = "target"
 	anserWorkersFlagName = "workers"
 	anserPeriodFlagName  = "period"
+
+	dbUrlFlagName        = "url"
+	dbSslFlagName        = "ssl"
+	dbNameFlagName       = "db"
+	dbWriteNumFlagName   = "w"
+	dbWmodeFlagName      = "wmode"
+	dbWTimeoutFlagName   = "wtimeout"
+	dbFsyncFlagName      = "fsync"
+	dbJournalAckFlagName = "j"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }
@@ -48,7 +57,7 @@ func serviceConfigFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags, cli.StringFlag{
 		Name:  joinFlagNames(confFlagName, "config", "c"),
 		Usage: "path to the service configuration file",
-		Value: evergreen.DefaultServiceConfigurationFileName,
+		Value: evergreen.DefaultServiceConfigurationFileName, // TODO: remove once everything is passing an explicit file
 	})
 }
 
@@ -142,6 +151,41 @@ func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
 			Value: time.Minute,
 		})
 
+}
+
+func addDbSettingsFlags(flags ...cli.Flag) []cli.Flag {
+	return append(flags,
+		cli.StringFlag{
+			Name:  dbUrlFlagName,
+			Usage: "Database URL(s). For a replica set, list all members separated by a comma.",
+			Value: evergreen.DefaultDatabaseUrl,
+		},
+		cli.BoolFlag{
+			Name:  dbSslFlagName,
+			Usage: "True to use SSL in the DB connection",
+		},
+		cli.StringFlag{
+			Name:  dbNameFlagName,
+			Usage: "Database name",
+			Value: evergreen.DefaultDatabaseName,
+		},
+		cli.IntFlag{
+			Name:  dbWriteNumFlagName,
+			Usage: "Number of mongod instances that need to acknowledge a write",
+		},
+		cli.StringFlag{
+			Name:  dbWmodeFlagName,
+			Usage: "Write mode. Only valid values are blank or 'majority'",
+		},
+		cli.BoolFlag{
+			Name:  dbFsyncFlagName,
+			Usage: "True if pending writes should flush to disk",
+		},
+		cli.BoolFlag{
+			Name:  dbJournalAckFlagName,
+			Usage: "True if the journal must acknowledge writes",
+		},
+	)
 }
 
 func mergeFlagSlices(in ...[]cli.Flag) []cli.Flag {

@@ -43,17 +43,8 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(s.env.Configure(ctx, s.path))
-	s.Error(s.env.Configure(ctx, s.path))
-}
-
-func (s *EnvironmentSuite) TestLoadingConfigErrorsIfFileDoesNotExist() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.Error(s.env.Configure(ctx, ""))
-
-	s.Error(s.env.Configure(ctx, s.path+"-DOES-NOT-EXIST"))
+	s.NoError(s.env.Configure(ctx, s.path, nil))
+	s.Error(s.env.Configure(ctx, s.path, nil))
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
@@ -106,4 +97,18 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Equal("z80", cb[1].Arch)
 	s.Equal("linux", cb[1].OS)
 	s.Equal("https://example.com/clients/linux_z80_obviouslynotherealone/evergreen", cb[1].URL)
+}
+
+func (s *EnvironmentSuite) TestDbOverride() {
+	s.shouldSkip()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	settings, err := NewSettings(s.path)
+	s.NoError(err)
+	db := settings.Database
+	db.DB = "other_db"
+	s.NoError(s.env.Configure(ctx, s.path, &db))
+	s.Equal("other_db", s.env.settings.Database.DB)
 }

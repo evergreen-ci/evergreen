@@ -45,9 +45,9 @@ func handcrankRunner() cli.Command {
 		Name:    "handcrank",
 		Usage:   "run a single background process by name",
 		Aliases: []string{"run-single", "single"},
-		Flags: serviceConfigFlags(cli.StringFlag{
+		Flags: mergeFlagSlices(addDbSettingsFlags(), serviceConfigFlags(cli.StringFlag{
 			Name: joinFlagNames("runner", "r", "n", "name", "single"),
-		}),
+		})),
 		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
@@ -55,13 +55,14 @@ func handcrankRunner() cli.Command {
 			if name == "" {
 				return errors.New("must specify a runner")
 			}
+			db := parseDB(c)
 
 			ctx, cancel := context.WithCancel(context.Background()) // nolint
 			env := evergreen.GetEnvironment()
 			defer recovery.LogStackTraceAndExit("evergreen runner")
 			defer cancel()
 
-			err := env.Configure(ctx, confPath)
+			err := env.Configure(ctx, confPath, db)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring application environment")
 			}
@@ -79,14 +80,15 @@ func startRunnerService() cli.Command {
 	return cli.Command{
 		Name:   "runner",
 		Usage:  "run evergreen background worker",
-		Flags:  serviceConfigFlags(),
+		Flags:  mergeFlagSlices(addDbSettingsFlags(), serviceConfigFlags()),
 		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
+			db := parseDB(c)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			env := evergreen.GetEnvironment()
-			grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, confPath), "problem configuring application environment"))
+			grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, confPath, db), "problem configuring application environment"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(env)
