@@ -383,7 +383,26 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if checkAgentRevision(h) {
 		details := &apimodels.GetNextTaskDetails{}
 		if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			if innerErr := h.SetNeedsNewAgent(true); innerErr != nil {
+				grip.Error(message.WrapError(innerErr, message.Fields{
+					"host":      h.Id,
+					"operation": "next_task",
+					"message":   "problem indicating that host needs new agent",
+					"source":    "database error",
+					"revision":  evergreen.BuildRevision,
+				}))
+				as.WriteJSON(w, http.StatusInternalServerError, innerErr)
+				return
+			}
+			grip.Info(message.WrapError(err, message.Fields{
+				"host":          h.Id,
+				"operation":     "next_task",
+				"message":       "unable to unmarshal next task details, so updating agent",
+				"host_revision": h.AgentRevision,
+				"revision":      evergreen.BuildRevision,
+			}))
+			response.ShouldExit = true
+			as.WriteJSON(w, http.StatusOK, response)
 			return
 		}
 		if details.TaskGroup == "" {
