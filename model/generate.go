@@ -12,10 +12,8 @@ import (
 const (
 	maxGeneratedBuildVariants = 100
 	maxGeneratedTasks         = 1000
+	generateTasksCommand      = "generate.tasks"
 )
-
-// GeneratedProjects is a convenience type for a slice of generated projects.
-type GeneratedProjects []GeneratedProject
 
 // GeneratedProject is a subset of the Project type, and is generated from the
 // JSON from a `generate.tasks` command.
@@ -28,7 +26,7 @@ type GeneratedProject struct {
 }
 
 // MergeGeneratedProjects takes a slice of generated projects and returns a single, deduplicated project.
-func MergeGeneratedProjects(projects GeneratedProjects) *GeneratedProject {
+func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	catcher := grip.NewBasicCatcher()
 
 	bvs := map[string]*parserBV{}
@@ -227,11 +225,10 @@ func (g *GeneratedProject) validateMaxTasksAndVariants(catcher grip.Catcher) {
 func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher grip.Catcher) {
 	for _, bv := range g.BuildVariants {
 		if _, ok := cachedProject.buildVariants[bv.Name]; ok {
-			if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-				bv.Disabled == true || len(bv.Tags) > 0 || bv.Push == true ||
-				bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 ||
-				len(bv.DisplayTasks) > 0 {
-				catcher.Add(errors.Errorf("cannot redefine buildvariants in 'generate.tasks' (%s), except to add tasks", bv.Name))
+			{
+				if isNonZeroBV(bv) {
+					catcher.Add(errors.Errorf("cannot redefine buildvariants in 'generate.tasks' (%s), except to add tasks", bv.Name))
+				}
 			}
 		}
 	}
@@ -247,18 +244,28 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher
 	}
 }
 
+func isNonZeroBV(bv parserBV) bool {
+	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
+		bv.Disabled == true || len(bv.Tags) > 0 || bv.Push == true ||
+		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 ||
+		len(bv.DisplayTasks) > 0 {
+		return true
+	}
+	return false
+}
+
 // validateNoRecursiveGenerateTasks validates that no 'generate.tasks' calls another 'generate.tasks'.
 func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projectMaps, catcher grip.Catcher) {
 	for _, t := range g.Tasks {
 		for _, cmd := range t.Commands {
-			if cmd.Command == "generate.tasks" {
+			if cmd.Command == generateTasksCommand {
 				catcher.Add(errors.New("cannot define 'generate.tasks' from a 'generate.tasks' block"))
 			}
 		}
 	}
 	for _, f := range g.Functions {
 		for _, cmd := range f.List() {
-			if cmd.Command == "generate.tasks" {
+			if cmd.Command == generateTasksCommand {
 				catcher.Add(errors.New("cannot define 'generate.tasks' from a 'generate.tasks' block"))
 			}
 		}
@@ -266,18 +273,22 @@ func (g *GeneratedProject) validateNoRecursiveGenerateTasks(cachedProject projec
 	for _, bv := range g.BuildVariants {
 		for _, t := range bv.Tasks {
 			if projectTask, ok := cachedProject.tasks[t.Name]; ok {
-				for _, cmd := range projectTask.Commands {
-					if cmd.Command == "generate.tasks" {
-						catcher.Add(errors.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", t.Name))
-					}
-					if cmd.Function != "" {
-						if functionCmds, ok := cachedProject.functions[cmd.Function]; ok {
-							for _, functionCmd := range functionCmds.List() {
-								if functionCmd.Command == "generate.tasks" {
-									catcher.Add(errors.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", cmd.Function))
-								}
-							}
-						}
+				validateCommands(projectTask, cachedProject, t, catcher)
+			}
+		}
+	}
+}
+
+func validateCommands(projectTask *ProjectTask, cachedProject projectMaps, pvt parserBVTaskUnit, catcher grip.Catcher) {
+	for _, cmd := range projectTask.Commands {
+		if cmd.Command == generateTasksCommand {
+			catcher.Add(errors.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", pvt.Name))
+		}
+		if cmd.Function != "" {
+			if functionCmds, ok := cachedProject.functions[cmd.Function]; ok {
+				for _, functionCmd := range functionCmds.List() {
+					if functionCmd.Command == generateTasksCommand {
+						catcher.Add(errors.Errorf("cannot assign a task that calls 'generate.tasks' from a 'generate.tasks' block (%s)", cmd.Function))
 					}
 				}
 			}

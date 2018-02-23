@@ -21,9 +21,9 @@ func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMe
 	return g.AddGeneratedProjectToVersion()
 }
 
-func ParseProjects(jsonBytes []json.RawMessage) (model.GeneratedProjects, error) {
+func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {
 	catcher := grip.NewBasicCatcher()
-	var projects model.GeneratedProjects
+	var projects []model.GeneratedProject
 	for _, f := range jsonBytes {
 		p, err := model.ParseProjectFromJSON(f)
 		if err != nil {
@@ -40,5 +40,5 @@ func ParseProjects(jsonBytes []json.RawMessage) (model.GeneratedProjects, error)
 type MockGenerateConnector struct{}
 
 func (gc *MockGenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
-	return nil
+	return errors.New("GenerateTasks method not implemented for mock")
 }

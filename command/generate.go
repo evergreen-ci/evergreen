@@ -36,7 +36,7 @@ func (c *generateTask) ParseParams(params map[string]interface{}) error {
 func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
 	catcher := grip.NewBasicCatcher()
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
-	var json [][]byte
+	var jsonBytes [][]byte
 	for _, fn := range c.Files {
 		if ctx.Err() != nil {
 			catcher.Add(ctx.Err())
@@ -47,12 +47,12 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 			catcher.Add(err)
 			continue
 		}
-		json = append(json, data)
+		jsonBytes = append(jsonBytes, data)
 	}
 	if catcher.HasErrors() {
 		return errors.WithStack(catcher.Resolve())
 	}
-	post := makeJsonOfAllFiles(json)
+	post := makeJsonOfAllFiles(jsonBytes)
 	return errors.Wrap(comm.GenerateTasks(ctx, td, post), "Problem posting task data")
 }
 
@@ -78,9 +78,9 @@ func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {
 
 // makeJsonOfAllFiles creates a single JSON document that is an array of all JSON files. This allows
 // us to avoid posting multiple JSON files.
-func makeJsonOfAllFiles(json [][]byte) []byte {
-	post := []byte(`[`)
-	for _, j := range json {
+func makeJsonOfAllFiles(jsonBytes [][]byte) []byte {
+	post := []byte("[")
+	for _, j := range jsonBytes {
 		post = append(post, j...)
 		post = append(post, byte(','))
 	}

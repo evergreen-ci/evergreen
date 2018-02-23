@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
@@ -20,12 +21,11 @@ func getGenerateManager(route string, version int) *RouteManager {
 		MethodType:     http.MethodPost,
 	}
 
-	generateRoute := RouteManager{
+	return &RouteManager{
 		Route:   route,
 		Methods: []MethodHandler{generate},
 		Version: version,
 	}
-	return &generateRoute
 }
 
 type generateHandler struct {
@@ -40,13 +40,21 @@ func (h *generateHandler) Handler() RequestHandler {
 func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	var files []json.RawMessage
 	if err := util.ReadJSONInto(r.Body, &files); err != nil {
-		return errors.Wrap(err, "error reading JSON from body")
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "error reading JSON from body",
+		}
 	}
 	h.files = files
 	vars := mux.Vars(r)
-	h.taskID = vars["task_id"]
-	// TODO Do we have a checkTask function in rest v2?
-
+	if vars["task_id"] != "" {
+		h.taskID = vars["task_id"]
+	} else {
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "task_id must not be empty",
+		}
+	}
 	return nil
 }
 
