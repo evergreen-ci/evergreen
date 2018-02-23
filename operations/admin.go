@@ -219,8 +219,9 @@ func updateSettings() cli.Command {
 	const updateFlagName = "update"
 
 	return cli.Command{
-		Name:  "update-settings",
-		Usage: "update the evergreen configuration settings",
+		Name:   "update-settings",
+		Before: setPlainLogger,
+		Usage:  "update the evergreen configuration settings",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  joinFlagNames(updateFlagName, "u"),
@@ -264,6 +265,5 @@ func updateSettings() cli.Command {
 
 			return nil
 		},
-		Before: setPlainLogger,
 	}
 }
