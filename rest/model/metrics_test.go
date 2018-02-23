@@ -120,6 +120,6 @@ func (s *MetricsSuite) TestProcessInfoConversions() {
 	}
 
 	for _, invalid := range invalidInputCases {
-		s.Error(s.procs.BuildFromService(invalid), "for type %T", invalid)
+		s.Error(s.procs.BuildFromService(invalid))
 	}
 }

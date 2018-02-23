@@ -1041,7 +1041,7 @@ func (a *APISlackConfig) BuildFromService(h interface{}) error {
 		a.Level = APIString(v.Level)
 		if v.Options != nil {
 			a.Options = &APISlackOptions{}
-			if err := a.Options.BuildFromService(*v.Options); err != nil {
+			if err := a.Options.BuildFromService(*v.Options); err != nil { //nolint: vet
 				return err
 			}
 		}
@@ -1056,7 +1056,7 @@ func (a *APISlackConfig) ToService() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	options := i.(send.SlackOptions)
+	options := i.(send.SlackOptions) //nolint: vet
 	return evergreen.SlackConfig{
 		Token:   string(a.Token),
 		Level:   string(a.Level),
