@@ -389,13 +389,13 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskFailureHandler
 	// - taskCompletionHandler
 	insertTask(taskId+"1", projectId, displayName, buildVariant, evergreen.TaskFailed,
-		time.Now(), time.Now(), time.Now(), time.Duration(10), true,
+		time.Now(), time.Now(), time.Duration(10), true,
 		evergreen.RepotrackerVersionRequester, 1)
 
 	// task 2
 	// task not finished
 	insertTask(taskId+"2", projectId, displayName, buildVariant, evergreen.TaskStarted,
-		time.Now(), time.Now(), time.Now(), time.Duration(0), true,
+		time.Now(), time.Now(), time.Duration(0), true,
 		evergreen.RepotrackerVersionRequester, 2)
 
 	// task 3
@@ -404,25 +404,25 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskSuccessHandler
 	// - taskCompletionHandler
 	insertTask(taskId+"3", projectId, displayName, buildVariant,
-		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(50),
+		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Duration(50),
 		true, evergreen.RepotrackerVersionRequester, 3)
 
 	// task 5
 	// task not finished
 	insertTask(taskId+"5", projectId, displayName, buildVariant, evergreen.TaskStarted,
-		time.Now(), time.Now(), time.Now(), time.Duration(0), true,
+		time.Now(), time.Now(), time.Duration(0), true,
 		evergreen.RepotrackerVersionRequester, 5)
 
 	// task 6
 	// task finished (failed) from different project
 	insertTask(taskId+"6", projectId+"_", displayName, buildVariant,
-		evergreen.TaskFailed, time.Now(), time.Now(), time.Now(), time.Duration(10),
+		evergreen.TaskFailed, time.Now(), time.Now(), time.Duration(10),
 		true, evergreen.RepotrackerVersionRequester, 6)
 
 	// task 7
 	// task finished (succeeded) from different project
 	insertTask(taskId+"7", projectId+"_", displayName, buildVariant,
-		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(10),
+		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Duration(10),
 		true, evergreen.RepotrackerVersionRequester, 7)
 
 	// task 8
@@ -432,7 +432,7 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskCompletionHandler
 	// - taskSuccessToFailureHandler (in conjunction with 9)
 	insertTask(taskId+"8", projectId, displayName, buildVariant+"_",
-		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(10),
+		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Duration(10),
 		true, evergreen.RepotrackerVersionRequester, 8)
 
 	// task 9
@@ -442,7 +442,7 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskCompletionHandler
 	// - taskSuccessToFailureHandler (in conjunction with 8)
 	insertTask(taskId+"9", projectId, displayName, buildVariant+"_",
-		evergreen.TaskFailed, time.Now(), time.Now(),
+		evergreen.TaskFailed, time.Now(),
 		time.Now().Add(time.Duration(3*time.Minute)), time.Duration(10), true,
 		evergreen.RepotrackerVersionRequester, 9)
 
@@ -470,9 +470,11 @@ func insertBuild(id, project, display_name, buildVariant, status string, createT
 	So(build.Insert(), ShouldBeNil)
 }
 
-func insertTask(id, project, display_name, buildVariant, status string, createTime,
-	finishTime, timeTaken time.Duration, activated bool,
+func insertTask(id, project, display_name, buildVariant, status string,
+	createTime, finishTime time.Time,
+	timeTaken time.Duration, activated bool,
 	requester string, order int) {
+
 	newTask := &task.Task{
 		Id:                  id,
 		Project:             project,
