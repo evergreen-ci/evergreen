@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 var schedulerTestConf = testutil.TestConfig()
@@ -188,4 +189,10 @@ func TestSpawnHosts(t *testing.T) {
 			So(db.Clear(host.Collection), ShouldBeNil)
 		})
 	})
+}
+
+func TestGetDistrosForBuildVariantDoesNotPanicForNilProject(t *testing.T) {
+	assert := assert.New(t)
+	s := Scheduler{}
+	assert.NotPanics(func() { s.getDistrosForBuildVariant(task.Task{}, model.BuildVariant{}, nil) })
 }

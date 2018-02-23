@@ -478,7 +478,7 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 			continue
 		}
 
-		distros, err := getDistrosForBuildVariant(task, buildVariant, p)
+		distros, err := s.getDistrosForBuildVariant(task, buildVariant, p)
 		// If no matching spec was found, log it and continue.
 		if err != nil {
 			grip.Info(message.Fields{
@@ -513,30 +513,35 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 	return tasksByDistro, taskRunDistros, nil
 }
 
-func getDistrosForBuildVariant(task task.Task, bv model.BuildVariant, p *model.Project) ([]string, error) {
+func (s *Scheduler) getDistrosForBuildVariant(task task.Task, bv model.BuildVariant, p *model.Project) ([]string, error) {
+	for _, bvTask := range bv.Tasks {
+		if bvTask.Name == task.DisplayName { // task is listed in buildvariant
+			return bvTask.Distros, nil
+		}
+	}
+
+	if p == nil {
+		var err error
+		p, err = s.getProject(task.Version)
+		if err != nil {
+			return []string{}, errors.New("error finding project for task")
+		}
+	}
 	taskGroups := map[string][]string{}
 	for _, tg := range p.TaskGroups {
 		taskGroups[tg.Name] = tg.Tasks
 	}
-	var taskSpec *model.BuildVariantTaskUnit
 	for _, bvTask := range bv.Tasks {
-		if bvTask.Name == task.DisplayName { // task is listed in buildvariant
-			taskSpec = &bvTask
-			break
-		}
 		if tasksInTaskGroup, ok := taskGroups[bvTask.Name]; ok {
 			for _, t := range tasksInTaskGroup {
 				if t == task.DisplayName { // task is listed in task group
-					taskSpec = &bvTask
-					break
+					return bvTask.Distros, nil
 				}
 			}
 		}
 	}
-	if taskSpec == nil {
-		return []string{}, errors.New("no matching task found for buildvariant")
-	}
-	return taskSpec.Distros, nil
+
+	return []string{}, errors.New("no matching task found for buildvariant")
 }
 
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
