@@ -38,6 +38,7 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
   }
 
   generateEventText = function(events) {
+    if (!events) { return; }
     for (var i = 0; i < events.length; i++) {
       var event = events[i];
       switch(event.event_type) {
