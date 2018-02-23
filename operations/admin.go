@@ -220,7 +220,7 @@ func updateSettings() cli.Command {
 
 	return cli.Command{
 		Name:   "update-settings",
-		Before: setPlainLogger,
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag(updateFlagName)),
 		Usage:  "update the evergreen configuration settings",
 		Flags: []cli.Flag{
 			cli.StringFlag{
@@ -231,9 +231,6 @@ func updateSettings() cli.Command {
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			updateString := c.String(updateFlagName)
-			if updateString == "" {
-				return errors.New("no update string specified")
-			}
 
 			updateSettings := &model.APIAdminSettings{}
 			err := yaml.Unmarshal([]byte(updateString), updateSettings)
