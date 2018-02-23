@@ -522,6 +522,7 @@ func (s *AgentSuite) TestGroupPreGroupCommands() {
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,
 	}
+	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -559,6 +560,7 @@ func (s *AgentSuite) TestGroupPreTaskCommands() {
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,
 	}
+	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -596,6 +598,7 @@ func (s *AgentSuite) TestGroupPostTaskCommands() {
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,
 	}
+	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -632,6 +635,7 @@ func (s *AgentSuite) TestGroupPostGroupCommands() {
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,
 	}
+	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
 - name: task_group_name
@@ -671,6 +675,7 @@ func (s *AgentSuite) TestGroupTimeoutCommands() {
 		Project: &model.Project{},
 		WorkDir: s.tc.taskDirectory,
 	}
+	s.tc.taskGroup = "task_group_name"
 	projYml := `
 task_groups:
 - name: task_group_name

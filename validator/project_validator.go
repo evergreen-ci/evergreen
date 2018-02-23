@@ -352,6 +352,9 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) []Va
 	for _, task := range project.Tasks {
 		allTaskNames[task.Name] = true
 	}
+	for _, taskGroup := range project.TaskGroups {
+		allTaskNames[taskGroup.Name] = true
+	}
 
 	for _, buildVariant := range project.BuildVariants {
 		buildVariantTasks := map[string]bool{}
