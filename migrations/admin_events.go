@@ -3,7 +3,6 @@ package migrations
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
@@ -22,12 +21,27 @@ const (
 )
 
 type EventDataOld struct {
-	ResourceType string                 `bson:"r_type"`
-	User         string                 `bson:"user"`
-	OldVal       string                 `bson:"old_val"`
-	NewVal       string                 `bson:"new_val"`
-	OldFlags     evergreen.ServiceFlags `bson:"old_flags"`
-	NewFlags     evergreen.ServiceFlags `bson:"new_flags"`
+	ResourceType string       `bson:"r_type"`
+	User         string       `bson:"user"`
+	OldVal       string       `bson:"old_val"`
+	NewVal       string       `bson:"new_val"`
+	OldFlags     ServiceFlags `bson:"old_flags"`
+	NewFlags     ServiceFlags `bson:"new_flags"`
+}
+
+type ServiceFlags struct {
+	TaskDispatchDisabled         bool `bson:"task_dispatch_disabled"`
+	HostinitDisabled             bool `bson:"hostinit_disabled"`
+	MonitorDisabled              bool `bson:"monitor_disabled"`
+	NotificationsDisabled        bool `bson:"notifications_disabled"`
+	AlertsDisabled               bool `bson:"alerts_disabled"`
+	TaskrunnerDisabled           bool `bson:"taskrunner_disabled"`
+	RepotrackerDisabled          bool `bson:"repotracker_disabled"`
+	SchedulerDisabled            bool `bson:"scheduler_disabled"`
+	GithubPRTestingDisabled      bool `bson:"github_pr_testing_disabled"`
+	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled"`
+	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled"`
+	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled"`
 }
 
 type EventDataNew struct {
@@ -38,8 +52,13 @@ type EventDataNew struct {
 }
 
 type ConfigDataChange struct {
-	Before evergreen.ConfigSection `bson:"before"`
-	After  evergreen.ConfigSection `bson:"after"`
+	Before interface{} `bson:"before"`
+	After  interface{} `bson:"after"`
+}
+
+type Settings struct {
+	Banner      string `bson:"banner"`
+	BannerTheme string `bson:"banner_theme"`
 }
 
 func adminEventRestructureGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
@@ -103,19 +122,19 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 		}
 		switch changeType {
 		case eventTypeTheme:
-			before := &evergreen.Settings{BannerTheme: evergreen.BannerTheme(oldData.OldVal)}
-			after := &evergreen.Settings{BannerTheme: evergreen.BannerTheme(oldData.NewVal)}
-			newData.Section = before.SectionId()
+			before := &Settings{BannerTheme: oldData.OldVal}
+			after := &Settings{BannerTheme: oldData.NewVal}
+			newData.Section = "global"
 			newData.Changes = ConfigDataChange{Before: before, After: after}
 		case eventTypeBanner:
-			before := &evergreen.Settings{Banner: oldData.OldVal}
-			after := &evergreen.Settings{Banner: oldData.NewVal}
-			newData.Section = before.SectionId()
+			before := &Settings{Banner: oldData.OldVal}
+			after := &Settings{Banner: oldData.NewVal}
+			newData.Section = "global"
 			newData.Changes = ConfigDataChange{Before: before, After: after}
 		case eventTypeServiceFlags:
 			before := oldData.OldFlags
 			after := oldData.NewFlags
-			newData.Section = before.SectionId()
+			newData.Section = "service_flags"
 			newData.Changes = ConfigDataChange{Before: &before, After: &after}
 		default:
 			return fmt.Errorf("unexpected change type %s found", changeType)
