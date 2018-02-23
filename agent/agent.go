@@ -383,7 +383,7 @@ func (a *Agent) shouldKill(tc *taskContext, ignoreTaskGroupCheck bool) bool {
 	if ignoreTaskGroupCheck {
 		return true
 	}
-	taskGroup, err := model.GetTaskGroup(tc.taskConfig)
+	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
 		return false
 	}
