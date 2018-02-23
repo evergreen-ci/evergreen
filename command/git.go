@@ -137,8 +137,22 @@ func (c *gitFetchProject) buildCloneCommand(conf *model.TaskConfig) ([]string, e
 	}
 
 	gitCommands = append(gitCommands, cloneCmd...)
-	gitCommands = append(gitCommands,
-		fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
+
+	if conf.GithubPatchData.PRNumber != 0 {
+		branchName := fmt.Sprintf("evg-pr-test-%s", util.RandomString())
+
+		gitCommands = append(gitCommands, []string{
+			// Github creates a ref called refs/pull/[pr number]/head
+			// that provides the entire tree of changes, including merges
+			fmt.Sprintf(`git fetch origin "pull/%d/head:%s"`, conf.GithubPatchData.PRNumber, branchName),
+			fmt.Sprintf(`git checkout "%s"`, branchName),
+			fmt.Sprintf("git reset --hard %s", conf.GithubPatchData.HeadHash),
+		}...)
+
+	} else {
+		gitCommands = append(gitCommands,
+			fmt.Sprintf("git reset --hard %s", conf.Task.Revision))
+	}
 
 	return gitCommands, nil
 }
@@ -276,7 +290,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 	}
 
 	//Apply patches if necessary
-	if !evergreen.IsPatchRequester(conf.Task.Requester) {
+	if conf.Task.Requester != evergreen.PatchVersionRequester {
 		return nil
 	}
 

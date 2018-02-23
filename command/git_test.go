@@ -12,7 +12,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -25,6 +30,7 @@ type GitGetProjectSuite struct {
 
 	modelData1 *modelutil.TestModelData // test model for TestGitPlugin
 	modelData2 *modelutil.TestModelData // test model for TestValidateGitCommands
+	modelData3 *modelutil.TestModelData
 }
 
 func init() {
@@ -37,6 +43,8 @@ func TestGitGetProjectSuite(t *testing.T) {
 }
 
 func (s *GitGetProjectSuite) SetupTest() {
+	s.NoError(db.ClearCollections(patch.Collection, build.Collection, task.Collection,
+		version.Collection, host.Collection, model.TaskLogCollection))
 	var err error
 	testConfig := testutil.TestConfig()
 	s.NoError(err)
@@ -52,6 +60,19 @@ func (s *GitGetProjectSuite) SetupTest() {
 	s.modelData2.TaskConfig.BuildVariant.Modules = []string{"sample"}
 	err = plugintest.SetupPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
+
+	s.modelData3, err = modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath2, modelutil.NoPatch)
+	s.NoError(err)
+	s.modelData3.TaskConfig.GithubPatchData = patch.GithubPatch{
+		PRNumber:   9001,
+		BaseOwner:  "evergreen-ci",
+		BaseRepo:   "evergreen",
+		BaseBranch: "master",
+		HeadOwner:  "octocat",
+		HeadRepo:   "evergreen",
+		HeadHash:   "55ca6286e3e4f4fba5d0448333fa99fc5a404a73",
+		Author:     "octocat",
+	}
 }
 
 func (s *GitGetProjectSuite) TestGitPlugin() {
@@ -223,6 +244,19 @@ func (s *GitGetProjectSuite) TestBuildCommand() {
 	cmds, err = c.buildCloneCommand(conf)
 	s.Error(err)
 	s.Nil(cmds)
+}
+
+func (s *GitGetProjectSuite) TestBuildCommandForPullRequests() {
+	c := gitFetchProject{
+		Directory: "dir",
+	}
+
+	cmds, err := c.buildCloneCommand(s.modelData3.TaskConfig)
+	s.NoError(err)
+	s.Len(cmds, 8)
+	s.True(strings.HasPrefix(cmds[5], "git fetch origin \"pull/9001/head:evg-pr-test-"))
+	s.True(strings.HasPrefix(cmds[6], "git checkout \"evg-pr-test-"))
+	s.Equal("git reset --hard 55ca6286e3e4f4fba5d0448333fa99fc5a404a73", cmds[7])
 }
 
 func (s *GitGetProjectSuite) TestBuildModuleCommand() {

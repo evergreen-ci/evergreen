@@ -13,14 +13,15 @@ import (
 )
 
 type TaskConfig struct {
-	Distro       *distro.Distro
-	Version      *version.Version
-	ProjectRef   *ProjectRef
-	Project      *Project
-	Task         *task.Task
-	BuildVariant *BuildVariant
-	Expansions   *util.Expansions
-	WorkDir      string
+	Distro          *distro.Distro
+	Version         *version.Version
+	ProjectRef      *ProjectRef
+	Project         *Project
+	Task            *task.Task
+	BuildVariant    *BuildVariant
+	Expansions      *util.Expansions
+	WorkDir         string
+	GithubPatchData patch.GithubPatch
 }
 
 func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch) (*TaskConfig, error) {
@@ -40,7 +41,21 @@ func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Tas
 	}
 
 	e := populateExpansions(d, v, bv, t, patchDoc)
-	return &TaskConfig{d, v, r, p, t, bv, e, d.WorkDir}, nil
+	taskConfig := &TaskConfig{
+		Distro:       d,
+		Version:      v,
+		ProjectRef:   r,
+		Project:      p,
+		Task:         t,
+		BuildVariant: bv,
+		Expansions:   e,
+		WorkDir:      d.WorkDir,
+	}
+	if patchDoc != nil {
+		taskConfig.GithubPatchData = patchDoc.GithubPatchData
+	}
+
+	return taskConfig, nil
 }
 
 func (c *TaskConfig) GetWorkingDirectory(dir string) (string, error) {
