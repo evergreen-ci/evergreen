@@ -265,6 +265,9 @@ var mciModule = angular.module('MCI', [
           if (task.task_end_details.type == 'system' && task.task_end_details.status != 'success') {
             cls = 'system-failed';
           }
+          if (task.task_end_details.type == 'setup' && task.task_end_details.status != 'success') {
+            cls = 'setup-failed';
+          }
         }
         if ('timed_out' in task.task_end_details) {
           if (task.task_end_details.timed_out && 'desc' in task.task_end_details && task.task_end_details.desc == 'heartbeat') {
@@ -308,6 +311,9 @@ var mciModule = angular.module('MCI', [
         }
         if (task.task_end_details.type == 'system' && task.task_end_details.status != 'success') {
           return 'system failure';
+        }
+        if (task.task_end_details.type == 'setup' && task.task_end_details.status != 'success') {
+          return 'setup failure';
         }
         return 'failed';
       }

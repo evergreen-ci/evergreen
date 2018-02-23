@@ -41,6 +41,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                 }else if(s == "all"){
                     setting = true;
                 }else if(t.status != "undispatched" && t.status == "failed"){
+                    console.log(s)
+                    console.log(t)
                     if(s == "failures"){
                         setting = true;
                     }else if (s == "system-failures" && $filter("statusFilter")(t) =="system-failed"){
