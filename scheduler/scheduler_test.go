@@ -194,5 +194,7 @@ func TestSpawnHosts(t *testing.T) {
 func TestGetDistrosForBuildVariantDoesNotPanicForNilProject(t *testing.T) {
 	assert := assert.New(t)
 	s := Scheduler{}
-	assert.NotPanics(func() { s.getDistrosForBuildVariant(task.Task{}, model.BuildVariant{}, nil) })
+	assert.NotPanics(func() {
+		_, _ = s.getDistrosForBuildVariant(task.Task{}, model.BuildVariant{}, nil)
+	})
 }
