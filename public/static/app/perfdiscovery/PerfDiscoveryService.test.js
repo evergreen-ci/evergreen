@@ -166,6 +166,18 @@ describe('PerfDiscoveryServiceTest', function() {
     })
   })
 
+  it('processes null items', function() {
+    var data = [null]
+
+    expect(
+      service._onProcessData(data)
+    ).toEqual({
+      now: {},
+      baseline: {},
+      history: [],
+    })
+  })
+
   it('convert test data to row items', function() {
     var results = {
       now: {

@@ -111,6 +111,9 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     var now = {}, baseline = {}, history = {}
 
     _.each(data, function(d) {
+      // Skip empty items
+      if (d == null) return
+
       // TODO add group validation instead of individual
       // Process current (revision) data
       if (d.current) {
