@@ -794,6 +794,7 @@ tasks:
 - name: example_task_2
 task_groups:
 - name: example_task_group
+  share_processes: true
   max_hosts: 2
   setup_group:
   - command: shell.exec
@@ -833,6 +834,7 @@ buildvariants:
 	assert.Len(tg.TeardownGroup.List(), 1)
 	assert.Nil(tg.Patchable)
 	assert.Nil(tg.Stepback)
+	assert.True(tg.ShareProcs)
 
 	// check that yml with a task group that contains a nonexistent task errors
 	wrongTaskYml := `
