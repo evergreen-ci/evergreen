@@ -329,7 +329,8 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 
 	if project.CommandType != "" {
 		if project.CommandType != model.SystemCommandType &&
-			project.CommandType != model.TestCommandType {
+			project.CommandType != model.TestCommandType &&
+			project.CommandType != model.SetupCommandType {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf("project '%v' contains an invalid "+

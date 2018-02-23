@@ -37,6 +37,10 @@ func (t *Task) ResultStatus() string {
 					status = evergreen.TaskSystemTimedOut
 				}
 			}
+
+		} else if t.Details.Type == "setup-failed" {
+			status = evergreen.TaskSetupFailed
+
 		} else if t.Details.TimedOut {
 			status = evergreen.TaskTestTimedOut
 		}

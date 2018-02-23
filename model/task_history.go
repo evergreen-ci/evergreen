@@ -23,6 +23,7 @@ import (
 const (
 	TaskTimeout       = "timeout"
 	TaskSystemFailure = "sysfail"
+	TaskSetupFailure  = "setup-fail"
 	testResultsKey    = "test_results"
 
 	// this regex either matches against the exact 'test' string, or
@@ -582,7 +583,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 					"$ne": true,
 				},
 				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-					"$ne": "system",
+					"$ne": SystemCommandType,
 				},
 			})
 	}
@@ -596,7 +597,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	if isSysFail {
 		statusQuery = append(statusQuery, bson.M{
 			task.StatusKey:                                 evergreen.TaskFailed,
-			task.DetailsKey + "." + task.TaskEndDetailType: "system",
+			task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
 		})
 	}
 
@@ -879,7 +880,7 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 					"$ne": true,
 				},
 				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-					"$ne": "system",
+					"$ne": SystemCommandType,
 				},
 			})
 	}
@@ -893,7 +894,7 @@ func formTaskStatusQuery(params *TestHistoryParameters) []bson.M {
 	if isSysFail {
 		statusQuery = append(statusQuery, bson.M{
 			task.StatusKey:                                 evergreen.TaskFailed,
-			task.DetailsKey + "." + task.TaskEndDetailType: "system",
+			task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
 		})
 	}
 	if isSuccess {

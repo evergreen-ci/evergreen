@@ -71,6 +71,7 @@
 @default-bg-color: @gray5;
 @started-bg-color: @yellow;
 @sys-failure-bg-color: @purple;
+@setup-failure-bg-color: lighten(@purple, 20%);
 
 @default-text-color: #888;
 
@@ -447,6 +448,10 @@ h3.section-heading {
 }
 .system-failed {
     background-color: @sys-failure-bg-color;
+    color: white;
+}
+.setup-failed {
+    background-color: @setup-failure-bg-color;
     color: white;
 }
 .unstarted {

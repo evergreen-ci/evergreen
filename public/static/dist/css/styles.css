@@ -295,6 +295,10 @@ h3.section-heading {
   background-color: #800080;
   color: white;
 }
+.setup-failed {
+  background-color: #e600e6;
+  color: white;
+}
 .unstarted {
   background-color: #bfbfbe;
 }
