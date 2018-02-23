@@ -471,7 +471,7 @@ func insertBuild(id, project, display_name, buildVariant, status string, createT
 }
 
 func insertTask(id, project, display_name, buildVariant, status string, createTime,
-	finishTime, pushTime time.Time, timeTaken time.Duration, activated bool,
+	finishTime, timeTaken time.Duration, activated bool,
 	requester string, order int) {
 	newTask := &task.Task{
 		Id:                  id,
@@ -480,7 +480,6 @@ func insertTask(id, project, display_name, buildVariant, status string, createTi
 		Status:              status,
 		BuildVariant:        buildVariant,
 		CreateTime:          createTime,
-		PushTime:            pushTime,
 		FinishTime:          finishTime,
 		TimeTaken:           timeTaken,
 		Activated:           activated,

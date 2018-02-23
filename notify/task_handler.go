@@ -153,7 +153,7 @@ func (self *TaskNotificationHandler) constructChangeInfo(allTasks []task.Task,
 				task.Id, task.Version)
 		}
 		changeInfo := constructChangeInfo(v, key)
-		changeInfo.Pushtime = task.PushTime.Format(time.RFC850)
+		changeInfo.Pushtime = task.CreateTime.Format(time.RFC850)
 		changeInfoSlice = append(changeInfoSlice, *changeInfo)
 	}
 

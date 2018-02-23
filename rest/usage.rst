@@ -78,9 +78,6 @@ Objects
    * - ``dispatch_time``         
      - time           
      - Time that this time was dispatched
-   * - ``push_time``             
-     - time           
-     - Time that the git commit associated with this task was pushed to github
    * - ``scheduled_time``        
      - time           
      - Time that this task is scheduled to begin
