@@ -10,6 +10,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func Admin() cli.Command {
@@ -21,6 +22,7 @@ func Admin() cli.Command {
 			adminDisableService(),
 			adminEnableService(),
 			viewSettings(),
+			updateSettings(),
 		},
 	}
 }
@@ -210,5 +212,58 @@ func doViewSettings() cli.ActionFunc {
 		grip.Info(settingsYaml)
 
 		return nil
+	}
+}
+
+func updateSettings() cli.Command {
+	const updateFlagName = "update"
+
+	return cli.Command{
+		Name:  "update-settings",
+		Usage: "update the evergreen configuration settings",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(updateFlagName, "u"),
+				Usage: "update to make (JSON or YAML)",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
+			updateString := c.String(updateFlagName)
+			if updateString == "" {
+				return errors.New("no update string specified")
+			}
+
+			updateSettings := &model.APIAdminSettings{}
+			err := yaml.Unmarshal([]byte(updateString), updateSettings)
+			if err != nil {
+				return errors.Wrap(err, "problem parsing update string as a settings document")
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSetttings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			settings, err := client.UpdateSettings(ctx, updateSettings)
+			if err != nil {
+				return errors.Wrap(err, "problem updating evergreen settings")
+			}
+
+			settingsYaml, err := json.MarshalIndent(settings, " ", " ")
+			if err != nil {
+				return errors.Wrap(err, "problem marshalling evergreen settings")
+			}
+
+			grip.Info(settingsYaml)
+
+			return nil
+		},
+		Before: setPlainLogger,
 	}
 }

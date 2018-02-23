@@ -315,6 +315,27 @@ func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings
 	return settings, nil
 }
 
+func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin",
+	}
+	resp, err := c.request(ctx, info, &update)
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating settings")
+	}
+	defer resp.Body.Close()
+
+	newSettings := &model.APIAdminSettings{}
+	err = util.ReadJSONInto(resp.Body, newSettings)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing evergreen settings")
+	}
+
+	return newSettings, nil
+}
+
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	info := requestInfo{
 		method:  get,
