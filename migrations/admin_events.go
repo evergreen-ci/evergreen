@@ -1,8 +1,9 @@
 package migrations
 
 import (
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
@@ -13,12 +14,11 @@ import (
 const (
 	eventCollection       = "event_log"
 	adminDataType         = "ADMIN"
-	idKey                 = "_id"
-	dataKey               = "data"
 	eventTypeKey          = "e_type"
 	eventTypeBanner       = "BANNER_CHANGED"
 	eventTypeTheme        = "THEME_CHANGED"
 	eventTypeServiceFlags = "SERVICE_FLAGS_CHANGED"
+	eventTypeValueChanged = "CONFIG_VALUE_CHANGED"
 )
 
 type EventDataOld struct {
@@ -28,6 +28,18 @@ type EventDataOld struct {
 	NewVal       string                 `bson:"new_val"`
 	OldFlags     evergreen.ServiceFlags `bson:"old_flags"`
 	NewFlags     evergreen.ServiceFlags `bson:"new_flags"`
+}
+
+type EventDataNew struct {
+	ResourceType string           `bson:"r_type"`
+	User         string           `bson:"user"`
+	Section      string           `bson:"section"`
+	Changes      ConfigDataChange `bson:"changes"`
+}
+
+type ConfigDataChange struct {
+	Before evergreen.ConfigSection `bson:"before"`
+	After  evergreen.ConfigSection `bson:"after"`
 }
 
 func adminEventRestructureGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
@@ -54,6 +66,11 @@ func adminEventRestructureGenerator(env anser.Environment, db string, limit int)
 }
 
 func makeAdminEventMigration(database string) db.MigrationOperation {
+	const (
+		idKey   = "_id"
+		dataKey = "data"
+	)
+
 	return func(session db.Session, rawD bson.RawD) error {
 		defer session.Close()
 
@@ -76,8 +93,11 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 				}
 			}
 		}
+		if changeType == "" {
+			return errors.New("change type is empty")
+		}
 
-		newData := event.AdminEventData{
+		newData := EventDataNew{
 			ResourceType: oldData.ResourceType,
 			User:         oldData.User,
 		}
@@ -86,24 +106,26 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 			before := &evergreen.Settings{BannerTheme: evergreen.BannerTheme(oldData.OldVal)}
 			after := &evergreen.Settings{BannerTheme: evergreen.BannerTheme(oldData.NewVal)}
 			newData.Section = before.SectionId()
-			newData.Changes = event.ConfigDataChange{Before: before, After: after}
+			newData.Changes = ConfigDataChange{Before: before, After: after}
 		case eventTypeBanner:
 			before := &evergreen.Settings{Banner: oldData.OldVal}
 			after := &evergreen.Settings{Banner: oldData.NewVal}
 			newData.Section = before.SectionId()
-			newData.Changes = event.ConfigDataChange{Before: before, After: after}
+			newData.Changes = ConfigDataChange{Before: before, After: after}
 		case eventTypeServiceFlags:
 			before := oldData.OldFlags
 			after := oldData.NewFlags
 			newData.Section = before.SectionId()
-			newData.Changes = event.ConfigDataChange{Before: &before, After: &after}
+			newData.Changes = ConfigDataChange{Before: &before, After: &after}
+		default:
+			return fmt.Errorf("unexpected change type %s found", changeType)
 		}
 
 		return session.DB(database).C(eventCollection).UpdateId(docId,
 			bson.M{
 				"$set": bson.M{
 					dataKey:      newData,
-					eventTypeKey: event.EventTypeValueChanged,
+					eventTypeKey: eventTypeValueChanged,
 				},
 			})
 	}

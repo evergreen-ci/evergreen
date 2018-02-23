@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	evgdb "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
@@ -57,7 +56,7 @@ func TestAdminEventMigration(t *testing.T) {
 
 func (s *adminEventSuite) SetupTest() {
 	s.NoError(evgdb.ClearCollections(eventCollection))
-	s.now = time.Now()
+	s.now = time.Now().Round(time.Millisecond).Truncate(time.Millisecond)
 
 	data := bson.M{
 		"r_id":       "",
@@ -112,32 +111,31 @@ func (s *adminEventSuite) TestMigration() {
 		s.NoError(j.Error())
 	}
 
-	events, err := event.FindAdmin(event.RecentAdminEvents(10))
+	var events []bson.M
+	err = evgdb.FindAllQ(eventCollection, evgdb.Q{}, &events)
 	s.NoError(err)
 	foundThemeChange := false
 	foundBannerChange := false
 	foundServiceFlagChange := false
 	for _, evt := range events {
-		s.WithinDuration(s.now, evt.Timestamp, 1*time.Millisecond)
-		s.Equal("", evt.ResourceId)
-		s.Equal(event.EventTypeValueChanged, evt.EventType)
-		data, ok := evt.Data.Data.(*event.AdminEventData)
-		s.Require().True(ok)
-		s.Equal("me", data.User)
-		switch data.Section {
+		s.EqualValues(s.now, evt["ts"])
+		s.EqualValues("", evt["r_id"])
+		s.EqualValues(eventTypeValueChanged, evt[eventTypeKey])
+		data := evt["data"].(bson.M)
+		s.EqualValues("me", data["user"])
+		changes := data["changes"].(bson.M)
+		after := changes["after"].(bson.M)
+		before := changes["before"].(bson.M)
+		switch data["section"] {
 		case "global":
-			after := data.Changes.After.(*evergreen.Settings)
-			before := data.Changes.Before.(*evergreen.Settings)
-			if before.BannerTheme == "old theme" && after.BannerTheme == "new theme" {
+			if before["banner_theme"] == "old theme" && after["banner_theme"] == "new theme" {
 				foundThemeChange = true
 			}
-			if before.Banner == "old banner" && after.Banner == "new banner" {
+			if before["banner"] == "old banner" && after["banner"] == "new banner" {
 				foundBannerChange = true
 			}
 		case "service_flags":
-			after := data.Changes.After.(*evergreen.ServiceFlags)
-			before := data.Changes.Before.(*evergreen.ServiceFlags)
-			if before.TaskDispatchDisabled == false && after.TaskDispatchDisabled == true {
+			if before["task_dispatch_disabled"] == false && after["task_dispatch_disabled"] == true {
 				foundServiceFlagChange = true
 			}
 		}
