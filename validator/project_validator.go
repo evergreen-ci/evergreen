@@ -550,7 +550,8 @@ func validateCommands(section string, project *model.Project,
 		}
 		if cmd.Type != "" {
 			if cmd.Type != model.SystemCommandType &&
-				cmd.Type != model.TestCommandType {
+				cmd.Type != model.TestCommandType &&
+				cmd.Type != model.SetupCommandType {
 				msg := fmt.Sprintf("%v section in '%v': invalid command type: '%v'", section, commandName, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})
 			}
