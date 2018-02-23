@@ -18,7 +18,6 @@ func TestTaskBuildFromService(t *testing.T) {
 		timeNow := time.Now()
 		cTime := timeNow.Add(10 * time.Minute)
 		dTime := timeNow.Add(11 * time.Minute)
-		pTime := timeNow.Add(12 * time.Minute)
 		sTime := timeNow.Add(13 * time.Minute)
 		scTime := timeNow.Add(14 * time.Minute)
 		fTime := timeNow.Add(15 * time.Minute)
