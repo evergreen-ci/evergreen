@@ -208,6 +208,11 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 
 	project.BuildProjectTVPairs(patchDoc, j.intent.GetAlias())
 
+	if j.intent.ShouldFinalizePatch() && len(patchDoc.Tasks) == 0 &&
+		len(patchDoc.BuildVariants) == 0 {
+		return errors.New("patch has no build variants or tasks")
+	}
+
 	// set the patch number based on patch author
 	patchDoc.PatchNumber, err = j.user.IncPatchNumber()
 	if err != nil {
