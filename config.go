@@ -70,6 +70,7 @@ func (c *AuthConfig) SectionId() string { return "auth" }
 func (c *AuthConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = AuthConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -117,6 +118,7 @@ func (c *RepoTrackerConfig) SectionId() string { return "repotracker" }
 func (c *RepoTrackerConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = RepoTrackerConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -154,6 +156,7 @@ func (c *APIConfig) SectionId() string { return "api" }
 func (c *APIConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = APIConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -196,6 +199,7 @@ func (c *UIConfig) SectionId() string { return "ui" }
 func (c *UIConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = UIConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -241,6 +245,7 @@ func (c *HostInitConfig) SectionId() string { return "hostinit" }
 func (c *HostInitConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = HostInitConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -264,6 +269,7 @@ func (c *NotifyConfig) SectionId() string { return "notify" }
 func (c *NotifyConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = NotifyConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -319,6 +325,7 @@ func (c *SchedulerConfig) SectionId() string { return "scheduler" }
 func (c *SchedulerConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = SchedulerConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -362,6 +369,7 @@ func (c *CloudProviders) SectionId() string { return "providers" }
 func (c *CloudProviders) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = CloudProviders{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -436,6 +444,7 @@ func (c *JiraConfig) SectionId() string { return "jira" }
 func (c *JiraConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = JiraConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -472,6 +481,7 @@ func (c *AlertsConfig) SectionId() string { return "alerts" }
 func (c *AlertsConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = AlertsConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -517,6 +527,7 @@ func (c *LoggerConfig) SectionId() string { return "logger_config" }
 func (c *LoggerConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = LoggerConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -569,6 +580,7 @@ func (c *AmboyConfig) SectionId() string { return "amboy" }
 func (c *AmboyConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = AmboyConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -619,6 +631,7 @@ func (c *SlackConfig) SectionId() string { return "slack" }
 func (c *SlackConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = SlackConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -668,6 +681,7 @@ func (c *NewRelicConfig) SectionId() string { return "new_relic" }
 func (c *NewRelicConfig) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = NewRelicConfig{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -703,6 +717,7 @@ func (c *ServiceFlags) SectionId() string { return "service_flags" }
 func (c *ServiceFlags) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = ServiceFlags{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())
@@ -796,6 +811,7 @@ func (c *Settings) SectionId() string { return configDocID }
 func (c *Settings) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
+		*c = Settings{}
 		return nil
 	}
 	return errors.Wrapf(err, "error retrieving section %s", c.SectionId())

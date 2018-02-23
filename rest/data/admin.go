@@ -117,12 +117,7 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
 func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
-	err := evergreen.SetBanner(text)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return evergreen.SetBanner(text)
 }
 
 // SetBannerTheme sets the banner theme in the DB and event logs it
@@ -132,22 +127,13 @@ func (ac *DBAdminConnector) SetBannerTheme(themeString string, u *user.DBUser) e
 		return fmt.Errorf("%s is not a valid banner theme type", themeString)
 	}
 
-	err := evergreen.SetBannerTheme(theme)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return evergreen.SetBannerTheme(theme)
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
 func (ac *DBAdminConnector) SetServiceFlags(flags evergreen.ServiceFlags, u *user.DBUser) error {
-	err := evergreen.SetServiceFlags(flags)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return evergreen.SetServiceFlags(flags)
 }
 
 // RestartFailedTasks attempts to restart failed tasks that started between 2 times

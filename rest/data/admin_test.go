@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -114,6 +115,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 
 	// try to set the DB model with this API model
 	oldSettings, err := evergreen.GetConfig()
+	grip.Info(oldSettings.Ui)
 	s.NoError(err)
 	_, err = s.ctx.SetEvergreenSettings(restSettings, oldSettings, u, true)
 	s.NoError(err)
