@@ -353,6 +353,9 @@ func (c *Mock) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) er
 func (c *Mock) GetServiceFlags(ctx context.Context) (*model.APIServiceFlags, error)   { return nil, nil }
 func (c *Mock) RestartRecentTasks(ctx context.Context, starAt, endAt time.Time) error { return nil }
 func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)          { return nil, nil }
+func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
+	return nil, nil
+}
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
