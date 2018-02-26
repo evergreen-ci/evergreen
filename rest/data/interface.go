@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -182,4 +183,7 @@ type Connector interface {
 
 	// GetCLIUpdate fetches the current cli version and the urls to download
 	GetCLIUpdate() (*restModel.APICLIUpdate, error)
+
+	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
+	GenerateTasks(string, []json.RawMessage) error
 }

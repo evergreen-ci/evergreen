@@ -491,7 +491,7 @@ func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, er
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, json [][]byte) error {
+func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, json []byte) error {
 	if td.ID != "mock_id" {
 		return errors.New("mock failed, wrong id")
 	}

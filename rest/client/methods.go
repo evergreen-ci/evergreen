@@ -36,7 +36,7 @@ func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) err
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("start")
 	resp, err := c.retryRequest(ctx, info, taskStartRequest)
@@ -64,7 +64,7 @@ func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEn
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("end")
 	resp, err := c.retryRequest(ctx, info, detail)
@@ -91,7 +91,7 @@ func (c *communicatorImpl) GetTask(ctx context.Context, taskData TaskData) (*tas
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -116,7 +116,7 @@ func (c *communicatorImpl) GetProjectRef(ctx context.Context, taskData TaskData)
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("project_ref")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -141,7 +141,7 @@ func (c *communicatorImpl) GetDistro(ctx context.Context, taskData TaskData) (*d
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("distro")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -166,7 +166,7 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("version")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -195,7 +195,7 @@ func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bo
 	defer cancel()
 	info := requestInfo{
 		method:   post,
-		version:  v1,
+		version:  apiVersion1,
 		taskData: &taskData,
 	}
 	info.setTaskPathSuffix("heartbeat")
@@ -227,7 +227,7 @@ func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData Task
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("fetch_vars")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -252,7 +252,7 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	nextTask := &apimodels.NextTaskResponse{}
 	info := requestInfo{
 		method:  get,
-		version: v1,
+		version: apiVersion1,
 	}
 	info.path = "agent/next_task"
 	resp, err := c.retryRequest(ctx, info, details)
@@ -291,7 +291,7 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("log")
 	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
@@ -310,7 +310,7 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("results")
 	if _, err := c.retryRequest(ctx, info, r); err != nil {
@@ -328,7 +328,7 @@ func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) 
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("git/patch")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -353,7 +353,7 @@ func (c *communicatorImpl) GetPatchFile(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -381,7 +381,7 @@ func (c *communicatorImpl) SendTestLog(ctx context.Context, taskData TaskData, l
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("test_logs")
 	resp, err := c.retryRequest(ctx, info, log)
@@ -410,7 +410,7 @@ func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskDat
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("results")
 	resp, err := c.retryRequest(ctx, info, results)
@@ -430,7 +430,7 @@ func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, t
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("files")
 	resp, err := c.retryRequest(ctx, info, taskFiles)
@@ -446,7 +446,7 @@ func (c *communicatorImpl) GetManifest(ctx context.Context, taskData TaskData) (
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("manifest/load")
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -467,7 +467,7 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("s3Copy/s3Copy")
 	resp, err := c.retryRequest(ctx, info, req)
@@ -483,7 +483,7 @@ func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv 
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix("keyval/inc")
 	resp, err := c.retryRequest(ctx, info, kv.Key)
@@ -503,7 +503,7 @@ func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, 
 	info := requestInfo{
 		method:   post,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
 	resp, err := c.retryRequest(ctx, info, data)
@@ -523,7 +523,7 @@ func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, t
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -551,7 +551,7 @@ func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData
 	info := requestInfo{
 		method:   get,
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	info.setTaskPathSuffix(path)
 	resp, err := c.retryRequest(ctx, info, nil)
@@ -576,7 +576,7 @@ func (c *communicatorImpl) SendProcessInfo(ctx context.Context, td TaskData, pro
 	info := requestInfo{
 		method:   post,
 		taskData: &td,
-		version:  v1,
+		version:  apiVersion1,
 	}
 
 	info.setTaskPathSuffix("process_info")
@@ -592,7 +592,7 @@ func (c *communicatorImpl) SendSystemInfo(ctx context.Context, td TaskData, sysi
 
 	info := requestInfo{
 		method:   post,
-		version:  v1,
+		version:  apiVersion1,
 		taskData: &td,
 	}
 	info.setTaskPathSuffix("system_info")
@@ -602,7 +602,13 @@ func (c *communicatorImpl) SendSystemInfo(ctx context.Context, td TaskData, sysi
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, json [][]byte) error {
-	// TODO EVG-2483
-	return nil
+func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, json []byte) error {
+	info := requestInfo{
+		method:   post,
+		taskData: &td,
+		version:  apiVersion2,
+	}
+	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
+	_, err := c.retryRequest(ctx, info, json)
+	return errors.Wrap(err, "problem sending `generate.tasks` request")
 }

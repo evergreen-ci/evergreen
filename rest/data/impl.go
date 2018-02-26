@@ -26,6 +26,7 @@ type DBConnector struct {
 	DBAliasConnector
 	RepoTrackerConnector
 	CLIUpdateConnector
+	GenerateConnector
 }
 
 func (ctx *DBConnector) GetSuperUsers() []string   { return ctx.superUsers }
@@ -57,6 +58,7 @@ type MockConnector struct {
 	MockAliasConnector
 	MockRepoTrackerConnector
 	MockCLIUpdateConnector
+	MockGenerateConnector
 }
 
 func (ctx *MockConnector) GetSuperUsers() []string   { return ctx.superUsers }

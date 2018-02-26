@@ -29,7 +29,7 @@ func (s *RequestTestSuite) SetupTest() {
 }
 
 func (s *RequestTestSuite) TestNewRequest() {
-	r, err := s.evergreenREST.newRequest("method", "path", "taskSecret", v1, nil)
+	r, err := s.evergreenREST.newRequest("method", "path", "taskSecret", string(apiVersion1), nil)
 	s.NoError(err)
 	s.Equal("taskSecret", r.Header.Get(evergreen.TaskSecretHeader))
 	s.Equal(s.evergreenREST.hostID, r.Header.Get(evergreen.HostHeader))
@@ -39,7 +39,7 @@ func (s *RequestTestSuite) TestNewRequest() {
 
 func (s *RequestTestSuite) TestGetPathReturnsCorrectPath() {
 	// V1 path
-	path := s.evergreenREST.getPath("foo", v1)
+	path := s.evergreenREST.getPath("foo", string(apiVersion1))
 	s.Equal("url/api/2/foo", path)
 
 	// V2 path
@@ -54,7 +54,7 @@ func (s *RequestTestSuite) TestValidateRequestInfo() {
 	}
 	info := requestInfo{
 		taskData: &taskData,
-		version:  v1,
+		version:  apiVersion1,
 	}
 	err := info.validateRequestInfo()
 	s.Error(err)
