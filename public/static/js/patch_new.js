@@ -91,6 +91,8 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     }
   }
 
+  $scope.isUnauthorizedPRPatch = (patch.Version.length === 0 && patch.GithubPatchData.PRNumber !== 0);
+
   // Sends the current patch config to the server to save.
   $scope.save = function(){
     $scope.disableSubmit = true;
