@@ -46,15 +46,9 @@ func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 		}
 	}
 	h.files = files
+	// TODO checkTask/checkHost EVG-2848
 	vars := mux.Vars(r)
-	if vars["task_id"] != "" {
-		h.taskID = vars["task_id"]
-	} else {
-		return &rest.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "task_id must not be empty",
-		}
-	}
+	h.taskID = vars["task_id"]
 	return nil
 }
 
