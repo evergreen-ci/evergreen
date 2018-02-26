@@ -62,6 +62,9 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting spot info")
 	}
+	if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+		return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+	}
 	instance, err := client.GetInstanceInfo(ctx, *spotDetails.SpotInstanceRequests[0].InstanceId)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
@@ -269,6 +272,9 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 		})
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting spot info")
+		}
+		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+			return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
 		instanceID = *spotDetails.SpotInstanceRequests[0].InstanceId
 	}

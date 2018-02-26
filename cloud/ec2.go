@@ -584,6 +584,9 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			}))
 			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
+		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
+		}
 		tags := makeTags(h)
 		tags["spot"] = "true" // mark this as a spot instance
 		resources := []*string{
