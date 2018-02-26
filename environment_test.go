@@ -109,6 +109,6 @@ func (s *EnvironmentSuite) TestDbOverride() {
 	s.NoError(err)
 	db := settings.Database
 	db.DB = "other_db"
-	s.NoError(s.env.Configure(ctx, s.path, &db))
+	s.NoError(s.env.Configure(ctx, "", &db))
 	s.Equal("other_db", s.env.settings.Database.DB)
 }
