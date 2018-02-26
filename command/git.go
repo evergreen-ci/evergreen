@@ -362,7 +362,12 @@ func isMailboxPatch(patchFile string) (bool, error) {
 
 	scanner := bufio.NewScanner(file)
 	if !scanner.Scan() {
-		return false, errors.New("patch file appears to be empty")
+		if err = scanner.Err(); err != nil {
+			return false, errors.Wrap(err, "failed to read patch file")
+		}
+
+		// otherwise, it's EOF. Empty patches are not errors!
+		return false, nil
 	}
 	line := scanner.Text()
 
