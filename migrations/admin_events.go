@@ -20,16 +20,16 @@ const (
 	eventTypeValueChanged = "CONFIG_VALUE_CHANGED"
 )
 
-type EventDataOld struct {
-	ResourceType string       `bson:"r_type"`
-	User         string       `bson:"user"`
-	OldVal       string       `bson:"old_val"`
-	NewVal       string       `bson:"new_val"`
-	OldFlags     ServiceFlags `bson:"old_flags"`
-	NewFlags     ServiceFlags `bson:"new_flags"`
+type eventDataOld struct {
+	ResourceType string            `bson:"r_type"`
+	User         string            `bson:"user"`
+	OldVal       string            `bson:"old_val"`
+	NewVal       string            `bson:"new_val"`
+	OldFlags     eventServiceFlags `bson:"old_flags"`
+	NewFlags     eventServiceFlags `bson:"new_flags"`
 }
 
-type ServiceFlags struct {
+type eventServiceFlags struct {
 	TaskDispatchDisabled         bool `bson:"task_dispatch_disabled"`
 	HostinitDisabled             bool `bson:"hostinit_disabled"`
 	MonitorDisabled              bool `bson:"monitor_disabled"`
@@ -44,37 +44,37 @@ type ServiceFlags struct {
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled"`
 }
 
-type EventDataNew struct {
+type eventDataNew struct {
 	ResourceType string           `bson:"r_type"`
 	User         string           `bson:"user"`
 	Section      string           `bson:"section"`
-	Changes      ConfigDataChange `bson:"changes"`
+	Changes      configDataChange `bson:"changes"`
 }
 
-type ConfigDataChange struct {
+type configDataChange struct {
 	Before interface{} `bson:"before"`
 	After  interface{} `bson:"after"`
 }
 
-type Settings struct {
+type dbSettings struct {
 	Banner      string `bson:"banner"`
 	BannerTheme string `bson:"banner_theme"`
 }
 
-func adminEventRestructureGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+func adminEventRestructureGenerator(env anser.Environment, dbName string, limit int) (anser.Generator, error) {
 	const migrationName = "admin_event_restructure"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeAdminEventMigration(db)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeAdminEventMigration(dbName)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         db,
+			DB:         dbName,
 			Collection: eventCollection,
 		},
 		Limit: limit,
-		Query: bson.M{
+		Query: db.Document{
 			"r_id":        "",
 			"data.r_type": adminDataType,
 		},
@@ -94,7 +94,7 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 		defer session.Close()
 
 		var docId bson.ObjectId
-		oldData := EventDataOld{}
+		oldData := eventDataOld{}
 		changeType := ""
 		for _, raw := range rawD {
 			switch raw.Name {
@@ -116,33 +116,33 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 			return errors.New("change type is empty")
 		}
 
-		newData := EventDataNew{
+		newData := eventDataNew{
 			ResourceType: oldData.ResourceType,
 			User:         oldData.User,
 		}
 		switch changeType {
 		case eventTypeTheme:
-			before := &Settings{BannerTheme: oldData.OldVal}
-			after := &Settings{BannerTheme: oldData.NewVal}
+			before := &dbSettings{BannerTheme: oldData.OldVal}
+			after := &dbSettings{BannerTheme: oldData.NewVal}
 			newData.Section = "global"
-			newData.Changes = ConfigDataChange{Before: before, After: after}
+			newData.Changes = configDataChange{Before: before, After: after}
 		case eventTypeBanner:
-			before := &Settings{Banner: oldData.OldVal}
-			after := &Settings{Banner: oldData.NewVal}
+			before := &dbSettings{Banner: oldData.OldVal}
+			after := &dbSettings{Banner: oldData.NewVal}
 			newData.Section = "global"
-			newData.Changes = ConfigDataChange{Before: before, After: after}
+			newData.Changes = configDataChange{Before: before, After: after}
 		case eventTypeServiceFlags:
 			before := oldData.OldFlags
 			after := oldData.NewFlags
 			newData.Section = "service_flags"
-			newData.Changes = ConfigDataChange{Before: &before, After: &after}
+			newData.Changes = configDataChange{Before: &before, After: &after}
 		default:
 			return fmt.Errorf("unexpected change type %s found", changeType)
 		}
 
 		return session.DB(database).C(eventCollection).UpdateId(docId,
-			bson.M{
-				"$set": bson.M{
+			db.Document{
+				"$set": db.Document{
 					dataKey:      newData,
 					eventTypeKey: eventTypeValueChanged,
 				},

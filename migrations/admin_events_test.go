@@ -14,7 +14,6 @@ import (
 	"github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type adminEventSuite struct {
@@ -58,11 +57,11 @@ func (s *adminEventSuite) SetupTest() {
 	s.NoError(evgdb.ClearCollections(eventCollection))
 	s.now = time.Now().Round(time.Millisecond).Truncate(time.Millisecond)
 
-	data := bson.M{
+	data := db.Document{
 		"r_id":       "",
 		"ts":         s.now,
 		eventTypeKey: eventTypeTheme,
-		"data": bson.M{
+		"data": db.Document{
 			"r_type":  adminDataType,
 			"user":    "me",
 			"old_val": "old theme",
@@ -70,11 +69,11 @@ func (s *adminEventSuite) SetupTest() {
 		},
 	}
 	s.NoError(evgdb.Insert(eventCollection, data))
-	data = bson.M{
+	data = db.Document{
 		"r_id":       "",
 		"ts":         s.now,
 		eventTypeKey: eventTypeBanner,
-		"data": bson.M{
+		"data": db.Document{
 			"r_type":  adminDataType,
 			"user":    "me",
 			"old_val": "old banner",
@@ -82,17 +81,17 @@ func (s *adminEventSuite) SetupTest() {
 		},
 	}
 	s.NoError(evgdb.Insert(eventCollection, data))
-	data = bson.M{
+	data = db.Document{
 		"r_id":       "",
 		"ts":         s.now,
 		eventTypeKey: eventTypeServiceFlags,
-		"data": bson.M{
+		"data": db.Document{
 			"r_type": adminDataType,
 			"user":   "me",
-			"old_flags": bson.M{
+			"old_flags": db.Document{
 				"task_dispatch_disabled": false,
 			},
-			"new_flags": bson.M{
+			"new_flags": db.Document{
 				"task_dispatch_disabled": true,
 			},
 		},
@@ -111,7 +110,7 @@ func (s *adminEventSuite) TestMigration() {
 		s.NoError(j.Error())
 	}
 
-	var events []bson.M
+	var events []db.Document
 	err = evgdb.FindAllQ(eventCollection, evgdb.Q{}, &events)
 	s.NoError(err)
 	foundThemeChange := false
@@ -121,11 +120,11 @@ func (s *adminEventSuite) TestMigration() {
 		s.EqualValues(s.now, evt["ts"])
 		s.EqualValues("", evt["r_id"])
 		s.EqualValues(eventTypeValueChanged, evt[eventTypeKey])
-		data := evt["data"].(bson.M)
+		data := evt["data"].(db.Document)
 		s.EqualValues("me", data["user"])
-		changes := data["changes"].(bson.M)
-		after := changes["after"].(bson.M)
-		before := changes["before"].(bson.M)
+		changes := data["changes"].(db.Document)
+		after := changes["after"].(db.Document)
+		before := changes["before"].(db.Document)
 		switch data["section"] {
 		case "global":
 			if before["banner_theme"] == "old theme" && after["banner_theme"] == "new theme" {
