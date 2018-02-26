@@ -43,8 +43,17 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// first test loading config from a file
 	s.NoError(s.env.Configure(ctx, s.path, nil))
 	s.Error(s.env.Configure(ctx, s.path, nil))
+
+	// then test loading it from the db
+	s.env.settings = nil
+	settings, err := NewSettings(s.path)
+	s.NoError(err)
+	db := settings.Database
+	s.NoError(s.env.Configure(ctx, "", &db))
+	s.Equal(db, s.env.settings.Database)
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {
@@ -97,18 +106,4 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 	s.Equal("z80", cb[1].Arch)
 	s.Equal("linux", cb[1].OS)
 	s.Equal("https://example.com/clients/linux_z80_obviouslynotherealone/evergreen", cb[1].URL)
-}
-
-func (s *EnvironmentSuite) TestDbOverride() {
-	s.shouldSkip()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	settings, err := NewSettings(s.path)
-	s.NoError(err)
-	db := settings.Database
-	db.DB = "other_db"
-	s.NoError(s.env.Configure(ctx, "", &db))
-	s.Equal("other_db", s.env.settings.Database.DB)
 }
