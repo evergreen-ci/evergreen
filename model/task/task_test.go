@@ -769,6 +769,7 @@ func TestTaskResultOutcome(t *testing.T) {
 		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: "system", TimedOut: true}},                           // 6
 		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{Type: "system", TimedOut: true, Description: "heartbeat"}}, // 7
 		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: "heartbeat"}},                 // 8
+		{Status: evergreen.TaskSetupFailed, Details: apimodels.TaskEndDetail{Type: "setup"}},                                       // 5
 	}
 
 	out := GetResultCounts(tasks)
@@ -782,6 +783,7 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, out.SystemUnresponsive)
 	assert.Equal(1, out.SystemTimedOut)
 	assert.Equal(1, out.TestTimedOut)
+	assert.Equal(1, out.SetupFailed)
 
 	//
 
@@ -794,6 +796,7 @@ func TestTaskResultOutcome(t *testing.T) {
 	assert.Equal(1, GetResultCounts([]Task{tasks[6]}).SystemTimedOut)
 	assert.Equal(1, GetResultCounts([]Task{tasks[7]}).SystemUnresponsive)
 	assert.Equal(1, GetResultCounts([]Task{tasks[8]}).TestTimedOut)
+	assert.Equal(1, GetResultCounts([]Task{tasks[9]}).SetupFailed)
 }
 
 func TestDisplayTaskUpdates(t *testing.T) {
