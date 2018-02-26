@@ -310,8 +310,7 @@ func (s *GitGetProjectSuite) TestIsMailboxPatch() {
 	s.False(isMBP)
 
 	isMBP, err = isMailboxPatch(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "emptyfile.txt"))
-	s.Error(err)
-	s.Equal("patch file appears to be empty", err.Error())
+	s.NoError(err)
 	s.False(isMBP)
 }
 
