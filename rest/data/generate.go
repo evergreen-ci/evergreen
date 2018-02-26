@@ -40,5 +40,5 @@ func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error
 type MockGenerateConnector struct{}
 
 func (gc *MockGenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMessage) error {
-	return errors.New("GenerateTasks method not implemented for mock")
+	return nil
 }
