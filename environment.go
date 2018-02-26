@@ -90,7 +90,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 		return errors.New("cannot reconfigre a configured environment")
 	}
 
-	if db != nil {
+	if db != nil && confPath == "" {
 		e.initDB(*db)
 	}
 	if err := e.initSettings(confPath); err != nil {
