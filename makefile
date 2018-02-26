@@ -56,15 +56,14 @@ lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
 lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="maligned"
-lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
+lintArgs += --disable="golint" --disable="goconst" --disable="dupl" --disable="megacheck"
 lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
 lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
-lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
+lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused)\)$$"
 lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
-lintArgs += --exclude="should check returned error before deferring .* (SA5001) (megacheck)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
 lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
@@ -114,6 +113,8 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy test-endpoints || (killall $<; exit 1)
 	killall $<
+smoke-start-server:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web --binary ./$<
 # end smoke test rules
 
 ######################################################################
