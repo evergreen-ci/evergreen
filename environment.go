@@ -96,7 +96,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	if err := e.initSettings(confPath); err != nil {
 		return errors.WithStack(err)
 	}
-	if db != nil {
+	if db != nil && confPath == "" {
 		e.settings.Database = *db
 	}
 
