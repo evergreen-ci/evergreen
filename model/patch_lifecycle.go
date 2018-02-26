@@ -437,6 +437,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 		"num_patches":    len(patches),
 	})
 
+	catcher := grip.NewSimpleCatcher()
 	for i, _ := range patches {
 		if patches[i].Version != "" {
 			if err = CancelPatch(&patches[i], evergreen.GithubPRRequester); err != nil {
@@ -449,10 +450,11 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 					"patch_id":       patches[i].Id,
 					"version":        patches[i].Version,
 				}))
-				return errors.Wrap(err, "error aborting patch")
+
+				catcher.Add(err)
 			}
 		}
 	}
 
-	return nil
+	return errors.Wrap(catcher.Resolve(), "error aborting patches")
 }
