@@ -189,6 +189,30 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Equal("pending", status.State)
 }
 
+func (s *githubStatusUpdateSuite) TestRequestForAuth() {
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.patchDoc.Status = evergreen.PatchCreated
+	s.NoError(s.patchDoc.Insert())
+
+	job, ok := NewGithubStatusUpdateJobForExternalUser(s.patchDoc.Version).(*githubStatusUpdateJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypeRequestAuth, job.UpdateType)
+
+	status := githubStatus{}
+	s.NoError(job.fetch(&status))
+
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
+
+	s.Equal(fmt.Sprintf("/patch/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal("patch must be manually authorized", status.Description)
+	s.Equal("evergreen", status.Context)
+	s.Equal("failure", status.State)
+}
+
 func (s *githubStatusUpdateSuite) TestWithGithub() {
 	// We always skip this test b/c Github's API only lets the status of a
 	// ref be set 1000 times, and doesn't allow status removal (so runnning

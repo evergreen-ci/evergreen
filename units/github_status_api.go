@@ -32,6 +32,7 @@ const (
 
 	githubUpdateTypeBuild            = "build"
 	githubUpdateTypePatchWithVersion = "patch-with-version"
+	githubUpdateTypeRequestAuth      = "request-auth"
 )
 
 func init() {
@@ -107,6 +108,16 @@ func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
 
+	return job
+}
+
+// NewGithubStatusUpdateJobForExternalUser
+func NewGithubStatusUpdateJobForExternalUser(versionID string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.FetchID = versionID
+	job.UpdateType = githubUpdateTypeRequestAuth
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, versionID, time.Now().String()))
 	return job
 }
 
@@ -230,6 +241,12 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		default:
 			return errors.New("unknown patch status")
 		}
+
+	} else if j.UpdateType == githubUpdateTypeRequestAuth {
+		status.URLPath = fmt.Sprintf("/patch/%s", patchVersion)
+		status.Context = "evergreen"
+		status.Description = "patch must be manually authorized"
+		status.State = githubStatusFailure
 	}
 
 	status.Owner = patchDoc.GithubPatchData.BaseOwner
