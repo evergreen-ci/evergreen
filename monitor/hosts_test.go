@@ -22,7 +22,7 @@ func TestTerminateHosts(t *testing.T) {
 	defer cancel()
 
 	env := &mock.Environment{}
-	assert.NoError(env.Configure(ctx, ""))
+	assert.NoError(env.Configure(ctx, "", nil))
 	assert.NoError(env.Local.Start(ctx))
 
 	// test that trying to terminate a host that does not exist is handled gracecfully
