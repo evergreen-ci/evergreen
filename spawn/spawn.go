@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -21,7 +19,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 // each regex matches one of the 5 categories listed here:
@@ -45,7 +42,6 @@ type Options struct {
 	Distro    string
 	UserName  string
 	PublicKey string
-	UserData  string
 	TaskId    string
 	Owner     *user.DBUser
 }
@@ -101,27 +97,6 @@ func (so *Options) validate() error {
 		return errors.New("Invalid spawn options: key contains invalid base64 string")
 	}
 
-	if d.UserData.File != "" {
-		if strings.TrimSpace(so.UserData) == "" {
-			return errors.New("user data not specified")
-		}
-
-		var err error
-		switch d.UserData.Validate {
-		case distro.UserDataFormatFormURLEncoded:
-			_, err = url.ParseQuery(so.UserData)
-		case distro.UserDataFormatJSON:
-			var out map[string]interface{}
-			err = json.Unmarshal([]byte(so.UserData), &out)
-		case distro.UserDataFormatYAML:
-			var out map[string]interface{}
-			err = yaml.Unmarshal([]byte(so.UserData), &out)
-		}
-
-		if err != nil {
-			return errors.Wrapf(err, "invalid spawn options: %s", d.UserData.Validate)
-		}
-	}
 	return nil
 }
 
@@ -136,19 +111,6 @@ func CreateHost(so Options) (*host.Host, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	// add any extra user-specified data into the setup script
-	if d.UserData.File != "" {
-		userDataCmd := fmt.Sprintf("echo \"%v\" > %v\n",
-			strings.Replace(so.UserData, "\"", "\\\"", -1), d.UserData.File)
-		// prepend the setup script to add the userdata file
-		if strings.HasPrefix(d.Setup, "#!") {
-			firstLF := strings.Index(d.Setup, "\n")
-			d.Setup = d.Setup[0:firstLF+1] + userDataCmd + d.Setup[firstLF+1:]
-		} else {
-			d.Setup = userDataCmd + d.Setup
-		}
-	}
-
 	// modify the setup script to add the user's public key
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
@@ -168,7 +130,6 @@ func CreateHost(so Options) (*host.Host, error) {
 		ProvisionOptions:   provisionOptions,
 		UserName:           so.UserName,
 		ExpirationDuration: &expiration,
-		UserData:           so.UserData,
 		UserHost:           true,
 	}
 

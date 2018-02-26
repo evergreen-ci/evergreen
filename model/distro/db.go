@@ -24,10 +24,6 @@ var (
 
 	SpawnAllowedKey = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
 	ExpansionsKey   = bsonutil.MustHaveTag(Distro{}, "Expansions")
-
-	// bson fields for the UserData struct
-	UserDataFileKey     = bsonutil.MustHaveTag(UserData{}, "File")
-	UserDataValidateKey = bsonutil.MustHaveTag(UserData{}, "Validate")
 )
 
 const Collection = "distro"
