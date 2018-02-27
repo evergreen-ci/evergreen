@@ -28,6 +28,7 @@ func TestRestClientLogSenderMessageContents(t *testing.T) {
 
 	s.Send(message.NewDefaultMessage(level.Error, "hello world"))
 	time.Sleep(20 * time.Millisecond)
+	assert.NoError(s.Close())
 	msgs = comm.GetMockMessages()
 	assert.Len(msgs, 1)
 	assert.Len(msgs["task"], 1)
