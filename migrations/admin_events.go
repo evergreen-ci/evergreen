@@ -21,27 +21,12 @@ const (
 )
 
 type eventDataOld struct {
-	ResourceType string            `bson:"r_type"`
-	User         string            `bson:"user"`
-	OldVal       string            `bson:"old_val"`
-	NewVal       string            `bson:"new_val"`
-	OldFlags     eventServiceFlags `bson:"old_flags"`
-	NewFlags     eventServiceFlags `bson:"new_flags"`
-}
-
-type eventServiceFlags struct {
-	TaskDispatchDisabled         bool `bson:"task_dispatch_disabled"`
-	HostinitDisabled             bool `bson:"hostinit_disabled"`
-	MonitorDisabled              bool `bson:"monitor_disabled"`
-	NotificationsDisabled        bool `bson:"notifications_disabled"`
-	AlertsDisabled               bool `bson:"alerts_disabled"`
-	TaskrunnerDisabled           bool `bson:"taskrunner_disabled"`
-	RepotrackerDisabled          bool `bson:"repotracker_disabled"`
-	SchedulerDisabled            bool `bson:"scheduler_disabled"`
-	GithubPRTestingDisabled      bool `bson:"github_pr_testing_disabled"`
-	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled"`
-	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled"`
-	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled"`
+	ResourceType string      `bson:"r_type"`
+	User         string      `bson:"user"`
+	OldVal       string      `bson:"old_val"`
+	NewVal       string      `bson:"new_val"`
+	OldFlags     db.Document `bson:"old_flags"`
+	NewFlags     db.Document `bson:"new_flags"`
 }
 
 type eventDataNew struct {
@@ -52,8 +37,8 @@ type eventDataNew struct {
 }
 
 type configDataChange struct {
-	Before interface{} `bson:"before"`
-	After  interface{} `bson:"after"`
+	Before db.Document `bson:"before"`
+	After  db.Document `bson:"after"`
 }
 
 type dbSettings struct {
@@ -77,6 +62,28 @@ func adminEventRestructureGenerator(env anser.Environment, dbName string, limit 
 		Query: db.Document{
 			"r_id":        "",
 			"data.r_type": adminDataType,
+			"$or": []db.Document{
+				{
+					"data.old_val": db.Document{
+						"$exists": true,
+					},
+				},
+				{
+					"data.new_val": db.Document{
+						"$exists": true,
+					},
+				},
+				{
+					"data.old_flags": db.Document{
+						"$exists": true,
+					},
+				},
+				{
+					"data.new_flags": db.Document{
+						"$exists": true,
+					},
+				},
+			},
 		},
 		JobID: "migration-admin-event-restructure",
 	}
@@ -122,20 +129,34 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 		}
 		switch changeType {
 		case eventTypeTheme:
-			before := &dbSettings{BannerTheme: oldData.OldVal}
-			after := &dbSettings{BannerTheme: oldData.NewVal}
+			before := db.Document{"banner_theme": oldData.OldVal}
+			after := db.Document{"banner_theme": oldData.NewVal}
 			newData.Section = "global"
 			newData.Changes = configDataChange{Before: before, After: after}
 		case eventTypeBanner:
-			before := &dbSettings{Banner: oldData.OldVal}
-			after := &dbSettings{Banner: oldData.NewVal}
+			before := db.Document{"banner": oldData.OldVal}
+			after := db.Document{"banner": oldData.NewVal}
 			newData.Section = "global"
 			newData.Changes = configDataChange{Before: before, After: after}
 		case eventTypeServiceFlags:
-			before := oldData.OldFlags
-			after := oldData.NewFlags
+			beforeBytes, err := bson.Marshal(oldData.OldFlags)
+			if err != nil {
+				return err
+			}
+			afterBytes, err := bson.Marshal(oldData.NewFlags)
+			if err != nil {
+				return err
+			}
+			after := db.Document{}
+			before := db.Document{}
+			if err = bson.Unmarshal(beforeBytes, &before); err != nil {
+				return err
+			}
+			if err = bson.Unmarshal(afterBytes, &after); err != nil {
+				return err
+			}
 			newData.Section = "service_flags"
-			newData.Changes = configDataChange{Before: &before, After: &after}
+			newData.Changes = configDataChange{Before: before, After: after}
 		default:
 			return fmt.Errorf("unexpected change type %s found", changeType)
 		}

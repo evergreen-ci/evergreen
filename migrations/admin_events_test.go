@@ -116,12 +116,17 @@ func (s *adminEventSuite) TestMigration() {
 	foundThemeChange := false
 	foundBannerChange := false
 	foundServiceFlagChange := false
+	s.Len(events, 3)
 	for _, evt := range events {
 		s.EqualValues(s.now, evt["ts"])
 		s.EqualValues("", evt["r_id"])
 		s.EqualValues(eventTypeValueChanged, evt[eventTypeKey])
 		data := evt["data"].(db.Document)
 		s.EqualValues("me", data["user"])
+		s.NotContains(data, "old_val")
+		s.NotContains(data, "new_val")
+		s.NotContains(data, "old_flags")
+		s.NotContains(data, "new_flags")
 		changes := data["changes"].(db.Document)
 		after := changes["after"].(db.Document)
 		before := changes["before"].(db.Document)
