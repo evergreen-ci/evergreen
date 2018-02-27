@@ -14,6 +14,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   // in the left panel. Also accounts for special toggle behavior when the user
   // is holding shift/meta/ctrl when clicking.
   $scope.selectVariant = function($event, index){
+    $scope.variant = $scope.variants[index]
     $event.preventDefault();
     if ($event.ctrlKey || $event.metaKey) {
       // Ctrl/Meta+Click: Toggle just the variant being clicked.
@@ -93,30 +94,34 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
 
   $scope.isUnauthorizedPRPatch = (patch.Version.length === 0 && patch.GithubPatchData.PRNumber !== 0);
 
+  $scope.collectVariantTasks = function() {
+      return _.filter(_.map($scope.variants, function(v){
+          var tasks = [];
+          var displayTasks = [];
+          for (var name in v.tasks) {
+              if (v.tasks[name].checked) {
+                  if (v.tasks[name].displayOnly) {
+                      displayTasks.push({ "name": name, "execTasks": v.tasks[name].execTasks});
+                  }
+                  else {
+                      tasks.push(name);
+                  }
+              }
+          }
+          return {
+              variant: v.id,
+              tasks: tasks,
+              displayTasks: displayTasks
+          };
+      }), function(v){return (v.tasks.length > 0) || (v.displayTasks.length > 0)})
+  }
+
   // Sends the current patch config to the server to save.
   $scope.save = function(){
     $scope.disableSubmit = true;
     var data = {
       "description": $scope.patch.Description,
-      "variants_tasks": _.filter(_.map($scope.variants, function(v){
-        var tasks = [];
-        var displayTasks = [];
-        for (var name in v.tasks) {
-          if (v.tasks[name].checked) {
-            if (v.tasks[name].displayOnly) {
-              displayTasks.push({ "name": name, "execTasks": v.tasks[name].execTasks});
-            }
-            else {
-              tasks.push(name);
-            }
-          }
-        }
-        return {
-          variant: v.id,
-          tasks: tasks,
-          displayTasks: displayTasks
-        };
-      }), function(v){return (v.tasks.length > 0) || (v.displayTasks.length > 0)})
+      "variants_tasks": $scope.collectVariantTasks()
     }
     $http.post('/patch/' + $scope.patch.Id, data).then(
       function(resp) {
@@ -241,5 +246,23 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
         })
       }
     }
+  }
+
+  $scope.defaultVTs = $scope.collectVariantTasks();
+
+  // When creating authorizing github patches, do not allow the authorizer to
+  // disable the default set of tasks
+  $scope.checkDisabledState = function(task) {
+    if (!$scope.isUnauthorizedPRPatch) {
+        return false;
+    }
+    var variant = $scope.variant.id;
+    for (var i = 0; i < $scope.defaultVTs.length; i++) {
+        if ($scope.defaultVTs[i].tasks.includes(task)) {
+            return true;
+        }
+    }
+
+    return false
   }
 })

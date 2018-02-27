@@ -108,7 +108,13 @@ func (j *patchIntentProcessor) Run() {
 	}
 
 	if j.IntentType == patch.GithubIntentType {
-		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+		var update amboy.Job
+		if len(patchDoc.Version) == 0 {
+			update = NewGithubStatusUpdateJobForExternalPatch(patchDoc.Id.Hex())
+
+		} else {
+			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+		}
 		err = j.env.LocalQueue().Put(update)
 		j.AddError(err)
 		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
@@ -511,5 +517,5 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 
 	patchDoc.Githash = *commit.Parents[0].SHA
 
-	return true, nil
+	return isMember, nil
 }

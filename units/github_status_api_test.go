@@ -194,7 +194,7 @@ func (s *githubStatusUpdateSuite) TestRequestForAuth() {
 	s.patchDoc.Status = evergreen.PatchCreated
 	s.NoError(s.patchDoc.Insert())
 
-	job, ok := NewGithubStatusUpdateJobForExternalUser(s.patchDoc.Version).(*githubStatusUpdateJob)
+	job, ok := NewGithubStatusUpdateJobForExternalPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
 	s.Require().Equal(githubUpdateTypeRequestAuth, job.UpdateType)
