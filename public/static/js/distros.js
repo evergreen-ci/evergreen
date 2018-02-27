@@ -287,6 +287,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 	'_id': 'new distro',
 	'arch': 'linux_amd64',
 	'provider': 'ec2',
+	'settings': {},
 	'new': true,
       };
 
