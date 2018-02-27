@@ -2270,10 +2270,6 @@ path {
   float: left;
   border-bottom-width: 0;
 }
-.admin-columnLayout {
-  display: inline-table;
-  width: 49%;
-}
 .control {
   width: 100%;
 }
@@ -2305,11 +2301,26 @@ th {
   display: inline-block;
 }
 .link {
-  color: #1F9EC9;
+  color: #1d90b7;
   cursor: pointer;
+  margin-bottom: 2px;
 }
 .justifyRight {
   text-align: right;
+}
+.leftNav {
+  position: fixed !important;
+  top: 108px;
+  width: 250px;
+  height: 100%;
+  background-color: #fafafa;
+  list-style-type: none;
+}
+label {
+  font-weight: normal;
+}
+#navLinks li {
+  padding-left: 10px;
 }
 .banner-container {
   height: 50px;
