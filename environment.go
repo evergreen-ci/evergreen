@@ -70,6 +70,17 @@ type Environment interface {
 	ClientConfig() *ClientConfig
 }
 
+type ClientBinary struct {
+	Arch string `yaml:"arch"`
+	OS   string `yaml:"os"`
+	URL  string `yaml:"url"`
+}
+
+type ClientConfig struct {
+	ClientBinaries []ClientBinary `yaml:"client_binaries"`
+	LatestRevision string         `yaml:"latest_revision"`
+}
+
 type envState struct {
 	remoteQueue  amboy.Queue
 	localQueue   amboy.Queue
