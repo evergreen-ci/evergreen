@@ -46,9 +46,10 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection))
 	startTime := time.Now()
+	id := bson.NewObjectId()
 	s.patchDoc = &patch.Patch{
-		Id:         bson.NewObjectId(),
-		Version:    bson.NewObjectId().Hex(),
+		Id:         id,
+		Version:    id.Hex(),
 		Status:     evergreen.PatchFailed,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
