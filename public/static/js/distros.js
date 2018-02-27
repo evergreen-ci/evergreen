@@ -1,4 +1,4 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, mciDistroRestService) {
 
   $scope.readOnly = !$window.isSuperUser;
 
