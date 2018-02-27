@@ -32,15 +32,14 @@ func startWebService() cli.Command {
 	return cli.Command{
 		Name:  "web",
 		Usage: "start web services for API and UI",
-		Flags: serviceConfigFlags(),
+		Flags: mergeFlagSlices(serviceConfigFlags(), addDbSettingsFlags()),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
-			// TODO: ensure that there is a database set
-
+			db := parseDB(c)
 			ctx, cancel := context.WithCancel(context.Background())
 
 			env := evergreen.GetEnvironment()
-			grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, confPath), "problem configuring application environment"))
+			grip.CatchEmergencyFatal(errors.Wrap(env.Configure(ctx, confPath, db), "problem configuring application environment"))
 
 			settings := env.Settings()
 			sender, err := settings.GetSender(env)

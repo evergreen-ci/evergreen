@@ -47,7 +47,7 @@ func TestGithubHookMigration(t *testing.T) {
 		cancel:   cancel,
 	}
 
-	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	require.NoError(s.env.LocalQueue().Start(ctx))
 
 	anser.ResetEnvironment()

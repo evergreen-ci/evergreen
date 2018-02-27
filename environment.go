@@ -48,7 +48,7 @@ type Environment interface {
 	// that the queues have been started, there was no issue
 	// establishing a connection to the database, and that the
 	// local and remote queues have started.
-	Configure(context.Context, string) error
+	Configure(context.Context, string, *DBSettings) error
 
 	// Returns the settings object. The settings object is not
 	// necessarily safe for concurrent access.
@@ -79,7 +79,9 @@ type envState struct {
 	clientConfig *ClientConfig
 }
 
-func (e *envState) Configure(ctx context.Context, confPath string) error {
+// Configure requires that either the path or DB is sent so that it can construct the
+// evergreen settings. If both are sent, the settings will be from the file
+func (e *envState) Configure(ctx context.Context, confPath string, db *DBSettings) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -88,13 +90,20 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 		return errors.New("cannot reconfigre a configured environment")
 	}
 
+	if db != nil && confPath == "" {
+		e.initDB(*db)
+	}
 	if err := e.initSettings(confPath); err != nil {
 		return errors.WithStack(err)
 	}
+	if db != nil && confPath == "" {
+		e.settings.Database = *db
+	}
 
 	catcher := grip.NewBasicCatcher()
-
-	catcher.Add(e.initDB())
+	if e.session == nil {
+		catcher.Add(e.initDB(e.settings.Database))
+	}
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
@@ -104,19 +113,27 @@ func (e *envState) Configure(ctx context.Context, confPath string) error {
 }
 
 func (e *envState) initSettings(path string) error {
-	// read configuration from the file and validate.
-	// at some point this should just be read from the database at
-	// a later stage, and populated with default values if it
-	// isn't in the db.
+	// read configuration from either the file or DB and validate
+	// if the file path is blank, the DB session must be configured already
 
 	var err error
 
 	if e.settings == nil {
 		// this helps us test the validate method
-		e.settings, err = NewSettings(path)
-		if err != nil {
-			return errors.Wrap(err, "problem getting settings")
+		if path != "" {
+			e.settings, err = NewSettings(path)
+			if err != nil {
+				return errors.Wrap(err, "problem getting settings from file")
+			}
+		} else {
+			e.settings, err = GetConfig()
+			if err != nil {
+				return errors.Wrap(err, "problem getting settings from DB")
+			}
 		}
+	}
+	if e.settings == nil {
+		return errors.New("unable to get settings from file and DB")
 	}
 
 	if err = e.settings.Validate(); err != nil {
@@ -126,7 +143,7 @@ func (e *envState) initSettings(path string) error {
 	return nil
 }
 
-func (e *envState) initDB() error {
+func (e *envState) initDB(settings DBSettings) error {
 	if legacyDB.HasGlobalSessionProvider() {
 		grip.Warning("database session configured; reconfiguring")
 	}
@@ -135,7 +152,7 @@ func (e *envState) initDB() error {
 	// legacy session factory mechanism. in the future the
 	// environment can and should be the only provider of database
 	// sessions.
-	sf := e.settings.SessionFactory()
+	sf := CreateSession(settings)
 	legacyDB.SetGlobalSessionProvider(sf)
 
 	var err error

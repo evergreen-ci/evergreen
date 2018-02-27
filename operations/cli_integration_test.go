@@ -114,7 +114,7 @@ func TestCLIFetchSource(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
@@ -181,7 +181,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	assert.NoError(t, evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
 	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
@@ -302,14 +302,14 @@ func TestCLITestHistory(t *testing.T) {
 					EndTime:   float64(endTime.Unix()),
 				}
 				t := task.Task{
-					Id:           fmt.Sprintf("task_%v", i),
-					Project:      project,
-					DisplayName:  fmt.Sprintf("testTask_%v", i%3),
-					Revision:     fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
-					Version:      fmt.Sprintf("version%v", i%3),
-					BuildVariant: "osx",
-					Status:       evergreen.TaskFailed,
-					LocalTestResults:  []task.TestResult{passingResult, failedResult},
+					Id:               fmt.Sprintf("task_%v", i),
+					Project:          project,
+					DisplayName:      fmt.Sprintf("testTask_%v", i%3),
+					Revision:         fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
+					Version:          fmt.Sprintf("version%v", i%3),
+					BuildVariant:     "osx",
+					Status:           evergreen.TaskFailed,
+					LocalTestResults: []task.TestResult{passingResult, failedResult},
 				}
 				So(t.Insert(), ShouldBeNil)
 			}

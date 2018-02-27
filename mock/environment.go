@@ -27,11 +27,14 @@ type Environment struct {
 	mu                sync.RWMutex
 }
 
-func (e *Environment) Configure(ctx context.Context, path string) error {
+func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
 	e.EvergreenSettings = testutil.TestConfig()
+	if db != nil {
+		e.EvergreenSettings.Database = *db
+	}
 	e.DBSession = anserMock.NewSession()
 	e.Driver = queue.NewPriorityDriver()
 
