@@ -6,7 +6,7 @@ mciModule.run(function($templateCache) {
         'ng-model="vm.col.filters[0].term" ' +
         'ng-change="vm.triggerFiltering()">' +
       '<ui-select-match placeholder="Choose {{vm.col.name}}">{{$item}}</ui-select-match>' +
-      '<ui-select-choices repeat="item in vm.col.filters[0].options">' +
+      '<ui-select-choices repeat="item in (vm.col.filters[0].options | filter : $select.search)">' +
         '{{item}}' +
       '</ui-select-choices>' +
     '</ui-select>'
