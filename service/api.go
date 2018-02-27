@@ -52,10 +52,9 @@ const (
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
 	*render.Render
-	UserManager  auth.UserManager
-	Settings     evergreen.Settings
-	clientConfig *evergreen.ClientConfig
-	queue        amboy.Queue
+	UserManager auth.UserManager
+	Settings    evergreen.Settings
+	queue       amboy.Queue
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
@@ -65,18 +64,15 @@ func NewAPIServer(settings *evergreen.Settings, queue amboy.Queue) (*APIServer, 
 		return nil, errors.WithStack(err)
 	}
 
-	clientConfig := evergreen.GetEnvironment().ClientConfig()
-
 	if err := settings.Validate(); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	as := &APIServer{
-		Render:       render.New(render.Options{}),
-		UserManager:  authManager,
-		Settings:     *settings,
-		clientConfig: clientConfig,
-		queue:        queue,
+		Render:      render.New(render.Options{}),
+		UserManager: authManager,
+		Settings:    *settings,
+		queue:       queue,
 	}
 
 	return as, nil
@@ -688,12 +684,6 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 }
 
-// Returns information about available updates for client binaries.
-// Replies 404 if this data is not configured.
-func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
-	as.WriteJSON(w, http.StatusOK, as.clientConfig)
-}
-
 // GetSettings returns the global evergreen settings.
 func (as *APIServer) GetSettings() evergreen.Settings {
 	return as.Settings
@@ -722,9 +712,6 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 	// Task Queue routes
 	apiRootOld.HandleFunc("/task_queue", as.getTaskQueueSizes).Methods("GET")
 	apiRootOld.HandleFunc("/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
-
-	// Client auto-update routes
-	apiRootOld.HandleFunc("/update", as.getUpdate).Methods("GET")
 
 	// User session routes
 	apiRootOld.HandleFunc("/token", as.getUserSession).Methods("POST")

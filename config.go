@@ -135,17 +135,6 @@ func (c *RepoTrackerConfig) Set() error {
 }
 func (c *RepoTrackerConfig) ValidateAndDefault() error { return nil }
 
-type ClientBinary struct {
-	Arch string `yaml:"arch" json:"arch"`
-	OS   string `yaml:"os" json:"os"`
-	URL  string `yaml:"url" json:"url"`
-}
-
-type ClientConfig struct {
-	ClientBinaries []ClientBinary `yaml:"client_binaries" json:"ClientBinaries"`
-	LatestRevision string         `yaml:"latest_revision" json:"LatestRevision"`
-}
-
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
 	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
