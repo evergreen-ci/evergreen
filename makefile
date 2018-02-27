@@ -114,6 +114,8 @@ smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
 	./$< service deploy test-endpoints || (killall $<; exit 1)
 	killall $<
+smoke-start-server:$(localClientBinary) load-smoke-data
+	./$< service deploy start-evergreen --web
 # end smoke test rules
 
 ######################################################################
