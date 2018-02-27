@@ -115,7 +115,9 @@ func (g *GeneratedProject) AddGeneratedProjectToVersion() error {
 		return errors.Wrap(err, "error creating config from generated config")
 	}
 	v.Config = config
-	version.UpdateOne(version.ById(v.Id), bson.M{"$set": bson.M{version.ConfigKey: config}})
+	if err := version.UpdateOne(version.ById(v.Id), bson.M{"$set": bson.M{version.ConfigKey: config}}); err != nil {
+		return errors.Wrapf(err, "error getting version %s", v.Id)
+	}
 
 	// Save new builds and tasks to the db.
 	if err := LoadProjectInto([]byte(config), t.Project, p); err != nil {
@@ -246,7 +248,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher
 
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
-		bv.Disabled == true || len(bv.Tags) > 0 || bv.Push == true ||
+		bv.Disabled || len(bv.Tags) > 0 || bv.Push ||
 		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 ||
 		len(bv.DisplayTasks) > 0 {
 		return true
