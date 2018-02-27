@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -44,7 +45,8 @@ func (s *githubStatusUpdateSuite) TearDownSuite() {
 }
 
 func (s *githubStatusUpdateSuite) SetupTest() {
-	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection))
+	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection))
+
 	startTime := time.Now()
 	s.patchDoc = &patch.Patch{
 		Id:         bson.NewObjectId(),
@@ -187,6 +189,42 @@ func (s *githubStatusUpdateSuite) TestForPatchCreated() {
 	s.Equal("preparing to run tasks", status.Description)
 	s.Equal("evergreen", status.Context)
 	s.Equal("pending", status.State)
+}
+
+func (s *githubStatusUpdateSuite) TestForBadConfig() {
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(448,
+		"evergreen-ci/evergreen", "tychoish/evergreen", "776f608b5b12cd27b8d931c8ee4ca0c13f857299", "tychoish", "Title"))
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	ref := model.ProjectRef{
+		Identifier:       "mci",
+		PRTestingEnabled: true,
+		Owner:            "evergreen-ci",
+		Repo:             "evergreen",
+		Branch:           "master",
+		Enabled:          true,
+	}
+	s.NoError(ref.Insert())
+
+	job, ok := NewGithubStatusUpdateJobForBadConfig(intent.ID()).(*githubStatusUpdateJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypeBadConfig, job.UpdateType)
+
+	status := githubStatus{}
+	s.NoError(job.fetch(&status))
+
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
+
+	s.Equal("/waterfall/mci", status.URLPath)
+	s.Equal("project config was invalid", status.Description)
+	s.Equal("evergreen", status.Context)
+	s.Equal("failure", status.State)
 }
 
 func (s *githubStatusUpdateSuite) TestWithGithub() {
