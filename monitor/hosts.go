@@ -153,8 +153,8 @@ func terminateHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
 	}
 
-	// run teardown script, which no-ops if one is not present
-	if h.Provisioned {
+	// run teardown script if we have one, sending notifications if things go awry
+	if h.Distro.Teardown != "" && h.Provisioned {
 		if err := runHostTeardown(ctx, h, cloudHost); err != nil {
 			grip.Error(message.Fields{
 				"runner":  RunnerName,

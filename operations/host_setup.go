@@ -81,10 +81,6 @@ func hostTeardown() cli.Command {
 }
 
 func runHostTeardownScript(ctx context.Context) error {
-	if _, err := os.Stat(evergreen.TeardownScriptName); os.IsNotExist(err) {
-		return nil
-	}
-
 	chmod := getChmodCommandWithSudo(ctx, evergreen.TeardownScriptName, false)
 	out, err := chmod.CombinedOutput()
 	if err != nil {

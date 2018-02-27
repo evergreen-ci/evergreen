@@ -39,6 +39,10 @@ func NewIntent(d distro.Distro, instanceName, provider string, options HostOptio
 	if options.ProvisionOptions != nil {
 		intentHost.ProvisionOptions = options.ProvisionOptions
 	}
+	if options.UserData != "" {
+		intentHost.UserData = options.UserData
+	}
+
 	return intentHost
 
 }

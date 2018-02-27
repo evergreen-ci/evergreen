@@ -14,6 +14,7 @@ type HostOptions struct {
 	ProvisionOptions   *host.ProvisionOptions
 	ExpirationDuration *time.Duration
 	UserName           string
+	UserData           string
 	UserHost           bool
 }
 

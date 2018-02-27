@@ -313,7 +313,7 @@ func (hph *hostPostHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	user := MustHaveUser(ctx)
 
-	intentHost, err := sc.NewIntentHost(hph.Distro, hph.KeyName, "", user)
+	intentHost, err := sc.NewIntentHost(hph.Distro, hph.KeyName, "", "", user)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "error spawning host")

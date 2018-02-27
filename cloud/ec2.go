@@ -2,7 +2,6 @@ package cloud
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -55,9 +54,6 @@ type EC2ProviderSettings struct {
 
 	// BidPrice is the price we are willing to pay for a spot instance.
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
-
-	// UserData are commands to run after the instance starts.
-	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
@@ -155,11 +151,6 @@ func (m *ec2Manager) spawnOnDemandHost(ctx context.Context, h *host.Host, ec2Set
 		}
 	} else {
 		input.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
-	}
-
-	if ec2Settings.UserData != "" {
-		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
-		input.UserData = &userData
 	}
 
 	grip.Debug(message.Fields{
@@ -270,11 +261,6 @@ func (m *ec2Manager) spawnSpotHost(ctx context.Context, h *host.Host, ec2Setting
 		}
 	} else {
 		spotRequest.LaunchSpecification.SecurityGroups = []*string{&ec2Settings.SecurityGroup}
-	}
-
-	if ec2Settings.UserData != "" {
-		userData := base64.StdEncoding.EncodeToString([]byte(ec2Settings.UserData))
-		spotRequest.LaunchSpecification.UserData = &userData
 	}
 
 	grip.Debug(message.Fields{
