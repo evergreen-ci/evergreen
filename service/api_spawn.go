@@ -47,7 +47,6 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	hostRequest := struct {
 		Distro    string `json:"distro"`
 		PublicKey string `json:"public_key"`
-		UserData  string `json:"userdata"`
 	}{}
 	err := util.ReadJSONInto(util.NewRequestReader(r), &hostRequest)
 	if err != nil {
@@ -65,7 +64,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", hostRequest.UserData, user)
+	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+)
+
+var (
+	someUserData         = "some user data"
+	base64OfSomeUserData = base64.StdEncoding.EncodeToString([]byte(someUserData))
 )
 
 type EC2Suite struct {
@@ -196,6 +202,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 		},
 		"security_group": "sg-123456",
 		"subnet_id":      "subnet-123456",
+		"user_data":      someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -237,6 +244,7 @@ func (s *EC2Suite) TestSpawnHostClassicOnDemand() {
 	}
 	s.True(foundInstanceName)
 	s.True(foundDistroID)
+	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
@@ -253,6 +261,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 		"security_group": "sg-123456",
 		"subnet_id":      "subnet-123456",
 		"is_vpc":         true,
+		"user_data":      someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -294,6 +303,7 @@ func (s *EC2Suite) TestSpawnHostVPCOnDemand() {
 	}
 	s.True(foundInstanceName)
 	s.True(foundDistroID)
+	s.Equal(base64OfSomeUserData, *runInput.UserData)
 }
 
 func (s *EC2Suite) TestSpawnHostClassicSpot() {
@@ -309,6 +319,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 		},
 		"security_group": "sg-123456",
 		"subnet_id":      "subnet-123456",
+		"user_data":      someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -348,6 +359,7 @@ func (s *EC2Suite) TestSpawnHostClassicSpot() {
 	}
 	s.True(foundInstanceName)
 	s.True(foundDistroID)
+	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
 func (s *EC2Suite) TestSpawnHostVPCSpot() {
@@ -364,6 +376,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 		"security_group": "sg-123456",
 		"subnet_id":      "subnet-123456",
 		"is_vpc":         true,
+		"user_data":      someUserData,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -402,6 +415,7 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	}
 	s.True(foundInstanceName)
 	s.True(foundDistroID)
+	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
 func (s *EC2Suite) TestCanSpawn() {
