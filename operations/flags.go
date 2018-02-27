@@ -32,7 +32,6 @@ const (
 	dbNameFlagName     = "db"
 	dbWriteNumFlagName = "w"
 	dbWmodeFlagName    = "wmode"
-	dbWTimeoutFlagName = "wtimeout"
 )
 
 func joinFlagNames(ids ...string) string { return strings.Join(ids, ", ") }

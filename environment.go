@@ -91,7 +91,9 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	}
 
 	if db != nil && confPath == "" {
-		e.initDB(*db)
+		if err := e.initDB(*db); err != nil {
+			return errors.Wrap(err, "error configuring db")
+		}
 	}
 	if err := e.initSettings(confPath); err != nil {
 		return errors.WithStack(err)
