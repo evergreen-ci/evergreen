@@ -282,6 +282,7 @@ func taskStatusToDesc(b *build.Build) string {
 	failed := 0
 	systemError := 0
 	other := 0
+	noReport := 0
 	for _, task := range b.Tasks {
 		switch task.Status {
 		case evergreen.TaskSucceeded:
@@ -295,10 +296,26 @@ func taskStatusToDesc(b *build.Build) string {
 			evergreen.TaskTestTimedOut:
 			systemError++
 
+		case evergreen.TaskStarted, evergreen.TaskUnstarted,
+			evergreen.TaskUndispatched, evergreen.TaskDispatched,
+			evergreen.TaskConflict, evergreen.TaskInactive:
+			noReport++
+
 		default:
 			other++
 		}
 	}
+
+	grip.ErrorWhen(other > 0, message.Fields{
+		"source":   "status updates",
+		"message":  "unknown task status",
+		"build_id": b.Id,
+	})
+	grip.ErrorWhen(noReport > 0, message.Fields{
+		"source":   "status updates",
+		"message":  "updating status for incomplete build",
+		"build_id": b.Id,
+	})
 
 	if success == 0 && failed == 0 && systemError == 0 && other == 0 {
 		return "no tasks were run"
