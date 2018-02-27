@@ -57,7 +57,7 @@ type EC2ProviderSettings struct {
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 
 	// UserData are commands to run after the instance starts.
-	UserData string `mapstructure:"user_data" json:"user_data", bson:"user_data"`
+	UserData string `mapstructure:"user_data" json:"user_data" bson:"user_data,omitempty"`
 }
 
 // Validate that essential EC2ProviderSettings fields are not empty.
