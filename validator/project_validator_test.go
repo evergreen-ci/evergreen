@@ -823,6 +823,26 @@ func TestCheckTaskCommands(t *testing.T) {
 				}
 				So(validateProjectTaskNames(project), ShouldResemble, []ValidationError{})
 			})
+		Convey("ensure that plugin commands have setup type",
+			func() {
+				project := &model.Project{
+					Tasks: []model.ProjectTask{
+						{
+							Name: "compile",
+							Commands: []model.PluginCommandConf{
+								{
+									Command: "gotest.parse_files",
+									Type:    "setup",
+									Params: map[string]interface{}{
+										"files": []interface{}{"test"},
+									},
+								},
+							},
+						},
+					},
+				}
+				So(validateProjectTaskNames(project), ShouldResemble, []ValidationError{})
+			})
 	})
 }
 
@@ -1322,6 +1342,24 @@ func (s *EnsureHasNecessaryProjectFieldSuite) TestBatchTimeValueMustNonNegative(
 	s.Len(validationError, 1)
 	s.Contains(validationError[0].Message, "non-negative 'batchtime'",
 		"Project 'batchtime' must not be negative")
+}
+
+func (s *EnsureHasNecessaryProjectFieldSuite) TestCommandTypes() {
+	s.project.CommandType = "system"
+	validationError := ensureHasNecessaryProjectFields(&s.project)
+	s.Empty(validationError)
+
+	s.project.CommandType = "test"
+	validationError = ensureHasNecessaryProjectFields(&s.project)
+	s.Empty(validationError)
+
+	s.project.CommandType = "setup"
+	validationError = ensureHasNecessaryProjectFields(&s.project)
+	s.Empty(validationError)
+
+	s.project.CommandType = ""
+	validationError = ensureHasNecessaryProjectFields(&s.project)
+	s.Empty(validationError)
 }
 
 func (s *EnsureHasNecessaryProjectFieldSuite) TestFailOnInvalidCommandType() {

@@ -37,6 +37,10 @@ func (t *Task) ResultStatus() string {
 					status = evergreen.TaskSystemTimedOut
 				}
 			}
+
+		} else if t.Details.Type == "setup" {
+			status = evergreen.TaskSetupFailed
+
 		} else if t.Details.TimedOut {
 			status = evergreen.TaskTestTimedOut
 		}
@@ -55,6 +59,7 @@ type ResultCounts struct {
 	Started            int `json:"started"`
 	Succeeded          int `json:"succeeded"`
 	Failed             int `json:"failed"`
+	SetupFailed        int `json:"setup-failed"`
 	SystemFailed       int `json:"system-failed"`
 	SystemUnresponsive int `json:"system-unresponsive"`
 	SystemTimedOut     int `json:"system-timed-out"`
@@ -83,6 +88,8 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 			out.Succeeded++
 		case evergreen.TaskFailed:
 			out.Failed++
+		case evergreen.TaskSetupFailed:
+			out.SetupFailed++
 		case evergreen.TaskSystemFailed:
 			out.SystemFailed++
 		case evergreen.TaskSystemUnresponse:

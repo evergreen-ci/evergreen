@@ -161,6 +161,9 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
           if (cell.task_end_details.type == 'system') {
             return 'system-failed';
           }
+          if (cell.task_end_details.type == 'setup') {
+            return 'setup-failed';
+          }
         }
       }
       return 'failure';

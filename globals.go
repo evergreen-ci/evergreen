@@ -37,6 +37,7 @@ const (
 	TaskSucceeded        = "success"
 	TaskInactive         = "inactive"
 	TaskSystemFailed     = "system-failed"
+	TaskSetupFailed      = "setup-failed"
 	TaskTimedOut         = "task-timed-out"
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"

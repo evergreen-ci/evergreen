@@ -153,7 +153,7 @@ class Root extends React.Component{
     }
     var collapseInfo = {
       collapsed : this.state.collapsed,
-      activeTaskStatuses : ['failed','system-failed'],
+      activeTaskStatuses : ['failed','system-failed','setup-failed'],
     };
     return (
       React.createElement("div", null,
