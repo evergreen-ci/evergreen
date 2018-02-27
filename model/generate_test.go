@@ -158,7 +158,7 @@ func TestGenerateSuite(t *testing.T) {
 }
 
 func (s *GenerateSuite) SetupTest() {
-	db.ClearCollections(task.Collection, build.Collection, version.Collection)
+	s.Require().NoError(db.ClearCollections(task.Collection, build.Collection, version.Collection))
 }
 
 func (s *GenerateSuite) TestParseProjectFromJSON() {
@@ -393,6 +393,7 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	g.TaskID = "task_that_called_generate_task"
 	s.NoError(g.AddGeneratedProjectToVersion())
 	builds, err := build.Find(db.Query(bson.M{}))
+	s.NoError(err)
 	tasks, err := task.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	s.Len(builds, 2)
