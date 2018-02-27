@@ -93,6 +93,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   }
 
   $scope.isUnauthorizedPRPatch = (patch.Version.length === 0 && patch.GithubPatchData.PRNumber !== 0);
+  $scope.isPRPatch = patch.GithubPatchData.PRNumber !== 0;
 
   $scope.collectVariantTasks = function() {
       return _.filter(_.map($scope.variants, function(v){
