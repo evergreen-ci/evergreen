@@ -168,11 +168,9 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 			if result.TaskTimedOut {
 				taskStatus = model.TaskTimeout
 			}
-			// TODO should this elseif?
 			if result.TaskDetailsType == model.SystemCommandType {
 				taskStatus = model.TaskSystemFailure
-			}
-			if result.TaskDetailsType == model.SetupCommandType {
+			} else if result.TaskDetailsType == model.SetupCommandType {
 				taskStatus = model.TaskSetupFailure
 			}
 		}
