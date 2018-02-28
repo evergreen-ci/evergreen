@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -19,6 +20,7 @@ const (
 
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
+	GUID         string           `bson:"guid" json:"guid"`
 	ResourceType string           `bson:"r_type" json:"resource_type"`
 	User         string           `bson:"user" json:"user"`
 	Section      string           `bson:"section" json:"section"`
@@ -36,10 +38,11 @@ type rawConfigDataChange struct {
 }
 
 type rawAdminEventData struct {
-	ResourceType string              `bson:"r_type" json:"resource_type"`
-	User         string              `bson:"user" json:"user"`
-	Section      string              `bson:"section" json:"section"`
-	Changes      rawConfigDataChange `bson:"changes" json:"changes"`
+	GUID         string              `bson:"guid"`
+	ResourceType string              `bson:"r_type"`
+	User         string              `bson:"user"`
+	Section      string              `bson:"section"`
+	Changes      rawConfigDataChange `bson:"changes"`
 }
 
 // IsValid checks if a given event is an event on an admin resource
@@ -60,6 +63,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		User:         user,
 		Section:      section,
 		Changes:      ConfigDataChange{Before: before, After: after},
+		GUID:         util.RandomString(),
 	}
 	event := Event{
 		Timestamp: time.Now(),
@@ -175,6 +179,7 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 		ResourceType: in.ResourceType,
 		Section:      in.Section,
 		User:         in.User,
+		GUID:         in.GUID,
 	}
 
 	// get the correct implementation of the interface from the registry
