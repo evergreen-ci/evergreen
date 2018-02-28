@@ -248,12 +248,8 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 		}
 	}
 
-	patchDoc, err := patch.FindOne(patch.ById(bson.ObjectIdHex(patchVersion)))
-	if err != nil {
-		return err
-	}
 	if patchDoc == nil {
-		patchDoc, err = patch.FindOne(patch.ByVersion(patchVersion))
+		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(patchVersion)))
 		if err != nil {
 			return err
 		}
