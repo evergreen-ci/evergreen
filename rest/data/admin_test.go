@@ -170,7 +170,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	foundUiEvent := false
 	for _, evt := range events {
 		s.Equal(event.EventTypeValueChanged, evt.EventType)
-		data := evt.Data.Data.(*event.AdminEventData)
+		data := evt.Data.(*event.AdminEventData)
 		s.Equal(u.Id, data.User)
 		switch v := data.Changes.After.(type) {
 		case *evergreen.AlertsConfig:
