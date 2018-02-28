@@ -112,7 +112,13 @@ func (j *patchIntentProcessor) Run() {
 	}
 
 	if j.IntentType == patch.GithubIntentType {
-		update := NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+		var update amboy.Job
+		if len(patchDoc.Version) == 0 {
+			update = NewGithubStatusUpdateJobForExternalPatch(patchDoc.Id.Hex())
+
+		} else {
+			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
+		}
 		err = j.env.LocalQueue().Put(update)
 		j.AddError(err)
 		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
@@ -135,12 +141,15 @@ func (j *patchIntentProcessor) Run() {
 func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthToken string) error {
 	catcher := grip.NewBasicCatcher()
 
+	var err error
+	canFinalize := true
 	switch j.IntentType {
 	case patch.CliIntentType:
 		catcher.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
 
 	case patch.GithubIntentType:
-		catcher.Add(j.buildGithubPatchDoc(patchDoc, githubOauthToken))
+		canFinalize, err = j.buildGithubPatchDoc(patchDoc, githubOauthToken)
+		catcher.Add(err)
 
 	default:
 		return errors.Errorf("Intent type '%s' is unknown", j.IntentType)
@@ -149,7 +158,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		catcher.Add(errors.Errorf("patch document should have 1 patch, found %d", len))
 	}
 
-	if err := catcher.Resolve(); err != nil {
+	if err = catcher.Resolve(); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message":     "Failed to build patch document",
 			"job":         j.ID(),
@@ -229,7 +238,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 		return err
 	}
 
-	if j.intent.ShouldFinalizePatch() {
+	if canFinalize && j.intent.ShouldFinalizePatch() {
 		if _, err := model.FinalizePatch(patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
@@ -351,10 +360,10 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 	return nil
 }
 
-func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (err error) {
+func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (canFinalize bool, err error) {
 	adminSettings, err := evergreen.GetConfig()
 	if err != nil {
-		return errors.Wrap(err, "github pr testing is disabled, error retrieving admin settings")
+		return false, errors.Wrap(err, "github pr testing is disabled, error retrieving admin settings")
 	}
 	if adminSettings.ServiceFlags.GithubPRTestingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
@@ -364,34 +373,34 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 			"intent_type": j.IntentType,
 			"intent_id":   j.IntentID,
 		})
-		return errors.New("github pr testing is disabled, not processing pull request")
+		return false, errors.New("github pr testing is disabled, not processing pull request")
 	}
 	defer j.intent.SetProcessed()
 
 	mustBeMemberOfOrg := j.env.Settings().GithubPRCreatorOrg
 	if mustBeMemberOfOrg == "" {
-		return errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
+		return false, errors.New("Github PR testing not configured correctly; requires a Github org to authenticate against")
 	}
 
 	projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 	if err != nil {
-		return errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
+		return false, errors.Wrapf(err, "Could not fetch project ref for repo '%s/%s' with branch '%s'",
 			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 	if projectRef == nil {
-		return errors.Errorf("Could not find project ref for repo '%s/%s' with branch '%s'",
+		return false, errors.Errorf("Could not find project ref for repo '%s/%s' with branch '%s'",
 			patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo,
 			patchDoc.GithubPatchData.BaseBranch)
 	}
 
 	projectVars, err := model.FindOneProjectVars(projectRef.Identifier)
 	if err != nil {
-		return errors.Wrapf(err, "Could not find project vars for project '%s'", projectRef.Identifier)
+		return false, errors.Wrapf(err, "Could not find project vars for project '%s'", projectRef.Identifier)
 	}
 	if projectVars == nil {
-		return errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
+		return false, errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
 	}
 
 	isMember, err := authAndFetchPRMergeBase(context.TODO(), patchDoc, mustBeMemberOfOrg,
@@ -408,15 +417,12 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 			"intent_type": j.IntentType,
 			"intent_id":   j.IntentID,
 		}))
-		return err
-	}
-	if !isMember {
-		return errors.Errorf("user '%s' is not a member of %s", patchDoc.GithubPatchData.Author, mustBeMemberOfOrg)
+		return false, err
 	}
 
 	patchContent, summaries, err := fetchDiffFromGithub(&patchDoc.GithubPatchData, githubOauthToken)
 	if err != nil {
-		return err
+		return isMember, err
 	}
 
 	patchFileID := fmt.Sprintf("%s_%s", patchDoc.Id.Hex(), patchDoc.Githash)
@@ -431,12 +437,12 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	patchDoc.Project = projectRef.Identifier
 
 	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
-		return errors.Wrap(err, "failed to write patch file to db")
+		return isMember, errors.Wrap(err, "failed to write patch file to db")
 	}
 
 	j.user, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
 	if err != nil {
-		return err
+		return isMember, err
 	}
 	if j.user == nil {
 		j.user = &user.DBUser{
@@ -447,7 +453,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		err = j.user.Insert()
 	}
 
-	return errors.Wrap(err, "failed to create github pull request user")
+	return isMember, errors.Wrap(err, "failed to create github pull request user")
 }
 
 func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {
@@ -474,8 +480,8 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 	}
 
 	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, githubUser)
-	if !isMember || err != nil {
-		grip.Info(message.Fields{
+	if err != nil {
+		grip.Error(message.Fields{
 			"message":      "Failed to authenticate github PR",
 			"creator":      githubUser,
 			"required_org": requiredOrganization,
@@ -515,5 +521,5 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 
 	patchDoc.Githash = *commit.Parents[0].SHA
 
-	return true, nil
+	return isMember, nil
 }

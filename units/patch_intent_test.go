@@ -362,6 +362,39 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
 }
 
+func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersions() {
+	flags := evergreen.ServiceFlags{
+		GithubStatusAPIDisabled: true,
+	}
+	s.Require().NoError(evergreen.SetServiceFlags(flags))
+
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", ""))
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	patchID := bson.NewObjectId()
+	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
+	j.env = s.env
+	s.True(ok)
+	s.NotNil(j)
+	j.Run()
+	s.Error(j.Error())
+
+	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	s.NoError(err)
+	s.NotNil(patchDoc)
+	s.Empty(patchDoc.Version)
+
+	versionDoc, err := version.FindOne(version.ById(patchID.Hex()))
+	s.NoError(err)
+	s.Nil(versionDoc)
+
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	s.NoError(err)
+	s.Empty(unprocessedIntents)
+}
+
 func (s *PatchIntentUnitsSuite) TestBuildPatchURL() {
 	s.Equal("https://api.github.com/repos/evergreen-ci/evergreen/pulls/448.diff", buildPatchURL(&s.githubPatchData))
 }

@@ -80,6 +80,7 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		projectAliasesToCollectionGenerator,
 		githubHooksToCollectionGenerator,
 		zeroDateFixGenerator(githubToken),
+		adminEventRestructureGenerator,
 	}
 
 	catcher := grip.NewBasicCatcher()

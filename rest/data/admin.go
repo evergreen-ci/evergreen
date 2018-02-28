@@ -23,6 +23,14 @@ func (ac *DBAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error) 
 	return evergreen.GetConfig()
 }
 
+func (ac *DBAdminConnector) GetBanner() (string, string, error) {
+	settings, err := evergreen.GetConfig()
+	if err != nil {
+		return "", "", errors.Wrap(err, "error retrieving settings from DB")
+	}
+	return settings.Banner, string(settings.BannerTheme), nil
+}
+
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
@@ -168,6 +176,10 @@ func (ac *MockAdminConnector) GetEvergreenSettings() (*evergreen.Settings, error
 	ac.mu.RLock()
 	defer ac.mu.RUnlock()
 	return ac.MockSettings, nil
+}
+
+func (ac *MockAdminConnector) GetBanner() (string, string, error) {
+	return ac.MockSettings.Banner, string(ac.MockSettings.BannerTheme), nil
 }
 
 // SetEvergreenSettings sets the admin settings document in the mock connector

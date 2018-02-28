@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -19,6 +20,7 @@ const (
 
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
+	GUID         string           `bson:"guid" json:"guid"`
 	ResourceType string           `bson:"r_type" json:"resource_type"`
 	User         string           `bson:"user" json:"user"`
 	Section      string           `bson:"section" json:"section"`
@@ -36,10 +38,11 @@ type rawConfigDataChange struct {
 }
 
 type rawAdminEventData struct {
-	ResourceType string              `bson:"r_type" json:"resource_type"`
-	User         string              `bson:"user" json:"user"`
-	Section      string              `bson:"section" json:"section"`
-	Changes      rawConfigDataChange `bson:"changes" json:"changes"`
+	GUID         string              `bson:"guid"`
+	ResourceType string              `bson:"r_type"`
+	User         string              `bson:"user"`
+	Section      string              `bson:"section"`
+	Changes      rawConfigDataChange `bson:"changes"`
 }
 
 // IsValid checks if a given event is an event on an admin resource
@@ -60,6 +63,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		User:         user,
 		Section:      section,
 		Changes:      ConfigDataChange{Before: before, After: after},
+		GUID:         util.RandomString(),
 	}
 	event := Event{
 		Timestamp: time.Now(),
@@ -102,79 +106,12 @@ func FindAdmin(query db.Q) ([]Event, error) {
 	return events, nil
 }
 
-func FindAndScrub(query db.Q) ([]Event, error) {
-	events, err := FindAdmin(query)
-	if err != nil {
-		return nil, err
-	}
-	catcher := grip.NewSimpleCatcher()
-	for _, event := range events {
-		eventData := event.Data.Data.(*AdminEventData)
-		catcher.Add(scrubConfig(eventData.Changes.Before.(evergreen.ConfigSection)))
-		catcher.Add(scrubConfig(eventData.Changes.After.(evergreen.ConfigSection)))
-	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-
-	return events, nil
-}
-
-// scrubConfig takes in some struct pointer and scrubs any fields marked as secure
-// the input must have a pointer to a struct value
-func scrubConfig(section interface{}) error {
-	catcher := grip.NewSimpleCatcher()
-	valSection := reflect.Indirect(reflect.ValueOf(section))
-	for i := 0; i < valSection.NumField(); i++ {
-		// get the field name + value
-		field := valSection.Type().Field(i)
-		propName := field.Name
-		var propVal reflect.Value
-		reflectSection := reflect.ValueOf(section)
-		propVal = reflectSection.Elem().FieldByName(propName)
-		if !propVal.CanSet() {
-			continue
-		}
-
-		// if this is a secure field, swap the value with asterisks. All secure types must be string
-		secure := field.Tag.Get("secure")
-		if secure != "" {
-			if propVal.Kind() != reflect.String {
-				catcher.Add(fmt.Errorf("secure field %s is not a string", propName))
-				continue
-			}
-			if propVal.String() == "" {
-				continue
-			}
-			propVal.SetString("***")
-		}
-
-		// if this is a struct, recursively scrub its secure fields
-		if propVal.Kind() == reflect.Struct {
-			catcher.Add(scrubConfig(propVal.Addr().Interface()))
-		} else if reflect.Indirect(propVal).Kind() == reflect.Struct {
-			catcher.Add(scrubConfig(propVal.Interface()))
-		} else if propVal.Kind() == reflect.Slice {
-			// if this is a slice, scrub each of its elements
-			for j := 0; j < propVal.Len(); j++ {
-				elem := propVal.Index(j)
-				if elem.Kind() == reflect.Struct {
-					catcher.Add(scrubConfig(elem.Addr().Interface()))
-				} else if reflect.Indirect(elem).Kind() == reflect.Struct {
-					catcher.Add(scrubConfig(elem.Interface()))
-				}
-			}
-		}
-	}
-
-	return catcher.Resolve()
-}
-
 func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	out := AdminEventData{
 		ResourceType: in.ResourceType,
 		Section:      in.Section,
 		User:         in.User,
+		GUID:         in.GUID,
 	}
 
 	// get the correct implementation of the interface from the registry

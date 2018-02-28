@@ -213,7 +213,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/banner",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -488,7 +488,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Wrapf(err, "expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+		return nil, errors.Errorf("expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
 	}
 	update := &model.APICLIUpdate{}
 	if err = util.ReadJSONInto(resp.Body, update); err != nil {

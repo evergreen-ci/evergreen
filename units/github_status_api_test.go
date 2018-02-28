@@ -48,9 +48,10 @@ func (s *githubStatusUpdateSuite) SetupTest() {
 	s.NoError(db.ClearCollections(evergreen.ConfigCollection, patch.Collection, patch.IntentCollection, model.ProjectRefCollection))
 
 	startTime := time.Now()
+	id := bson.NewObjectId()
 	s.patchDoc = &patch.Patch{
-		Id:         bson.NewObjectId(),
-		Version:    bson.NewObjectId().Hex(),
+		Id:         id,
+		Version:    id.Hex(),
 		Status:     evergreen.PatchFailed,
 		StartTime:  startTime,
 		FinishTime: startTime.Add(10 * time.Minute),
@@ -223,6 +224,30 @@ func (s *githubStatusUpdateSuite) TestForBadConfig() {
 
 	s.Equal("/waterfall/mci", status.URLPath)
 	s.Equal("project config was invalid", status.Description)
+	s.Equal("evergreen", status.Context)
+	s.Equal("failure", status.State)
+}
+
+func (s *githubStatusUpdateSuite) TestRequestForAuth() {
+	s.NoError(db.ClearCollections(patch.Collection))
+	s.patchDoc.Status = evergreen.PatchCreated
+	s.NoError(s.patchDoc.Insert())
+
+	job, ok := NewGithubStatusUpdateJobForExternalPatch(s.patchDoc.Version).(*githubStatusUpdateJob)
+	s.Require().NotNil(job)
+	s.Require().True(ok)
+	s.Require().Equal(githubUpdateTypeRequestAuth, job.UpdateType)
+
+	status := githubStatus{}
+	s.NoError(job.fetch(&status))
+
+	s.Equal("evergreen-ci", status.Owner)
+	s.Equal("evergreen", status.Repo)
+	s.Equal(448, status.PRNumber)
+	s.Equal("776f608b5b12cd27b8d931c8ee4ca0c13f857299", status.Ref)
+
+	s.Equal(fmt.Sprintf("/patch/%s", s.patchDoc.Version), status.URLPath)
+	s.Equal("patch must be manually authorized", status.Description)
 	s.Equal("evergreen", status.Context)
 	s.Equal("failure", status.State)
 }
