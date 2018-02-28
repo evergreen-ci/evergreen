@@ -8,7 +8,7 @@ import (
 
 var (
 	ConfigCollection = "admin"
-	configDocID      = "global"
+	ConfigDocID      = "global"
 )
 
 //nolint: deadcode, megacheck
@@ -70,7 +70,7 @@ func byId(id string) bson.M {
 func SetBanner(bannerText string) error {
 	_, err := db.Upsert(
 		ConfigCollection,
-		byId(configDocID),
+		byId(ConfigDocID),
 		bson.M{
 			"$set": bson.M{bannerKey: bannerText},
 		},
@@ -84,7 +84,7 @@ func SetBanner(bannerText string) error {
 func SetBannerTheme(theme BannerTheme) error {
 	_, err := db.Upsert(
 		ConfigCollection,
-		byId(configDocID),
+		byId(ConfigDocID),
 		bson.M{
 			"$set": bson.M{bannerThemeKey: theme},
 		},

@@ -120,6 +120,12 @@ func RecentAdminEvents(n int) db.Q {
 	}).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
+func ByGuid(guid string) db.Q {
+	return db.Query(bson.M{
+		DataKey + "." + "guid": guid,
+	})
+}
+
 // TaskSystemInfoEvents builds a query for system info,
 // (e.g. aggregate information about the system as a whole) collected
 // during a task.

@@ -118,20 +118,38 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		ApiUrl:             *as.ApiUrl,
-		Banner:             *as.Banner,
-		BannerTheme:        evergreen.BannerTheme(*as.BannerTheme),
-		ClientBinariesDir:  *as.ClientBinariesDir,
-		ConfigDir:          *as.ConfigDir,
-		Credentials:        map[string]string{},
-		Expansions:         map[string]string{},
-		GithubPRCreatorOrg: *as.GithubPRCreatorOrg,
-		IsNonProd:          *as.IsNonProd,
-		Keys:               map[string]string{},
-		LogPath:            *as.LogPath,
-		Plugins:            evergreen.PluginConfig{},
-		PprofPort:          *as.PprofPort,
-		SuperUsers:         as.SuperUsers,
+		Credentials: map[string]string{},
+		Expansions:  map[string]string{},
+		Keys:        map[string]string{},
+		Plugins:     evergreen.PluginConfig{},
+		SuperUsers:  as.SuperUsers,
+	}
+	if as.ApiUrl != nil {
+		settings.ApiUrl = *as.ApiUrl
+	}
+	if as.Banner != nil {
+		settings.Banner = *as.Banner
+	}
+	if as.BannerTheme != nil {
+		settings.BannerTheme = evergreen.BannerTheme(*as.BannerTheme)
+	}
+	if as.ClientBinariesDir != nil {
+		settings.ClientBinariesDir = *as.ClientBinariesDir
+	}
+	if as.ConfigDir != nil {
+		settings.ConfigDir = *as.ConfigDir
+	}
+	if as.GithubPRCreatorOrg != nil {
+		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
+	}
+	if as.IsNonProd != nil {
+		settings.IsNonProd = *as.IsNonProd
+	}
+	if as.LogPath != nil {
+		settings.LogPath = *as.LogPath
+	}
+	if as.PprofPort != nil {
+		settings.PprofPort = *as.PprofPort
 	}
 	apiModelReflect := reflect.ValueOf(*as)
 	dbModelReflect := reflect.ValueOf(&settings).Elem()
@@ -1025,6 +1043,9 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 }
 
 func (a *APISlackOptions) ToService() (interface{}, error) {
+	if a == nil {
+		return send.SlackOptions{}, nil
+	}
 	return send.SlackOptions{
 		Channel:       string(a.Channel),
 		Hostname:      string(a.Hostname),
