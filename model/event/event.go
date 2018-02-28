@@ -16,14 +16,14 @@ const (
 	TaskLogCollection = "task_event_log"
 )
 
-type Event struct {
+type EventLogEntry struct {
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
 	EventType  string    `bson:"e_type" json:"event_type"`
 	Data       Data      `bson:"data" json:"data"`
 }
 
-type unmarshalEvent struct {
+type unmarshalEventLogEntry struct {
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
 	EventType  string    `bson:"e_type" json:"event_type"`
@@ -32,10 +32,10 @@ type unmarshalEvent struct {
 
 var (
 	// bson fields for the event struct
-	TimestampKey  = bsonutil.MustHaveTag(Event{}, "Timestamp")
-	ResourceIdKey = bsonutil.MustHaveTag(Event{}, "ResourceId")
-	TypeKey       = bsonutil.MustHaveTag(Event{}, "EventType")
-	DataKey       = bsonutil.MustHaveTag(Event{}, "Data")
+	TimestampKey  = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
+	ResourceIdKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
+	TypeKey       = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
+	DataKey       = bsonutil.MustHaveTag(EventLogEntry{}, "Data")
 
 	resourceTypeKey = "r_type"
 )
@@ -45,7 +45,7 @@ type Data interface {
 }
 
 // MarshalJSON returns proper JSON encoding by uncovering the Data interface.
-func (e *Event) MarshalJSON() ([]byte, error) {
+func (e *EventLogEntry) MarshalJSON() ([]byte, error) {
 	found, rType := findResourceTypeIn(e.Data)
 	if !found {
 		return nil, errors.Errorf("cannot find resource type of type %T", e.Data)
@@ -57,8 +57,8 @@ func (e *Event) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.Data)
 }
 
-func (e *Event) SetBSON(raw bson.Raw) error {
-	temp := unmarshalEvent{}
+func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
+	temp := unmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}

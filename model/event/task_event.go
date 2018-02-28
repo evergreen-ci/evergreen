@@ -44,7 +44,7 @@ func (self TaskEventData) IsValid() bool {
 
 func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	eventData.ResourceType = ResourceTypeTask
-	event := Event{
+	event := EventLogEntry{
 		Timestamp:  time.Now(),
 		ResourceId: taskId,
 		EventType:  eventType,

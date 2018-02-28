@@ -36,7 +36,7 @@ func (sed SchedulerEventData) IsValid() bool {
 // The ResourceId is the time that the scheduler runs.
 func LogSchedulerEvent(eventData SchedulerEventData) {
 	eventData.ResourceType = ResourceTypeScheduler
-	event := Event{
+	event := EventLogEntry{
 		Timestamp:  time.Now(),
 		ResourceId: eventData.DistroId,
 		EventType:  EventSchedulerRun,

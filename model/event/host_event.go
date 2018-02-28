@@ -65,7 +65,7 @@ func (self HostEventData) IsValid() bool {
 
 func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	eventData.ResourceType = ResourceTypeHost
-	event := Event{
+	event := EventLogEntry{
 		Timestamp:  time.Now(),
 		ResourceId: hostId,
 		EventType:  eventType,

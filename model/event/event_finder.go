@@ -11,8 +11,8 @@ import (
 
 // Find takes a collection storing events and a query, generated
 // by one of the query functions, and returns a slice of events.
-func Find(coll string, query db.Q) ([]Event, error) {
-	events := []Event{}
+func Find(coll string, query db.Q) ([]EventLogEntry, error) {
+	events := []EventLogEntry{}
 	err := db.FindAllQ(coll, query, &events)
 	return events, err
 }

@@ -31,7 +31,7 @@ func (d DistroEventData) IsValid() bool {
 
 func LogDistroEvent(distroId string, eventType string, eventData DistroEventData) {
 	eventData.ResourceType = ResourceTypeDistro
-	event := Event{
+	event := EventLogEntry{
 		ResourceId: distroId,
 		Timestamp:  time.Now(),
 		EventType:  eventType,

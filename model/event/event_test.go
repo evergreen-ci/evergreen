@@ -28,8 +28,8 @@ func (s *eventSuite) SetupTest() {
 }
 
 func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
-	realt := reflect.TypeOf(&Event{}).Elem()
-	tempt := reflect.TypeOf(&unmarshalEvent{}).Elem()
+	realt := reflect.TypeOf(&EventLogEntry{}).Elem()
+	tempt := reflect.TypeOf(&unmarshalEventLogEntry{}).Elem()
 
 	s.Require().Equal(realt.NumField(), tempt.NumField())
 	for i := 0; i < realt.NumField(); i++ {
@@ -40,7 +40,7 @@ func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
 func (s *eventSuite) TestTerribleUnmarshaller() {
 	logger := NewDBEventLogger(AllLogCollection)
 	for k, v := range eventRegistry {
-		event := Event{
+		event := EventLogEntry{
 			ResourceId: "TEST1",
 			EventType:  "TEST2",
 			Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
@@ -73,7 +73,7 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 	}
 }
 
-func (s *eventSuite) TestEventRegistry() {
+func (s *eventSuite) TestEventRegistryItemsAreSane() {
 	for k, _ := range eventRegistry {
 		event := NewEventFromType(k)
 		s.NotNil(event)
@@ -90,8 +90,10 @@ func (s *eventSuite) TestEventRegistry() {
 			bsonTag := f.Tag.Get("bson")
 			jsonTag := f.Tag.Get("json")
 			s.NotEmpty(bsonTag, "struct %s: field '%s' must have bson tag", t.Name(), f.Name)
-			s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
 
+			if _, ok := event.(*rawAdminEventData); !ok {
+				s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
+			}
 		}
 	}
 }
