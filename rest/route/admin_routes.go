@@ -304,7 +304,7 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 	defer r.Body.Close()
 	if h.EndTime.Before(h.StartTime) {
 		return rest.APIError{
-			StatusCode: 400,
+			StatusCode: http.StatusBadRequest,
 			Message:    "End time cannot be before start time",
 		}
 	}
@@ -371,7 +371,7 @@ func (h *revertHandler) ParseAndValidate(ctx context.Context, r *http.Request) e
 	defer r.Body.Close()
 	if h.GUID == "" {
 		return rest.APIError{
-			StatusCode: 400,
+			StatusCode: http.StatusBadRequest,
 			Message:    "GUID to revert to must be specified",
 		}
 	}
