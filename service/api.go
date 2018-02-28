@@ -32,12 +32,14 @@ import (
 )
 
 type (
+	taskKey       int
 	hostKey       int
 	projectKey    int
 	projectRefKey int
 )
 
 const (
+	apiTaskKey       taskKey       = 0
 	apiHostKey       hostKey       = 0
 	apiProjectKey    projectKey    = 0
 	apiProjectRefKey projectRefKey = 0

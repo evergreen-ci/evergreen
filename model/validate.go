@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -56,13 +55,10 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 	// if the task is attached to the context, check host-task relationship
 	var t *task.Task
 	if rv := r.Context().Value(0); rv != nil {
-		fmt.Println("| rv is", rv)
 		if rvTask, ok := rv.(*task.Task); ok {
-			fmt.Println("| rvTask is", rvTask)
 			t = rvTask
 		}
 	}
-	fmt.Println("| task is ", t)
 	if badHostTaskRelationship(h, t) {
 		return nil, http.StatusConflict, errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id)
 	}
