@@ -122,6 +122,7 @@ func (s *adminEventSuite) TestMigration() {
 		s.EqualValues("", evt["r_id"])
 		s.EqualValues(eventTypeValueChanged, evt[eventTypeKey])
 		data := evt["data"].(db.Document)
+		s.NotEmpty(data["guid"])
 		s.EqualValues("me", data["user"])
 		s.NotContains(data, "old_val")
 		s.NotContains(data, "new_val")

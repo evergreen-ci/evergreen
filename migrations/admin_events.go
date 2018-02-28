@@ -3,6 +3,7 @@ package migrations
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/anser/model"
@@ -30,6 +31,7 @@ type eventDataOld struct {
 }
 
 type eventDataNew struct {
+	GUID         string           `bson:"guid"`
 	ResourceType string           `bson:"r_type"`
 	User         string           `bson:"user"`
 	Section      string           `bson:"section"`
@@ -121,6 +123,7 @@ func makeAdminEventMigration(database string) db.MigrationOperation {
 		newData := eventDataNew{
 			ResourceType: oldData.ResourceType,
 			User:         oldData.User,
+			GUID:         util.RandomString(),
 		}
 		switch changeType {
 		case eventTypeTheme:

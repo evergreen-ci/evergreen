@@ -280,3 +280,13 @@ func (s *AdminDataSuite) TestRestart() {
 	_, err = s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
 }
+
+func (s *AdminDataSuite) TestGetBanner() {
+	u := &user.DBUser{Id: "me"}
+	s.NoError(s.ctx.SetAdminBanner("banner text", u))
+	s.NoError(s.ctx.SetBannerTheme(evergreen.Important, u))
+	text, theme, err := s.ctx.GetBanner()
+	s.NoError(err)
+	s.Equal("banner text", text)
+	s.Equal(evergreen.Important, theme)
+}

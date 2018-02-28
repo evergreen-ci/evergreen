@@ -39,13 +39,14 @@ Evergreen - Configure Patch
   <div class="row">
     <div>
       <div class="row">
-        <div class="col-xs-12"><h3>Configure Patch</h3></div>
+        <div class="col-xs-12" ng-show="isUnauthorizedPRPatch"><h3>Configure &amp; Authorize Patch</h3></div>
+        <div class="col-xs-12" ng-show="!isUnauthorizedPRPatch"><h3>Configure Patch</h3></div>
       </div>
       <div class="row">
         <div class="col-xs-5">
           <div class="row">
             <div class="col-xs-12">
-              <input type="text" style="width:100%" ng-model="patch.Description" placeholder="Patch description"></input>
+              <input type="text" style="width:100%" ng-model="patch.Description" placeholder="Patch description" ng-disabled="isPRPatch"></input>
             </div>
           </div>
           <div class="row">
@@ -57,7 +58,8 @@ Evergreen - Configure Patch
         <div class="col-xs-4">
           <div class="row">
             <div class="btn btn-lg btn-primary" ng-class="[[patch.Version.length > 0 ? 'btn-xs' :'btn-lg']]" ng-click="save()" ng-disabled="disableSubmit || selectionCount().numTasks==0">
-              [[patch.Version.length > 0 ? "Update Patch" : "Schedule Patch"]]
+                <span ng-show="!isUnauthorizedPRPatch">[[patch.Version.length > 0 ? "Update Patch" : "Schedule Patch"]]</span>
+                <span ng-show="isUnauthorizedPRPatch">Authorize Patch</span>
             </div>
           </div>
           <div class="row">

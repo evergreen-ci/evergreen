@@ -14,7 +14,7 @@ func TestModelConversion(t *testing.T) {
 	apiSettings := NewConfigModel()
 
 	// test converting from a db model to an API model
-	assert.NoError(apiSettings.BuildFromServiceAndScrub(testSettings))
+	assert.NoError(apiSettings.BuildFromService(testSettings))
 	assert.Equal(testSettings.ApiUrl, *apiSettings.ApiUrl)
 	assert.Equal(testSettings.Banner, *apiSettings.Banner)
 	assert.EqualValues(testSettings.BannerTheme, *apiSettings.BannerTheme)
@@ -74,11 +74,6 @@ func TestModelConversion(t *testing.T) {
 	assert.EqualValues(testSettings.Slack.Options.Channel, apiSettings.Slack.Options.Channel)
 	assert.EqualValues(testSettings.Splunk.Channel, apiSettings.Splunk.Channel)
 	assert.EqualValues(testSettings.Ui.HttpListenAddr, apiSettings.Ui.HttpListenAddr)
-
-	// check that secure fields are scrubbed
-	assert.EqualValues("***", apiSettings.Alerts.SMTP.Password)
-	assert.EqualValues("***", apiSettings.Api.GithubWebhookSecret)
-	assert.EqualValues("***", apiSettings.Providers.GCE.PrivateKey)
 
 	// test converting from the API model back to a DB model
 	dbInterface, err := apiSettings.ToService()
