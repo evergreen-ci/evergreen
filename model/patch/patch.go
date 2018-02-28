@@ -323,3 +323,7 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 	}
 	return UpdateOne(query, update)
 }
+
+func (p *Patch) IsGithubPRPatch() bool {
+	return p.GithubPatchData.PRNumber != 0
+}

@@ -103,6 +103,12 @@ func (s *patchSuite) SetupTest() {
 	for _, patch := range s.patches {
 		s.NoError(patch.Insert())
 	}
+
+	s.True(s.patches[0].IsGithubPRPatch())
+	s.True(s.patches[1].IsGithubPRPatch())
+	s.True(s.patches[2].IsGithubPRPatch())
+	s.True(s.patches[3].IsGithubPRPatch())
+	s.False(s.patches[4].IsGithubPRPatch())
 }
 
 func (s *patchSuite) TestByGithubPRAndCreatedBefore() {
