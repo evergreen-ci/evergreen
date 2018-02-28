@@ -133,6 +133,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           item = Object.assign({}, $scope.settingsFormData);
           item.setup_github_hook = false;
           item.pr_testing_enabled = false;
+          item.owner_name = "";
+          item.repo_name = "";
+          item.branch_name = "";
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
