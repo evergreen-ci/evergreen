@@ -69,23 +69,35 @@ func (dw DataWrapper) GetBSON() (interface{}, error) {
 }
 
 func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
-	impls := []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}, &SchedulerEventData{},
-		&TaskSystemResourceData{}, &TaskProcessResourceData{}, &rawAdminEventData{}}
-
-	for _, impl := range impls {
-		err := raw.Unmarshal(impl)
-		if err != nil {
-			return err
-		}
-		if impl.(Data).IsValid() {
-			dw.Data = impl.(Data)
-			return nil
-		}
-	}
-	m := bson.M{}
-	err := raw.Unmarshal(m)
-	if err != nil {
+	rawD := bson.RawD{}
+	if err := raw.Unmarshal(&rawD); err != nil {
 		return err
 	}
-	return errors.Errorf("No suitable type for %#v", m)
+
+	dataType := ""
+	for i := range rawD {
+		if rawD[i].Name == "r_type" {
+			if err := rawD[i].Value.Unmarshal(&dataType); err != nil {
+				return errors.Wrap(err, "failed to read r_type")
+			}
+		}
+	}
+	if len(dataType) == 0 {
+		return errors.New("expected non-empty r_type while unmarshalling event data")
+	}
+
+	data := NewEventFromType(dataType)
+	if data == nil {
+		return errors.Errorf("unknown resource type '%s'", dataType)
+	}
+
+	if err := raw.Unmarshal(data); err != nil {
+		return errors.Wrap(err, "failed to unmarshall data")
+	}
+	if !data.IsValid() {
+		return errors.New("unmarshalled data was invalid. This should NEVER happen")
+	}
+	dw.Data = data
+
+	return nil
 }
