@@ -32,8 +32,9 @@ import (
 )
 
 const (
-	githubAcceptDiff   = "application/vnd.github.v3.diff"
-	patchIntentJobName = "patch-intent-processor"
+	githubAcceptDiff        = "application/vnd.github.v3.diff"
+	patchIntentJobName      = "patch-intent-processor"
+	errInvalidPatchedConfig = "invalid patched config"
 )
 
 func init() {
@@ -104,6 +105,9 @@ func (j *patchIntentProcessor) Run() {
 
 	if err := j.finishPatch(patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
+		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
+			j.AddError(j.env.LocalQueue().Put(NewGithubStatusUpdateJobForBadConfig(j.intent.ID())))
+		}
 		return
 	}
 
@@ -181,7 +185,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	// Get and validate patched config and add it to the patch document
 	project, err := validator.GetPatchedProject(patchDoc, githubOauthToken)
 	if err != nil {
-		return errors.Wrap(err, "invalid patched config")
+		return errors.Wrap(err, errInvalidPatchedConfig)
 	}
 
 	if patchDoc.Patches[0].ModuleName != "" {
