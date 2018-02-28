@@ -37,9 +37,7 @@ var (
 	TypeKey       = bsonutil.MustHaveTag(Event{}, "EventType")
 	DataKey       = bsonutil.MustHaveTag(Event{}, "Data")
 
-	// resource type key.  this doesn't exist a part of the event struct,
-	// but has to be the same for all of the event types
-	ResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
+	resourceTypeKey = "r_type"
 )
 
 type Data interface {
@@ -116,7 +114,7 @@ func findResourceTypeIn(t interface{}) (bool, string) {
 			continue
 		}
 
-		if bsonTag == "r_type" {
+		if bsonTag == resourceTypeKey {
 			if f.Type.String() != "string" {
 				return false, ""
 			}

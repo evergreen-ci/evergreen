@@ -22,7 +22,7 @@ func Find(coll string, query db.Q) ([]Event, error) {
 // return a count of all system events captured.
 func CountSystemEvents(taskId string) (int, error) {
 	filter := bson.M{
-		DataKey + "." + ResourceTypeKey: EventTaskSystemInfo,
+		DataKey + "." + resourceTypeKey: EventTaskSystemInfo,
 		TypeKey: EventTaskSystemInfo,
 	}
 
@@ -38,7 +38,7 @@ func CountSystemEvents(taskId string) (int, error) {
 // return a count of all process metrics captured.
 func CountProcessEvents(taskId string) (int, error) {
 	filter := bson.M{
-		DataKey + "." + ResourceTypeKey: EventTaskProcessInfo,
+		DataKey + "." + resourceTypeKey: EventTaskProcessInfo,
 		TypeKey: EventTaskProcessInfo,
 	}
 
@@ -54,7 +54,7 @@ func CountProcessEvents(taskId string) (int, error) {
 // Host Events
 func HostEventsForId(id string) db.Q {
 	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, ResourceTypeHost},
+		{DataKey + "." + resourceTypeKey, ResourceTypeHost},
 		{ResourceIdKey, id},
 	})
 }
@@ -70,7 +70,7 @@ func HostEventsInOrder(id string) db.Q {
 // Task Events
 func TaskEventsForId(id string) db.Q {
 	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, ResourceTypeTask},
+		{DataKey + "." + resourceTypeKey, ResourceTypeTask},
 		{ResourceIdKey, id},
 	})
 }
@@ -86,7 +86,7 @@ func TaskEventsInOrder(id string) db.Q {
 // Distro Events
 func DistroEventsForId(id string) db.Q {
 	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, ResourceTypeDistro},
+		{DataKey + "." + resourceTypeKey, ResourceTypeDistro},
 		{ResourceIdKey, id},
 	})
 }
@@ -102,7 +102,7 @@ func DistroEventsInOrder(id string) db.Q {
 // Scheduler Events
 func SchedulerEventsForId(distroId string) db.Q {
 	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, ResourceTypeScheduler},
+		{DataKey + "." + resourceTypeKey, ResourceTypeScheduler},
 		{ResourceIdKey, distroId},
 	})
 }
@@ -115,7 +115,7 @@ func RecentSchedulerEvents(distroId string, n int) db.Q {
 // RecentAdminEvents returns the N most recent admin events
 func RecentAdminEvents(n int) db.Q {
 	return db.Query(bson.M{
-		DataKey + "." + ResourceTypeKey: ResourceTypeAdmin,
+		DataKey + "." + resourceTypeKey: ResourceTypeAdmin,
 		ResourceIdKey:                   "",
 	}).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
@@ -129,7 +129,7 @@ func RecentAdminEvents(n int) db.Q {
 // will return all matching events that occur after the specified time.
 func TaskSystemInfoEvents(taskId string, ts time.Time, limit, sort int) db.Q {
 	filter := bson.M{
-		DataKey + "." + ResourceTypeKey: EventTaskSystemInfo,
+		DataKey + "." + resourceTypeKey: EventTaskSystemInfo,
 		ResourceIdKey:                   taskId,
 		TypeKey:                         EventTaskSystemInfo,
 	}
@@ -155,7 +155,7 @@ func TaskSystemInfoEvents(taskId string, ts time.Time, limit, sort int) db.Q {
 // will return all matching events that occur after the specified time.
 func TaskProcessInfoEvents(taskId string, ts time.Time, limit, sort int) db.Q {
 	filter := bson.M{
-		DataKey + "." + ResourceTypeKey: EventTaskProcessInfo,
+		DataKey + "." + resourceTypeKey: EventTaskProcessInfo,
 		ResourceIdKey:                   taskId,
 		TypeKey:                         EventTaskProcessInfo,
 	}

@@ -301,7 +301,7 @@ $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	go tool cover -html=$< -o $@
 # end test and coverage artifacts
-
+build-alltests: $(testBin)
 
 # clean and other utility targets
 clean:
