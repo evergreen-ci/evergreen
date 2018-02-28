@@ -158,6 +158,7 @@ const (
 )
 
 const (
+	unusedConstant               = 5
 	defaultLogBufferingDuration  = 20
 	defaultMgoDialTimeout        = 5 * time.Second
 	defaultAmboyPoolSize         = 2
