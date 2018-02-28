@@ -115,28 +115,3 @@ func (s *AdminEventSuite) TestNoChanges() {
 	s.NoError(err)
 	s.Len(dbEvents, 0)
 }
-
-func (s *AdminEventSuite) TestEventScrubbing() {
-	before := evergreen.AuthConfig{}
-	after := evergreen.AuthConfig{
-		Naive: &evergreen.NaiveAuthConfig{
-			Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pwd"}},
-		},
-		Crowd: &evergreen.CrowdConfig{
-			Username: "crowd",
-			Password: "crowdpw",
-		},
-	}
-	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
-	dbEvents, err := FindAndScrub(RecentAdminEvents(1))
-	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
-	s.True(eventData.IsValid())
-	beforeVal := eventData.Changes.Before.(*evergreen.AuthConfig)
-	afterVal := eventData.Changes.After.(*evergreen.AuthConfig)
-	s.Equal(before, *beforeVal)
-	s.Equal("user", afterVal.Naive.Users[0].Username)
-	s.Equal("***", afterVal.Naive.Users[0].Password)
-	s.Equal("crowd", afterVal.Crowd.Username)
-	s.Equal("***", afterVal.Crowd.Password)
-}

@@ -213,7 +213,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/banner",
 	}
 
 	resp, err := c.request(ctx, info, nil)
