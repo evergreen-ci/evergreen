@@ -16,6 +16,33 @@ const (
 	TaskLogCollection = "task_event_log"
 )
 
+type Event interface {
+	ID() string
+
+	// return the r_type bson field
+	Type() string
+
+	// Time returns the time that the event occurred
+	Time() time.Time
+
+	// Processed is whether or not this event has been processed. An event
+	// which has been processed has successfully have notifications intents
+	// created and stored, but does not indicate whether or not these
+	// notifications have been successfully sent to all recipients
+	// If true, the time is the time that this event was marked as
+	// processed. If false, time is the zero time
+	Processed() (bool, time.Time)
+
+	// MarkProcessed marks this event as processed at the current
+	// time
+	MarkProcessed() error
+
+	// Notifications fetches all subscriptions relevant to this event.
+	// Events may have no subscribers.
+	// TODO: specify return type in EVG-2861
+	Notifications() ([]interface{}, error)
+}
+
 type EventLogEntry struct {
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
