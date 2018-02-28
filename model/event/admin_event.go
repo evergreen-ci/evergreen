@@ -20,11 +20,11 @@ const (
 
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
+	GUID         string           `bson:"guid" json:"guid"`
 	ResourceType string           `bson:"r_type" json:"resource_type"`
 	User         string           `bson:"user" json:"user"`
 	Section      string           `bson:"section" json:"section"`
 	Changes      ConfigDataChange `bson:"changes" json:"changes"`
-	GUID         string           `bson:"guid" json:"guid"`
 }
 
 type ConfigDataChange struct {
@@ -38,11 +38,11 @@ type rawConfigDataChange struct {
 }
 
 type rawAdminEventData struct {
+	GUID         string              `bson:"guid"`
 	ResourceType string              `bson:"r_type"`
 	User         string              `bson:"user"`
 	Section      string              `bson:"section"`
 	Changes      rawConfigDataChange `bson:"changes"`
-	GUID         string              `bson:"guid"`
 }
 
 // IsValid checks if a given event is an event on an admin resource

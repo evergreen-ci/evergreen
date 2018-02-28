@@ -31,11 +31,11 @@ type eventDataOld struct {
 }
 
 type eventDataNew struct {
+	GUID         string           `bson:"guid"`
 	ResourceType string           `bson:"r_type"`
 	User         string           `bson:"user"`
 	Section      string           `bson:"section"`
 	Changes      configDataChange `bson:"changes"`
-	GUID         string           `bson:"guid"`
 }
 
 type configDataChange struct {
