@@ -35,7 +35,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		ResourceId: distroId,
 		Timestamp:  time.Now(),
 		EventType:  eventType,
-		Data:       DataWrapper{eventData},
+		Data:       eventData,
 	}
 
 	if err := NewDBEventLogger(AllLogCollection).LogEvent(event); err != nil {

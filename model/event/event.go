@@ -2,6 +2,7 @@ package event
 
 import (
 	"encoding/json"
+	"reflect"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -16,10 +17,17 @@ const (
 )
 
 type Event struct {
-	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
-	ResourceId string      `bson:"r_id" json:"resource_id"`
-	EventType  string      `bson:"e_type" json:"event_type"`
-	Data       DataWrapper `bson:"data" json:"data"`
+	Timestamp  time.Time `bson:"ts" json:"timestamp"`
+	ResourceId string    `bson:"r_id" json:"resource_id"`
+	EventType  string    `bson:"e_type" json:"event_type"`
+	Data       Data      `bson:"data" json:"data"`
+}
+
+type unmarshalEvent struct {
+	Timestamp  time.Time `bson:"ts" json:"timestamp"`
+	ResourceId string    `bson:"r_id" json:"resource_id"`
+	EventType  string    `bson:"e_type" json:"event_type"`
+	Data       bson.Raw  `bson:"data" json:"data"`
 }
 
 var (
@@ -34,44 +42,36 @@ var (
 	ResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
 )
 
-type DataWrapper struct {
-	Data
-}
-
 type Data interface {
 	IsValid() bool
 }
 
 // MarshalJSON returns proper JSON encoding by uncovering the Data interface.
-func (dw DataWrapper) MarshalJSON() ([]byte, error) {
-	switch event := dw.Data.(type) {
-	case *TaskEventData:
-		return json.Marshal(event)
-	case *HostEventData:
-		return json.Marshal(event)
-	case *SchedulerEventData:
-		return json.Marshal(event)
-	case *DistroEventData:
-		return json.Marshal(event)
-	case *TaskSystemResourceData:
-		return json.Marshal(event)
-	case *TaskProcessResourceData:
-		return json.Marshal(event)
-	case *AdminEventData:
-		return json.Marshal(event)
-	default:
-		return nil, errors.Errorf("cannot marshal data of type %T", dw.Data)
+func (e *Event) MarshalJSON() ([]byte, error) {
+	found, rType := findResourceTypeIn(e.Data)
+	if !found {
+		return nil, errors.Errorf("cannot find resource type of type %T", e.Data)
 	}
+	if NewEventFromType(rType) == nil {
+		return nil, errors.Errorf("cannot marshal data of type %T", e.Data)
+	}
+
+	return json.Marshal(e.Data)
 }
 
-func (dw DataWrapper) GetBSON() (interface{}, error) {
-	return dw.Data, nil
-}
+func (e *Event) SetBSON(raw bson.Raw) error {
+	temp := unmarshalEvent{}
+	if err := raw.Unmarshal(&temp); err != nil {
+		return errors.Wrap(err, "can't unmarshal event container type")
+	}
 
-func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
+	e.EventType = temp.EventType
+	e.ResourceId = temp.ResourceId
+	e.Timestamp = temp.Timestamp
+
 	rawD := bson.RawD{}
-	if err := raw.Unmarshal(&rawD); err != nil {
-		return err
+	if err := temp.Data.Unmarshal(&rawD); err != nil {
+		return errors.Wrap(err, "can't unmarshal raw event data")
 	}
 
 	dataType := ""
@@ -91,13 +91,40 @@ func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
 		return errors.Errorf("unknown resource type '%s'", dataType)
 	}
 
-	if err := raw.Unmarshal(data); err != nil {
-		return errors.Wrap(err, "failed to unmarshall data")
+	if err := temp.Data.Unmarshal(data); err != nil {
+		return errors.Wrap(err, "failed to unmarshal data")
 	}
-	if !data.IsValid() {
-		return errors.New("unmarshalled data was invalid. This should NEVER happen")
-	}
-	dw.Data = data
+
+	e.Data = data
 
 	return nil
+}
+
+// findResourceTypeTagIn attempts locates a bson tag called "r_type" in t.
+// If found, this function returns true, and the value of that field
+// If not, this function returns false, and empty string
+func findResourceTypeIn(t interface{}) (bool, string) {
+	if t == nil {
+		return false, ""
+	}
+
+	elem := reflect.TypeOf(t).Elem()
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
+		bsonTag := f.Tag.Get("bson")
+		if len(bsonTag) == 0 {
+			continue
+		}
+
+		if bsonTag == "r_type" {
+			if f.Type.String() != "string" {
+				return false, ""
+			}
+
+			structData := reflect.ValueOf(t).Elem().Field(i).String()
+			return true, structData
+		}
+	}
+
+	return false, ""
 }

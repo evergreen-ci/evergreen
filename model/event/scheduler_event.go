@@ -40,7 +40,7 @@ func LogSchedulerEvent(eventData SchedulerEventData) {
 		Timestamp:  time.Now(),
 		ResourceId: eventData.DistroId,
 		EventType:  EventSchedulerRun,
-		Data:       DataWrapper{eventData},
+		Data:       eventData,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)

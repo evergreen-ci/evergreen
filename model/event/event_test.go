@@ -27,18 +27,30 @@ func (s *eventSuite) SetupTest() {
 	s.NoError(db.ClearCollections(AllLogCollection))
 }
 
+func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
+	realt := reflect.TypeOf(&Event{}).Elem()
+	tempt := reflect.TypeOf(&unmarshalEvent{}).Elem()
+
+	s.Require().Equal(realt.NumField(), tempt.NumField())
+	for i := 0; i < realt.NumField(); i++ {
+		s.True(reflect.DeepEqual(realt.Field(i).Tag, tempt.Field(i).Tag))
+	}
+}
+
 func (s *eventSuite) TestTerribleUnmarshaller() {
 	logger := NewDBEventLogger(AllLogCollection)
 	for k, v := range eventRegistry {
 		event := Event{
-			Timestamp: time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-			Data:      DataWrapper{v()},
+			ResourceId: "TEST1",
+			EventType:  "TEST2",
+			Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+			Data:       v(),
 		}
-		found, rTypeTag := findResourceTypeIn(event.Data.Data)
+		found, rTypeTag := findResourceTypeIn(event.Data)
 		s.True(found)
 		s.Equal(k, rTypeTag)
-		if e, ok := event.Data.Data.(*rawAdminEventData); ok {
-			// sad violin is sad. bson.Raw cannot be empty type, so
+		if e, ok := event.Data.(*rawAdminEventData); ok {
+			// sad violin is sad. bson.Raw cannot be empty, so
 			// we set the Kind to 0x0A, which is a BSON null
 			e.Changes.Before = bson.Raw{
 				Kind: 0x0A,
@@ -48,13 +60,15 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 			}
 		}
 
+		s.Equal("TEST1", event.ResourceId)
+		s.Equal("TEST2", event.EventType)
 		s.NoError(logger.LogEvent(event))
 		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
 		s.NoError(err)
 		s.Require().Len(fetchedEvents, 1)
 		s.True(fetchedEvents[0].Data.IsValid())
-		s.IsType(v(), fetchedEvents[0].Data.Data)
-		s.NotNil(fetchedEvents[0].Data.Data)
+		s.IsType(v(), fetchedEvents[0].Data)
+		s.NotNil(fetchedEvents[0].Data)
 		s.NoError(db.ClearCollections(AllLogCollection))
 	}
 }
@@ -64,8 +78,21 @@ func (s *eventSuite) TestEventRegistry() {
 		event := NewEventFromType(k)
 		s.NotNil(event)
 		found, rTypeTag := findResourceTypeIn(event)
-		s.True(found, `'%s' does not have a bson:"r_type" tag`, reflect.TypeOf(event).String())
-		s.Equal(k, rTypeTag, "'%s''s r_type does not match the registry key", reflect.TypeOf(event).String())
+
+		t := reflect.TypeOf(event)
+		s.True(found, `'%s' does not have a bson:"r_type" tag`, t.String())
+		s.Equal(k, rTypeTag, "'%s''s r_type does not match the registry key", t.String())
+
+		// ensure all fields have bson and json tags
+		elem := t.Elem()
+		for i := 0; i < elem.NumField(); i++ {
+			f := elem.Field(i)
+			bsonTag := f.Tag.Get("bson")
+			jsonTag := f.Tag.Get("json")
+			s.NotEmpty(bsonTag, "struct %s: field '%s' must have bson tag", t.Name(), f.Name)
+			s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
+
+		}
 	}
 }
 
@@ -95,31 +122,4 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 	found, data = findResourceTypeIn(nil)
 	s.False(found)
 	s.Empty(data)
-}
-
-func findResourceTypeIn(t interface{}) (bool, string) {
-	if t == nil {
-		return false, ""
-	}
-
-	elem := reflect.TypeOf(t).Elem()
-
-	for i := 0; i < elem.NumField(); i++ {
-		f := elem.Field(i)
-		bsonTag := f.Tag.Get("bson")
-		if len(bsonTag) == 0 {
-			continue
-		}
-
-		if bsonTag == "r_type" {
-			if f.Type.String() != "string" {
-				return false, ""
-			}
-
-			structData := reflect.ValueOf(t).Elem().Field(i).String()
-			return true, structData
-		}
-	}
-
-	return false, ""
 }

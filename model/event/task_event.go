@@ -48,7 +48,7 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 		Timestamp:  time.Now(),
 		ResourceId: taskId,
 		EventType:  eventType,
-		Data:       DataWrapper{eventData},
+		Data:       eventData,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)

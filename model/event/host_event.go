@@ -69,7 +69,7 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 		Timestamp:  time.Now(),
 		ResourceId: hostId,
 		EventType:  eventType,
-		Data:       DataWrapper{eventData},
+		Data:       eventData,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
