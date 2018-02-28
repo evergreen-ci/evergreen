@@ -103,7 +103,7 @@ func (j *patchIntentProcessor) Run() {
 
 	patchDoc := j.intent.NewPatch()
 
-	if err := j.finishPatch(patchDoc, githubOauthToken); err != nil {
+	if err = j.finishPatch(patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
 		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
 			j.AddError(j.env.LocalQueue().Put(NewGithubStatusUpdateJobForBadConfig(j.intent.ID())))
@@ -172,7 +172,6 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	}
 
 	if j.user == nil {
-		var err error
 		j.user, err = user.FindOne(user.ById(patchDoc.Author))
 		if err != nil {
 			return err
@@ -436,7 +435,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 	})
 	patchDoc.Project = projectRef.Identifier
 
-	if err := db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
+	if err = db.WriteGridFile(patch.GridFSPrefix, patchFileID, strings.NewReader(patchContent)); err != nil {
 		return isMember, errors.Wrap(err, "failed to write patch file to db")
 	}
 
