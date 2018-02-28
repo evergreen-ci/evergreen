@@ -259,7 +259,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
         return false;
     }
     for (var i = 0; i < $scope.defaultVTs.length; i++) {
-        if (variant.id !== $scope.defaultVTs.variant) {
+        if (variant.id !== $scope.defaultVTs[i].variant) {
             continue
         }
         if ($scope.defaultVTs[i].tasks.includes(task)) {
