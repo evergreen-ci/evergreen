@@ -20,6 +20,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -32,6 +33,7 @@ const (
 
 	githubUpdateTypeBuild            = "build"
 	githubUpdateTypePatchWithVersion = "patch-with-version"
+	githubUpdateTypeRequestAuth      = "request-auth"
 )
 
 func init() {
@@ -60,7 +62,6 @@ func (status *githubStatus) Valid() bool {
 	switch status.State {
 	case githubStatusError, githubStatusFailure, githubStatusPending, githubStatusSuccess:
 		return true
-
 	}
 
 	return false
@@ -107,6 +108,17 @@ func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
 
+	return job
+}
+
+// NewGithubStatusUpdateJobForExternalPatch prompts on Github for a user to
+// manually authorize this patch
+func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.FetchID = patchID
+	job.UpdateType = githubUpdateTypeRequestAuth
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, patchID, time.Now().String()))
 	return job
 }
 
@@ -198,7 +210,7 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		}
 	}
 
-	patchDoc, err := patch.FindOne(patch.ByVersion(patchVersion))
+	patchDoc, err := patch.FindOne(patch.ById(bson.ObjectIdHex(patchVersion)))
 	if err != nil {
 		return err
 	}
@@ -230,6 +242,12 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		default:
 			return errors.New("unknown patch status")
 		}
+
+	} else if j.UpdateType == githubUpdateTypeRequestAuth {
+		status.URLPath = fmt.Sprintf("/patch/%s", patchVersion)
+		status.Context = "evergreen"
+		status.Description = "patch must be manually authorized"
+		status.State = githubStatusFailure
 	}
 
 	status.Owner = patchDoc.GithubPatchData.BaseOwner
