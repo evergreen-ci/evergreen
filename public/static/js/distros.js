@@ -313,6 +313,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchor
 	'ssh_key': $scope.activeDistro.ssh_key,
 	'ssh_options': $scope.activeDistro.ssh_options,
 	'setup': $scope.activeDistro.setup,
+	'setup': $scope.activeDistro.teardown,
+	'setup': $scope.activeDistro.user_data,
 	'pool_size': $scope.activeDistro.pool_size,
 	'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
 

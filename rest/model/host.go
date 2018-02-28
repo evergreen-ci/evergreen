@@ -102,7 +102,7 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Provisioned:  apiHost.Provisioned,
 		StartedBy:    string(apiHost.StartedBy),
 		InstanceType: string(apiHost.Type),
-		UserData:     string(apiHost.User),
+		User:         string(apiHost.User),
 		Status:       string(apiHost.Status),
 	}
 	return interface{}(h), nil
