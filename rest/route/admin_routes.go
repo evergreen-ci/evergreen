@@ -20,7 +20,7 @@ func getAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &adminGetHandler{}
 	adminGet := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
+		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    agh.Handler(),
 		MethodType:        http.MethodGet,
 	}
@@ -60,7 +60,7 @@ func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 		return ResponseData{}, err
 	}
 	settingsModel := model.NewConfigModel()
-	err = settingsModel.BuildFromServiceAndScrub(settings)
+	err = settingsModel.BuildFromService(settings)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
@@ -127,9 +127,17 @@ func getBannerRouteManager(route string, version int) *RouteManager {
 		MethodType:        http.MethodPost,
 	}
 
+	bgh := &bannerGetHandler{}
+	bannerGet := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    bgh.Handler(),
+		MethodType:        http.MethodGet,
+	}
+
 	bannerRoute := RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{bannerPost},
+		Methods: []MethodHandler{bannerPost, bannerGet},
 		Version: version,
 	}
 	return &bannerRoute
@@ -172,6 +180,29 @@ func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	}
 	return ResponseData{
 		Result: []model.Model{&h.model},
+	}, nil
+}
+
+type bannerGetHandler struct{}
+
+func (h *bannerGetHandler) Handler() RequestHandler {
+	return &bannerGetHandler{}
+}
+
+func (h *bannerGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	banner, theme, err := sc.GetBanner()
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{
+		Result: []model.Model{&model.APIBanner{Text: model.APIString(banner), Theme: model.APIString(theme)}},
 	}, nil
 }
 
