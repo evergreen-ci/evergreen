@@ -17,7 +17,7 @@ func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), apiHostKey, h))
 }
 func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), apiTaskKey, t))
+	return r.WithContext(context.WithValue(r.Context(), 0, t))
 }
 func setProjectReftContext(r *http.Request, p *model.ProjectRef) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), apiProjectRefKey, p))
@@ -37,7 +37,7 @@ func setRequestUser(r *http.Request, u auth.User) *http.Request {
 
 // GetTask loads the task attached to a request.
 func GetTask(r *http.Request) *task.Task {
-	if rv := r.Context().Value(apiTaskKey); rv != nil {
+	if rv := r.Context().Value(0); rv != nil {
 		if t, ok := rv.(*task.Task); ok {
 			return t
 		}
