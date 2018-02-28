@@ -41,11 +41,6 @@ type configDataChange struct {
 	After  db.Document `bson:"after"`
 }
 
-type dbSettings struct {
-	Banner      string `bson:"banner"`
-	BannerTheme string `bson:"banner_theme"`
-}
-
 func adminEventRestructureGenerator(env anser.Environment, dbName string, limit int) (anser.Generator, error) {
 	const migrationName = "admin_event_restructure"
 
