@@ -59,7 +59,7 @@ func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project,
 	}
 
 	// apply remote configuration patch if needed
-	if p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
+	if !p.IsGithubPRPatch() && p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
 		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
