@@ -135,35 +135,12 @@ func Serve(l net.Listener, handler http.Handler) error {
 // in the header with the secret in the db to ensure that they are the same.
 func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		taskId := mux.Vars(r)["taskId"]
-		if taskId == "" {
-			as.LoggedError(w, r, http.StatusBadRequest, errors.New("missing task id"))
-			return
-		}
-		t, err := task.FindOne(task.ById(taskId))
+		t, code, err := model.ValidateTask(mux.Vars(r)["taskId"], checkSecret, r)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			as.LoggedError(w, r, code, errors.Wrap(err, "invalid task"))
 			return
 		}
-		if t == nil {
-			as.LoggedError(w, r, http.StatusNotFound, errors.New("task not found"))
-			return
-		}
-
-		if checkSecret {
-			secret := r.Header.Get(evergreen.TaskSecretHeader)
-
-			// Check the secret - if it doesn't match, write error back to the client
-			if secret != t.Secret {
-				grip.Errorf("Wrong secret sent for task %s: Expected %s but got %s",
-					taskId, t.Secret, secret)
-				http.Error(w, "wrong secret!", http.StatusConflict)
-				return
-			}
-		}
-
 		r = setAPITaskContext(r, t)
-
 		next(w, r)
 	}
 }
@@ -208,66 +185,18 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 
 func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		hostId := mux.Vars(r)["hostId"]
-		if hostId == "" {
-			// fall back to the host header if host ids are not part of the path
-			hostId = r.Header.Get(evergreen.HostHeader)
-			if hostId == "" {
-				message := fmt.Sprintf("Request %s is missing host information", r.URL)
-				grip.Errorf(message)
-				// skip all host logic and just go on to the route
-				as.LoggedError(w, r, http.StatusBadRequest, errors.New(message))
-				return
-			}
-		}
-		secret := r.Header.Get(evergreen.HostSecretHeader)
-
-		h, err := host.FindOne(host.ById(hostId))
-		if h == nil {
-			as.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Host %v not found", hostId))
-			return
-		}
+		h, code, err := model.ValidateHost(mux.Vars(r)["hostId"], r)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError,
-				errors.Wrapf(err, "Error loading context for host %v", hostId))
+			as.LoggedError(w, r, code, errors.Wrap(err, "host not assigned to run task"))
 			return
 		}
-		// if there is a secret, ensure we are using the correct one -- fail if we arent
-		if secret != "" && secret != h.Secret {
-			// TODO (EVG-1283) error if secret is not attached as well
-			as.LoggedError(w, r, http.StatusConflict, errors.Errorf("Invalid host secret for host %v", h.Id))
-			return
-		}
-
-		// if the task is attached to the context, check host-task relationship
-		t := GetTask(r)
-		if !as.checkHostTaskRelationship(h, t) {
-			as.LoggedError(w, r, http.StatusConflict,
-				errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
-			return
-		}
-
 		// update host access time
 		if err := h.UpdateLastCommunicated(); err != nil {
 			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 		}
-
 		r = setAPIHostContext(r, h)
 		next(w, r)
 	}
-}
-
-func (as *APIServer) checkHostTaskRelationship(h *host.Host, t *task.Task) bool {
-	if t == nil {
-		return true
-	}
-	if t.Id == h.RunningTask {
-		return true
-	}
-	if t.Id == h.LastTaskCompleted && h.RunningTask == "" {
-		return true
-	}
-	return false
 }
 
 func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {

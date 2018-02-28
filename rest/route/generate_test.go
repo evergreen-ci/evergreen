@@ -15,9 +15,8 @@ type Thing struct {
 	Thing string `json:"thing"`
 }
 
-func TestGenerateParseAndValidate(t *testing.T) {
+func TestValidateJSON(t *testing.T) {
 	assert := assert.New(t)
-	h := &generateHandler{}
 	jsonBytes := []byte(`
 [
 {
@@ -31,9 +30,9 @@ func TestGenerateParseAndValidate(t *testing.T) {
 	buffer := bytes.NewBuffer(jsonBytes)
 	request, err := http.NewRequest("", "", buffer)
 	assert.NoError(err)
-	assert.NoError(h.ParseAndValidate(context.Background(), request))
+	files, err := parseJson(request)
 	var thing Thing
-	for i, f := range h.files {
+	for i, f := range files {
 		assert.NoError(json.Unmarshal(f, &thing))
 		switch i {
 		case 0:
