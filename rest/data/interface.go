@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -97,7 +98,7 @@ type Connector interface {
 	FindHostByIdWithOwner(string, auth.User) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(string, string, string, string, *user.DBUser) (*host.Host, error)
+	NewIntentHost(string, string, string, *user.DBUser) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
@@ -146,6 +147,7 @@ type Connector interface {
 
 	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document
 	GetEvergreenSettings() (*evergreen.Settings, error)
+	GetBanner() (string, string, error)
 	SetEvergreenSettings(*restModel.APIAdminSettings, *evergreen.Settings, *user.DBUser, bool) (*evergreen.Settings, error)
 	// SetAdminBanner sets set the banner in the system-wide settings document
 	SetAdminBanner(string, *user.DBUser) error
@@ -182,4 +184,7 @@ type Connector interface {
 
 	// GetCLIUpdate fetches the current cli version and the urls to download
 	GetCLIUpdate() (*restModel.APICLIUpdate, error)
+
+	// GenerateTasks parses JSON files for `generate.tasks` and creates the new builds and tasks.
+	GenerateTasks(string, []json.RawMessage) error
 }

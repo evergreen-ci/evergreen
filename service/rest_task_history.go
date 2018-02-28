@@ -168,8 +168,10 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 			if result.TaskTimedOut {
 				taskStatus = model.TaskTimeout
 			}
-			if result.TaskDetailsType == "system" {
+			if result.TaskDetailsType == model.SystemCommandType {
 				taskStatus = model.TaskSystemFailure
+			} else if result.TaskDetailsType == model.SetupCommandType {
+				taskStatus = model.TaskSetupFailure
 			}
 		}
 		url := logURL(result.Url, result.LogId, restapi.GetSettings().Ui.Url)

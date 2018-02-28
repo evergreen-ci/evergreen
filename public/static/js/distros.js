@@ -1,4 +1,4 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function($scope, $window, $location, $anchorScroll, mciDistroRestService) {
 
   $scope.readOnly = !$window.isSuperUser;
 
@@ -287,6 +287,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 	'_id': 'new distro',
 	'arch': 'linux_amd64',
 	'provider': 'ec2',
+	'settings': {},
 	'new': true,
       };
 
@@ -312,6 +313,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 	'ssh_key': $scope.activeDistro.ssh_key,
 	'ssh_options': $scope.activeDistro.ssh_options,
 	'setup': $scope.activeDistro.setup,
+	'setup': $scope.activeDistro.teardown,
+	'setup': $scope.activeDistro.user_data,
 	'pool_size': $scope.activeDistro.pool_size,
 	'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
 

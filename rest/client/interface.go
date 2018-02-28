@@ -96,7 +96,7 @@ type Communicator interface {
 	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)
 
 	// GenerateTasks posts new tasks for the `generate.tasks` command.
-	GenerateTasks(context.Context, TaskData, [][]byte) error
+	GenerateTasks(context.Context, TaskData, []byte) error
 
 	// ---------------------------------------------------------------------
 	// End legacy API methods
@@ -119,6 +119,7 @@ type Communicator interface {
 	GetServiceFlags(context.Context) (*restmodel.APIServiceFlags, error)
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
+	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
 
 	// Host methods
 	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)

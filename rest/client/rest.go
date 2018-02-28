@@ -213,7 +213,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/banner",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -313,6 +313,27 @@ func (c *communicatorImpl) GetSettings(ctx context.Context) (*evergreen.Settings
 		return nil, errors.Wrap(err, "error parsing evergreen settings")
 	}
 	return settings, nil
+}
+
+func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin",
+	}
+	resp, err := c.request(ctx, info, &update)
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating settings")
+	}
+	defer resp.Body.Close()
+
+	newSettings := &model.APIAdminSettings{}
+	err = util.ReadJSONInto(resp.Body, newSettings)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing evergreen settings")
+	}
+
+	return newSettings, nil
 }
 
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
@@ -467,7 +488,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Wrapf(err, "expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+		return nil, errors.Errorf("expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
 	}
 	update := &model.APICLIUpdate{}
 	if err = util.ReadJSONInto(resp.Body, update); err != nil {

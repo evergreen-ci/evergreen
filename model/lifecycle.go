@@ -970,3 +970,105 @@ func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task
 	}
 	return sortedLayer
 }
+
+// Given a patch version and a list of variant/task pairs, creates the set of new builds that
+// do not exist yet out of the set of pairs. No tasks are added for builds which already exist
+// (see AddNewTasksForPatch).
+func AddNewBuilds(activated bool, v *version.Version, p *Project, tasks TaskVariantPairs) error {
+	taskIds := NewPatchTaskIdTable(p, v, tasks)
+
+	newBuildIds := make([]string, 0)
+	newBuildStatuses := make([]version.BuildStatus, 0)
+
+	existingBuilds, err := build.Find(build.ByVersion(v.Id).WithFields(build.BuildVariantKey, build.IdKey))
+	if err != nil {
+		return err
+	}
+	variantsProcessed := map[string]bool{}
+	for _, b := range existingBuilds {
+		variantsProcessed[b.BuildVariant] = true
+	}
+
+	for _, pair := range tasks.ExecTasks {
+		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
+			continue
+		}
+		variantsProcessed[pair.Variant] = true
+		// Extract the unique set of task names for the variant we're about to create
+		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
+		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
+		buildId, err := CreateBuildFromVersion(p, v, taskIds, pair.Variant, activated, taskNames, displayNames)
+		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
+			v.Id, pair.Variant, activated)
+		if err != nil {
+			return err
+		}
+		newBuildIds = append(newBuildIds, buildId)
+		newBuildStatuses = append(newBuildStatuses,
+			version.BuildStatus{
+				BuildVariant: pair.Variant,
+				BuildId:      buildId,
+				Activated:    activated,
+			},
+		)
+	}
+
+	return version.UpdateOne(
+		bson.M{version.IdKey: v.Id},
+		bson.M{
+			"$push": bson.M{
+				version.BuildIdsKey:      bson.M{"$each": newBuildIds},
+				version.BuildVariantsKey: bson.M{"$each": newBuildStatuses},
+			},
+		},
+	)
+}
+
+// Given a version and set of variant/task pairs, creates any tasks that don't exist yet,
+// within the set of already existing builds.
+func AddNewTasks(activated bool, v *version.Version, p *Project, pairs TaskVariantPairs) error {
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
+	if err != nil {
+		return err
+	}
+
+	for _, b := range builds {
+		// Find the set of task names that already exist for the given build
+		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey))
+		if err != nil {
+			return err
+		}
+		// build an index to keep track of which tasks already exist
+		existingTasksIndex := map[string]bool{}
+		for _, t := range tasksInBuild {
+			existingTasksIndex[t.DisplayName] = true
+		}
+		// if the patch is activated, treat the build as activated
+		b.Activated = activated
+
+		// build a list of tasks that haven't been created yet for the given variant, but have
+		// a record in the TVPairSet indicating that it should exist
+		tasksToAdd := []string{}
+		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
+			if _, ok := existingTasksIndex[taskname]; ok {
+				continue
+			}
+			tasksToAdd = append(tasksToAdd, taskname)
+		}
+		displayTasksToAdd := []string{}
+		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
+			if _, ok := existingTasksIndex[taskname]; ok {
+				continue
+			}
+			displayTasksToAdd = append(displayTasksToAdd, taskname)
+		}
+		if len(tasksToAdd) == 0 { // no tasks to add, so we do nothing.
+			continue
+		}
+		// Add the new set of tasks to the build.
+		if _, err = AddTasksToBuild(&b, p, v, tasksToAdd, displayTasksToAdd); err != nil {
+			return err
+		}
+	}
+	return nil
+}

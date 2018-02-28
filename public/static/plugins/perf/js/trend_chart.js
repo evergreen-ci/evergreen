@@ -259,7 +259,6 @@ var drawSingleTrendChart = function(params) {
   var yAxisUpperBound = d3.max([compareMax, multiSeriesMax, multiSeriesAvg * 1.1]);
   var yAxisLowerBound = originMode ? 0 : d3.min([multiSeriesMin, multiSeriesAvg * .9]);
   var yScale = d3.scale.linear();
-
   // Create a log based scale, remove any 0 values (log(0) is infinity).
   if (!linearMode) {
     yScale = d3.scale.log()
@@ -267,7 +266,10 @@ var drawSingleTrendChart = function(params) {
       yAxisUpperBound = 1e-1;
     }
     if (yAxisLowerBound == 0 ) {
-      yAxisLowerBound = 1e-1;
+      yAxisLowerBound = multiSeriesMin;
+      if (yAxisLowerBound == 0) {
+        yAxisLowerBound = 1e-1;
+      }
     }
   }
 
@@ -598,7 +600,7 @@ var drawSingleTrendChart = function(params) {
         } else if ( absolute < 1) {
           if ( absolute >= .1) {
             return cfg.formatters.digits_1(value);
-          }  else if ( val >= .01) {
+          }  else if ( absolute >= .01) {
             return cfg.formatters.digits_2(value);
           } else {
             return cfg.formatters.digits_3(value);

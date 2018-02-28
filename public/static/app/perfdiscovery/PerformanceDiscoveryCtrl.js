@@ -1,8 +1,9 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $window, ApiTaskdata, ApiV1, PERF_DISCOVERY,
-  PerfDiscoveryService
+  $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil,
+  PERF_DISCOVERY, PerfDiscoveryService
 ) {
   var vm = this;
+  var gridUtil = EvgUiGridUtil
 
   vm.revisionSelect = {
     options: [],
@@ -45,74 +46,84 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       revision: revision
     })
 
-    var buildTaskData = _.reduce(version.builds, function(items, build) {
-      var taskItems = _.map(build.tasks, function(v, k) {
-        return {
-          build: build.name,
-          task: k,
-          task_id: v.task_id,
-        }
-      })
-      return items.concat(taskItems)
-    }, [])
-
-
     PerfDiscoveryService.getData(
       version, baselineRev
     ).then(function(res) {
       vm.gridOptions.data = res
+
+      // Apply options data to filter drop downs
+      gridUtil.applyMultiselectOptions(
+        res,
+        ['build', 'storageEngine', 'task', 'threads'],
+        vm.gridOptions
+      )
     })
   }
 
   vm.gridOptions = {
-    //flatEntityAccess: true,
     minRowsToShow: 18,
     enableFiltering: true,
-    columnDefs: [{
+    columnDefs: [
+      {
         name: 'Link',
         field: 'link',
-        enableFiltering: true,
-      }, {
+        enableFiltering: false,
+        width: 60,
+      },
+      gridUtil.multiselectColDefMixin({
         name: 'Build',
         field: 'build',
-        enableFiltering: true,
-      }, {
+      }),
+      gridUtil.multiselectColDefMixin({
         name: 'Storage Engine',
         field: 'storageEngine',
-        enableFiltering: true,
-      }, {
+      }),
+      gridUtil.multiselectColDefMixin({
         name: 'Task',
         field: 'task',
-        enableFiltering: true,
-      }, {
+      }),
+      {
         name: 'Test',
         field: 'test',
-        enableFiltering: true,
-      }, {
+      },
+      gridUtil.multiselectColDefMixin({
         name: 'Threads',
         field: 'threads',
-        enableFiltering: true,
-      }, {
+        width: 130,
+      }),
+      {
         name: 'Ratio',
         field: 'ratio',
         cellFilter: 'number:2',
-      }, {
+        enableFiltering: false,
+        width: 70,
+      },
+      {
         name: 'Trend',
         field: 'trendData',
-        enableSorting: false,
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
-      }, {
+        enableSorting: false,
+        enableFiltering: false,
+      },
+      {
         name: 'Avg and Self',
         field: 'avgVsSelf',
         enableSorting: false,
-      }, {
+        enableFiltering: false,
+      },
+      {
         name: 'ops/sec',
         field: 'speed',
         cellFilter: 'number:2',
-      }, {
+        enableFiltering: false,
+        width: 100,
+      },
+      {
         name: 'Baseline',
         field: 'baseSpeed',
         cellFilter: 'number:2',
+        enableFiltering: false,
+        width: 120,
       },
     ]
   }

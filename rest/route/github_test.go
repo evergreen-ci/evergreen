@@ -39,7 +39,7 @@ type GithubWebhookRouteSuite struct {
 func (s *GithubWebhookRouteSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.canceler = cancel
-	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings))
+	err := evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil)
 	s.NoError(err)
 	s.NotNil(evergreen.GetEnvironment().Settings())
 	s.NotNil(evergreen.GetEnvironment().Settings().Api)

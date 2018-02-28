@@ -43,17 +43,17 @@ func (s *EnvironmentSuite) TestLoadingConfig() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.NoError(s.env.Configure(ctx, s.path))
-	s.Error(s.env.Configure(ctx, s.path))
-}
+	// first test loading config from a file
+	s.NoError(s.env.Configure(ctx, s.path, nil))
+	s.Error(s.env.Configure(ctx, s.path, nil))
 
-func (s *EnvironmentSuite) TestLoadingConfigErrorsIfFileDoesNotExist() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	s.Error(s.env.Configure(ctx, ""))
-
-	s.Error(s.env.Configure(ctx, s.path+"-DOES-NOT-EXIST"))
+	// then test loading it from the db
+	s.env.settings = nil
+	settings, err := NewSettings(s.path)
+	s.NoError(err)
+	db := settings.Database
+	s.NoError(s.env.Configure(ctx, "", &db))
+	s.Equal(db, s.env.settings.Database)
 }
 
 func (s *EnvironmentSuite) TestConfigErrorsIfCannotValidateConfig() {

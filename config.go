@@ -33,7 +33,7 @@ var (
 type AuthUser struct {
 	Username    string `bson:"username" json:"username" yaml:"username"`
 	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Password    string `bson:"password" json:"password" yaml:"password" secure:"true"`
+	Password    string `bson:"password" json:"password" yaml:"password"`
 	Email       string `bson:"email" json:"email" yaml:"email"`
 }
 
@@ -45,7 +45,7 @@ type NaiveAuthConfig struct {
 // CrowdConfig holds settings for interacting with Atlassian Crowd.
 type CrowdConfig struct {
 	Username string `bson:"username" json:"username" yaml:"username"`
-	Password string `bson:"password" json:"password" yaml:"password" secure:"true"`
+	Password string `bson:"password" json:"password" yaml:"password"`
 	Urlroot  string `bson:"url_root" json:"url_root" yaml:"urlroot"`
 }
 
@@ -54,7 +54,7 @@ type CrowdConfig struct {
 // Furthermore,
 type GithubAuthConfig struct {
 	ClientId     string   `bson:"client_id" json:"client_id" yaml:"client_id"`
-	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret" secure:"true"`
+	ClientSecret string   `bson:"client_secret" json:"client_secret" yaml:"client_secret"`
 	Users        []string `bson:"users" json:"users" yaml:"users"`
 	Organization string   `bson:"organization" json:"organization" yaml:"organization"`
 }
@@ -149,7 +149,7 @@ type ClientConfig struct {
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
 	HttpListenAddr      string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
-	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret" secure:"true"`
+	GithubWebhookSecret string `bson:"github_webhook_secret" json:"github_webhook_secret" yaml:"github_webhook_secret"`
 }
 
 func (c *APIConfig) SectionId() string { return "api" }
@@ -178,7 +178,7 @@ type UIConfig struct {
 	HelpUrl        string `bson:"help_url" json:"help_url" yaml:"helpurl"`
 	HttpListenAddr string `bson:"http_listen_addr" json:"http_listen_addr" yaml:"httplistenaddr"`
 	// Secret to encrypt session storage
-	Secret string `bson:"secret" json:"secret" yaml:"secret" secure:"true"`
+	Secret string `bson:"secret" json:"secret" yaml:"secret"`
 	// Default project to assume when none specified, e.g. when using
 	// the /waterfall route use this project, while /waterfall/other-project
 	// then use `other-project`
@@ -192,7 +192,7 @@ type UIConfig struct {
 	// is available, for example, for deployments behind HTTPS load balancers.
 	SecureCookies bool `bson:"secure_cookies" json:"secure_cookies" yaml:"securecookies"`
 	// CsrfKey is a 32-byte key used to generate tokens that validate UI requests
-	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey" secure:"true"`
+	CsrfKey string `bson:"csrf_key" json:"csrf_key" yaml:"csrfkey"`
 }
 
 func (c *UIConfig) SectionId() string { return "ui" }
@@ -310,7 +310,7 @@ type SMTPConfig struct {
 	Port       int      `bson:"port" json:"port" yaml:"port"`
 	UseSSL     bool     `bson:"use_ssl" json:"use_ssl" yaml:"use_ssl"`
 	Username   string   `bson:"username" json:"username" yaml:"username"`
-	Password   string   `bson:"password" json:"password" yaml:"password" secure:"true"`
+	Password   string   `bson:"password" json:"password" yaml:"password"`
 	From       string   `bson:"from" json:"from" yaml:"from"`
 	AdminEmail []string `bson:"admin_email" json:"admin_email" yaml:"admin_email"`
 }
@@ -390,7 +390,7 @@ func (c *CloudProviders) ValidateAndDefault() error { return nil }
 
 // AWSConfig stores auth info for Amazon Web Services.
 type AWSConfig struct {
-	Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret" secure:"true"`
+	Secret string `bson:"aws_secret" json:"aws_secret" yaml:"aws_secret"`
 	Id     string `bson:"aws_id" json:"aws_id" yaml:"aws_id"`
 }
 
@@ -406,7 +406,7 @@ type OpenStackConfig struct {
 	IdentityEndpoint string `bson:"identity_endpoint" json:"identity_endpoint" yaml:"identity_endpoint"`
 
 	Username   string `bson:"username" json:"username" yaml:"username"`
-	Password   string `bson:"password" json:"password" yaml:"password" secure:"true"`
+	Password   string `bson:"password" json:"password" yaml:"password"`
 	DomainName string `bson:"domain_name" json:"domain_name" yaml:"domain_name"`
 
 	ProjectName string `bson:"project_name" json:"project_name" yaml:"project_name"`
@@ -419,7 +419,7 @@ type OpenStackConfig struct {
 // https://developers.google.com/identity/protocols/application-default-credentials
 type GCEConfig struct {
 	ClientEmail  string `bson:"client_email" json:"client_email" yaml:"client_email"`
-	PrivateKey   string `bson:"private_key" json:"private_key" yaml:"private_key" secure:"true"`
+	PrivateKey   string `bson:"private_key" json:"private_key" yaml:"private_key"`
 	PrivateKeyID string `bson:"private_key_id" json:"private_key_id" yaml:"private_key_id"`
 	TokenURI     string `bson:"token_uri" json:"token_uri" yaml:"token_uri"`
 }
@@ -429,14 +429,14 @@ type GCEConfig struct {
 type VSphereConfig struct {
 	Host     string `bson:"host" json:"host" yaml:"host"`
 	Username string `bson:"username" json:"username" yaml:"username"`
-	Password string `bson:"password" json:"password" yaml:"password" secure:"true"`
+	Password string `bson:"password" json:"password" yaml:"password"`
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
 type JiraConfig struct {
 	Host           string `yaml:"host" bson:"host" json:"host"`
 	Username       string `yaml:"username" bson:"username" json:"username"`
-	Password       string `yaml:"password" bson:"password" json:"password" secure:"true"`
+	Password       string `yaml:"password" bson:"password" json:"password"`
 	DefaultProject string `yaml:"default_project" bson:"default_project" json:"default_project"`
 }
 
@@ -804,7 +804,6 @@ type Settings struct {
 	Splunk             send.SplunkConnectionInfo `yaml:"splunk" bson:"splunk" json:"splunk"`
 	SuperUsers         []string                  `yaml:"superusers" bson:"superusers" json:"superusers"`
 	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
-	WriteConcern       WriteConcern              `yaml:"write_concern"`
 }
 
 func (c *Settings) SectionId() string { return configDocID }
@@ -1144,13 +1143,17 @@ func (s *Settings) GetSender(env Environment) (send.Sender, error) {
 // SessionFactory creates a usable SessionFactory from
 // the Evergreen settings.
 func (settings *Settings) SessionFactory() *legacyDB.SessionFactory {
+	return CreateSession(settings.Database)
+}
+
+func CreateSession(settings DBSettings) *legacyDB.SessionFactory {
 	safety := mgo.Safe{}
-	safety.W = settings.Database.WriteConcernSettings.W
-	safety.WMode = settings.Database.WriteConcernSettings.WMode
-	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
-	safety.FSync = settings.Database.WriteConcernSettings.FSync
-	safety.J = settings.Database.WriteConcernSettings.J
-	return legacyDB.NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultMgoDialTimeout)
+	safety.W = settings.WriteConcernSettings.W
+	safety.WMode = settings.WriteConcernSettings.WMode
+	safety.WTimeout = settings.WriteConcernSettings.WTimeout
+	safety.FSync = settings.WriteConcernSettings.FSync
+	safety.J = settings.WriteConcernSettings.J
+	return legacyDB.NewSessionFactory(settings.Url, settings.DB, settings.SSL, safety, defaultMgoDialTimeout)
 }
 
 func (s *Settings) GetGithubOauthToken() (string, error) {

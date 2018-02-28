@@ -305,7 +305,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									"$ne": true,
 								},
 								task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-									"$ne": "system",
+									"$ne": SystemCommandType,
 								}}},
 						task.ProjectKey:     "project",
 						task.DisplayNameKey: bson.M{"$in": []string{"task1", "task2"}},
@@ -333,7 +333,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}}},
 								task.ProjectKey:             "project",
 								task.DisplayNameKey:         bson.M{"$in": []string{"task1", "task2"}},
@@ -368,7 +368,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}}},
 								task.ProjectKey:             "project",
 								task.DisplayNameKey:         bson.M{"$in": []string{"task1", "task2"}},
@@ -404,7 +404,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}}},
 								task.ProjectKey:             "project",
 								task.DisplayNameKey:         bson.M{"$in": []string{"task1", "task2"}},
@@ -440,7 +440,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}}},
 								task.ProjectKey:      "project",
 								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
@@ -476,7 +476,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}}},
 								task.ProjectKey:      "project",
 								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
@@ -513,7 +513,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}}},
 								task.ProjectKey:      "project",
 								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
@@ -570,7 +570,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 								"$or": []bson.M{
 									bson.M{
 										task.StatusKey:                                 evergreen.TaskFailed,
-										task.DetailsKey + "." + task.TaskEndDetailType: "system",
+										task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
 									}},
 								task.ProjectKey:      "project",
 								task.DisplayNameKey:  bson.M{"$in": []string{"task1", "task2"}},
@@ -597,7 +597,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									},
 									bson.M{
 										task.StatusKey:                                 evergreen.TaskFailed,
-										task.DetailsKey + "." + task.TaskEndDetailType: "system",
+										task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
 									},
 								},
 								task.ProjectKey:      "project",
@@ -624,7 +624,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 											"$ne": true,
 										},
 										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
-											"$ne": "system",
+											"$ne": SystemCommandType,
 										}},
 									bson.M{
 										task.StatusKey:                                     evergreen.TaskFailed,
@@ -632,7 +632,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									},
 									bson.M{
 										task.StatusKey:                                 evergreen.TaskFailed,
-										task.DetailsKey + "." + task.TaskEndDetailType: "system",
+										task.DetailsKey + "." + task.TaskEndDetailType: SystemCommandType,
 									},
 								},
 								task.ProjectKey:      "project",
@@ -1062,7 +1062,7 @@ func TestGetTestHistory(t *testing.T) {
 
 			Status: evergreen.TaskFailed,
 			Details: apimodels.TaskEndDetail{
-				Type: "system",
+				Type: SystemCommandType,
 			},
 		}
 		assert.NoError(systemFailureTask.Insert())
@@ -1084,7 +1084,7 @@ func TestGetTestHistory(t *testing.T) {
 		assert.NoError(err)
 		assert.Len(testResults, 1)
 		assert.Equal("test2", testResults[0].TestFile)
-		assert.Equal("system", testResults[0].TaskDetailsType)
+		assert.Equal(SystemCommandType, testResults[0].TaskDetailsType)
 	}
 
 	// succeeded tasks should always be returned if asked for (only implemented in V2)
@@ -1096,7 +1096,7 @@ func TestGetTestHistory(t *testing.T) {
 		RevisionOrderNumber: 1,
 		Status:              evergreen.TaskSucceeded,
 		Details: apimodels.TaskEndDetail{
-			Type: "system",
+			Type: SystemCommandType,
 		},
 	}
 	assert.NoError(successfulTask.Insert())
@@ -1129,7 +1129,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	maxNumTests := 50 // max # of tests per task to insert (randomized per task)
 	taskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded}
 	testStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSucceededStatus, evergreen.TestSkippedStatus, evergreen.TestSilentlyFailedStatus}
-	systemTypes := []string{"test", "system"}
+	systemTypes := []string{TestCommandType, SystemCommandType, SetupCommandType}
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
 		t, "Error clearing collections")
 	project := "proj"

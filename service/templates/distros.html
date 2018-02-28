@@ -417,6 +417,12 @@ Evergreen - Distros
 	      </div>
 	    </div>
 	  </div>
+    <div ng-show="activeDistro.provider.startsWith('ec2')">
+	    <div>
+	      <label class="distro-label">Userdata Script:</label>
+	    </div>
+	    <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.user_data" style="margin-left: 0px; font-family: monospace"></textarea>
+	  </div>
 	  <div>
 	    <div ng-form name="expansions">
 	      <label class="distro-label">Expansions:</label>

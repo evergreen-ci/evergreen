@@ -23,6 +23,7 @@ import (
 const (
 	TestCommandType   = "test"
 	SystemCommandType = "system"
+	SetupCommandType  = "setup"
 )
 
 const (

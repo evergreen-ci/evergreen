@@ -87,9 +87,8 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 	for _, d := range distros {
 		if d.SpawnAllowed {
 			distroList = append(distroList, map[string]interface{}{
-				"name":             d.Id,
-				"userDataFile":     d.UserData.File,
-				"userDataValidate": d.UserData.Validate})
+				"name": d.Id,
+			})
 		}
 	}
 	uis.WriteJSON(w, http.StatusOK, distroList)
@@ -121,7 +120,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, putParams.UserData, authedUser)
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, authedUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

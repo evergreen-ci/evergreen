@@ -90,7 +90,7 @@ func (tsc *taskStatusCount) incrementStatus(status string, statusDetails apimode
 	switch status {
 	case evergreen.TaskSucceeded:
 		tsc.Succeeded++
-	case evergreen.TaskFailed:
+	case evergreen.TaskFailed, evergreen.TaskSetupFailed:
 		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
 			tsc.TimedOut++
 		} else {

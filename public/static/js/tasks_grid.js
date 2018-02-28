@@ -30,8 +30,14 @@ function taskStatusClass(task) {
 
   if (task.status == 'failed') {
     if ('task_end_details' in task) {
+      if ('type' in task.task_end_details && task.task_end_details.type == 'setup') {
+         return 'setup-failed';
+      }
       if ('type' in task.task_end_details && task.task_end_details.type == 'system') {
          return 'system-failed';
+      }
+      if ('type' in task.task_end_details && task.task_end_details.type == 'setup') {
+         return 'setup-failed';
       }
       if (!!task.task_end_details.timed_out && task.task_end_details.desc == 'heartbeat') {
         return 'system-failed';
@@ -71,6 +77,9 @@ function labelFromTask(task){
     }
     if (task.task_end_details.type == 'system') {
       return 'system failure';
+    }
+    if (task.task_end_details.type == 'setup') {
+      return 'setup failure';
     }
   }
 

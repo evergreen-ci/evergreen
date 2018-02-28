@@ -35,7 +35,7 @@ func (s *githubStatusUpdateSuite) SetupSuite() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
-	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings)))
+	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 }
 
 func (s *githubStatusUpdateSuite) TearDownSuite() {

@@ -11,9 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -23,7 +21,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -90,102 +87,13 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 // do not exist yet out of the set of pairs. No tasks are added for builds which already exist
 // (see AddNewTasksForPatch).
 func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, tasks TaskVariantPairs) error {
-	taskIds := NewPatchTaskIdTable(project, patchVersion, tasks)
-
-	newBuildIds := make([]string, 0)
-	newBuildStatuses := make([]version.BuildStatus, 0)
-
-	existingBuilds, err := build.Find(build.ByVersion(patchVersion.Id).WithFields(build.BuildVariantKey, build.IdKey))
-	if err != nil {
-		return err
-	}
-	variantsProcessed := map[string]bool{}
-	for _, b := range existingBuilds {
-		variantsProcessed[b.BuildVariant] = true
-	}
-
-	for _, pair := range tasks.ExecTasks {
-		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
-			continue
-		}
-		variantsProcessed[pair.Variant] = true
-		// Extract the unique set of task names for the variant we're about to create
-		taskNames := tasks.ExecTasks.TaskNames(pair.Variant)
-		displayNames := tasks.DisplayTasks.TaskNames(pair.Variant)
-		buildId, err := CreateBuildFromVersion(project, patchVersion, taskIds, pair.Variant, p.Activated, taskNames, displayNames)
-		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
-			patchVersion.Id, pair.Variant, p.Activated)
-		if err != nil {
-			return err
-		}
-		newBuildIds = append(newBuildIds, buildId)
-		newBuildStatuses = append(newBuildStatuses,
-			version.BuildStatus{
-				BuildVariant: pair.Variant,
-				BuildId:      buildId,
-				Activated:    p.Activated,
-			},
-		)
-	}
-
-	return version.UpdateOne(
-		bson.M{version.IdKey: patchVersion.Id},
-		bson.M{
-			"$push": bson.M{
-				version.BuildIdsKey:      bson.M{"$each": newBuildIds},
-				version.BuildVariantsKey: bson.M{"$each": newBuildStatuses},
-			},
-		},
-	)
+	return AddNewBuilds(p.Activated, patchVersion, project, tasks)
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
 // within the set of already existing builds.
 func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TaskVariantPairs) error {
-	builds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey, build.CreateTimeKey))
-	if err != nil {
-		return err
-	}
-
-	for _, b := range builds {
-		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey))
-		if err != nil {
-			return err
-		}
-		// build an index to keep track of which tasks already exist
-		existingTasksIndex := map[string]bool{}
-		for _, t := range tasksInBuild {
-			existingTasksIndex[t.DisplayName] = true
-		}
-		// if the patch is activated, treat the build as activated
-		b.Activated = p.Activated
-
-		// build a list of tasks that haven't been created yet for the given variant, but have
-		// a record in the TVPairSet indicating that it should exist
-		tasksToAdd := []string{}
-		for _, taskname := range pairs.ExecTasks.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
-				continue
-			}
-			tasksToAdd = append(tasksToAdd, taskname)
-		}
-		displayTasksToAdd := []string{}
-		for _, taskname := range pairs.DisplayTasks.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
-				continue
-			}
-			displayTasksToAdd = append(displayTasksToAdd, taskname)
-		}
-		if len(tasksToAdd) == 0 { // no tasks to add, so we do nothing.
-			continue
-		}
-		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, project, patchVersion, tasksToAdd, displayTasksToAdd); err != nil {
-			return err
-		}
-	}
-	return nil
+	return AddNewTasks(p.Activated, patchVersion, project, pairs)
 }
 
 // IncludePatchDependencies takes a project and a slice of variant/task pairs names
@@ -437,6 +345,7 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 		"num_patches":    len(patches),
 	})
 
+	catcher := grip.NewSimpleCatcher()
 	for i, _ := range patches {
 		if patches[i].Version != "" {
 			if err = CancelPatch(&patches[i], evergreen.GithubPRRequester); err != nil {
@@ -449,10 +358,11 @@ func AbortPatchesWithGithubPatchData(createdBefore time.Time, owner, repo string
 					"patch_id":       patches[i].Id,
 					"version":        patches[i].Version,
 				}))
-				return errors.Wrap(err, "error aborting patch")
+
+				catcher.Add(err)
 			}
 		}
 	}
 
-	return nil
+	return errors.Wrap(catcher.Resolve(), "error aborting patches")
 }

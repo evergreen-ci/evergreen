@@ -23,12 +23,18 @@ func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project,
 
 	// try to get the remote project file data at the requested revision
 	var projectFileBytes []byte
+	hash := p.Githash
+
+	if p.IsGithubPRPatch() {
+		hash = p.GithubPatchData.HeadHash
+	}
 	projectFileURL := thirdparty.GetGithubFileURL(
 		projectRef.Owner,
 		projectRef.Repo,
 		projectRef.RemotePath,
-		p.Githash,
+		hash,
 	)
+
 	githubFile, err := thirdparty.GetGithubFile(githubOauthToken, projectFileURL)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
@@ -53,7 +59,7 @@ func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project,
 	}
 
 	// apply remote configuration patch if needed
-	if p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
+	if !p.IsGithubPRPatch() && p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
 		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Could not patch remote configuration file")

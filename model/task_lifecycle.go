@@ -457,16 +457,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 		return errors.WithStack(err)
 	}
 
-	pushTaskExists := false
-	for _, t := range buildTasks {
-		if t.DisplayName == evergreen.PushStage {
-			pushTaskExists = true
-		}
-	}
-
 	failedTask := false
-	pushSuccess := true
-	pushCompleted := false
 	buildComplete := false
 	finishedTasks := 0
 
@@ -490,55 +481,29 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				status = t.Status
 			}
 
-			// if it was a compile task, mark the build status accordingly
-			if t.DisplayName == evergreen.CompileStage {
-				if t.Status != evergreen.TaskSucceeded {
-					failedTask = true
-					finishedTasks = -1
-					buildComplete = true
-					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
-					if err != nil {
-						err = errors.Wrap(err, "Error marking build as finished")
-						grip.Error(err)
-						return err
-					}
-					updates.BuildNewStatus = evergreen.BuildFailed
-					break
-				}
-			} else if t.DisplayName == evergreen.PushStage {
-				pushCompleted = true
-				// if it's a finished push, check if it was successful
-				if t.Status != evergreen.TaskSucceeded {
-					err = b.UpdateStatus(evergreen.BuildFailed)
-					if err != nil {
-						err = errors.Wrap(err, "Error updating build status")
-						grip.Error(err)
-						return err
-					}
-					updates.BuildNewStatus = evergreen.BuildFailed
-					pushSuccess = false
-				}
-			} else {
-				// update the build's status when a test task isn't successful
-				if t.Status != evergreen.TaskSucceeded {
-					err = b.UpdateStatus(evergreen.BuildFailed)
-					if err != nil {
-						err = errors.Wrap(err, "Error updating build status")
-						grip.Error(err)
-						return err
-					}
-					updates.BuildNewStatus = evergreen.BuildFailed
-					failedTask = true
+			// update the build's status when a test task isn't successful
+			if t.Status != evergreen.TaskSucceeded {
+				err = b.UpdateStatus(evergreen.BuildFailed)
+				if err != nil {
+					err = errors.Wrap(err, "Error updating build status")
+					grip.Error(err)
+					return err
 				}
 
-				// update the cached version of the task, in its build document
-				if status == "" {
-					status = t.Details.Status
+				failedTask = true
+				if t.DisplayName == evergreen.CompileStage {
+					buildComplete = true
+					break
 				}
-				err = build.SetCachedTaskFinished(t.BuildId, t.Id, status, &t.Details, t.TimeTaken)
-				if err != nil {
-					return fmt.Errorf("error updating build: %v", err.Error())
-				}
+			}
+
+			// update the cached version of the task, in its build document
+			if status == "" {
+				status = t.Details.Status
+			}
+			err = build.SetCachedTaskFinished(t.BuildId, t.Id, status, &t.Details, t.TimeTaken)
+			if err != nil {
+				return fmt.Errorf("error updating build: %v", err.Error())
 			}
 		}
 	}
@@ -564,55 +529,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 	// does not occur if there's a failed task)
 	if buildComplete {
 		if !failedTask {
-			if pushTaskExists { // this build has a push task associated with it.
-				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.
-					err = b.MarkFinished(evergreen.BuildSucceeded, finishTime)
-					if err != nil {
-						err = errors.Wrap(err, "Error marking build as finished")
-						grip.Error(err)
-						return err
-					}
-					updates.BuildNewStatus = evergreen.BuildSucceeded
-
-				} else if pushCompleted && !pushSuccess { // the push failed, mark build failed.
-					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
-					if err != nil {
-						err = errors.Wrap(err, "Error marking build as finished")
-						grip.Error(err)
-						return err
-					}
-					updates.BuildNewStatus = evergreen.BuildFailed
-				}
-
-				// Otherwise, this build does have a "push" task, but it hasn't finished yet
-				// So do nothing, since we don't know the status yet.
-
-				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-					err = errors.Wrap(err, "Error marking version as finished")
-					grip.Error(err)
-					return err
-				}
-			} else { // this build has no push task. so go ahead and mark it success/failure.
-				if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
-					err = errors.Wrap(err, "Error marking build as finished")
-					grip.Error(err)
-					return err
-				}
-				updates.BuildNewStatus = evergreen.BuildSucceeded
-
-				if evergreen.IsPatchRequester(b.Requester) {
-					if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
-						err = errors.Wrap(err, "Error marking patch as finished")
-						grip.Error(err)
-						return err
-					}
-				}
-				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-					err = errors.Wrap(err, "Error marking version as finished")
-					grip.Error(err)
-					return err
-				}
+			if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
+				err = errors.Wrap(err, "Error marking build as finished")
+				grip.Error(err)
+				return err
 			}
+			updates.BuildNewStatus = evergreen.BuildSucceeded
+
 		} else {
 			// some task failed
 			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
@@ -621,18 +544,20 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				return err
 			}
 			updates.BuildNewStatus = evergreen.BuildFailed
-			if evergreen.IsPatchRequester(b.Requester) {
-				if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
-					err = errors.Wrap(err, "Error marking patch as finished")
-					grip.Error(err)
-					return err
-				}
-			}
-			if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-				err = errors.Wrap(err, "Error marking version as finished")
+		}
+
+		if evergreen.IsPatchRequester(b.Requester) {
+			if err = TryMarkPatchBuildFinished(b, finishTime, updates); err != nil {
+				err = errors.Wrap(err, "Error marking patch as finished")
 				grip.Error(err)
 				return err
 			}
+		}
+
+		if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
+			err = errors.Wrap(err, "Error marking version as finished")
+			grip.Error(err)
+			return err
 		}
 
 		// update the build's makespan information if the task has finished

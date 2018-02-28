@@ -100,7 +100,7 @@ func TestMockConnectorSuite(t *testing.T) {
 
 func (s *AdminDataSuite) SetupSuite() {
 	s.env = &mock.Environment{}
-	s.Require().NoError(s.env.Configure(context.Background(), ""))
+	s.Require().NoError(s.env.Configure(context.Background(), "", nil))
 	s.Require().NoError(s.env.Local.Start(context.Background()))
 }
 
@@ -279,4 +279,14 @@ func (s *AdminDataSuite) TestRestart() {
 	opts.DryRun = false
 	_, err = s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
+}
+
+func (s *AdminDataSuite) TestGetBanner() {
+	u := &user.DBUser{Id: "me"}
+	s.NoError(s.ctx.SetAdminBanner("banner text", u))
+	s.NoError(s.ctx.SetBannerTheme(evergreen.Important, u))
+	text, theme, err := s.ctx.GetBanner()
+	s.NoError(err)
+	s.Equal("banner text", text)
+	s.Equal(evergreen.Important, theme)
 }

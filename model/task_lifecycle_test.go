@@ -540,6 +540,8 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			var err error
 			updates := StatusChanges{}
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
+			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
 			b, err = build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
@@ -676,9 +678,12 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask, "", time.Now(), detail, true, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
 
+			updates = StatusChanges{}
 			So(UpdateBuildAndVersionStatusForTask(testTask.Id, &updates), ShouldBeNil)
 			So(updates.BuildNewStatus, ShouldEqual, evergreen.BuildFailed)
+			So(updates.PatchNewStatus, ShouldBeEmpty)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
@@ -777,7 +782,7 @@ func TestMarkEnd(t *testing.T) {
 
 		detail := &apimodels.TaskEndDetail{
 			Status: evergreen.TaskFailed,
-			Type:   "system",
+			Type:   SystemCommandType,
 		}
 		So(MarkEnd(t1, "test", time.Now(), detail, false, &updates), ShouldBeNil)
 		t1FromDb, err := task.FindOne(task.ById(t1.Id))
@@ -1325,7 +1330,7 @@ func TestFailedTaskRestart(t *testing.T) {
 		Project:   "sample",
 		StartTime: time.Date(2017, time.June, 12, 12, 0, 0, 0, time.Local),
 		Status:    evergreen.TaskFailed,
-		Details:   apimodels.TaskEndDetail{Type: "system"},
+		Details:   apimodels.TaskEndDetail{Type: SystemCommandType},
 	}
 	testTask2 := &task.Task{
 		Id:        "taskThatSucceeded",

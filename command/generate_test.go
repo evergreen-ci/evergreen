@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type generateSuite struct {
@@ -103,4 +104,26 @@ func (s *generateSuite) TestExecuteSuccess() {
 
 	c := &generateTask{Files: []string{tmpFileBase}}
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
+}
+
+type Thing struct {
+	Thing string `yaml:"thing"`
+}
+
+type DrSeuss []Thing
+
+func (s *generateSuite) TestMakeJsonOfAllFiles() {
+	thingOne := []byte(`
+{
+  "thing": "one",
+}
+`)
+	thingTwo := []byte(`
+{
+  "thing": "two",
+}
+`)
+	var jsonArray DrSeuss
+	json := makeJsonOfAllFiles([][]byte{thingOne, thingTwo})
+	s.NoError(yaml.Unmarshal(json, &jsonArray))
 }

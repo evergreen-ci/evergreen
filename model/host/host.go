@@ -73,9 +73,6 @@ type Host struct {
 	// stores information on expiration notifications for spawn hosts
 	Notifications map[string]bool `bson:"notifications,omitempty" json:"notifications,omitempty"`
 
-	// stores userdata that was placed on the host at spawn time
-	UserData string `bson:"userdata" json:"userdata,omitempty"`
-
 	// incremented by task start and end stats collectors and
 	// should reflect hosts total costs. Only populated for build-hosts
 	// where host providers report costs.
@@ -454,22 +451,6 @@ func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 			},
 			"$unset": bson.M{
 				NotificationsKey: 1,
-			},
-		},
-	)
-}
-
-// SetUserData updates the userdata field of a spawn host
-func (h *Host) SetUserData(userData string) error {
-	// update the in-memory host, then the database
-	h.UserData = userData
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				UserDataKey: userData,
 			},
 		},
 	)
