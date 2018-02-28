@@ -9,6 +9,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+type (
+	apiTaskKey       int
+	apiHostKey       int
+	apiProjectKey    int
+	apiProjectRefKey int
+)
+
+const (
+	ApiTaskKey       apiTaskKey       = 0
+	ApiHostKey       apiHostKey       = 0
+	ApiProjectKey    apiProjectKey    = 0
+	ApiProjectRefKey apiProjectRefKey = 0
+)
+
 func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task, int, error) {
 	if taskId == "" {
 		return nil, http.StatusBadRequest, errors.New("missing task id")
@@ -54,7 +68,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 
 	// if the task is attached to the context, check host-task relationship
 	var t *task.Task
-	if rv := r.Context().Value(0); rv != nil {
+	if rv := r.Context().Value(ApiTaskKey); rv != nil {
 		if rvTask, ok := rv.(*task.Task); ok {
 			t = rvTask
 		}
