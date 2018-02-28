@@ -30,8 +30,10 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     }
     // temporary workaround until the admin page has components for every part of the config (EVG-2684)
     settings = {
+      alerts: $scope.Settings.alerts,
       banner: $scope.Settings.banner,
       banner_theme: $scope.Settings.banner_theme,
+      notify: $scope.Settings.notify,
       service_flags: $scope.Settings.service_flags
     };
     mciAdminRestService.saveSettings(settings, { success: successHandler, error: errorHandler });
@@ -153,6 +155,12 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.jumpToTask = function(taskId) {
     window.open("/task/" + taskId);
+  }
+
+  $scope.scrollTo = function(section) {
+    var offset = $('#'+section).offset();
+    var scrollto = offset.top - 55; //position of the element - header height(ish)
+    $('html, body').animate({scrollTop:scrollto}, 0);
   }
 
   $scope.load();

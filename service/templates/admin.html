@@ -1,10 +1,10 @@
 {{define "scripts"}}
 <script src="{{Static "js" "admin.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
-  window.events = {{.Data}};
+window.events = {{.Data}};
 </script>
 <style type="text/css">
-  body{ background-color: rgb(250,250,250); }
+body{ background-color: rgb(250,250,250); }
 </style>
 {{end}}
 
@@ -14,134 +14,262 @@ Admin Settings
 
 
 {{define "content"}}
-<div ng-controller="AdminSettingsController" style="{height: 100%}" ng-cloak>
-  <notify-box ng-init="destination='errorHeader'"></notify-box>
-  <md-content class="md-padding" >
-    <div class="admin-columnLayout">
-      <md-card>
-        <md-card-content class="squeezeAll">
+<div ng-controller="AdminSettingsController" layout="column" ng-cloak>
+  <div id="tasks-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" style="width: 1000px">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="font-size: 35px">&times;</button>
+          <h2 class="modal-title">[[modalTitle]]</h2>
+        </div>
+        <div class="modal-body">
+          <div id="divMsg"></div>
+          <div>The following [[tasks.length]] tasks will be restarted:</div>
+          <div id="tasksDisplay">
+            <li ng-repeat="task in tasks" class="link" ng-click="jumpToTask(task)">[[task]]</li>
+          </div>
+          <div>
+            <div class="justifyRight">
+              <md-button class="md-raised" ng-click="restartTasks(false)" ng-disabled="disableRestart">Restart</md-button>
+              <md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-            <md-card>
-              <md-card-title>
-                <i class="fa fa-gears"></i>
-                <md-card-title-text>
-                  <span>Services</span>
-                </md-card-title-text>
-              </md-card-title>
-              <md-card-content>
+  <section layout="row" flex>
 
-                <table class="flagsTable">
-                  <thead>
-                    <tr><th/><th>Enabled</th><th>Disabled</th></tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Task Dispatching</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.task_dispatch_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Host Initialization</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.hostinit_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Monitoring</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.monitor_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Notifications</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.notifications_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Alerts</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.alerts_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Task Runner</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.taskrunner_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Repo Tracker (Runner)</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Repo Tracker (Github Push Event)</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_push_event_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Scheduler</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.scheduler_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Github PR Testing</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_pr_testing_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>Github Status API</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_status_api_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                    <tr>
-                      <td>CLI Updates</td>
-                      <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.cli_updates_disabled">
-                        <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                      </md-radio-group></td>
-                    </tr>
-                  </tbody>
-                </table>
+    <md-content flex="15">
+      <md-sidenav id="sideNav" class="leftNav md-sidenav-left" md-is-locked-open="true" >
+        <md-content layout-padding style="background-color:rgb(250,250,250)">
+          <h4>Sections</h4>
+          <div id="navLinks">
+            <div>Degraded Mode</div>
+            <li class="link" ng-click="scrollTo('degraded')">Service Flags</li>
+            <li class="link" ng-click="scrollTo('announcements')">Announcements</li>
+            <div>Notifications</div>
+            <li class="link" ng-click="scrollTo('alerts')">Alerts</li>
+            <li class="link" ng-click="scrollTo('notify')">Notify</li>
+            <div>Other</div>
+            <li class="link" ng-click="scrollTo('restart')">Restart Tasks</li>
+          </div>
+        </md-content>
+      </md-sidenav>
+    </md-content>
 
-              </md-card-content>
-            </md-card>
+    <md-content id="main" flex="85" layout-padding>
+      <notify-box ng-init="destination='errorHeader'"></notify-box>
+      <md-card style="width:99%">
+        <form ngSubmit="saveSettings()">
+          <md-card-content class="squeezeAll">
 
-            <md-card>
-              <md-card-title>
-                <i class="fa fa-bullhorn"></i>
-                <md-card-title-text>
-                  <span>Announcements</span>
-                </md-card-title-text>
-              </md-card-title>
-              <md-card-content>
-                <md-input-container class="control">
-                  <label>Site-wide banner:</label>
-                  <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
-                </md-input-container>
-                <md-input-container class="control">
-                  <label>Banner style:</label>
-                  <md-select ng-model="Settings.banner_theme">
-                    <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
-                  </md-select>
-                </md-input-container>
-              </md-card-content>
+            <section layout="row" flex>
+              <md-card flex=50 id="degraded">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Service Degrading</span>
+                  </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
 
-            </md-card>
+                  <table class="flagsTable">
+                    <thead>
+                      <tr><th/><th>Enabled</th><th>Disabled</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Task Dispatching</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.task_dispatch_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Host Initialization</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.hostinit_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Monitoring</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.monitor_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Notifications</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.notifications_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Alerts</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.alerts_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Task Runner</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.taskrunner_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Repo Tracker (Runner)</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Repo Tracker (Github Push Event)</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.repotracker_push_event_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Scheduler</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.scheduler_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Github PR Testing</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_pr_testing_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>Github Status API</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_status_api_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
+                        <td>CLI Updates</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.cli_updates_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="announcements" style="height:240px">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Announcements</span>
+                  </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control">
+                    <label>Site-wide banner:</label>
+                    <input type="text" id="txtBanner" ng-model="Settings.banner" placeholder="Enter banner text here">
+                  </md-input-container>
+                  <md-input-container class="control">
+                    <label>Banner style:</label>
+                    <md-select ng-model="Settings.banner_theme">
+                      <md-option ng-repeat="t in ValidThemes" value="[[t]]">[[t]]</md-option>
+                    </md-select>
+                  </md-input-container>
+                </md-card-content>
+
+              </md-card>
+            </section>
+
+            <section layout="row" flex>
+              <md-card flex=50 id="alerts">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Alerts - SMTP Settings</span>
+                  </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:260px;">
+                    <label>Server address</label>
+                    <input type="text" ng-model="Settings.alerts.smtp.server">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                    <label>From email</label>
+                    <input type="text" ng-model="Settings.alerts.smtp.from">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px;">
+                    <label>Port</label>
+                    <input type="number" ng-model="Settings.alerts.smtp.port">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:250px; margin-left:50px;">
+                    <md-checkbox ng-model="Settings.alerts.smtp.use_ssl">
+                      Use SSL
+                    </md-checkbox>
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px;">
+                    <label>Username</label>
+                    <input type="text" ng-model="Settings.alerts.smtp.username">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                    <label>Password</label>
+                    <input type="text" ng-model="Settings.alerts.smtp.password">
+                  </md-input-container>
+                  <md-input-container class="control">
+                    <label>Admin emails</label>
+                    <textarea ng-model="Settings.alerts.smtp.admin_email" ng-list="&#10;"
+                    ng-trim="false" rows="3" md-select-on-focus></textarea>
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="notify">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Notify - SMTP Settings</span>
+                  </md-card-title-text>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:260px;">
+                    <label>Server address</label>
+                    <input type="text" ng-model="Settings.notify.smtp.server">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                    <label>From email</label>
+                    <input type="text" ng-model="Settings.notify.smtp.from">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px;">
+                    <label>Port</label>
+                    <input type="number" ng-model="Settings.notify.smtp.port">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:250px; margin-left:50px;">
+                    <md-checkbox ng-model="Settings.notify.smtp.use_ssl">
+                      Use SSL
+                    </md-checkbox>
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px;">
+                    <label>Username</label>
+                    <input type="text" ng-model="Settings.notify.smtp.username">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                    <label>Password</label>
+                    <input type="text" ng-model="Settings.notify.smtp.password">
+                  </md-input-container>
+                  <md-input-container class="control">
+                    <label>Admin emails</label>
+                    <textarea ng-model="Settings.notify.smtp.admin_email" ng-list="&#10;"
+                    ng-trim="false" rows="3" md-select-on-focus></textarea>
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+            </section>
+
           </md-card-content>
 
           <md-card-footer class="squeezeTop">
-            <md-button class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
+            <md-button type="submit" class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
           </md-card-footer>
+        </form>
       </md-card>
 
-      <md-card>
+      <md-card id="restart" style="width:99%">
         <md-card-title>
           <i class="fa fa-refresh"></i>
           <md-card-title-text>
@@ -168,63 +296,40 @@ Admin Settings
           </table>
         </md-card-content>
         <md-card-footer class="squeezeTop">
-            <md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
-            <md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
+          <md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
+          <md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
           <md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
         </md-card-footer>
       </md-card>
-    </div>
 
-    <div class="admin-columnLayout">
+      <div layout="column">
 
-      <md-card>
-        <md-card-title>
-          <i class="fa fa-file-text"></i>
-          <md-card-title-text>
-            <span>Event Logs</span>
-          </md-card-title-text>
-        </md-card-title>
+        <md-card>
+          <md-card-title>
+            <i class="fa fa-file-text"></i>
+            <md-card-title-text>
+              <span>Event Logs (under construction)</span>
+            </md-card-title-text>
+          </md-card-title>
 
-        <md-card-content>
-          <md-list>
-            <md-list-item ng-repeat="event in Events">
-              <div ng-bind="event.displayText"></div>
-              <md-divider ng-if="!$last"></md-divider>
-            </md-list-item>
-          </md-list>
-        </md-card-content>
+          <md-card-content>
+            <md-list>
+              <md-list-item ng-repeat="event in Events">
+                <div ng-bind="event.displayText"></div>
+                <md-divider ng-if="!$last"></md-divider>
+              </md-list-item>
+            </md-list>
+          </md-card-content>
 
-        <md-card-footer>
-          <a ng-href="/event_log/admin/global">view all</a>
-        </md-card-footer>
-      </md-card>
+          <md-card-footer>
+            <a ng-href="/event_log/admin/global">view all</a>
+          </md-card-footer>
+        </md-card>
 
-    </div>
-
-  </md-content>
-
-  <div id="tasks-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" style="width: 1000px">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal" aria-hidden="true" style="font-size: 35px">&times;</button>
-          <h2 class="modal-title">[[modalTitle]]</h2>
-        </div>
-        <div class="modal-body">
-          <div id="divMsg"></div>
-          <div>The following [[tasks.length]] tasks will be restarted:</div>
-          <div id="tasksDisplay">
-            <li ng-repeat="task in tasks" class="link" ng-click="jumpToTask(task)">[[task]]</li>
-          </div>
-          <div>
-            <div class="justifyRight">
-              <md-button class="md-raised" ng-click="restartTasks(false)" ng-disabled="disableRestart">Restart</md-button>
-              <md-button class="md-raised" data-dismiss="modal">Cancel</md-button>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
-  </div>
+
+    </md-content>
+
+  </section>
 </div>
 {{end}}
