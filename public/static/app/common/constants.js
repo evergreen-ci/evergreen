@@ -12,7 +12,8 @@ mciModule
 
     // TODO ## PATCHES API ##
 
-    // TODO ## VERSIONS API ##
+    // ## VERSIONS API ##
+    VERSIONS_BY_ID: _.template('{base}/versions/{version_id}'),
 
     // ## BUILDS API ##
     BUILDS_DETAIL: _.template('{base}/builds/{build_id}'),
@@ -21,6 +22,8 @@ mciModule
     // TODO ## TASKS API ##
 
     // TODO ## SCHEDULER API ##
+    // WATERFALL API
+    WATERFALL_VERSIONS_ROWS: _.template('{base}/waterfall/{project_id}/versions'),
   })
   .constant('API_TASKDATA', {
     BASE: '/plugin/json',

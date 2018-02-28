@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -393,6 +395,58 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 		BuildVariants: buildVariants,
 	}, nil
 
+}
+
+func (restapi restAPI) getVersionsAndVariantsApi(w http.ResponseWriter, r *http.Request) {
+	projectId := mux.Vars(r)["project_id"]
+
+	projectRef, err := model.FindOneProjectRef(projectId)
+	if err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Project '%s' does not exist!", projectId),
+			http.StatusBadRequest)
+		return
+	}
+
+	project, err := model.FindProject("", projectRef)
+	if err != nil {
+		http.Error(
+			w,
+			fmt.Sprintf("Could not find a project for a projectRef '%s'", projectId),
+			http.StatusInternalServerError)
+		return
+	}
+
+	// GET parameters boilerplate
+	limitVals, ok := r.URL.Query()["limit"]
+
+	limit := 10
+	if ok && len(limitVals) == 1 {
+		val, err := strconv.Atoi(limitVals[0])
+		if err != nil {
+			limit = val
+		}
+	}
+
+	offsetVals, ok := r.URL.Query()["offset"]
+
+	offset := 0
+	if ok && len(offsetVals) == 1 {
+		val, err := strconv.Atoi(offsetVals[0])
+		if err != nil {
+			offset = val
+		}
+	}
+
+	result, err := getVersionsAndVariants(offset, limit, project)
+
+	if err != nil {
+		http.Error(w, "Error during query execution", http.StatusInternalServerError)
+		return
+	}
+
+	restapi.WriteJSON(w, http.StatusOK, result)
 }
 
 // addFailedTests adds all of the failed tests associated with a task to its entry in the waterfallRow.

@@ -193,38 +193,51 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     }, [])
   }
 
+  function queryBuildData(version) {
+    return $q.all(_.map(version.builds, function(d) {
+      return ApiV1.getBuildDetail(d).then(
+        respData, function(e) { return {} })
+    }))
+  }
+
+  function tasksOfBuilds(promise) {
+    return promise.then(function(builds) {
+      return extractTasks({builds: builds})
+    })
+  }
+
   /******************
    * PROMISE CHAINS *
    ******************/
 
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasks, baselineRev) {
-    var promise = $q.all(_.map(tasks, function(task) {
-      return ApiTaskdata.getTaskById(task.taskId, 'perf')
-        .then(respData, function() { return null })
-        .then(function(data) {
-          if (data) {
-            return $q.all({
-              ctx: $q.resolve(task),
-              current: data,
-              history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
-                .then(respData, function(e) { return [] }),
-              baseline: ApiTaskdata.getTaskCommit({
-                projectId: data.project_id,
-                revision: baselineRev,
-                variant: data.variant,
-                taskName: task.taskName,
-                name: 'perf',
-              }).then(respData, function() { null }),
-            })
-          } else {
-            return null
-          }
-        })
-    }))
-
-    return promise
+  function queryData(tasksPromise, baselineRev) {
+    return tasksPromise.then(function(tasks) {
+      return $q.all(_.map(tasks, function(task) {
+        return ApiTaskdata.getTaskById(task.taskId, 'perf')
+          .then(respData, function() { return null })
+          .then(function(data) {
+            if (data) {
+              return $q.all({
+                ctx: $q.resolve(task),
+                current: data,
+                history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
+                  .then(respData, function(e) { return [] }),
+                baseline: ApiTaskdata.getTaskCommit({
+                  projectId: data.project_id,
+                  revision: baselineRev,
+                  variant: data.variant,
+                  taskName: task.taskName,
+                  name: 'perf',
+                }).then(respData, function() { null }),
+              })
+            } else {
+              return null
+            }
+          })
+      }))
+    })
   }
 
   // Processes `queryData` return value
@@ -248,7 +261,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     return getRows(
       processData(
         queryData(
-          extractTasks(version), baselineRev
+          tasksOfBuilds(queryBuildData(version)), baselineRev
         )
       )
     )
