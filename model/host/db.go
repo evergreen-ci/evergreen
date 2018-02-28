@@ -47,7 +47,6 @@ var (
 	StartedByKey               = bsonutil.MustHaveTag(Host{}, "StartedBy")
 	InstanceTypeKey            = bsonutil.MustHaveTag(Host{}, "InstanceType")
 	NotificationsKey           = bsonutil.MustHaveTag(Host{}, "Notifications")
-	UserDataKey                = bsonutil.MustHaveTag(Host{}, "UserData")
 	LastCommunicationTimeKey   = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UserHostKey                = bsonutil.MustHaveTag(Host{}, "UserHost")
 	ZoneKey                    = bsonutil.MustHaveTag(Host{}, "Zone")
