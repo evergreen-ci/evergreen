@@ -28,7 +28,8 @@ mciModule
   .constant('API_TASKDATA', {
     BASE: '/plugin/json',
     TASK_BY_ID: _.template('{base}/task/{task_id}/{name}/'),
-    TASK_COMMIT: _.template('{base}/commit/{project_id}/{revision}/{variant}/{task_name}/{name}'),
+    TASK_BY_TAG: _.template('{base}/tag/{project_id}/{tag}/{variant}/{task_name}/{name}'),
+    TASK_BY_COMMIT: _.template('{base}/commit/{project_id}/{revision}/{variant}/{task_name}/{name}'),
     TASK_HISTORY: _.template('{base}/history/{task_id}/{name}'),
 
     PROJECT_TAGS: _.template('{base}/tags/'),
