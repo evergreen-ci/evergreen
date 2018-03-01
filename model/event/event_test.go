@@ -73,6 +73,23 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 	}
 }
 
+func (s *eventSuite) TestEventWithNilData() {
+	logger := NewDBEventLogger(AllLogCollection)
+	event := EventLogEntry{
+		ResourceId: "TEST1",
+		EventType:  "TEST2",
+		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+	}
+	s.Error(logger.LogEvent(event))
+
+	s.NotPanics(func() {
+		s.NoError(db.Insert(AllLogCollection, event))
+		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
+		s.Error(err)
+		s.Empty(fetchedEvents)
+	})
+}
+
 func (s *eventSuite) TestEventRegistryItemsAreSane() {
 	for k, _ := range eventRegistry {
 		event := NewEventFromType(k)
