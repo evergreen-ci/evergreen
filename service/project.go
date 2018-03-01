@@ -341,7 +341,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//modify project vars if necessary
+	// If the variable is private, and if the variable in the submission is
+	// empty, then do not modify it. This variable has been redacted and is
+	// therefore empty in the submission, since the client does not have
+	// access to it, and we should not overwrite it.
+	for k, v := range projectVars.Vars {
+		if _, ok := projectVars.PrivateVars[k]; ok {
+			if val, ok := responseRef.ProjVarsMap[k]; ok && val == "" {
+				responseRef.ProjVarsMap[k] = v
+			}
+		}
+	}
 	projectVars.Vars = responseRef.ProjVarsMap
 	projectVars.PrivateVars = responseRef.PrivateVars
 
