@@ -31,6 +31,7 @@ func TestValidateJSON(t *testing.T) {
 	request, err := http.NewRequest("", "", buffer)
 	assert.NoError(err)
 	files, err := parseJson(request)
+	assert.NoError(err)
 	var thing Thing
 	for i, f := range files {
 		assert.NoError(json.Unmarshal(f, &thing))
