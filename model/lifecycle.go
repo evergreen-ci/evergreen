@@ -457,6 +457,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	b := &build.Build{
 		Id:                  util.CleanName(buildId),
 		CreateTime:          v.CreateTime,
+		PushTime:            v.CreateTime,
 		Activated:           activated,
 		Project:             project.Identifier,
 		Revision:            v.Revision,
@@ -766,6 +767,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		CreateTime:          b.CreateTime,
+		PushTime:            b.PushTime,
 		ScheduledTime:       util.ZeroTime,
 		StartTime:           util.ZeroTime, // Certain time fields must be initialized
 		FinishTime:          util.ZeroTime, // to our own util.ZeroTime value (which is
@@ -810,6 +812,7 @@ func createDisplayTask(id string, displayName string, execTasks []string,
 		BuildVariant:        bv.Name,
 		BuildId:             b.Id,
 		CreateTime:          b.CreateTime,
+		PushTime:            b.PushTime,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Version:             v.Id,
 		Revision:            v.Revision,

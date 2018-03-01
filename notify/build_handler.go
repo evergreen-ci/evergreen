@@ -135,7 +135,7 @@ func (self *BuildNotificationHandler) constructChangeInfo(allBuilds []build.Buil
 				build.Id, build.Version)
 		}
 		changeInfo := constructChangeInfo(v, key)
-		changeInfo.Pushtime = build.FinishTime.Format(time.RFC850)
+		changeInfo.Pushtime = build.PushTime.Format(time.RFC850)
 		changeInfoSlice = append(changeInfoSlice, *changeInfo)
 	}
 	return changeInfoSlice, nil

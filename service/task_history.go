@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -36,19 +37,21 @@ const (
 // Representation of a group of tasks with the same display name and revision,
 // but different build variants.
 type taskDrawerItem struct {
-	Revision string `json:"revision"`
-	Message  string `json:"message"`
+	Revision string    `json:"revision"`
+	Message  string    `json:"message"`
+	PushTime time.Time `json:"push_time"`
 	// small amount of info about each task in this group
 	TaskBlurb taskBlurb `json:"task"`
 }
 
 type versionDrawerItem struct {
-	Revision string   `json:"revision"`
-	Message  string   `json:"message"`
-	Id       string   `json:"version_id"`
-	Errors   []string `json:"errors"`
-	Warnings []string `json:"warnings"`
-	Ignored  bool     `json:"ignored"`
+	Revision string    `json:"revision"`
+	Message  string    `json:"message"`
+	PushTime time.Time `json:"push_time"`
+	Id       string    `json:"version_id"`
+	Errors   []string  `json:"errors"`
+	Warnings []string  `json:"warnings"`
+	Ignored  bool      `json:"ignored"`
 }
 
 // Represents a small amount of information about a task - used as part of the
@@ -327,13 +330,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	versionDrawerItems := []versionDrawerItem{}
 	for _, v := range versions {
 		versionDrawerItems = append(versionDrawerItems, versionDrawerItem{
-			Revision: v.Revision,
-			Message:  v.Message,
-			Id:       v.Id,
-			Errors:   v.Errors,
-			Warnings: v.Warnings,
-			Ignored:  v.Ignored,
-		})
+			v.Revision, v.Message, v.CreateTime, v.Id, v.Errors, v.Warnings, v.Ignored})
 	}
 
 	uis.WriteJSON(w, http.StatusOK, struct {
@@ -493,6 +490,7 @@ func createSiblingTaskGroups(tasks []task.Task, versions []version.Version) []ta
 		group := taskDrawerItem{
 			Revision: v.Revision,
 			Message:  v.Message,
+			PushTime: v.CreateTime,
 		}
 		groupsByVersion[v.Id] = group
 	}

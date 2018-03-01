@@ -73,6 +73,7 @@ func TestGetBuildInfo(t *testing.T) {
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
 			FinishTime:          time.Now().Add(-5 * time.Second),
+			PushTime:            time.Now().Add(-1 * time.Millisecond),
 			Version:             versionId,
 			Project:             projectName,
 			Revision:            fmt.Sprintf("%x", rand.Int()),
@@ -127,6 +128,11 @@ func TestGetBuildInfo(t *testing.T) {
 			err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
 			So(finishTime, ShouldHappenWithin, TimePrecision, build.FinishTime)
+
+			var pushTime time.Time
+			err = json.Unmarshal(*rawJsonBody["push_time"], &pushTime)
+			So(err, ShouldBeNil)
+			So(pushTime, ShouldHappenWithin, TimePrecision, build.PushTime)
 
 			So(jsonBody["version"], ShouldEqual, build.Version)
 			So(jsonBody["project"], ShouldEqual, build.Project)
