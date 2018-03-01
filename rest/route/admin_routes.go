@@ -301,7 +301,6 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 	if err := util.ReadJSONInto(r.Body, h); err != nil {
 		return err
 	}
-	defer r.Body.Close()
 	if h.EndTime.Before(h.StartTime) {
 		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -368,7 +367,6 @@ func (h *revertHandler) ParseAndValidate(ctx context.Context, r *http.Request) e
 	if err := util.ReadJSONInto(r.Body, h); err != nil {
 		return err
 	}
-	defer r.Body.Close()
 	if h.GUID == "" {
 		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
