@@ -17,9 +17,15 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   var projectId = $window.project
 
-  var whenQueryRevisions = ApiV1.getProjectVersions(projectId).then(function(res) {
-    vm.versions = res.data.versions
-    vm.revisionSelect.options = _.map(res.data.versions, function(d) {
+  var whenQueryRevisions = ApiV1.getWaterfallVersionsRows(projectId).then(function(res) {
+    vm.versions = _.map(
+      _.where(
+        res.data.versions, {rolled_up: false} // Filter versions with data
+      ),
+      function(d) { return {revision: d.revisions[0]} } // Transform
+    )
+
+    vm.revisionSelect.options = _.map(vm.versions, function(d) {
       return {id: d.revision, name: d.revision}
     })
     vm.revisionSelect.selected = _.first(vm.revisionSelect.options)
@@ -40,23 +46,22 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   vm.updateData = function() {
     var revision = vm.revisionSelect.selected.id;
-    var baselineRev = vm.tagSelect.selected.id;
+    var baselineTag = vm.tagSelect.selected.name;
 
-    version = _.findWhere(vm.versions, {
-      revision: revision
-    })
+    ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
+      var version = res.data
+      PerfDiscoveryService.getData(
+        version, baselineTag
+      ).then(function(res) {
+        vm.gridOptions.data = res
 
-    PerfDiscoveryService.getData(
-      version, baselineRev
-    ).then(function(res) {
-      vm.gridOptions.data = res
-
-      // Apply options data to filter drop downs
-      gridUtil.applyMultiselectOptions(
-        res,
-        ['build', 'storageEngine', 'task', 'threads'],
-        vm.gridOptions
-      )
+        // Apply options data to filter drop downs
+        gridUtil.applyMultiselectOptions(
+          res,
+          ['build', 'storageEngine', 'task', 'threads'],
+          vm.gridOptions
+        )
+      })
     })
   }
 
