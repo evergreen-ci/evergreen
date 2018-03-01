@@ -66,7 +66,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 			So(len(events), ShouldEqual, 1)
 			e := events[0]
 			So(e.ResourceId, ShouldEqual, taskId)
-			taskData, ok := e.Data.Data.(*event.TaskSystemResourceData)
+			taskData, ok := e.Data.(*event.TaskSystemResourceData)
 			So(ok, ShouldBeTrue)
 			grip.Info(taskData.SystemInfo)
 		})
@@ -92,7 +92,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 			So(len(events), ShouldEqual, 1)
 			e := events[0]
 			So(e.ResourceId, ShouldEqual, taskId)
-			taskData, ok := e.Data.Data.(*event.TaskProcessResourceData)
+			taskData, ok := e.Data.(*event.TaskProcessResourceData)
 			So(ok, ShouldBeTrue)
 			grip.Info(taskData.Processes)
 		})

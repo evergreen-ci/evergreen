@@ -1,9 +1,12 @@
 package event
 
-import "github.com/evergreen-ci/evergreen/db"
+import (
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
+)
 
 type EventLogger interface {
-	LogEvent(event *Event) error
+	LogEvent(event *EventLogEntry) error
 }
 
 type DBEventLogger struct {
@@ -16,6 +19,9 @@ func NewDBEventLogger(collection string) *DBEventLogger {
 	}
 }
 
-func (self *DBEventLogger) LogEvent(event Event) error {
+func (self *DBEventLogger) LogEvent(event EventLogEntry) error {
+	if event.Data == nil {
+		return errors.New("event log entry cannot have nil Data")
+	}
 	return db.Insert(self.collection, event)
 }
