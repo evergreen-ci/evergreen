@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	// db constants
-	AllLogCollection  = "event_log"
-	TaskLogCollection = "task_event_log"
+	AllLogCollection           = "event_log"
+	TaskLogCollection          = "task_event_log"
+	NotificationsLogCollection = "notifications_log"
 )
 
 type Event struct {
