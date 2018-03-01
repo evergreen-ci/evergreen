@@ -52,7 +52,7 @@ func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 	if _, code, err := dbModel.ValidateTask(h.taskID, true, r); err != nil {
 		return &rest.APIError{
 			StatusCode: code,
-			Message:    "task is invalid",
+			Message:    "host is invalid",
 		}
 	}
 	if _, code, err := dbModel.ValidateHost("", r); err != nil {
