@@ -129,7 +129,7 @@ func (s *AdminEventSuite) TestReverting() {
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
 	afterVal := eventData.Changes.After.(*evergreen.SchedulerConfig)
@@ -174,7 +174,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	eventData := dbEvents[0].Data.(*AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
 

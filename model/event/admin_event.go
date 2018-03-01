@@ -149,7 +149,7 @@ func RevertConfig(guid string, user string) error {
 		return fmt.Errorf("unable to find event with GUID %s", guid)
 	}
 	evt := events[0]
-	data := evt.Data.Data.(*AdminEventData)
+	data := evt.Data.(*AdminEventData)
 	current := evergreen.ConfigRegistry.GetSection(data.Section)
 	if current == nil {
 		return fmt.Errorf("unable to find section %s", data.Section)
