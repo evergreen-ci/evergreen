@@ -347,7 +347,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	// access to it, and we should not overwrite it.
 	for k, v := range projectVars.Vars {
 		if _, ok := projectVars.PrivateVars[k]; ok {
-			if val, ok := responseRef.ProjVarsMap[k]; val == "" && ok {
+			if val, ok := responseRef.ProjVarsMap[k]; ok && val == "" {
 				responseRef.ProjVarsMap[k] = v
 			}
 		}
