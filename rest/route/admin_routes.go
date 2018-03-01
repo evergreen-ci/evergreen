@@ -301,10 +301,9 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 	if err := util.ReadJSONInto(r.Body, h); err != nil {
 		return err
 	}
-	defer r.Body.Close()
 	if h.EndTime.Before(h.StartTime) {
 		return rest.APIError{
-			StatusCode: 400,
+			StatusCode: http.StatusBadRequest,
 			Message:    "End time cannot be before start time",
 		}
 	}
@@ -338,4 +337,53 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 	return ResponseData{
 		Result: []model.Model{restartModel},
 	}, nil
+}
+
+func getRevertRouteManager(route string, version int) *RouteManager {
+	rh := revertHandler{}
+	handler := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &SuperUserAuthenticator{},
+		RequestHandler:    rh.Handler(),
+		MethodType:        http.MethodPost,
+	}
+
+	return &RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{handler},
+		Version: version,
+	}
+}
+
+type revertHandler struct {
+	GUID string `json:"guid"`
+}
+
+func (h *revertHandler) Handler() RequestHandler {
+	return &revertHandler{}
+}
+
+func (h *revertHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	if err := util.ReadJSONInto(r.Body, h); err != nil {
+		return err
+	}
+	if h.GUID == "" {
+		return rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "GUID to revert to must be specified",
+		}
+	}
+	return nil
+}
+
+func (h *revertHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+	err := sc.RevertConfigTo(h.GUID, u.Username())
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Error reverting")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -118,6 +119,12 @@ func RecentAdminEvents(n int) db.Q {
 		DataKey + "." + ResourceTypeKey: ResourceTypeAdmin,
 		ResourceIdKey:                   "",
 	}).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+func ByGuid(guid string) db.Q {
+	return db.Query(bson.M{
+		bsonutil.GetDottedKeyName(DataKey, "guid"): guid,
+	})
 }
 
 // TaskSystemInfoEvents builds a query for system info,

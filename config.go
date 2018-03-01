@@ -806,7 +806,7 @@ type Settings struct {
 	Ui                 UIConfig                  `yaml:"ui" bson:"ui" json:"ui" id:"ui"`
 }
 
-func (c *Settings) SectionId() string { return configDocID }
+func (c *Settings) SectionId() string { return ConfigDocID }
 func (c *Settings) Get() error {
 	err := legacyDB.FindOneQ(ConfigCollection, legacyDB.Query(byId(c.SectionId())), c)
 	if err != nil && err.Error() == errNotFound {
