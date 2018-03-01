@@ -23,6 +23,9 @@ const (
 	ApiProjectRefKey apiProjectRefKey = 0
 )
 
+// ValidateTask ensures that a task ID is set and corresponds to a task in the
+// database. If checkSecret is true, it also validates the task's secret. It
+// returns a task, http status code, and error.
 func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task, int, error) {
 	if taskId == "" {
 		return nil, http.StatusBadRequest, errors.New("missing task id")
@@ -44,6 +47,10 @@ func ValidateTask(taskId string, checkSecret bool, r *http.Request) (*task.Task,
 	return t, http.StatusOK, nil
 }
 
+// ValidateHost ensures that the host exists in the database and that, if a
+// secret is provided, it matches the secret in the database. If a task ID is
+// provided, it ensures that the host should be running this task. It returns a
+// host, http status code, and error.
 func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 	if hostId == "" {
 		// fall back to the host header if host ids are not part of the path
