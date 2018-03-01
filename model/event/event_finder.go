@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/mongodb/anser/bsonutil"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -122,7 +123,7 @@ func RecentAdminEvents(n int) db.Q {
 
 func ByGuid(guid string) db.Q {
 	return db.Query(bson.M{
-		DataKey + "." + "guid": guid,
+		bsonutil.GetDottedKeyName(DataKey, "guid"): guid,
 	})
 }
 
