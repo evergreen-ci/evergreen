@@ -14,16 +14,16 @@ import (
 )
 
 func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), apiHostKey, h))
+	return r.WithContext(context.WithValue(r.Context(), model.ApiHostKey, h))
 }
 func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), apiTaskKey, t))
+	return r.WithContext(context.WithValue(r.Context(), model.ApiTaskKey, t))
 }
 func setProjectReftContext(r *http.Request, p *model.ProjectRef) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), apiProjectRefKey, p))
+	return r.WithContext(context.WithValue(r.Context(), model.ApiProjectRefKey, p))
 }
 func setProjectContext(r *http.Request, p *model.Project) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), apiProjectKey, p))
+	return r.WithContext(context.WithValue(r.Context(), model.ApiProjectKey, p))
 }
 func setUIRequestContext(r *http.Request, p projectContext) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), RequestProjectContext, p))
@@ -37,7 +37,7 @@ func setRequestUser(r *http.Request, u auth.User) *http.Request {
 
 // GetTask loads the task attached to a request.
 func GetTask(r *http.Request) *task.Task {
-	if rv := r.Context().Value(apiTaskKey); rv != nil {
+	if rv := r.Context().Value(model.ApiTaskKey); rv != nil {
 		if t, ok := rv.(*task.Task); ok {
 			return t
 		}
@@ -47,7 +47,7 @@ func GetTask(r *http.Request) *task.Task {
 
 // GetHost loads the host attached to a request
 func GetHost(r *http.Request) *host.Host {
-	if rv := r.Context().Value(apiHostKey); rv != nil {
+	if rv := r.Context().Value(model.ApiHostKey); rv != nil {
 		return rv.(*host.Host)
 	}
 	return nil
@@ -56,12 +56,12 @@ func GetHost(r *http.Request) *host.Host {
 // GetProject loads the project attached to a request into request
 // context.
 func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
-	pref := r.Context().Value(apiProjectRefKey)
+	pref := r.Context().Value(model.ApiProjectRefKey)
 	if pref == nil {
 		return nil, nil
 	}
 
-	p := r.Context().Value(apiProjectKey)
+	p := r.Context().Value(model.ApiProjectKey)
 	if p == nil {
 		return nil, nil
 	}
