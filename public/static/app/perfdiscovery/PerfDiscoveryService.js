@@ -212,7 +212,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
 
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasksPromise, baselineRev) {
+  function queryData(tasksPromise, baselineTag) {
     return tasksPromise.then(function(tasks) {
       return $q.all(_.map(tasks, function(task) {
         return ApiTaskdata.getTaskById(task.taskId, 'perf')
@@ -224,9 +224,9 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
                 current: data,
                 history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
-                baseline: ApiTaskdata.getTaskCommit({
+                baseline: ApiTaskdata.getTaskByTag({
                   projectId: data.project_id,
-                  revision: baselineRev,
+                  tag: baselineTag,
                   variant: data.variant,
                   taskName: task.taskName,
                   name: 'perf',
@@ -257,11 +257,11 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
    * PUBLIC API *
    **************/
 
-  function getData(version, baselineRev) {
+  function getData(version, baselineTag) {
     return getRows(
       processData(
         queryData(
-          tasksOfBuilds(queryBuildData(version)), baselineRev
+          tasksOfBuilds(queryBuildData(version)), baselineTag
         )
       )
     )

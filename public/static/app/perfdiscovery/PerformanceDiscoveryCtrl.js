@@ -46,12 +46,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   vm.updateData = function() {
     var revision = vm.revisionSelect.selected.id;
-    var baselineRev = vm.tagSelect.selected.id;
+    var baselineTag = vm.tagSelect.selected.name;
 
     ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
       var version = res.data
       PerfDiscoveryService.getData(
-        version, baselineRev
+        version, baselineTag
       ).then(function(res) {
         vm.gridOptions.data = res
 
