@@ -18,9 +18,6 @@ type subscriptionsSuite struct {
 }
 
 func (s *subscriptionsSuite) SetupSuite() {
-	s.Require().Equal(subAggregationRegexSelectorsKey, subscriptionRegexSelectorsKey)
-	s.Require().Equal(subAggregationSubscriberKey, subscriptionSubscriberKey)
-
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
@@ -114,9 +111,12 @@ func (s *subscriptionsSuite) TestFind() {
 		},
 	})
 	s.NoError(err)
-	s.Require().Len(subs, 1)
-	s.Equal("email", subs[0].Type)
-	s.Equal("someone3@example.com", subs[0].Target.(string))
+	s.Len(subs, 1)
+	s.NotPanics(func() {
+		s.Len(subs[0].Subscribers, 1)
+		s.Equal("email", subs[0].Subscribers[0].Subscriber.Type)
+		s.Equal("someone3@example.com", subs[0].Subscribers[0].Subscriber.Target.(string))
+	})
 
 	// regex selector
 	subs, err = FindSubscribers("type1", "trigger1", []Selector{
@@ -130,7 +130,10 @@ func (s *subscriptionsSuite) TestFind() {
 		},
 	})
 	s.NoError(err)
-	s.Len(subs, 3)
+	s.Len(subs, 1)
+	s.NotPanics(func() {
+		s.Len(subs[0].Subscribers, 3)
+	})
 }
 
 func (s *subscriptionsSuite) TestFindSelectors() {
@@ -161,7 +164,7 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 		},
 	}
 
-	a := subscriptionAggregation{
+	a := SubscriberWithRegex{
 		RegexSelectors: []Selector{
 			{
 				Type: "type",

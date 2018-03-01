@@ -3,6 +3,7 @@ package event
 import (
 	"net/url"
 
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -10,6 +11,11 @@ import (
 
 const (
 	ResourceTypeNotifications = "notification"
+)
+
+var (
+	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
+	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
 )
 
 type Notifications struct {

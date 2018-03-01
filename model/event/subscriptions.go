@@ -24,8 +24,11 @@ var (
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 
-	subAggregationSubscriberKey     = bsonutil.MustHaveTag(subscriptionAggregation{}, "Subscriber")
-	subAggregationRegexSelectorsKey = bsonutil.MustHaveTag(subscriptionAggregation{}, "RegexSelectors")
+	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(GroupedSubscribers{}, "Type")
+	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(GroupedSubscribers{}, "Subscribers")
+
+	subscriberWithRegexKey               = bsonutil.MustHaveTag(SubscriberWithRegex{}, "Subscriber")
+	subscriberWithRegexRegexSelectorsKey = bsonutil.MustHaveTag(SubscriberWithRegex{}, "RegexSelectors")
 )
 
 type Subscription struct {
@@ -42,13 +45,18 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-type subscriptionAggregation struct {
+type GroupedSubscribers struct {
+	Type        string                `bson:"_id"`
+	Subscribers []SubscriberWithRegex `bson:"subscribers"`
+}
+
+type SubscriberWithRegex struct {
 	Subscriber     Subscriber `bson:"subscriber"`
-	RegexSelectors []Selector `bson:"regex_selectors,omitempty"`
+	RegexSelectors []Selector `bson:"regex_selectors"`
 }
 
 // FindSubscribers finds all subscriptions that match the given information
-func FindSubscribers(subscriptionType, triggerType string, selectors []Selector) ([]Subscriber, error) {
+func FindSubscribers(subscriptionType, triggerType string, selectors []Selector) ([]GroupedSubscribers, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -87,25 +95,42 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 				"keep": true,
 			},
 		},
+		{
+			"$group": bson.M{
+				"_id": "$" + bsonutil.GetDottedKeyName(subscriptionSubscriberKey, subscriberTypeKey),
+				"subscribers": bson.M{
+					"$push": bson.M{
+						subscriberWithRegexKey:               "$" + subscriptionSubscriberKey,
+						subscriberWithRegexRegexSelectorsKey: "$" + subscriptionRegexSelectorsKey,
+					},
+				},
+			},
+		},
 	}
 
-	out := []subscriptionAggregation{}
+	out := []GroupedSubscribers{}
 	if err := db.Aggregate(SubscriptionsCollection, pipeline, &out); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 
-	subs := make([]Subscriber, 0, len(out))
 	for i := range out {
-		if len(out[i].RegexSelectors) > 0 && !regexSelectorsMatch(selectors, &out[i]) {
-			continue
+		subscribers := make([]SubscriberWithRegex, 0, len(out[i].Subscribers))
+		for j := range out[i].Subscribers {
+			sub := &out[i].Subscribers[j]
+			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub) {
+				continue
+			}
+
+			subscribers = append(subscribers, *sub)
 		}
-		subs = append(subs, out[i].Subscriber)
+
+		out[i].Subscribers = subscribers
 	}
 
-	return subs, nil
+	return out, nil
 }
 
-func regexSelectorsMatch(selectors []Selector, s *subscriptionAggregation) bool {
+func regexSelectorsMatch(selectors []Selector, s *SubscriberWithRegex) bool {
 	for i := range s.RegexSelectors {
 		selector := findSelector(selectors, s.RegexSelectors[i].Type)
 		if selector == nil {
@@ -114,8 +139,10 @@ func regexSelectorsMatch(selectors []Selector, s *subscriptionAggregation) bool 
 
 		matched, err := regexp.MatchString(s.RegexSelectors[i].Data, selector.Data)
 		grip.Error(message.WrapError(err, message.Fields{
-			"source": "notifications-errors",
+			"source":  "notifications-errors",
+			"message": "bad regex in db",
 		}))
+		// TODO swallow regex errors?
 		if err != nil || !matched {
 			return false
 		}
