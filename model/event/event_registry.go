@@ -6,13 +6,14 @@ var eventRegistry map[string]eventFactory
 
 func init() {
 	eventRegistry = map[string]eventFactory{
-		ResourceTypeTask:      taskEventFactory,
-		ResourceTypeHost:      hostEventFactory,
-		ResourceTypeDistro:    distroEventFactory,
-		ResourceTypeScheduler: schedulerEventFactory,
-		EventTaskSystemInfo:   taskSystemResourceEventFactory,
-		EventTaskProcessInfo:  taskProcessResourceEventFactory,
-		ResourceTypeAdmin:     adminEventFactory,
+		ResourceTypeTask:         taskEventFactory,
+		ResourceTypeHost:         hostEventFactory,
+		ResourceTypeDistro:       distroEventFactory,
+		ResourceTypeScheduler:    schedulerEventFactory,
+		EventTaskSystemInfo:      taskSystemResourceEventFactory,
+		EventTaskProcessInfo:     taskProcessResourceEventFactory,
+		ResourceTypeAdmin:        adminEventFactory,
+		ResourceTypeNotification: notificationEventFactory,
 	}
 }
 
@@ -64,5 +65,11 @@ func taskProcessResourceEventFactory() Data {
 func adminEventFactory() Data {
 	return &rawAdminEventData{
 		ResourceType: ResourceTypeAdmin,
+	}
+}
+
+func notificationEventFactory() Data {
+	return &NotificationEvent{
+		ResourceType: ResourceTypeNotification,
 	}
 }

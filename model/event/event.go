@@ -39,8 +39,7 @@ type Event interface {
 
 	// Notifications fetches all subscriptions relevant to this event.
 	// Events may have no subscribers.
-	// TODO: specify return type in EVG-2861
-	Notifications() ([]interface{}, error)
+	Notifications() ([]NotificationEvent, error)
 }
 
 type EventLogEntry struct {
@@ -63,9 +62,9 @@ var (
 	ResourceIdKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
 	TypeKey       = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
 	DataKey       = bsonutil.MustHaveTag(EventLogEntry{}, "Data")
-
-	resourceTypeKey = "r_type"
 )
+
+const resourceTypeKey = "r_type"
 
 type Data interface {
 	IsValid() bool
@@ -103,7 +102,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	for i := range rawD {
 		if rawD[i].Name == "r_type" {
 			if err := rawD[i].Value.Unmarshal(&dataType); err != nil {
-				return errors.Wrap(err, "failed to read r_type")
+				return errors.Wrap(err, "failed to read resource type (r_type) from event")
 			}
 		}
 	}
@@ -142,7 +141,7 @@ func findResourceTypeIn(t interface{}) (bool, string) {
 		}
 
 		if bsonTag == resourceTypeKey {
-			if f.Type.String() != "string" {
+			if f.Type.Kind() != reflect.String {
 				return false, ""
 			}
 

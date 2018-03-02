@@ -83,13 +83,6 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 				},
 			},
 		},
-		//{
-		//	"$addFields": bson.M{
-		//		"keep": bson.M{
-		//			"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
-		//		},
-		//	},
-		//},
 		{
 			"$match": bson.M{
 				"keep": true,

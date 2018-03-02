@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	ResourceTypeNotifications = "notification"
+	ResourceTypeNotification = "notification"
 )
 
 var (
@@ -18,12 +18,16 @@ var (
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
 )
 
-type Notifications struct {
-	ResourceType string           `bson:"r_type"`
-	Type         string           `bson:"type"`
-	Undelivered  []Subscriber     `bson:"undelivered"`
-	Delivered    []Subscriber     `bson:"delivered"`
-	Payload      message.Composer `bson:"payload"`
+type NotificationEvent struct {
+	ResourceType string           `bson:"r_type" json:"resource_type"`
+	Type         string           `bson:"type" json:"type"`
+	Undelivered  []Subscriber     `bson:"undelivered" json:"undelivered"`
+	Delivered    []Subscriber     `bson:"delivered" json:"delivered"`
+	Payload      message.Composer `bson:"payload" json:"payload"`
+}
+
+func (e *NotificationEvent) IsValid() bool {
+	return e.ResourceType == ResourceTypeNotification
 }
 
 type Subscriber struct {
@@ -46,7 +50,7 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 		return errors.New("could not find subscriber type")
 	}
 
-	// TODO registry
+	// TODO registry?
 	switch s.Type {
 	case "github_pull_request":
 		s.Target = githubPullRequestSubscriber{}
