@@ -49,10 +49,28 @@ Admin Settings
             <div>Degraded Mode</div>
             <li class="link" ng-click="scrollTo('degraded')">Service Flags</li>
             <li class="link" ng-click="scrollTo('announcements')">Announcements</li>
-            <div>Notifications</div>
+            <div>Runners</div>
             <li class="link" ng-click="scrollTo('alerts')">Alerts</li>
             <li class="link" ng-click="scrollTo('notify')">Notify</li>
-            <div>Other</div>
+            <li class="link" ng-click="scrollTo('hostinit')">Hostinit</li>
+            <li class="link" ng-click="scrollTo('scheduler')">Scheduler</li>
+            <li class="link" ng-click="scrollTo('repotracker')">Repotracker</li>
+            <div>Web</div>
+            <li class="link" ng-click="scrollTo('api')">API Config</li>
+            <li class="link" ng-click="scrollTo('ui')">UI Config</li>
+            <div>Authentication</div>
+            <li class="link" ng-click="scrollTo('crowd')">Crowd</li>
+            <li class="link" ng-click="scrollTo('github')">Github</li>
+            <li class="link" ng-click="scrollTo('naive')">Naive</li>
+            <div>External Communication</div>
+            <li class="link" ng-click="scrollTo('jira')">Jira</li>
+            <li class="link" ng-click="scrollTo('new_relic')">New Relic</li>
+            <li class="link" ng-click="scrollTo('slack')">Slack</li>
+            <li class="link" ng-click="scrollTo('splunk')">Splunk</li>
+            <div>Background Processing</div>
+            <li class="link" ng-click="scrollTo('amboy')">Amboy</li>
+            <li class="link" ng-click="scrollTo('logger_config')">Logger Config</li>
+            <div>Other (Non-Configuration)</div>
             <li class="link" ng-click="scrollTo('restart')">Restart Tasks</li>
           </div>
         </md-content>
@@ -185,17 +203,20 @@ Admin Settings
                   <md-card-title-text>
                     <span>Alerts - SMTP Settings</span>
                   </md-card-title-text>
+                  <md-button ng-click="clearSection('alerts')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
                 </md-card-title>
                 <md-card-content>
-                  <md-input-container class="control" style="width:260px;">
+                  <md-input-container class="control" style="width:45%;">
                     <label>Server address</label>
                     <input type="text" ng-model="Settings.alerts.smtp.server">
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
                     <label>From email</label>
                     <input type="text" ng-model="Settings.alerts.smtp.from">
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px;">
+                  <md-input-container class="control" style="width:45%;">
                     <label>Port</label>
                     <input type="number" ng-model="Settings.alerts.smtp.port">
                   </md-input-container>
@@ -204,11 +225,11 @@ Admin Settings
                       Use SSL
                     </md-checkbox>
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px;">
+                  <md-input-container class="control" style="width:45%;">
                     <label>Username</label>
                     <input type="text" ng-model="Settings.alerts.smtp.username">
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
                     <label>Password</label>
                     <input type="text" ng-model="Settings.alerts.smtp.password">
                   </md-input-container>
@@ -225,17 +246,20 @@ Admin Settings
                   <md-card-title-text>
                     <span>Notify - SMTP Settings</span>
                   </md-card-title-text>
+                  <md-button ng-click="clearSection('notify')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
                 </md-card-title>
                 <md-card-content>
-                  <md-input-container class="control" style="width:260px;">
+                  <md-input-container class="control" style="width:45%;">
                     <label>Server address</label>
                     <input type="text" ng-model="Settings.notify.smtp.server">
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
                     <label>From email</label>
                     <input type="text" ng-model="Settings.notify.smtp.from">
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px;">
+                  <md-input-container class="control" style="width:45%;">
                     <label>Port</label>
                     <input type="number" ng-model="Settings.notify.smtp.port">
                   </md-input-container>
@@ -244,11 +268,11 @@ Admin Settings
                       Use SSL
                     </md-checkbox>
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px;">
+                  <md-input-container class="control" style="width:45%;">
                     <label>Username</label>
                     <input type="text" ng-model="Settings.notify.smtp.username">
                   </md-input-container>
-                  <md-input-container class="control" style="width:260px; margin-left:50px;">
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
                     <label>Password</label>
                     <input type="text" ng-model="Settings.notify.smtp.password">
                   </md-input-container>
@@ -261,75 +285,504 @@ Admin Settings
               </md-card>
             </section>
 
-          </md-card-content>
+            <section layout="row" flex>
 
-          <md-card-footer class="squeezeTop">
-            <md-button type="submit" class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
-          </md-card-footer>
-        </form>
-      </md-card>
+              <md-card flex=50 id="hostinit">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Hostinit</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('hostinit')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>SSH timeout (secs)</label>
+                    <input type="number" ng-model="Settings.hostinit.ssh_timeout_secs">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
 
-      <md-card id="restart" style="width:99%">
+
+                            <md-card flex=50 id="scheduler">
+                              <md-card-title>
+                                <md-card-title-text>
+                                  <span>Scheduler</span>
+                                </md-card-title-text>
+                                <md-button ng-click="clearSection('scheduler')">
+                                  <i class="fa fa-trash"></i>
+                                </md-button>
+                              </md-card-title>
+                              <md-card-content>
+                                <md-input-container class="control" style="width:45%;">
+                                  <label>Merge toggle</label>
+                                  <input type="number" ng-model="Settings.scheduler.merge_toggle">
+                                </md-input-container>
+                                <md-input-container class="control" style="width:45%; margin-left:50px;">
+                                  <label>Task finder</label>
+                                  <input type="text" ng-model="Settings.scheduler.task_finder">
+                                </md-input-container>
+                              </md-card-content>
+                            </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="repotracker">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Repotracker</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('repotracker')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>New revisions to fetch</label>
+                    <input type="number" ng-model="Settings.repotracker.revs_to_fetch">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Max revisions to search</label>
+                    <input type="number" ng-model="Settings.repotracker.max_revs_to_search">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Max concurrent requests</label>
+                    <input type="number" ng-model="Settings.repotracker.max_con_requests">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="api" style="height:200px">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>API</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('api')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>HTTP listener address</label>
+                    <input type="text" ng-model="Settings.api.http_listen_addr">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Github webhook secret</label>
+                    <input type="text" ng-model="Settings.api.github_webhook_secret">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="ui">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>UI</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('ui')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>URL</label>
+                    <input type="text" ng-model="Settings.ui.url">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Help URL</label>
+                    <input type="text" ng-model="Settings.ui.help_url">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>HTTP listener address</label>
+                    <input type="text" ng-model="Settings.ui.http_listen_addr">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Secret</label>
+                    <input type="text" ng-model="Settings.ui.secret">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Default project</label>
+                    <input type="text" ng-model="Settings.ui.default_project">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>CSRF key</label>
+                    <input type="text" ng-model="Settings.ui.csrf_key">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <md-checkbox ng-model="Settings.ui.cache_templates">
+                      Cache templates
+                    </md-checkbox>
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <md-checkbox ng-model="Settings.ui.secure_cookies">
+                      Secure cookies
+                    </md-checkbox>
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+              <md-card flex=50 id="crowd">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Crowd Authentication</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('auth','crowd')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Username</label>
+                    <input type="text" ng-model="Settings.auth.crowd.username">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Password</label>
+                    <input type="text" ng-model="Settings.auth.crowd.password">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>URL root</label>
+                    <input type="text" ng-model="Settings.auth.crowd.url_root">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="github">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Github Authentication</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('auth','github')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Client ID</label>
+                    <input type="text" ng-model="Settings.auth.github.client_id">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Client Secret</label>
+                    <input type="text" ng-model="Settings.auth.github.client_secret">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Organization</label>
+                    <input type="text" ng-model="Settings.auth.github.organization">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Users</label>
+                    <textarea ng-model="Settings.auth.github.users" ng-list="&#10;"
+                    ng-trim="false" rows="3" md-select-on-focus></textarea>
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="naive">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Naive Authentication</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('auth','naive')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-chips md-transform-chip="transformNaiveUser($chip)"
+                  ng-model="Settings.auth.naive.users"
+                  placeholder="Enter a user in json format">
+                  <md-chip-template>
+                    username:[[$chip.username]], password:[[$chip.password]], display_name:[[$chip.display_name]], email:[[$chip.email]]
+                  </md-chip-template>
+                </md-chips>
+              </md-card-content>
+            </md-card>
+
+          </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="jira">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Jira</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('jira')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Host</label>
+                    <input type="text" ng-model="Settings.jira.host">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Default project</label>
+                    <input type="text" ng-model="Settings.jira.default_project">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Username</label>
+                    <input type="text" ng-model="Settings.jira.username">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Password</label>
+                    <input type="text" ng-model="Settings.jira.password">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="new_relic" style="height:200px">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>New Relic</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('new_relic')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Application name</label>
+                    <input type="text" ng-model="Settings.new_relic.application_name">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>License key</label>
+                    <input type="text" ng-model="Settings.new_relic.license_key">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="slack">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Slack</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('slack')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Token</label>
+                    <input type="text" ng-model="Settings.slack.token">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Level</label>
+                    <input type="text" ng-model="Settings.slack.level">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Channel</label>
+                    <input type="text" ng-model="Settings.slack.options.channel">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Host name</label>
+                    <input type="text" ng-model="Settings.slack.options.hostname">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Name</label>
+                    <input type="text" ng-model="Settings.slack.options.name">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Fields to set</label>
+                    <textarea ng-model="Settings.slack.options.fields" ng-list="&#10;"
+                    ng-trim="false" rows="3" md-select-on-focus></textarea>
+                  </md-input-container>
+                  <br/>
+                  <md-input-container class="control" style="width:170px;">
+                    <md-checkbox ng-model="Settings.slack.options.add_basic_metadata">
+                      Add basic metadata
+                    </md-checkbox>
+                  </md-input-container>
+                  <md-input-container class="control" style="width:170px; margin-left:50px;">
+                    <md-checkbox ng-model="Settings.slack.options.use_fields">
+                      Use fields
+                    </md-checkbox>
+                  </md-input-container>
+                  <md-input-container class="control" style="width:170px; margin-left:50px;">
+                    <md-checkbox ng-model="Settings.slack.options.all_fields">
+                      All fields
+                    </md-checkbox>
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="splunk" style="height:280px">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Splunk</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('splunk')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Server URL</label>
+                    <input type="text" ng-model="Settings.splunk.url">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Token</label>
+                    <input type="text" ng-model="Settings.splunk.token">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Channel</label>
+                    <input type="text" ng-model="Settings.splunk.channel">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+            <section layout="row" flex>
+
+              <md-card flex=50 id="amboy">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Amboy</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('amboy')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Name</label>
+                    <input type="text" ng-model="Settings.amboy.name">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>DB name</label>
+                    <input type="text" ng-model="Settings.amboy.database">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Local pool size</label>
+                    <input type="number" ng-model="Settings.amboy.pool_size_local">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Remote pool size</label>
+                    <input type="number" ng-model="Settings.amboy.pool_size_remote">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Local storage size</label>
+                    <input type="number" ng-model="Settings.amboy.local_storage_size">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+              <md-card flex=50 id="logger_config" style="height:280px">
+                <md-card-title>
+                  <md-card-title-text>
+                    <span>Logger Config</span>
+                  </md-card-title-text>
+                  <md-button ng-click="clearSection('logger_config')">
+                    <i class="fa fa-trash"></i>
+                  </md-button>
+                </md-card-title>
+                <md-card-content>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Default level</label>
+                    <input type="text" ng-model="Settings.logger_config.default_level">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Threshold level</label>
+                    <input type="text" ng-model="Settings.logger_config.threshold_level">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%;">
+                    <label>Log buffer duration (secs)</label>
+                    <input type="number" ng-model="Settings.logger_config.buffer.duration_seconds">
+                  </md-input-container>
+                  <md-input-container class="control" style="width:45%; margin-left:50px;">
+                    <label>Buffer count</label>
+                    <input type="number" ng-model="Settings.logger_config.buffer.count">
+                  </md-input-container>
+                </md-card-content>
+              </md-card>
+
+            </section>
+
+        </md-card-content>
+
+        <md-card-footer class="squeezeTop">
+          <md-button type="submit" class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
+        </md-card-footer>
+      </form>
+    </md-card>
+
+    <md-card id="restart" style="width:99%">
+      <md-card-title>
+        <i class="fa fa-refresh"></i>
+        <md-card-title-text>
+          <span>Restart Tasks</span>
+          <span class="md-subhead">Restart failed tasks that ran between two times</span>
+        </md-card-title-text>
+      </md-card-title>
+      <md-card-content>
+        <table>
+          <tr>
+            <td>From:</td>
+            <td>
+              <md-datepicker ng-model="fromDate" md-placeholder="Date"></md-datepicker>
+              <md-time-picker class="inline" ng-model="fromTime" message="message"></md-time-picker>
+            </td>
+          </tr>
+          <tr>
+            <td>To:</td>
+            <td>
+              <md-datepicker ng-model="toDate" md-placeholder="Date"></md-datepicker>
+              <md-time-picker class="inline" ng-model="toTime" message="message"></md-time-picker>
+            </td>
+          </tr>
+        </table>
+      </md-card-content>
+      <md-card-footer class="squeezeTop">
+        <md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
+        <md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
+        <md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
+      </md-card-footer>
+    </md-card>
+
+    <div layout="column">
+
+      <md-card>
         <md-card-title>
-          <i class="fa fa-refresh"></i>
+          <i class="fa fa-file-text"></i>
           <md-card-title-text>
-            <span>Restart Tasks</span>
-            <span class="md-subhead">Restart failed tasks that ran between two times</span>
+            <span>Event Logs (under construction)</span>
           </md-card-title-text>
         </md-card-title>
+
         <md-card-content>
-          <table>
-            <tr>
-              <td>From:</td>
-              <td>
-                <md-datepicker ng-model="fromDate" md-placeholder="Date"></md-datepicker>
-                <md-time-picker class="inline" ng-model="fromTime" message="message"></md-time-picker>
-              </td>
-            </tr>
-            <tr>
-              <td>To:</td>
-              <td>
-                <md-datepicker ng-model="toDate" md-placeholder="Date"></md-datepicker>
-                <md-time-picker class="inline" ng-model="toTime" message="message"></md-time-picker>
-              </td>
-            </tr>
-          </table>
+          <md-list>
+            <md-list-item ng-repeat="event in Events">
+              <div ng-bind="event.displayText"></div>
+              <md-divider ng-if="!$last"></md-divider>
+            </md-list-item>
+          </md-list>
         </md-card-content>
-        <md-card-footer class="squeezeTop">
-          <md-checkbox ng-model="restartRed" style="top: 10px">Red Tasks</md-checkbox>
-          <md-checkbox ng-model="restartPurple" style="top: 10px">Purple Tasks</md-checkbox>
-          <md-button class="md-raised" ng-disabled="disableSubmit" ng-click="restartTasks(true)">Submit</md-button>
+
+        <md-card-footer>
+          <a ng-href="/event_log/admin/global">view all</a>
         </md-card-footer>
       </md-card>
 
-      <div layout="column">
+    </div>
 
-        <md-card>
-          <md-card-title>
-            <i class="fa fa-file-text"></i>
-            <md-card-title-text>
-              <span>Event Logs (under construction)</span>
-            </md-card-title-text>
-          </md-card-title>
+  </md-content>
 
-          <md-card-content>
-            <md-list>
-              <md-list-item ng-repeat="event in Events">
-                <div ng-bind="event.displayText"></div>
-                <md-divider ng-if="!$last"></md-divider>
-              </md-list-item>
-            </md-list>
-          </md-card-content>
-
-          <md-card-footer>
-            <a ng-href="/event_log/admin/global">view all</a>
-          </md-card-footer>
-        </md-card>
-
-      </div>
-
-    </md-content>
-
-  </section>
+</section>
 </div>
 {{end}}

@@ -13,6 +13,14 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.getSettings = function() {
     var successHandler = function(resp) {
+      if (resp.data.slack && resp.data.slack.options) {
+        let fields = resp.data.slack.options.fields;
+        let fieldsSet = [];
+        for (var field in fields) {
+          fieldsSet.push(field);
+        }
+        resp.data.slack.options.fields = fieldsSet;
+      }
       $scope.Settings = resp.data;
     }
     var errorHandler = function(resp) {
@@ -28,15 +36,17 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
     }
-    // temporary workaround until the admin page has components for every part of the config (EVG-2684)
-    settings = {
-      alerts: $scope.Settings.alerts,
-      banner: $scope.Settings.banner,
-      banner_theme: $scope.Settings.banner_theme,
-      notify: $scope.Settings.notify,
-      service_flags: $scope.Settings.service_flags
-    };
-    mciAdminRestService.saveSettings(settings, { success: successHandler, error: errorHandler });
+
+    if ($scope.Settings.slack && $scope.Settings.slack.options) {
+      let fields = $scope.Settings.slack.options.fields;
+      let fieldsSet = {};
+      for (var i = 0; i < fields.length; i++) {
+        fieldsSet[fields[i]] = true;
+      }
+      $scope.Settings.slack.options.fields = fieldsSet;
+    }
+
+    mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }
 
   generateEventText = function(events) {
@@ -161,6 +171,30 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var offset = $('#'+section).offset();
     var scrollto = offset.top - 55; //position of the element - header height(ish)
     $('html, body').animate({scrollTop:scrollto}, 0);
+  }
+
+  $scope.clearSection = function(section, subsection) {
+    if (!subsection) {
+      $scope.Settings[section] = {};
+    } else {
+      $scope.Settings[section][subsection] = {};
+    }
+  }
+
+  $scope.transformNaiveUser = function(chip) {
+    var user = {};
+    try {
+      var user = JSON.parse(chip);
+    } catch(e) {
+      alert("Unable to parse json: " + e);
+      return null;
+    }
+    if (!user.username || user.username === "") {
+      alert("You must enter a username");
+      return null;
+    }
+
+    return user;
   }
 
   $scope.load();
