@@ -18,6 +18,7 @@ func TestTaskBuildFromService(t *testing.T) {
 		timeNow := time.Now()
 		cTime := timeNow.Add(10 * time.Minute)
 		dTime := timeNow.Add(11 * time.Minute)
+		pTime := timeNow.Add(12 * time.Minute)
 		sTime := timeNow.Add(13 * time.Minute)
 		scTime := timeNow.Add(14 * time.Minute)
 		fTime := timeNow.Add(15 * time.Minute)
@@ -27,6 +28,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Id:            APIString("testId"),
 					CreateTime:    NewTime(cTime),
 					DispatchTime:  NewTime(dTime),
+					PushTime:      NewTime(pTime),
 					ScheduledTime: NewTime(scTime),
 					StartTime:     NewTime(sTime),
 					FinishTime:    NewTime(fTime),
@@ -57,6 +59,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					Project:       "testProject",
 					CreateTime:    cTime,
 					DispatchTime:  dTime,
+					PushTime:      pTime,
 					ScheduledTime: scTime,
 					StartTime:     sTime,
 					FinishTime:    fTime,
@@ -90,6 +93,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					},
 					CreateTime:    NewTime(time.Time{}),
 					DispatchTime:  NewTime(time.Time{}),
+					PushTime:      NewTime(time.Time{}),
 					ScheduledTime: NewTime(time.Time{}),
 					StartTime:     NewTime(time.Time{}),
 					FinishTime:    NewTime(time.Time{}),

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -162,6 +163,53 @@ func (s *AdminRouteSuite) TestPostAuthentication() {
 
 	s.NoError(s.postHandler.Authenticate(superCtx, s.sc))
 	s.Error(s.postHandler.Authenticate(normalCtx, s.sc))
+}
+
+func (s *AdminRouteSuite) TestRevertRoute() {
+	const route = "/admin/revert"
+	const version = 2
+
+	routeManager := getRevertRouteManager(route, version)
+	user := &user.DBUser{Id: "userName"}
+	ctx := context.WithValue(context.Background(), evergreen.RequestUser, user)
+	s.NotNil(routeManager)
+	s.Equal(route, routeManager.Route)
+	s.Equal(version, routeManager.Version)
+	handler := routeManager.Methods[0]
+	changes := restModel.APIAdminSettings{
+		SuperUsers: []string{"me"},
+	}
+	before := evergreen.Settings{}
+	_, err := s.sc.SetEvergreenSettings(&changes, &before, user, true)
+	s.NoError(err)
+	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.(*event.AdminEventData)
+	guid := eventData.GUID
+	s.NotEmpty(guid)
+
+	body := struct {
+		GUID string `json:"guid"`
+	}{guid}
+	jsonBody, err := json.Marshal(&body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/revert", buffer)
+	s.NoError(err)
+	s.NoError(handler.ParseAndValidate(ctx, request))
+	resp, err := handler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+
+	body = struct {
+		GUID string `json:"guid"`
+	}{""}
+	jsonBody, err = json.Marshal(&body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/revert", buffer)
+	s.NoError(err)
+	s.Error(handler.ParseAndValidate(ctx, request))
 }
 
 func TestRestartRoute(t *testing.T) {

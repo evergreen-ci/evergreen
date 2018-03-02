@@ -19,7 +19,7 @@ func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 		grip.Error(errors.Wrap(err, "unable to retrieve admin events"))
 	}
 	data := struct {
-		Data []event.Event
+		Data []event.EventLogEntry
 		ViewData
 	}{events, uis.GetCommonViewData(w, r, true, true)}
 	uis.WriteHTML(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")

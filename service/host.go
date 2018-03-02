@@ -67,7 +67,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Events      []event.Event
+		Events      []event.EventLogEntry
 		Host        *host.Host
 		RunningTask *task.Task
 		ViewData

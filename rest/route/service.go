@@ -29,6 +29,7 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/admin":                             getAdminSettingsManager,
 		"/admin/banner":                      getBannerRouteManager,
 		"/admin/restart":                     getRestartRouteManager(queue),
+		"/admin/revert":                      getRevertRouteManager,
 		"/admin/service_flags":               getServiceFlagsRouteManager,
 		"/alias/{name}":                      getAliasRouteManager,
 		"/builds/{build_id}":                 getBuildByIdRouteManager,

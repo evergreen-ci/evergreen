@@ -65,10 +65,10 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		Changes:      ConfigDataChange{Before: before, After: after},
 		GUID:         util.RandomString(),
 	}
-	event := Event{
+	event := EventLogEntry{
 		Timestamp: time.Now(),
 		EventType: EventTypeValueChanged,
-		Data:      DataWrapper{eventData},
+		Data:      eventData,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
@@ -78,25 +78,25 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 	return nil
 }
 
-func FindAdmin(query db.Q) ([]Event, error) {
+func FindAdmin(query db.Q) ([]EventLogEntry, error) {
 	eventsRaw, err := Find(AllLogCollection, query)
 	if err != nil {
 		return nil, err
 	}
-	events := []Event{}
+	events := []EventLogEntry{}
 	catcher := grip.NewSimpleCatcher()
 	for _, event := range eventsRaw {
-		eventDataRaw := event.Data.Data.(*rawAdminEventData)
+		eventDataRaw := event.Data.(*rawAdminEventData)
 		eventData, err := convertRaw(*eventDataRaw)
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
-		events = append(events, Event{
+		events = append(events, EventLogEntry{
 			Timestamp:  event.Timestamp,
 			ResourceId: event.ResourceId,
 			EventType:  event.EventType,
-			Data:       DataWrapper{eventData},
+			Data:       eventData,
 		})
 	}
 	if catcher.HasErrors() {
@@ -137,4 +137,27 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	out.Changes.After = after
 
 	return &out, nil
+}
+
+// RevertConfig reverts one config section to the before state of the specified GUID in the event log
+func RevertConfig(guid string, user string) error {
+	events, err := FindAdmin(ByGuid(guid))
+	if err != nil {
+		return errors.Wrap(err, "problem finding events")
+	}
+	if len(events) == 0 {
+		return fmt.Errorf("unable to find event with GUID %s", guid)
+	}
+	evt := events[0]
+	data := evt.Data.(*AdminEventData)
+	current := evergreen.ConfigRegistry.GetSection(data.Section)
+	if current == nil {
+		return fmt.Errorf("unable to find section %s", data.Section)
+	}
+	err = data.Changes.Before.Set()
+	if err != nil {
+		return errors.Wrap(err, "problem updating settings")
+	}
+
+	return LogAdminEvent(data.Section, current, data.Changes.Before, user)
 }

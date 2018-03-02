@@ -166,6 +166,10 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 	}, nil
 }
 
+func (ac *DBAdminConnector) RevertConfigTo(guid string, user string) error {
+	return event.RevertConfig(guid, user)
+}
+
 type MockAdminConnector struct {
 	mu           sync.RWMutex
 	MockSettings *evergreen.Settings
@@ -232,4 +236,8 @@ func (ac *MockAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.R
 		TasksRestarted: []string{"task1", "task2", "task3"},
 		TasksErrored:   nil,
 	}, nil
+}
+
+func (ac *MockAdminConnector) RevertConfigTo(guid string, user string) error {
+	return nil
 }

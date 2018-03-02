@@ -17,6 +17,17 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   var projectId = $window.project
 
+  // This function is used to make possible to type arbitrary
+  // version revision into version drop down
+  vm.getVersionOptions = function(query) {
+    var opts = vm.revisionSelect.options
+    // 40 is githash length; don't allow user type invalid githash
+    if (query.length == 40 && opts.indexOf(query) == -1) {
+      return opts.concat(query)
+    }
+    return opts
+  }
+
   var whenQueryRevisions = ApiV1.getWaterfallVersionsRows(projectId).then(function(res) {
     vm.versions = _.map(
       _.where(
@@ -26,7 +37,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     )
 
     vm.revisionSelect.options = _.map(vm.versions, function(d) {
-      return {id: d.revision, name: d.revision}
+      return d.revision
     })
     vm.revisionSelect.selected = _.first(vm.revisionSelect.options)
   })
@@ -45,8 +56,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   })
 
   vm.updateData = function() {
-    var revision = vm.revisionSelect.selected.id;
-    var baselineTag = vm.tagSelect.selected.name;
+    var revision = vm.revisionSelect.selected
+    var baselineTag = vm.tagSelect.selected.name
 
     ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
       var version = res.data

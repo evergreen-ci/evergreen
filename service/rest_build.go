@@ -16,6 +16,7 @@ type restBuild struct {
 	CreateTime          time.Time         `json:"create_time"`
 	StartTime           time.Time         `json:"start_time"`
 	FinishTime          time.Time         `json:"finish_time"`
+	PushTime            time.Time         `json:"push_time"`
 	Version             string            `json:"version"`
 	Project             string            `json:"project"`
 	Revision            string            `json:"revision"`
@@ -54,6 +55,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	destBuild.CreateTime = b.CreateTime
 	destBuild.StartTime = b.StartTime
 	destBuild.FinishTime = b.FinishTime
+	destBuild.PushTime = b.PushTime
 	destBuild.Version = b.Version
 	destBuild.Project = b.Project
 	destBuild.Revision = b.Revision

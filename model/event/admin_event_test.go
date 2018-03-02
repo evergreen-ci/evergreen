@@ -27,8 +27,7 @@ func TestAdminEventSuite(t *testing.T) {
 }
 
 func (s *AdminEventSuite) SetupTest() {
-	err := db.Clear(AllLogCollection)
-	s.Require().NoError(err)
+	s.Require().NoError(db.ClearCollections(AllLogCollection, evergreen.ConfigCollection))
 }
 
 func (s *AdminEventSuite) TestEventLogging() {
@@ -40,7 +39,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.ServiceFlags)
@@ -61,7 +60,7 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
@@ -90,7 +89,7 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
+	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
@@ -114,4 +113,82 @@ func (s *AdminEventSuite) TestNoChanges() {
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
 	s.Len(dbEvents, 0)
+}
+
+func (s *AdminEventSuite) TestReverting() {
+	before := evergreen.SchedulerConfig{
+		TaskFinder:  "legacy",
+		MergeToggle: 5,
+	}
+	after := evergreen.SchedulerConfig{
+		TaskFinder:  "alternate",
+		MergeToggle: 10,
+	}
+	s.NoError(after.Set())
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	s.True(eventData.IsValid())
+	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
+	afterVal := eventData.Changes.After.(*evergreen.SchedulerConfig)
+	s.Equal(before, *beforeVal)
+	s.Equal(after, *afterVal)
+	guid := eventData.GUID
+	s.NotEmpty(guid)
+
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(after, settings.Scheduler)
+	s.NoError(RevertConfig(guid, "me"))
+	settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(before, settings.Scheduler)
+
+	// check that reverting a nonexistent guid errors
+	s.Error(RevertConfig("abcd", "me"))
+}
+
+func (s *AdminEventSuite) TestRevertingRoot() {
+	// this verifies that reverting the root document does not revert other sections
+	before := evergreen.Settings{
+		Banner:      "before_banner",
+		Credentials: map[string]string{"k1": "v1"},
+		SuperUsers:  []string{"su1", "su2"},
+		Ui: evergreen.UIConfig{
+			Url: "before_url",
+		},
+	}
+	after := evergreen.Settings{
+		Banner:      "after_banner",
+		Credentials: map[string]string{"k2": "v2"},
+		SuperUsers:  []string{"su3"},
+		Ui: evergreen.UIConfig{
+			Url:            "after_url",
+			CacheTemplates: true,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(&after))
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	guid := eventData.GUID
+	s.NotEmpty(guid)
+
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(after.Banner, settings.Banner)
+	s.Equal(after.Credentials, settings.Credentials)
+	s.Equal(after.SuperUsers, settings.SuperUsers)
+	s.Equal(after.Ui, settings.Ui)
+	s.NoError(RevertConfig(guid, "me"))
+	settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(before.Banner, settings.Banner)
+	s.Equal(before.Credentials, settings.Credentials)
+	s.Equal(before.SuperUsers, settings.SuperUsers)
+	s.Equal(after.Ui, settings.Ui)
 }

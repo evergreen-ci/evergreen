@@ -118,7 +118,7 @@ func (d TaskSystemResourceData) IsValid() bool {
 // LogTaskSystemData saves a SystemInfo object to the event log for a
 // task.
 func LogTaskSystemData(taskId string, info *message.SystemInfo) {
-	event := Event{
+	event := EventLogEntry{
 		ResourceId: taskId,
 		Timestamp:  info.Base.Time,
 		EventType:  EventTaskSystemInfo,
@@ -133,7 +133,7 @@ func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 		ResourceType: EventTaskSystemInfo,
 		SystemInfo:   info,
 	}
-	event.Data = DataWrapper{data}
+	event.Data = data
 
 	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(event),
 		"problem system info event"))
@@ -224,11 +224,11 @@ func LogTaskProcessData(taskId string, procs []*message.ProcessInfo) {
 		Processes:    procs,
 	}
 
-	event := Event{
+	event := EventLogEntry{
 		Timestamp:  ts,
 		ResourceId: taskId,
 		EventType:  EventTaskProcessInfo,
-		Data:       DataWrapper{data},
+		Data:       data,
 	}
 
 	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(event),
