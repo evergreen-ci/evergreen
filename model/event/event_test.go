@@ -76,7 +76,6 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 func (s *eventSuite) TestEventWithNilData() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
-		DocID:      bson.NewObjectId(),
 		ResourceId: "TEST1",
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),

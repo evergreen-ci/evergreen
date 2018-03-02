@@ -4,7 +4,6 @@ import (
 	"net/url"
 
 	"github.com/mongodb/anser/bsonutil"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -17,18 +16,6 @@ var (
 	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
 )
-
-type NotificationEvent struct {
-	ResourceType string           `bson:"r_type" json:"resource_type"`
-	Type         string           `bson:"type" json:"type"`
-	Undelivered  []Subscriber     `bson:"undelivered" json:"undelivered"`
-	Delivered    []Subscriber     `bson:"delivered" json:"delivered"`
-	Payload      message.Composer `bson:"payload" json:"payload"`
-}
-
-func (e *NotificationEvent) IsValid() bool {
-	return e.ResourceType == ResourceTypeNotification
-}
 
 type Subscriber struct {
 	Type string `bson:"type"`
@@ -66,10 +53,6 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	}
 
 	return nil
-}
-
-type stringSubscriber struct {
-	Data string `bson:"data"`
 }
 
 type webhookSubscriber struct {

@@ -134,7 +134,6 @@ func (s *AdminEventSuite) TestReverting() {
 	s.NoError(err)
 	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
-	s.Require().Len(dbEvents, 1)
 	s.True(eventData.IsValid())
 	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
 	afterVal := eventData.Changes.After.(*evergreen.SchedulerConfig)

@@ -116,8 +116,5 @@ db.patch_intents.ensureIndex({ "msg_id" : 1 }, { "unique" : true, "sparse": true
 //======github_hooks======//
 db.github_hooks.ensureIndex({ "owner" : 1, "repo" : 1 }, { "unique": true })
 
-//======notifications_log======//
-db.notifications_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
-
 //======subscriptions======//
 db.subscriptions.ensureIndex({ "type": 1, "trigger" : 1, "selectors": 1})
