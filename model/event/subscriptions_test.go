@@ -15,6 +15,7 @@ func TestSubscriptions(t *testing.T) {
 
 type subscriptionsSuite struct {
 	suite.Suite
+	subscriptions []Subscription
 }
 
 func (s *subscriptionsSuite) SetupSuite() {
@@ -24,7 +25,7 @@ func (s *subscriptionsSuite) SetupSuite() {
 func (s *subscriptionsSuite) SetupTest() {
 	s.NoError(db.ClearCollections(SubscriptionsCollection))
 
-	subscriptions := []Subscription{
+	s.subscriptions = []Subscription{
 		{
 			ID:      bson.NewObjectId(),
 			Type:    "type1",
@@ -35,6 +36,7 @@ func (s *subscriptionsSuite) SetupTest() {
 					Data: "something",
 				},
 			},
+			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
 				Type:   "email",
 				Target: "someone@example.com",
@@ -50,6 +52,7 @@ func (s *subscriptionsSuite) SetupTest() {
 					Data: "somethingelse",
 				},
 			},
+			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
 				Type:   "email",
 				Target: "someone1@example.com",
@@ -86,6 +89,7 @@ func (s *subscriptionsSuite) SetupTest() {
 					Data: "somethingspecial",
 				},
 			},
+			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
 				Type:   "email",
 				Target: "someone3@example.com",
@@ -93,8 +97,31 @@ func (s *subscriptionsSuite) SetupTest() {
 		},
 	}
 
-	for _, sub := range subscriptions {
-		s.NoError(db.InsertMany(SubscriptionsCollection, sub))
+	for _, sub := range s.subscriptions {
+		s.NoError(sub.Upsert())
+	}
+}
+
+func (s *subscriptionsSuite) TestUpsert() {
+	out := []Subscription{}
+	s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+
+	s.Require().Len(out, 4)
+
+	for _, sub := range out {
+		if sub.ID == s.subscriptions[3].ID {
+			s.Equal(sub, s.subscriptions[3])
+		}
+	}
+}
+
+func (s *subscriptionsSuite) TestRemove() {
+	for i := range s.subscriptions {
+		s.NoError(s.subscriptions[i].Remove())
+
+		out := []Subscription{}
+		s.NoError(db.FindAllQ(SubscriptionsCollection, db.Q{}, &out))
+		s.Len(out, len(s.subscriptions)-i-1)
 	}
 }
 

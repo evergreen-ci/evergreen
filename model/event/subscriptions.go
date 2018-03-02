@@ -13,7 +13,6 @@ import (
 
 const (
 	SubscriptionsCollection = "subscriptions"
-	regexPrefix             = "_regex_"
 )
 
 var (
@@ -152,4 +151,48 @@ func findSelector(selectors []Selector, selectorType string) *Selector {
 	}
 
 	return nil
+}
+
+func (s *Subscription) Upsert() error {
+	if len(s.ID.Hex()) == 0 {
+		s.ID = bson.NewObjectId()
+	}
+
+	c, err := db.Upsert(SubscriptionsCollection, bson.M{
+		subscriptionIDKey: s.ID,
+	}, bson.M{
+		subscriptionTypeKey:           s.Type,
+		subscriptionTriggerKey:        s.Trigger,
+		subscriptionSelectorsKey:      s.Selectors,
+		subscriptionRegexSelectorsKey: s.RegexSelectors,
+		subscriptionSubscriberKey:     s.Subscriber,
+	})
+	if err != nil {
+		return err
+	}
+	if c.UpsertedId != nil {
+		s.ID = c.UpsertedId.(bson.ObjectId)
+		return nil
+	}
+
+	if c.Updated != 1 {
+		return errors.New("upsert did not modify any documents")
+	}
+	return nil
+}
+
+func (s *Subscription) Remove() error {
+	if len(s.ID.Hex()) == 0 {
+		return errors.New("subscription has not ID, cannot remove")
+	}
+
+	return db.Remove(SubscriptionsCollection, bson.M{
+		subscriptionIDKey: s.ID,
+	})
+}
+
+func ByID(id bson.ObjectId) db.Q {
+	return db.Query(bson.M{
+		subscriptionIDKey: id,
+	})
 }
