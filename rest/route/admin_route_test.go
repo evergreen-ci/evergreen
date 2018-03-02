@@ -184,7 +184,7 @@ func (s *AdminRouteSuite) TestRevertRoute() {
 	s.NoError(err)
 	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*event.AdminEventData)
+	eventData := dbEvents[0].Data.(*event.AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
 
