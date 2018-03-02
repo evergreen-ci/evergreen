@@ -3,6 +3,7 @@ package event
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type EventLogger interface {
@@ -22,6 +23,9 @@ func NewDBEventLogger(collection string) *DBEventLogger {
 func (self *DBEventLogger) LogEvent(event EventLogEntry) error {
 	if event.Data == nil {
 		return errors.New("event log entry cannot have nil Data")
+	}
+	if len(event.DocID.Hex()) == 0 {
+		event.DocID = bson.NewObjectId()
 	}
 	return db.Insert(self.collection, event)
 }

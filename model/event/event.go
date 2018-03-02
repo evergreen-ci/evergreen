@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -14,6 +15,10 @@ const (
 	AllLogCollection           = "event_log"
 	TaskLogCollection          = "task_event_log"
 	NotificationsLogCollection = "notifications_log"
+)
+
+var (
+	eventLogEntryProcessedAtKey = bsonutil.MustHaveTag(EventLogEntry{}, "ProcessedAt")
 )
 
 type Event interface {
@@ -43,17 +48,73 @@ type Event interface {
 }
 
 type EventLogEntry struct {
+	DocID        bson.ObjectId `bson:"_id" json:"-"`
+	ResourceType string        `bson:"r_type" json:"resource_type"`
+
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
 	EventType  string    `bson:"e_type" json:"event_type"`
 	Data       Data      `bson:"data" json:"data"`
+
+	ProcessedAt *time.Time `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
+}
+
+func (e *EventLogEntry) ID() string {
+	return e.DocID.Hex()
+}
+
+func (e *EventLogEntry) Type() string {
+	if len(e.ResourceType) == 0 {
+		_, rType := findResourceTypeIn(e.Data)
+		return rType
+	}
+	return e.ResourceType
+}
+
+func (e *EventLogEntry) Time() time.Time {
+	return e.Timestamp
+}
+
+func (e *EventLogEntry) Processed() (bool, time.Time) {
+	if e.ProcessedAt == nil {
+		return true, time.Time{}
+	}
+	return e.ProcessedAt.Equal(time.Time{}), *e.ProcessedAt
+}
+
+func (e *EventLogEntry) MarkProcessed() error {
+	now := time.Now().Round(time.Millisecond).Truncate(time.Millisecond)
+	e.ProcessedAt = &now
+
+	// TODO: WRONG
+	err := db.UpdateId(AllLogCollection, e.ID, bson.M{
+		"$set": bson.M{
+			eventLogEntryProcessedAtKey: e.ProcessedAt,
+		},
+	})
+	if err != nil {
+		now = time.Time{}
+		e.ProcessedAt = &now
+		return err
+	}
+
+	return nil
+}
+
+func (e *EventLogEntry) Notifications() ([]NotificationEvent, error) {
+	return nil, nil
 }
 
 type unmarshalEventLogEntry struct {
+	DocID        bson.ObjectId `bson:"_id" json:"-"`
+	ResourceType string        `bson:"r_type" json:"resource_type"`
+
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
 	EventType  string    `bson:"e_type" json:"event_type"`
 	Data       bson.Raw  `bson:"data" json:"data"`
+
+	ProcessedAt *time.Time `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
 }
 
 var (
@@ -89,9 +150,11 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
+	e.DocID = temp.DocID
 	e.EventType = temp.EventType
 	e.ResourceId = temp.ResourceId
 	e.Timestamp = temp.Timestamp
+	e.ProcessedAt = temp.ProcessedAt
 
 	rawD := bson.RawD{}
 	if err := temp.Data.Unmarshal(&rawD); err != nil {
