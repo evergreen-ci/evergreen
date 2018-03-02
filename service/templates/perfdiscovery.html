@@ -22,10 +22,10 @@ Performance Discovery
              style="width: 250px; display: inline-block;"
              title="Choose revision...">
     <ui-select-match>
-      <span ng-bind="$select.selected.name"></span>
+      <span ng-bind="$select.selected"></span>
     </ui-select-match>
-    <ui-select-choices repeat="item in ($ctrl.revisionSelect.options | filter: $select.search) track by item.id">
-      <span ng-bind="item.name"></span>
+    <ui-select-choices repeat="item in ($ctrl.getVersionOptions($select.search) | filter: $select.search)">
+      <span ng-bind="item"></span>
     </ui-select-choices>
   </ui-select>
 
