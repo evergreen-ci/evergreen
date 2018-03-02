@@ -80,9 +80,9 @@ func (s *EnvironmentSuite) TestGetClientConfig() {
 		file := path + "/evergreen"
 		_, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 		s.NoError(err)
-		defer func() {
-			_ = os.Remove(file)
-			_ = os.Remove(path)
+		defer func() { //nolint: evg
+			s.NoError(os.Remove(file))
+			s.NoError(os.Remove(path))
 		}()
 	}
 

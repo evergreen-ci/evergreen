@@ -459,11 +459,15 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer tempFile.Close()
+
 		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {
 			return errors.WithStack(err)
 		}
+		if err = tempFile.Close(); err != nil {
+			return errors.WithStack(err)
+		}
+
 		tempAbsPath := tempFile.Name()
 
 		// this applies the patch using the patch files in the temp directory

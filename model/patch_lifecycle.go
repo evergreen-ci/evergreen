@@ -141,13 +141,13 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			}
 		}
 
-		defer os.Remove(patchFilePath)
+		defer os.Remove(patchFilePath) //nolint: evg
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not write config file")
 		}
-		defer os.Remove(configFilePath)
+		defer os.Remove(configFilePath) //nolint: evg
 
 		// clean the working directory
 		workingDirectory := filepath.Dir(patchFilePath)
@@ -185,9 +185,9 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		}
 
 		stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-		defer stderr.Close()
+		defer stderr.Close() //nolint: evg
 		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-		defer stdout.Close()
+		defer stdout.Close() //nolint: evg
 		output := subprocess.OutputOptions{Output: stdout, Error: stderr}
 
 		patchCmd := subprocess.NewLocalCommand(
@@ -205,6 +205,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		if err = patchCmd.Run(ctx); err != nil {
 			return nil, errors.Errorf("could not run patch command: %v", err)
 		}
+
 		// read in the patched config file
 		data, err := ioutil.ReadFile(localConfigPath)
 		if err != nil {
