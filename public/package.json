@@ -16,6 +16,7 @@
     "grunt-react": "^0.12.3",
     "grunt-reactjsx": "^0.2.4",
     "jasmine": "^2.8.0",
+    "js-yaml": "^3.11.0",
     "karma": "^2.0.0",
     "karma-jasmine": "^1.1.1",
     "karma-junit-reporter": "^1.2.0",
