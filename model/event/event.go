@@ -1,7 +1,6 @@
 package event
 
 import (
-	"encoding/json"
 	"reflect"
 	"time"
 
@@ -69,19 +68,6 @@ var (
 
 type Data interface {
 	IsValid() bool
-}
-
-// MarshalJSON returns proper JSON encoding by uncovering the Data interface.
-func (e *EventLogEntry) MarshalJSON() ([]byte, error) {
-	found, rType := findResourceTypeIn(e.Data)
-	if !found {
-		return nil, errors.Errorf("cannot find resource type of type %T", e.Data)
-	}
-	if NewEventFromType(rType) == nil {
-		return nil, errors.Errorf("cannot marshal data of type %T", e.Data)
-	}
-
-	return json.Marshal(e.Data)
 }
 
 func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
