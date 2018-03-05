@@ -26,7 +26,7 @@ func AttachHandler(root *mux.Router, queue amboy.Queue, URL, prefix string, supe
 func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecret []byte) http.Handler {
 	routes := map[string]routeManagerFactory{
 		"/":                                  getPlaceHolderManger,
-		"/admin":                             getAdminSettingsManager,
+		"/admin":                             getLegacyAdminSettingsManager,
 		"/admin/banner":                      getBannerRouteManager,
 		"/admin/restart":                     getRestartRouteManager(queue),
 		"/admin/revert":                      getRevertRouteManager,
