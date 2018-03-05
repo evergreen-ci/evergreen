@@ -19,10 +19,9 @@ import (
 func getLegacyAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &legacyAdminGetHandler{}
 	adminGet := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    agh.Handler(),
-		MethodType:        http.MethodGet,
+		Authenticator:  &NoAuthAuthenticator{},
+		RequestHandler: agh.Handler(),
+		MethodType:     http.MethodGet,
 	}
 
 	adminRoute := RouteManager{
