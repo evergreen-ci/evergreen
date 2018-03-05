@@ -459,7 +459,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer tempFile.Close()
+		defer tempFile.Close() //nolint: evg
 		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {
 			return errors.WithStack(err)
