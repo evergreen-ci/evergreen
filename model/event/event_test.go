@@ -74,10 +74,12 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 	}
 }
 
-const expectedJSON = "{\"timestamp\":\"2017-06-20T14:07:24.991-04:00\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+const expectedJSON = "{\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
 
 func (s *eventSuite) TestWithRealData() {
-	date, err := time.Parse(time.RFC3339Nano, "2017-06-20T18:07:24.991Z")
+	loc, err := time.LoadLocation("UTC")
+	s.NoError(err)
+	date, err := time.ParseInLocation(time.RFC3339Nano, "2017-06-20T18:07:24.991Z", loc)
 	s.NoError(err)
 	s.Equal("2017-06-20T18:07:24.991Z", date.Format(time.RFC3339Nano))
 	data := bson.M{
@@ -107,6 +109,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.Equal("success", eventData.TaskStatus)
 
 		// Verify that JSON unmarshals as expected
+		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		bytes, err := json.Marshal(&entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON, string(bytes))
