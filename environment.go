@@ -1,9 +1,7 @@
 package evergreen
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +9,6 @@ import (
 	"sync"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
-	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
@@ -112,9 +109,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
-	if confPath != "" {
-		catcher.Add(e.persistSettings())
-	}
+	catcher.Add(e.persistSettings())
 
 	return catcher.Resolve()
 }
@@ -213,57 +208,12 @@ func (e *envState) initClientConfig() (err error) {
 	return errors.WithStack(err)
 }
 
-type bbProject struct {
-	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
-	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
-}
-
 func (e *envState) persistSettings() error {
 	if e.settings == nil {
 		return errors.New("no settings object, cannot persist to DB")
 	}
 
-	// this is a hacky workaround to any plugins that have fields that are maps, since
-	// deserializing these fields from yaml does not maintain the typing information
-	var copy Settings
-	registeredTypes := []interface{}{
-		map[interface{}]interface{}{},
-		map[string]interface{}{},
-	}
-	err := deepCopy(*e.settings, &copy, registeredTypes)
-	if err != nil {
-		return errors.Wrap(err, "problem copying settings")
-	}
-
-	gob.Register(map[interface{}]interface{}{})
-	for pluginName, plugin := range copy.Plugins {
-		if pluginName == "buildbaron" {
-			for fieldName, field := range plugin {
-				if fieldName == "projects" {
-					var projects map[string]bbProject
-					err := mapstructure.Decode(field, &projects)
-					if err != nil {
-						return errors.Wrap(err, "problem decoding buildbaron projects")
-					}
-					plugin[fieldName] = projects
-				}
-			}
-		}
-		if pluginName == "dashboard" {
-			for fieldName, field := range plugin {
-				if fieldName == "branches" {
-					var branches map[string][]string
-					err := mapstructure.Decode(field, &branches)
-					if err != nil {
-						return errors.Wrap(err, "problem decoding dashboard branches")
-					}
-					plugin[fieldName] = branches
-				}
-			}
-		}
-	}
-
-	return errors.WithStack(UpdateConfig(&copy))
+	return errors.WithStack(UpdateConfig(e.settings))
 }
 
 func (e *envState) Settings() *Settings {
@@ -348,19 +298,4 @@ func getClientConfig(baseURL string) (*ClientConfig, error) {
 	}
 
 	return c, nil
-}
-
-// copy of deepCopy in util package
-func deepCopy(src, copy interface{}, registeredTypes []interface{}) error {
-	for _, t := range registeredTypes {
-		gob.Register(t)
-	}
-	var buff bytes.Buffer
-	enc := gob.NewEncoder(&buff)
-	dec := gob.NewDecoder(&buff)
-	err := enc.Encode(src)
-	if err != nil {
-		return errors.Wrap(err, "error encoding source")
-	}
-	return errors.Wrap(dec.Decode(copy), "error decoding copy")
 }
