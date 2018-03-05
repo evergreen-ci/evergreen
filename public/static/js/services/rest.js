@@ -324,7 +324,7 @@ mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function
 }]);
 
 mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(baseSvc) {
-    var resource = mciServices.rest.RestV2Resource("admin");
+    var resource = mciServices.rest.RestV2Resource("admin/settings");
 
     var service = {};
 

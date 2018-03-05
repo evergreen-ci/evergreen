@@ -221,12 +221,12 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 		return "", errors.Wrap(err, "problem getting current banner message")
 	}
 
-	settings := model.APIAdminSettings{}
-	if err = util.ReadJSONInto(resp.Body, &settings); err != nil {
+	banner := model.APIBanner{}
+	if err = util.ReadJSONInto(resp.Body, &banner); err != nil {
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
-	return *settings.Banner, nil
+	return string(banner.Text), nil
 }
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
