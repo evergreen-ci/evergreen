@@ -29,19 +29,6 @@ var (
 	errNotFound = "not found"
 )
 
-// ConfigSection defines a sub-document in the evegreen config
-// any config sections must also be added to registry.go
-type ConfigSection interface {
-	// SectionId() returns the ID of the section to be used in the database document and struct tag
-	SectionId() string
-	// Get() populates the section from the DB
-	Get() error
-	// Set() upserts the section document into the DB
-	Set() error
-	// ValidateAndDefault() validates input and sets defaults
-	ValidateAndDefault() error
-}
-
 // AuthUser configures a user for our Naive authentication setup.
 type AuthUser struct {
 	Username    string `bson:"username" json:"username" yaml:"username"`
@@ -868,6 +855,19 @@ func (c *Settings) ValidateAndDefault() error {
 		c.LogPath = LocalLoggingOverride
 	}
 	return nil
+}
+
+// ConfigSection defines a sub-document in the evegreen config
+// any config sections must also be added to registry.go
+type ConfigSection interface {
+	// SectionId() returns the ID of the section to be used in the database document and struct tag
+	SectionId() string
+	// Get() populates the section from the DB
+	Get() error
+	// Set() upserts the section document into the DB
+	Set() error
+	// ValidateAndDefault() validates input and sets defaults
+	ValidateAndDefault() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.

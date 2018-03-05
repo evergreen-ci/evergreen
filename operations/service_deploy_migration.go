@@ -18,13 +18,14 @@ func deployMigration() cli.Command {
 		Name:    "anser",
 		Aliases: []string{"migrations", "migrate", "migration"},
 		Usage:   "database migration tool",
-		Flags:   mergeFlagSlices(serviceConfigFlags(), addMigrationRuntimeFlags()),
+		Flags:   mergeFlagSlices(serviceConfigFlags(), addMigrationRuntimeFlags(), addDbSettingsFlags()),
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			db := parseDB(c)
 			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, c.String(confFlagName), nil)
+			err := env.Configure(ctx, c.String(confFlagName), db)
 
 			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			settings := env.Settings()
@@ -60,7 +61,7 @@ func deployDataTransforms() cli.Command {
 		Name:    "transform",
 		Aliases: []string{"modify-data"},
 		Usage:   "run database migrations defined in a configuration file",
-		Flags:   mergeFlagSlices(serviceConfigFlags(), addPathFlag(), addMigrationRuntimeFlags()),
+		Flags:   mergeFlagSlices(serviceConfigFlags(), addPathFlag(), addMigrationRuntimeFlags(), addDbSettingsFlags()),
 		Before:  mergeBeforeFuncs(requirePathFlag, requireFileExists(confFlagName)),
 		Action: func(c *cli.Context) error {
 			migrationConfFn := c.String(pathFlagName)
@@ -69,8 +70,9 @@ func deployDataTransforms() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			db := parseDB(c)
 			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, confPath, nil)
+			err := env.Configure(ctx, confPath, db)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring application environment")
 			}
