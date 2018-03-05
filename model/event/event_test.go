@@ -1,6 +1,7 @@
 package event
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -71,6 +72,48 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 		s.NotNil(fetchedEvents[0].Data)
 		s.NoError(db.ClearCollections(AllLogCollection))
 	}
+}
+
+const expectedJSON = "{\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+
+func (s *eventSuite) TestWithRealData() {
+	loc, err := time.LoadLocation("UTC")
+	s.NoError(err)
+	date, err := time.ParseInLocation(time.RFC3339Nano, "2017-06-20T18:07:24.991Z", loc)
+	s.NoError(err)
+	s.Equal("2017-06-20T18:07:24.991Z", date.Format(time.RFC3339Nano))
+	data := bson.M{
+		"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+		"ts":     date,
+		"r_id":   "macos.example.com",
+		"e_type": "HOST_TASK_FINISHED",
+		"data": bson.M{
+			"r_type": "HOST",
+			"t_id":   "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+			"t_st":   "success",
+		},
+	}
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err := Find(AllLogCollection, db.Query(bson.M{"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d7")}))
+	s.NoError(err)
+	s.Len(entries, 1)
+	s.NotPanics(func() {
+		s.Equal("HOST_TASK_FINISHED", entries[0].EventType)
+		s.Equal("macos.example.com", entries[0].ResourceId)
+
+		eventData, ok := entries[0].Data.(*HostEventData)
+		s.True(ok)
+
+		s.Equal("HOST", eventData.ResourceType)
+		s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventData.TaskId)
+		s.Equal("success", eventData.TaskStatus)
+
+		// Verify that JSON unmarshals as expected
+		entries[0].Timestamp = entries[0].Timestamp.In(loc)
+		bytes, err := json.Marshal(&entries[0])
+		s.NoError(err)
+		s.Equal(expectedJSON, string(bytes))
+	})
 }
 
 func (s *eventSuite) TestEventWithNilData() {
