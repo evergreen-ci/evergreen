@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -152,7 +151,6 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 	var results [][]task.TestResult
 	var logs []model.TestLog
 
-	catcher := grip.NewSimpleCatcher()
 	// now, open all the files, and parse the test results
 	for _, outputFile := range outputFiles {
 		if ctx.Err() != nil {
@@ -172,11 +170,11 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 				outputFile, err)
 			continue
 		}
+		defer fileReader.Close() //nolint: evg
 
 		// parse the output logs
 		parser := &goTestParser{Suite: suiteName}
 		if err := parser.Parse(fileReader); err != nil {
-			catcher.Add(fileReader.Close())
 			// continue on error
 			logger.Task().Errorf("Error parsing file '%s': %v", outputFile, err)
 			continue
@@ -193,7 +191,7 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 		// save the results
 		results = append(results, ToModelTestResults(parser.Results()).Results)
 		logs = append(logs, testLog)
-		catcher.Add(fileReader.Close())
+
 	}
-	return logs, results, catcher.Resolve()
+	return logs, results, nil
 }

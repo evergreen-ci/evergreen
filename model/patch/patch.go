@@ -118,12 +118,9 @@ func (p *Patch) FetchPatchFiles() error {
 		if err != nil {
 			return err
 		}
-
+		defer file.Close() //nolint: evg
 		raw, err := ioutil.ReadAll(file)
 		if err != nil {
-			return err
-		}
-		if err = file.Close(); err != nil {
 			return err
 		}
 		p.Patches[i].PatchSet.Patch = string(raw)

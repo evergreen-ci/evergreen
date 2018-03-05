@@ -205,7 +205,6 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		if err = patchCmd.Run(ctx); err != nil {
 			return nil, errors.Errorf("could not run patch command: %v", err)
 		}
-
 		// read in the patched config file
 		data, err := ioutil.ReadFile(localConfigPath)
 		if err != nil {
