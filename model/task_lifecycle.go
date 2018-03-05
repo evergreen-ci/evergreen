@@ -482,7 +482,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 			}
 
 			// update the build's status when a test task isn't successful
-			if t.Status != evergreen.TaskSucceeded {
+			if t.Status != evergreen.TaskStarted &&
+				t.Status != evergreen.TaskUnstarted &&
+				t.Status != evergreen.TaskUndispatched &&
+				t.Status != evergreen.TaskDispatched &&
+				t.Status != evergreen.TaskInactive {
 				err = b.UpdateStatus(evergreen.BuildFailed)
 				if err != nil {
 					err = errors.Wrap(err, "Error updating build status")
