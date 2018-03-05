@@ -190,9 +190,3 @@ func (s *Subscription) Remove() error {
 		subscriptionIDKey: s.ID,
 	})
 }
-
-func ByID(id bson.ObjectId) db.Q {
-	return db.Query(bson.M{
-		subscriptionIDKey: id,
-	})
-}
