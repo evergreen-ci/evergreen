@@ -10,6 +10,9 @@ import (
 
 const (
 	ResourceTypeNotification = "notification"
+
+	githubPullRequestSubscriber = "github_pull_request"
+	webhookSubscriber           = "webhook"
 )
 
 var (
@@ -31,17 +34,16 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal subscriber data")
 	}
-	s.Type = temp.Type
-
-	if len(s.Type) == 0 {
+	if len(temp.Type) == 0 {
 		return errors.New("could not find subscriber type")
 	}
+	s.Type = temp.Type
 
 	// TODO registry?
 	switch s.Type {
-	case "github_pull_request":
+	case githubPullRequestSubscriber:
 		s.Target = githubPullRequestSubscriber{}
-	case "webhook":
+	case webhookSubscriber:
 		s.Target = webhookSubscriber{}
 	default:
 		s.Target = string(temp.Target)
