@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
@@ -81,6 +82,9 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		githubHooksToCollectionGenerator,
 		zeroDateFixGenerator(githubToken),
 		adminEventRestructureGenerator,
+		makeEventRTypeMigration(event.AllLogCollection),
+		// Leaving this commented so we can do one collection at a time
+		//makeEventRTypeMigration(event.TaskLogCollection),
 	}
 
 	catcher := grip.NewBasicCatcher()
