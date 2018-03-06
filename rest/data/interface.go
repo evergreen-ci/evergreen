@@ -157,6 +157,7 @@ type Connector interface {
 	SetServiceFlags(evergreen.ServiceFlags, *user.DBUser) error
 	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
 	RevertConfigTo(string, string) error
+	GetAdminEventLog(time.Time, int) ([]restModel.APIAdminEvent, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 

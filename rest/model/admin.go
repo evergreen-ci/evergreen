@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
@@ -1202,4 +1204,43 @@ func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 // ToService is not implemented for /admin/restart
 func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
+}
+
+func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
+	id := in.SectionId()
+	var out Model
+	if id == evergreen.ConfigDocID {
+		out = &APIAdminSettings{}
+		err := out.BuildFromService(reflect.ValueOf(in).Interface())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		structVal := reflect.ValueOf(*NewConfigModel())
+		for i := 0; i < structVal.NumField(); i++ {
+			// this assumes that the json tag is the same as the section ID
+			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			if tag != id {
+				continue
+			}
+
+			propName := structVal.Type().Field(i).Name
+			propVal := structVal.FieldByName(propName)
+			propInterface := propVal.Interface()
+			apiModel, ok := propInterface.(Model)
+			if !ok {
+				return nil, fmt.Errorf("unable to convert section %s to a Model interface", id)
+			}
+			out = apiModel
+		}
+		if out == nil {
+			return nil, fmt.Errorf("section %s is not defined in the APIAdminSettings struct", id)
+		}
+		err := out.BuildFromService(reflect.Indirect(reflect.ValueOf(in)).Interface())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
 }

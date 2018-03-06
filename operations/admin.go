@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -23,6 +24,8 @@ func Admin() cli.Command {
 			adminEnableService(),
 			viewSettings(),
 			updateSettings(),
+			listEvents(),
+			revert(),
 		},
 	}
 }
@@ -259,6 +262,97 @@ func updateSettings() cli.Command {
 			}
 
 			grip.Info(settingsYaml)
+
+			return nil
+		},
+	}
+}
+
+func listEvents() cli.Command {
+	return cli.Command{
+		Name:   "list-events",
+		Before: setPlainLogger,
+		Usage:  "print the admin event log",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(startTimeFlagName, "t"),
+				Usage: "only search for events before this time (RFC 3339 format)",
+			},
+			cli.IntFlag{
+				Name:  joinFlagNames(limitFlagName, "l"),
+				Usage: "return a maximum of this number of results",
+				Value: 10,
+			},
+		},
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
+			timeString := c.String(startTimeFlagName)
+			var ts time.Time
+			var err error
+			if timeString != "" {
+				ts, err = time.Parse(time.RFC3339, timeString)
+				if err != nil {
+					return errors.Wrap(err, "error parsing start time")
+				}
+			} else {
+				ts = time.Now()
+			}
+			limit := c.Int(limitFlagName)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSetttings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+
+			events, err := client.GetEvents(ctx, ts, limit)
+			if err != nil {
+				return errors.Wrap(err, "error retrieving events")
+			}
+
+			eventsPretty, err := json.MarshalIndent(events, " ", " ")
+			if err != nil {
+				return errors.Wrap(err, "problem marshalling events")
+			}
+			grip.Info(eventsPretty)
+
+			return nil
+		},
+	}
+}
+
+func revert() cli.Command {
+	const guidFlagName = "guid"
+	return cli.Command{
+		Name:   "revert",
+		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag("guid")),
+		Usage:  "revert a specific change to the admin settings",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  joinFlagNames(guidFlagName, "g"),
+				Usage: "GUID of the change to revert",
+			},
+		},
+		Action: func(c *cli.Context) error {
+			confPath := c.Parent().String(confFlagName)
+			guid := c.String(guidFlagName)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			conf, err := NewClientSetttings(confPath)
+			if err != nil {
+				return errors.Wrap(err, "problem loading configuration")
+			}
+			client := conf.GetRestCommunicator(ctx)
+			defer client.Close()
+			err = client.RevertSettings(ctx, guid)
+			if err != nil {
+				return err
+			}
+			grip.Infof("Successfully reverted %s", guid)
 
 			return nil
 		},

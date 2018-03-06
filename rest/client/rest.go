@@ -319,7 +319,7 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/settings",
 	}
 	resp, err := c.request(ctx, info, &update)
 	if err != nil {
@@ -334,6 +334,48 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	}
 
 	return newSettings, nil
+}
+
+func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating settings")
+	}
+	defer resp.Body.Close()
+
+	events := []interface{}{}
+	err = util.ReadJSONInto(resp.Body, &events)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing response")
+	}
+
+	return events, nil
+}
+
+func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) error {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin/revert",
+	}
+	body := struct {
+		GUID string `json:"guid"`
+	}{guid}
+	resp, err := c.request(ctx, info, &body)
+	if err != nil {
+		return errors.Wrap(err, "error reverting settings")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error reverting %s", guid)
+	}
+
+	return nil
 }
 
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {

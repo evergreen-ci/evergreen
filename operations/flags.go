@@ -20,6 +20,8 @@ const (
 	tasksFlagName      = "tasks"
 	largeFlagName      = "large"
 	hostFlagName       = "host"
+	startTimeFlagName  = "time"
+	limitFlagName      = "limit"
 
 	anserDryRunFlagName  = "dry-run"
 	anserLimitFlagName   = "limit"
