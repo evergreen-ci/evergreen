@@ -9,8 +9,6 @@ import (
 )
 
 const (
-	ResourceTypeNotification = "notification"
-
 	githubPullRequestSubscriber = "github_pull_request"
 	webhookSubscriber           = "webhook"
 )
@@ -39,7 +37,6 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	}
 	s.Type = temp.Type
 
-	// TODO registry?
 	switch s.Type {
 	case githubPullRequestSubscriber:
 		s.Target = githubPullRequestSubscriber{}
