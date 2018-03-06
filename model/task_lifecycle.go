@@ -479,6 +479,9 @@ func UpdateBuildAndVersionStatusForTask(taskId string, updates *StatusChanges) e
 				}
 				t = *displayTask
 				status = t.Status
+				if !task.IsFinished(t) {
+					continue
+				}
 			}
 
 			// update the build's status when a test task isn't successful

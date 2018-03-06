@@ -20,6 +20,23 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
         }
         resp.data.slack.options.fields = fieldsSet;
       }
+
+      $scope.tempCredentials = [];
+      _.each(resp.data.credentials, function(val, key) {
+        let obj = {};
+        obj[key] = val;
+        $scope.tempCredentials.push(obj);
+      });
+
+      $scope.tempExpansions = [];
+      _.each(resp.data.expansions, function(val, key) {
+        let obj = {};
+        obj[key] = val;
+        $scope.tempExpansions.push(obj);
+      });
+
+      $scope.tempPlugins = jsyaml.safeDump(resp.data.plugins);
+
       $scope.Settings = resp.data;
     }
     var errorHandler = function(resp) {
@@ -43,6 +60,25 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
         fieldsSet[fields[i]] = true;
       }
       $scope.Settings.slack.options.fields = fieldsSet;
+    }
+
+    _.map($scope.tempCredentials, function(elem, index) {
+      for (var key in elem) {
+        $scope.Settings.credentials[key] = elem[key];
+      }
+    });
+
+    _.map($scope.tempExpansions, function(elem, index) {
+      for (var key in elem) {
+        $scope.Settings.expansions[key] = elem[key];
+      }
+    });
+
+    try {
+      $scope.Settings.plugins = jsyaml.safeLoad($scope.tempPlugins);
+    } catch(e) {
+      alert("Error parsing plugin yaml: " + e);
+      return;
     }
 
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
@@ -151,6 +187,23 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     }
 
     return user;
+  }
+
+  $scope.addKVpair = function(chip, property) {
+    var obj = {};
+    pieces = chip.split(":");
+    if (pieces.length !== 2) {
+      alert("Input must be in the format of key:value");
+      return null;
+    }
+    var key = pieces[0];
+    if ($scope.Settings[property][key]) {
+      alert("Duplicate key: " + key);
+      return null;
+    }
+    obj[key] = pieces[1];
+    $scope.Settings[property][key] = pieces[1];
+    return obj;
   }
 
   $scope.load();
