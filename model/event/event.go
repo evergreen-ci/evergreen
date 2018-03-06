@@ -66,9 +66,9 @@ var (
 	ResourceTypeKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceType")
 	TypeKey         = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
 	DataKey         = bsonutil.MustHaveTag(EventLogEntry{}, "Data")
-
-	resourceTypeKey = "r_type"
 )
+
+const resourceTypeKey = "r_type"
 
 type Data interface {
 	IsValid() bool
@@ -90,7 +90,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		for i := range rawD {
 			if rawD[i].Name == resourceTypeKey {
 				if err := rawD[i].Value.Unmarshal(&temp.ResourceType); err != nil {
-					return errors.Wrap(err, "failed to unmarshal resource type (legacy)")
+					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
 				}
 			}
 		}
@@ -133,7 +133,7 @@ func findResourceTypeIn(t interface{}) (bool, string) {
 			continue
 		}
 
-		if f.Type.String() != "string" {
+		if f.Type.Kind() != reflect.String {
 			return false, ""
 		}
 

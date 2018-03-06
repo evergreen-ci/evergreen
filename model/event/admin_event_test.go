@@ -39,6 +39,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
@@ -60,6 +61,7 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
@@ -89,6 +91,7 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
@@ -129,6 +132,7 @@ func (s *AdminEventSuite) TestReverting() {
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
@@ -174,6 +178,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
