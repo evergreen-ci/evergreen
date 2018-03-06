@@ -95,17 +95,14 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 			}
 		}
 	}
-	e.ResourceType = temp.ResourceType
-
-	if len(e.ResourceType) == 0 {
+	if len(temp.ResourceType) == 0 {
 		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
-	e.Data = NewEventFromType(e.ResourceType)
+	e.Data = NewEventFromType(temp.ResourceType)
 	if e.Data == nil {
-		return errors.Errorf("unknown resource type '%s'", e.ResourceType)
+		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
-
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")
 	}
@@ -113,6 +110,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	e.Timestamp = temp.Timestamp
 	e.ResourceId = temp.ResourceId
 	e.EventType = temp.EventType
+	e.ResourceType = temp.ResourceType
 
 	return nil
 }
