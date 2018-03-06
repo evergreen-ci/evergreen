@@ -123,7 +123,7 @@ func (s *eventSuite) TestEventWithNilData() {
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
-	s.Error(logger.LogEvent(event))
+	s.Errorf(logger.LogEvent(event), "event log entry cannot have nil Data")
 
 	s.NotPanics(func() {
 		s.NoError(db.Insert(AllLogCollection, event))
@@ -153,6 +153,9 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 
 			if _, ok := event.(*rawAdminEventData); !ok {
 				s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
+				if bsonTag == resourceTypeKey {
+					s.Equal("resource_type", jsonTag)
+				}
 			}
 		}
 	}
