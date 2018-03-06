@@ -40,7 +40,6 @@ var (
 	IdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")
 	RemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
 	RemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
-	ActivatedKey           = bsonutil.MustHaveTag(Version{}, "Activated")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -134,8 +133,12 @@ func ByProjectIdActivated(projectId string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			RequesterKey:  evergreen.RepotrackerVersionRequester,
-			ActivatedKey:  true,
-		})
+			BuildVariantsKey: bson.M{
+				"$elemMatch": bson.M{
+					BuildStatusActivatedKey: true,
+				},
+			},
+		}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
 // ByProjectId finds all versions within a project, ordered by most recently created to oldest.

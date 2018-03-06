@@ -152,7 +152,14 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Ver
 // without needing to use a database. It returns results based on the cached versions in the MockVersionConnector.
 func (mvc *MockVersionConnector) FindActivatedVersionsByProjectId(projectId string) ([]version.Version, error) {
 	for _, v := range mvc.CachedVersions {
-		if v.Activated == true && v.Identifier == projectId {
+		isActivated := false
+		for _, bv := range v.BuildVariants {
+			if bv.Activated {
+				isActivated = true
+				break
+			}
+		}
+		if isActivated == true && v.Identifier == projectId {
 			return []version.Version{v}, nil
 		}
 	}

@@ -27,7 +27,6 @@ type Version struct {
 	Branch              string    `bson:"branch_name" json:"branch_name, omitempty"`
 	RepoKind            string    `bson:"repo_kind" json:"repo_kind,omitempty"`
 	// When true, means at least one build status is active
-	Activated     bool          `bson:"activated" json:"activated,omitempty"`
 	BuildVariants []BuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it

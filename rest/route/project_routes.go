@@ -128,7 +128,3 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 
 	return models, pages, nil
 }
-
-type waterfallVersionsHandler struct {
-	projectId string
-}
