@@ -1,7 +1,6 @@
 mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
-    $scope.Events = generateEventText(window.events);
     $scope.getSettings();
     $scope.disableRestart = false;
     $scope.disableSubmit = false;
@@ -49,25 +48,6 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }
 
-  generateEventText = function(events) {
-    if (!events) { return; }
-    for (var i = 0; i < events.length; i++) {
-      var event = events[i];
-      switch(event.event_type) {
-        case "BANNER_CHANGED":
-          event.displayText = bannerChangeEventText(event);
-          break;
-        case "THEME_CHANGED":
-          event.displayText = themeChangeEventText(event);
-          break;
-        case "SERVICE_FLAGS_CHANGED":
-          event.displayText = flagChangeEventText(event);
-          break;
-      }
-    }
-    return events;
-  }
-
   var flagDisplayNames = {
     task_dispatch_disabled: "task dispatch",
     hostinit_disabled: "hostinit",
@@ -81,30 +61,6 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     repotracker_push_event_disabled: "repotracker_push_event",
     cli_updates_disabled: "cli_updates",
     github_status_api_disabled: "github_status_api"
-  }
-
-  bannerChangeEventText = function(event) {
-    var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
-    var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
-    return timestamp(event.timestamp) + event.data.user + " changed banner from " + oldVal + " to " + newVal;
-  }
-
-  themeChangeEventText = function(event) {
-    var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
-    var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
-    return timestamp(event.timestamp) + event.data.user + " changed banner theme from " + oldVal + " to " + newVal;
-  }
-
-  flagChangeEventText = function(event) {
-    var changes = [];
-    for (var flag in flagDisplayNames) {
-      var newVal = event.data.new_flags[flag];
-      var oldVal = event.data.old_flags[flag];
-      if (oldVal !== newVal) {
-        changes.push((newVal?" disabled ":" enabled ") + flagDisplayNames[flag]);
-      }
-    }
-    return timestamp(event.timestamp) + event.data.user + changes.join(", ");
   }
 
   timestamp = function(ts) {
