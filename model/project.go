@@ -499,7 +499,7 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks T
 	taskNamesForVariant := tasks.TaskNames(vt.Variant)
 
 	rev := v.Revision
-	if v.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
 	for _, t := range projBV.Tasks {
