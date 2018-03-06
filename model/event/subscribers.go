@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	githubPullRequestSubscriber = "github_pull_request"
-	webhookSubscriber           = "webhook"
+	githubPullRequestSubscriberType = "github_pull_request"
+	webhookSubscriberType           = "webhook"
 )
 
 var (
@@ -38,9 +38,9 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	s.Type = temp.Type
 
 	switch s.Type {
-	case githubPullRequestSubscriber:
+	case githubPullRequestSubscriberType:
 		s.Target = githubPullRequestSubscriber{}
-	case webhookSubscriber:
+	case webhookSubscriberType:
 		s.Target = webhookSubscriber{}
 	default:
 		s.Target = string(temp.Target)
