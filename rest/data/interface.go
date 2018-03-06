@@ -121,6 +121,9 @@ type Connector interface {
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)
 
+	// FindActivatedVersionsByProjectId returns active versions for given projectId
+	FindActivatedVersionsByProjectId(string) ([]version.Version, error)
+
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
 	FindPatchesByProject(string, time.Time, int, bool) ([]patch.Patch, error)

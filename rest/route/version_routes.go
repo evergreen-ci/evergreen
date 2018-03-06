@@ -17,6 +17,12 @@ func getVersionIdFromRequest(r *http.Request) string {
 	return mux.Vars(r)["version_id"]
 }
 
+// getProjectIdFromRequest is a helpfer function
+// that fetches projectId from request.
+func getProjectIdFromRequest(r *http.Request) string {
+	return mux.Vars(r)["project_id"]
+}
+
 type versionHandler struct {
 	versionId string
 }
@@ -72,6 +78,81 @@ func (vh *versionHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	}
 	return ResponseData{
 		Result: []model.Model{versionModel},
+	}, nil
+}
+
+// activeVersionsHandler is a RequestHandler for fetchhing
+// all active versions for given projectId
+type activeVersionsHandler struct {
+	projectId string
+}
+
+func getActiveVersionsRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			{
+				Authenticator:  &NoAuthAuthenticator{},
+				RequestHandler: &activeVersionsHandler{},
+				MethodType:     http.MethodGet,
+			},
+		},
+		Version: version,
+	}
+}
+
+// Handler returns a pointer to a new activeVersionsHandler.
+func (avh *activeVersionsHandler) Handler() RequestHandler {
+	return &activeVersionsHandler{}
+}
+
+// ParseAndValidate fetches the versionId from the http request.
+func (avh *activeVersionsHandler) ParseAndValidate(
+	ctx context.Context,
+	r *http.Request,
+) error {
+	avh.projectId = getProjectIdFromRequest(r)
+
+	if avh.projectId == "" {
+		return errors.New("missed projectId")
+	}
+
+	return nil
+}
+
+// Execute calls the data FindActivatedVersionsByProjectId
+// function and returns the version from the provider.
+func (avh *activeVersionsHandler) Execute(
+	ctx context.Context,
+	sc data.Connector,
+) (ResponseData, error) {
+	versions, err := sc.FindActivatedVersionsByProjectId(avh.projectId)
+
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+
+	versionModels := []model.Model{}
+
+	for _, version := range versions {
+		versionModel := &model.APIVersion{}
+		err = versionModel.BuildFromService(&version)
+
+		if err != nil {
+			if _, ok := err.(*rest.APIError); !ok {
+				err = errors.Wrap(err, "API model error")
+			}
+			return ResponseData{}, err
+		}
+
+		versionModels = append(versionModels, versionModel)
+	}
+
+	return ResponseData{
+		Result: versionModels,
 	}, nil
 }
 

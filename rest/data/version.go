@@ -54,6 +54,24 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Versio
 	return v, nil
 }
 
+func (vc *DBVersionConnector) FindActivatedVersionsByProjectId(
+	projectId string,
+) ([]version.Version, error) {
+	versions, err := version.Find(version.ByProjectIdActivated(projectId))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if versions == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("No versions found for %s project", projectId),
+		}
+	}
+	return versions, nil
+}
+
 // AbortVersion aborts all tasks of a version given its ID.
 // It wraps the service level AbortVersion.
 func (vc *DBVersionConnector) AbortVersion(versionId string) error {
@@ -127,6 +145,20 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Ver
 	return nil, &rest.APIError{
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("build with id %s not found", versionId),
+	}
+}
+
+// FindActivatedVersionsByProjectId is the mock implementation of the function for the Connector interface
+// without needing to use a database. It returns results based on the cached versions in the MockVersionConnector.
+func (mvc *MockVersionConnector) FindActivatedVersionsByProjectId(projectId string) ([]version.Version, error) {
+	for _, v := range mvc.CachedVersions {
+		if v.Activated == true && v.Identifier == projectId {
+			return []version.Version{v}, nil
+		}
+	}
+	return nil, &rest.APIError{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("version for project id %s not found", projectId),
 	}
 }
 

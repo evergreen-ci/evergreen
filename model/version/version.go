@@ -10,23 +10,25 @@ import (
 )
 
 type Version struct {
-	Id                  string        `bson:"_id" json:"id,omitempty"`
-	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
-	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
-	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
-	Revision            string        `bson:"gitspec" json:"revision,omitempty"`
-	Author              string        `bson:"author" json:"author,omitempty"`
-	AuthorEmail         string        `bson:"author_email" json:"author_email,omitempty"`
-	Message             string        `bson:"message" json:"message,omitempty"`
-	Status              string        `bson:"status" json:"status,omitempty"`
-	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
-	Config              string        `bson:"config" json:"config,omitempty"`
-	Ignored             bool          `bson:"ignored" json:"ignored"`
-	Owner               string        `bson:"owner_name" json:"owner_name,omitempty"`
-	Repo                string        `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string        `bson:"branch_name" json:"branch_name, omitempty"`
-	RepoKind            string        `bson:"repo_kind" json:"repo_kind,omitempty"`
-	BuildVariants       []BuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
+	Id                  string    `bson:"_id" json:"id,omitempty"`
+	CreateTime          time.Time `bson:"create_time" json:"create_time,omitempty"`
+	StartTime           time.Time `bson:"start_time" json:"start_time,omitempty"`
+	FinishTime          time.Time `bson:"finish_time" json:"finish_time,omitempty"`
+	Revision            string    `bson:"gitspec" json:"revision,omitempty"`
+	Author              string    `bson:"author" json:"author,omitempty"`
+	AuthorEmail         string    `bson:"author_email" json:"author_email,omitempty"`
+	Message             string    `bson:"message" json:"message,omitempty"`
+	Status              string    `bson:"status" json:"status,omitempty"`
+	RevisionOrderNumber int       `bson:"order,omitempty" json:"order,omitempty"`
+	Config              string    `bson:"config" json:"config,omitempty"`
+	Ignored             bool      `bson:"ignored" json:"ignored"`
+	Owner               string    `bson:"owner_name" json:"owner_name,omitempty"`
+	Repo                string    `bson:"repo_name" json:"repo_name,omitempty"`
+	Branch              string    `bson:"branch_name" json:"branch_name, omitempty"`
+	RepoKind            string    `bson:"repo_kind" json:"repo_kind,omitempty"`
+	// When true, means at least one build status is active
+	Activated     bool          `bson:"activated" json:"activated,omitempty"`
+	BuildVariants []BuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 
 	// This is technically redundant, but a lot of code relies on it, so I'm going to leave it
 	BuildIds []string `bson:"builds" json:"builds,omitempty"`

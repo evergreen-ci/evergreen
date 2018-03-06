@@ -40,6 +40,7 @@ var (
 	IdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")
 	RemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
 	RemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
+	ActivatedKey           = bsonutil.MustHaveTag(Version{}, "Activated")
 )
 
 // ById returns a db.Q object which will filter on {_id : <the id param>}
@@ -124,6 +125,16 @@ func ByProjectId(projectId string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			RequesterKey:  evergreen.RepotrackerVersionRequester,
+		})
+}
+
+// ByProjectIdActivated finds all activated non-patch versions within a project.
+func ByProjectIdActivated(projectId string) db.Q {
+	return db.Query(
+		bson.M{
+			IdentifierKey: projectId,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			ActivatedKey:  true,
 		})
 }
 
