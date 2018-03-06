@@ -28,7 +28,7 @@ const (
 // implements Data
 type TaskEventData struct {
 	// necessary for IsValid
-	ResourceType string `bson:"r_type" json:"resource_type"`
+	ResourceType string `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	HostId       string `bson:"h_id,omitempty" json:"host_id,omitempty"`
 	UserId       string `bson:"u_id,omitempty" json:"user_id,omitempty"`
 	Status       string `bson:"s,omitempty" json:"status,omitempty"`

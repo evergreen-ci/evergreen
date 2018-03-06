@@ -38,7 +38,7 @@ func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
 	}
 }
 
-func (s *eventSuite) TestTerribleUnmarshaller() {
+func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 	logger := NewDBEventLogger(AllLogCollection)
 	for k, v := range eventRegistry {
 		event := EventLogEntry{
@@ -74,8 +74,25 @@ func (s *eventSuite) TestTerribleUnmarshaller() {
 	}
 }
 
-const expectedJSON = "{\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+const expectedJSON = "{\"resource_type\":\"HOST\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+const expectedJSON2 = "{\"resource_type\":\"HOST\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
 
+func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
+	s.NotPanics(func() {
+		s.Equal("HOST_TASK_FINISHED", e.EventType)
+		s.Equal("macos.example.com", e.ResourceId)
+		s.Equal("HOST", e.ResourceType)
+
+		eventData, ok := e.Data.(*HostEventData)
+		s.True(ok)
+
+		//s.Equal("HOST", eventData.ResourceType)
+		s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventData.TaskId)
+		s.Equal("success", eventData.TaskStatus)
+
+	})
+
+}
 func (s *eventSuite) TestWithRealData() {
 	loc, err := time.LoadLocation("UTC")
 	s.NoError(err)
@@ -98,21 +115,36 @@ func (s *eventSuite) TestWithRealData() {
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
-		s.Equal("HOST_TASK_FINISHED", entries[0].EventType)
-		s.Equal("macos.example.com", entries[0].ResourceId)
-
-		eventData, ok := entries[0].Data.(*HostEventData)
-		s.True(ok)
-
-		s.Equal("HOST", eventData.ResourceType)
-		s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventData.TaskId)
-		s.Equal("success", eventData.TaskStatus)
-
+		s.checkRealData(&entries[0], loc)
 		// Verify that JSON unmarshals as expected
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
-		bytes, err := json.Marshal(&entries[0])
+		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON, string(bytes))
+	})
+
+	// try again with the r_type in the root document
+	data = bson.M{
+		"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		"ts":     date,
+		"r_id":   "macos.example.com",
+		"e_type": "HOST_TASK_FINISHED",
+		"r_type": "HOST",
+		"data": bson.M{
+			"t_id": "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+			"t_st": "success",
+		},
+	}
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	s.NoError(err)
+	s.Len(entries, 1)
+	s.NotPanics(func() {
+		s.checkRealData(&entries[0], loc)
+		entries[0].Timestamp = entries[0].Timestamp.In(loc)
+		bytes, err := json.Marshal(entries[0])
+		s.NoError(err)
+		s.Equal(expectedJSON2, string(bytes))
 	})
 }
 
@@ -140,7 +172,7 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 		found, rTypeTag := findResourceTypeIn(event)
 
 		t := reflect.TypeOf(event)
-		s.True(found, `'%s' does not have a bson:"r_type" tag`, t.String())
+		s.True(found, `'%s' does not have a bson:"r_type,omitempty" tag`, t.String())
 		s.Equal(k, rTypeTag, "'%s''s r_type does not match the registry key", t.String())
 
 		// ensure all fields have bson and json tags
@@ -160,13 +192,16 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 
 func (s *eventSuite) TestFindResourceTypeIn() {
 	succeedStruct := struct {
-		Type string `bson:"r_type"`
+		Type       string `bson:"r_type,omitempty"`
+		OtherThing int    `bson:"other"`
 	}{Type: "something"}
 	failStruct := struct {
 		WrongThing string `bson:"type"`
+		OtherThing string `bson:"other"`
 	}{WrongThing: "wrong"}
 	failStruct2 := struct {
 		WrongThing int `bson:"r_type"`
+		OtherThing int `bson:"other"`
 	}{WrongThing: 1}
 
 	found, data := findResourceTypeIn(&succeedStruct)

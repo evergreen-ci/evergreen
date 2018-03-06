@@ -2,6 +2,7 @@ package event
 
 import (
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -43,25 +44,28 @@ type Event interface {
 }
 
 type EventLogEntry struct {
-	Timestamp  time.Time `bson:"ts" json:"timestamp"`
-	ResourceId string    `bson:"r_id" json:"resource_id"`
-	EventType  string    `bson:"e_type" json:"event_type"`
-	Data       Data      `bson:"data" json:"data"`
+	ResourceType string    `bson:"r_type" json:"resource_type"`
+	Timestamp    time.Time `bson:"ts" json:"timestamp"`
+	ResourceId   string    `bson:"r_id" json:"resource_id"`
+	EventType    string    `bson:"e_type" json:"event_type"`
+	Data         Data      `bson:"data" json:"data"`
 }
 
 type unmarshalEventLogEntry struct {
-	Timestamp  time.Time `bson:"ts" json:"timestamp"`
-	ResourceId string    `bson:"r_id" json:"resource_id"`
-	EventType  string    `bson:"e_type" json:"event_type"`
-	Data       bson.Raw  `bson:"data" json:"data"`
+	ResourceType string    `bson:"r_type" json:"resource_type"`
+	Timestamp    time.Time `bson:"ts" json:"timestamp"`
+	ResourceId   string    `bson:"r_id" json:"resource_id"`
+	EventType    string    `bson:"e_type" json:"event_type"`
+	Data         bson.Raw  `bson:"data" json:"data"`
 }
 
 var (
 	// bson fields for the event struct
-	TimestampKey  = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
-	ResourceIdKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
-	TypeKey       = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
-	DataKey       = bsonutil.MustHaveTag(EventLogEntry{}, "Data")
+	TimestampKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
+	ResourceIdKey   = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
+	ResourceTypeKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceType")
+	TypeKey         = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
+	DataKey         = bsonutil.MustHaveTag(EventLogEntry{}, "Data")
 
 	resourceTypeKey = "r_type"
 )
@@ -76,37 +80,39 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
-	e.EventType = temp.EventType
-	e.ResourceId = temp.ResourceId
-	e.Timestamp = temp.Timestamp
+	if len(temp.ResourceType) == 0 {
+		// Fetch r_type in the data subdoc
+		rawD := bson.RawD{}
+		if err := temp.Data.Unmarshal(&rawD); err != nil {
+			return errors.Wrap(err, "can't unmarshal raw event data")
+		}
 
-	rawD := bson.RawD{}
-	if err := temp.Data.Unmarshal(&rawD); err != nil {
-		return errors.Wrap(err, "can't unmarshal raw event data")
-	}
-
-	dataType := ""
-	for i := range rawD {
-		if rawD[i].Name == "r_type" {
-			if err := rawD[i].Value.Unmarshal(&dataType); err != nil {
-				return errors.Wrap(err, "failed to read r_type")
+		for i := range rawD {
+			if rawD[i].Name == resourceTypeKey {
+				if err := rawD[i].Value.Unmarshal(&temp.ResourceType); err != nil {
+					return errors.Wrap(err, "failed to unmarshal resource type (legacy)")
+				}
 			}
 		}
 	}
-	if len(dataType) == 0 {
+	e.ResourceType = temp.ResourceType
+
+	if len(e.ResourceType) == 0 {
 		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
-	data := NewEventFromType(dataType)
-	if data == nil {
-		return errors.Errorf("unknown resource type '%s'", dataType)
+	e.Data = NewEventFromType(e.ResourceType)
+	if e.Data == nil {
+		return errors.Errorf("unknown resource type '%s'", e.ResourceType)
 	}
 
-	if err := temp.Data.Unmarshal(data); err != nil {
+	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")
 	}
 
-	e.Data = data
+	e.Timestamp = temp.Timestamp
+	e.ResourceId = temp.ResourceId
+	e.EventType = temp.EventType
 
 	return nil
 }
@@ -127,14 +133,19 @@ func findResourceTypeIn(t interface{}) (bool, string) {
 			continue
 		}
 
-		if bsonTag == resourceTypeKey {
-			if f.Type.String() != "string" {
-				return false, ""
-			}
+		if f.Type.String() != "string" {
+			return false, ""
+		}
 
-			structData := reflect.ValueOf(t).Elem().Field(i).String()
+		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
+			continue
+		}
+
+		structData := reflect.ValueOf(t).Elem().Field(i).String()
+		if bsonTag == resourceTypeKey+",omitempty" {
 			return true, structData
 		}
+		return false, structData
 	}
 
 	return false, ""
