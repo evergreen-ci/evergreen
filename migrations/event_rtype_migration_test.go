@@ -42,11 +42,12 @@ func (s *eventRTypeMigrationSuite) SetupTest() {
 			},
 		},
 		anserdb.Document{
-			"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
-			"ts":     date,
-			"r_id":   "macos.example.com",
-			"e_type": "HOST_TASK_FINISHED",
-			"r_type": "HOST",
+			"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+			"ts":           date,
+			"r_id":         "macos.example.com",
+			"e_type":       "HOST_TASK_FINISHED",
+			"r_type":       "HOST",
+			"processed_at": time.Time{}.Add(-time.Hour),
 			"data": anserdb.Document{
 				"t_id": "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
 				"t_st": "failed",
@@ -93,21 +94,25 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 		eventDataBSON, ok := eventData.(bson.M)
 		s.True(ok)
 
-		if e["_id"].(bson.ObjectId).Hex() == "5949645c9acd9604fdd202d7" {
+		id, ok := e["_id"].(bson.ObjectId)
+		s.True(ok)
+
+		if id.Hex() == "5949645c9acd9604fdd202d7" {
 			s.Equal("HOST", e["r_type"])
 			s.Equal("HOST_TASK_FINISHED", e["e_type"])
 
 			s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventDataBSON["t_id"])
 			s.Equal("success", eventDataBSON["t_st"])
 
-		} else if e["_id"].(bson.ObjectId).Hex() == "5949645c9acd9604fdd202d8" {
+		} else if id.Hex() == "5949645c9acd9604fdd202d8" {
 			s.Equal("HOST", e["r_type"])
 			s.Equal("HOST_TASK_FINISHED", e["e_type"])
 
 			s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventDataBSON["t_id"])
 			s.Equal("failed", eventDataBSON["t_st"])
+			s.True(e["processed_at"].(time.Time).Equal(time.Time{}.Add(-time.Hour)))
 
-		} else if e["_id"].(bson.ObjectId).Hex() == "5949645c9acd9604fdd202d9" {
+		} else if id.Hex() == "5949645c9acd9604fdd202d9" {
 			s.Equal("SOMETHINGELSE", e["r_type"])
 			s.Equal("SOMETHING_AWESOME", e["e_type"])
 
@@ -117,7 +122,12 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 			s.T().Error("unknown object id")
 		}
 
-		_, ok = eventDataBSON["r_type"]
+		resourceTypeBSON, ok := eventDataBSON["r_type"]
 		s.False(ok)
+		s.Nil(resourceTypeBSON)
+		s.NotPanics(func() {
+			s.NotNil(e["processed_at"])
+			s.False(e["processed_at"].(time.Time).Equal(time.Time{}))
+		})
 	}
 }

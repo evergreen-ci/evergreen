@@ -74,8 +74,8 @@ func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 	}
 }
 
-const expectedJSON = "{\"resource_type\":\"HOST\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
-const expectedJSON2 = "{\"resource_type\":\"HOST\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+const expectedJSON = "{\"resource_type\":\"HOST\",\"processed_at\":\"2017-06-20T14:07:24.991-04:00\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+const expectedJSON2 = "{\"resource_type\":\"HOST\",\"processed_at\":\"2017-06-20T14:07:24.991-04:00\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
@@ -100,10 +100,11 @@ func (s *eventSuite) TestWithRealData() {
 	s.NoError(err)
 	s.Equal("2017-06-20T18:07:24.991Z", date.Format(time.RFC3339Nano))
 	data := bson.M{
-		"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
-		"ts":     date,
-		"r_id":   "macos.example.com",
-		"e_type": "HOST_TASK_FINISHED",
+		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+		"ts":           date,
+		"r_id":         "macos.example.com",
+		"e_type":       "HOST_TASK_FINISHED",
+		"processed_at": date,
 		"data": bson.M{
 			"r_type": "HOST",
 			"t_id":   "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
@@ -125,11 +126,12 @@ func (s *eventSuite) TestWithRealData() {
 
 	// try again with the r_type in the root document
 	data = bson.M{
-		"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
-		"ts":     date,
-		"r_id":   "macos.example.com",
-		"e_type": "HOST_TASK_FINISHED",
-		"r_type": "HOST",
+		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		"ts":           date,
+		"r_id":         "macos.example.com",
+		"e_type":       "HOST_TASK_FINISHED",
+		"r_type":       "HOST",
+		"processed_at": date,
 		"data": bson.M{
 			"t_id": "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
 			"t_st": "success",
@@ -151,6 +153,7 @@ func (s *eventSuite) TestWithRealData() {
 func (s *eventSuite) TestEventWithNilData() {
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
+		ID:         bson.NewObjectId(),
 		ResourceId: "TEST1",
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),

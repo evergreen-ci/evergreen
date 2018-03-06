@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"time"
+
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/anser/model"
@@ -21,6 +23,7 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory {
 		const (
 			resourceTypeKey = "r_type"
 			dataKey         = "data"
+			processedAtKey  = "processed_at"
 		)
 		var embeddedResourceTypeKey = bsonutil.GetDottedKeyName(dataKey, resourceTypeKey)
 		opts := model.GeneratorOptions{
@@ -38,6 +41,9 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory {
 		}
 
 		return anser.NewSimpleMigrationGenerator(env, opts, bson.M{
+			"$set": bson.M{
+				processedAtKey: time.Now(),
+			},
 			"$rename": bson.M{
 				embeddedResourceTypeKey: resourceTypeKey,
 			},
