@@ -25,7 +25,7 @@ func (s *eventSuite) SetupSuite() {
 }
 
 func (s *eventSuite) SetupTest() {
-	s.NoError(db.ClearCollections(AllLogCollection))
+	s.NoError(db.ClearCollections(AllLogCollection, TaskLogCollection))
 }
 
 func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
@@ -231,4 +231,35 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 	found, data = findResourceTypeIn(nil)
 	s.False(found)
 	s.Empty(data)
+}
+
+func (s *eventSuite) TestMarkProcessed() {
+	startTime := time.Now()
+
+	logger := NewDBEventLogger(AllLogCollection)
+	event := EventLogEntry{
+		ResourceId: "TEST1",
+		EventType:  "TEST2",
+		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:       NewEventFromType(ResourceTypeHost),
+	}
+	processed, ptime := event.Processed()
+	s.False(processed)
+	s.Zero(ptime)
+
+	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
+	event.ID = bson.NewObjectId()
+	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
+
+	s.NoError(logger.LogEvent(event))
+
+	processed, ptime = event.Processed()
+	s.False(processed)
+	s.Zero(ptime)
+
+	time.Sleep(time.Millisecond)
+	s.NoError(logger.MarkProcessed(&event))
+	processed, ptime = event.Processed()
+	s.True(processed)
+	s.True(ptime.After(startTime))
 }

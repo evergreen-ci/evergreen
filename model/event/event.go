@@ -43,7 +43,7 @@ func (e *EventLogEntry) Type() string {
 // If true, the time is the time that this event was marked as
 // processed. If false, time is the zero time
 func (e *EventLogEntry) Processed() (bool, time.Time) {
-	return e.ProcessedAt.Equal(time.Time{}), e.ProcessedAt
+	return !e.ProcessedAt.Equal(time.Time{}), e.ProcessedAt
 }
 
 type unmarshalEventLogEntry struct {
@@ -116,9 +116,11 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
-// findResourceTypeTagIn attempts locates a bson tag with "r_type,omitempty" in it.
+// findResourceTypeIn attempts locates a bson tag with "r_type,omitempty" in it.
 // If found, this function returns true, and the value of that field
-// If not, this function returns false, and empty string
+// If not, this function returns false. If it the struct had "r_type" (without
+// omitempty), it will return that field's value, otherwise it returns an
+// empty string
 func findResourceTypeIn(t interface{}) (bool, string) {
 	if t == nil {
 		return false, ""

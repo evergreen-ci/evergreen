@@ -32,13 +32,13 @@ func (self *DBEventLogger) LogEvent(event EventLogEntry) error {
 	return db.Insert(self.collection, event)
 }
 
-func (self *DBEventLogger) MarkProcessed(event EventLogEntry) error {
+func (self *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		return errors.New("event has no ID")
 	}
-	event.ProcessedAt = time.Now().Truncate(time.Millisecond).Round(time.Millisecond)
+	event.ProcessedAt = time.Now()
 
-	changes, err := db.Upsert(self.collection, bson.M{
+	err := db.Update(self.collection, bson.M{
 		idKey: event.ID,
 	}, bson.M{
 		"$set": bson.M{
@@ -48,10 +48,6 @@ func (self *DBEventLogger) MarkProcessed(event EventLogEntry) error {
 	if err != nil {
 		event.ProcessedAt = time.Time{}
 		return errors.Wrap(err, "failed to update process time")
-	}
-
-	if changes.Updated != 1 {
-		return errors.Errorf("%d documents updated while marking event as processed, expected 1", changes.Updated)
 	}
 
 	return nil
