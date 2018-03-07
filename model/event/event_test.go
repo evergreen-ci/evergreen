@@ -121,7 +121,8 @@ func (s *eventSuite) TestWithRealData() {
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 
-		bytes, err := json.Marshal(entries[0])
+		var bytes []byte
+		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON1, string(bytes))
 	})
@@ -148,6 +149,7 @@ func (s *eventSuite) TestWithRealData() {
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 
+		var bytes []byte
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON2, string(bytes))
