@@ -34,15 +34,13 @@ type Task struct {
 	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
-	// create - the time we created this task in our database
+	// create - the creation time for the task, derived from the commit time or the patch creation time.
 	// dispatch - the time the task runner starts up the agent on the host
-	// push - the time the commit generating this build was pushed to the remote
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
 	CreateTime    time.Time `bson:"create_time" json:"create_time"`
 	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	PushTime      time.Time `bson:"push_time" json:"push_time"`
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
@@ -54,7 +52,7 @@ type Task struct {
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 
-	// only relevant if the task is running.  the time of the last heartbeat
+	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
