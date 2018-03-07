@@ -9,6 +9,12 @@
 <script type="text/javascript" src="/static/app/perfdiscovery/constants.js?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="/static/app/perfdiscovery/templates.js?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="/static/app/perfdiscovery/multiselectGridHeader.js?hash={{ StaticsMD5 }}"></script>
+
+<style type="text/css">
+  .content-container, .grid {
+    height: 100%;
+  }
+</style>
 {{end}}
 
 {{define "title"}}
@@ -16,7 +22,7 @@ Performance Discovery
 {{end}}
 
 {{define "content"}}
-<div ng-controller="PerformanceDiscoveryCtrl as $ctrl">
+<div ng-controller="PerformanceDiscoveryCtrl as $ctrl" class="content-container">
   <ui-select ng-model="$ctrl.revisionSelect.selected"
              ng-change="$ctrl.updateData()"
              style="width: 250px; display: inline-block;"
@@ -46,6 +52,7 @@ Performance Discovery
   <div
     class="grid"
     ui-grid="$ctrl.gridOptions"
+    ui-grid-auto-resize
     ui-grid-resize-columns
     ui-grid-move-columns
     ui-grid-auto-resize
