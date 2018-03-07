@@ -108,11 +108,11 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         width: 130,
       }),
       {
-        name: 'Ratio',
+        name: 'Ratio, %',
         field: 'ratio',
-        cellFilter: 'number:2',
+        cellFilter: 'percentage | number:0',
         enableFiltering: false,
-        width: 70,
+        width: 80,
       },
       {
         name: 'Trend',
