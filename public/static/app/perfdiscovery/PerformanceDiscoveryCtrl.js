@@ -1,6 +1,6 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
   $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil,
-  PERF_DISCOVERY, PerfDiscoveryService
+  PERF_DISCOVERY, PerfDiscoveryService, uiGridConstants
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
@@ -114,6 +114,9 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         type: 'number',
         cellFilter: 'percentage | number:0',
         enableFiltering: false,
+        sort: {
+          direction: uiGridConstants.DESC,
+        },
         width: 80,
       },
       {
