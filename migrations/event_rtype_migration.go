@@ -9,15 +9,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type eventRType struct {
-	ID   bson.ObjectId  `bson:"_id"`
-	Data eventDataRType `bson:"data"`
-}
-
-type eventDataRType struct {
-	ResourceType string `bson:"r_type"`
-}
-
 func makeEventRTypeMigration(collection string) migrationGeneratorFactory {
 	return func(env anser.Environment, db string, limit int) (anser.Generator, error) {
 		const (

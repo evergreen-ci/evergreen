@@ -74,8 +74,8 @@ func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 	}
 }
 
-const expectedJSON = "{\"resource_type\":\"HOST\",\"processed_at\":\"2017-06-20T14:07:24.991-04:00\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"resource_type\":\"HOST\",\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
-const expectedJSON2 = "{\"resource_type\":\"HOST\",\"processed_at\":\"2017-06-20T14:07:24.991-04:00\",\"timestamp\":\"2017-06-20T18:07:24.991Z\",\"resource_id\":\"macos.example.com\",\"event_type\":\"HOST_TASK_FINISHED\",\"data\":{\"task_id\":\"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44\",\"task_status\":\"success\",\"successful\":false,\"duration\":0}}"
+const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
@@ -119,9 +119,11 @@ func (s *eventSuite) TestWithRealData() {
 		s.checkRealData(&entries[0], loc)
 		// Verify that JSON unmarshals as expected
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
+		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON, string(bytes))
+		s.Equal(expectedJSON1, string(bytes))
 	})
 
 	// try again with the r_type in the root document
@@ -144,6 +146,8 @@ func (s *eventSuite) TestWithRealData() {
 	s.NotPanics(func() {
 		s.checkRealData(&entries[0], loc)
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
+		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON2, string(bytes))
