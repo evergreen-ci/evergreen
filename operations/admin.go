@@ -327,18 +327,15 @@ func listEvents() cli.Command {
 func revert() cli.Command {
 	const guidFlagName = "guid"
 	return cli.Command{
-		Name:   "revert",
-		Before: mergeBeforeFuncs(setPlainLogger, requireStringFlag("guid")),
+		Name:   "revert-event",
+		Before: mergeBeforeFuncs(setPlainLogger),
 		Usage:  "revert a specific change to the admin settings",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  joinFlagNames(guidFlagName, "g"),
-				Usage: "GUID of the change to revert",
-			},
-		},
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
-			guid := c.String(guidFlagName)
+			guid := c.Args().Get(0)
+			if guid == "" {
+				return errors.New("must specify a guid to revert")
+			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
