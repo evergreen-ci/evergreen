@@ -54,9 +54,7 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Versio
 	return v, nil
 }
 
-func (vc *DBVersionConnector) FindActivatedVersionsByProjectId(
-	projectId string,
-) ([]version.Version, error) {
+func (vc *DBVersionConnector) FindActivatedVersionsByProjectId(projectId string) ([]version.Version, error) {
 	versions, err := version.Find(version.ByProjectIdActivated(projectId))
 
 	if err != nil {

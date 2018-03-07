@@ -107,14 +107,14 @@ func (avh *activeVersionsHandler) Handler() RequestHandler {
 }
 
 // ParseAndValidate fetches the versionId from the http request.
-func (avh *activeVersionsHandler) ParseAndValidate(
-	ctx context.Context,
-	r *http.Request,
-) error {
+func (avh *activeVersionsHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	avh.projectId = getProjectIdFromRequest(r)
 
 	if avh.projectId == "" {
-		return errors.New("missed projectId")
+		return &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Missing projectId",
+		}
 	}
 
 	return nil
