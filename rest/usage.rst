@@ -807,9 +807,6 @@ Objects
    * - finish_time  
      - time  
      - Time at which build finished running all tasks
-   * - push_time
-     - time
-     - If build was triggered by git commit, when the commit was pushed
    * - version  
      - string
      - The version this build is running tasks for
