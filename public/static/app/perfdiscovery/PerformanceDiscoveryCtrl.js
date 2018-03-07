@@ -105,11 +105,13 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       gridUtil.multiselectColDefMixin({
         name: 'Threads',
         field: 'threads',
+        type: 'number',
         width: 130,
       }),
       {
         name: 'Ratio, %',
         field: 'ratio',
+        type: 'number',
         cellFilter: 'percentage | number:0',
         enableFiltering: false,
         width: 80,
@@ -117,6 +119,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Trend',
         field: 'trendData',
+        type: 'number',
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
@@ -124,12 +127,14 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Avg and Self',
         field: 'avgVsSelf',
+        type: 'number',
         enableSorting: false,
         enableFiltering: false,
       },
       {
         name: 'ops/sec',
         field: 'speed',
+        type: 'number',
         cellFilter: 'number:2',
         enableFiltering: false,
         width: 100,
@@ -137,6 +142,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Baseline',
         field: 'baseSpeed',
+        type: 'number',
         cellFilter: 'number:2',
         enableFiltering: false,
         width: 120,
