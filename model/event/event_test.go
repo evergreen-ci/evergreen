@@ -263,3 +263,32 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.True(processed)
 	s.True(ptime.After(startTime))
 }
+
+func (s *eventSuite) TestQueryWithBothRTypes() {
+	data := []bson.M{
+		{
+			"r_type": "test",
+			"data":   bson.M{},
+		},
+		{
+			"data": bson.M{
+				"r_type": "test",
+			},
+		},
+		{
+			"r_type": "test",
+			"data": bson.M{
+				"r_type": "somethingelse",
+			},
+		},
+	}
+
+	for i := range data {
+		s.NoError(db.Insert(AllLogCollection, data[i]))
+	}
+
+	out := []bson.M{}
+	s.NoError(db.FindAllQ(AllLogCollection, db.Query(eitherResourceTypeKeyIs("test")), &out))
+
+	s.Len(out, 3)
+}
