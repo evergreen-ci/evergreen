@@ -123,6 +123,21 @@ func addHostFlag(flags ...cli.Flag) []cli.Flag {
 
 }
 
+func addStartTimeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(startTimeFlagName, "t"),
+		Usage: "only search for events before this time (RFC 3339 format)",
+	})
+}
+
+func addLimitFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.IntFlag{
+		Name:  joinFlagNames(limitFlagName, "l"),
+		Usage: "return a maximum of this number of results",
+		Value: 10,
+	})
+}
+
 func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags,
 		cli.BoolFlag{

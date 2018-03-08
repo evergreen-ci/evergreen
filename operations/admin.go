@@ -273,17 +273,7 @@ func listEvents() cli.Command {
 		Name:   "list-events",
 		Before: setPlainLogger,
 		Usage:  "print the admin event log",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  joinFlagNames(startTimeFlagName, "t"),
-				Usage: "only search for events before this time (RFC 3339 format)",
-			},
-			cli.IntFlag{
-				Name:  joinFlagNames(limitFlagName, "l"),
-				Usage: "return a maximum of this number of results",
-				Value: 10,
-			},
-		},
+		Flags:  mergeFlagSlices(addStartTimeFlag(), addLimitFlag()),
 		Action: func(c *cli.Context) error {
 			confPath := c.Parent().String(confFlagName)
 			timeString := c.String(startTimeFlagName)
