@@ -276,14 +276,14 @@ testArgs += -test.timeout=10m
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
+	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -i -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
-	go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
+	go test -ldflags=$(ldFlags) -race -c -i -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles)
-	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
+	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -i -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
-	go test -ldflags=$(ldFlags) -race -c -o $@ ./
+	go test -ldflags=$(ldFlags) -race -c -i -o $@ ./
 #  targets to run the tests and report the output
 $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
@@ -306,7 +306,8 @@ build-all: build-alltests build
 
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/coverage.* $(buildDir)/race.* $(clientBuildDir)
+	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/race.* $(buildDir)/output.* $(clientBuildDir)
+	rm -rf $(gopath)/pkg/
 phony += clean
 # end dependency targets
 
