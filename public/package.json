@@ -6,6 +6,7 @@
     "babel-plugin-transform-react-jsx": "^6.24.1",
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-react": "^6.24.1",
+    "deep-diff": "^1.0.0-pre.2",
     "grunt": "^1.0.1",
     "grunt-babel": "^7.0.0",
     "grunt-cli": "^1.2.0",

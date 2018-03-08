@@ -248,6 +248,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 
 	// Admin routes
 	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
+	r.HandleFunc("/admin/events", requireLogin(uis.loadCtx(uis.adminEvents))).Methods("GET")
 
 	// REST API V1
 	AttachRESTHandler(r, uis)

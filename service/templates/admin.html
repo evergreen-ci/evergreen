@@ -1,9 +1,6 @@
 {{define "scripts"}}
 <script src="{{Static "js" "admin.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="{{Static "js" "js-yaml.min.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript">
-window.events = {{.Data}};
-</script>
 <style type="text/css">
 body{ background-color: rgb(250,250,250); }
 </style>
@@ -83,6 +80,7 @@ Admin Settings
             <li class="link" ng-click="scrollTo('plugins')">Plugins</li>
             <div>Non-Configuration</div>
             <li class="link" ng-click="scrollTo('restart')">Restart Tasks</li>
+            <a class="link" href="/admin/events" style="margin-left:10px;">Event Log</a>
           </div>
         </md-content>
       </md-sidenav>
@@ -341,7 +339,7 @@ Admin Settings
 
             <section layout="row" flex>
 
-              <md-card flex=50 id="repotracker">
+              <md-card flex=50 id="repotracker" style="max-width:49%">
                 <md-card-title>
                   <md-card-title-text>
                     <span>Repotracker</span>
@@ -500,7 +498,7 @@ Admin Settings
 
             <section layout="row" flex>
 
-              <md-card flex=50 id="naive">
+              <md-card flex=50 id="naive" style="max-width:49%">
                 <md-card-title>
                   <md-card-title-text>
                     <span>Naive Authentication</span>
@@ -948,7 +946,7 @@ Admin Settings
 
           <section layout="row" flex>
 
-            <md-card flex=50 id="plugins">
+            <md-card flex=50 id="plugins" style="max-width:49%">
               <md-card-title>
                 <md-card-title-text>
                   <span>Plugins</span>
