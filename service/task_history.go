@@ -45,12 +45,13 @@ type taskDrawerItem struct {
 }
 
 type versionDrawerItem struct {
-	Revision string   `json:"revision"`
-	Message  string   `json:"message"`
-	Id       string   `json:"version_id"`
-	Errors   []string `json:"errors"`
-	Warnings []string `json:"warnings"`
-	Ignored  bool     `json:"ignored"`
+	Revision   string    `json:"revision"`
+	Message    string    `json:"message"`
+	CreateTime time.Time `json:"create_time"`
+	Id         string    `json:"version_id"`
+	Errors     []string  `json:"errors"`
+	Warnings   []string  `json:"warnings"`
+	Ignored    bool      `json:"ignored"`
 }
 
 // Represents a small amount of information about a task - used as part of the
@@ -329,12 +330,13 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	versionDrawerItems := []versionDrawerItem{}
 	for _, v := range versions {
 		versionDrawerItems = append(versionDrawerItems, versionDrawerItem{
-			Revision: v.Revision,
-			Message:  v.Message,
-			Id:       v.Id,
-			Errors:   v.Errors,
-			Warnings: v.Warnings,
-			Ignored:  v.Ignored,
+			Revision:   v.Revision,
+			Message:    v.Message,
+			CreateTime: v.CreateTime,
+			Id:         v.Id,
+			Errors:     v.Errors,
+			Warnings:   v.Warnings,
+			Ignored:    v.Ignored,
 		})
 	}
 
