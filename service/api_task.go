@@ -435,13 +435,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		response.NewAgent = true
 	}
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		err = errors.Wrap(err, "error retrieving admin settings")
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusInternalServerError, err)
 	}
-	if adminSettings.ServiceFlags.TaskDispatchDisabled {
+	if flags.TaskDispatchDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
 		as.WriteJSON(w, http.StatusOK, response)
 		return
