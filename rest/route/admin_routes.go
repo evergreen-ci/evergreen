@@ -438,3 +438,79 @@ func (h *revertHandler) Execute(ctx context.Context, sc data.Connector) (Respons
 	}
 	return ResponseData{}, nil
 }
+
+func getAdminEventRouteManager(route string, version int) *RouteManager {
+	aeg := &adminEventsGet{}
+	getHandler := MethodHandler{
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: aeg.Handler(),
+		MethodType:     http.MethodGet,
+	}
+	return &RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{getHandler},
+		Version: version,
+	}
+}
+
+type adminEventsGet struct {
+	*PaginationExecutor
+}
+
+func (h *adminEventsGet) Handler() RequestHandler {
+	paginator := &PaginationExecutor{
+		KeyQueryParam:   "ts",
+		LimitQueryParam: "limit",
+		Paginator:       adminEventPaginator,
+	}
+	return &adminEventsGet{paginator}
+}
+
+func adminEventPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
+	var ts time.Time
+	var err error
+	if key == "" {
+		ts = time.Now()
+	} else {
+		ts, err = time.Parse(time.RFC3339, key)
+		if err != nil {
+			return []model.Model{}, nil, errors.Wrapf(err, "unable to parse '%s' in RFC-3339 format")
+		}
+	}
+	if limit == 0 {
+		limit = 10
+	}
+
+	events, err := sc.GetAdminEventLog(ts, limit)
+	if err != nil {
+		return []model.Model{}, nil, err
+	}
+	nextPage := makeNextEventsPage(events, limit)
+	pageResults := &PageResult{
+		Next: nextPage,
+	}
+
+	lastIndex := len(events)
+	if nextPage != nil {
+		lastIndex = limit
+	}
+	events = events[:lastIndex]
+	results := make([]model.Model, len(events))
+	for i := range events {
+		results[i] = model.Model(&events[i])
+	}
+
+	return results, pageResults, nil
+}
+
+func makeNextEventsPage(events []model.APIAdminEvent, limit int) *Page {
+	var nextPage *Page
+	if len(events) == limit {
+		nextPage = &Page{
+			Relation: "next",
+			Key:      events[limit-1].Timestamp.Format(time.RFC3339),
+			Limit:    limit,
+		}
+	}
+	return nextPage
+}

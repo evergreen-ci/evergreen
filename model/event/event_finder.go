@@ -127,6 +127,16 @@ func ByGuid(guid string) db.Q {
 	})
 }
 
+func AdminEventsBefore(before time.Time, n int) db.Q {
+	return db.Query(bson.M{
+		DataKey + "." + resourceTypeKey: ResourceTypeAdmin,
+		ResourceIdKey:                   "",
+		TimestampKey: bson.M{
+			"$lt": before,
+		},
+	}).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
 // TaskSystemInfoEvents builds a query for system info,
 // (e.g. aggregate information about the system as a whole) collected
 // during a task.

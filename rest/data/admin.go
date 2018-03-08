@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -170,6 +171,26 @@ func (ac *DBAdminConnector) RevertConfigTo(guid string, user string) error {
 	return event.RevertConfig(guid, user)
 }
 
+func (ac *DBAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
+	events, err := event.FindAdmin(event.AdminEventsBefore(before, n))
+	if err != nil {
+		return nil, err
+	}
+	out := []restModel.APIAdminEvent{}
+	catcher := grip.NewBasicCatcher()
+	for _, evt := range events {
+		apiEvent := restModel.APIAdminEvent{}
+		err = apiEvent.BuildFromService(evt)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		out = append(out, apiEvent)
+	}
+
+	return out, catcher.Resolve()
+}
+
 type MockAdminConnector struct {
 	mu           sync.RWMutex
 	MockSettings *evergreen.Settings
@@ -240,4 +261,8 @@ func (ac *MockAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.R
 
 func (ac *MockAdminConnector) RevertConfigTo(guid string, user string) error {
 	return nil
+}
+
+func (ac *MockAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
+	return nil, nil
 }
