@@ -122,6 +122,8 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
 func findResourceTypeIn(t interface{}) (bool, string) { //nolint: deadcode
+	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
+
 	if t == nil {
 		return false, ""
 	}
@@ -143,10 +145,7 @@ func findResourceTypeIn(t interface{}) (bool, string) { //nolint: deadcode
 		}
 
 		structData := reflect.ValueOf(t).Elem().Field(i).String()
-		if bsonTag == resourceTypeKey+",omitempty" {
-			return true, structData
-		}
-		return false, structData
+		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
 	}
 
 	return false, ""
