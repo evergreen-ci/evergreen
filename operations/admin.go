@@ -315,7 +315,6 @@ func listEvents() cli.Command {
 }
 
 func revert() cli.Command {
-	const guidFlagName = "guid"
 	return cli.Command{
 		Name:   "revert-event",
 		Before: mergeBeforeFuncs(setPlainLogger),
