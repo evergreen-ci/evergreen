@@ -15,6 +15,7 @@ const (
 	SubscriptionsCollection = "subscriptions"
 )
 
+//nolint: deadcode, megacheck
 var (
 	subscriptionIDKey             = bsonutil.MustHaveTag(Subscription{}, "ID")
 	subscriptionTypeKey           = bsonutil.MustHaveTag(Subscription{}, "Type")

@@ -114,7 +114,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 // findResourceTypeTagIn attempts locates a bson tag called "r_type" in t.
 // If found, this function returns true, and the value of that field
 // If not, this function returns false, and empty string
-func findResourceTypeIn(t interface{}) (bool, string) {
+func findResourceTypeIn(t interface{}) (bool, string) { //nolint: deadcode
 	if t == nil {
 		return false, ""
 	}

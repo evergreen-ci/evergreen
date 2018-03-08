@@ -13,6 +13,7 @@ const (
 	webhookSubscriberType           = "webhook"
 )
 
+//nolint: deadcode, megacheck
 var (
 	subscriberTypeKey   = bsonutil.MustHaveTag(Subscriber{}, "Type")
 	subscriberTargetKey = bsonutil.MustHaveTag(Subscriber{}, "Target")
