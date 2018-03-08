@@ -1099,7 +1099,6 @@ func TestCreateTaskGroup(t *testing.T) {
 			assert.EqualValues(0, t.Priority)
 		} else {
 			assert.Equal("example_task_group", t.TaskGroup)
-			assert.EqualValues(50, t.Priority)
 		}
 	}
 }

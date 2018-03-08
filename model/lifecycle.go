@@ -414,7 +414,6 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// insert the tasks into the db
 	for _, task := range tasks {
-		grip.Infoln("Creating task:", task.DisplayName)
 		if err := task.Insert(); err != nil {
 			return nil, errors.Wrapf(err, "error inserting task %s", task.Id)
 		}
@@ -508,27 +507,45 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	return b.Id, nil
 }
 
-func createTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariantTaskUnit {
+func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariantTaskUnit {
 	tasks := []BuildVariantTaskUnit{}
-	if !in.IsGroup {
-		return tasks
-	}
 	tg := proj.FindTaskGroup(in.Name)
 	if tg == nil {
 		return tasks
 	}
+
+	taskMap := map[string]ProjectTask{}
+	for _, projTask := range proj.Tasks {
+		taskMap[projTask.Name] = projTask
+	}
+
 	for _, t := range tg.Tasks {
 		tasks = append(tasks, BuildVariantTaskUnit{
-			Name:            t,
+			Name: t,
+			// IsGroup is not persisted, and indicates here that the
+			// task is a member of a task group.
 			IsGroup:         true,
-			Priority:        tg.Priority,
-			DependsOn:       tg.DependsOn,
-			Requires:        tg.Requires,
-			ExecTimeoutSecs: tg.ExecTimeoutSecs,
 			GroupName:       in.Name,
+			Patchable:       taskMap[t].Patchable,
+			Priority:        taskMap[t].Priority,
+			DependsOn:       taskMap[t].DependsOn,
+			Requires:        taskMap[t].Requires,
+			Distros:         in.Distros,
+			ExecTimeoutSecs: taskMap[t].ExecTimeoutSecs,
+			Stepback:        taskMap[t].Stepback,
 		})
 	}
 	return tasks
+}
+
+func shouldNotPatch(t BuildVariantTaskUnit, requester string) bool {
+	if !evergreen.IsPatchRequester(requester) {
+		return false
+	}
+	if (t.Patchable != nil && !*t.Patchable) || t.Name == evergreen.PushStage {
+		return true
+	}
+	return false
 }
 
 // createTasksForBuild creates all of the necessary tasks for the build.  Returns a
@@ -544,30 +561,39 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 	createAll := len(taskNames) == 0
 	execTable := taskIds.ExecutionTasks
 	displayTable := taskIds.DisplayTasks
+
+	tgMap := map[string]TaskGroup{}
+	for _, tg := range project.TaskGroups {
+		tgMap[tg.Name] = tg
+	}
+
 	for _, task := range buildVariant.Tasks {
 		// get the task spec out of the project
 		taskSpec := project.GetSpecForTask(task.Name)
 
 		// sanity check that the config isn't malformed
-		if taskSpec.Name == "" && !task.IsGroup {
+		if taskSpec.Name != "" {
+			if shouldNotPatch(task, b.Requester) {
+				continue
+			}
+			if createAll || util.StringSliceContains(taskNames, task.Name) {
+				task.Populate(taskSpec)
+				tasksToCreate = append(tasksToCreate, task)
+			}
+		} else if _, ok := tgMap[task.Name]; ok {
+			tasksFromVariant := CreateTasksFromGroup(task, project)
+			for _, taskFromVariant := range tasksFromVariant {
+				if shouldNotPatch(taskFromVariant, b.Requester) {
+					continue
+				}
+				if createAll || util.StringSliceContains(taskNames, taskFromVariant.Name) {
+					tasksToCreate = append(tasksToCreate, taskFromVariant)
+				}
+			}
+		} else {
 			return nil, errors.Errorf("config is malformed: variant '%v' runs "+
 				"task called '%v' but no such task exists for repo %v for "+
 				"version %v", buildVariant.Name, task.Name, project.Identifier, v.Id)
-		}
-
-		// update task document with spec fields
-		task.Populate(taskSpec)
-
-		if ((task.Patchable != nil && !*task.Patchable) || task.Name == evergreen.PushStage) && //TODO remove PushStage
-			evergreen.IsPatchRequester(b.Requester) {
-			continue
-		}
-		if createAll || util.StringSliceContains(taskNames, task.Name) {
-			if task.IsGroup {
-				tasksToCreate = append(tasksToCreate, createTasksFromGroup(task, project)...)
-			} else {
-				tasksToCreate = append(tasksToCreate, task)
-			}
 		}
 	}
 

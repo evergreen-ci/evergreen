@@ -1,7 +1,49 @@
 command_type: test
 stepback: false
 
+
+task_groups:
+  - name: my_group
+    max_hosts: 1
+    tasks:
+      - first_task_in_task_group
+      - second_task_in_task_group
+      - third_task_in_task_group
+      - fourth_task_in_task_group
+
 tasks:
+  - name: first_task_in_task_group
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "first"
+  - name: second_task_in_task_group
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "second"
+  - name: third_task_in_task_group
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "third"
+  - name: fourth_task_in_task_group
+    commands:
+      - command: shell.exec
+        params:
+          script: |
+            set -o verbose
+            set -o errexit
+            echo "fourth"
   - name: test
     commands:
       - command: git.get_project
@@ -97,3 +139,4 @@ buildvariants:
       - localhost
     tasks:
       - name: test
+      - name: my_group
