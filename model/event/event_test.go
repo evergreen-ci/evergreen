@@ -299,13 +299,17 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	s.NoError(logger.LogEvent(event))
 
-	processed, ptime = event.Processed()
+	var fetchedEvent EventLogEntry
+	err := db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent)
+	s.NoError(err)
+
+	processed, ptime = fetchedEvent.Processed()
 	s.False(processed)
 	s.Zero(ptime)
 
 	time.Sleep(time.Millisecond)
-	s.NoError(logger.MarkProcessed(&event))
-	processed, ptime = event.Processed()
+	s.NoError(logger.MarkProcessed(&fetchedEvent))
+	processed, ptime = fetchedEvent.Processed()
 	s.True(processed)
 	s.True(ptime.After(startTime))
 }

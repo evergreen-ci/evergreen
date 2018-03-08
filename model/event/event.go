@@ -109,6 +109,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "failed to unmarshal data")
 	}
 
+	e.ID = temp.ID
 	e.Timestamp = temp.Timestamp
 	e.ResourceId = temp.ResourceId
 	e.EventType = temp.EventType
