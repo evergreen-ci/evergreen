@@ -5,9 +5,38 @@ stepback: false
 task_groups:
   - name: my_group
     max_hosts: 1
+    setup_group:
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          echo "setup_group"
+    teardown_group:
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          echo "teardown_group"
+    setup_task:
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          echo "setup_task"
+    teardown_task:
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          echo "teardown_task"
     tasks:
       - first_task_in_task_group
       - second_task_in_task_group
+      - test
       - third_task_in_task_group
       - fourth_task_in_task_group
 
@@ -138,5 +167,4 @@ buildvariants:
     run_on:
       - localhost
     tasks:
-      - name: test
       - name: my_group
