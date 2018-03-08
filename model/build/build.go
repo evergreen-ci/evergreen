@@ -33,7 +33,6 @@ type Build struct {
 	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
 	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
 	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
-	PushTime            time.Time     `bson:"push_time" json:"push_time,omitempty"`
 	Version             string        `bson:"version" json:"version,omitempty"`
 	Project             string        `bson:"branch" json:"branch,omitempty"`
 	Revision            string        `bson:"gitspec" json:"gitspec,omitempty"`
