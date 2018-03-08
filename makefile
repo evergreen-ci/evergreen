@@ -185,6 +185,8 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 # userfacing targets for basic build and development operations
 build:cli
+build-alltests:$(testBin)
+build-all:build-alltests build
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
@@ -276,14 +278,14 @@ testArgs += -test.timeout=10m
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -i -o $@ ./$(subst -,/,$*)
+	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
-	go test -ldflags=$(ldFlags) -race -c -i -o $@ ./$(subst -,/,$*)
+	go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles)
-	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -i -o $@ ./
+	go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
-	go test -ldflags=$(ldFlags) -race -c -i -o $@ ./
+	go test -ldflags=$(ldFlags) -race -c -o $@ ./
 #  targets to run the tests and report the output
 $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
@@ -301,8 +303,6 @@ $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	go tool cover -html=$< -o $@
 # end test and coverage artifacts
-build-alltests: $(testBin)
-build-all: build-alltests build
 
 # clean and other utility targets
 clean:
@@ -311,6 +311,7 @@ clean:
 phony += clean
 # end dependency targets
 
-# configure phony targets
+# configure special (and) phony targets
 .FORCE:
 .PHONY:$(phony) .FORCE
+.DEFAULT_GOAL:build
