@@ -355,7 +355,7 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
       if (!limit || limit === 0) {
         limit = 15;
       }
-      let url = resource + "/events" + "?limit=" + limit;
+      var url = resource + "/events" + "?limit=" + limit;
       if (timestamp && timestamp !== "") {
         url += "&ts=" + timestamp;
       }
