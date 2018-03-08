@@ -20,15 +20,15 @@ func (c *CLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 		}
 	}
 
-	settings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    err.Error(),
 		}
 	}
-	if settings != nil {
-		update.IgnoreUpdate = settings.ServiceFlags.CLIUpdatesDisabled
+	if flags != nil {
+		update.IgnoreUpdate = flags.CLIUpdatesDisabled
 	}
 	return update, nil
 }

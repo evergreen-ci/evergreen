@@ -319,11 +319,11 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 // Run loops while there are any unprocessed alerts and attempts to deliver them.
 func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if adminSettings.ServiceFlags.AlertsDisabled {
+	if flags.AlertsDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  qp.Name(),
 			"message": "alerts are disabled, exiting",

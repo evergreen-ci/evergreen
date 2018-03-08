@@ -1177,6 +1177,21 @@ func (n *NewRelicConfig) SetUp() (newrelic.Application, error) {
 	return app, nil
 }
 
+func GetServiceFlags() (*ServiceFlags, error) {
+	section := ConfigRegistry.GetSection("service_flags")
+	if section == nil {
+		return nil, errors.New("unable to retrieve config section")
+	}
+	if err := section.Get(); err != nil {
+		return nil, errors.Wrap(err, "error retrieving section from DB")
+	}
+	flags, ok := section.(*ServiceFlags)
+	if !ok {
+		return nil, errors.New("unable to convert config section to service flags")
+	}
+	return flags, nil
+}
+
 func sliceContains(slice []string, elem string) bool {
 	if slice == nil {
 		return false

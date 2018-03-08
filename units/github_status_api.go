@@ -302,12 +302,12 @@ func (j *githubStatusUpdateJob) Run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.GithubStatusAPIDisabled {
+	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
 			"message": "github status updates are disabled, not updating status",

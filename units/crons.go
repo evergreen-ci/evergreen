@@ -19,11 +19,11 @@ const tsFormat = "2006-01-02.15-04-05"
 
 func PopulateCatchupJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		adminSettings, err := evergreen.GetConfig()
+		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		if adminSettings.ServiceFlags.RepotrackerDisabled {
+		if flags.RepotrackerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "repotracker is disabled",
 				"impact":  "catchup jobs disabled",
@@ -70,12 +70,12 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 
 func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		adminSettings, err := evergreen.GetConfig()
+		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		if adminSettings.ServiceFlags.RepotrackerDisabled {
+		if flags.RepotrackerDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "repotracker is disabled",
 				"impact":  "polling repos disabled",
@@ -106,12 +106,12 @@ func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 
 func PopulateActivationJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
-		adminSettings, err := evergreen.GetConfig()
+		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		if adminSettings.ServiceFlags.TaskDispatchDisabled {
+		if flags.TaskDispatchDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "task dispatching disabled",
 				"mode":    "degraded",
