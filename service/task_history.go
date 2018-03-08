@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -36,8 +37,9 @@ const (
 // Representation of a group of tasks with the same display name and revision,
 // but different build variants.
 type taskDrawerItem struct {
-	Revision string `json:"revision"`
-	Message  string `json:"message"`
+	Revision   string    `json:"revision"`
+	Message    string    `json:"message"`
+	CreateTime time.Time `json:"create_time"`
 	// small amount of info about each task in this group
 	TaskBlurb taskBlurb `json:"task"`
 }
@@ -491,8 +493,9 @@ func createSiblingTaskGroups(tasks []task.Task, versions []version.Version) []ta
 	// create a group for each version
 	for _, v := range versions {
 		group := taskDrawerItem{
-			Revision: v.Revision,
-			Message:  v.Message,
+			Revision:   v.Revision,
+			Message:    v.Message,
+			CreateTime: v.CreateTime,
 		}
 		groupsByVersion[v.Id] = group
 	}
