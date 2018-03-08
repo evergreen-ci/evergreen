@@ -44,7 +44,7 @@ func LogSchedulerEvent(eventData SchedulerEventData) {
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging host event: %+v", err)
 	}
 }

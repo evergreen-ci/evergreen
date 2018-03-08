@@ -22,7 +22,7 @@ func NewDBEventLogger(collection string) *DBEventLogger {
 	}
 }
 
-func (self *DBEventLogger) LogEvent(event EventLogEntry) error {
+func (self *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if event.Data == nil {
 		return errors.New("event log entry cannot have nil Data")
 	}

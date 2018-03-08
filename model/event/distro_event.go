@@ -38,7 +38,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		Data:       eventData,
 	}
 
-	if err := NewDBEventLogger(AllLogCollection).LogEvent(event); err != nil {
+	if err := NewDBEventLogger(AllLogCollection).LogEvent(&event); err != nil {
 		grip.Errorf("Error logging distro event: %+v", err)
 	}
 }

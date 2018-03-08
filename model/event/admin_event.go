@@ -72,7 +72,7 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		return errors.Wrap(err, "Error logging admin event")
 	}
 	return nil

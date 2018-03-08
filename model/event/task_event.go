@@ -52,7 +52,7 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging task event: %+v", err)
 	}
 }

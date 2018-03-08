@@ -135,7 +135,7 @@ func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 	}
 	event.Data = data
 
-	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(event),
+	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(&event),
 		"problem system info event"))
 }
 
@@ -231,6 +231,6 @@ func LogTaskProcessData(taskId string, procs []*message.ProcessInfo) {
 		Data:       data,
 	}
 
-	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(event),
+	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(&event),
 		"problem logging task process info event"))
 }

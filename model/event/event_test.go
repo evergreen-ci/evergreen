@@ -63,7 +63,7 @@ func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 
 		s.Equal("TEST1", event.ResourceId)
 		s.Equal("TEST2", event.EventType)
-		s.NoError(logger.LogEvent(event))
+		s.NoError(logger.LogEvent(&event))
 		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
 		s.NoError(err)
 		s.Require().Len(fetchedEvents, 1)
@@ -89,10 +89,9 @@ func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 		//s.Equal("HOST", eventData.ResourceType)
 		s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventData.TaskId)
 		s.Equal("success", eventData.TaskStatus)
-
 	})
-
 }
+
 func (s *eventSuite) TestWithRealData() {
 	loc, err := time.LoadLocation("UTC")
 	s.NoError(err)
@@ -210,7 +209,7 @@ func (s *eventSuite) TestEventWithNilData() {
 		EventType:  "TEST2",
 		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
 	}
-	s.Errorf(logger.LogEvent(event), "event log entry cannot have nil Data")
+	s.Errorf(logger.LogEvent(&event), "event log entry cannot have nil Data")
 
 	s.NotPanics(func() {
 		s.NoError(db.Insert(AllLogCollection, event))
@@ -297,7 +296,7 @@ func (s *eventSuite) TestMarkProcessed() {
 	event.ID = bson.NewObjectId()
 	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
 
-	s.NoError(logger.LogEvent(event))
+	s.NoError(logger.LogEvent(&event))
 
 	var fetchedEvent EventLogEntry
 	err := db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent)
