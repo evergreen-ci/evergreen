@@ -18,7 +18,7 @@ const (
 
 type EventLogEntry struct {
 	ID           bson.ObjectId `bson:"_id" json:"-"`
-	ResourceType string        `bson:"r_type" json:"resource_type"`
+	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
@@ -48,7 +48,7 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 
 type unmarshalEventLogEntry struct {
 	ID           bson.ObjectId `bson:"_id" json:"-"`
-	ResourceType string        `bson:"r_type" json:"resource_type"`
+	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
@@ -80,8 +80,9 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
-	if len(temp.ResourceType) == 0 {
-		// Fetch r_type in the data subdoc
+	rtype := temp.ResourceType
+	if len(rtype) == 0 {
+		// Try and fetch r_type in the data subdoc
 		rawD := bson.RawD{}
 		if err := temp.Data.Unmarshal(&rawD); err != nil {
 			return errors.Wrap(err, "can't unmarshal raw event data")
@@ -89,19 +90,19 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 
 		for i := range rawD {
 			if rawD[i].Name == resourceTypeKey {
-				if err := rawD[i].Value.Unmarshal(&temp.ResourceType); err != nil {
+				if err := rawD[i].Value.Unmarshal(&rtype); err != nil {
 					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
 				}
 			}
 		}
 	}
-	if len(temp.ResourceType) == 0 {
+	if len(rtype) == 0 {
 		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
-	e.Data = NewEventFromType(temp.ResourceType)
+	e.Data = NewEventFromType(rtype)
 	if e.Data == nil {
-		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
+		return errors.Errorf("unknown resource type '%s'", rtype)
 	}
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")

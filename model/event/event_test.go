@@ -74,8 +74,9 @@ func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 	}
 }
 
-const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON1 = `{"processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON3 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
@@ -99,6 +100,8 @@ func (s *eventSuite) TestWithRealData() {
 	date, err := time.ParseInLocation(time.RFC3339Nano, "2017-06-20T18:07:24.991Z", loc)
 	s.NoError(err)
 	s.Equal("2017-06-20T18:07:24.991Z", date.Format(time.RFC3339Nano))
+
+	// unmarshaller works with r_type in the embedded document set
 	data := bson.M{
 		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
 		"ts":           date,
@@ -121,13 +124,17 @@ func (s *eventSuite) TestWithRealData() {
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 
+		found, tag := findResourceTypeIn(entries[0].Data)
+		s.True(found)
+		s.Equal("HOST", tag)
+
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON1, string(bytes))
 	})
 
-	// try again with the r_type in the root document
+	// unmarshaller works with r_type in the root document set
 	data = bson.M{
 		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 		"ts":           date,
@@ -148,11 +155,45 @@ func (s *eventSuite) TestWithRealData() {
 		s.checkRealData(&entries[0], loc)
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+		s.Equal("HOST", entries[0].ResourceType)
 
 		var bytes []byte
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON2, string(bytes))
+	})
+
+	// unmarshaller works with both r_type fields set
+	data = bson.M{
+		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+		"ts":           date,
+		"r_id":         "macos.example.com",
+		"e_type":       "HOST_TASK_FINISHED",
+		"r_type":       "HOST",
+		"processed_at": date,
+		"data": bson.M{
+			"r_type": "HOST",
+			"t_id":   "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+			"t_st":   "success",
+		},
+	}
+	s.NoError(db.Insert(AllLogCollection, data))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	s.NoError(err)
+	s.Len(entries, 1)
+	s.NotPanics(func() {
+		s.checkRealData(&entries[0], loc)
+		entries[0].Timestamp = entries[0].Timestamp.In(loc)
+		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+
+		found, tag := findResourceTypeIn(entries[0].Data)
+		s.True(found)
+		s.Equal("HOST", tag)
+
+		var bytes []byte
+		bytes, err := json.Marshal(entries[0])
+		s.NoError(err)
+		s.Equal(expectedJSON3, string(bytes))
 	})
 }
 
