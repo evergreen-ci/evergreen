@@ -19,7 +19,7 @@ const (
 type EventLogEntry struct {
 	ID           bson.ObjectId `bson:"_id" json:"-"`
 	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
+	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`
@@ -49,7 +49,7 @@ func (e *EventLogEntry) Processed() (bool, time.Time) {
 type unmarshalEventLogEntry struct {
 	ID           bson.ObjectId `bson:"_id" json:"-"`
 	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	ProcessedAt  time.Time     `bson:"processed_at" json:"processed_at"`
+	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
 
 	Timestamp  time.Time `bson:"ts" json:"timestamp"`
 	ResourceId string    `bson:"r_id" json:"resource_id"`

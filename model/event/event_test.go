@@ -102,19 +102,19 @@ func (s *eventSuite) TestWithRealData() {
 
 	// unmarshaller works with r_type in the embedded document set
 	data := bson.M{
-		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
-		"ts":           date,
-		"r_id":         "macos.example.com",
-		"e_type":       "HOST_TASK_FINISHED",
-		"processed_at": date,
-		"data": bson.M{
-			"r_type": "HOST",
-			"t_id":   "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
-			"t_st":   "success",
+		idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+		TimestampKey:   date,
+		ResourceIdKey:  "macos.example.com",
+		TypeKey:        "HOST_TASK_FINISHED",
+		processedAtKey: date,
+		DataKey: bson.M{
+			ResourceTypeKey:   "HOST",
+			"t_id":            "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+			hostDataStatusKey: "success",
 		},
 	}
 	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err := Find(AllLogCollection, db.Query(bson.M{"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d7")}))
+	entries, err := Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d7")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -136,19 +136,19 @@ func (s *eventSuite) TestWithRealData() {
 
 	// unmarshaller works with r_type in the root document set
 	data = bson.M{
-		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
-		"ts":           date,
-		"r_id":         "macos.example.com",
-		"e_type":       "HOST_TASK_FINISHED",
-		"r_type":       "HOST",
-		"processed_at": date,
-		"data": bson.M{
-			"t_id": "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
-			"t_st": "success",
+		idKey:           bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
+		TimestampKey:    date,
+		ResourceIdKey:   "macos.example.com",
+		TypeKey:         "HOST_TASK_FINISHED",
+		ResourceTypeKey: "HOST",
+		processedAtKey:  date,
+		DataKey: bson.M{
+			"t_id":            "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+			hostDataStatusKey: "success",
 		},
 	}
 	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err = Find(AllLogCollection, db.Query(bson.M{"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -169,20 +169,20 @@ func (s *eventSuite) TestWithRealData() {
 
 	// unmarshaller works with both r_type fields set
 	data = bson.M{
-		"_id":          bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
-		"ts":           date,
-		"r_id":         "macos.example.com",
-		"e_type":       "HOST_TASK_FINISHED",
-		"r_type":       "HOST",
-		"processed_at": date,
-		"data": bson.M{
-			"r_type": "HOST",
-			"t_id":   "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
-			"t_st":   "success",
+		idKey:           bson.ObjectIdHex("5949645c9acd9604fdd202d9"),
+		TimestampKey:    date,
+		ResourceIdKey:   "macos.example.com",
+		TypeKey:         "HOST_TASK_FINISHED",
+		ResourceTypeKey: "HOST",
+		processedAtKey:  date,
+		DataKey: bson.M{
+			ResourceTypeKey:   "HOST",
+			"t_id":            "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+			hostDataStatusKey: "success",
 		},
 	}
 	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err = Find(AllLogCollection, db.Query(bson.M{"_id": bson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
+	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d9")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -317,18 +317,18 @@ func (s *eventSuite) TestMarkProcessed() {
 func (s *eventSuite) TestQueryWithBothRTypes() {
 	data := []bson.M{
 		{
-			"r_type": "test",
-			"data":   bson.M{},
+			resourceTypeKey: "test",
+			DataKey:         bson.M{},
 		},
 		{
-			"data": bson.M{
-				"r_type": "test",
+			DataKey: bson.M{
+				resourceTypeKey: "test",
 			},
 		},
 		{
-			"r_type": "test",
-			"data": bson.M{
-				"r_type": "somethingelse",
+			resourceTypeKey: "test",
+			DataKey: bson.M{
+				resourceTypeKey: "somethingelse",
 			},
 		},
 	}
@@ -341,4 +341,38 @@ func (s *eventSuite) TestQueryWithBothRTypes() {
 	s.NoError(db.FindAllQ(AllLogCollection, db.Query(eitherResourceTypeKeyIs("test")), &out))
 
 	s.Len(out, 3)
+}
+
+func (s *eventSuite) TestFindUnprocessedEvents() {
+	data := []bson.M{
+		{
+			DataKey: bson.M{
+				resourceTypeKey: ResourceTypeHost,
+			},
+		},
+		{
+			processedAtKey: time.Time{},
+			DataKey: bson.M{
+				resourceTypeKey: ResourceTypeHost,
+			},
+		},
+		{
+			processedAtKey: time.Now(),
+			DataKey: bson.M{
+				resourceTypeKey: ResourceTypeHost,
+			},
+		},
+	}
+	for i := range data {
+		s.NoError(db.Insert(AllLogCollection, data[i]))
+	}
+	events, err := Find(AllLogCollection, UnprocessedEvents())
+	s.NoError(err)
+	s.Len(events, 1)
+
+	s.NotPanics(func() {
+		processed, ptime := events[0].Processed()
+		s.Zero(ptime)
+		s.False(processed)
+	})
 }

@@ -21,6 +21,7 @@ db.patchfiles.files.ensureIndex({"filename":1})
 //======event_log======//
 db.event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
 db.event_log.ensureIndex({ "r_id" : 1, "r_type" : 1, "ts" : 1 })
+db.event_log.ensureIndex({ "processed_at" : 1 })
 db.event_log.ensureIndex({ "data.guid" : 1}, { sparse: true })
 
 //======hosts======//
