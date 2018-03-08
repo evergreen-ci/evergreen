@@ -82,7 +82,6 @@ func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
 		s.Equal("HOST_TASK_FINISHED", e.EventType)
 		s.Equal("macos.example.com", e.ResourceId)
-		s.Equal("HOST", e.ResourceType)
 
 		eventData, ok := e.Data.(*HostEventData)
 		s.True(ok)
@@ -123,6 +122,7 @@ func (s *eventSuite) TestWithRealData() {
 		// Verify that JSON unmarshals as expected
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+		s.Empty(entries[0].ResourceType)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
 		s.True(found)
@@ -157,6 +157,10 @@ func (s *eventSuite) TestWithRealData() {
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 		s.Equal("HOST", entries[0].ResourceType)
 
+		found, tag := findResourceTypeIn(entries[0].Data)
+		s.True(found)
+		s.Empty(tag)
+
 		var bytes []byte
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
@@ -185,6 +189,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.checkRealData(&entries[0], loc)
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+		s.Equal("HOST", entries[0].ResourceType)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
 		s.True(found)

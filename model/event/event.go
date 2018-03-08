@@ -93,6 +93,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 				if err := rawD[i].Value.Unmarshal(&rtype); err != nil {
 					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
 				}
+				break
 			}
 		}
 	}
