@@ -101,7 +101,7 @@ func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	return job
 }
 
-// NewGithubStatusUpdateForPatchWithVersion creates a job to update github's API
+// NewGithubStatusUpdateJobForPatchWithVersion creates a job to update github's API
 // from a Patch with specified version. Status will be reported as 'evergreen'
 func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()

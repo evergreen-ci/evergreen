@@ -121,7 +121,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
-func findResourceTypeIn(t interface{}) (bool, string) {
+func findResourceTypeIn(t interface{}) (bool, string) { //nolint: deadcode
 	if t == nil {
 		return false, ""
 	}

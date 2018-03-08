@@ -26,7 +26,6 @@ var (
 	SecretKey              = bsonutil.MustHaveTag(Task{}, "Secret")
 	CreateTimeKey          = bsonutil.MustHaveTag(Task{}, "CreateTime")
 	DispatchTimeKey        = bsonutil.MustHaveTag(Task{}, "DispatchTime")
-	PushTimeKey            = bsonutil.MustHaveTag(Task{}, "PushTime")
 	ScheduledTimeKey       = bsonutil.MustHaveTag(Task{}, "ScheduledTime")
 	StartTimeKey           = bsonutil.MustHaveTag(Task{}, "StartTime")
 	FinishTimeKey          = bsonutil.MustHaveTag(Task{}, "FinishTime")

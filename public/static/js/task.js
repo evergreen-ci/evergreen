@@ -24,7 +24,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     var groupedRevisions = [];
     var datesSeen = {}; // to avoid double-entering dates
     history.forEach(function(revision) {
-      var date = revision.push_time.substring(0, 10);
+      var date = revision.create_time.substring(0, 10);
 
       // if we haven't seen the date, add a new entry for it
       if (!datesSeen[date]) {
