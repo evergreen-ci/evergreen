@@ -403,11 +403,11 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 // projectFromYAML reads and evaluates project YAML, returning a project and warnings and
 // errors encountered during parsing or evaluation.
 func projectFromYAML(yml []byte) (*Project, []error) {
-	pp, errs := createIntermediateProject(yml)
+	intermediateProject, errs := createIntermediateProject(yml)
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	p, errs := translateProject(pp)
+	p, errs := translateProject(intermediateProject)
 	return p, errs
 }
 
@@ -504,19 +504,15 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 	}
 	for _, ptg := range tgs {
 		tg := TaskGroup{
-			Name:            ptg.Name,
-			Priority:        ptg.Priority,
-			ExecTimeoutSecs: ptg.ExecTimeoutSecs,
-			SetupGroup:      ptg.SetupGroup,
-			TeardownGroup:   ptg.TeardownGroup,
-			SetupTask:       ptg.SetupTask,
-			TeardownTask:    ptg.TeardownTask,
-			Tags:            ptg.Tags,
-			MaxHosts:        ptg.MaxHosts,
-			Timeout:         ptg.Timeout,
-			Patchable:       ptg.Patchable,
-			Stepback:        ptg.Stepback,
-			ShareProcs:      ptg.ShareProcs,
+			Name:          ptg.Name,
+			SetupGroup:    ptg.SetupGroup,
+			TeardownGroup: ptg.TeardownGroup,
+			SetupTask:     ptg.SetupTask,
+			TeardownTask:  ptg.TeardownTask,
+			Tags:          ptg.Tags,
+			MaxHosts:      ptg.MaxHosts,
+			Timeout:       ptg.Timeout,
+			ShareProcs:    ptg.ShareProcs,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
@@ -531,10 +527,6 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			taskNames = append(taskNames, names...)
 		}
 		tg.Tasks = taskNames
-		tg.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, ptg.DependsOn)
-		evalErrs = append(evalErrs, errs...)
-		tg.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, ptg.Requires)
-		evalErrs = append(evalErrs, errs...)
 		groups = append(groups, tg)
 	}
 	return tasks, groups, evalErrs
