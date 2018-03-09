@@ -81,6 +81,9 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		githubHooksToCollectionGenerator,
 		zeroDateFixGenerator(githubToken),
 		adminEventRestructureGenerator,
+		// Waiting until later to run these migrations.
+		//makeEventRTypeMigration(event.AllLogCollection),
+		//makeEventRTypeMigration(event.TaskLogCollection),
 	}
 
 	catcher := grip.NewBasicCatcher()

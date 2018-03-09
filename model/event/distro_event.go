@@ -19,7 +19,7 @@ const (
 // DistroEventData implements EventData.
 type DistroEventData struct {
 	// necessary for IsValid
-	ResourceType string      `bson:"r_type" json:"resource_type"`
+	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	DistroId     string      `bson:"d_id,omitempty" json:"d_id,omitempty"`
 	UserId       string      `bson:"u_id,omitempty" json:"u_id,omitempty"`
 	Data         interface{} `bson:"dstr,omitempty" json:"dstr,omitempty"`
@@ -38,7 +38,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 		Data:       eventData,
 	}
 
-	if err := NewDBEventLogger(AllLogCollection).LogEvent(event); err != nil {
+	if err := NewDBEventLogger(AllLogCollection).LogEvent(&event); err != nil {
 		grip.Errorf("Error logging distro event: %+v", err)
 	}
 }

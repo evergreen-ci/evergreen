@@ -23,7 +23,7 @@ type TaskQueueInfo struct {
 // implements EventData
 type SchedulerEventData struct {
 	// necessary for IsValid
-	ResourceType  string        `bson:"r_type" json:"resource_type"`
+	ResourceType  string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	TaskQueueInfo TaskQueueInfo `bson:"tq_info" json:"task_queue_info"`
 	DistroId      string        `bson:"d_id" json:"distro_id"`
 }
@@ -44,7 +44,7 @@ func LogSchedulerEvent(eventData SchedulerEventData) {
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging host event: %+v", err)
 	}
 }

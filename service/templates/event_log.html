@@ -19,16 +19,16 @@ mciModule.controller('LogController', function($scope, $window) {
 {{define "content"}}
 <div id="content" class="container-fluid" ng-controller="LogController">
     <div ng-repeat="event in events">
-        <div ng-show="event.data.resource_type === 'HOST'">
+        <div ng-show="event.resource_type === 'HOST' || event.data.resource_type === 'HOST'">
           <hostevent event="event" tz="userTz"></hostevent>
         </div>
-        <div ng-show="event.data.resource_type === 'TASK'">
+        <div ng-show="event.resource_type === 'TASK' || event.data.resource_type === 'TASK'">
           <taskevent event="event" tz="userTz"></taskevent>
         </div>
-        <div ng-show="event.data.resource_type === 'DISTRO'">
+        <div ng-show="event.resource_type === 'DISTRO' || event.data.resource_type === 'DISTRO'">
           <distroevent event="event" tz="userTz"></distroevent>
         </div>
-        <div ng-show="event.data.resource_type === 'ADMIN'">
+        <div ng-show="event.resource_type === 'ADMIN' || event.data.resource_type === 'ADMIN'">
           <adminevent event="event" tz="userTz"></taskevent>
         </div>
     </div>
