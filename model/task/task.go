@@ -690,8 +690,6 @@ func displayTaskPriority(status string) int {
 	switch status {
 	case evergreen.TaskStarted:
 		return 10
-	case evergreen.TaskInactive:
-		return 20
 	case evergreen.TaskUndispatched:
 		return 40
 	case evergreen.TaskFailed:
@@ -706,6 +704,8 @@ func displayTaskPriority(status string) int {
 		return 90
 	case evergreen.TaskSucceeded:
 		return 100
+	case evergreen.TaskInactive:
+		return 110
 	}
 	return 1000
 }
