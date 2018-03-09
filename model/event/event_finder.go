@@ -13,7 +13,9 @@ var embeddedResourceTypeKey = DataKey + "." + resourceTypeKey
 // UnprocessedEvents returns a query to fetch all unprocessed events
 func UnprocessedEvents() db.Q {
 	return db.Query(bson.M{
-		processedAtKey: time.Time{}.Truncate(time.Millisecond),
+		processedAtKey: bson.M{
+			"$exists": false,
+		},
 	})
 
 }

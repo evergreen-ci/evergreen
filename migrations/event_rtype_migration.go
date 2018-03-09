@@ -10,6 +10,8 @@ import (
 )
 
 func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode
+	nowTime := time.Now()
+
 	return func(env anser.Environment, db string, limit int) (anser.Generator, error) {
 		const (
 			resourceTypeKey = "r_type"
@@ -33,7 +35,7 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 
 		return anser.NewSimpleMigrationGenerator(env, opts, bson.M{
 			"$set": bson.M{
-				processedAtKey: time.Now(),
+				processedAtKey: nowTime,
 			},
 			"$rename": bson.M{
 				embeddedResourceTypeKey: resourceTypeKey,
