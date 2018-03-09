@@ -1602,9 +1602,9 @@ func TestShouldNotPatch(t *testing.T) {
 	assert := assert.New(t)
 	falseTmp := false
 	bv := BuildVariantTaskUnit{Patchable: &falseTmp}
-	assert.False(shouldNotPatch(bv, evergreen.RepotrackerVersionRequester))
-	assert.True(shouldNotPatch(bv, evergreen.PatchVersionRequester))
-	assert.True(shouldNotPatch(bv, evergreen.GithubPRRequester))
+	assert.False(shouldNotPatchBuild(bv, evergreen.RepotrackerVersionRequester))
+	assert.True(shouldNotPatchBuild(bv, evergreen.PatchVersionRequester))
+	assert.True(shouldNotPatchBuild(bv, evergreen.GithubPRRequester))
 	bv.Patchable = nil
-	assert.False(shouldNotPatch(bv, evergreen.GithubPRRequester))
+	assert.False(shouldNotPatchBuild(bv, evergreen.GithubPRRequester))
 }

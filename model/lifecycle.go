@@ -538,7 +538,7 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	return tasks
 }
 
-func shouldNotPatch(t BuildVariantTaskUnit, requester string) bool {
+func shouldNotPatchBuild(t BuildVariantTaskUnit, requester string) bool {
 	if !evergreen.IsPatchRequester(requester) {
 		return false
 	}
@@ -573,7 +573,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 
 		// sanity check that the config isn't malformed
 		if taskSpec.Name != "" {
-			if shouldNotPatch(task, b.Requester) {
+			if shouldNotPatchBuild(task, b.Requester) {
 				continue
 			}
 			if createAll || util.StringSliceContains(taskNames, task.Name) {
@@ -583,7 +583,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant, b *build.
 		} else if _, ok := tgMap[task.Name]; ok {
 			tasksFromVariant := CreateTasksFromGroup(task, project)
 			for _, taskFromVariant := range tasksFromVariant {
-				if shouldNotPatch(taskFromVariant, b.Requester) {
+				if shouldNotPatchBuild(taskFromVariant, b.Requester) {
 					continue
 				}
 				if createAll || util.StringSliceContains(taskNames, taskFromVariant.Name) {
