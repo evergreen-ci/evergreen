@@ -14,6 +14,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -34,6 +36,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 	var intent patch.Intent
 	if r.Header.Get("Content-Type") == formMimeType {
+		grip.Info(message.Fields{
+			"message":  "logging for presumably dead code",
+			"location": "submitPatch",
+			"ticket":   "EVG-2936",
+		})
 		patchContent := r.FormValue("patch")
 		if patchContent == "" {
 			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Error: Patch must not be empty"))

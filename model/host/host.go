@@ -57,6 +57,7 @@ type Host struct {
 	CreationTime    time.Time `bson:"creation_time" json:"creation_time"`
 	StartTime       time.Time `bson:"start_time" json:"start_time"`
 	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
+	TaskCount       int       `bson:"task_count" json:"task_count"`
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
 	LastTaskCompleted     string    `bson:"last_task" json:"last_task"`

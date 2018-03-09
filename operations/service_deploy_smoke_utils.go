@@ -117,56 +117,60 @@ func checkTaskByCommit(username, key, commit string) error {
 	}
 
 	var task apimodels.APITask
+OUTER:
 	for i := 0; i <= 30; i++ {
 		// check task
 		if i == 30 {
 			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for task %s (%d/30)", builds[0].Tasks[0], i+1)
+		grip.Infof("checking for %d tasks (%d/30)", len(builds[0].Tasks), i+1)
 
 		var err error
-		task, err = checkTask(client, username, key, builds)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+		for t := 0; t < len(builds[0].Tasks); t++ {
+			task, err = checkTask(client, username, key, builds, t)
+			if err != nil {
+				return errors.WithStack(err)
+			}
 
-		if task.Status == evergreen.TaskFailed {
-			return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
-		}
-		if task.Status != evergreen.TaskSucceeded {
-			grip.Infof("found task is status %s", task.Status)
-			task = apimodels.APITask{}
-			continue
-		}
-		break
-	}
-	grip.Infof("checking for log %s", task.Logs["task_log"])
-	resp, err := client.Get(task.Logs["task_log"] + "&text=true")
-	if err != nil {
-		return errors.Wrap(err, "error getting log data")
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		err = errors.Wrap(err, "error reading response body")
-		return err
-	}
-	page := string(body)
-	if strings.Contains(page, "Task completed - SUCCESS") {
-		grip.Infof("Found task completed message in log:\n%s", page)
-	} else {
-		grip.Errorf("did not find task completed message in log:\n%s", page)
-		return errors.New("did not find task completed message in log")
-	}
+			if task.Status == evergreen.TaskFailed {
+				return errors.Errorf("task status is %s (expected %s)", task.Status, evergreen.TaskSucceeded)
+			}
+			if task.Status != evergreen.TaskSucceeded {
+				grip.Infof("found task is status %s", task.Status)
+				task = apimodels.APITask{}
+				continue OUTER
+			}
 
-	grip.Info("Successfully checked task by commit")
-	return nil
+			grip.Infof("checking for log %s", task.Logs["task_log"])
+			resp, err := client.Get(task.Logs["task_log"] + "&text=true")
+			if err != nil {
+				return errors.Wrap(err, "error getting log data")
+			}
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				err = errors.Wrap(err, "error reading response body")
+				return err
+			}
+			page := string(body)
+			if strings.Contains(page, "Task completed - SUCCESS") {
+				grip.Infof("Found task completed message in log:\n%s", page)
+			} else {
+				grip.Errorf("did not find task completed message in log:\n%s", page)
+				return errors.New("did not find task completed message in log")
+			}
+		}
+		grip.Info("Successfully checked tasks")
+		return nil
+	}
+	return errors.New("this code should be unreachable")
 }
 
-func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild) (apimodels.APITask, error) {
+func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex int) (apimodels.APITask, error) {
 	task := apimodels.APITask{}
-	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[0], nil)
+	grip.Infof("checking for task", builds[0].Tasks[taskIndex])
+	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[taskIndex], nil)
 	if err != nil {
 		return task, errors.Wrap(err, "failed to make request")
 	}

@@ -585,8 +585,22 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         var timestamp = converter(logEntry.timestamp, $scope.userTz, format);
         return '[' + timestamp + '] '
       }
+      
+        var isFinished = function(status) {
+          switch (status) {
+            case "success":
+              return true;
+            case "failed":
+              return true;
+            default:
+              return false;
+          }
+        }
 
       $scope.getLogs = function() {
+        if (isFinished($scope.task.status)) {
+          return;
+        }
         $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
           function(resp) {
             var taskScheduledStatus = "TASK_SCHEDULED";
