@@ -766,6 +766,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
 		CreateTime:          b.CreateTime,
+		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,
 		StartTime:           util.ZeroTime, // Certain time fields must be initialized
 		FinishTime:          util.ZeroTime, // to our own util.ZeroTime value (which is

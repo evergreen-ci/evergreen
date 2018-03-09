@@ -40,6 +40,7 @@ type Task struct {
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
 	CreateTime    time.Time `bson:"create_time" json:"create_time"`
+	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
@@ -211,6 +212,14 @@ func IsFinished(t Task) bool {
 // IsDispatchable return true if the task should be dispatched
 func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
+func (t *Task) GetTaskCreatedTime() time.Time {
+	if t.IngestTime.IsZero() {
+		return t.CreateTime
+	}
+
+	return t.IngestTime
 }
 
 // satisfiesDependency checks a task the receiver task depends on

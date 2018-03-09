@@ -11,11 +11,17 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
 const collectTaskEndDataJobName = "collect-task-end-data"
+
+func init() {
+	registry.AddJobType(collectTaskEndDataJobName,
+		func() amboy.Job { return newTaskEndJob() })
+}
 
 // collectTaskEndData determines a task's cost based on the host it ran on. Hosts that
 // are unable to calculate their own costs will not set a task's Cost field. Errors
@@ -108,17 +114,18 @@ func (j *collectTaskEndDataJob) Run() {
 	}
 
 	msg := message.Fields{
-		"stat":         "task-end-stats",
-		"task_id":      j.task.Id,
-		"task":         j.task.DisplayName,
-		"execution":    j.task.Execution,
-		"requester":    j.task.Requester,
-		"activated_by": j.task.ActivatedBy,
-		"project":      j.task.Project,
-		"variant":      j.task.BuildVariant,
-		"distro":       j.host.Distro.Id,
-		"provider":     j.host.Distro.Provider,
-		"host":         j.host.Id,
+		"stat":            "task-end-stats",
+		"task_id":         j.task.Id,
+		"task":            j.task.DisplayName,
+		"execution":       j.task.Execution,
+		"requester":       j.task.Requester,
+		"activated_by":    j.task.ActivatedBy,
+		"project":         j.task.Project,
+		"variant":         j.task.BuildVariant,
+		"distro":          j.host.Distro.Id,
+		"provider":        j.host.Distro.Provider,
+		"host":            j.host.Id,
+		"total_wait_secs": j.task.GetTaskCreatedTime().Sub(j.task.FinishTime).Seconds(),
 	}
 
 	if cost != 0 {
