@@ -24,8 +24,8 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 			},
 			Limit: limit,
 			Query: bson.M{
-				embeddedResourceTypeKey: bson.M{
-					"$exists": true,
+				resourceTypeKey: bson.M{
+					"$exists": false,
 				},
 			},
 			JobID: "migration-event-rtype-to-root",
