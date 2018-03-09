@@ -586,8 +586,23 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
     return '[' + timestamp + '] '
   }
 
+  var isUnfinished = function(status) {
+    switch (status) {
+      case "undispatched":
+        return true;
+      case "started":
+        return true;
+      case "dispatched":
+        return true;
+      case "unstarted":
+        return true;
+      default:
+        return false;
+    }
+  }
+
   $scope.getLogs = function() {
-    if ($scope.task.status !== "undispatched" && $scope.task.status !== "started" && $scope.task.status !== "dispatched") {
+    if (!isUnfinished($scope.task.status)) {
       return;
     }
     $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
