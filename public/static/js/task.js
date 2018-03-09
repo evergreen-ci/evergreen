@@ -587,7 +587,7 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
   }
 
   $scope.getLogs = function() {
-    if ($scope.task.status !== "undispatched" && $scope.task.status !== "started" ) {
+    if ($scope.task.status !== "undispatched" && $scope.task.status !== "started" && $scope.task.status !== "dispatched") {
       return;
     }
     $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).then(
