@@ -289,7 +289,7 @@ functions:
           rm -rf mongodb
           mkdir mongodb
           cd mongodb
-          curl ${mongodb_url}.notexist -o mongodb${archiveExt|.tgz}
+          curl ${mongodb_url} -o mongodb${archiveExt|.tgz}
 
           ${decompress} mongodb${archiveExt|.tgz}
           chmod +x ./mongodb-*/bin/*
