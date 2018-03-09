@@ -40,6 +40,9 @@ func (self *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 
 	err := db.Update(self.collection, bson.M{
 		idKey: event.ID,
+		processedAtKey: bson.M{
+			"$exists": false,
+		},
 	}, bson.M{
 		"$set": bson.M{
 			processedAtKey: event.ProcessedAt,
