@@ -121,7 +121,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
-// findResourceTypeIn attempts locates a bson tag with "r_type,omitempty" in it.
+// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
 // If found, this function returns true, and the value of that field
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
