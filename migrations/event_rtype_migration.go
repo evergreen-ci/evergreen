@@ -9,7 +9,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func makeEventRTypeMigration(collection string) migrationGeneratorFactory {
+func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode
 	return func(env anser.Environment, db string, limit int) (anser.Generator, error) {
 		const (
 			resourceTypeKey = "r_type"
