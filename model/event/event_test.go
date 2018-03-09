@@ -74,8 +74,13 @@ func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 	}
 }
 
+// resource_type in data
 const expectedJSON1 = `{"processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+
+// resource_type in root document
 const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+
+// resource_type in both
 const expectedJSON3 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
@@ -86,7 +91,6 @@ func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 		eventData, ok := e.Data.(*HostEventData)
 		s.True(ok)
 
-		//s.Equal("HOST", eventData.ResourceType)
 		s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventData.TaskId)
 		s.Equal("success", eventData.TaskStatus)
 	})

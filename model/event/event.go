@@ -27,6 +27,8 @@ type EventLogEntry struct {
 	Data       Data      `bson:"data" json:"data"`
 }
 
+// Type returns the resource type (i.e. event data type). It will reflect into
+// the Data interface if required.
 func (e *EventLogEntry) Type() string {
 	if len(e.ResourceType) == 0 {
 		_, rtype := findResourceTypeIn(e.Data)
@@ -43,7 +45,7 @@ func (e *EventLogEntry) Type() string {
 // If true, the time is the time that this event was marked as
 // processed. If false, time is the zero time
 func (e *EventLogEntry) Processed() (bool, time.Time) {
-	return !e.ProcessedAt.Equal(time.Time{}), e.ProcessedAt
+	return !e.ProcessedAt.IsZero(), e.ProcessedAt
 }
 
 type unmarshalEventLogEntry struct {
@@ -124,7 +126,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
-func findResourceTypeIn(t interface{}) (bool, string) { //nolint: deadcode
+func findResourceTypeIn(t interface{}) (bool, string) {
 	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
 
 	if t == nil {
