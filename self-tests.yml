@@ -49,7 +49,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
@@ -73,7 +73,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -85,7 +85,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -115,7 +115,7 @@ variables:
     name: smoke
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-mongodb
@@ -150,7 +150,7 @@ variables:
     tags: ["lint"]
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -215,7 +215,7 @@ functions:
         $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
   set-up-credentials:
     command: shell.exec
-    type: system
+    type: setup
     params:
       silent: true
       script: |
@@ -280,7 +280,7 @@ functions:
 
   set-up-mongodb:
     - command: shell.exec
-      type: system
+      type: setup
       params:
         script: |
           set -o xtrace
@@ -289,7 +289,7 @@ functions:
           rm -rf mongodb
           mkdir mongodb
           cd mongodb
-          curl ${mongodb_url} -o mongodb${archiveExt|.tgz}
+          curl ${mongodb_url}.notexist -o mongodb${archiveExt|.tgz}
 
           ${decompress} mongodb${archiveExt|.tgz}
           chmod +x ./mongodb-*/bin/*
@@ -299,7 +299,7 @@ functions:
           mkdir db_files
           mkdir db_logs
     - command: shell.exec
-      type: system
+      type: setup
       params:
         background: true
         script: |
@@ -311,7 +311,7 @@ functions:
           ./mongod${extension|} --dbpath ./db_files &
           echo "waiting for mongod to start up"
     - command: shell.exec
-      type: system
+      type: setup
       params:
         script: |
           set -o xtrace
@@ -331,7 +331,7 @@ tasks:
     tags: [ "report" ]
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -344,7 +344,7 @@ tasks:
   - name: dist-test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
