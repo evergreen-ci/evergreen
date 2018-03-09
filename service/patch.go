@@ -108,7 +108,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), "", project); err != nil {
+	if err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
 
