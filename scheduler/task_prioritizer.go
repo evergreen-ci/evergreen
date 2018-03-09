@@ -55,6 +55,7 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 			cacheSimilarFailing,
 		},
 		comparators: []taskPriorityCmp{
+			byTaskGroupOrder,
 			byPriority,
 			byNumDeps,
 			byAge,

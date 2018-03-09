@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -679,6 +680,54 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 		return nil, errors.Errorf("couldn't find task group %s", tc.Task.TaskGroup)
 	}
 	return tg, nil
+}
+
+// EarlierInTaskGroup returns true if t1 occurs earlier in the taskGroup, false
+// if t2 occurs earlier. If neither is present in the task group, it returns an
+// error. For efficiency it does not call LoadProjectInto but instead only
+// unmarshals the task group portion of the project's YAML.
+func EarlierInTaskGroup(t1, t2 *task.Task, taskGroup string) (bool, error) {
+	// validate input
+	if taskGroup == "" {
+		return false, errors.New("taskGroup is empty")
+	}
+	if t1.Version != t2.Version || t1.Version == "" || t2.Version == "" {
+		return false, errors.New("versions must match")
+	}
+	if t1.BuildId != t2.BuildId || t1.BuildId == "" || t2.BuildId == "" {
+		return false, errors.New("builds must match")
+	}
+	if t1.TaskGroup != t2.TaskGroup || t1.TaskGroup == "" || t2.TaskGroup == "" {
+		return false, errors.New("task groups must match")
+	}
+
+	// get config
+	v, err := version.FindOneId(t1.Version)
+	if err != nil {
+		return false, errors.Wrap(err, "error finding version")
+	}
+	p := struct {
+		TaskGroups []TaskGroup `yaml:"task_groups"`
+	}{}
+	if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
+		return false, errors.Wrap(err, "error unmarshalling task groups")
+	}
+
+	// find earlier task
+	for _, tg := range p.TaskGroups {
+		if tg.Name == taskGroup {
+			for _, t := range tg.Tasks {
+				if t == t1.DisplayName {
+					return true, nil
+				}
+				if t == t2.DisplayName {
+					return false, nil
+				}
+			}
+			return false, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, tg.Name)
+		}
+	}
+	return false, errors.Errorf("did not find task group %s", taskGroup)
 }
 
 func FindProjectFromTask(t *task.Task) (*Project, error) {
