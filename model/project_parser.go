@@ -403,11 +403,11 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 // projectFromYAML reads and evaluates project YAML, returning a project and warnings and
 // errors encountered during parsing or evaluation.
 func projectFromYAML(yml []byte) (*Project, []error) {
-	pp, errs := createIntermediateProject(yml)
+	intermediateProject, errs := createIntermediateProject(yml)
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	p, errs := translateProject(pp)
+	p, errs := translateProject(intermediateProject)
 	return p, errs
 }
 
