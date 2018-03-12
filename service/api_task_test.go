@@ -646,7 +646,7 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			So(resp.Code, ShouldEqual, http.StatusOK)
 			So(resp, ShouldNotBeNil)
-			So(stat.Total, ShouldEqual, 1)
+			So(stat.Total, ShouldEqual, 2)
 			amboy.WaitCtxInterval(ctx, q, time.Millisecond)
 
 			job := <-as.queue.Results(ctx)
