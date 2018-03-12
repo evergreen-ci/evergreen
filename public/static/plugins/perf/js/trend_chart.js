@@ -122,7 +122,7 @@ mciModule.factory('PerfChartService', function() {
   // thread `level` (ignored in this case) and series `item`
   function getValueForMaxOnly() {
     return function(item) {
-      return item.hasOwnProperty(cfg.valueAttr) ? item[cfg.valueAttr] : null
+      return item[cfg.valueAttr]
     }
   }
 
@@ -131,7 +131,9 @@ mciModule.factory('PerfChartService', function() {
   // thread `level` and series `item`
   function getValueForAllLevels(level) {
     return function(item) {
-      return item.threadResults.hasOwnProperty(level.idx) ? item.threadResults[level.idx][cfg.valueAttr] : null
+      return item.threadResults[level.idx] ?
+        item.threadResults[level.idx][cfg.valueAttr] :
+        null;
     }
   }
 
