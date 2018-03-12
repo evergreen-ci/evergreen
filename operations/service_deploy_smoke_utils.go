@@ -147,7 +147,7 @@ OUTER:
 			if err != nil {
 				return errors.Wrap(err, "error getting log data")
 			}
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint: evg
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				err = errors.Wrap(err, "error reading response body")
