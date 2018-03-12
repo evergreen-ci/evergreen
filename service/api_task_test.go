@@ -649,24 +649,38 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 			So(stat.Total, ShouldEqual, 2)
 			amboy.WaitCtxInterval(ctx, q, time.Millisecond)
 
-			job := <-as.queue.Results(ctx)
-			So(job, ShouldNotBeNil)
+			counter := 0
+			for job := range as.queue.Results(ctx) {
+				counter++
+				So(job, ShouldNotBeNil)
 
-			So(job.Type().Version, ShouldEqual, 0)
+				switch job.Type().Name {
+				case "collect-host-idle-data":
+					counter++
 
-			// this is gross, but lets us introspect the private job
-			jobData := struct {
-				StartAt  time.Time `json:"start_time"`
-				FinishAt time.Time `json:"finish_time"`
-			}{}
+					// this is gross, but lets us introspect the private job
+					jobData := struct {
+						StartAt  time.Time `json:"start_time"`
+						FinishAt time.Time `json:"finish_time"`
+					}{}
 
-			raw, err := json.Marshal(job)
-			So(err, ShouldBeNil)
-			So(json.Unmarshal(raw, &jobData), ShouldBeNil)
+					raw, err := json.Marshal(job)
+					So(err, ShouldBeNil)
+					So(json.Unmarshal(raw, &jobData), ShouldBeNil)
 
-			So(jobData.StartAt.Before(jobData.FinishAt), ShouldBeTrue)
-			So(jobData.StartAt.IsZero(), ShouldBeFalse)
-			So(jobData.FinishAt.IsZero(), ShouldBeFalse)
+					So(jobData.StartAt.Before(jobData.FinishAt), ShouldBeTrue)
+					So(jobData.StartAt.IsZero(), ShouldBeFalse)
+					So(jobData.FinishAt.IsZero(), ShouldBeFalse)
+
+				case "collect-task-start-data":
+					counter++
+				default:
+					counter--
+				}
+			}
+
+			So(counter, ShouldEqual, stat.Total)
+
 		})
 		Convey("with a set of task end details indicating that task has succeeded", func() {
 			details := &apimodels.TaskEndDetail{
