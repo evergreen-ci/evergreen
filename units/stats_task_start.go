@@ -85,11 +85,11 @@ func (j *collectTaskStartDataJob) Run() {
 		"latency_secs": j.task.StartTime.Sub(j.task.GetTaskCreatedTime()).Seconds(),
 	}
 
-	if strings.HasPrefix(msg["provider"], "ec2") {
+	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
 		msg["provider"] = "ec2"
 	}
 
-	if j.Task.ActivatedBy != "" {
+	if j.task.ActivatedBy != "" {
 		msg["activated_by"] = j.task.ActivatedBy
 	}
 
