@@ -49,6 +49,13 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
     });
   };
 
+  $scope.getCreatedTickets = function() {
+    $http.get('/plugin/buildbaron/created_tickets/' + $scope.taskId).then(
+      function(resp) {
+        $scope.created_tickets = resp.data;
+      });
+  }
+
   $scope.getNote = function() {
     $http.get('/plugin/buildbaron/note/' + $scope.taskId ).then(
       function(resp) {
@@ -143,6 +150,7 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   if($scope.conf.enabled){
     $scope.getNote();
   }
+  $scope.getCreatedTickets();
 
   $scope.clearTicket = function(){
     $scope.newTicket = true;

@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -45,7 +46,8 @@ type bbProject struct {
 }
 
 type BuildBaronPlugin struct {
-	opts *bbPluginOptions
+	opts        *bbPluginOptions
+	jiraHandler thirdparty.JiraHandler
 }
 
 // A regex that matches either / or \ for splitting directory paths
@@ -63,6 +65,7 @@ func (bbp *BuildBaronPlugin) GetUIHandler() http.Handler {
 	}
 	r := mux.NewRouter()
 	r.Path("/jira_bf_search/{task_id}/{execution}").HandlerFunc(bbp.buildFailuresSearch)
+	r.Path("/created_tickets/{task_id}").HandlerFunc(bbp.getCreatedTickets)
 	r.Path("/note/{task_id}").Methods("GET").HandlerFunc(bbp.getNote)
 	r.Path("/note/{task_id}").Methods("PUT").HandlerFunc(bbp.saveNote)
 	r.Path("/file_ticket").Methods("POST").HandlerFunc(bbp.fileTicket)
@@ -92,6 +95,11 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 		}
 	}
 	bbp.opts = bbpOptions
+	bbp.jiraHandler = thirdparty.NewJiraHandler(
+		bbp.opts.Host,
+		bbp.opts.Username,
+		bbp.opts.Password,
+	)
 	return nil
 }
 
@@ -144,13 +152,8 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 		return
 	}
 	jql := taskToJQL(t, bbProj.TicketSearchProjects)
-	jiraHandler := thirdparty.NewJiraHandler(
-		bbp.opts.Host,
-		bbp.opts.Username,
-		bbp.opts.Password,
-	)
 
-	results, err := jiraHandler.JQLSearch(jql, 0, -1)
+	results, err := bbp.jiraHandler.JQLSearch(jql, 0, -1)
 	if err != nil {
 		message := fmt.Sprintf("%v: %v, %v", JIRAFailure, err, jql)
 		grip.Error(message)
@@ -158,6 +161,39 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 		return
 	}
 	util.WriteJSON(w, http.StatusOK, results.Issues)
+}
+
+func (bbp *BuildBaronPlugin) getCreatedTickets(w http.ResponseWriter, r *http.Request) {
+	taskId := mux.Vars(r)["task_id"]
+
+	events, err := event.Find(event.AllLogCollection, event.TaskEventsForId(taskId))
+	if err != nil {
+		util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var results []thirdparty.JiraTicket
+	var searchTickets []string
+	for _, evt := range events {
+		data := evt.Data.(*event.TaskEventData)
+		if evt.EventType == event.TaskJiraAlertCreated {
+			searchTickets = append(searchTickets, data.JiraIssue)
+		}
+	}
+
+	for _, ticket := range searchTickets {
+		jiraIssue, err := bbp.jiraHandler.GetJIRATicket(ticket)
+		if err != nil {
+			util.WriteJSON(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if jiraIssue == nil {
+			continue
+		}
+		results = append(results, *jiraIssue)
+	}
+
+	util.WriteJSON(w, http.StatusOK, results)
 }
 
 // getNote retrieves the latest note from the database.
