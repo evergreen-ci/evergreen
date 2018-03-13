@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser"
 	anserdb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
+
+const allLogCollection = "event_log"
 
 type eventRTypeMigrationSuite struct {
 	events []anserdb.Document
@@ -28,7 +29,10 @@ func (s *eventRTypeMigrationSuite) SetupTest() {
 	date, err := time.ParseInLocation(time.RFC3339Nano, "2017-06-20T18:07:24.991Z", loc)
 	s.NoError(err)
 
-	s.NoError(db.ClearCollections(event.AllLogCollection))
+	c, err := s.session.DB(s.database).C(allLogCollection).RemoveAll(anserdb.Document{})
+	s.Require().NoError(err)
+	s.Require().NotNil(c)
+
 	s.events = []anserdb.Document{
 		anserdb.Document{
 			"_id":    bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
@@ -65,12 +69,12 @@ func (s *eventRTypeMigrationSuite) SetupTest() {
 		},
 	}
 	for _, e := range s.events {
-		s.NoError(db.Insert(event.AllLogCollection, e))
+		s.NoError(db.Insert(allLogCollection, e))
 	}
 }
 
 func (s *eventRTypeMigrationSuite) TestMigration() {
-	gen, err := makeEventRTypeMigration(event.AllLogCollection)(anser.GetEnvironment(), s.database, 50)
+	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), s.database, 50)
 	s.Require().NoError(err)
 	gen.Run()
 	s.Require().NoError(gen.Error())
@@ -84,7 +88,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 	s.Equal(2, i)
 
 	out := []bson.M{}
-	s.Require().NoError(db.FindAllQ(event.AllLogCollection, db.Q{}, &out))
+	s.Require().NoError(db.FindAllQ(allLogCollection, db.Q{}, &out))
 	s.Len(out, 3)
 
 	for _, e := range out {

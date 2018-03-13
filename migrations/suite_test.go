@@ -22,7 +22,7 @@ type migrationSuite struct {
 	env      *mock.Environment
 	database string
 	session  anserdb.Session
-	cancel   func()
+	cancel   context.CancelFunc
 
 	suite.Suite
 }

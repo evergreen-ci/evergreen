@@ -22,23 +22,23 @@ func NewDBEventLogger(collection string) *DBEventLogger {
 	}
 }
 
-func (self *DBEventLogger) LogEvent(event *EventLogEntry) error {
+func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if event.Data == nil {
 		return errors.New("event log entry cannot have nil Data")
 	}
 	if !event.ID.Valid() {
 		event.ID = bson.NewObjectId()
 	}
-	return db.Insert(self.collection, event)
+	return db.Insert(l.collection, event)
 }
 
-func (self *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
+func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		return errors.New("event has no ID")
 	}
 	event.ProcessedAt = time.Now()
 
-	err := db.Update(self.collection, bson.M{
+	err := db.Update(l.collection, bson.M{
 		idKey: event.ID,
 		processedAtKey: bson.M{
 			"$exists": false,

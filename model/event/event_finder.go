@@ -8,23 +8,24 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var embeddedResourceTypeKey = DataKey + "." + resourceTypeKey
+func embeddedResourceTypeKey() string {
+	return bsonutil.GetDottedKeyName(DataKey, resourceTypeKey)
+}
 
-// UnprocessedEvents returns a query to fetch all unprocessed events
-func UnprocessedEvents() db.Q {
-	return db.Query(bson.M{
+// UnprocessedEvents returns a bson.M query to fetch all unprocessed events
+func UnprocessedEvents() bson.M {
+	return bson.M{
 		processedAtKey: bson.M{
 			"$exists": false,
 		},
-	})
-
+	}
 }
 
 func eitherResourceTypeKeyIs(key string) bson.M {
 	return bson.M{
 		"$or": []bson.M{
 			{
-				embeddedResourceTypeKey: key,
+				embeddedResourceTypeKey(): key,
 			},
 			{
 				resourceTypeKey: key,

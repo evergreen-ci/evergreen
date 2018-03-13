@@ -165,7 +165,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.Empty(tag)
 
 		var bytes []byte
-		bytes, err := json.Marshal(entries[0])
+		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
 		s.Equal(expectedJSON2, string(bytes))
 	})
@@ -369,7 +369,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	for i := range data {
 		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	events, err := Find(AllLogCollection, UnprocessedEvents())
+	events, err := Find(AllLogCollection, db.Query(UnprocessedEvents()))
 	s.NoError(err)
 	s.Len(events, 1)
 
