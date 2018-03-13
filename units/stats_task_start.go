@@ -45,7 +45,7 @@ func newTaskStartJob() *collectTaskStartDataJob {
 }
 
 func NewCollectTaskStartDataJob(t *task.Task, h *host.Host) amboy.Job {
-	j := newTaskEndJob()
+	j := newTaskStartJob()
 	j.TaskID = t.Id
 	j.HostID = h.Id
 	j.task = t

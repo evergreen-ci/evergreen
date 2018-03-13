@@ -651,7 +651,6 @@ func TestTaskLifecycleEndpoints(t *testing.T) {
 
 			counter := 0
 			for job := range as.queue.Results(ctx) {
-				counter++
 				So(job, ShouldNotBeNil)
 
 				switch job.Type().Name {
