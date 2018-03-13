@@ -77,7 +77,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   }
 
   vm.gridOptions = {
-    minRowsToShow: 18,
     enableFiltering: true,
     columnDefs: [
       {
