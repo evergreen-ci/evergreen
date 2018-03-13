@@ -8,7 +8,7 @@
     </h3>
     <div class="mci-pod">
       <div ng-show="created_tickets && created_tickets.length > 0" class="buildbaron-pod">
-        <h5> Tickets automatically created by this task </h5>
+        <h5> Tickets Automatically Created By This Task </h5>
         <div class="buildbaron-results">
           <div class="buildbaron-issue" ng-repeat="issue in created_tickets">
             <div class="buildbaron-row" ng-class="{'buildbaron-row-highlight': issue.fields.status.id==1}">
@@ -122,6 +122,7 @@
         <div ng-switch-when="error" class="buildbaron-results">Searching JIRA failed</div>
         <div ng-switch-when="nothing" class="buildbaron-results">No results found matching task or tests</div>
         <div ng-switch-when="success" class="buildbaron-results">
+          <h5> Related Tickets <a ng-href=[[JiraLink]]>(Jira Search)</a></h5>
           <div class="buildbaron-issue" ng-repeat="issue in build_baron_results">
             <div class="buildbaron-row" ng-class="{'buildbaron-row-highlight': issue.statusKey==1}">
               <span class="buildbaron-issue-summary">

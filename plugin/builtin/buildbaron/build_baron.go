@@ -125,6 +125,11 @@ func (bbp *BuildBaronPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	}, nil
 }
 
+type searchReturnInfo struct {
+	Issues []thirdparty.JiraTicket `json:"issues"`
+	Search string                  `json:"search"`
+}
+
 // BuildFailuresSearchHandler handles the requests of searching jira in the build
 //  failures project
 func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +165,7 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 		util.WriteJSON(w, http.StatusInternalServerError, message)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, results.Issues)
+	util.WriteJSON(w, http.StatusOK, searchReturnInfo{Issues: results.Issues, Search: jql})
 }
 
 func (bbp *BuildBaronPlugin) getCreatedTickets(w http.ResponseWriter, r *http.Request) {
