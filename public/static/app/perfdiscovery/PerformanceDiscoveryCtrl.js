@@ -112,7 +112,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         name: 'Ratio, %',
         field: 'ratio',
         type: 'number',
-        cellFilter: 'percentage | number:0',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
         enableFiltering: false,
         sort: {
           direction: uiGridConstants.DESC,
