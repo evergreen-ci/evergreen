@@ -292,7 +292,8 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		for _, dt := range vt.DisplayTasks {
 			displayNames = append(displayNames, dt.Name)
 		}
-		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks, displayNames)
+		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, taskNames, displayNames)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
