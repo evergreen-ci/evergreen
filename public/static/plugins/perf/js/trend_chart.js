@@ -131,7 +131,9 @@ mciModule.factory('PerfChartService', function() {
   // thread `level` and series `item`
   function getValueForAllLevels(level) {
     return function(item) {
-      return item.threadResults[level.idx][cfg.valueAttr]
+      return item.threadResults[level.idx] ?
+        item.threadResults[level.idx][cfg.valueAttr] :
+        null;
     }
   }
 
