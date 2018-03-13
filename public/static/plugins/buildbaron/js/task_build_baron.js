@@ -13,7 +13,9 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   $scope.getBuildBaronResults = function() {
     $http.get('/plugin/buildbaron/jira_bf_search/' + $scope.taskId + '/' + $scope.taskExec).then(
       function(resp) {
-        var issues = resp.data;
+        var issues = resp.data.issues;
+        var searchString = resp.data.search;
+        $scope.JiraLink = getJqlUrl(searchString);
         if (issues && issues.length > 0 ) {
           // we must sort with native js, since Angular does not
           // allow us to use conditionals when comparing two entries.
@@ -48,6 +50,13 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
       $scope.build_baron_status = "error";
     });
   };
+
+  $scope.getCreatedTickets = function() {
+    $http.get('/plugin/buildbaron/created_tickets/' + $scope.taskId).then(
+      function(resp) {
+        $scope.created_tickets = resp.data;
+      });
+  }
 
   $scope.getNote = function() {
     $http.get('/plugin/buildbaron/note/' + $scope.taskId ).then(
@@ -143,12 +152,18 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
   if($scope.conf.enabled){
     $scope.getNote();
   }
+  $scope.getCreatedTickets();
 
   $scope.clearTicket = function(){
     $scope.newTicket = true;
     $scope.ticketKey = "";
     $scope.ticketTests = [];
     $scope.setTask($window.task_data);
+  }
+
+  var getJqlUrl = function(jql) {
+    jqlEscaped = encodeURIComponent(jql);
+    return 'https://jira.mongodb.org/issues?jql=' + jqlEscaped;
   }
 
 });
