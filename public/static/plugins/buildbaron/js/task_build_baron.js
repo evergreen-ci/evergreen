@@ -163,7 +163,7 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
 
   var getJqlUrl = function(jql) {
     jqlEscaped = encodeURIComponent(jql);
-    return 'https://jira.mongodb.org/issues?jql=' + jqlEscaped;
+    return 'https://jira.mongodb.org/secure/IssueNavigator.jspa?jql=' + jqlEscaped;
   }
 
 });
