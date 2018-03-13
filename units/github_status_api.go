@@ -199,7 +199,8 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 	patchVersion := j.FetchID
 
 	if j.UpdateType == githubUpdateTypeBadConfig {
-		intent, err := patch.FindIntent(j.FetchID, patch.GithubIntentType)
+		var intent patch.Intent
+		intent, err = patch.FindIntent(j.FetchID, patch.GithubIntentType)
 		if err != nil {
 			return errors.Wrap(err, "can't fetch patch intent")
 		}
@@ -208,7 +209,8 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 			return errors.New("patch is missing")
 		}
 
-		projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+		var projectRef *model.ProjectRef
+		projectRef, err = model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
 			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
 		if err != nil {
 			return errors.Wrap(err, "can't fetch project ref")
@@ -223,7 +225,8 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 		status.Description = "project config was invalid"
 
 	} else if j.UpdateType == githubUpdateTypeBuild {
-		b, err := build.FindOne(build.ById(j.FetchID))
+		var b *build.Build
+		b, err = build.FindOne(build.ById(j.FetchID))
 		if err != nil {
 			return err
 		}
