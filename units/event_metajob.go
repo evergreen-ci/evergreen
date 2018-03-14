@@ -55,7 +55,7 @@ func makeEventMetaJob() *eventMetaJob {
 			},
 		},
 	}
-	j.SetDependency(dependency.NewAlways()) //wat?
+	j.SetDependency(dependency.NewAlways())
 
 	return j
 }
@@ -91,6 +91,7 @@ func (j *eventMetaJob) Run() {
 		grip.Info(message.Fields{
 			"job_id":  j.ID(),
 			"job":     eventMetaJobName,
+			"time":    time.Now().String(),
 			"message": "no events need to be processed",
 			"source":  "events-processing",
 		})
@@ -135,6 +136,10 @@ func (j *eventMetaJob) Run() {
 			continue
 		}
 
+		for i := range notifications {
+			j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+		}
+
 		j.AddError(logger.MarkProcessed(&events[i]))
 	}
 	endTime := time.Now()
@@ -173,7 +178,7 @@ func makeEventNotificationJob() *eventNotificationJob {
 	return j
 }
 
-func NewEventNotificationJob(id bson.ObjectId) amboy.Job {
+func newEventNotificationJob(id bson.ObjectId) amboy.Job {
 	j := makeEventNotificationJob()
 
 	j.SetID(fmt.Sprintf("%s:%s", eventNotificationJobName, id.Hex()))
@@ -329,23 +334,22 @@ func calculateHMACHash(secret []byte, body []byte) (string, error) {
 	return "sha256=" + hex.EncodeToString(mac.Sum(nil)), nil
 }
 
-// TODO move elsewhere
-type evergreenWebhook struct {
-	Headers map[string]string `bson:"headers"`
-	Payload []byte            `bson:"payload"`
-}
-
 func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) error {
-	raw := n.Payload.(evergreenWebhook)
+	raw := n.Payload.(notification.EvergreenWebhookPayload)
 
 	hookSubscriber, ok := n.Target.Target.(event.WebhookSubscriber)
 	if !ok {
 		return fmt.Errorf("evergreen-webhook invalid subscriber")
 	}
 
+	u, err := url.Parse(hookSubscriber.URL)
+	if err != nil {
+		return errors.Wrap(err, "evergreen-webhook bad URL")
+	}
+	u.Scheme = "https"
+
 	reader := bytes.NewReader(raw.Payload)
-	hookSubscriber.URL.Scheme = "https"
-	req, err := http.NewRequest(http.MethodPost, hookSubscriber.URL.String(), reader)
+	req, err := http.NewRequest(http.MethodPost, u.String(), reader)
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}
@@ -368,6 +372,8 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	req = req.WithContext(ctx)
 
 	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
 	resp, err := client.Do(req)
 	defer resp.Body.Close()
 	if err != nil {
@@ -413,6 +419,7 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 }
 
 func (j *eventNotificationJob) email(n *notification.Notification) error {
+	// TODO modify grip to allow for email headers to be specfied
 	smtpConf := j.settings.Notify.SMTP
 	if smtpConf == nil {
 		return fmt.Errorf("email smtp settings are empty")
