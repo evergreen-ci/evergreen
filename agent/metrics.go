@@ -13,13 +13,7 @@ import (
 
 const (
 	sysInfoCollectorInterval = 30 * time.Second
-
-	// The proc info collector collects stats at one interval for
-	// a certain number of iterations and then falls back to a
-	// second interval: these values configure those intervals.
-	procInfoFirstInterval   = 5 * time.Second
-	procInfoFirstIterations = 30
-	procInfoSecondInterval  = 10 * time.Second
+	procInfoInterval         = 10 * time.Second
 )
 
 // metricsCollector holds the functionality for running two system
@@ -40,8 +34,7 @@ func (c *metricsCollector) start(ctx context.Context) error {
 	}
 
 	go c.sysInfoCollector(ctx, sysInfoCollectorInterval)
-	go c.processInfoCollector(ctx, procInfoFirstInterval, procInfoSecondInterval,
-		procInfoFirstIterations)
+	go c.processInfoCollector(ctx, procInfoInterval)
 
 	return nil
 }
@@ -54,12 +47,9 @@ func (c *metricsCollector) start(ctx context.Context) error {
 // iterations. The intention of these intervals is to collect data with a
 // high granularity after beginning to run a task and with a lower
 // granularity throughout the life of a commit.
-func (c *metricsCollector) processInfoCollector(ctx context.Context,
-	firstInterval, secondInterval time.Duration, numFirstIterations int) {
-
+func (c *metricsCollector) processInfoCollector(ctx context.Context, interval time.Duration) {
 	grip.Info("starting process metrics collector")
 
-	count := 0
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -73,13 +63,7 @@ func (c *metricsCollector) processInfoCollector(ctx context.Context,
 			grip.CatchNotice(c.comm.SendProcessInfo(ctx, c.taskData, convertProcInfo(msgs)))
 			grip.DebugWhen(sometimes.Fifth(), msgs)
 
-			if count <= numFirstIterations {
-				timer.Reset(firstInterval)
-			} else {
-				timer.Reset(secondInterval)
-			}
-
-			count++
+			timer.Reset(interval)
 		}
 	}
 }
