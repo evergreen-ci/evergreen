@@ -460,9 +460,13 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			return errors.WithStack(err)
 		}
 		defer tempFile.Close() //nolint: evg
-		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
+		n, err := io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {
 			return errors.WithStack(err)
+		}
+		if n == 0 {
+			logger.Execution().Info("Skipping empty patch file...")
+			continue
 		}
 		tempAbsPath := tempFile.Name()
 
