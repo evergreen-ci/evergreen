@@ -283,7 +283,8 @@ retryLoop:
 							// error.
 							continue uploadLoop
 						} else if s3pc.Optional {
-							// single optional file uploads should return early.
+							// single opt
+							ional file uploads should return early.
 							return nil
 						} else {
 							// single required uploads should return an error asap.
@@ -313,7 +314,7 @@ retryLoop:
 		return err
 	}
 
-	if len(uploadedFiles) == len(filesList) && !s3pc.Optional {
+	if len(uploadedFiles) != len(filesList) && !s3pc.Optional {
 		return errors.Errorf("uploaded %d files of %d requestsed", len(uploadedFiles), len(filesList))
 	}
 
