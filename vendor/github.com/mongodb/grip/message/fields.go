@@ -176,3 +176,13 @@ func (m *fieldMessage) String() string {
 }
 
 func (m *fieldMessage) Raw() interface{} { return m.fields }
+
+func (m *fieldMessage) Annotate(key string, value interface{}) error {
+	if _, ok := m.fields[key]; ok {
+		return fmt.Errorf("key '%s' already exists", key)
+	}
+
+	m.fields[key] = value
+
+	return nil
+}

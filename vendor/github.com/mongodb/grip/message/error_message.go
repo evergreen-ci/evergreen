@@ -92,3 +92,7 @@ func (m *errorComposerWrap) Raw() interface{} {
 
 	return out
 }
+
+func (m *errorComposerWrap) Annotate(k string, v interface{}) error {
+	return m.Composer.Annotate(k, v)
+}

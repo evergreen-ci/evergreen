@@ -23,6 +23,7 @@ package message
 
 import (
 	"fmt"
+	"go/build"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -37,7 +38,7 @@ const maxLevels = 1024
 type stackMessage struct {
 	Composer
 	tagged bool
-	trace  []StackFrame
+	trace  stackFrames
 }
 
 // StackFrame captures a single item in a stack trace, and is used
@@ -53,6 +54,8 @@ type StackTrace struct {
 	Context interface{}  `bson:"context,omitempty" json:"context,omitempty" yaml:"context,omitempty"`
 	Frames  []StackFrame `bson:"frames" json:"frames" yaml:"frames"`
 }
+
+func (s StackTrace) String() string { return stackFrames(s.Frames).String() }
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -107,13 +110,13 @@ func NewStackFormatted(skip int, message string, args ...interface{}) Composer {
 ////////////////////////////////////////////////////////////////////////
 
 func (m *stackMessage) String() string {
-	return strings.Join([]string{m.getTag(), m.Composer.String()}, " ")
+	return strings.Trim(strings.Join([]string{m.getTag(), m.Composer.String()}, " "), " \n\t")
 }
 
 func (m *stackMessage) Raw() interface{} {
 	switch payload := m.Composer.(type) {
 	case *fieldMessage:
-		payload.fields["stack.frames"] = m.trace
+		payload.fields["stack.frames"] = m.trace.String()
 		return payload
 	default:
 		return StackTrace{
@@ -128,6 +131,47 @@ func (m *stackMessage) Raw() interface{} {
 // Internal Operations for Collecting and processing data.
 //
 ////////////////////////////////////////////////////////////////////////
+
+type stackFrames []StackFrame
+
+func (f stackFrames) String() string {
+	out := make([]string, len(f))
+	for idx, frame := range f {
+		out[idx] = frame.String()
+	}
+
+	return strings.Join(out, "\n")
+}
+
+func (f StackFrame) String() string {
+	if strings.HasPrefix(f.File, build.Default.GOPATH) {
+		funcNameParts := strings.Split(f.Function, ".")
+		var fname string
+		if len(funcNameParts) > 0 {
+			fname = funcNameParts[len(funcNameParts)-1]
+		} else {
+			fname = f.Function
+
+		}
+
+		return fmt.Sprintf("%s:%d (%s)",
+			f.File[len(build.Default.GOPATH)+5:],
+			f.Line,
+			fname)
+	}
+
+	if strings.HasPrefix(f.File, build.Default.GOROOT) {
+		return fmt.Sprintf("%s:%d",
+			f.File[len(build.Default.GOROOT)+5:],
+			f.Line)
+	}
+
+	dir, fileName := filepath.Split(f.File)
+
+	return fmt.Sprintf("%s:%d",
+		filepath.Join(filepath.Base(dir), fileName),
+		f.Line)
+}
 
 func captureStack(skip int) []StackFrame {
 	if skip <= 0 {
@@ -160,14 +204,8 @@ func captureStack(skip int) []StackFrame {
 
 func (m *stackMessage) getTag() string {
 	if len(m.trace) >= 1 {
-		frame := m.trace[0]
-
-		// get the directory and filename
-		dir, fileName := filepath.Split(frame.File)
-
 		m.tagged = true
-
-		return fmt.Sprintf("[%s:%d]", filepath.Join(filepath.Base(dir), fileName), frame.Line)
+		return m.trace[0].String()
 	}
 
 	return ""

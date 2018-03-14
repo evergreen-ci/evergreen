@@ -37,11 +37,12 @@ func FormatLog(log *Log) string {
 }
 
 // Message returns the formatted log message.
-func (l *Log) Message() string                      { return l.msg.String() }
-func (l *Log) Priority() level.Priority             { return l.Level.Priority() }
-func (l *Log) SetPriority(lvl level.Priority) error { l.Level = convertFromPriority(lvl); return nil }
-func (l *Log) Loggable() bool                       { return l.msg.Loggable() }
-func (l *Log) Raw() interface{}                     { _ = l.String(); return l }
+func (l *Log) Message() string                        { return l.msg.String() }
+func (l *Log) Priority() level.Priority               { return l.Level.Priority() }
+func (l *Log) SetPriority(lvl level.Priority) error   { l.Level = convertFromPriority(lvl); return nil }
+func (l *Log) Loggable() bool                         { return l.msg.Loggable() }
+func (l *Log) Raw() interface{}                       { _ = l.String(); return l }
+func (l *Log) Annotate(k string, v interface{}) error { return l.msg.Annotate(k, v) }
 func (l *Log) String() string {
 	if l.Output == "" {
 		year, month, day := l.Timestamp.Date()
