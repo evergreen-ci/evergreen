@@ -1,8 +1,6 @@
 package event
 
 import (
-	"net/url"
-
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -10,7 +8,10 @@ import (
 
 const (
 	githubPullRequestSubscriberType = "github_pull_request"
-	webhookSubscriberType           = "webhook"
+	jiraIssueSubscriberType         = "jira-issue"
+	jiraCommentSubscriberType       = "jira-comment"
+	evergreenWebhookSubscriberType  = "evergreen-webhook"
+	emailSubscriberType             = "email"
 )
 
 //nolint: deadcode, megacheck
@@ -40,9 +41,11 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 
 	switch s.Type {
 	case githubPullRequestSubscriberType:
-		s.Target = githubPullRequestSubscriber{}
-	case webhookSubscriberType:
-		s.Target = webhookSubscriber{}
+		s.Target = GithubPullRequestSubscriber{}
+
+	case evergreenWebhookSubscriberType:
+		s.Target = WebhookSubscriber{}
+
 	default:
 		s.Target = string(temp.Target)
 		return nil
@@ -55,12 +58,12 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
-type webhookSubscriber struct {
-	URL    url.URL `bson:"url"`
-	Secret []byte  `bson:"secret"`
+type WebhookSubscriber struct {
+	URL    string `bson:"url"`
+	Secret []byte `bson:"secret"`
 }
 
-type githubPullRequestSubscriber struct {
+type GithubPullRequestSubscriber struct {
 	Owner    string `bson:"owner"`
 	Repo     string `bson:"repo"`
 	PRNumber int    `bson:"pr_number"`
