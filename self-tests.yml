@@ -149,6 +149,11 @@ variables:
     stepback: false
     tags: ["lint"]
     commands:
+      - command: git.get_project
+        type: setup
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-credentials
       - func: run-make
         vars: { target: "${task_name}" }
   - &version-constants
@@ -719,17 +724,6 @@ tasks:
     tags: ["db", "xc", "agent"]
     name: xc-util
 
-task_groups:
-  - name: lint-group
-    max_hosts: 4
-    tasks:
-      - .lint
-    setup_group:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: set-up-credentials
 
 buildvariants:
   - name: ubuntu1604
@@ -769,7 +763,7 @@ buildvariants:
       - name: ".race"
       - name: ".report"
         stepback: false
-      - name: lint-group
+      - name: ".lint"
         stepback: false
     display_tasks:
       - name: lint
