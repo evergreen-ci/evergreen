@@ -286,8 +286,9 @@ func (j *eventNotificationJob) jiraComment(n *notification.Notification) error {
 	if err != nil {
 		return errors.Wrap(err, "jira-comment error building message")
 	}
-	//return errors.Wrap(sender.Send(c), "jira-comment error posting issue")
-	sender.Send(c)
+
+	j.send(sender, c, n)
+
 	return nil
 }
 
@@ -312,10 +313,9 @@ func (j *eventNotificationJob) jiraIssue(n *notification.Notification) error {
 		return errors.Wrap(err, "jira-comment error building message")
 	}
 
-	sender.Send(c)
-	// TODO errors
+	j.send(sender, c, n)
+
 	return nil
-	//return errors.Wrap(sender.Send(c), "jira-comment error posting issue")
 }
 
 // calculatHMACHash calculates a sha256 HMAC has of the body with the given
@@ -335,7 +335,7 @@ func calculateHMACHash(secret []byte, body []byte) (string, error) {
 }
 
 func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) error {
-	raw := n.Payload.(notification.EvergreenWebhookPayload)
+	raw := n.Payload.(*notification.EvergreenWebhookPayload)
 
 	hookSubscriber, ok := n.Target.Target.(event.WebhookSubscriber)
 	if !ok {
@@ -413,8 +413,8 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 		return errors.Wrap(err, "slack error building message")
 	}
 
-	sender.Send(c)
-	// TODO errors
+	j.send(sender, c, n)
+
 	return nil
 }
 
@@ -424,17 +424,20 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 	if smtpConf == nil {
 		return fmt.Errorf("email smtp settings are empty")
 	}
+	payload, ok := n.Payload.(*notification.EmailPayload)
+	if !ok {
+		return fmt.Errorf("email payload is invalid")
+	}
 	opts := send.SMTPOptions{
-		Name:     "evergreen",
-		From:     smtpConf.From,
-		Server:   smtpConf.Server,
-		Port:     smtpConf.Port,
-		UseSSL:   smtpConf.UseSSL,
-		Username: smtpConf.Username,
-		Password: smtpConf.Password,
-		GetContents: func(opts *send.SMTPOptions, m message.Composer) (string, string) {
-			return "", ""
-		}, // TODO
+		Name:              "evergreen",
+		From:              smtpConf.From,
+		Server:            smtpConf.Server,
+		Port:              smtpConf.Port,
+		UseSSL:            smtpConf.UseSSL,
+		Username:          smtpConf.Username,
+		Password:          smtpConf.Password,
+		PlainTextContents: false,
+		GetContents:       payload.GetContents,
 	}
 	sender, err := send.MakeSMTPLogger(&opts)
 	if err != nil {
@@ -446,7 +449,29 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		return errors.Wrap(err, "email error building message")
 	}
 
-	sender.Send(c)
-	// TODO errors
+	j.send(sender, c, n)
+
 	return nil
+}
+
+func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) error {
+	s.SetErrorHandler(getSendErrorHandler(n))
+	s.Send(c)
+}
+
+func getSendErrorHandler(n *notification.Notification) {
+	return func(err error, composer message.Composer) {
+		if err == nil || c == nil {
+			return
+		}
+
+		err = n.MarkError(err)
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":             eventMetaJobName,
+			"notification_id": n.ID().Hex(),
+			"source":          "events-processing",
+			"message":         "failed to add error to notification",
+			"composer":        composer.String(),
+		}))
+	}
 }
