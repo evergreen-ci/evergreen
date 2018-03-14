@@ -2,6 +2,7 @@ package units
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -76,13 +77,20 @@ func (j *collectTaskStartDataJob) Run() {
 		"task":         j.task.DisplayName,
 		"execution":    j.task.Execution,
 		"requester":    j.task.Requester,
-		"activated_by": j.task.ActivatedBy,
 		"project":      j.task.Project,
 		"variant":      j.task.BuildVariant,
 		"distro":       j.host.Distro.Id,
 		"provider":     j.host.Distro.Provider,
 		"host":         j.host.Id,
-		"latency_secs": j.task.GetTaskCreatedTime().Sub(j.task.StartTime).Seconds(),
+		"latency_secs": j.task.StartTime.Sub(j.task.GetTaskCreatedTime()).Seconds(),
+	}
+
+	if strings.HasPrefix(j.host.Distro.Provider, "ec2") {
+		msg["provider"] = "ec2"
+	}
+
+	if j.task.ActivatedBy != "" {
+		msg["activated_by"] = j.task.ActivatedBy
 	}
 
 	if j.host.Provider != evergreen.ProviderNameStatic {
