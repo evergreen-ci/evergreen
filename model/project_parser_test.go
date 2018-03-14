@@ -926,3 +926,138 @@ buildvariants:
 		assert.Equal(0, v%2)
 	}
 }
+
+func TestTaskGroupWithDisplayTask(t *testing.T) {
+	assert := assert.New(t)
+
+	validYml := `
+tasks:
+- name: task_1
+- name: task_2
+task_groups:
+- name: task_group_1
+  tasks:
+  - task_1
+  - task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: lint
+      execution_tasks:
+      - task_1
+      - task_2
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestTaskGroupWithDisplayTaskWithDisplayTaskTag(t *testing.T) {
+	assert := assert.New(t)
+	validYml := `
+tasks:
+- name: task_1
+  tags: [ "tag_1" ]
+- name: task_2
+  tags: [ "tag_1" ]
+task_groups:
+- name: task_group_1
+  tasks:
+  - task_1
+  - task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: display_1
+      execution_tasks:
+      - ".tag_1"
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestTaskGroupWithDisplayTaskWithTaskGroupTag(t *testing.T) {
+	assert := assert.New(t)
+	validYml := `
+tasks:
+- name: task_1
+  tags: [ "tag_1" ]
+- name: task_2
+  tags: [ "tag_1" ]
+task_groups:
+- name: task_group_1
+  tasks:
+  - ".tag_1"
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: display_1
+      execution_tasks:
+      - task_1
+      - task_2
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestTaskGroupWithDisplayTaskWithTaskGroupTagAndDisplayTaskTag(t *testing.T) {
+	assert := assert.New(t)
+	validYml := `
+tasks:
+- name: task_1
+  tags: [ "tag_1" ]
+- name: task_2
+  tags: [ "tag_1" ]
+task_groups:
+- name: task_group_1
+  tasks:
+  - ".tag_1"
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: display_1
+      execution_tasks:
+      - ".tag_1"
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
