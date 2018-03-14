@@ -419,10 +419,14 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 }
 
 func (j *eventNotificationJob) email(n *notification.Notification) error {
-	// TODO modify grip to allow for email headers to be specfied
+	// TODO modify grip to allow for email headers to be specified
 	smtpConf := j.settings.Notify.SMTP
 	if smtpConf == nil {
 		return fmt.Errorf("email smtp settings are empty")
+	}
+	recipient, ok := n.Target.Target.(string)
+	if !ok {
+		return fmt.Errorf("email recipient email is not a string")
 	}
 	payload, ok := n.Payload.(*notification.EmailPayload)
 	if !ok {
@@ -438,6 +442,9 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		Password:          smtpConf.Password,
 		PlainTextContents: false,
 		GetContents:       payload.GetContents,
+	}
+	if err := opts.AddRecipients(recipient); err != nil {
+		return error.Wrap(err, "email was invalid")
 	}
 	sender, err := send.MakeSMTPLogger(&opts)
 	if err != nil {
