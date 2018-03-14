@@ -430,7 +430,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if patchPart.ModuleName == "" {
 			// if patch is not part of a module, just apply patch against src root
 			dir = c.Directory
-			logger.Execution().Info("Applying patch with git...")
+
 		} else {
 			// if patch is part of a module, apply patch in module root
 			module, err := conf.Project.GetModuleByName(patchPart.ModuleName)
@@ -450,7 +450,6 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			}
 
 			dir = filepath.Join(c.Directory, module.Prefix, module.Name)
-			logger.Execution().Info("Applying module patch with git...")
 		}
 
 		// create a temporary folder and store patch files on disk,
