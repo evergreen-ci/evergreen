@@ -59,20 +59,22 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var revision = vm.revisionSelect.selected
     var baselineTag = vm.tagSelect.selected.name
 
+    // Set loading flag to display spinner
+    vm.isLoading = true
+    // Display no data while loading is in progress
+    vm.gridOptions.data = []
+
     ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
       var version = res.data
-      PerfDiscoveryService.getData(
-        version, baselineTag
-      ).then(function(res) {
+      PerfDiscoveryService.getData(version, baselineTag).then(function(res) {
         vm.gridOptions.data = res
-
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
           res,
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridOptions
         )
-      })
+      }).finally(function() { vm.isLoading = false })
     })
   }
 
