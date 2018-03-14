@@ -283,8 +283,7 @@ retryLoop:
 							// error.
 							continue uploadLoop
 						} else if s3pc.Optional {
-							// single opt
-							ional file uploads should return early.
+							// single optional file uploads should return early.
 							return nil
 						} else {
 							// single required uploads should return an error asap.
