@@ -490,27 +490,18 @@ func (h *Host) SetTaskPid(pid string) error {
 	)
 }
 
-// UpdateReachability sets a host as either running or unreachable,
-// and updates the timestamp of the host's last reachability check.
-// If the host is being set to unreachable, the "unreachable since" field
-// is also set to the current time if it is unset.
-func (h *Host) UpdateReachability(reachable bool) error {
-	status := evergreen.HostRunning
-	if !reachable {
-		status = evergreen.HostUnreachable
-	}
-
-	if status == h.Status {
+func (h *Host) MarkReachable() error {
+	if h.Status == evergreen.HostRunning {
 		return nil
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, evergreen.User)
+	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User)
 
-	h.Status = status
+	h.Status = evergreen.HostRunning
 
 	return UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: status}})
+		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
 }
 
 func (h *Host) Upsert() (*mgo.ChangeInfo, error) {

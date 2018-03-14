@@ -33,6 +33,13 @@ func monitorReachability(ctx context.Context, settings *evergreen.Settings) erro
 		return errors.Wrap(err, "error finding hosts not monitored recently")
 	}
 
+	grip.Info(message.Fields{
+		"runner":    RunnerName,
+		"operation": "monitorReachability",
+		"message":   "impact test",
+		"num_hosts": len(hosts),
+	})
+
 	catcher := grip.NewBasicCatcher()
 
 checkLoop:
@@ -54,12 +61,15 @@ checkLoop:
 		// take different action, depending on how the cloud provider reports the host's status
 		switch cloudStatus {
 		case cloud.StatusRunning:
-			// mark the host appropriately; this is a noop if the host status hasn't changed.
-			if err := h.UpdateReachability(true); err != nil {
-				catcher.Add(errors.Wrapf(err, "error updating reachability for host %s", h.Id))
-				continue checkLoop
+			if h.Status != evergreen.HostRunning {
+				grip.Notice(message.Fields{
+					"runner":      RunnerName,
+					"operation":   "monitorReachability",
+					"message":     "dead code",
+					"observation": "reachable host detected my cloud status check",
+				})
+				catcher.Add(errors.Wrapf(h.MarkReachable(), "error updating reachability for host %s", h.Id))
 			}
-
 		case cloud.StatusTerminated:
 			grip.Info(message.Fields{
 				"runner":    RunnerName,
@@ -68,13 +78,12 @@ checkLoop:
 				"host":      h.Id,
 				"distro":    h.Distro.Id,
 			})
+
 			event.LogHostTerminatedExternally(h.Id)
 
 			// the instance was terminated from outside our control
-			if err := h.SetTerminated("external"); err != nil {
-				catcher.Add(errors.Wrapf(err, "error setting host %s terminated", h.Id))
-				continue checkLoop
-			}
+
+			catcher.Add(errors.Wrapf(h.SetTerminated("external"), "error setting host %s terminated", h.Id))
 		}
 	}
 
