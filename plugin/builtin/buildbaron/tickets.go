@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -137,6 +138,7 @@ func (bbp *BuildBaronPlugin) fileTicket(w http.ResponseWriter, r *http.Request) 
 		util.WriteJSON(w, http.StatusBadRequest, msg)
 		return
 	}
+	event.LogJiraIssueCreated(t.Id, result.Key)
 	grip.Infof("Ticket %s successfully created", result.Key)
 	util.WriteJSON(w, http.StatusOK, result)
 }
