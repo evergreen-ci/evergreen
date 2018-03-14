@@ -467,6 +467,12 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		if n == 0 {
 			logger.Execution().Info("Skipping empty patch file...")
 			continue
+
+		} else if patchPart.ModuleName == "" {
+			logger.Execution().Info("Applying patch with git...")
+
+		} else {
+			logger.Execution().Info("Applying module patch with git...")
 		}
 		tempAbsPath := tempFile.Name()
 
