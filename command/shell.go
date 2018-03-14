@@ -168,6 +168,11 @@ func (c *shellExec) Execute(ctx context.Context,
 		return errors.New("shell command interrupted")
 	}
 
+	if c.ContinueOnError {
+		logger.Execution().Notice(err)
+		return nil
+	}
+
 	return err
 }
 
