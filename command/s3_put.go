@@ -314,7 +314,7 @@ retryLoop:
 	}
 
 	if len(uploadedFiles) != len(filesList) && !s3pc.Optional {
-		return errors.Errorf("uploaded %d files of %d requestsed", len(uploadedFiles), len(filesList))
+		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 
 	return nil
