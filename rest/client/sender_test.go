@@ -98,6 +98,7 @@ func TestTimeoutLogSender(t *testing.T) {
 	// If a message is sent, the last message time *should* upate
 	s.Send(message.NewDefaultMessage(level.Error, "hello world!!"))
 	time.Sleep(20 * time.Millisecond)
+	assert.NoError(s.Close())
 	last3 := comm.LastMessageAt()
 	assert.NotEqual(last2, last3)
 }
