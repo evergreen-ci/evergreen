@@ -150,13 +150,13 @@ func ByGuid(guid string) db.Q {
 }
 
 func AdminEventsBefore(before time.Time, n int) db.Q {
-	return db.Query(bson.M{
-		DataKey + "." + resourceTypeKey: ResourceTypeAdmin,
-		ResourceIdKey:                   "",
-		TimestampKey: bson.M{
-			"$lt": before,
-		},
-	}).Sort([]string{"-" + TimestampKey}).Limit(n)
+	filter := eitherResourceTypeKeyIs(ResourceTypeAdmin)
+	filter[ResourceIdKey] = ""
+	filter[TimestampKey] = bson.M{
+		"$lt": before,
+	}
+
+	return db.Query(filter).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
 // TaskSystemInfoEvents builds a query for system info,
