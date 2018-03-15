@@ -88,10 +88,8 @@ func (j *eventMetaJob) Run() {
 	if flags.EventProcessingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventMetaJobName,
-			"message": "events processing is disabled, not processing events",
+			"message": "events processing is disabled, all events will be marked processed",
 		})
-		j.AddError(errors.New("events processing is disabled, not processing events"))
-		return
 	}
 
 	events, err := event.Find(event.AllLogCollection, db.Query(event.UnprocessedEvents()))
@@ -151,8 +149,10 @@ func (j *eventMetaJob) Run() {
 			continue
 		}
 
-		for i := range notifications {
-			j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+		if flags.EventProcessingDisabled {
+			for i := range notifications {
+				j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+			}
 		}
 
 		j.AddError(logger.MarkProcessed(&events[i]))
@@ -161,14 +161,15 @@ func (j *eventMetaJob) Run() {
 	totalDuration := endTime.Sub(startTime)
 
 	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
-		"source":     "events-processing",
-		"message":    "stats",
-		"start_time": startTime.String(),
-		"end_time":   endTime.String(),
-		"duration":   totalDuration.String(),
-		"n":          len(events),
+		"job_id":        j.ID(),
+		"job":           eventMetaJobName,
+		"source":        "events-processing",
+		"message":       "stats",
+		"start_time":    startTime.String(),
+		"end_time":      endTime.String(),
+		"duration":      totalDuration.String(),
+		"n":             len(events),
+		"degraded_mode": flags.EventProcessingDisabled,
 	})
 }
 
