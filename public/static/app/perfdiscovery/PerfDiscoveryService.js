@@ -49,10 +49,10 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     return _.extend({storageEngine: storageEngine}, attrs)
   }
 
-  // Calculates ratio for given test result `item` and `baseSpeed`
-  function ratio(item, baseSpeed) {
-    var ratio = item.speed / baseSpeed
-    if (item.speed >= 0) {
+  // Calculates ratio for given test result `speed` and `baseSpeed` reference
+  function ratio(speed, baseSpeed) {
+    var ratio = speed / baseSpeed
+    if (speed >= 0) {
       return ratio
     } else {
       // Negatives mean latency in ms. Invert the ratio so higher is better.
@@ -159,19 +159,22 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
       .map(function(item, id) {
         var baseline = results.baseline[id]
         var appendix = {
-          ratio: ratio(item, baseline.speed),
+          ratio: ratio(item.speed, baseline.speed),
           baseSpeed: baseline.speed,
           trendData: _.chain(results.history)
+            .take(100)
             .map(function(run) {
               var base = run[id]
               if (base == undefined || !base.speed) {
                 return 1
               }
-              return ratio(item, base.speed)
+              return ratio(item.speed, base.speed)
             })
             .value(),
         }
-        appendix.avgVsSelf = [d3.mean(appendix.trendData), appendix.ratio]
+        var avgRatio = d3.mean(appendix.trendData)
+        appendix.avgRatio = avgRatio
+        appendix.avgVsSelf = [avgRatio, appendix.ratio]
         return _.extend({}, item, appendix)
       })
       .value()
