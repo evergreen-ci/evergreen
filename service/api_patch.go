@@ -14,8 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -34,57 +32,33 @@ type PatchAPIResponse struct {
 // and saves the patches to GridFS to be retrieved
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
-	var intent patch.Intent
-	if r.Header.Get("Content-Type") == formMimeType {
-		grip.Info(message.Fields{
-			"message":  "logging for presumably dead code",
-			"location": "submitPatch",
-			"ticket":   "EVG-2936",
-		})
-		patchContent := r.FormValue("patch")
-		if patchContent == "" {
-			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Error: Patch must not be empty"))
-			return
-		}
 
-		variants := strings.Split(r.FormValue("buildvariants"), ",")
-		finalize := strings.ToLower(r.FormValue("finalize")) == "true"
-
-		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, r.FormValue("project"), r.FormValue("githash"), r.FormValue("module"), patchContent, r.FormValue("desc"), finalize, variants, []string{}, "")
-		if err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
-
-	} else {
-		data := struct {
-			Description string   `json:"desc"`
-			Project     string   `json:"project"`
-			Patch       string   `json:"patch"`
-			Githash     string   `json:"githash"`
-			Variants    string   `json:"buildvariants"`
-			Tasks       []string `json:"tasks"`
-			Finalize    bool     `json:"finalize"`
-			Alias       string   `json:"alias"`
-		}{}
-		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
-		if len(data.Patch) > patch.SizeLimit {
-			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large."))
-			return
-		}
-		variants := strings.Split(data.Variants, ",")
-
-		var err error
-		intent, err = patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
-		if err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
+	data := struct {
+		Description string   `json:"desc"`
+		Project     string   `json:"project"`
+		Patch       string   `json:"patch"`
+		Githash     string   `json:"githash"`
+		Variants    string   `json:"buildvariants"`
+		Tasks       []string `json:"tasks"`
+		Finalize    bool     `json:"finalize"`
+		Alias       string   `json:"alias"`
+	}{}
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
 	}
+	if len(data.Patch) > patch.SizeLimit {
+		as.LoggedError(w, r, http.StatusBadRequest, errors.New("Patch is too large."))
+		return
+	}
+	variants := strings.Split(data.Variants, ",")
+
+	intent, err := patch.NewCliIntent(dbUser.Id, data.Project, data.Githash, r.FormValue("module"), data.Patch, data.Description, data.Finalize, variants, data.Tasks, data.Alias)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+
 	if intent == nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("intent could not be created from supplied data"))
 		return
