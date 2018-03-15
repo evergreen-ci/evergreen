@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/model/triggers"
@@ -24,6 +25,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -65,7 +67,7 @@ func NewEventMetaJob() amboy.Job {
 	j.env = evergreen.GetEnvironment()
 
 	// TODO: safe?
-	j.SetID(fmt.Sprintf("%s:%d", eventMetaJobName, job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s:%s:%d", eventMetaJobName, time.Now().String(), job.GetNumber()))
 
 	return j
 }
@@ -77,9 +79,22 @@ func (j *eventMetaJob) Run() {
 		j.AddError(errors.New("evergreen environment not setup correctly"))
 		return
 	}
-	// TODO degraded mode
 
-	events, err := event.Find(event.AllLogCollection, event.UnprocessedEvents())
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+		return
+	}
+	if flags.EventProcessingDisabled {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     eventMetaJobName,
+			"message": "events processing is disabled, not processing events",
+		})
+		j.AddError(errors.New("events processing is disabled, not processing events"))
+		return
+	}
+
+	events, err := event.Find(event.AllLogCollection, db.Query(event.UnprocessedEvents()))
 	logger := event.NewDBEventLogger(event.AllLogCollection)
 
 	if err != nil {
@@ -197,12 +212,22 @@ const (
 func (j *eventNotificationJob) Run() {
 	defer j.MarkComplete()
 
+	flags, err := evergreen.GetServiceFlags()
+	if err != nil {
+		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
+
+	} else if flags == nil {
+		j.AddError(errors.Wrap(err, "fetched no service flags configuration"))
+	}
+	if j.HasErrors() {
+		return
+	}
+
 	if !j.NotificationID.Valid() {
 		j.AddError(errors.New("notification ID is not valid"))
 		return
 	}
 
-	var err error
 	j.settings, err = evergreen.GetConfig()
 	j.AddError(err)
 	if err == nil && j.settings == nil {
@@ -224,29 +249,56 @@ func (j *eventNotificationJob) Run() {
 	var sendError error
 	switch n.Type {
 	// TODO I'm tired
-	//	case githubPullRequestSubscriberType:
-	//
+	//case githubPullRequestSubscriberType:
+	//	if err = checkFlag(flags.GithubStatusAPIDisabled); err != nil {
+	//		j.AddError(err)
+	//		return
+	//	}
+
 	case slackSubscriberType:
+		if err = checkFlag(flags.SlackNotificationsDisabled); err != nil {
+			j.AddError(err)
+			return
+		}
 		sendError = j.slackMessage(n)
 
 	case jiraIssueSubscriberType:
+		if err = checkFlag(flags.JIRANotificationsDisabled); err != nil {
+			j.AddError(err)
+			return
+		}
 		sendError = j.jiraIssue(n)
 
 	case jiraCommentSubscriberType:
+		if err = checkFlag(flags.JIRANotificationsDisabled); err != nil {
+			j.AddError(err)
+			return
+		}
 		sendError = j.jiraComment(n)
 
 	case evergreenWebhookSubscriberType:
+		if err = checkFlag(flags.WebhookNotificationsDisabled); err != nil {
+			j.AddError(err)
+			return
+		}
 		sendError = j.evergreenWebhook(n)
 
 	case emailSubscriberType:
+		if err = checkFlag(flags.EmailNotificationsDisabled); err != nil {
+			j.AddError(err)
+			return
+		}
 		sendError = j.email(n)
 
 	default:
 		j.AddError(errors.Errorf("unknown notification type: %s", n.Type))
 	}
 
-	j.AddError(sendError)
-	j.AddError(n.MarkSent(sendError))
+	j.AddError(n.MarkSent())
+	if sendError != nil {
+		j.AddError(sendError)
+		j.AddError(n.MarkError(sendError))
+	}
 }
 
 func jiraOptions(c evergreen.JiraConfig) (*send.JiraOptions, error) {
@@ -444,7 +496,7 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		GetContents:       payload.GetContents,
 	}
 	if err := opts.AddRecipients(recipient); err != nil {
-		return error.Wrap(err, "email was invalid")
+		return errors.Wrap(err, "email was invalid")
 	}
 	sender, err := send.MakeSMTPLogger(&opts)
 	if err != nil {
@@ -461,13 +513,13 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 	return nil
 }
 
-func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) error {
+func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) {
 	s.SetErrorHandler(getSendErrorHandler(n))
 	s.Send(c)
 }
 
-func getSendErrorHandler(n *notification.Notification) {
-	return func(err error, composer message.Composer) {
+func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
+	return func(err error, c message.Composer) {
 		if err == nil || c == nil {
 			return
 		}
@@ -475,10 +527,22 @@ func getSendErrorHandler(n *notification.Notification) {
 		err = n.MarkError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":             eventMetaJobName,
-			"notification_id": n.ID().Hex(),
+			"notification_id": n.ID.Hex(),
 			"source":          "events-processing",
 			"message":         "failed to add error to notification",
-			"composer":        composer.String(),
+			"composer":        c.String(),
 		}))
 	}
+}
+
+func checkFlag(flag bool) error {
+	if flag {
+		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+			"job":     eventMetaJobName,
+			"message": "sender is disabled, not sending notification",
+		})
+		return errors.New("sender is disabled, not sending notification")
+	}
+
+	return nil
 }
