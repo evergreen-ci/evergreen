@@ -595,7 +595,10 @@ var drawSingleTrendChart = function(params) {
     focusedText
       .attr({'y': function(d, i) { return opsLabelsY[i] },
              transform: function(){
-               // center the text for the last 20 items
+               // transform the hover text location to:
+               //   1. right align the left 33% 
+               //   2. center align the middle 33%
+               //   3. left align the right 33%
                var x = 0;
                if(series){
                  var percent = idx * 100.0 /  series.length;
