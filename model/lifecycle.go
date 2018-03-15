@@ -300,7 +300,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 
 	for _, t := range allTasks {
 		if t.DispatchTime != util.ZeroTime {
-			err = resetTask(t.Id)
+			err = resetTask(t.Id, caller)
 			if err != nil {
 				return errors.Wrapf(err,
 					"Restarting build %v failed, could not task.reset on task",
@@ -346,7 +346,7 @@ func RestartBuildTasks(buildId string, caller string) error {
 
 	for _, t := range allTasks {
 		if t.DispatchTime != util.ZeroTime {
-			err = resetTask(t.Id)
+			err = resetTask(t.Id, caller)
 			if err != nil {
 				return errors.Wrapf(err,
 					"Restarting build %v failed, could not task.reset on task",

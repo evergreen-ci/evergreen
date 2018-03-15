@@ -38,13 +38,11 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		}
 
 		if t.DispatchTime != util.ZeroTime && t.Status == evergreen.TaskUndispatched {
-			err = resetTask(t.Id)
-			if err != nil {
+			if err = resetTask(t.Id, caller); err != nil {
 				return errors.Wrap(err, "error resetting task")
 			}
 		} else {
-			err = t.ActivateTask(caller)
-			if err != nil {
+			if err = t.ActivateTask(caller); err != nil {
 				return errors.Wrap(err, "error while activating task")
 			}
 		}
@@ -103,7 +101,7 @@ func ActivatePreviousTask(taskId, caller string) error {
 }
 
 // reset task finds a task, attempts to archive it, and resets the task and resets the TaskCache in the build as well.
-func resetTask(taskId string) error {
+func resetTask(taskId, caller string) error {
 	t, err := task.FindOneNoMerge(task.ById(taskId))
 	if err != nil {
 		return errors.WithStack(err)
@@ -116,6 +114,10 @@ func resetTask(taskId string) error {
 	}
 
 	if err = t.Reset(); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err = t.ActivateTask(caller); err != nil {
 		return errors.WithStack(err)
 	}
 
@@ -171,7 +173,7 @@ func TryResetTask(taskId, user, origin string, detail *apimodels.TaskEndDetail) 
 		}
 	}
 
-	if err = resetTask(t.Id); err != nil {
+	if err = resetTask(t.Id, user); err != nil {
 		return err
 	}
 	if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
