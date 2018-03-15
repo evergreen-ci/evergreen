@@ -603,7 +603,7 @@ var drawSingleTrendChart = function(params) {
                return d3Translate(-x, 0)
              }
       })
-      .text(function (d, i) {
+      .text(function(d, i) {
         var value = values[i];
         var absolute = Math.abs(value);
         if (absolute == 0) {
