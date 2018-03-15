@@ -115,7 +115,6 @@ func startRunnerService() cli.Command {
 			go listenForSIGTERM(cancel)
 			waiter := make(chan struct{})
 			startRunners(ctx, settings, waiter)
-			grip.Notice("waiting for runner processes to terminate")
 			<-waiter
 
 			return errors.WithStack(err)
@@ -230,6 +229,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 		}
 	}
 
+	grip.Notice("waiting for runner processes to terminate")
 	wg.Wait()
 	grip.Infof("Cleanly terminated all %d processes", len(backgroundRunners))
 	close(waiter)
@@ -243,9 +243,15 @@ func listenForSIGTERM(cancel context.CancelFunc) {
 	// notify us when SIGTERM is received
 	signal.Notify(sigChan, syscall.SIGTERM)
 	<-sigChan
-	grip.Infof("Terminating %d processes", len(backgroundRunners))
-	cancel()
+	grip.Notice(message.Fields{
+		"message":     "received SIGTERM, terminating",
+		"signal":      syscall.SIGTERM,
+		"num_runners": len(backgroundRunners),
+		"build":       evergreen.BuildRevision,
+		"process":     grip.Name(),
+	})
 
+	cancel()
 }
 
 // runProcessByName runs a single process given its name and evergreen Settings.
