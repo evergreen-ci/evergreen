@@ -97,7 +97,7 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     repotracker_push_event_disabled: "repotracker_push_event",
     cli_updates_disabled: "cli_updates",
     github_status_api_disabled: "github_status_api",
-    background_stats_disabled: "bacground stats"
+    background_stats_disabled: "background stats"
   }
 
   timestamp = function(ts) {

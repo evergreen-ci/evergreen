@@ -68,8 +68,8 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 
 func startSysInfoCollectors(ctx context.Context, env evergreen.Environment, interval time.Duration, opts amboy.QueueOperationConfig) {
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), interval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags := env.Settings().ServiceFlags
-		if err := flags.Get(); err != nil {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
 				"message":       "problem fetching service flags",
 				"operation":     "system stats",
@@ -84,6 +84,7 @@ func startSysInfoCollectors(ctx context.Context, env evergreen.Environment, inte
 				"impact":  "memory, cpu, runtime stats",
 				"mode":    "degraded",
 			})
+			return nil
 		}
 
 		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))

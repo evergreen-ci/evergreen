@@ -146,8 +146,8 @@ func startWebTierBackgroundJobs(ctx context.Context, env evergreen.Environment) 
 	const amboyStatsInterval = time.Minute
 
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), amboyStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags := env.Settings().ServiceFlags
-		if err := flags.Get(); err != nil {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
 				"message":       "problem fetching service flags",
 				"operation":     "background stats",
@@ -162,6 +162,7 @@ func startWebTierBackgroundJobs(ctx context.Context, env evergreen.Environment) 
 				"impact":  "amboy stats disabled",
 				"mode":    "degraded",
 			})
+			return nil
 		}
 
 		return queue.Put(units.NewLocalAmboyStatsCollector(env, fmt.Sprintf("amboy-local-stats-%d", time.Now().Unix())))

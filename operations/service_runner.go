@@ -150,8 +150,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 	// add jobs to a local queue every minute for stats collection and reporting.
 	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
-		flags := env.Settings().ServiceFlags
-		if err := flags.Get(); err != nil {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
 			grip.Alert(message.WrapError(err, message.Fields{
 				"message":       "problem fetching service flags",
 				"operation":     "background stats",
@@ -166,6 +166,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 				"impact":  "host, task, latency, and amboy stats disabled",
 				"mode":    "degraded",
 			})
+			return nil
 		}
 
 		catcher := grip.NewBasicCatcher()

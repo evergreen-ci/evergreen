@@ -980,6 +980,7 @@ type APIServiceFlags struct {
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 }
 
 type APISlackConfig struct {
@@ -1186,6 +1187,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		RepotrackerPushEventDisabled: as.RepotrackerPushEventDisabled,
 		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
 		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 	}, nil
 }
 
