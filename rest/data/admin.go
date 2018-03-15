@@ -35,6 +35,7 @@ func (ac *DBAdminConnector) GetBanner() (string, string, error) {
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
+
 	settingsAPI := restModel.NewConfigModel()
 	err := settingsAPI.BuildFromService(oldSettings)
 	if err != nil {
@@ -66,6 +67,7 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 		if err != nil {
 			return nil, errors.Wrap(err, "error saving new settings")
 		}
+		newSettings.Id = evergreen.ConfigDocID
 		return &newSettings, LogConfigChanges(&newSettings, oldSettings, u)
 	}
 
@@ -73,12 +75,8 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 }
 
 func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
-	// log the root config document here
-	catcher := grip.NewSimpleCatcher()
-	if err := event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()); err != nil {
-		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
-	}
 
+	catcher := grip.NewSimpleCatcher()
 	// log the other config sub-documents
 	valConfig := reflect.ValueOf(*newSettings)
 	var oldStruct reflect.Value
@@ -121,6 +119,12 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 			catcher.Add(event.LogAdminEvent(section.SectionId(), oldInterface.(evergreen.ConfigSection), section, u.Username()))
 		}
 	}
+
+	// log the root config document
+	if err := event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()); err != nil {
+		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
+	}
+
 	return errors.WithStack(catcher.Resolve())
 }
 
