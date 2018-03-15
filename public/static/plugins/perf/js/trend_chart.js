@@ -14,7 +14,7 @@ mciModule.factory('PerfChartService', function() {
       top: 12,
       right: 50,
       bottom: 60,
-      left: 80
+      left: 120
     },
     points: {
       focusedR: 4.5,
@@ -593,16 +593,25 @@ var drawSingleTrendChart = function(params) {
     })
 
     focusedText
-      .attr('y', function(d, i) { return opsLabelsY[i] })
-      .text(function (d, i) {
+      .attr({y: function(d, i) { return opsLabelsY[i] },
+             transform: function() {
+               // transform the hover text location based on the list index
+               var x = 0;
+               if (series) {
+                 x = (cfg.focus.labelOffset.x + this.getBBox().width) * idx / series.length
+               }
+               return d3Translate(-x, 0)
+             }
+      })
+      .text(function(d, i) {
         var value = values[i];
         var absolute = Math.abs(value);
-        if ( absolute == 0) {
+        if (absolute == 0) {
           return "0";
-        } else if ( absolute < 1) {
-          if ( absolute >= .1) {
+        } else if (absolute < 1) {
+          if (absolute >= .1) {
             return cfg.formatters.digits_1(value);
-          }  else if ( absolute >= .01) {
+          }  else if (absolute >= .01) {
             return cfg.formatters.digits_2(value);
           } else {
             return cfg.formatters.digits_3(value);
