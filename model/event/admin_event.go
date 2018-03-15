@@ -55,6 +55,12 @@ func (evt rawAdminEventData) IsValid() bool {
 }
 
 func LogAdminEvent(section string, before, after evergreen.ConfigSection, user string) error {
+	if section == evergreen.ConfigDocID {
+		beforeSettings := before.(*evergreen.Settings)
+		afterSettings := after.(*evergreen.Settings)
+		before = stripInteriorSections(beforeSettings)
+		after = stripInteriorSections(afterSettings)
+	}
 	if reflect.DeepEqual(before, after) {
 		return nil
 	}
@@ -76,6 +82,24 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		return errors.Wrap(err, "Error logging admin event")
 	}
 	return nil
+}
+
+func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
+	valConfigPtr := reflect.ValueOf(config)
+	valConfig := reflect.Indirect(valConfigPtr)
+	for i := 0; i < valConfig.NumField(); i++ {
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" {
+			continue
+		}
+
+		propName := valConfig.Type().Field(i).Name
+		propVal := valConfig.FieldByName(propName)
+		propVal.Set(reflect.Zero(propVal.Type()))
+	}
+
+	configInterface := valConfigPtr.Interface()
+	return configInterface.(*evergreen.Settings)
 }
 
 func FindAdmin(query db.Q) ([]EventLogEntry, error) {
