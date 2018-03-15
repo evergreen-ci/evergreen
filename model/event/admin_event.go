@@ -85,7 +85,9 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 }
 
 func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
-	valConfigPtr := reflect.ValueOf(config)
+	copy := &evergreen.Settings{}
+	*copy = *config
+	valConfigPtr := reflect.ValueOf(copy)
 	valConfig := reflect.Indirect(valConfigPtr)
 	for i := 0; i < valConfig.NumField(); i++ {
 		sectionId := valConfig.Type().Field(i).Tag.Get("id")

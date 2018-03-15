@@ -105,6 +105,25 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
 }
 
+func (s *AdminEventSuite) TestNoSpuriousLogging() {
+	before := evergreen.Settings{
+		ApiUrl: "api",
+		HostInit: evergreen.HostInitConfig{
+			SSHTimeoutSeconds: 10,
+		},
+	}
+	after := evergreen.Settings{
+		ApiUrl: "api",
+		HostInit: evergreen.HostInitConfig{
+			SSHTimeoutSeconds: 15,
+		},
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(5))
+	s.NoError(err)
+	s.Len(dbEvents, 0)
+}
+
 func (s *AdminEventSuite) TestNoChanges() {
 	before := evergreen.SchedulerConfig{
 		MergeToggle: 5,
