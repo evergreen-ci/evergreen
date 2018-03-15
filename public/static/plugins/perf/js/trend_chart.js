@@ -593,11 +593,11 @@ var drawSingleTrendChart = function(params) {
     })
 
     focusedText
-      .attr({'y': function(d, i) { return opsLabelsY[i] },
-             'transform': function(){
+      .attr({y: function(d, i) { return opsLabelsY[i] },
+             transform: function(){
                // transform the hover text location based on the list index
                var x = 0;
-               if(series){
+               if (series) {
                  x = (cfg.focus.labelOffset.x + this.getBBox().width) * idx / series.length
                }
                return d3Translate(-x, 0)
