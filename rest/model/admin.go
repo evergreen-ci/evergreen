@@ -1166,6 +1166,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.RepotrackerPushEventDisabled = v.RepotrackerPushEventDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
+		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
