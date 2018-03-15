@@ -594,34 +594,24 @@ var drawSingleTrendChart = function(params) {
 
     focusedText
       .attr({'y': function(d, i) { return opsLabelsY[i] },
-             transform: function(){
-               // transform the hover text location to:
-               //   1. right align the left 33% 
-               //   2. center align the middle 33%
-               //   3. left align the right 33%
+             'transform': function(){
+               // transform the hover text location based on the list index
                var x = 0;
                if(series){
-                 var percent = idx * 100.0 /  series.length;
-                 if(percent< 33){
-                   x = 0;
-                 } else if ( percent >= 33 && percent < 66) {
-                   x = -(cfg.focus.labelOffset.x + this.getBBox().width / 2);
-                 } else {
-                   x = -(cfg.focus.labelOffset.x + this.getBBox().width);
-                 }
+                 x = (cfg.focus.labelOffset.x + this.getBBox().width) * idx / series.length
                }
-               return d3Translate(x, 0)
+               return d3Translate(-x, 0)
              }}
            )
       .text(function (d, i) {
         var value = values[i];
         var absolute = Math.abs(value);
-        if ( absolute == 0) {
+        if (absolute == 0) {
           return "0";
-        } else if ( absolute < 1) {
-          if ( absolute >= .1) {
+        } else if (absolute < 1) {
+          if (absolute >= .1) {
             return cfg.formatters.digits_1(value);
-          }  else if ( absolute >= .01) {
+          }  else if (absolute >= .01) {
             return cfg.formatters.digits_2(value);
           } else {
             return cfg.formatters.digits_3(value);
