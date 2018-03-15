@@ -49,7 +49,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
     return _.extend({storageEngine: storageEngine}, attrs)
   }
 
-  // Calculates ratio for given test result `item` and `baseSpeed`
+  // Calculates ratio for given test result `speed` and `baseSpeed` reference
   function ratio(speed, baseSpeed) {
     var ratio = speed / baseSpeed
     if (speed >= 0) {
