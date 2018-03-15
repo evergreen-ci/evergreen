@@ -14,7 +14,7 @@ mciModule.factory('PerfChartService', function() {
       top: 12,
       right: 50,
       bottom: 60,
-      left: 80
+      left: 120
     },
     points: {
       focusedR: 4.5,
@@ -593,7 +593,23 @@ var drawSingleTrendChart = function(params) {
     })
 
     focusedText
-      .attr('y', function(d, i) { return opsLabelsY[i] })
+      .attr({'y': function(d, i) { return opsLabelsY[i] },
+             transform: function(){
+               // center the text for the last 20 items
+               var x = 0;
+               if(series){
+                 var percent = idx * 100.0 /  series.length;
+                 if(percent< 33){
+                   x = 0;
+                 } else if ( percent >= 33 && percent < 66) {
+                   x = -(cfg.focus.labelOffset.x + this.getBBox().width / 2);
+                 } else {
+                   x = -(cfg.focus.labelOffset.x + this.getBBox().width);
+                 }
+               }
+               return d3Translate(x, 0)
+             }}
+           )
       .text(function (d, i) {
         var value = values[i];
         var absolute = Math.abs(value);
