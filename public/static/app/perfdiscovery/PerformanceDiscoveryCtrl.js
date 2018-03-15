@@ -110,7 +110,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         width: 130,
       }),
       {
-        name: 'Ratio, %',
+        name: 'Ratio',
         field: 'ratio',
         type: 'number',
         cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
@@ -118,6 +118,14 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         sort: {
           direction: uiGridConstants.DESC,
         },
+        width: 80,
+      },
+      {
+        name: 'Average Ratio',
+        field: 'avgRatio',
+        type: 'number',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
+        enableFiltering: false,
         width: 80,
       },
       {
