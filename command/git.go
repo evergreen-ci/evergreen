@@ -452,18 +452,7 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 			dir = filepath.Join(c.Directory, module.Prefix, module.Name)
 		}
 
-		// create a temporary folder and store patch files on disk,
-		// for later use in shell script
-		tempFile, err := ioutil.TempFile("", "mcipatch_")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		defer tempFile.Close() //nolint: evg
-		n, err := io.WriteString(tempFile, patchPart.PatchSet.Patch)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		if n == 0 {
+		if len(patchPart.PatchSet.Patch) == 0 {
 			logger.Execution().Info("Skipping empty patch file...")
 			continue
 
@@ -472,6 +461,18 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 
 		} else {
 			logger.Execution().Info("Applying module patch with git...")
+		}
+
+		// create a temporary folder and store patch files on disk,
+		// for later use in shell script
+		tempFile, err := ioutil.TempFile("", "mcipatch_")
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer tempFile.Close() //nolint: evg
+		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
+		if err != nil {
+			return errors.WithStack(err)
 		}
 		tempAbsPath := tempFile.Name()
 
