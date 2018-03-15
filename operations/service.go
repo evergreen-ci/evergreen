@@ -1,9 +1,17 @@
 package operations
 
 import (
+	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/units"
+	"github.com/mongodb/amboy"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/urfave/cli"
 )
 
@@ -52,4 +60,33 @@ func parseDB(c *cli.Context) *evergreen.DBSettings {
 			WMode: c.String(dbWmodeFlagName),
 		},
 	}
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Common Initialization Code
+
+func startSysInfoCollectors(ctx context.Context, env evergreen.Environment, interval time.Duration, opts amboy.QueueOperationConfig) {
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), interval, time.Now(), opts, func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":       "problem fetching service flags",
+				"operation":     "system stats",
+				"interval_secs": interval.Seconds(),
+			}))
+			return err
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "system stats ",
+				"impact":  "memory, cpu, runtime stats",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
+	})
 }
