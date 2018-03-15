@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -138,12 +139,35 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		DebugLogging:    false,
 	}
 
+	const (
+		backgroundStatsInterval = time.Minute
+		sysStatsInterval        = 15 * time.Second
+	)
+
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, units.PopulateActivationJobs())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs())
 
 	// add jobs to a local queue every minute for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
+		flags := env.Settings().ServiceFlags
+		if err := flags.Get(); err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":       "problem fetching service flags",
+				"operation":     "background stats",
+				"interval_secs": backgroundStatsInterval.Seconds(),
+			}))
+			return err
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background stats collection disabled",
+				"impact":  "host, task, latency, and amboy stats disabled",
+				"mode":    "degraded",
+			})
+		}
+
 		catcher := grip.NewBasicCatcher()
 		ts := time.Now().Unix()
 
@@ -155,10 +179,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		return catcher.Resolve()
 	})
 
-	// Add jobs to a local queue, every 15 seconds for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), opts, func(queue amboy.Queue) error {
-		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
-	})
+	// Add jobs to a local queue, system info stats collection and reporting.
+	startSysInfoCollectors(ctx, env, sysStatsInterval, opts)
 }
 
 type processRunner interface {

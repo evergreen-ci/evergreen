@@ -711,6 +711,7 @@ type ServiceFlags struct {
 	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -736,7 +737,8 @@ func (c *ServiceFlags) Set() error {
 			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
 			repotrackerPushEventDisabledKey: c.RepotrackerPushEventDisabled,
 			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
-			githubStatusAPIDisabled:         c.GithubStatusAPIDisabled,
+			githubStatusAPIDisabledKey:      c.GithubStatusAPIDisabled,
+			backgroundStatsDisabledKey:      c.BackgroundStatsDisabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
