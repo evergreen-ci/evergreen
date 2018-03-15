@@ -71,11 +71,12 @@ type s3put struct {
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in local_file does not exist. Defaults to false, which triggers errors
 	// for missing files.
-	Optional bool `mapstructure:"optional"`
+	Optional string `mapstructure:"optional", plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
-	workDir string
+	workDir     string
+	skipMissing bool
 
 	taskdata client.TaskData
 	base
@@ -109,7 +110,7 @@ func (s3pc *s3put) validate() error {
 	if s3pc.LocalFile != "" && s3pc.isMulti() {
 		catcher.Add(errors.New("local_file and local_files_include_filter cannot both be specified"))
 	}
-	if s3pc.Optional && s3pc.isMulti() {
+	if s3pc.skipMissing && s3pc.isMulti() {
 		catcher.Add(errors.New("cannot use optional upload with local_files_include_filter"))
 	}
 	if s3pc.RemoteFile == "" {
@@ -148,7 +149,19 @@ func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
 		s3pc.workDir = conf.WorkDir
 	}
 
-	return errors.WithStack(util.ExpandValues(s3pc, conf.Expansions))
+	if err := util.ExpandValues(s3pc, conf.Expansions); err != nil {
+		return errors.WithStack(err)
+	}
+
+	if util.StringSliceContains([]string{"", "false", "False", "FALSE", "F", "f", "0", "n", "no"}, s3pc.Optional) {
+		s3pc.skipMissing = false
+	} else if util.StringSliceContains([]string{"true", "True", "TRUE", "T", "t", "1", "y", "yes"}, s3pc.Optional) {
+		s3pc.skipMissing = true
+	} else {
+		return errors.Errorf("'%s' is not a valid value for 'optional'", s3pc.Optional)
+	}
+
+	return nil
 }
 
 // isMulti returns whether or not this using the multiple file upload
@@ -282,7 +295,7 @@ retryLoop:
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
 							continue uploadLoop
-						} else if s3pc.Optional {
+						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
 							return nil
 						} else {
@@ -304,7 +317,7 @@ retryLoop:
 		}
 	}
 
-	if len(uploadedFiles) == 0 && s3pc.Optional {
+	if len(uploadedFiles) == 0 && s3pc.skipMissing {
 		return nil
 	}
 
@@ -313,7 +326,7 @@ retryLoop:
 		return err
 	}
 
-	if len(uploadedFiles) != len(filesList) && !s3pc.Optional {
+	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
 		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
 	}
 
