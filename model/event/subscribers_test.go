@@ -49,7 +49,7 @@ func TestSubscribers(t *testing.T) {
 	}
 
 	for i := range subs {
-		db.Insert(SubscriptionsCollection, subs[i])
+		assert.NoError(db.Insert(SubscriptionsCollection, subs[i]))
 	}
 
 	fetchedSubs := []Subscriber{}

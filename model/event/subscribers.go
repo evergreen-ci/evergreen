@@ -43,16 +43,17 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 
 	switch s.Type {
 	case githubPullRequestSubscriberType:
-		s.Target = GithubPullRequestSubscriber{}
+		s.Target = &GithubPullRequestSubscriber{}
 
 	case evergreenWebhookSubscriberType:
-		s.Target = WebhookSubscriber{}
+		s.Target = &WebhookSubscriber{}
 
 	default:
-		s.Target = ""
+		str := ""
+		s.Target = &str
 	}
 
-	if err := temp.Target.Unmarshal(&s.Target); err != nil {
+	if err := temp.Target.Unmarshal(s.Target); err != nil {
 		return errors.Wrap(err, "couldn't unmarshal subscriber info")
 	}
 
