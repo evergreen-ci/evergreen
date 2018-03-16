@@ -63,7 +63,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.New("intent could not be created from supplied data"))
 		return
 	}
-	if err := intent.Insert(); err != nil {
+	if err = intent.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -71,7 +71,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	patchID := bson.NewObjectId()
 	job := units.NewPatchIntentProcessor(patchID, intent)
 	job.Run()
-	if err := job.Error(); err != nil {
+	if err = job.Error(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return
 	}
