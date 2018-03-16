@@ -161,18 +161,23 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
         var appendix = {
           ratio: ratio(item.speed, baseline.speed),
           baseSpeed: baseline.speed,
-          trendData: _.chain(results.history)
-            .take(100)
-            .map(function(run) {
-              var base = run[id]
-              if (base == undefined || !base.speed) {
-                return 1
-              }
-              return ratio(item.speed, base.speed)
-            })
-            .value(),
         }
-        var avgRatio = d3.mean(appendix.trendData)
+
+        var trendData = _.chain(results.history)
+          .take(100)
+          .map(function(run) {
+            var base = run[id]
+            if (base == undefined || !base.speed) {
+              return 1
+            }
+            return ratio(item.speed, base.speed)
+          })
+          .value()
+
+        // Trend chart data
+        appendix.trendData = trendData.concat(appendix.ratio)
+
+        var avgRatio = d3.mean(trendData)
         appendix.avgRatio = avgRatio
         appendix.avgVsSelf = [avgRatio, appendix.ratio]
         return _.extend({}, item, appendix)

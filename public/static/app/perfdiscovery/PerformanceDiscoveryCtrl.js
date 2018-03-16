@@ -113,7 +113,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         name: 'Ratio',
         field: 'ratio',
         type: 'number',
-        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD" />',
         enableFiltering: false,
         sort: {
           direction: uiGridConstants.DESC,
@@ -131,7 +131,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Trend',
         field: 'trendData',
-        type: 'number',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
@@ -139,7 +139,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Avg and Self',
         field: 'avgVsSelf',
-        type: 'number',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
+        width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
       },
