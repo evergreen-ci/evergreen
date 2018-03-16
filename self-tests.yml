@@ -738,7 +738,7 @@ buildvariants:
       - ubuntu1604-test
     expansions:
       build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".smoke"
@@ -763,7 +763,7 @@ buildvariants:
       - archlinux-test
     expansions:
       build_env: "EVERGREEN_ALL=true RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.7.tgz
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".race"
@@ -783,7 +783,7 @@ buildvariants:
       - macos-1012
     expansions:
       build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.4.7.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".test"
@@ -794,7 +794,7 @@ buildvariants:
       - windows-64-vs2015-small
     expansions:
       build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/cygdrive/c/go1.8/go/bin:$PATH"
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.4.7.zip
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.6.1.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
@@ -809,7 +809,7 @@ buildvariants:
       - rhel71-power8-test
     expansions:
       build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.4.7.tgz
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.6.1.tgz
     tasks:
       - name: "dist-test"
         distros:
