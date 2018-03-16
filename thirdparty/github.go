@@ -157,40 +157,39 @@ func GetGithubFile(oauthToken, owner, repo, path, hash string) (*github.Reposito
 }
 
 func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
-	url := fmt.Sprintf("%v/repos/%v/%v/compare/%v:%v...%v:%v",
-		GithubAPIBase,
-		repoOwner,
-		repo,
-		repoOwner,
-		baseRevision,
-		repoOwner,
-		currentCommitHash)
-
-	resp, err := tryGithubGet(oauthToken, url)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
-		errMsg := fmt.Sprintf("error getting merge base commit response for url, %v: %v", url, err)
+		return "", errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	compare, resp, err := client.Repositories.CompareCommits(context.TODO(), repoOwner, repo,
+		baseRevision, currentCommitHash)
+	if err != nil {
+		errMsg := fmt.Sprintf("error getting merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
 		grip.Error(errMsg)
 		return "", APIResponseError{errMsg}
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", ResponseReadError{err.Error()}
-	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return "", APIRequestError{Message: string(respBody)}
 		}
 		return "", requestError
 	}
-	compareResponse := &GitHubCompareResponse{}
-	if err = json.Unmarshal(respBody, compareResponse); err != nil {
-		return "", APIUnmarshalError{string(respBody), err.Error()}
+
+	if compare == nil || compare.MergeBaseCommit == nil || compare.MergeBaseCommit.SHA == nil {
+		return "", APIRequestError{Message: "missing data from github compare response"}
 	}
-	return compareResponse.MergeBaseCommit.SHA, nil
+
+	return *compare.MergeBaseCommit.SHA, nil
 }
 
 func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.RepositoryCommit, error) {
