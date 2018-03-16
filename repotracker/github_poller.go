@@ -63,19 +63,13 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision string) (projectConfig *model.Project, err error) {
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
-	projectFileURL := thirdparty.GetGithubFileURL(
-		projectRef.Owner,
-		projectRef.Repo,
-		projectRef.RemotePath,
-		projectFileRevision,
-	)
 
-	githubFile, err := thirdparty.GetGithubFile(gRepoPoller.OauthToken, projectFileURL)
+	githubFile, err := thirdparty.GetGithubFile(gRepoPoller.OauthToken, projectRef.Owner, projectRef.Repo, projectRef.RemotePath, "")
 	if err != nil {
 		return nil, err
 	}
 
-	projectFileBytes, err := base64.StdEncoding.DecodeString(githubFile.Content)
+	projectFileBytes, err := base64.StdEncoding.DecodeString(*githubFile.Content)
 	if err != nil {
 		return nil, thirdparty.FileDecodeError{err.Error()}
 	}

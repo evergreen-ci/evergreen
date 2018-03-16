@@ -104,37 +104,44 @@ func GetGithubAPIStatus() (string, error) {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content.
-func GetGithubFile(oauthToken, fileURL string) (githubFile *GithubFile, err error) {
-	resp, err := tryGithubGet(oauthToken, fileURL)
+func GetGithubFile(oauthToken, owner, repo, path, hash string) (*github.RepositoryContent, error) {
+	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	var opt *github.RepositoryContentGetOptions
+	if len(hash) != 0 {
+		opt = &github.RepositoryContentGetOptions{
+			Ref: hash,
+		}
+	}
+	file, _, resp, err := client.Repositories.GetContents(context.TODO(), owner, repo, path, opt)
+	if err != nil {
+		errMsg := fmt.Sprintf("error querying '%s/%s' for '%s': %v", owner, repo, path, err)
+		grip.Error(errMsg)
+		return nil, APIResponseError{errMsg}
+	}
 	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url '%v'", fileURL)
+		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s'", owner, repo, path)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 	defer resp.Body.Close()
 
-	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", fileURL, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
 
-	if resp.StatusCode != http.StatusOK {
-		grip.Errorf("Github API response: ‘%s’", resp.Status)
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, FileNotFoundError{fileURL}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, FileNotFoundError{filepath: path}
+
+	} else if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ResponseReadError{err.Error()}
 		}
-		return nil, errors.Errorf("github API returned status '%v'", resp.Status)
-	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, ResponseReadError{err.Error()}
-	}
-
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
-	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return nil, APIRequestError{Message: string(respBody)}
@@ -142,10 +149,11 @@ func GetGithubFile(oauthToken, fileURL string) (githubFile *GithubFile, err erro
 		return nil, requestError
 	}
 
-	if err = json.Unmarshal(respBody, &githubFile); err != nil {
-		return nil, APIUnmarshalError{string(respBody), err.Error()}
+	if file == nil || file.Content == nil {
+		return nil, APIRequestError{Message: "file is nil"}
 	}
-	return
+
+	return file, nil
 }
 
 func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
@@ -385,17 +393,6 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 	}
 
 	return
-}
-
-// GetGithubFileURL returns a URL that locates a github file given the owner,
-// repo,remote path and revision
-func GetGithubFileURL(owner, repo, remotePath, revision string) string {
-	return fmt.Sprintf("https://api.github.com/repos/%v/%v/contents/%v?ref=%v",
-		owner,
-		repo,
-		remotePath,
-		revision,
-	)
 }
 
 // NextPageLink returns the link to the next page for a given header's 'Link'
