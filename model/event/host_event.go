@@ -102,7 +102,7 @@ func LogHostTerminatedExternally(hostId string) {
 	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
 }
 
-func LogHostStatusChanged(hostId, oldStatus, newStatus, user string) {
+func LogHostStatusChanged(hostId, oldStatus, newStatus, user string, logs string) {
 	if oldStatus == newStatus {
 		return
 	}
@@ -110,6 +110,7 @@ func LogHostStatusChanged(hostId, oldStatus, newStatus, user string) {
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 		User:      user,
+		Logs:      logs,
 	})
 }
 

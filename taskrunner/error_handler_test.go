@@ -5,7 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,4 +67,27 @@ func TestErrorHandlerIntegration(t *testing.T) {
 	ec.add(h, nil)
 	assert.Len(ec.cache, 0)
 
+}
+
+func TestStaticHostDisabling(t *testing.T) {
+	assert := assert.New(t)
+	settings := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, settings, "TestStaticHostDisabling")
+	//db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	testutil.HandleTestingErr(db.ClearCollections(event.AllLogCollection, host.Collection), t,
+		"Error clearing collections")
+
+	h := &host.Host{Id: "myHost"}
+	assert.NoError(h.Insert())
+	hostRec := hostRecord{
+		id:       h.Id,
+		distro:   "myDistro",
+		provider: evergreen.ProviderNameStatic,
+	}
+	errors := errorRecord{
+		count:  2,
+		host:   h,
+		errors: []string{"error1", "error2"},
+	}
+	grip.Info(processErrorItem(hostRec, errors))
 }

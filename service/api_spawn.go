@@ -101,7 +101,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(h)))
-		if err = h.SetDecommissioned(evergreen.User); err != nil {
+		if err = h.SetDecommissioned(evergreen.User, ""); err != nil {
 			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",
 				h.Host, h.StartedBy, err)
 		}

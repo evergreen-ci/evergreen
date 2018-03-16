@@ -120,7 +120,7 @@ func (h *Host) IdleTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
-func (h *Host) SetStatus(status, user string) error {
+func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+
 			" %v because it is already terminated", h.Id, status)
@@ -128,7 +128,7 @@ func (h *Host) SetStatus(status, user string) error {
 		return errors.New(msg)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, user)
+	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
 
 	h.Status = status
 	return UpdateOne(
@@ -173,16 +173,16 @@ func (h *Host) SetStarting() error {
 	)
 }
 
-func (h *Host) SetDecommissioned(user string) error {
-	return h.SetStatus(evergreen.HostDecommissioned, user)
+func (h *Host) SetDecommissioned(user string, logs string) error {
+	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
 }
 
 func (h *Host) SetRunning(user string) error {
-	return h.SetStatus(evergreen.HostRunning, user)
+	return h.SetStatus(evergreen.HostRunning, user, "")
 }
 
 func (h *Host) SetTerminated(user string) error {
-	return h.SetStatus(evergreen.HostTerminated, user)
+	return h.SetStatus(evergreen.HostTerminated, user, "")
 }
 
 func (h *Host) SetUnprovisioned() error {
@@ -200,7 +200,7 @@ func (h *Host) SetUnprovisioned() error {
 }
 
 func (h *Host) SetQuarantined(user string) error {
-	return h.SetStatus(evergreen.HostQuarantined, user)
+	return h.SetStatus(evergreen.HostQuarantined, user, "")
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -495,7 +495,7 @@ func (h *Host) MarkReachable() error {
 		return nil
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User)
+	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
 
 	h.Status = evergreen.HostRunning
 
@@ -615,7 +615,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
-func (h *Host) DisablePoisonedHost() error {
+func (h *Host) DisablePoisonedHost(logs string) error {
 	if h.Provider == evergreen.ProviderNameStatic {
 		if err := h.SetQuarantined(evergreen.User); err != nil {
 			return errors.WithStack(err)
@@ -632,5 +632,5 @@ func (h *Host) DisablePoisonedHost() error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(evergreen.User))
+	return errors.WithStack(h.SetDecommissioned(evergreen.User, logs))
 }
