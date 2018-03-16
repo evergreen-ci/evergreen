@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,7 +29,6 @@ func (s *notificationSuite) SetupSuite() {
 func (s *notificationSuite) SetupTest() {
 	s.NoError(db.Clear(NotificationsCollection))
 	s.n = Notification{
-		Type: "slack",
 		Target: event.Subscriber{
 			Type: "github_pull_request",
 			Target: event.GithubPullRequestSubscriber{
@@ -38,7 +38,7 @@ func (s *notificationSuite) SetupTest() {
 				Ref:      "sadasdkjsad",
 			},
 		},
-		Payload: githubStatusAPIPayload{
+		Payload: GithubStatusAPIPayload{
 			Status:      "failure",
 			Context:     "evergreen",
 			URL:         "https://example.com",
@@ -80,8 +80,8 @@ func (s *notificationSuite) TestDBInteractions() {
 	s.True(n.ID.Valid())
 	s.Empty(n.Error)
 	s.Zero(n.SentAt)
-	s.Require().IsType(&githubStatusAPIPayload{}, n.Payload)
-	payload := n.Payload.(*githubStatusAPIPayload)
+	s.Require().IsType(&GithubStatusAPIPayload{}, n.Payload)
+	payload := n.Payload.(*GithubStatusAPIPayload)
 	s.Equal("failure", payload.Status)
 	s.Equal("evergreen", payload.Context)
 	s.Equal("https://example.com", payload.URL)
@@ -141,7 +141,7 @@ func (s *notificationSuite) TestInsertMany() {
 	s.Len(out, 3)
 
 	for i := range out {
-		if out[i].Type == "jira-comment" {
+		if out[i].Target.Type == "jira-comment" {
 			payload, ok := out[i].Payload.(*string)
 			s.Require().True(ok)
 			s.Equal("Hi", *payload)
@@ -153,7 +153,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 	jsonData := `{"iama": "potato"}`
 	s.n.ID = bson.NewObjectId()
 	s.n.Target.Type = "evergreen-webhook"
-	s.n.Target.Target = nil
+	s.n.Target.Target = event.WebhookSubscriber{}
 	s.n.Payload = jsonData
 
 	s.NoError(InsertMany(s.n))
@@ -163,12 +163,18 @@ func (s *notificationSuite) TestWebhookPayload() {
 	s.NotNil(n)
 
 	s.Equal(jsonData, *n.Payload.(*string))
+
+	c, err := n.Composer()
+	s.NoError(err)
+	s.Require().NotNil(c)
+	s.Equal(jsonData, c.String())
 }
 
 func (s *notificationSuite) TestJIRACommentPayload() {
 	s.n.ID = bson.NewObjectId()
 	s.n.Target.Type = "jira-comment"
-	s.n.Target.Target = nil
+	target := "BF-1234"
+	s.n.Target.Target = target
 	s.n.Payload = "hi"
 
 	s.NoError(InsertMany(s.n))
@@ -178,6 +184,11 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 	s.NotNil(n)
 
 	s.Equal("hi", *n.Payload.(*string))
+
+	c, err := n.Composer()
+	s.NoError(err)
+	s.Require().NotNil(c)
+	s.Equal("hi", c.String())
 }
 
 func (s *notificationSuite) TestJIRAIssuePayload() {
@@ -207,6 +218,23 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
+
+	c, err := n.Composer()
+	s.NoError(err)
+	s.Require().NotNil(c)
+
+	fields, ok := c.Raw().(message.JiraIssue)
+	s.True(ok)
+
+	s.Equal("1234", fields.Project)
+	s.Equal("1", fields.Summary)
+	s.Equal("2", fields.Description)
+	s.Equal("3", fields.Reporter)
+	s.Equal("4", fields.Assignee)
+	s.Equal("5", fields.Type)
+	s.Equal([]string{"6"}, fields.Components)
+	s.Equal([]string{"7"}, fields.Labels)
+	s.Len(fields.Fields, 2)
 }
 
 func (s *notificationSuite) TestEmailPayload() {
@@ -214,7 +242,7 @@ func (s *notificationSuite) TestEmailPayload() {
 	s.n.Target.Type = "email"
 	email := "a@a.a"
 	s.n.Target.Target = &email
-	s.n.Payload = &emailPayload{
+	s.n.Payload = &EmailPayload{
 		Headers: map[string]string{
 			"8":  "9",
 			"10": "11",
@@ -230,6 +258,13 @@ func (s *notificationSuite) TestEmailPayload() {
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
+
+	c, err := n.Composer()
+	s.NoError(err)
+	s.Require().NotNil(c)
+
+	_, ok := c.Raw().(message.Fields)
+	s.True(ok)
 }
 
 func (s *notificationSuite) TestSlackPayload() {
@@ -247,13 +282,19 @@ func (s *notificationSuite) TestSlackPayload() {
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
+
+	c, err := n.Composer()
+	s.NoError(err)
+	s.Require().NotNil(c)
+
+	s.Equal("text", c.String())
 }
 
 func (s *notificationSuite) TestGithubPayload() {
 	s.n.ID = bson.NewObjectId()
 	s.n.Target.Type = "github_pull_request"
 	s.n.Target.Target = &event.GithubPullRequestSubscriber{}
-	s.n.Payload = &githubStatusAPIPayload{
+	s.n.Payload = &GithubStatusAPIPayload{
 		Status:      "failure",
 		Context:     "evergreen",
 		URL:         "https://example.com",
@@ -267,4 +308,11 @@ func (s *notificationSuite) TestGithubPayload() {
 	s.NotNil(n)
 
 	s.Equal(s.n, *n)
+
+	c, err := n.Composer()
+	s.NoError(err)
+	s.Require().NotNil(c)
+
+	_, ok := c.Raw().(message.Fields)
+	s.True(ok)
 }

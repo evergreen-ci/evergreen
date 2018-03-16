@@ -1,12 +1,12 @@
 package notification
 
-type emailPayload struct {
+type EmailPayload struct {
 	Headers map[string]string `bson:"headers"`
 	Subject string            `bson:"subject"`
 	Body    []byte            `bson:"body"`
 }
 
-type githubStatusAPIPayload struct {
+type GithubStatusAPIPayload struct {
 	Status      string `bson:"status"`
 	Context     string `bson:"context"`
 	Description string `bson:"description"`

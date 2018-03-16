@@ -20,7 +20,6 @@ const (
 //nolint: deadcode, megacheck
 var (
 	idKey      = bsonutil.MustHaveTag(Notification{}, "ID")
-	typeKey    = bsonutil.MustHaveTag(Notification{}, "Type")
 	targetKey  = bsonutil.MustHaveTag(Notification{}, "Target")
 	sentAtKey  = bsonutil.MustHaveTag(Notification{}, "SentAt")
 	errorKey   = bsonutil.MustHaveTag(Notification{}, "Error")
@@ -29,7 +28,6 @@ var (
 
 type Notification struct {
 	ID      bson.ObjectId    `bson:"_id"`
-	Type    string           `bson:"type"`
 	Target  event.Subscriber `bson:"target"`
 	Payload interface{}      `bson:"payload"`
 
@@ -39,7 +37,6 @@ type Notification struct {
 
 type unmarshalNotification struct {
 	ID      bson.ObjectId    `bson:"_id"`
-	Type    string           `bson:"type"`
 	Target  event.Subscriber `bson:"target"`
 	Payload bson.Raw         `bson:"payload"`
 
@@ -59,7 +56,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 		n.Payload = &str
 
 	case "email":
-		n.Payload = &emailPayload{}
+		n.Payload = &EmailPayload{}
 
 	case "jira-issue":
 		n.Payload = &jiraIssuePayload{}
@@ -73,7 +70,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 		n.Payload = &str
 
 	case "github_pull_request":
-		n.Payload = &githubStatusAPIPayload{}
+		n.Payload = &GithubStatusAPIPayload{}
 
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Target.Type)
@@ -84,7 +81,6 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	}
 
 	n.ID = temp.ID
-	n.Type = temp.Type
 	n.Target = temp.Target
 	n.SentAt = temp.SentAt
 	n.Error = temp.Error
@@ -117,6 +113,9 @@ func (n *Notification) MarkError(sendErr error) error {
 	if sendErr == nil {
 		return nil
 	}
+	if !n.ID.Valid() {
+		return errors.New("notification has no ID")
+	}
 	if n.SentAt.IsZero() {
 		if err := n.MarkSent(); err != nil {
 			return err
@@ -143,17 +142,18 @@ func (n *Notification) Composer() (message.Composer, error) {
 	// TODO relocate and use constants
 	switch n.Target.Type {
 	case "evergreen-webhook":
-		payload, ok := n.Payload.(string)
+		payload, ok := n.Payload.(*string)
 		if !ok {
 			return nil, errors.New("evergreen-webhook payload is invalid")
 		}
-		c := message.NewString(payload)
+		c := message.NewString(*payload)
 		c.SetPriority(level.Notice)
 
 		return c, nil
 
 	case "email":
-		payload, ok := n.Payload.(emailPayload)
+		// TODO make real composer for this
+		payload, ok := n.Payload.(*EmailPayload)
 		if !ok {
 			return nil, errors.New("email payload is invalid")
 		}
@@ -165,17 +165,17 @@ func (n *Notification) Composer() (message.Composer, error) {
 		}), nil
 
 	case "jira-issue":
-		project, ok := n.Target.Target.(string)
+		project, ok := n.Target.Target.(*string)
 		if !ok {
 			return nil, errors.New("jira-issue subscriber is invalid")
 		}
-		payload, ok := n.Payload.(jiraIssuePayload)
+		payload, ok := n.Payload.(*jiraIssuePayload)
 		if !ok {
 			return nil, errors.New("jira-issue payload is invalid")
 		}
 
 		return message.MakeJiraMessage(message.JiraIssue{
-			Project:     project,
+			Project:     *project,
 			Summary:     payload.Summary,
 			Description: payload.Description,
 			Reporter:    payload.Reporter,
@@ -187,31 +187,29 @@ func (n *Notification) Composer() (message.Composer, error) {
 		}), nil
 
 	case "jira-comment":
-		payload, ok := n.Payload.(string)
+		payload, ok := n.Payload.(*string)
 		if !ok {
 			return nil, errors.New("jira-comment payload is invalid")
 		}
 
-		c := message.NewString(payload)
+		c := message.NewString(*payload)
 		c.SetPriority(level.Notice)
 
 		return c, nil
 
 	case "slack":
-		// TODO, this is not right
-		payload, ok := n.Payload.(string)
+		// TODO figure out slack message structure that works
+		payload, ok := n.Payload.(*string)
 		if !ok {
 			return nil, errors.New("slack payload is invalid")
 		}
 
-		// TODO figure out slack message structure
-		//return message.ConvertToComposer(level.Notice, message.Fields{}), nil
-		c := message.NewString(payload)
+		c := message.NewString(*payload)
 		c.SetPriority(level.Notice)
 		return c, nil
 
 	case "github_pull_request":
-		payload, ok := n.Payload.(githubStatusAPIPayload)
+		payload, ok := n.Payload.(*GithubStatusAPIPayload)
 		if !ok {
 			return nil, errors.New("github-pull-request payload is invalid")
 		}
