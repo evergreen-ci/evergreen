@@ -252,7 +252,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err := currentHost.DisablePoisonedHost()
+			err := currentHost.DisablePoisonedHost(msg)
 			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
