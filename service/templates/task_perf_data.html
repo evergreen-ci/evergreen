@@ -164,13 +164,10 @@
       position: fixed;
       bottom: 0;
       right: 0;
-      left: 0;
-      z-index: 999;
-      // background: rgba(0,0,0,.44);
-      padding: 0 1% 0 0;
+      left: 97.5%;
+       z-index: 1;
       display: block;
     }
-
     .md-button.md-primary.md-fab,
     .md-button.md-default-theme.md-primary.md-raised,
     .md-button.md-primary.md-raised {
@@ -270,16 +267,17 @@
       </table>
     </div>
     <div ng-show="perftab==2">
-      <div class="toolbar" name="toolbar" ng-show="showToolbar">
-        <div class="lock-size" layout="row" layout-align="end end">
+      <div class="toolbar" name="toolbar" ng-show="showToolbar" layout="row">
+        <div class="lock-size col-sm-1" layout="row" layout-align="end end">
           <md-fab-toolbar
             md-open="toolBar.isOpen"
             ng-hide="toolBar.hidden"
-            ng-mouseenter="toolBar.isOpen=true"
             ng-mouseleave="toolBar.isOpen=false"
-            md-direction="left">
+            md-direction="left"
+            style="pointer-events:auto">
             <md-fab-trigger class="align-with-text">
               <md-button aria-label="menu"
+                         ng-mouseenter="toolBar.isOpen=true"
                          class="md-fab md-primary">
                 <md-icon>build</md-icon>
               </md-button>
