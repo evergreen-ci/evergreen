@@ -55,9 +55,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)
 
-	// refresh the first host - its status should have been updated
 	host1, err := host.FindOne(host.ById("h1"))
 	assert.NoError(err)
 	assert.Equal(host1.Status, evergreen.HostTerminated)
-
 }
