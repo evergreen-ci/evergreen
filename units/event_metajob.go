@@ -248,7 +248,7 @@ func (j *eventNotificationJob) Run() {
 	}
 
 	var sendError error
-	switch n.Type {
+	switch n.Target.Type {
 	// TODO I'm tired
 	//case githubPullRequestSubscriberType:
 	//	if err = checkFlag(flags.GithubStatusAPIDisabled); err != nil {
@@ -292,7 +292,7 @@ func (j *eventNotificationJob) Run() {
 		sendError = j.email(n)
 
 	default:
-		j.AddError(errors.Errorf("unknown notification type: %s", n.Type))
+		j.AddError(errors.Errorf("unknown subscriber type: %s", n.Target.Type))
 	}
 
 	j.AddError(n.MarkSent())
@@ -388,7 +388,15 @@ func calculateHMACHash(secret []byte, body []byte) (string, error) {
 }
 
 func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) error {
-	raw := n.Payload.(*notification.EvergreenWebhookPayload)
+	c, err := n.Composer()
+	if err != nil {
+		return err
+	}
+
+	raw, ok := c.Raw().(message.Fields)
+	if !ok {
+		return errors.New("composer was invalid")
+	}
 
 	hookSubscriber, ok := n.Target.Target.(event.WebhookSubscriber)
 	if !ok {
@@ -401,18 +409,19 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	}
 	u.Scheme = "https"
 
-	reader := bytes.NewReader(raw.Payload)
+	payload := []byte(c.String())
+	reader := bytes.NewReader(payload)
 	req, err := http.NewRequest(http.MethodPost, u.String(), reader)
 	if err != nil {
 		return errors.Wrap(err, "failed to create http request")
 	}
 
-	hash, err := calculateHMACHash(hookSubscriber.Secret, raw.Payload)
+	hash, err := calculateHMACHash(hookSubscriber.Secret, payload)
 	if err != nil {
 		return errors.Wrap(err, "failed to calculate hash")
 	}
 
-	for k, v := range raw.Headers {
+	for k, v := range raw["headers"].(map[string]string) {
 		req.Header.Add(k, v)
 	}
 
@@ -440,7 +449,6 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 }
 
 func (j *eventNotificationJob) slackMessage(n *notification.Notification) error {
-	// TODO slack sender can only send to channels
 	// TODO slack rate limiting
 	target, ok := n.Target.Target.(string)
 	if !ok {
@@ -481,7 +489,12 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 	if !ok {
 		return fmt.Errorf("email recipient email is not a string")
 	}
-	payload, ok := n.Payload.(*notification.EmailPayload)
+	c, err := n.Composer()
+	if err != nil {
+		return errors.Wrap(err, "email error building message")
+	}
+
+	fields, ok := c.Raw().(message.Fields)
 	if !ok {
 		return fmt.Errorf("email payload is invalid")
 	}
@@ -494,19 +507,16 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		Username:          smtpConf.Username,
 		Password:          smtpConf.Password,
 		PlainTextContents: false,
-		GetContents:       payload.GetContents,
+		GetContents: func(opts *send.SMTPOptions, m message.Composer) (string, string) {
+			return fields["subject"].(string), fields["body"].(string)
+		},
 	}
-	if err := opts.AddRecipients(recipient); err != nil {
+	if err = opts.AddRecipients(recipient); err != nil {
 		return errors.Wrap(err, "email was invalid")
 	}
 	sender, err := send.MakeSMTPLogger(&opts)
 	if err != nil {
 		return errors.Wrap(err, "email settings are invalid")
-	}
-
-	c, err := n.Composer()
-	if err != nil {
-		return errors.Wrap(err, "email error building message")
 	}
 
 	j.send(sender, c, n)
