@@ -247,35 +247,32 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.Repo
 }
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
-func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
+func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*github.Branch,
 	error) {
-	branchURL := fmt.Sprintf("%v/repos/%v/%v/branches/%v",
-		GithubAPIBase,
-		repoOwner,
-		repo,
-		branch,
-	)
-
-	grip.Debugln("requesting github commit from url:", branchURL)
-
-	resp, err := tryGithubGet(oauthToken, branchURL)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-
+	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", branchURL, err)
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	grip.Debugln("requesting github commit for '%s/%s': branch: %s", repoOwner, repo, branch)
+
+	branchEvent, resp, err := client.Repositories.GetBranch(context.TODO(), repoOwner, repo, branch)
+	if err != nil {
+		errMsg := fmt.Sprintf("error querying  '%s/%s': branch: '%s': %v", repoOwner, repo, branch, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
+	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, ResponseReadError{err.Error()}
-	}
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
 
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return nil, APIRequestError{Message: string(respBody)}
@@ -283,10 +280,6 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 		return nil, requestError
 	}
 
-	branchEvent := &BranchEvent{}
-	if err = json.Unmarshal(respBody, branchEvent); err != nil {
-		return nil, APIUnmarshalError{string(respBody), err.Error()}
-	}
 	return branchEvent, nil
 }
 

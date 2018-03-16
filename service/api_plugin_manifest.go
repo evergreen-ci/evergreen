@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
@@ -62,7 +63,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// populate modules
-	var gitBranch *thirdparty.BranchEvent
+	var gitBranch *github.Branch
 	modules := make(map[string]*manifest.Module)
 	for _, module := range project.Modules {
 		owner, repo := module.GetRepoOwnerAndName()
@@ -75,10 +76,10 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 
 		modules[module.Name] = &manifest.Module{
 			Branch:   module.Branch,
-			Revision: gitBranch.Commit.SHA,
+			Revision: *gitBranch.Commit.SHA,
 			Repo:     repo,
 			Owner:    owner,
-			URL:      gitBranch.Commit.Url,
+			URL:      *gitBranch.Commit.URL,
 		}
 	}
 	newManifest.Modules = modules
