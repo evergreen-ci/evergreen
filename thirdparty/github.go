@@ -550,17 +550,19 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 }
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
-func CheckGithubAPILimit(token string) (int64, error) {
-	url := fmt.Sprintf("%v/rate_limit", GithubAPIBase)
-	resp, err := githubRequest("GET", url, token, nil)
+func CheckGithubAPILimit(oauthToken string) (int64, error) {
+	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
-		grip.Errorf("github GET rate limit failed on %s: %+v", url, err)
+		return 0, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	limits, _, err := client.RateLimits(context.TODO())
+	if err != nil {
+		grip.Errorf("github GET rate limit failed: %+v", err)
 		return 0, err
 	}
-	rem, err := verifyGithubAPILimitHeader(resp.Header)
-	if err != nil {
-		grip.Errorf("Error getting rate limit: %s", err)
-		return 0, err
-	}
-	return rem, nil
+
+	return int64(limits.Core.Remaining), nil
 }
