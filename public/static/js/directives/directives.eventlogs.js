@@ -5,8 +5,8 @@ directives.eventlogs = angular.module('directives.eventLogs', ['filters.common']
 directives.eventlogs.directive('taskevent', function() {
   return {
     scope:{
-      serTz:"=tz"
-      eventLogObj:"=event",
+      userTz:"=tz",
+      eventLogObj:"=event"
     },
     restrict : 'E',
     templateUrl : '/static/partials/taskevent.html',
