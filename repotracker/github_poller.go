@@ -104,8 +104,11 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(commitRevision string
 		return nil, errors.Wrapf(err, "error loading commit '%v'", commitRevision)
 	}
 	files := []string{}
-	for _, f := range commit.Files {
-		files = append(files, f.FileName)
+	for _, f := range commit[0].Files {
+		if f.Filename == nil {
+			return nil, errors.New("received invalid data from github: nil filname")
+		}
+		files = append(files, *f.Filename)
 	}
 	return files, nil
 }

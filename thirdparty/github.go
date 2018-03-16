@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -184,60 +185,58 @@ func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, curre
 	return compareResponse.MergeBaseCommit.SHA, nil
 }
 
-func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent, error) {
-	repoID := fmt.Sprintf("%s/%s", repoOwner, repo)
-	commitURL := fmt.Sprintf("%s/repos/%s/commits/%s",
-		GithubAPIBase, repoID, githash)
+func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.RepositoryCommit, error) {
+	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
 
 	grip.Info(message.Fields{
 		"message": "requesting commit from github",
 		"commit":  githash,
-		"repo":    repoID,
-		"url":     commitURL,
+		"repo":    repoOwner + "/" + repo,
 	})
 
-	resp, err := tryGithubGet(oauthToken, commitURL)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	commits, resp, err := client.Repositories.ListCommits(context.TODO(), repoOwner, repo, &github.CommitsListOptions{
+		SHA: githash,
+	})
 	if err != nil {
-		err = errors.Wrapf(err, "problem querying repo %s for %s", repoID, githash)
-		grip.Error(message.Fields{
+		err = errors.Wrapf(err, "problem querying repo %s/%s for %s", repoOwner, repo, githash)
+		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
-			"repo":    repoID,
-			"url":     commitURL,
-			"error":   errors.Cause(err),
+			"repo":    repoOwner + "/" + repo,
 			"message": "problem querying repo",
-		})
+		}))
 		return nil, APIResponseError{err.Error()}
 	}
+	defer resp.Body.Close()
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, ResponseReadError{err.Error()}
-	}
 	grip.Debug(message.Fields{
 		"operation": "github api query",
-		"size":      len(respBody),
+		"size":      resp.ContentLength,
 		"status":    resp.Status,
 		"commit":    githash,
-		"repo":      repoID,
-		"url":       commitURL,
+		"repo":      repoOwner + "/" + repo,
 	})
 
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return nil, APIRequestError{Message: string(respBody)}
 		}
 		return nil, requestError
 	}
-
-	commitEvent := &CommitEvent{}
-	if err = json.Unmarshal(respBody, commitEvent); err != nil {
-		return nil, APIUnmarshalError{string(respBody), err.Error()}
+	if len(commits) == 0 {
+		return nil, errors.New("no commits found in github")
 	}
-	return commitEvent, nil
+
+	return commits, nil
 }
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub

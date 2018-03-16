@@ -241,7 +241,7 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
-	if gitCommit == nil {
+	if len(gitCommit) == 0 {
 		return nil, errors.New("Couldn't fetch commit information; git commit doesn't exist")
 	}
 
