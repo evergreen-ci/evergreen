@@ -26,11 +26,13 @@ type Subscriber struct {
 	Target interface{} `bson:"target"`
 }
 
+type unmarshalSubscriber struct {
+	Type   string   `bson:"type"`
+	Target bson.Raw `bson:"target"`
+}
+
 func (s *Subscriber) SetBSON(raw bson.Raw) error {
-	temp := struct {
-		Type   string `bson:"type"`
-		Target []byte `bson:"target"`
-	}{}
+	temp := unmarshalSubscriber{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal subscriber data")
 	}
@@ -47,11 +49,10 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 		s.Target = WebhookSubscriber{}
 
 	default:
-		s.Target = string(temp.Target)
-		return nil
+		s.Target = ""
 	}
 
-	if err := bson.Unmarshal(temp.Target, s.Target); err != nil {
+	if err := temp.Target.Unmarshal(&s.Target); err != nil {
 		return errors.Wrap(err, "couldn't unmarshal subscriber info")
 	}
 
