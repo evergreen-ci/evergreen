@@ -14,3 +14,8 @@
   display: inline-block;
   margin: 0;
 }
+
+/* sane default value */
+line {
+  stroke: black;
+}
