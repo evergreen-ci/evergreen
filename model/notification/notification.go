@@ -1,7 +1,6 @@
 package notification
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -56,23 +55,25 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 
 	switch temp.Target.Type {
 	case "evergreen-webhook":
-		n.Payload = &EvergreenWebhookPayload{}
+		str := ""
+		n.Payload = &str
 
 	case "email":
-		n.Payload = &EmailPayload{}
+		n.Payload = &emailPayload{}
 
 	case "jira-issue":
-		n.Payload = &JiraIssuePayload{}
+		n.Payload = &jiraIssuePayload{}
 
 	case "jira-comment":
 		str := ""
 		n.Payload = &str
 
 	case "slack":
-		n.Payload = &SlackPayload{}
+		str := ""
+		n.Payload = &str
 
 	case "github_pull_request":
-		n.Payload = &GithubStatusAPIPayload{}
+		n.Payload = &githubStatusAPIPayload{}
 
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Target.Type)
@@ -142,22 +143,33 @@ func (n *Notification) Composer() (message.Composer, error) {
 	// TODO relocate and use constants
 	switch n.Target.Type {
 	case "evergreen-webhook":
-		return nil, fmt.Errorf("evergreen-webhook does not use a composer")
-
-	case "email":
-		// grip email sender doesn't actually use the composer, one is
-		// required by Send(), so:
-		c := message.NewString("")
+		payload, ok := n.Payload.(string)
+		if !ok {
+			return nil, errors.New("evergreen-webhook payload is invalid")
+		}
+		c := message.NewString(payload)
 		c.SetPriority(level.Notice)
 
 		return c, nil
+
+	case "email":
+		payload, ok := n.Payload.(emailPayload)
+		if !ok {
+			return nil, errors.New("email payload is invalid")
+		}
+
+		return message.ConvertToComposer(level.Notice, message.Fields{
+			"headers": payload.Headers,
+			"subject": payload.Subject,
+			"body":    payload.Body,
+		}), nil
 
 	case "jira-issue":
 		project, ok := n.Target.Target.(string)
 		if !ok {
 			return nil, errors.New("jira-issue subscriber is invalid")
 		}
-		payload, ok := n.Payload.(JiraIssuePayload)
+		payload, ok := n.Payload.(jiraIssuePayload)
 		if !ok {
 			return nil, errors.New("jira-issue payload is invalid")
 		}
@@ -186,11 +198,20 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return c, nil
 
 	case "slack":
+		// TODO, this is not right
+		payload, ok := n.Payload.(string)
+		if !ok {
+			return nil, errors.New("slack payload is invalid")
+		}
+
 		// TODO figure out slack message structure
-		return message.ConvertToComposer(level.Notice, message.Fields{}), nil
+		//return message.ConvertToComposer(level.Notice, message.Fields{}), nil
+		c := message.NewString(payload)
+		c.SetPriority(level.Notice)
+		return c, nil
 
 	case "github_pull_request":
-		payload, ok := n.Payload.(GithubStatusAPIPayload)
+		payload, ok := n.Payload.(githubStatusAPIPayload)
 		if !ok {
 			return nil, errors.New("github-pull-request payload is invalid")
 		}
