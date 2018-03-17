@@ -783,7 +783,7 @@ buildvariants:
       - macos-1012
     expansions:
       build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.6.1.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".test"
