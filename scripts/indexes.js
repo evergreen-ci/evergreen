@@ -20,6 +20,8 @@ db.patchfiles.files.ensureIndex({"filename":1})
 
 //======event_log======//
 db.event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
+db.event_log.ensureIndex({ "r_id" : 1, "r_type" : 1, "ts" : 1 })
+db.event_log.ensureIndex({ "processed_at" : 1 })
 db.event_log.ensureIndex({ "data.guid" : 1}, { sparse: true })
 
 //======hosts======//
@@ -56,6 +58,7 @@ db.task_bk.ensureIndex({ "branch" : 1, "build_variant" : 1, "name" : 1 })
 
 //======task_event_log======//
 db.task_event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
+db.task_event_log.ensureIndex({ "r_id" : 1, "r_type" : 1, "ts" : 1 })
 db.task_event_log.createIndexes({"ts": 1}, {background: true, expireAfterSeconds: 60*60*24*30*6}) // (6 months)
 
 //======tasks======//

@@ -37,7 +37,7 @@ const (
 // implements EventData
 type HostEventData struct {
 	// necessary for IsValid
-	ResourceType string `bson:"r_type" json:"resource_type"`
+	ResourceType string `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 
 	AgentRevision string        `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
 	OldStatus     string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
@@ -73,7 +73,7 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging host event: %+v", err)
 	}
 }
