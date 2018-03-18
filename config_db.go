@@ -58,6 +58,7 @@ var (
 	githubPRTestingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubPRTestingDisabled")
 	repotrackerPushEventDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerPushEventDisabled")
 	cliUpdatesDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CLIUpdatesDisabled")
+	backgroundStatsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundStatsDisabled")
 	eventProcessingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "EventProcessingDisabled")
 	jiraNotificationsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "JIRANotificationsDisabled")
 	slackNotificationsDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "SlackNotificationsDisabled")

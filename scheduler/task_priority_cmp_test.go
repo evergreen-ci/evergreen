@@ -5,8 +5,12 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTaskImportanceComparators(t *testing.T) {
@@ -259,4 +263,88 @@ func TestTaskImportanceComparators(t *testing.T) {
 		})
 	})
 
+}
+
+func TestByTaskGroupOrder(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(version.Collection))
+	defer db.ClearCollections(version.Collection)
+
+	taskComparator := &CmpBasedTaskComparator{}
+	tasks := []task.Task{
+		{Id: "t1"},
+		{Id: "t2"},
+	}
+
+	// empty task groups
+	result, err := byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(0, result)
+	tasks[0].TaskGroup = "example_task_group"
+	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(0, result)
+	tasks[0].TaskGroup = ""
+	tasks[1].TaskGroup = "example_task_group"
+	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(0, result)
+
+	// mismatched task groups
+	tasks[0].TaskGroup = "example_task_group"
+	tasks[1].TaskGroup = "another_task_group"
+	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(0, result)
+
+	// mismatched builds
+	tasks[0].TaskGroup = "example_task_group"
+	tasks[1].TaskGroup = "example_task_group"
+	tasks[0].BuildId = "build_id"
+	tasks[1].BuildId = "another_build_id"
+	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(0, result)
+
+	// t1 is earlier
+	tasks[0].TaskGroup = "example_task_group"
+	tasks[1].TaskGroup = "example_task_group"
+	tasks[0].BuildId = "build_id"
+	tasks[1].BuildId = "build_id"
+	tasks[0].Version = "version_id"
+	tasks[1].Version = "version_id"
+	tasks[0].DisplayName = "first_task"
+	tasks[1].DisplayName = "another_task"
+	yml := `
+task_groups:
+- name: example_task_group
+  tasks:
+  - first_task
+  - another_task
+`
+	v := &version.Version{
+		Id:     "version_id",
+		Config: yml,
+	}
+	require.NoError(v.Insert())
+	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(1, result)
+
+	// t2 is earlier
+	require.NoError(db.ClearCollections(version.Collection))
+	yml = `
+task_groups:
+- name: example_task_group
+  tasks:
+  - another_task
+  - first_task
+`
+	v.Config = yml
+	require.NoError(v.Insert())
+	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
+	assert.NoError(err)
+	assert.Equal(-1, result)
 }

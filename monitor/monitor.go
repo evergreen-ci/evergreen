@@ -33,11 +33,6 @@ var (
 		{flagExpiredHosts, "expired"},
 	}
 
-	// the functions the host monitor will run through to do simpler checks
-	defaultHostMonitoringFuncs = []hostMonitoringFunc{
-		monitorReachability,
-	}
-
 	// the functions the notifier will use to build notifications that need
 	// to be sent
 	defaultNotificationBuilders = []notificationBuilder{
@@ -74,8 +69,7 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 
 	// initialize the host monitor
 	hostMonitor := &HostMonitor{
-		flaggingFuncs:   defaultHostFlaggingFuncs,
-		monitoringFuncs: defaultHostMonitoringFuncs,
+		flaggingFuncs: defaultHostFlaggingFuncs,
 	}
 
 	// clean up any necessary hosts
@@ -83,17 +77,6 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Error(message.WrapError(err, message.Fields{
 		"runner":  RunnerName,
 		"message": "Error cleaning up hosts",
-	}))
-
-	if ctx.Err() != nil {
-		return errors.New("monitor canceled")
-	}
-
-	// run monitoring checks
-	err = hostMonitor.RunMonitoringChecks(ctx, settings)
-	grip.Error(message.WrapError(err, message.Fields{
-		"runner":  RunnerName,
-		"message": "Error running host monitor checks",
 	}))
 
 	if ctx.Err() != nil {

@@ -59,25 +59,26 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var revision = vm.revisionSelect.selected
     var baselineTag = vm.tagSelect.selected.name
 
+    // Set loading flag to display spinner
+    vm.isLoading = true
+    // Display no data while loading is in progress
+    vm.gridOptions.data = []
+
     ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
       var version = res.data
-      PerfDiscoveryService.getData(
-        version, baselineTag
-      ).then(function(res) {
+      PerfDiscoveryService.getData(version, baselineTag).then(function(res) {
         vm.gridOptions.data = res
-
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
           res,
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridOptions
         )
-      })
+      }).finally(function() { vm.isLoading = false })
     })
   }
 
   vm.gridOptions = {
-    minRowsToShow: 18,
     enableFiltering: true,
     columnDefs: [
       {
@@ -109,10 +110,10 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         width: 130,
       }),
       {
-        name: 'Ratio, %',
+        name: 'Ratio',
         field: 'ratio',
         type: 'number',
-        cellFilter: 'percentage | number:0',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD" />',
         enableFiltering: false,
         sort: {
           direction: uiGridConstants.DESC,
@@ -120,9 +121,17 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         width: 80,
       },
       {
+        name: 'Average Ratio',
+        field: 'avgRatio',
+        type: 'number',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
+        enableFiltering: false,
+        width: 80,
+      },
+      {
         name: 'Trend',
         field: 'trendData',
-        type: 'number',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
@@ -130,7 +139,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Avg and Self',
         field: 'avgVsSelf',
-        type: 'number',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
+        width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
       },

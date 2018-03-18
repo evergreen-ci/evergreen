@@ -35,7 +35,7 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
         $scope.tempExpansions.push(obj);
       });
 
-      $scope.tempPlugins = jsyaml.safeDump(resp.data.plugins);
+      $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : "";
 
       $scope.Settings = resp.data;
     }
@@ -63,12 +63,18 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     }
 
     _.map($scope.tempCredentials, function(elem, index) {
+      if (!$scope.Settings.credentials) {
+        $scope.Settings.credentials = {};
+      }
       for (var key in elem) {
         $scope.Settings.credentials[key] = elem[key];
       }
     });
 
     _.map($scope.tempExpansions, function(elem, index) {
+      if (!$scope.Settings.expansions) {
+        $scope.Settings.expansions = {};
+      }
       for (var key in elem) {
         $scope.Settings.expansions[key] = elem[key];
       }
@@ -79,6 +85,16 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     } catch(e) {
       alert("Error parsing plugin yaml: " + e);
       return;
+    }
+
+    if ($scope.tempPlugins === null || $scope.tempPlugins === undefined || $scope.tempPlugins == "") {
+      $scope.Settings.plugins = {};
+    }
+    if (!$scope.tempCredentials || $scope.tempCredentials.length === 0) {
+      $scope.Settings.credentials = {};
+    }
+    if (!$scope.tempExpansions || $scope.tempExpansions.length === 0) {
+      $scope.Settings.expansions = {};
     }
 
     mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
@@ -96,11 +112,13 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     github_pr_testing_disabled: "github_pr_testing",
     repotracker_push_event_disabled: "repotracker_push_event",
     cli_updates_disabled: "cli_updates",
+<<<<<<< HEAD
     event_processing_disabled: "event_processing",
     jira_notifications_disabled: "jira_notifications",
     slack_notifications_disabled: "slack_notifications",
     email_notifications_disabled: "email_notifications",
     webhook_notifications_disabled: "webhook_notifications",
+    background_stats_disabled: "background stats",
     github_status_api_disabled: "github_status_api"
   }
 

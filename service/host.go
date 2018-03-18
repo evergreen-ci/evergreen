@@ -130,7 +130,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := h.SetStatus(newStatus, u.Id)
+		err := h.SetStatus(newStatus, u.Id, "")
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
 			return
@@ -182,7 +182,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		numHostsUpdated := 0
 
 		for _, host := range hosts {
-			err := host.SetStatus(newStatus, user.Id)
+			err := host.SetStatus(newStatus, user.Id, "")
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
 				return

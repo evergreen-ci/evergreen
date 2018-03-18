@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type TaskVariantPairs struct {
@@ -226,7 +225,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
+	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -293,7 +292,8 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		for _, dt := range vt.DisplayTasks {
 			displayNames = append(displayNames, dt.Name)
 		}
-		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks, displayNames)
+		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, taskNames, displayNames)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

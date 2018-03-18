@@ -168,7 +168,7 @@ func (r *commandRegistry) renderCommands(commandInfo model.PluginCommandConf,
 
 		cmd := factory()
 		if err = cmd.ParseParams(c.Params); err != nil {
-			errs = append(errs, "problem parsing input of %s (%s)", c.Command, c.DisplayName)
+			errs = append(errs, errors.Wrapf(err, "problem parsing input of %s (%s)", c.Command, c.DisplayName).Error())
 			continue
 		}
 		cmd.SetType(c.Type)

@@ -403,11 +403,11 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 // projectFromYAML reads and evaluates project YAML, returning a project and warnings and
 // errors encountered during parsing or evaluation.
 func projectFromYAML(yml []byte) (*Project, []error) {
-	pp, errs := createIntermediateProject(yml)
+	intermediateProject, errs := createIntermediateProject(yml)
 	if len(errs) > 0 {
 		return nil, errs
 	}
-	p, errs := translateProject(pp)
+	p, errs := translateProject(intermediateProject)
 	return p, errs
 }
 
@@ -461,7 +461,7 @@ func translateProject(pp *parserProject) (*Project, []error) {
 	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
 	proj.Tasks, proj.TaskGroups, errs = evaluateTaskUnits(tse, tgse, vse, pp.Tasks, pp.TaskGroups)
 	evalErrs = append(evalErrs, errs...)
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks)
+	proj.BuildVariants, errs = evaluateBuildVariants(tse, tgse, vse, pp.BuildVariants, pp.Tasks, proj.TaskGroups)
 	evalErrs = append(evalErrs, errs...)
 	return proj, evalErrs
 }
@@ -504,19 +504,15 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 	}
 	for _, ptg := range tgs {
 		tg := TaskGroup{
-			Name:            ptg.Name,
-			Priority:        ptg.Priority,
-			ExecTimeoutSecs: ptg.ExecTimeoutSecs,
-			SetupGroup:      ptg.SetupGroup,
-			TeardownGroup:   ptg.TeardownGroup,
-			SetupTask:       ptg.SetupTask,
-			TeardownTask:    ptg.TeardownTask,
-			Tags:            ptg.Tags,
-			MaxHosts:        ptg.MaxHosts,
-			Timeout:         ptg.Timeout,
-			Patchable:       ptg.Patchable,
-			Stepback:        ptg.Stepback,
-			ShareProcs:      ptg.ShareProcs,
+			Name:          ptg.Name,
+			SetupGroup:    ptg.SetupGroup,
+			TeardownGroup: ptg.TeardownGroup,
+			SetupTask:     ptg.SetupTask,
+			TeardownTask:  ptg.TeardownTask,
+			Tags:          ptg.Tags,
+			MaxHosts:      ptg.MaxHosts,
+			Timeout:       ptg.Timeout,
+			ShareProcs:    ptg.ShareProcs,
 		}
 		if tg.MaxHosts < 1 {
 			tg.MaxHosts = 1
@@ -531,10 +527,6 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 			taskNames = append(taskNames, names...)
 		}
 		tg.Tasks = taskNames
-		tg.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, ptg.DependsOn)
-		evalErrs = append(evalErrs, errs...)
-		tg.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, ptg.Requires)
-		evalErrs = append(evalErrs, errs...)
 		groups = append(groups, tg)
 	}
 	return tasks, groups, evalErrs
@@ -543,7 +535,7 @@ func evaluateTaskUnits(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, v
 // evaluateBuildsVariants translates intermediate tasks into true BuildVariant types,
 // evaluating any selectors in the Tasks fields.
 func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbvs []parserBV, tasks []parserTask) ([]BuildVariant, []error) {
+	pbvs []parserBV, tasks []parserTask, tgs []TaskGroup) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
@@ -608,7 +600,11 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		}
 
 		//resolve tags for display tasks
-		dtse := newDisplayTaskSelectorEvaluator(bv, tasks)
+		tgMap := map[string]TaskGroup{}
+		for _, tg := range tgs {
+			tgMap[tg.Name] = tg
+		}
+		dtse := newDisplayTaskSelectorEvaluator(bv, tasks, tgs, tgMap)
 		for i, dt := range pbv.DisplayTasks {
 			tasks := []string{}
 			for _, et := range dt.ExecutionTasks {
@@ -622,10 +618,16 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 		}
 
 		// check that display tasks contain real tasks that are not duplicated
-		bvTasks := make(map[string]string)          // map of all execution tasks
+		bvTasks := make(map[string]struct{})        // map of all execution tasks
 		displayTaskContents := make(map[string]int) // map of execution tasks in a display task
 		for _, t := range bv.Tasks {
-			bvTasks[t.Name] = ""
+			if tg, exists := tgMap[t.Name]; exists {
+				for _, tgTask := range tg.Tasks {
+					bvTasks[tgTask] = struct{}{}
+				}
+			} else {
+				bvTasks[t.Name] = struct{}{}
+			}
 		}
 		for _, dt := range pbv.DisplayTasks {
 			projectDt := DisplayTask{Name: dt.Name}

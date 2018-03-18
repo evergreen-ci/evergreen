@@ -24,10 +24,23 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2018-03-07"
+	ClientVersion = "2018-03-14"
 
 	errNotFound = "not found"
 )
+
+// ConfigSection defines a sub-document in the evegreen config
+// any config sections must also be added to registry.go
+type ConfigSection interface {
+	// SectionId() returns the ID of the section to be used in the database document and struct tag
+	SectionId() string
+	// Get() populates the section from the DB
+	Get() error
+	// Set() upserts the section document into the DB
+	Set() error
+	// ValidateAndDefault() validates input and sets defaults
+	ValidateAndDefault() error
+}
 
 // AuthUser configures a user for our Naive authentication setup.
 type AuthUser struct {
@@ -718,6 +731,7 @@ type ServiceFlags struct {
 	EmailNotificationsDisabled   bool `bson:"email_notifications_disabled" json:"email_notifications_disabled"`
 	WebhookNotificationsDisabled bool `bson:"webhook_notifications_disabled" json:"webhook_notifications_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -743,6 +757,7 @@ func (c *ServiceFlags) Set() error {
 			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
 			repotrackerPushEventDisabledKey: c.RepotrackerPushEventDisabled,
 			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
+			backgroundStatsDisabledKey:      c.BackgroundStatsDisabled,
 			eventProcessingDisabledKey:      c.EventProcessingDisabled,
 			jiraNotificationsDisabledKey:    c.JIRANotificationsDisabled,
 			slackNotificationsDisabledKey:   c.SlackNotificationsDisabled,
@@ -867,19 +882,6 @@ func (c *Settings) ValidateAndDefault() error {
 		c.LogPath = LocalLoggingOverride
 	}
 	return nil
-}
-
-// ConfigSection defines a sub-document in the evegreen config
-// any config sections must also be added to registry.go
-type ConfigSection interface {
-	// SectionId() returns the ID of the section to be used in the database document and struct tag
-	SectionId() string
-	// Get() populates the section from the DB
-	Get() error
-	// Set() upserts the section document into the DB
-	Set() error
-	// ValidateAndDefault() validates input and sets defaults
-	ValidateAndDefault() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.

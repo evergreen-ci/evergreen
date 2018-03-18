@@ -13,7 +13,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type patchVariantsTasksRequest struct {
@@ -58,6 +57,15 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	// retrieve tasks and variant mappings' names
 	variantMappings := make(map[string]model.BuildVariant)
 	for _, variant := range project.BuildVariants {
+		tasksForVariant := []model.BuildVariantTaskUnit{}
+		for _, TaskFromVariant := range variant.Tasks {
+			if TaskFromVariant.IsGroup {
+				tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
+			} else {
+				tasksForVariant = append(tasksForVariant, TaskFromVariant)
+			}
+		}
+		variant.Tasks = tasksForVariant
 		variantMappings[variant.Name] = variant
 	}
 
@@ -100,7 +108,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if err = yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
+	if err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
 

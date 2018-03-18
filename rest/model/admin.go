@@ -979,6 +979,7 @@ type APIServiceFlags struct {
 	GithubPRTestingDisabled      bool `json:"github_pr_testing_disabled"`
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 
 	// Notifications Flags
 	EventProcessingDisabled      bool `json:"event_processing_disabled"`
@@ -1177,6 +1178,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.EmailNotificationsDisabled = v.EmailNotificationsDisabled
 		as.WebhookNotificationsDisabled = v.WebhookNotificationsDisabled
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
+		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1203,6 +1205,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		EmailNotificationsDisabled:   as.EmailNotificationsDisabled,
 		WebhookNotificationsDisabled: as.WebhookNotificationsDisabled,
 		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 	}, nil
 }
 
