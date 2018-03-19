@@ -280,6 +280,33 @@ func (s *eventSuite) TestFindResourceTypeIn() {
 	found, data = findResourceTypeIn(nil)
 	s.False(found)
 	s.Empty(data)
+
+	s.NotPanics(func() {
+		found, data := findResourceTypeIn(succeedStruct)
+		s.True(found)
+		s.Equal("something", data)
+
+		found, data = findResourceTypeIn(failStruct)
+		s.False(found)
+		s.Empty(data)
+
+		found, data = findResourceTypeIn(failStruct2)
+		s.False(found)
+		s.Empty(data)
+
+		found, data = findResourceTypeIn(nil)
+		s.False(found)
+		s.Empty(data)
+
+		x := 5
+		found, data = findResourceTypeIn(x)
+		s.False(found)
+		s.Empty(data)
+
+		found, data = findResourceTypeIn(&x)
+		s.False(found)
+		s.Empty(data)
+	})
 }
 
 func (s *eventSuite) TestMarkProcessed() {

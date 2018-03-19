@@ -126,22 +126,32 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
-func findResourceTypeIn(t interface{}) (bool, string) {
+func findResourceTypeIn(data interface{}) (bool, string) {
 	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
 
-	if t == nil {
+	if data == nil {
 		return false, ""
 	}
 
-	elem := reflect.TypeOf(t).Elem()
-	for i := 0; i < elem.NumField(); i++ {
-		f := elem.Field(i)
-		bsonTag := f.Tag.Get("bson")
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
 		if len(bsonTag) == 0 {
 			continue
 		}
 
-		if f.Type.Kind() != reflect.String {
+		if fieldType.Type.Kind() != reflect.String {
 			return false, ""
 		}
 
@@ -149,7 +159,7 @@ func findResourceTypeIn(t interface{}) (bool, string) {
 			continue
 		}
 
-		structData := reflect.ValueOf(t).Elem().Field(i).String()
+		structData := v.Field(i).String()
 		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
 	}
 
