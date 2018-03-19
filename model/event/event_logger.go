@@ -29,6 +29,7 @@ func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		event.ID = bson.NewObjectId()
 	}
+
 	found, rType := findResourceTypeIn(event.Data)
 	if !found {
 		return errors.New("event log data has no r_type")
