@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const repoKind = "github"
-
 func TestGithubSuite(t *testing.T) {
 	config := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, config, "TestGithubSuite")

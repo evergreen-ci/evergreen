@@ -11,8 +11,6 @@ import (
 var testConfig = testutil.TestConfig()
 
 const (
-	commitsURL = "https://api.github.com/repos/deafgoat/mci-test/commits"
-
 	patchText = `
 diff --git a/test.txt b/test.txt
 index 4897035..09740ad 100644
