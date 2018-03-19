@@ -62,6 +62,7 @@ func findConfigFilePath(fn string) (string, error) {
 
 // Client represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
+// If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
 	APIServerHost string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
 	UIServerHost  string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
