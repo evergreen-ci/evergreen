@@ -72,7 +72,7 @@ type ClientSettings struct {
 	LoadedFrom    string              `json:"-" yaml:"-"`
 }
 
-func NewClientSetttings(fn string) (*ClientSettings, error) {
+func NewClientSettings(fn string) (*ClientSettings, error) {
 	path, err := findConfigFilePath(fn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could find file %s", fn)

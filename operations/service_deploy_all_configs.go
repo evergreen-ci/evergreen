@@ -20,7 +20,7 @@ func fetchAllProjectConfigs() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			settings, err := NewClientSetttings(c.GlobalString("config"))
+			settings, err := NewClientSettings(c.GlobalString("config"))
 			if err != nil {
 				return err
 			}
