@@ -74,8 +74,8 @@ func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
 	}
 }
 
-// resource_type in data
-const expectedJSON1 = `{"processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+// resource_type in data should be copied to root document
+const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 // resource_type in root document
 const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
@@ -125,7 +125,8 @@ func (s *eventSuite) TestWithRealData() {
 		// Verify that JSON unmarshals as expected
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
-		s.Empty(entries[0].ResourceType)
+		s.Equal("HOST", entries[0].ResourceType)
+		s.IsType(&HostEventData{}, entries[0].Data)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
 		s.True(found)
@@ -159,6 +160,7 @@ func (s *eventSuite) TestWithRealData() {
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
 		s.Equal("HOST", entries[0].ResourceType)
+		s.IsType(&HostEventData{}, entries[0].Data)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
 		s.True(found)
@@ -192,6 +194,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.checkRealData(&entries[0], loc)
 		entries[0].Timestamp = entries[0].Timestamp.In(loc)
 		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
+		s.IsType(&HostEventData{}, entries[0].Data)
 		s.Equal("HOST", entries[0].ResourceType)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
