@@ -3,26 +3,86 @@ package thirdparty
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 )
 
-var repoKind = "github"
+const repoKind = "github"
 
-func TestGetGithubAPIStatus(t *testing.T) {
-	Convey("Getting Github API status should yield expected response", t, func() {
-		status, err := GetGithubAPIStatus()
-		So(err, ShouldBeNil)
-		So(status, ShouldBeIn, []string{GithubAPIStatusGood, GithubAPIStatusMinor, GithubAPIStatusMajor})
+func TestGithubSuite(t *testing.T) {
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(t, config, "TestGithubSuite")
+
+	suite.Run(t, &githubSuite{config: config})
+}
+
+type githubSuite struct {
+	suite.Suite
+	config *evergreen.Settings
+
+	token string
+}
+
+func (s *githubSuite) SetupSuite() {
+	db.SetGlobalSessionProvider(s.config.SessionFactory())
+}
+
+func (s *githubSuite) SetupTest() {
+	var err error
+	s.token, err = s.config.GetGithubOauthToken()
+	s.NoError(err)
+}
+
+func (s *githubSuite) TestGetGithubAPIStatus() {
+	status, err := GetGithubAPIStatus()
+	s.NoError(err)
+	s.Contains([]string{GithubAPIStatusGood, GithubAPIStatusMinor, GithubAPIStatusMajor}, status)
+}
+
+func (s *githubSuite) TestCheckGithubAPILimit() {
+	rem, err := CheckGithubAPILimit(s.token)
+	s.NoError(err)
+	s.NotNil(rem)
+}
+
+func (s *githubSuite) TestGetGithubCommits() {
+	githubCommits, _, err := GetGithubCommits(s.token, "deafgoat", "mci-test", "", 0)
+	s.NoError(err)
+	s.Len(githubCommits, 3)
+}
+
+func (s *githubSuite) TestGetBranchEvent() {
+	branch, err := GetBranchEvent(s.token, "evergreen-ci", "evergreen", "master")
+	s.NoError(err)
+	s.NotPanics(func() {
+		s.Equal("master", *branch.Name)
+		s.NotNil(*branch.Commit)
 	})
 }
 
-func TestCheckGithubAPILimit(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestCheckGithubAPILimit")
-	Convey("Getting Github API limit should succeed", t, func() {
-		rem, err := CheckGithubAPILimit(testConfig.Credentials[repoKind])
-		// Without a proper token, the API limit is small
-		So(rem, ShouldBeGreaterThan, 100)
-		So(err, ShouldBeNil)
+func (s *githubSuite) TestGithubMergeBaseRevision() {
+	rev, err := GetGithubMergeBaseRevision(s.token, "evergreen-ci", "evergreen", "105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
+	s.NoError(err)
+	s.Equal("2c282735952d7b15e5af7075f483a896783dc2a4", rev)
+}
+
+func (s *githubSuite) TestGetGithubFile() {
+	file, err := GetGithubFile(s.token, "evergreen-ci", "evergreen", "self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
+	s.NoError(err)
+	s.NotPanics(func() {
+		s.Equal("0fa81053f0f5158c36ca92e347c463e8890f66a1", *file.SHA)
+		s.Equal(24075, *file.Size)
+		s.Equal("base64", *file.Encoding)
+		s.Equal("self-tests.yml", *file.Name)
+		s.Equal("self-tests.yml", *file.Path)
+		s.Equal("file", *file.Type)
+		s.Len(*file.Content, 32635)
+
+		s.NotEmpty(file.URL)
+		s.NotEmpty(file.GitURL)
+		s.NotEmpty(file.HTMLURL)
+		s.NotEmpty(file.DownloadURL)
 	})
 }

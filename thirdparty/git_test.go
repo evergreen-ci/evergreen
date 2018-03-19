@@ -42,17 +42,6 @@ func init() {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
-func TestGetGithubCommits(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetGithubCommits")
-	assert := assert.New(t)
-
-	token, err := testConfig.GetGithubOauthToken()
-	assert.NoError(err)
-	githubCommits, _, err := GetGithubCommits(token, "deafgoat", "mci-test", "", 0)
-	assert.NoError(err)
-	assert.Len(githubCommits, 3)
-}
-
 func TestGetPatchSummaries(t *testing.T) {
 	assert := assert.New(t)
 

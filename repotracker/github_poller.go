@@ -164,7 +164,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 
 		// attempt to get the merge base commit
 		if firstCommit != nil {
-			baseRevision, err = thirdparty.GetGitHubMergeBaseRevision(
+			baseRevision, err = thirdparty.GetGithubMergeBaseRevision(
 				gRepoPoller.OauthToken,
 				gRepoPoller.ProjectRef.Owner,
 				gRepoPoller.ProjectRef.Repo,

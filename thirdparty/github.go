@@ -43,7 +43,7 @@ type GithubUser struct {
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(oauthToken, owner, repo, branch string, commitPage int) ([]*github.RepositoryCommit, int, error) {
+func GetGithubCommits(oauthToken, owner, repo, ref string, commitPage int) ([]*github.RepositoryCommit, int, error) {
 	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "can't fetch data from github")
@@ -52,18 +52,18 @@ func GetGithubCommits(oauthToken, owner, repo, branch string, commitPage int) ([
 
 	client := github.NewClient(httpClient)
 	commits, resp, err := client.Repositories.ListCommits(context.TODO(), owner, repo, &github.CommitsListOptions{
-		SHA: branch,
+		SHA: ref,
 		ListOptions: github.ListOptions{
 			Page: commitPage,
 		},
 	})
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying for commits in '%s/%s' branch %s : %v", owner, repo, branch, err)
+		errMsg := fmt.Sprintf("error querying for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
 		grip.Error(errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
 	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url '%s/%s' branch %s : %v", owner, repo, branch)
+		errMsg := fmt.Sprintf("nil response from url '%s/%s' ref %s : %v", owner, repo, ref)
 		grip.Error(errMsg)
 		return nil, 0, APIResponseError{errMsg}
 	}
@@ -158,7 +158,7 @@ func GetGithubFile(oauthToken, owner, repo, path, hash string) (*github.Reposito
 	return file, nil
 }
 
-func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
+func GetGithubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
 	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
 		return "", errors.Wrap(err, "can't fetch data from github")
@@ -257,7 +257,7 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*github.Branch,
 	defer util.PutHttpClientForOauth2(httpClient)
 	client := github.NewClient(httpClient)
 
-	grip.Debugln("requesting github commit for '%s/%s': branch: %s", repoOwner, repo, branch)
+	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", repoOwner, repo, branch)
 
 	branchEvent, resp, err := client.Repositories.GetBranch(context.TODO(), repoOwner, repo, branch)
 	if err != nil {

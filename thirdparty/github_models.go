@@ -1,21 +1,5 @@
 package thirdparty
 
-type Link struct {
-	Self string
-	Git  string
-	Html string
-}
-
-type Parent struct {
-	Url string
-	Sha string
-}
-
-type Tree struct {
-	URL string
-	SHA string
-}
-
 type GithubLoginUser struct {
 	Login            string
 	Id               int
