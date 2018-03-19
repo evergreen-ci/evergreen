@@ -61,6 +61,21 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.ParseParams(params), ShouldNotBeNil)
 			})
 
+			Convey("a defined inclusion filter with optional as a string upload should cause an error", func() {
+
+				params := map[string]interface{}{
+					"aws_secret":                 "secret",
+					"local_files_include_filter": []string{"local"},
+					"optional":                   "foo",
+					"remote_file":                "remote",
+					"bucket":                     "bck",
+					"permissions":                "public-read",
+					"content_type":               "application/x-tar",
+					"display_name":               "test_file",
+				}
+				So(cmd.ParseParams(params), ShouldNotBeNil)
+			})
+
 			Convey("a missing aws secret should cause an error", func() {
 
 				params := map[string]interface{}{
@@ -206,52 +221,70 @@ func TestS3PutValidateParams(t *testing.T) {
 func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
+		cmd := &s3put{}
+		conf := &model.TaskConfig{
+			Expansions: util.NewExpansions(map[string]string{}),
+			WorkDir:    "working_directory",
+		}
 
-		var cmd *s3put
-		var conf *model.TaskConfig
+		Convey("when expanding the command's params all appropriate values should be expanded, if they"+
+			" contain expansions", func() {
 
-		Convey("when expanding the command's params", func() {
+			cmd.AwsKey = "${aws_key}"
+			cmd.AwsSecret = "${aws_secret}"
+			cmd.RemoteFile = "${remote_file}"
+			cmd.Bucket = "${bucket}"
+			cmd.ContentType = "${content_type}"
+			cmd.ResourceDisplayName = "${display_name}"
+			cmd.Visibility = "${visibility}"
 
+			conf.Expansions.Update(
+				map[string]string{
+					"aws_key":      "key",
+					"aws_secret":   "secret",
+					"remote_file":  "remote",
+					"bucket":       "bck",
+					"content_type": "ct",
+					"display_name": "file",
+					"visibility":   artifact.Private,
+				},
+			)
+
+			So(cmd.expandParams(conf), ShouldBeNil)
+			So(cmd.AwsKey, ShouldEqual, "key")
+			So(cmd.AwsSecret, ShouldEqual, "secret")
+			So(cmd.RemoteFile, ShouldEqual, "remote")
+			So(cmd.Bucket, ShouldEqual, "bck")
+			So(cmd.ContentType, ShouldEqual, "ct")
+			So(cmd.ResourceDisplayName, ShouldEqual, "file")
+			So(cmd.Visibility, ShouldEqual, "private")
+			So(cmd.workDir, ShouldEqual, "working_directory")
+
+		})
+
+		Convey("the expandParams function should error for invalid optional values", func() {
 			cmd = &s3put{}
-			conf = &model.TaskConfig{
-				Expansions: util.NewExpansions(map[string]string{}),
-				WorkDir:    "working_directory",
+
+			for _, v := range []util.StringOrBool{"", "false", "False", "0", "F", "f", "no", "n"} {
+				cmd.skipMissing = true
+				cmd.Optional = v
+				So(cmd.expandParams(conf), ShouldBeNil)
+				So(cmd.skipMissing, ShouldBeFalse)
 			}
 
-			Convey("all appropriate values should be expanded, if they"+
-				" contain expansions", func() {
-
-				cmd.AwsKey = "${aws_key}"
-				cmd.AwsSecret = "${aws_secret}"
-				cmd.RemoteFile = "${remote_file}"
-				cmd.Bucket = "${bucket}"
-				cmd.ContentType = "${content_type}"
-				cmd.ResourceDisplayName = "${display_name}"
-				cmd.Visibility = "${visibility}"
-
-				conf.Expansions.Update(
-					map[string]string{
-						"aws_key":      "key",
-						"aws_secret":   "secret",
-						"remote_file":  "remote",
-						"bucket":       "bck",
-						"content_type": "ct",
-						"display_name": "file",
-						"visibility":   artifact.Private,
-					},
-				)
-
+			for _, v := range []util.StringOrBool{"true", "True", "1", "T", "t", "yes", "y"} {
+				cmd.skipMissing = false
+				cmd.Optional = v
 				So(cmd.expandParams(conf), ShouldBeNil)
-				So(cmd.AwsKey, ShouldEqual, "key")
-				So(cmd.AwsSecret, ShouldEqual, "secret")
-				So(cmd.RemoteFile, ShouldEqual, "remote")
-				So(cmd.Bucket, ShouldEqual, "bck")
-				So(cmd.ContentType, ShouldEqual, "ct")
-				So(cmd.ResourceDisplayName, ShouldEqual, "file")
-				So(cmd.Visibility, ShouldEqual, "private")
-				So(cmd.workDir, ShouldEqual, "working_directory")
+				So(cmd.skipMissing, ShouldBeTrue)
+			}
 
-			})
+			cmd.skipMissing = false
+			for _, v := range []util.StringOrBool{"NOPE", "NONE", "EMPTY", "01", "100"} {
+				cmd.Optional = v
+				So(cmd.expandParams(conf), ShouldNotBeNil)
+				So(cmd.skipMissing, ShouldBeFalse)
+			}
 
 		})
 
