@@ -53,7 +53,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision s
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
 
-	githubFile, err := thirdparty.GetGithubFile(gRepoPoller.OauthToken, projectRef.Owner, projectRef.Repo, projectRef.RemotePath, "")
+	githubFile, err := thirdparty.GetGithubFile(gRepoPoller.OauthToken, projectRef.Owner, projectRef.Repo, projectRef.RemotePath, projectFileRevision)
 	if err != nil {
 		return nil, err
 	}
