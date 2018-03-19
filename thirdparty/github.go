@@ -485,68 +485,52 @@ func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *Gi
 	return
 }
 
-// GetGithubUser does a GET from GitHub for the user, email, and organizations information and
-// returns the GithubLoginUser and its associated GithubOrganizations after authentication
-func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizations []GithubOrganization, err error) {
-	userUrl := fmt.Sprintf("%v/user", GithubAPIBase)
-	orgUrl := fmt.Sprintf("%v/user/orgs", GithubAPIBase)
-	t := fmt.Sprintf("token %v", token)
-	// get the user
-	resp, err := tryGithubGet(t, userUrl)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+// GetGithubUser fetches a github user associated with an oauth token, and
+// if requiredOrg is specified, checks that it belongs to that org.
+// Returns user object, if it was a member of the specified org (or false if not specified),
+// and error
+func GetGithubUser(token string, requiredOrg string) (*GithubLoginUser, bool, error) {
+	httpClient, err := util.GetHttpClientForOauth2(fmt.Sprintf("token %s", token))
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, false, errors.Wrap(err, "can't fetch data from github")
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	defer util.PutHttpClientForOauth2(httpClient)
+	client := github.NewClient(httpClient)
+
+	user, resp, err := client.Users.Get(context.TODO(), "")
 	if err != nil {
-		return nil, nil, ResponseReadError{err.Error()}
+		return nil, false, errors.WithStack(err)
+	}
+	defer resp.Body.Close()
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, false, ResponseReadError{err.Error()}
+		}
+		return nil, false, APIResponseError{string(respBody)}
 	}
 
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
-	if err = json.Unmarshal(respBody, &githubUser); err != nil {
-		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
+	var isMember bool
+	if len(requiredOrg) > 0 {
+		isMember, _, err = client.Organizations.IsMember(context.TODO(), requiredOrg, *user.Login)
+		if err != nil {
+			return nil, false, errors.Wrapf(err, "Could check if user was org member")
+		}
 	}
 
-	// get the user's organizations
-	resp, err = tryGithubGet(t, orgUrl)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not get user from token")
-	}
-	respBody, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, ResponseReadError{err.Error()}
+	if user.Login == nil || user.ID == nil || user.Company == nil ||
+		user.Email == nil || user.OrganizationsURL == nil {
+		return nil, false, errors.New("Github user is missing required data")
 	}
 
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
-	if err = json.Unmarshal(respBody, &githubOrganizations); err != nil {
-		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
-	}
-	return
-}
-
-// verifyGithubAPILimitHeader parses a Github API header to find the number of requests remaining
-func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
-	h := (map[string][]string)(header)
-	limStr, okLim := h["X-Ratelimit-Limit"]
-	remStr, okRem := h["X-Ratelimit-Remaining"]
-
-	if !okLim || !okRem || len(limStr) == 0 || len(remStr) == 0 {
-		return 0, errors.New("Could not get rate limit data")
-	}
-
-	rem, err := strconv.ParseInt(remStr[0], 10, 0)
-	if err != nil {
-		return 0, errors.Errorf("Could not parse rate limit data: limit=%q, rate=%t", limStr, okLim)
-	}
-
-	return rem, nil
+	return &GithubLoginUser{
+		Login:            *user.Login,
+		Id:               *user.ID,
+		Company:          *user.Company,
+		EmailAddress:     *user.Email,
+		OrganizationsURL: *user.OrganizationsURL,
+	}, isMember, err
 }
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining

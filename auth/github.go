@@ -54,24 +54,22 @@ func NewGithubUserManager(g *evergreen.GithubAuthConfig) (*GithubUserManager, er
 // If there is no match and there is an organization it checks the user's organizations against
 // the UserManager's Authorized organization string.
 func (gum *GithubUserManager) GetUserByToken(token string) (User, error) {
-	user, organizations, err := thirdparty.GetGithubUser(token)
+	user, isMember, err := thirdparty.GetGithubUser(token, gum.AuthorizedOrganization)
 	if err != nil {
 		return nil, err
 	}
 	if user != nil {
-		if gum.AuthorizedUsers != nil {
-			for _, u := range gum.AuthorizedUsers {
-				if u == user.Username() {
-					return user, nil
+		if !isMember {
+			if gum.AuthorizedUsers != nil {
+				for _, u := range gum.AuthorizedUsers {
+					if u == user.Username() {
+						return user, nil
+					}
 				}
 			}
-		}
-		if gum.AuthorizedOrganization != "" {
-			for _, organization := range organizations {
-				if organization.Login == gum.AuthorizedOrganization {
-					return user, nil
-				}
-			}
+
+		} else {
+			return user, nil
 		}
 	}
 

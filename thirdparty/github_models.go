@@ -51,33 +51,6 @@ func (t *GithubTime) Time() time.Time {
 }
 
 // Github API response structs
-type PatchSummary struct {
-	Name      string
-	Additions int
-	Deletions int
-}
-
-type CommitEvent struct {
-	URL       string
-	SHA       string
-	Commit    CommitDetails
-	Author    AuthorDetails
-	Committer AuthorDetails
-	Parents   []Tree
-	Stats     Stats
-	Files     []File
-}
-
-type BranchEvent struct {
-	Name     string
-	Commit   GithubCommit
-	Author   CommitAuthor
-	Parents  []Parent
-	URL      string
-	Commiter AuthorDetails
-	Links    Link
-}
-
 type GithubCommit struct {
 	Url       string
 	SHA       string
@@ -85,20 +58,6 @@ type GithubCommit struct {
 	Author    CommitAuthor
 	Committer CommitAuthor
 	Parents   []Parent
-}
-
-type GithubFile struct {
-	Name     string
-	Path     string
-	SHA      string
-	Size     int
-	URL      string
-	HtmlURL  string
-	GitURL   string
-	Type     string
-	Content  string
-	Encoding string
-	Links    Link
 }
 
 type Link struct {
@@ -190,32 +149,8 @@ type GithubAuthParameters struct {
 	State        string `json:"state"`
 }
 
-type GithubOrganization struct {
-	Login string `json:"login"`
-	Url   string `json:"url"`
-}
-
 type GithubAuthResponse struct {
 	AccessToken string `json:"access_token"`
 	Scope       string `json:"scope"`
 	TokenType   string `json:"token_type"`
-}
-
-type GitHubCompareResponse struct {
-	Url             string          `json:"url"`
-	HtmlUrl         string          `json:"html_url"`
-	PermalinkUrl    string          `json:"permalink_url"`
-	DiffUrl         string          `json:"diff_url"`
-	PatchUrl        string          `json:"patch_url"`
-	BaseCommit      CommitEvent     `json:"base_commit"`
-	Author          AuthorDetails   `json:"author"`
-	Committer       AuthorDetails   `json:"committer"`
-	Parents         []Parent        `json:"parents"`
-	MergeBaseCommit CommitEvent     `json:"merge_base_commit"`
-	Files           File            `json:"file"`
-	Commits         []CommitDetails `json:"commits"`
-	TotalCommits    int             `json:"total_commits"`
-	BehindBy        int             `json:"behind_by"`
-	AheadBy         int             `json:"ahead_by"`
-	Status          string          `json:"status"`
 }
