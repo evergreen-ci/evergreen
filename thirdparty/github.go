@@ -42,14 +42,18 @@ func githubRetry(resp *github.Response, err error) (bool, error) {
 		grip.Error(err)
 		return false, err
 	}
-	rateMessage, _ := getGithubRateLimit(resp.Header)
-	grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
-
+	if err != nil {
+		grip.Errorf("failed trying to call github GET on %s: %+v", resp.Request.URL.String(), err)
+		return true, err
+	}
 	if resp.StatusCode != http.StatusOK {
 		err = errors.Errorf("Calling github GET %s got a bad response code: %v", resp.Request.URL.String(), resp.StatusCode)
 	}
 
-	return true, err
+	rateMessage, _ := getGithubRateLimit(resp.Header)
+	grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
+
+	return false, err
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from

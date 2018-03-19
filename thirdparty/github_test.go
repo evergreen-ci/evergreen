@@ -1,11 +1,15 @@
 package thirdparty
 
 import (
+	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -98,4 +102,46 @@ func (s *githubSuite) TestGetCommitEvent() {
 		s.Equal("ddf48e044c307e3f8734279be95f2d9d7134410f", *commit.SHA)
 		s.Len(commit.Files, 16)
 	})
+}
+func TestVerifyGithubAPILimitHeader(t *testing.T) {
+	assert := assert.New(t)
+	header := http.Header{}
+
+	// header should have both X-Ratelimit-{Remaining,Limit}
+	// return an error if both are not present
+	header["X-Ratelimit-Remaining"] = []string{"5000"}
+	rem, err := verifyGithubAPILimitHeader(header)
+	assert.Error(err)
+	assert.Equal(0, rem)
+
+	header["X-Ratelimit-Limit"] = []string{"5000"}
+	delete(header, "X-Ratelimit-Remaining")
+	rem, err = verifyGithubAPILimitHeader(header)
+	assert.Error(err)
+	assert.Equal(0, rem)
+
+	// Valid rate limit headers should work fine
+	header["X-Ratelimit-Limit"] = []string{"5000"}
+	header["X-Ratelimit-Remaining"] = []string{"4000"}
+	rem, err = verifyGithubAPILimitHeader(header)
+	assert.NoError(err)
+	assert.Equal(400, rem)
+}
+
+// verifyGithubAPILimitHeader parses a Github API header to find the number of requests remaining
+func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
+	h := (map[string][]string)(header)
+	limStr, okLim := h["X-Ratelimit-Limit"]
+	remStr, okRem := h["X-Ratelimit-Remaining"]
+
+	if !okLim || !okRem || len(limStr) == 0 || len(remStr) == 0 {
+		return 0, errors.New("Could not get rate limit data")
+	}
+
+	rem, err := strconv.ParseInt(remStr[0], 10, 0)
+	if err != nil {
+		return 0, errors.Errorf("Could not parse rate limit data: limit=%q, rate=%t", limStr, okLim)
+	}
+
+	return rem, nil
 }
