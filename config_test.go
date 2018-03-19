@@ -452,6 +452,10 @@ func (s *AdminSuite) TestConfigDefaults() {
 	}
 	config.ApiUrl = "api"
 	config.ConfigDir = "dir"
+	config.ExpansionsNew = []KeyValuePair{
+		{Key: "k1", Value: "v1"},
+		{Key: "k2", Value: "v2"},
+	}
 	s.NoError(config.Validate())
 
 	// spot check the defaults
@@ -460,4 +464,67 @@ func (s *AdminSuite) TestConfigDefaults() {
 	s.Equal(defaultLogBufferingDuration, config.LoggerConfig.Buffer.DurationSeconds)
 	s.Equal("info", config.LoggerConfig.DefaultLevel)
 	s.Equal(defaultAmboyPoolSize, config.Amboy.PoolSizeLocal)
+	s.Equal("v1", config.Expansions["k1"])
+	s.Equal("v2", config.Expansions["k2"])
+}
+
+func (s *AdminSuite) TestKeyValPairsToMap() {
+	config := Settings{
+		ApiUrl:    "foo",
+		ConfigDir: "foo",
+		CredentialsNew: []KeyValuePair{
+			{Key: "cred1key", Value: "cred1val"},
+		},
+		ExpansionsNew: []KeyValuePair{
+			{Key: "exp1key", Value: "exp1val"},
+		},
+		KeysNew: []KeyValuePair{
+			{Key: "key1key", Value: "key1val"},
+		},
+		PluginsNew: []KeyValuePair{
+			{Key: "myPlugin", Value: []KeyValuePair{
+				{Key: "pluginKey", Value: "pluginVal"},
+			}},
+		},
+	}
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set())
+	dbConfig := Settings{}
+	s.NoError(dbConfig.Get())
+	s.Len(dbConfig.CredentialsNew, 1)
+	s.Len(dbConfig.ExpansionsNew, 1)
+	s.Len(dbConfig.KeysNew, 1)
+	s.Len(dbConfig.PluginsNew, 1)
+	s.Equal(config.CredentialsNew[0].Value, dbConfig.Credentials[config.CredentialsNew[0].Key])
+	s.Equal(config.ExpansionsNew[0].Value, dbConfig.Expansions[config.ExpansionsNew[0].Key])
+	s.Equal(config.KeysNew[0].Value, dbConfig.Keys[config.KeysNew[0].Key])
+	pluginMap := dbConfig.Plugins[config.PluginsNew[0].Key]
+	s.NotNil(pluginMap)
+	s.Equal("pluginVal", pluginMap["pluginKey"])
+}
+
+func (s *AdminSuite) TestMapToKvPairs() {
+	config := Settings{
+		ApiUrl:      "foo",
+		ConfigDir:   "foo",
+		Credentials: map[string]string{"k1": "v1"},
+		Expansions:  map[string]string{"k2": "v2"},
+		Keys:        map[string]string{"k3": "v3"},
+		Plugins:     map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
+	}
+	s.NoError(config.ValidateAndDefault())
+	s.NoError(config.Set())
+	dbConfig := Settings{}
+	s.NoError(dbConfig.Get())
+	s.Len(dbConfig.CredentialsNew, 1)
+	s.Len(dbConfig.ExpansionsNew, 1)
+	s.Len(dbConfig.KeysNew, 1)
+	s.Len(dbConfig.PluginsNew, 1)
+	s.Equal("k1", dbConfig.CredentialsNew[0].Key)
+	s.Equal("v1", dbConfig.CredentialsNew[0].Value)
+	s.Equal("k2", dbConfig.ExpansionsNew[0].Key)
+	s.Equal("v2", dbConfig.ExpansionsNew[0].Value)
+	s.Equal("k3", dbConfig.KeysNew[0].Key)
+	s.Equal("v3", dbConfig.KeysNew[0].Value)
+	s.Equal("k4", dbConfig.PluginsNew[0].Key)
 }
