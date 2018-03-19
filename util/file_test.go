@@ -68,8 +68,9 @@ func TestBuildFileList(t *testing.T) {
 	}
 	// create all the files in the current directory
 	for _, fname := range fnames {
-		_, err := os.Create(filepath.Join(wd, fname))
+		f, err := os.Create(filepath.Join(wd, fname))
 		testutil.HandleTestingErr(err, t, "error creating test file")
+		testutil.HandleTestingErr(f.Close(), t, "error closing test file")
 	}
 
 	// create all the files in the sub directories
@@ -78,8 +79,9 @@ func TestBuildFileList(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "error creating test directory")
 		for _, fname := range fnames {
 			path := filepath.Join(wd, dirName, fname)
-			_, err := os.Create(path)
+			f, err := os.Create(path)
 			testutil.HandleTestingErr(err, t, "error creating test file")
+			testutil.HandleTestingErr(f.Close(), t, "error closing test file")
 		}
 	}
 	defer func() {
