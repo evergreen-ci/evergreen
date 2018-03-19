@@ -1,65 +1,5 @@
 package thirdparty
 
-import (
-	"encoding/json"
-	"fmt"
-	"time"
-
-	"github.com/pkg/errors"
-)
-
-const githubTimeFormat = "2006-01-02T15:04:05Z"
-
-type GithubTime time.Time
-
-// UnmarshalJSON is a helper to fix parsing of Github's Timestamps
-// Github time stamps look like this: 2018-02-07T19:54:26Z
-// strftime format: %Y-%m-%dT%H:%M:%SZ
-// Z indicates Zulu time (UTC)
-func (t *GithubTime) UnmarshalJSON(b []byte) error {
-	var timeStr string
-	if err := json.Unmarshal(b, &timeStr); err != nil {
-		return errors.Wrap(err, "expected JSON string while parsing time")
-	}
-	if len(timeStr) == 0 {
-		return errors.New("expected JSON string while parsing time")
-	}
-
-	loc, err := time.LoadLocation("UTC")
-	if err != nil {
-		return errors.Wrap(err, "error loading UTC time location")
-	}
-
-	newTime, err := time.ParseInLocation(githubTimeFormat, timeStr, loc)
-	if err != nil {
-		return errors.Wrapf(err, "Error parsing time '%s' in UTC time zone", timeStr)
-	}
-
-	*t = GithubTime(newTime)
-
-	return nil
-}
-
-func (t *GithubTime) MarshalJSON() ([]byte, error) {
-	timeStr := t.Time().Format(githubTimeFormat)
-
-	return []byte(fmt.Sprintf(`"%s"`, timeStr)), nil
-}
-
-func (t *GithubTime) Time() time.Time {
-	return time.Time(*t)
-}
-
-// Github API response structs
-type GithubCommit struct {
-	Url       string
-	SHA       string
-	Commit    CommitDetails
-	Author    CommitAuthor
-	Committer CommitAuthor
-	Parents   []Parent
-}
-
 type Link struct {
 	Self string
 	Git  string
@@ -71,49 +11,9 @@ type Parent struct {
 	Sha string
 }
 
-type CommitDetails struct {
-	URL       string
-	Author    CommitAuthor
-	Committer CommitAuthor
-	Message   string
-	Tree      Tree
-}
-
-type CommitAuthor struct {
-	Name  string
-	Email string
-	Date  GithubTime
-}
-
-type AuthorDetails struct {
-	Login      string
-	Id         int
-	AvatarURL  string
-	GravatarId string
-	URL        string
-}
-
 type Tree struct {
 	URL string
 	SHA string
-}
-
-type Stats struct {
-	Additions int
-	Deletions int
-	Total     int
-}
-
-type File struct {
-	FileName    string
-	Additions   int
-	Deletions   int
-	Changes     int
-	Status      string
-	RawURL      string
-	BlobURL     string
-	ContentsURL string
-	Patch       string
 }
 
 type GithubLoginUser struct {

@@ -211,12 +211,14 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 }
 
 // GetRecentRevisions fetches the most recent 'numRevisions'
-func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) (
-	revisions []model.Revision, err error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) ([]model.Revision, error) {
+	var revisions []model.Revision
 	commitPage := 0
 
 	for {
-		repoCommits, commitPage, err := thirdparty.GetGithubCommits(
+		var err error
+		var repoCommits []*github.RepositoryCommit
+		repoCommits, commitPage, err = thirdparty.GetGithubCommits(
 			gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch,
 			commitPage)
@@ -236,8 +238,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 		if len(revisions) == maxRevisions {
 			break
 		}
-
-		commitPage++
 	}
-	return
+
+	return revisions, nil
 }
