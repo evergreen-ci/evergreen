@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/tychoish/mango/data/mongo-repo/src/mongo/gotools/common/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -107,9 +106,9 @@ func (v *StringOrBool) MarshalJSON() ([]byte, error) {
 func (v *StringOrBool) Bool() (bool, error) {
 	str := string(*v)
 
-	if util.StringSliceContains([]string{"", "false", "False", "FALSE", "F", "f", "0", "n", "no"}, str) {
+	if StringSliceContains([]string{"", "false", "False", "FALSE", "F", "f", "0", "n", "no"}, str) {
 		return false, nil
-	} else if util.StringSliceContains([]string{"true", "True", "TRUE", "T", "t", "1", "y", "yes"}, str) {
+	} else if StringSliceContains([]string{"true", "True", "TRUE", "T", "t", "1", "y", "yes"}, str) {
 		return true, nil
 	}
 
