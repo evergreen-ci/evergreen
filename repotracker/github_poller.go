@@ -3,7 +3,6 @@ package repotracker
 import (
 	"encoding/base64"
 	"fmt"
-	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -113,21 +112,23 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 	revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
 
 	var foundLatest bool
-	var commits []github.RepositoryCommit
+	var commits []*github.RepositoryCommit
 	var firstCommit *github.RepositoryCommit // we track this for later error handling
-	var header http.Header
-	commitURL := getCommitURL(gRepoPoller.ProjectRef)
+	var commitPage int
 	revisions := []model.Revision{}
 
 	for len(revisions) < maxRevisionsToSearch {
 		var err error
-		commits, header, err = thirdparty.GetGithubCommits(gRepoPoller.OauthToken, commitURL)
+		commits, commitPage, err = thirdparty.GetGithubCommits(gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner, gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, commitPage)
 		if err != nil {
 			return nil, err
 		}
 
 		for i := range commits {
-			commit := &commits[i]
+			commit := commits[i]
+			if commit == nil {
+				return nil, errors.Errorf("github returned commit history with missing information for project ref: %s", gRepoPoller.ProjectRef.Identifier)
+			}
 			if firstCommit == nil {
 				firstCommit = commit
 			}
@@ -139,7 +140,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 				commit.SHA == nil ||
 				commit.Commit.Committer == nil ||
 				commit.Commit.Committer.Date == nil {
-				return nil, errors.Errorf("github returned commit history with missing information for url: %s", commitURL)
+				return nil, errors.Errorf("github returned commit history with missing information for project ref: %s", gRepoPoller.ProjectRef.Identifier)
 			}
 
 			if isLastRevision(revision, commit) {
@@ -150,12 +151,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 		}
 
 		// stop querying for commits if we've found the latest commit or got back no commits
-		if foundLatest || len(revisions) == 0 {
-			break
-		}
-
-		// stop quering for commits if there's no next page
-		if commitURL = thirdparty.NextGithubPageLink(header); commitURL == "" {
+		if foundLatest {
 			break
 		}
 	}
@@ -217,11 +213,13 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 // GetRecentRevisions fetches the most recent 'numRevisions'
 func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) (
 	revisions []model.Revision, err error) {
-	commitURL := getCommitURL(gRepoPoller.ProjectRef)
+	commitPage := 0
 
 	for {
-		repoCommits, header, err := thirdparty.GetGithubCommits(
-			gRepoPoller.OauthToken, commitURL)
+		repoCommits, commitPage, err := thirdparty.GetGithubCommits(
+			gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
+			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch,
+			commitPage)
 		if err != nil {
 			return nil, err
 		}
@@ -231,19 +229,15 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 				break
 			}
 			revisions = append(revisions, githubCommitToRevision(
-				&commit))
+				commit))
 		}
 
-		// stop querying for commits if we've reached our target or got back no
-		// commits
-		if len(revisions) == maxRevisions || len(revisions) == 0 {
+		// stop querying for commits if we've reached our target
+		if len(revisions) == maxRevisions {
 			break
 		}
 
-		// stop quering for commits if there's no next page
-		if commitURL = thirdparty.NextGithubPageLink(header); commitURL == "" {
-			break
-		}
+		commitPage++
 	}
 	return
 }

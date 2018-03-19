@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -44,43 +43,46 @@ type GithubUser struct {
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(oauthToken, commitsURL string) (
-	githubCommits []github.RepositoryCommit, header http.Header, err error) {
-	resp, err := tryGithubGet(oauthToken, commitsURL)
-	if resp != nil {
-		defer resp.Body.Close()
+func GetGithubCommits(oauthToken, owner, repo, branch string, commitPage int) ([]*github.RepositoryCommit, int, error) {
+	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHttpClientForOauth2(httpClient)
+
+	client := github.NewClient(httpClient)
+	commits, resp, err := client.Repositories.ListCommits(context.TODO(), owner, repo, &github.CommitsListOptions{
+		SHA: branch,
+		ListOptions: github.ListOptions{
+			Page: commitPage,
+		},
+	})
+	if err != nil {
+		errMsg := fmt.Sprintf("error querying for commits in '%s/%s' branch %s : %v", owner, repo, branch, err)
+		grip.Error(errMsg)
+		return nil, 0, APIResponseError{errMsg}
 	}
 	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url '%v'", commitsURL)
+		errMsg := fmt.Sprintf("nil response from url '%s/%s' branch %s : %v", owner, repo, branch)
 		grip.Error(errMsg)
-		return nil, nil, APIResponseError{errMsg}
+		return nil, 0, APIResponseError{errMsg}
 	}
-	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", commitsURL, err)
-		grip.Error(errMsg)
-		return nil, nil, APIResponseError{errMsg}
-	}
-
-	header = resp.Header
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, ResponseReadError{err.Error()}
-	}
-
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	defer resp.Body.Close()
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
 
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, 0, ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return nil, nil, APIRequestError{Message: string(respBody)}
+			return nil, 0, APIRequestError{Message: string(respBody)}
 		}
-		return nil, nil, requestError
+		return nil, 0, requestError
 	}
 
-	if err = json.Unmarshal(respBody, &githubCommits); err != nil {
-		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
-	}
-	return
+	return commits, resp.NextPage, nil
 }
 
 func GetGithubAPIStatus() (string, error) {
@@ -247,8 +249,7 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.Repo
 }
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
-func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*github.Branch,
-	error) {
+func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*github.Branch, error) {
 	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't fetch data from github")
@@ -387,28 +388,6 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 	return
 }
 
-// NextPageLink returns the link to the next page for a given header's 'Link'
-// key based on http://developer.github.com/v3/#pagination
-// For full details see http://tools.ietf.org/html/rfc5988
-func NextGithubPageLink(header http.Header) string {
-	hlink, ok := header[evergreen.RoutePaginatorNextPageHeaderKey]
-	if !ok {
-		return ""
-	}
-
-	for _, s := range hlink {
-		ix := strings.Index(s, `; rel="next"`)
-		if ix > -1 {
-			t := s[:ix]
-			op := strings.Index(t, "<")
-			po := strings.Index(t, ">")
-			u := t[op+1 : po]
-			return u
-		}
-	}
-	return ""
-}
-
 // getGithubRateLimit interprets the limit headers, and produces an increasingly
 // alarmed message (for the caller to log) as we get closer and closer
 func getGithubRateLimit(header http.Header) (message string, loglevel level.Priority) {
@@ -458,6 +437,7 @@ func getGithubRateLimit(header http.Header) (message string, loglevel level.Prio
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
 // And returns the response which contains the accessToken associated with the user.
 func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *GithubAuthResponse, err error) {
+	// Functionality not supported by go-github
 	authParameters := GithubAuthParameters{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
