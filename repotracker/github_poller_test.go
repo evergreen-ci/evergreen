@@ -280,18 +280,3 @@ func TestIsLastRevision(t *testing.T) {
 		})
 	})
 }
-
-func TestGetCommitURL(t *testing.T) {
-	Convey("When calling getCommitURL...", t, func() {
-		Convey("the returned string should use the fields of the project "+
-			"ref correctly", func() {
-			projectRef = &model.ProjectRef{
-				Owner:  "a",
-				Repo:   "b",
-				Branch: "c",
-			}
-			expectedURL := "https://api.github.com/repos/a/b/commits?sha=c"
-			So(getCommitURL(projectRef), ShouldEqual, expectedURL)
-		})
-	})
-}

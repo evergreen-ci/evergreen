@@ -37,6 +37,9 @@ func githubRetry(resp *github.Response, err error) (bool, error) {
 	if resp.StatusCode == http.StatusBadRequest {
 		return false, err
 	}
+	if resp.StatusCode == http.StatusNotFound {
+		return false, err
+	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		err = errors.Errorf("Calling github GET on %v failed: got 'unauthorized' response", resp.Request.URL.String())
 		grip.Error(err)
@@ -91,7 +94,6 @@ func GetGithubCommits(oauthToken, owner, repo, ref string, commitPage int) ([]*g
 		return nil, 0, APIResponseError{errMsg}
 	}
 	defer resp.Body.Close()
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := ioutil.ReadAll(resp.Body)
@@ -151,6 +153,9 @@ func GetGithubFile(oauthToken, owner, repo, path, hash string) (*github.Reposito
 			file, _, resp, err = client.Repositories.GetContents(context.TODO(), owner, repo, path, opt)
 			return githubRetry(resp, err)
 		}, NumGithubRetries, GithubSleepTimeSecs*time.Second)
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		return nil, FileNotFoundError{filepath: path}
+	}
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying '%s/%s' for '%s': %v", owner, repo, path, err)
 		grip.Error(errMsg)
@@ -163,12 +168,7 @@ func GetGithubFile(oauthToken, owner, repo, path, hash string) (*github.Reposito
 	}
 	defer resp.Body.Close()
 
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, FileNotFoundError{filepath: path}
-
-	} else if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK {
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, ResponseReadError{err.Error()}
@@ -312,8 +312,6 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*github.Branch,
 		return nil, APIResponseError{errMsg}
 	}
 	defer resp.Body.Close()
-
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := ioutil.ReadAll(resp.Body)
@@ -493,7 +491,6 @@ func GetGithubUser(token string, requiredOrg string) (*GithubLoginUser, bool, er
 		return nil, false, errors.WithStack(err)
 	}
 	defer resp.Body.Close()
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, resp.ContentLength)
 	if resp.StatusCode != http.StatusOK {
 		var respBody []byte
 		respBody, err = ioutil.ReadAll(resp.Body)

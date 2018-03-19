@@ -2,7 +2,6 @@ package repotracker
 
 import (
 	"encoding/base64"
-	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -25,15 +24,6 @@ func NewGithubRepositoryPoller(projectRef *model.ProjectRef,
 		ProjectRef: projectRef,
 		OauthToken: oauthToken,
 	}
-}
-
-// GetCommitURL constructs the required URL to query for Github commits
-func getCommitURL(projectRef *model.ProjectRef) string {
-	return fmt.Sprintf("https://api.github.com/repos/%v/%v/commits?sha=%v",
-		projectRef.Owner,
-		projectRef.Repo,
-		projectRef.Branch,
-	)
 }
 
 // isLastRevision compares a Github Commit's sha with a revision and returns
@@ -152,7 +142,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 		}
 
 		// stop querying for commits if we've found the latest commit or got back no commits
-		if foundLatest {
+		if foundLatest || commitPage == 0 {
 			break
 		}
 	}
@@ -236,7 +226,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) 
 		}
 
 		// stop querying for commits if we've reached our target
-		if len(revisions) == maxRevisions {
+		if len(revisions) == maxRevisions || commitPage == 0 {
 			break
 		}
 	}

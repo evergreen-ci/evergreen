@@ -103,6 +103,7 @@ func (s *githubSuite) TestGetCommitEvent() {
 		s.Len(commit.Files, 16)
 	})
 }
+
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	assert := assert.New(t)
 	header := http.Header{}
@@ -112,20 +113,21 @@ func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	header["X-Ratelimit-Remaining"] = []string{"5000"}
 	rem, err := verifyGithubAPILimitHeader(header)
 	assert.Error(err)
-	assert.Equal(0, rem)
+	assert.Equal(int64(0), rem)
 
+	header = http.Header{}
 	header["X-Ratelimit-Limit"] = []string{"5000"}
-	delete(header, "X-Ratelimit-Remaining")
 	rem, err = verifyGithubAPILimitHeader(header)
 	assert.Error(err)
-	assert.Equal(0, rem)
+	assert.Equal(int64(0), rem)
 
 	// Valid rate limit headers should work fine
+	header = http.Header{}
 	header["X-Ratelimit-Limit"] = []string{"5000"}
 	header["X-Ratelimit-Remaining"] = []string{"4000"}
 	rem, err = verifyGithubAPILimitHeader(header)
 	assert.NoError(err)
-	assert.Equal(400, rem)
+	assert.Equal(int64(4000), rem)
 }
 
 // verifyGithubAPILimitHeader parses a Github API header to find the number of requests remaining
