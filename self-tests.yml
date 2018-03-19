@@ -5,16 +5,7 @@ ignore:
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
 
 post:
-  - command: gotest.parse_files
-    type: system
-    params:
-      files:
-        - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
-  - command: attach.xunit_results
-    type: system
-    params:
-      files:
-        - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
+  - func: attach-test-results
   - command: s3.put
     type: system
     params:
@@ -315,7 +306,17 @@ functions:
           cd mongodb
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
           echo "mongod is up."
-
+  attach-test-results:
+    - command: gotest.parse_files
+      type: system
+      params:
+        files:
+          - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
+    - command: attach.xunit_results
+      type: system
+      params:
+        files:
+          - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
 
 #######################################
 #                Tasks                #
@@ -730,6 +731,8 @@ task_groups:
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
+    teardown_task:
+      - func: attach-test-results
 
 buildvariants:
   - name: ubuntu1604
