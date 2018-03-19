@@ -194,7 +194,7 @@ func GetGithubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, curre
 	return *compare.MergeBaseCommit.SHA, nil
 }
 
-func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.RepositoryCommit, error) {
+func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*github.RepositoryCommit, error) {
 	httpClient, err := util.GetHttpClientForOauth2(oauthToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "can't fetch data from github")
@@ -208,9 +208,7 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.Repo
 		"repo":    repoOwner + "/" + repo,
 	})
 
-	commits, resp, err := client.Repositories.ListCommits(context.TODO(), repoOwner, repo, &github.CommitsListOptions{
-		SHA: githash,
-	})
+	commit, resp, err := client.Repositories.GetCommit(context.TODO(), repoOwner, repo, githash)
 	if err != nil {
 		err = errors.Wrapf(err, "problem querying repo %s/%s for %s", repoOwner, repo, githash)
 		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
@@ -241,11 +239,11 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) ([]*github.Repo
 		}
 		return nil, requestError
 	}
-	if len(commits) == 0 {
-		return nil, errors.New("no commits found in github")
+	if commit == nil {
+		return nil, errors.New("commit not found in github")
 	}
 
-	return commits, nil
+	return commit, nil
 }
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub

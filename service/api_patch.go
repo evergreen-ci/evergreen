@@ -170,14 +170,9 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	commitInfo, err := thirdparty.GetCommitEvent(githubOauthToken, repoOwner, repo, githash)
+	_, err = thirdparty.GetCommitEvent(githubOauthToken, repoOwner, repo, githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	if commitInfo == nil {
-		as.WriteJSON(w, http.StatusBadRequest, errors.New("commit hash doesn't seem to exist"))
 		return
 	}
 

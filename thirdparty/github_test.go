@@ -86,3 +86,18 @@ func (s *githubSuite) TestGetGithubFile() {
 		s.NotEmpty(file.DownloadURL)
 	})
 }
+
+func (s *githubSuite) TestGetCommitEvent() {
+	commit, err := GetCommitEvent(s.token, "evergreen-ci", "evergreen", "nope")
+	s.Error(err)
+	s.Nil(commit)
+
+	commit, err = GetCommitEvent(s.token, "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
+	s.NoError(err)
+
+	s.NotPanics(func() {
+		s.Equal("richardsamuels", *commit.Author.Login)
+		s.Equal("ddf48e044c307e3f8734279be95f2d9d7134410f", *commit.SHA)
+		s.Len(commit.Files, 16)
+	})
+}
