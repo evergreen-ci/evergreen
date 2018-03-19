@@ -106,9 +106,9 @@ func (v *StringOrBool) MarshalJSON() ([]byte, error) {
 func (v *StringOrBool) Bool() (bool, error) {
 	str := string(*v)
 
-	if StringSliceContains([]string{"", "false", "False", "FALSE", "F", "f", "0", "n", "no"}, str) {
+	if StringSliceContains([]string{"", "false", "False", "FALSE", "F", "f", "0", "n", "no", "!true", "!t", "!True"}, str) {
 		return false, nil
-	} else if StringSliceContains([]string{"true", "True", "TRUE", "T", "t", "1", "y", "yes"}, str) {
+	} else if StringSliceContains([]string{"true", "True", "TRUE", "T", "t", "1", "y", "yes", "!false", "!f", "!False"}, str) {
 		return true, nil
 	}
 
