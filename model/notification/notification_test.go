@@ -49,31 +49,17 @@ func (s *notificationSuite) SetupTest() {
 	s.False(s.n.ID.Valid())
 }
 
-func (s *notificationSuite) TestMarkSentWithUnstoredNotificationFails() {
-	// find something that doesn't exist
-	n, err := Find(bson.NewObjectId())
-	s.NoError(err)
-	s.Nil(n)
-
-	// mark notification that hasn't been stored
-	// with nil err
+func (s *notificationSuite) TestMarkSent() {
+	// MarkSent with notification that hasn't been stored
 	s.EqualError(s.n.MarkSent(), "notification has no ID")
 	s.False(s.n.ID.Valid())
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
 
-	// with non-nil err
-	s.EqualError(s.n.MarkError(errors.New("")), "notification has no ID")
-	s.False(s.n.ID.Valid())
-	s.Empty(s.n.Error)
-	s.Zero(s.n.SentAt)
-}
-
-func (s *notificationSuite) TestMarkSent() {
 	s.n.ID = bson.NewObjectId()
 	s.NoError(InsertMany(s.n))
 
-	// mark that notification as sent, with nil err
+	// mark that notification as sent
 	s.NoError(s.n.MarkSent())
 	s.Empty(s.n.Error)
 	s.NotZero(s.n.SentAt)
@@ -86,10 +72,21 @@ func (s *notificationSuite) TestMarkSent() {
 }
 
 func (s *notificationSuite) TestMarkError() {
+	// MarkError, uninserted notification
+	s.EqualError(s.n.MarkError(errors.New("")), "notification has no ID")
+	s.False(s.n.ID.Valid())
+	s.Empty(s.n.Error)
+	s.Zero(s.n.SentAt)
+
+	s.NoError(s.n.MarkError(nil))
+	s.False(s.n.ID.Valid())
+	s.Empty(s.n.Error)
+	s.Zero(s.n.SentAt)
+
+	// MarkError, non nil error
 	s.n.ID = bson.NewObjectId()
 	s.NoError(InsertMany(s.n))
 
-	// mark that notification as sent, with non-nil err
 	s.NoError(s.n.MarkError(errors.New("test")))
 	s.True(s.n.ID.Valid())
 	s.Equal("test", s.n.Error)
@@ -98,6 +95,12 @@ func (s *notificationSuite) TestMarkError() {
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Equal("test", n.Error)
+	s.NotZero(n.SentAt)
+
+	// nil error should have no side effect
+	s.NoError(s.n.MarkError(nil))
+	n, err = Find(s.n.ID)
+	s.NotEmpty(n.Error)
 	s.NotZero(n.SentAt)
 }
 
