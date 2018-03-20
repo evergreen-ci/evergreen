@@ -101,8 +101,10 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 
 	// Decode provider settings from distro settings
 	settings := &dockerSettings{}
-	if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
+	if h.Distro.Provider != nil {
+		if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
+			return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", h.Distro.Id)
+		}
 	}
 
 	if err := settings.Validate(); err != nil {
