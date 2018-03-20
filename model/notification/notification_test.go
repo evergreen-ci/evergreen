@@ -100,6 +100,7 @@ func (s *notificationSuite) TestMarkError() {
 	// nil error should have no side effect
 	s.NoError(s.n.MarkError(nil))
 	n, err = Find(s.n.ID)
+	s.NoError(err)
 	s.NotEmpty(n.Error)
 	s.NotZero(n.SentAt)
 }

@@ -5,13 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
-
-type subscribersSuite struct {
-	suite.Suite
-	subs []Subscriber
-}
 
 func TestSubscribers(t *testing.T) {
 	assert := assert.New(t)
