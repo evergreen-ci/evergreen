@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -602,13 +603,13 @@ func (c *communicatorImpl) SendSystemInfo(ctx context.Context, td TaskData, sysi
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, json []byte) error {
+func (c *communicatorImpl) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	info := requestInfo{
 		method:   post,
 		taskData: &td,
 		version:  apiVersion2,
 	}
 	info.path = fmt.Sprintf("tasks/%s/generate", td.ID)
-	_, err := c.retryRequest(ctx, info, json)
+	_, err := c.retryRequest(ctx, info, jsonBytes)
 	return errors.Wrap(err, "problem sending `generate.tasks` request")
 }

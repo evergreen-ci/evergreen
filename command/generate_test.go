@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/suite"
-	yaml "gopkg.in/yaml.v2"
 )
 
 type generateSuite struct {
@@ -106,24 +106,28 @@ func (s *generateSuite) TestExecuteSuccess() {
 	s.NoError(c.Execute(s.ctx, s.comm, s.logger, s.conf))
 }
 
-type Thing struct {
-	Thing string `yaml:"thing"`
-}
-
-type DrSeuss []Thing
-
 func (s *generateSuite) TestMakeJsonOfAllFiles() {
 	thingOne := []byte(`
 {
-  "thing": "one",
+  "thing": "one"
 }
 `)
 	thingTwo := []byte(`
 {
-  "thing": "two",
+  "thing": "two"
 }
 `)
-	var jsonArray DrSeuss
-	json := makeJsonOfAllFiles([][]byte{thingOne, thingTwo})
-	s.NoError(yaml.Unmarshal(json, &jsonArray))
+	data := makeJsonOfAllFiles([][]byte{thingOne, thingTwo}, nil)
+	s.Len(data, 2)
+	jsonBytes, err := json.Marshal(data)
+	s.NoError(err)
+	s.Contains(string(jsonBytes), "one")
+	s.Contains(string(jsonBytes), "two")
+
+	data = makeJsonOfAllFiles([][]byte{thingOne}, nil)
+	s.Len(data, 1)
+	jsonBytes, err = json.Marshal(data)
+	s.Contains(string(jsonBytes), "one")
+	s.NotContains(string(jsonBytes), "two")
+	s.NoError(err)
 }
