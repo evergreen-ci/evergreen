@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -452,7 +453,7 @@ func (s *AdminSuite) TestConfigDefaults() {
 	}
 	config.ApiUrl = "api"
 	config.ConfigDir = "dir"
-	config.ExpansionsNew = KeyValuePairSlice{
+	config.ExpansionsNew = util.KeyValuePairSlice{
 		{Key: "k1", Value: "v1"},
 		{Key: "k2", Value: "v2"},
 	}
@@ -472,17 +473,17 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	config := Settings{
 		ApiUrl:    "foo",
 		ConfigDir: "foo",
-		CredentialsNew: KeyValuePairSlice{
+		CredentialsNew: util.KeyValuePairSlice{
 			{Key: "cred1key", Value: "cred1val"},
 		},
-		ExpansionsNew: KeyValuePairSlice{
+		ExpansionsNew: util.KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},
 		},
-		KeysNew: KeyValuePairSlice{
+		KeysNew: util.KeyValuePairSlice{
 			{Key: "key1key", Value: "key1val"},
 		},
-		PluginsNew: KeyValuePairSlice{
-			{Key: "myPlugin", Value: KeyValuePairSlice{
+		PluginsNew: util.KeyValuePairSlice{
+			{Key: "myPlugin", Value: util.KeyValuePairSlice{
 				{Key: "pluginKey", Value: "pluginVal"},
 			}},
 		},

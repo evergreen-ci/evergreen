@@ -8,6 +8,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -798,22 +799,22 @@ type Settings struct {
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew     KeyValuePairSlice         `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
+	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew      KeyValuePairSlice         `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
-	KeysNew            KeyValuePairSlice         `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
+	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew         KeyValuePairSlice         `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`

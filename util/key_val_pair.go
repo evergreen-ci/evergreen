@@ -1,4 +1,4 @@
-package evergreen
+package util
 
 import (
 	"fmt"
