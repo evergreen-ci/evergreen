@@ -12,6 +12,7 @@ const (
 	jiraCommentSubscriberType       = "jira-comment"
 	evergreenWebhookSubscriberType  = "evergreen-webhook"
 	emailSubscriberType             = "email"
+	slackSubscriberType             = "slack"
 )
 
 //nolint: deadcode, megacheck
@@ -48,9 +49,12 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	case evergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
 
-	default:
+	case jiraIssueSubscriberType, jiraCommentSubscriberType, emailSubscriberType, slackSubscriberType:
 		str := ""
 		s.Target = &str
+
+	default:
+		return errors.Errorf("unknown subscriber type: '%s'", s.Type)
 	}
 
 	if err := temp.Target.Unmarshal(s.Target); err != nil {
