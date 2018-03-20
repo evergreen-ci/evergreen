@@ -144,6 +144,17 @@ tasks:
           local_file: upload/s3
           remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
           bucket: mciuploads
+          optional: "true"
+          content_type: text/html
+          permissions: public-read
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: upload/s3
+          remote_file: evergreen/smoke/${build_id}-${build_variant}/evergreen-${task_name}-${revision}
+          bucket: mciuploads
+          optional: true
           content_type: text/html
           permissions: public-read
       - command: s3.get
