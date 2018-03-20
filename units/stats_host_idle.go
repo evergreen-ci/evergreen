@@ -108,5 +108,9 @@ func (j *collecHostIdleDataJob) Run() {
 		msg["cost"] = cost
 	}
 
+	if j.host.Status == evergreen.HostTerminated {
+		msg["task_count"] = j.host.TaskCount
+	}
+
 	grip.Info(msg)
 }
