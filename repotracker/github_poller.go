@@ -1,7 +1,9 @@
 package repotracker
 
 import (
+	"context"
 	"encoding/base64"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -50,10 +52,15 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
 func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision string) (projectConfig *model.Project, err error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
 	// find the project configuration file for the given repository revision
 	projectRef := gRepoPoller.ProjectRef
 
-	githubFile, err := thirdparty.GetGithubFile(gRepoPoller.OauthToken, projectRef.Owner, projectRef.Repo, projectRef.RemotePath, projectFileRevision)
+	githubFile, err := thirdparty.GetGithubFile(ctx, gRepoPoller.OauthToken,
+		projectRef.Owner, projectRef.Repo, projectRef.RemotePath,
+		projectFileRevision)
 	if err != nil {
 		return nil, err
 	}
@@ -75,9 +82,12 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision s
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
 func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(commitRevision string) ([]string, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
 	// get the entire commit, then pull the files from it
 	projectRef := gRepoPoller.ProjectRef
-	commit, err := thirdparty.GetCommitEvent(
+	commit, err := thirdparty.GetCommitEvent(ctx,
 		gRepoPoller.OauthToken,
 		projectRef.Owner,
 		projectRef.Repo,
@@ -99,8 +109,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(commitRevision string
 
 // GetRevisionsSince fetches the all commits from the corresponding Github
 // ProjectRef that were made after 'revision'
-func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
-	revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
+func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
 
 	var foundLatest bool
 	var commits []*github.RepositoryCommit
@@ -110,7 +121,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 
 	for len(revisions) < maxRevisionsToSearch {
 		var err error
-		commits, commitPage, err = thirdparty.GetGithubCommits(gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner, gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, commitPage)
+		commits, commitPage, err = thirdparty.GetGithubCommits(ctx,
+			gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
+			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch, commitPage)
 		if err != nil {
 			return nil, err
 		}
@@ -156,6 +169,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 		// attempt to get the merge base commit
 		if firstCommit != nil {
 			baseRevision, err = thirdparty.GetGithubMergeBaseRevision(
+				ctx,
 				gRepoPoller.OauthToken,
 				gRepoPoller.ProjectRef.Owner,
 				gRepoPoller.ProjectRef.Repo,
@@ -203,13 +217,16 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 
 // GetRecentRevisions fetches the most recent 'numRevisions'
 func (gRepoPoller *GithubRepositoryPoller) GetRecentRevisions(maxRevisions int) ([]model.Revision, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
 	var revisions []model.Revision
 	commitPage := 0
 
 	for {
 		var err error
 		var repoCommits []*github.RepositoryCommit
-		repoCommits, commitPage, err = thirdparty.GetGithubCommits(
+		repoCommits, commitPage, err = thirdparty.GetGithubCommits(ctx,
 			gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo, gRepoPoller.ProjectRef.Branch,
 			commitPage)

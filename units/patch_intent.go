@@ -328,7 +328,10 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
 	}
 
-	_, err = thirdparty.GetCommitEvent(githubOauthToken, projectRef.Owner,
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
 		projectRef.Repo, patchDoc.Githash)
 	if err != nil {
 		return errors.Wrapf(err, "could not find base revision '%s' for project '%s'",

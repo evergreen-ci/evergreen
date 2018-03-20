@@ -1,9 +1,11 @@
 package thirdparty
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -24,7 +26,9 @@ type githubSuite struct {
 	suite.Suite
 	config *evergreen.Settings
 
-	token string
+	token  string
+	ctx    context.Context
+	cancel func()
 }
 
 func (s *githubSuite) SetupSuite() {
@@ -35,28 +39,37 @@ func (s *githubSuite) SetupTest() {
 	var err error
 	s.token, err = s.config.GetGithubOauthToken()
 	s.NoError(err)
+
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	s.Require().NotNil(s.ctx)
+	s.Require().NotNil(s.cancel)
+}
+
+func (s *githubSuite) TeardownTest() {
+	s.NoError(s.ctx.Err())
+	s.cancel()
 }
 
 func (s *githubSuite) TestGetGithubAPIStatus() {
-	status, err := GetGithubAPIStatus()
+	status, err := GetGithubAPIStatus(s.ctx)
 	s.NoError(err)
 	s.Contains([]string{GithubAPIStatusGood, GithubAPIStatusMinor, GithubAPIStatusMajor}, status)
 }
 
 func (s *githubSuite) TestCheckGithubAPILimit() {
-	rem, err := CheckGithubAPILimit(s.token)
+	rem, err := CheckGithubAPILimit(s.ctx, s.token)
 	s.NoError(err)
 	s.NotNil(rem)
 }
 
 func (s *githubSuite) TestGetGithubCommits() {
-	githubCommits, _, err := GetGithubCommits(s.token, "deafgoat", "mci-test", "", 0)
+	githubCommits, _, err := GetGithubCommits(s.ctx, s.token, "deafgoat", "mci-test", "", 0)
 	s.NoError(err)
 	s.Len(githubCommits, 3)
 }
 
 func (s *githubSuite) TestGetBranchEvent() {
-	branch, err := GetBranchEvent(s.token, "evergreen-ci", "evergreen", "master")
+	branch, err := GetBranchEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "master")
 	s.NoError(err)
 	s.NotPanics(func() {
 		s.Equal("master", *branch.Name)
@@ -65,13 +78,15 @@ func (s *githubSuite) TestGetBranchEvent() {
 }
 
 func (s *githubSuite) TestGithubMergeBaseRevision() {
-	rev, err := GetGithubMergeBaseRevision(s.token, "evergreen-ci", "evergreen", "105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
+	rev, err := GetGithubMergeBaseRevision(s.ctx, s.token, "evergreen-ci", "evergreen",
+		"105bbb4b34e7da59c42cb93d92954710b1f101ee", "49bb297759edd1284ef6adee665180e7b7bac299")
 	s.NoError(err)
 	s.Equal("2c282735952d7b15e5af7075f483a896783dc2a4", rev)
 }
 
 func (s *githubSuite) TestGetGithubFile() {
-	file, err := GetGithubFile(s.token, "evergreen-ci", "evergreen", "self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
+	file, err := GetGithubFile(s.ctx, s.token, "evergreen-ci", "evergreen",
+		"self-tests.yml", "105bbb4b34e7da59c42cb93d92954710b1f101ee")
 	s.NoError(err)
 	s.NotPanics(func() {
 		s.Equal("0fa81053f0f5158c36ca92e347c463e8890f66a1", *file.SHA)
@@ -90,11 +105,11 @@ func (s *githubSuite) TestGetGithubFile() {
 }
 
 func (s *githubSuite) TestGetCommitEvent() {
-	commit, err := GetCommitEvent(s.token, "evergreen-ci", "evergreen", "nope")
+	commit, err := GetCommitEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "nope")
 	s.Error(err)
 	s.Nil(commit)
 
-	commit, err = GetCommitEvent(s.token, "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
+	commit, err = GetCommitEvent(s.ctx, s.token, "evergreen-ci", "evergreen", "ddf48e044c307e3f8734279be95f2d9d7134410f")
 	s.NoError(err)
 
 	s.NotPanics(func() {

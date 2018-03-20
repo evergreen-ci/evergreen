@@ -1,8 +1,10 @@
 package validator
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -13,6 +15,9 @@ import (
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
 // and applying the patch to the latest remote configuration. The error returned can be a validation error.
 func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
 	if p.Version != "" {
 		return nil, errors.Errorf("Patch %v already finalized", p.Version)
 	}
@@ -29,7 +34,7 @@ func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project,
 		hash = p.GithubPatchData.HeadHash
 	}
 
-	githubFile, err := thirdparty.GetGithubFile(githubOauthToken, projectRef.Owner,
+	githubFile, err := thirdparty.GetGithubFile(ctx, githubOauthToken, projectRef.Owner,
 		projectRef.Repo, projectRef.RemotePath, hash)
 	if err != nil {
 		// if the project file doesn't exist, but our patch includes a project file,
