@@ -69,27 +69,6 @@ func (s *notificationSuite) TestMarkSentWithUnstoredNotificationFails() {
 	s.Zero(s.n.SentAt)
 }
 
-func (s *notificationSuite) TestInsert() {
-	// try insert; verify local id is changed
-	s.n.ID = bson.NewObjectId()
-	s.NoError(InsertMany(s.n))
-	s.True(s.n.ID.Valid())
-
-	// try fetching it back, and ensuring attributes have been set correctly
-	n, err := Find(s.n.ID)
-	s.NoError(err)
-	s.Require().NotNil(n)
-	s.True(n.ID.Valid())
-	s.Empty(n.Error)
-	s.Zero(n.SentAt)
-	s.Require().IsType(&GithubStatusAPIPayload{}, n.Payload)
-	payload := n.Payload.(*GithubStatusAPIPayload)
-	s.Equal("failure", payload.Status)
-	s.Equal("evergreen", payload.Context)
-	s.Equal("https://example.com", payload.URL)
-	s.Equal("something failed", payload.Description)
-}
-
 func (s *notificationSuite) TestMarkSent() {
 	s.n.ID = bson.NewObjectId()
 	s.NoError(InsertMany(s.n))
@@ -125,37 +104,64 @@ func (s *notificationSuite) TestMarkError() {
 func (s *notificationSuite) TestInsertMany() {
 	s.n.ID = bson.NewObjectId()
 
+	payload := "slack hi"
 	n2 := Notification{
 		ID: bson.NewObjectId(),
 		Subscriber: event.Subscriber{
 			Type:   "slack",
 			Target: "#general",
 		},
+		Payload: &payload,
 	}
 
-	payload := "Hi"
+	payload2 := "jira hi"
 	n3 := Notification{
 		ID: bson.NewObjectId(),
 		Subscriber: event.Subscriber{
 			Type:   "jira-comment",
 			Target: "ABC-1234",
 		},
-		Payload: &payload,
+		Payload: &payload2,
 	}
 
 	slice := []Notification{s.n, n2, n3}
 
 	s.NoError(InsertMany(slice...))
 
+	for i := range slice {
+		s.True(slice[i].ID.Valid())
+	}
+
 	out := []Notification{}
 	s.NoError(db.FindAllQ(NotificationsCollection, db.Q{}, &out))
 	s.Len(out, 3)
 
-	for i := range out {
-		if out[i].Subscriber.Type == "jira-comment" {
-			payload, ok := out[i].Payload.(*string)
-			s.Require().True(ok)
-			s.Equal("Hi", *payload)
+	for _, n := range out {
+		s.Zero(n.SentAt)
+		s.Empty(n.Error)
+
+		if n.ID == slice[0].ID {
+			s.Require().IsType(&GithubStatusAPIPayload{}, n.Payload)
+			payload := n.Payload.(*GithubStatusAPIPayload)
+			s.Equal("failure", payload.Status)
+			s.Equal("evergreen", payload.Context)
+			s.Equal("https://example.com", payload.URL)
+			s.Equal("something failed", payload.Description)
+
+		} else if n.ID == slice[1].ID {
+			s.Equal("slack", n.Subscriber.Type)
+			payload, ok := n.Payload.(*string)
+			s.True(ok)
+			s.Equal("slack hi", *payload)
+
+		} else if n.ID == slice[2].ID {
+			s.Equal("jira-comment", n.Subscriber.Type)
+			payload, ok := n.Payload.(*string)
+			s.True(ok)
+			s.Equal("jira hi", *payload)
+
+		} else {
+			s.T().Errorf("unknown notification")
 		}
 	}
 }
