@@ -36,7 +36,8 @@ mciModule.controller('PerfController', function PerfController(
   }, function() {});
   */
 
-  $scope.showToolbar = false
+  // set this to false if we want the display to happen after the plots are rendered
+  $scope.showToolbar = true
   $scope.hiddenGraphs = {}
   $scope.compareItemList = []
   $scope.perfTagData = {}
@@ -130,6 +131,10 @@ mciModule.controller('PerfController', function PerfController(
     originMode: false
   }
 
+  $scope.toolBar = {
+    isOpen: false
+  }
+
   $scope.$watch('scaleModel.linearMode', function(oldVal, newVal) {
     // Force comparison by value
     if (oldVal === newVal) return;
@@ -146,6 +151,10 @@ mciModule.controller('PerfController', function PerfController(
     // Force comparison by value
     if (oldVal === newVal) return;
     $scope.redrawGraphs()
+  })
+
+  $scope.$watch('toolBar.isOpen', function(newVal, oldVal) {
+    d3.selectAll('md-fab-toolbar').style('pointer-events', newVal ? 'all' : 'none')
   })
 
   $scope.$watch('currentHash', function(){
