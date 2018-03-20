@@ -194,6 +194,8 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 				fmt.Printf("warning - failed to set default variants: %v\n", err)
 			}
 		}
+	} else if len(p.Variants) != 0 && p.Alias != "" {
+		fmt.Printf("warning - both alias and variants passed in, defaulting to using %v alias\n", p.Alias)
 	}
 
 	// update tasks
@@ -214,6 +216,8 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 				fmt.Printf("warning - failed to set default tasks: %v\n", err)
 			}
 		}
+	} else if len(p.Tasks) != 0 && p.Alias != "" {
+		fmt.Printf("warning - both alias and tasks passed in, defaulting to using %v alias\n", p.Alias)
 	}
 
 	if p.Description == "" && !p.SkipConfirm {
