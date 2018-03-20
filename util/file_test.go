@@ -13,6 +13,8 @@ import (
 )
 
 func getDirectoryOfFile() string {
+	// returns the directory of the file of the calling
+	// function. duplicated from testutil to avoid a cycle.
 	_, file, _, _ := runtime.Caller(1)
 
 	return filepath.Dir(file)
