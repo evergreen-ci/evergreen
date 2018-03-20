@@ -115,12 +115,14 @@ func ensureHasRequiredFields(ctx context.Context, d *distro.Distro, s *evergreen
 
 	settings := mgr.GetSettings()
 
-	if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-		errs = append(errs, ValidationError{
-			Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
-			Level:   Error,
-		})
-		return errs
+	if d.ProviderSettings != nil {
+		if err = mapstructure.Decode(d.ProviderSettings, settings); err != nil {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("distro '%v' decode error: %v", distro.ProviderSettingsKey, err),
+				Level:   Error,
+			})
+			return errs
+		}
 	}
 
 	if err := settings.Validate(); err != nil {
