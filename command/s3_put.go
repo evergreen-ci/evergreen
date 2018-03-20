@@ -87,7 +87,15 @@ func (s3pc *s3put) Name() string { return "s3.put" }
 
 // s3put-specific implementation of ParseParams.
 func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, s3pc); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           s3pc,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := decoder.Decode(params); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", s3pc.Name())
 	}
 
