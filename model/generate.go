@@ -34,24 +34,24 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	functions := map[string]*YAMLCommandSet{}
 
 	for _, p := range projects {
-		for _, bv := range p.BuildVariants {
+		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
 				if _, ok := bvs[bv.Name]; ok {
 					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
 				} else {
-					bvs[bv.Name] = &bv
+					bvs[bv.Name] = &p.BuildVariants[i]
 				}
 			}
 			if _, ok := bvs[bv.Name]; ok {
 				bvs[bv.Name].Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
 			}
-			bvs[bv.Name] = &bv
+			bvs[bv.Name] = &p.BuildVariants[i]
 		}
-		for _, t := range p.Tasks {
+		for i, t := range p.Tasks {
 			if _, ok := tasks[t.Name]; ok {
 				catcher.Add(errors.Errorf("found duplicate task (%s)", t.Name))
 			} else {
-				tasks[t.Name] = &t
+				tasks[t.Name] = &p.Tasks[i]
 			}
 		}
 		for f, val := range p.Functions {

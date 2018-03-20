@@ -50,9 +50,9 @@ tasks:
 			p, errs := createIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
-			So(p.Tasks[2].DependsOn[0].Name, ShouldEqual, "compile")
+			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
 			So(p.Tasks[2].DependsOn[0].PatchOptional, ShouldEqual, false)
-			So(p.Tasks[2].DependsOn[1].Name, ShouldEqual, "task0")
+			So(p.Tasks[2].DependsOn[1].TaskSelector.Name, ShouldEqual, "task0")
 			So(p.Tasks[2].DependsOn[1].Status, ShouldEqual, "failed")
 			So(p.Tasks[2].DependsOn[1].PatchOptional, ShouldEqual, true)
 		})
@@ -67,7 +67,7 @@ tasks:
 			p, errs := createIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
-			So(p.Tasks[2].DependsOn[0].Name, ShouldEqual, "task0")
+			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
 		})
 		Convey("a file with a nameless dependency should error", func() {
 			Convey("with a single dep", func() {
@@ -196,7 +196,7 @@ buildvariants:
 			So(len(bv.Modules), ShouldEqual, 2)
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
-			So(bv.Tasks[1].DependsOn[0].taskSelector, ShouldResemble,
+			So(bv.Tasks[1].DependsOn[0], ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{stringSelector: "v0"}})
 			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
@@ -219,7 +219,7 @@ buildvariants:
 			So(bv.Name, ShouldEqual, "v1")
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
-			So(bv.Tasks[1].DependsOn[0].taskSelector, ShouldResemble, taskSelector{Name: "t3"})
+			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble, taskSelector{Name: "t3"})
 			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 		})
 		Convey("a file with single BVTs should parse", func() {
@@ -309,8 +309,8 @@ func TestTranslateDependsOn(t *testing.T) {
 				{Name: "t1"},
 				{Name: "t2"},
 				{Name: "t3", DependsOn: parserDependencies{
-					{taskSelector: taskSelector{Name: "t1"}},
-					{taskSelector: taskSelector{
+					{TaskSelector: taskSelector{Name: "t1"}},
+					{TaskSelector: taskSelector{
 						Name: "t2", Variant: &variantSelector{stringSelector: "v1"}}}},
 				},
 			}
@@ -330,11 +330,11 @@ func TestTranslateDependsOn(t *testing.T) {
 			pp.Tasks = []parserTask{
 				{Name: "t1", Tags: []string{"a", "b"}},
 				{Name: "t2", Tags: []string{"a", "c"}, DependsOn: parserDependencies{
-					{taskSelector: taskSelector{Name: "*"}}}},
+					{TaskSelector: taskSelector{Name: "*"}}}},
 				{Name: "t3", DependsOn: parserDependencies{
-					{taskSelector: taskSelector{
+					{TaskSelector: taskSelector{
 						Name: ".b", Variant: &variantSelector{stringSelector: ".cool !v2"}}},
-					{taskSelector: taskSelector{
+					{TaskSelector: taskSelector{
 						Name: ".a !.b", Variant: &variantSelector{stringSelector: ".cool"}}}},
 				},
 			}
@@ -358,12 +358,12 @@ func TestTranslateDependsOn(t *testing.T) {
 				{Name: "t1", Tags: []string{"a", "b"}},
 				{Name: "t2", Tags: []string{"a", "c"}},
 				{Name: "t3", DependsOn: parserDependencies{
-					{taskSelector: taskSelector{Name: ".cool"}},
-					{taskSelector: taskSelector{Name: "!!.cool"}},                                                  //[1] illegal selector
-					{taskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{stringSelector: "v1"}}}, //[2] no matching tasks
-					{taskSelector: taskSelector{Name: "t1", Variant: &variantSelector{stringSelector: ".nope"}}},   //[3] no matching variants
-					{taskSelector: taskSelector{Name: "t1"}, Status: "*"},                                          // valid, but:
-					{taskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
+					{TaskSelector: taskSelector{Name: ".cool"}},
+					{TaskSelector: taskSelector{Name: "!!.cool"}},                                                  //[1] illegal selector
+					{TaskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{stringSelector: "v1"}}}, //[2] no matching tasks
+					{TaskSelector: taskSelector{Name: "t1", Variant: &variantSelector{stringSelector: ".nope"}}},   //[3] no matching variants
+					{TaskSelector: taskSelector{Name: "t1"}, Status: "*"},                                          // valid, but:
+					{TaskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
 			}
 			out, errs := translateProject(pp)
@@ -431,7 +431,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 				Tasks: parserBVTaskUnits{
 					{Name: "t1"},
 					{Name: ".z", DependsOn: parserDependencies{
-						{taskSelector: taskSelector{Name: ".b"}}}},
+						{TaskSelector: taskSelector{Name: ".b"}}}},
 					{Name: "* !t1 !t2", Requires: taskSelectors{{Name: "!.a"}}},
 				},
 			}}
