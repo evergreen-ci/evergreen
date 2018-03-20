@@ -63,15 +63,4 @@ func TestSubscribers(t *testing.T) {
 	for i := range subs {
 		assert.Contains(fetchedSubs, subs[i])
 	}
-
-	// test we reject unknown subscribers
-	assert.NoError(db.ClearCollections(SubscriptionsCollection))
-	assert.NoError(db.Insert(SubscriptionsCollection, Subscriber{
-		Type:   "something completely different",
-		Target: "*boom*",
-	}))
-	err := db.FindAllQ(SubscriptionsCollection, db.Q{}, &fetchedSubs)
-
-	assert.EqualError(err, "unknown subscriber type: 'something completely different'")
-	assert.Empty(fetchedSubs)
 }
