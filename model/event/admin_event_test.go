@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -231,6 +232,6 @@ func TestAdminEventsBeforeQuery(t *testing.T) {
 	assert.NoError(LogAdminEvent("service_flags", before, after, "afterNow"))
 	events, err := FindAdmin(AdminEventsBefore(now, 5))
 	assert.NoError(err)
-	assert.Len(events, 1)
+	require.Len(t, events, 1)
 	assert.True(events[0].Timestamp.Before(now))
 }

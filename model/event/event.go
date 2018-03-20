@@ -82,8 +82,8 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
-	rtype := temp.ResourceType
-	if len(rtype) == 0 {
+	e.ResourceType = temp.ResourceType
+	if len(e.ResourceType) == 0 {
 		// Try and fetch r_type in the data subdoc
 		rawD := bson.RawD{}
 		if err := temp.Data.Unmarshal(&rawD); err != nil {
@@ -92,20 +92,20 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 
 		for i := range rawD {
 			if rawD[i].Name == resourceTypeKey {
-				if err := rawD[i].Value.Unmarshal(&rtype); err != nil {
+				if err := rawD[i].Value.Unmarshal(&e.ResourceType); err != nil {
 					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
 				}
 				break
 			}
 		}
 	}
-	if len(rtype) == 0 {
+	if len(e.ResourceType) == 0 {
 		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
-	e.Data = NewEventFromType(rtype)
+	e.Data = NewEventFromType(e.ResourceType)
 	if e.Data == nil {
-		return errors.Errorf("unknown resource type '%s'", rtype)
+		return errors.Errorf("unknown resource type '%s'", e.ResourceType)
 	}
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")
@@ -115,7 +115,6 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	e.Timestamp = temp.Timestamp
 	e.ResourceId = temp.ResourceId
 	e.EventType = temp.EventType
-	e.ResourceType = temp.ResourceType
 	e.ProcessedAt = temp.ProcessedAt
 
 	return nil
@@ -126,22 +125,32 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 // If not, this function returns false. If it the struct had "r_type" (without
 // omitempty), it will return that field's value, otherwise it returns an
 // empty string
-func findResourceTypeIn(t interface{}) (bool, string) {
+func findResourceTypeIn(data interface{}) (bool, string) {
 	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
 
-	if t == nil {
+	if data == nil {
 		return false, ""
 	}
 
-	elem := reflect.TypeOf(t).Elem()
-	for i := 0; i < elem.NumField(); i++ {
-		f := elem.Field(i)
-		bsonTag := f.Tag.Get("bson")
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
 		if len(bsonTag) == 0 {
 			continue
 		}
 
-		if f.Type.Kind() != reflect.String {
+		if fieldType.Type.Kind() != reflect.String {
 			return false, ""
 		}
 
@@ -149,7 +158,7 @@ func findResourceTypeIn(t interface{}) (bool, string) {
 			continue
 		}
 
-		structData := reflect.ValueOf(t).Elem().Field(i).String()
+		structData := v.Field(i).String()
 		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
 	}
 
