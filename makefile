@@ -154,6 +154,13 @@ $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	go build -o $@ $<
 # end lint setup targets
 
+# generate lint JSON document for evergreen
+generate-lint:$(buildDir)/generate-lint
+	./$<
+$(buildDir)/generate-lint:scripts/generate-lint.go
+	go build -o $@ $<
+# end generate-lint lint
+
 # npm setup
 $(buildDir)/.npmSetup:
 	@mkdir -p $(buildDir)
