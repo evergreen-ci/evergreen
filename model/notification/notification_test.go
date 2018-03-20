@@ -45,11 +45,11 @@ func (s *notificationSuite) SetupTest() {
 			Description: "something failed",
 		},
 	}
+
+	s.False(s.n.ID.Valid())
 }
 
-func (s *notificationSuite) TestDBInteractions() {
-	s.False(s.n.ID.Valid())
-
+func (s *notificationSuite) TestMarkSentWithUnstoredNotificationFails() {
 	// find something that doesn't exist
 	n, err := Find(bson.NewObjectId())
 	s.NoError(err)
@@ -67,14 +67,16 @@ func (s *notificationSuite) TestDBInteractions() {
 	s.False(s.n.ID.Valid())
 	s.Empty(s.n.Error)
 	s.Zero(s.n.SentAt)
+}
 
+func (s *notificationSuite) TestInsert() {
 	// try insert; verify local id is changed
 	s.n.ID = bson.NewObjectId()
 	s.NoError(InsertMany(s.n))
 	s.True(s.n.ID.Valid())
 
 	// try fetching it back, and ensuring attributes have been set correctly
-	n, err = Find(s.n.ID)
+	n, err := Find(s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.True(n.ID.Valid())
@@ -86,29 +88,38 @@ func (s *notificationSuite) TestDBInteractions() {
 	s.Equal("evergreen", payload.Context)
 	s.Equal("https://example.com", payload.URL)
 	s.Equal("something failed", payload.Description)
+}
+
+func (s *notificationSuite) TestMarkSent() {
+	s.n.ID = bson.NewObjectId()
+	s.NoError(InsertMany(s.n))
 
 	// mark that notification as sent, with nil err
 	s.NoError(s.n.MarkSent())
-	s.True(s.n.ID.Valid())
 	s.Empty(s.n.Error)
 	s.NotZero(s.n.SentAt)
-	n, err = Find(s.n.ID)
+
+	n, err := Find(s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Empty(n.Error)
 	s.NotZero(n.SentAt)
+}
+
+func (s *notificationSuite) TestMarkError() {
+	s.n.ID = bson.NewObjectId()
+	s.NoError(InsertMany(s.n))
 
 	// mark that notification as sent, with non-nil err
 	s.NoError(s.n.MarkError(errors.New("test")))
 	s.True(s.n.ID.Valid())
 	s.Equal("test", s.n.Error)
 	s.NotZero(s.n.SentAt)
-	n, err = Find(s.n.ID)
+	n, err := Find(s.n.ID)
 	s.NoError(err)
 	s.Require().NotNil(n)
 	s.Equal("test", n.Error)
 	s.NotZero(n.SentAt)
-
 }
 
 func (s *notificationSuite) TestInsertMany() {
