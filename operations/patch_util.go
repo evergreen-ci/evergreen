@@ -130,6 +130,24 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return
 	}
 
+	// If somebody passed an --alias
+	if p.Alias != "" {
+		// Check if there's an alias as the default, and if not, ask to save the cl one
+		defaultAlias := conf.FindDefaultAlias(p.Project)
+		if defaultAlias == "" && !p.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default alias for project '%v'?",
+				p.Alias, p.Project), false) {
+			conf.SetDefaultAlias(p.Project, p.Alias)
+			if err = conf.Write(""); err != nil {
+				fmt.Printf("warning - failed to set default variants: %v\n", err)
+			}
+		}
+	} else {
+		// No --alias was passed, use the default
+		p.Alias = conf.FindDefaultAlias(p.Project)
+	}
+
+	// Validate the alias if it exists
 	if p.Alias != "" {
 		validAlias := false
 		var aliases []model.ProjectAlias

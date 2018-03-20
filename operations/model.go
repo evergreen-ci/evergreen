@@ -20,6 +20,7 @@ import (
 type ClientProjectConf struct {
 	Name     string   `json:"name" yaml:"name,omitempty"`
 	Default  bool     `json:"default" yaml:"default,omitempty"`
+	Alias    string   `json:"alias" yaml:"alias,omitempty"`
 	Variants []string `json:"variants" yaml:"variants,omitempty"`
 	Tasks    []string `json:"tasks" yaml:"tasks,omitempty"`
 }
@@ -191,7 +192,7 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 		}
 	}
 
-	s.Projects = append(s.Projects, ClientProjectConf{project, true, variants, nil})
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, "", variants, nil})
 }
 
 func (s *ClientSettings) FindDefaultTasks(project string) []string {
@@ -211,7 +212,27 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 		}
 	}
 
-	s.Projects = append(s.Projects, ClientProjectConf{project, true, nil, tasks})
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, "", nil, tasks})
+}
+
+func (s *ClientSettings) FindDefaultAlias(project string) string {
+	for _,p := range s.Projects {
+		if p.Name == project {
+			return p.Alias
+		}
+	}
+	return ""
+}
+
+func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
+	for i,p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].Alias = alias
+			return
+		}
+	}
+
+	s.Projects = append(s.Projects, ClientProjectConf{project, true, alias, nil, nil})
 }
 
 func (s *ClientSettings) SetDefaultProject(name string) {
@@ -226,6 +247,6 @@ func (s *ClientSettings) SetDefaultProject(name string) {
 	}
 
 	if !foundDefault {
-		s.Projects = append(s.Projects, ClientProjectConf{name, true, []string{}, []string{}})
+		s.Projects = append(s.Projects, ClientProjectConf{name, true, "", []string{}, []string{}})
 	}
 }
