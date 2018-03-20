@@ -5,22 +5,29 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 )
+
+func getDirectoryOfFile() string {
+	_, file, _, _ := runtime.Caller(1)
+
+	return filepath.Dir(file)
+}
 
 func TestWriteToTempFile(t *testing.T) {
 	Convey("When writing content to a temp file", t, func() {
 		Convey("ensure the exact contents passed are written", func() {
 			fileData := "data"
 			filePath, err := WriteToTempFile(fileData)
-			testutil.HandleTestingErr(err, t, "error writing to temp file %v")
+			require.NoError(t, err, "error writing to temp file %v")
 			fileBytes, err := ioutil.ReadFile(filePath)
-			testutil.HandleTestingErr(err, t, "error reading from temp file %v")
+			require.NoError(t, err, "error reading from temp file %v")
 			So(string(fileBytes), ShouldEqual, fileData)
-			testutil.HandleTestingErr(os.Remove(filePath), t,
+			require.NoError(t, os.Remove(filePath),
 				"error removing to temp file %v")
 		})
 	})
@@ -28,7 +35,7 @@ func TestWriteToTempFile(t *testing.T) {
 
 func TestFileExists(t *testing.T) {
 	tmpfile, err := ioutil.TempFile("", "testFileOne")
-	testutil.HandleTestingErr(err, t, "error creating test file")
+	require.NoError(t, err, "error creating test file")
 	defer os.Remove(tmpfile.Name())
 
 	Convey("When testing that a file exists", t, func() {
@@ -50,7 +57,7 @@ func TestFileExists(t *testing.T) {
 func TestBuildFileList(t *testing.T) {
 	wd, err := ioutil.TempDir("", "evg")
 
-	testutil.HandleTestingErr(err, t, "error getting working directory")
+	require.NoError(t, err, "error getting working directory")
 
 	fnames := []string{
 		"testFile1",
@@ -69,23 +76,23 @@ func TestBuildFileList(t *testing.T) {
 	// create all the files in the current directory
 	for _, fname := range fnames {
 		f, err := os.Create(filepath.Join(wd, fname))
-		testutil.HandleTestingErr(err, t, "error creating test file")
-		testutil.HandleTestingErr(f.Close(), t, "error closing test file")
+		require.NoError(t, err, "error creating test file")
+		require.NoError(t, f.Close(), "error closing test file")
 	}
 
 	// create all the files in the sub directories
 	for _, dirName := range dirNames {
 		err := os.Mkdir(filepath.Join(wd, dirName), 0777)
-		testutil.HandleTestingErr(err, t, "error creating test directory")
+		require.NoError(t, err, "error creating test directory")
 		for _, fname := range fnames {
 			path := filepath.Join(wd, dirName, fname)
 			f, err := os.Create(path)
-			testutil.HandleTestingErr(err, t, "error creating test file")
-			testutil.HandleTestingErr(f.Close(), t, "error closing test file")
+			require.NoError(t, err, "error creating test file")
+			require.NoError(t, f.Close(), "error closing test file")
 		}
 	}
 	defer func() {
-		testutil.HandleTestingErr(os.RemoveAll(wd), t, "error removing test directory")
+		require.NoError(t, os.RemoveAll(wd), "error removing test directory")
 	}()
 	Convey("When files and directories exists", t, func() {
 		Convey("With an absolute start dir", func() {
