@@ -112,13 +112,12 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     github_pr_testing_disabled: "github_pr_testing",
     repotracker_push_event_disabled: "repotracker_push_event",
     cli_updates_disabled: "cli_updates",
-<<<<<<< HEAD
+    background_stats_disabled: "background stats",
     event_processing_disabled: "event_processing",
     jira_notifications_disabled: "jira_notifications",
     slack_notifications_disabled: "slack_notifications",
     email_notifications_disabled: "email_notifications",
     webhook_notifications_disabled: "webhook_notifications",
-    background_stats_disabled: "background stats",
     github_status_api_disabled: "github_status_api"
   }
 

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
-	"github.com/evergreen-ci/evergreen/model/triggers"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -118,7 +117,7 @@ func (j *eventMetaJob) Run() {
 		triggerStartTime := time.Now()
 
 		var notifications []notification.Notification
-		notifications, err = triggers.ProcessTriggers(&events[i])
+		notifications, err = notification.NotificationsFromEvent(&events[i])
 
 		triggerEndTime := time.Now()
 		triggerDuration := triggerEndTime.Sub(triggerStartTime)

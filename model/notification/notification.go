@@ -102,7 +102,6 @@ func (n *Notification) MarkSent() error {
 	}
 
 	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
-		n.Error = ""
 		return errors.New("failed to update notification")
 	}
 

@@ -1,4 +1,4 @@
-package triggers
+package notification
 
 import (
 	"testing"
