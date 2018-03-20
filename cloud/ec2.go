@@ -312,7 +312,7 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	if h.Distro.Provider != nil {
+	if h.Distro.ProviderSettings != nil {
 		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
 			return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
 		}

@@ -105,7 +105,7 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	}
 
 	settings := &openStackSettings{}
-	if h.Distro.Provider != nil {
+	if h.Distro.ProviderSettings != nil {
 		if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
 			return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 		}
