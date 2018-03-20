@@ -461,6 +461,9 @@ tasks:
     name: test-model-host
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-notification
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-patch
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -578,6 +581,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-event
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-notification
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-task
