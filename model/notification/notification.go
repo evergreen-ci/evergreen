@@ -19,26 +19,26 @@ const (
 
 //nolint: deadcode, megacheck
 var (
-	idKey      = bsonutil.MustHaveTag(Notification{}, "ID")
-	targetKey  = bsonutil.MustHaveTag(Notification{}, "Target")
-	sentAtKey  = bsonutil.MustHaveTag(Notification{}, "SentAt")
-	errorKey   = bsonutil.MustHaveTag(Notification{}, "Error")
-	payloadKey = bsonutil.MustHaveTag(Notification{}, "Payload")
+	idKey         = bsonutil.MustHaveTag(Notification{}, "ID")
+	subscriberKey = bsonutil.MustHaveTag(Notification{}, "Subscriber")
+	sentAtKey     = bsonutil.MustHaveTag(Notification{}, "SentAt")
+	errorKey      = bsonutil.MustHaveTag(Notification{}, "Error")
+	payloadKey    = bsonutil.MustHaveTag(Notification{}, "Payload")
 )
 
 type Notification struct {
-	ID      bson.ObjectId    `bson:"_id"`
-	Target  event.Subscriber `bson:"target"`
-	Payload interface{}      `bson:"payload"`
+	ID         bson.ObjectId    `bson:"_id"`
+	Subscriber event.Subscriber `bson:"subscriber"`
+	Payload    interface{}      `bson:"payload"`
 
 	SentAt time.Time `bson:"sent_at,omitempty"`
 	Error  string    `bson:"error,omitempty"`
 }
 
 type unmarshalNotification struct {
-	ID      bson.ObjectId    `bson:"_id"`
-	Target  event.Subscriber `bson:"target"`
-	Payload bson.Raw         `bson:"payload"`
+	ID         bson.ObjectId    `bson:"_id"`
+	Subscriber event.Subscriber `bson:"subscriber"`
+	Payload    bson.Raw         `bson:"payload"`
 
 	SentAt time.Time `bson:"sent_at,omitempty"`
 	Error  string    `bson:"error,omitempty"`
@@ -50,7 +50,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 		return err
 	}
 
-	switch temp.Target.Type {
+	switch temp.Subscriber.Type {
 	case "evergreen-webhook":
 		str := ""
 		n.Payload = &str
@@ -73,7 +73,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 		n.Payload = &GithubStatusAPIPayload{}
 
 	default:
-		return errors.Errorf("unknown payload type %s", temp.Target.Type)
+		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)
 	}
 
 	if err := temp.Payload.Unmarshal(n.Payload); err != nil {
@@ -81,7 +81,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	}
 
 	n.ID = temp.ID
-	n.Target = temp.Target
+	n.Subscriber = temp.Subscriber
 	n.SentAt = temp.SentAt
 	n.Error = temp.Error
 
@@ -139,7 +139,7 @@ func (n *Notification) MarkError(sendErr error) error {
 
 func (n *Notification) Composer() (message.Composer, error) {
 	// TODO relocate and use constants
-	switch n.Target.Type {
+	switch n.Subscriber.Type {
 	case "evergreen-webhook":
 		payload, ok := n.Payload.(*string)
 		if !ok {
@@ -164,7 +164,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		}), nil
 
 	case "jira-issue":
-		project, ok := n.Target.Target.(*string)
+		project, ok := n.Subscriber.Target.(*string)
 		if !ok {
 			return nil, errors.New("jira-issue subscriber is invalid")
 		}
@@ -221,7 +221,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 		}), nil
 
 	default:
-		return nil, errors.Errorf("unknown type '%s'", n.Target.Type)
+		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
 }
 

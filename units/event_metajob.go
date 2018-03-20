@@ -247,7 +247,7 @@ func (j *eventNotificationJob) Run() {
 	}
 
 	var sendError error
-	switch n.Target.Type {
+	switch n.Subscriber.Type {
 	// TODO I'm tired
 	//case githubPullRequestSubscriberType:
 	//	if err = checkFlag(flags.GithubStatusAPIDisabled); err != nil {
@@ -291,7 +291,7 @@ func (j *eventNotificationJob) Run() {
 		sendError = j.email(n)
 
 	default:
-		j.AddError(errors.Errorf("unknown subscriber type: %s", n.Target.Type))
+		j.AddError(errors.Errorf("unknown subscriber type: %s", n.Subscriber.Type))
 	}
 
 	j.AddError(n.MarkSent())
@@ -324,7 +324,7 @@ func (j *eventNotificationJob) jiraComment(n *notification.Notification) error {
 		return errors.Wrap(err, "error building jira settings")
 	}
 
-	jiraIssue, ok := n.Target.Target.(string)
+	jiraIssue, ok := n.Subscriber.Target.(string)
 	if !ok {
 		return fmt.Errorf("jira-comment subscriber was invalid (expected string)")
 	}
@@ -350,7 +350,7 @@ func (j *eventNotificationJob) jiraIssue(n *notification.Notification) error {
 		return errors.Wrap(err, "error building jira settings")
 	}
 
-	_, ok := n.Target.Target.(string)
+	_, ok := n.Subscriber.Target.(string)
 	if !ok {
 		return fmt.Errorf("jira-issue subscriber was invalid (expected string)")
 	}
@@ -397,7 +397,7 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 		return errors.New("composer was invalid")
 	}
 
-	hookSubscriber, ok := n.Target.Target.(event.WebhookSubscriber)
+	hookSubscriber, ok := n.Subscriber.Target.(event.WebhookSubscriber)
 	if !ok {
 		return fmt.Errorf("evergreen-webhook invalid subscriber")
 	}
@@ -449,7 +449,7 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 
 func (j *eventNotificationJob) slackMessage(n *notification.Notification) error {
 	// TODO slack rate limiting
-	target, ok := n.Target.Target.(string)
+	target, ok := n.Subscriber.Target.(string)
 	if !ok {
 		return fmt.Errorf("slack subscriber was invalid (expected string)")
 	}
@@ -484,7 +484,7 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 	if smtpConf == nil {
 		return fmt.Errorf("email smtp settings are empty")
 	}
-	recipient, ok := n.Target.Target.(string)
+	recipient, ok := n.Subscriber.Target.(string)
 	if !ok {
 		return fmt.Errorf("email recipient email is not a string")
 	}
