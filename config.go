@@ -889,6 +889,7 @@ func (c *Settings) ValidateAndDefault() error {
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing plugins"))
 		}
+		c.Plugins = map[string]map[string]interface{}{}
 		for k1, v1 := range tempPlugins {
 			c.Plugins[k1] = map[string]interface{}{}
 			for k2, v2 := range v1 {

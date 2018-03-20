@@ -502,29 +502,3 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	s.NotNil(pluginMap)
 	s.Equal("pluginVal", pluginMap["pluginKey"])
 }
-
-func (s *AdminSuite) TestMapToKvPairs() {
-	config := Settings{
-		ApiUrl:      "foo",
-		ConfigDir:   "foo",
-		Credentials: map[string]string{"k1": "v1"},
-		Expansions:  map[string]string{"k2": "v2"},
-		Keys:        map[string]string{"k3": "v3"},
-		Plugins:     map[string]map[string]interface{}{"k4": map[string]interface{}{"k5": "v5"}},
-	}
-	s.NoError(config.ValidateAndDefault())
-	s.NoError(config.Set())
-	dbConfig := Settings{}
-	s.NoError(dbConfig.Get())
-	s.Len(dbConfig.CredentialsNew, 1)
-	s.Len(dbConfig.ExpansionsNew, 1)
-	s.Len(dbConfig.KeysNew, 1)
-	s.Len(dbConfig.PluginsNew, 1)
-	s.Equal("k1", dbConfig.CredentialsNew[0].Key)
-	s.Equal("v1", dbConfig.CredentialsNew[0].Value)
-	s.Equal("k2", dbConfig.ExpansionsNew[0].Key)
-	s.Equal("v2", dbConfig.ExpansionsNew[0].Value)
-	s.Equal("k3", dbConfig.KeysNew[0].Key)
-	s.Equal("v3", dbConfig.KeysNew[0].Value)
-	s.Equal("k4", dbConfig.PluginsNew[0].Key)
-}
