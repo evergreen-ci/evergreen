@@ -3,7 +3,6 @@ stepback: true
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
-    - ".github/*" # github CODEOWNERS configuration
 
 post:
   - func: attach-test-results
@@ -462,6 +461,9 @@ tasks:
     name: test-model-host
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-model-notification
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-model-patch
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -579,6 +581,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-event
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-notification
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-task

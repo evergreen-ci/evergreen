@@ -25,6 +25,10 @@ func (s *subscriptionsSuite) SetupSuite() {
 func (s *subscriptionsSuite) SetupTest() {
 	s.NoError(db.ClearCollections(SubscriptionsCollection))
 
+	t1 := "someone@example.com"
+	t2 := "someone2@example.com"
+	t3 := "someone3@example.com"
+	t4 := "someone4@example.com"
 	s.subscriptions = []Subscription{
 		{
 			ID:      bson.NewObjectId(),
@@ -39,7 +43,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
 				Type:   "email",
-				Target: "someone@example.com",
+				Target: &t1,
 			},
 		},
 		{
@@ -55,7 +59,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
 				Type:   "email",
-				Target: "someone1@example.com",
+				Target: &t2,
 			},
 		},
 		{
@@ -76,7 +80,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 			Subscriber: Subscriber{
 				Type:   "email",
-				Target: "someone2@example.com",
+				Target: &t3,
 			},
 		},
 		{
@@ -92,7 +96,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
 				Type:   "email",
-				Target: "someone3@example.com",
+				Target: &t4,
 			},
 		},
 	}
@@ -142,7 +146,7 @@ func (s *subscriptionsSuite) TestFind() {
 	s.NotPanics(func() {
 		s.Len(subs[0].Subscribers, 1)
 		s.Equal("email", subs[0].Subscribers[0].Subscriber.Type)
-		s.Equal("someone3@example.com", subs[0].Subscribers[0].Subscriber.Target.(string))
+		s.Equal("someone4@example.com", *subs[0].Subscribers[0].Subscriber.Target.(*string))
 	})
 
 	// regex selector
