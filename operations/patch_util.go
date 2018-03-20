@@ -139,7 +139,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 				p.Alias, p.Project), false) {
 			conf.SetDefaultAlias(p.Project, p.Alias)
 			if err = conf.Write(""); err != nil {
-				fmt.Printf("warning - failed to set default variants: %v\n", err)
+				fmt.Printf("warning - failed to set default alias: %v\n", err)
 			}
 		}
 	} else {
