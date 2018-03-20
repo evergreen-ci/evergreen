@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -75,7 +74,7 @@ func TestExpansions(t *testing.T) {
 			})
 
 			err := expansions.UpdateFromYaml(filepath.Join(
-				testutil.GetDirectoryOfFile(), "testdata", "expansions.yml"))
+				getDirectoryOfFile(), "testdata", "expansions.yml"))
 			So(err, ShouldBeNil)
 			So(expansions.Get("marge"), ShouldEqual, "1")
 			So(expansions.Get("lisa"), ShouldEqual, "2")
