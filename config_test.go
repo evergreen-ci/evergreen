@@ -452,7 +452,7 @@ func (s *AdminSuite) TestConfigDefaults() {
 	}
 	config.ApiUrl = "api"
 	config.ConfigDir = "dir"
-	config.ExpansionsNew = []KeyValuePair{
+	config.ExpansionsNew = KeyValuePairSlice{
 		{Key: "k1", Value: "v1"},
 		{Key: "k2", Value: "v2"},
 	}
@@ -472,17 +472,17 @@ func (s *AdminSuite) TestKeyValPairsToMap() {
 	config := Settings{
 		ApiUrl:    "foo",
 		ConfigDir: "foo",
-		CredentialsNew: []KeyValuePair{
+		CredentialsNew: KeyValuePairSlice{
 			{Key: "cred1key", Value: "cred1val"},
 		},
-		ExpansionsNew: []KeyValuePair{
+		ExpansionsNew: KeyValuePairSlice{
 			{Key: "exp1key", Value: "exp1val"},
 		},
-		KeysNew: []KeyValuePair{
+		KeysNew: KeyValuePairSlice{
 			{Key: "key1key", Value: "key1val"},
 		},
-		PluginsNew: []KeyValuePair{
-			{Key: "myPlugin", Value: []KeyValuePair{
+		PluginsNew: KeyValuePairSlice{
+			{Key: "myPlugin", Value: KeyValuePairSlice{
 				{Key: "pluginKey", Value: "pluginVal"},
 			}},
 		},

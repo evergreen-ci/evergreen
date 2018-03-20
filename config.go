@@ -42,11 +42,6 @@ type ConfigSection interface {
 	ValidateAndDefault() error
 }
 
-type KeyValuePair struct {
-	Key   string      `bson:"key" json:"key" yaml:"key"`
-	Value interface{} `bson:"value" json:"value" yaml:"value"`
-}
-
 // AuthUser configures a user for our Naive authentication setup.
 type AuthUser struct {
 	Username    string `bson:"username" json:"username" yaml:"username"`
@@ -803,22 +798,22 @@ type Settings struct {
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
-	CredentialsNew     []KeyValuePair            `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
+	CredentialsNew     KeyValuePairSlice         `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
-	ExpansionsNew      []KeyValuePair            `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
+	ExpansionsNew      KeyValuePairSlice         `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
-	KeysNew            []KeyValuePair            `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
+	KeysNew            KeyValuePairSlice         `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
-	PluginsNew         []KeyValuePair            `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
+	PluginsNew         KeyValuePairSlice         `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
@@ -848,7 +843,7 @@ func (c *Settings) Set() error {
 			clientBinariesDirKey:  c.ClientBinariesDir,
 			configDirKey:          c.ConfigDir,
 			credentialsKey:        c.Credentials,
-			crednetialsNewKey:     c.CredentialsNew,
+			credentialsNewKey:     c.CredentialsNew,
 			expansionsKey:         c.Expansions,
 			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
@@ -875,23 +870,30 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.Add(errors.New("Config directory must not be empty"))
 	}
 	if len(c.CredentialsNew) > 0 {
-		if c.Credentials, err = kvSliceToMap(c.CredentialsNew); err != nil {
+		if c.Credentials, err = c.CredentialsNew.KvSliceToMap(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing credentials"))
 		}
 	}
 	if len(c.ExpansionsNew) > 0 {
-		if c.Expansions, err = kvSliceToMap(c.ExpansionsNew); err != nil {
+		if c.Expansions, err = c.ExpansionsNew.KvSliceToMap(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing expansions"))
 		}
 	}
 	if len(c.KeysNew) > 0 {
-		if c.Keys, err = kvSliceToMap(c.KeysNew); err != nil {
+		if c.Keys, err = c.KeysNew.KvSliceToMap(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing keys"))
 		}
 	}
 	if len(c.PluginsNew) > 0 {
-		if c.Plugins, err = kvSliceToMapNested(c.PluginsNew); err != nil {
+		tempPlugins, err := c.PluginsNew.KvSliceToMapNested()
+		if err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing plugins"))
+		}
+		for k1, v1 := range tempPlugins {
+			c.Plugins[k1] = map[string]interface{}{}
+			for k2, v2 := range v1 {
+				c.Plugins[k1][k2] = v2
+			}
 		}
 	}
 	if catcher.HasErrors() {
@@ -902,18 +904,6 @@ func (c *Settings) ValidateAndDefault() error {
 	}
 	if c.LogPath == "" {
 		c.LogPath = LocalLoggingOverride
-	}
-	if c.Credentials != nil && c.CredentialsNew == nil {
-		c.CredentialsNew = mapToKvSlice(c.Credentials)
-	}
-	if c.Expansions != nil && c.ExpansionsNew == nil {
-		c.ExpansionsNew = mapToKvSlice(c.Expansions)
-	}
-	if c.Keys != nil && c.KeysNew == nil {
-		c.KeysNew = mapToKvSlice(c.Keys)
-	}
-	if c.Plugins != nil && c.PluginsNew == nil {
-		c.PluginsNew = mapToKvSliceNested(c.Plugins)
 	}
 	return nil
 }
@@ -1251,65 +1241,4 @@ func sliceContains(slice []string, elem string) bool {
 	}
 
 	return false
-}
-
-func kvSliceToMap(in []KeyValuePair) (map[string]string, error) {
-	out := map[string]string{}
-	for _, pair := range in {
-		if _, exists := out[pair.Key]; exists {
-			return nil, fmt.Errorf("key '%s' is duplicated", pair.Key)
-		}
-		switch v := pair.Value.(type) {
-		case string:
-			out[pair.Key] = v
-		default:
-			return nil, fmt.Errorf("unrecognized type in key '%s'", pair.Key)
-		}
-
-	}
-	return out, nil
-}
-
-func kvSliceToMapNested(in []KeyValuePair) (map[string]map[string]interface{}, error) {
-	out := map[string]map[string]interface{}{}
-	for _, pair := range in {
-		if _, exists := out[pair.Key]; exists {
-			return nil, fmt.Errorf("key '%s' is duplicated", pair.Key)
-		}
-		switch v := pair.Value.(type) {
-		case []KeyValuePair:
-			outMap, err := kvSliceToMap(v)
-			if err != nil {
-				return nil, errors.Wrapf(err, "error parsing key '%s'", pair.Key)
-			}
-			for k, v := range outMap {
-				out[pair.Key] = map[string]interface{}{}
-				out[pair.Key][k] = v
-			}
-		default:
-			return nil, fmt.Errorf("unrecognized type in key '%s'", pair.Key)
-		}
-
-	}
-	return out, nil
-}
-
-func mapToKvSlice(in map[string]string) []KeyValuePair {
-	out := []KeyValuePair{}
-	for k, v := range in {
-		out = append(out, KeyValuePair{Key: k, Value: v})
-	}
-	return out
-}
-
-func mapToKvSliceNested(in map[string]map[string]interface{}) []KeyValuePair {
-	out := []KeyValuePair{}
-	for k1, v1 := range in {
-		tempKvSlice := []KeyValuePair{}
-		for k2, v2 := range v1 {
-			tempKvSlice = append(tempKvSlice, KeyValuePair{Key: k2, Value: v2})
-		}
-		out = append(out, KeyValuePair{Key: k1, Value: tempKvSlice})
-	}
-	return out
 }

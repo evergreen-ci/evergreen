@@ -29,7 +29,7 @@ var (
 	keysKey               = bsonutil.MustHaveTag(Settings{}, "Keys")
 	keysNewKey            = bsonutil.MustHaveTag(Settings{}, "KeysNew")
 	credentialsKey        = bsonutil.MustHaveTag(Settings{}, "Credentials")
-	crednetialsNewKey     = bsonutil.MustHaveTag(Settings{}, "CredentialsNew")
+	credentialsNewKey     = bsonutil.MustHaveTag(Settings{}, "CredentialsNew")
 	authConfigKey         = bsonutil.MustHaveTag(Settings{}, "AuthConfig")
 	repoTrackerConfigKey  = bsonutil.MustHaveTag(Settings{}, "RepoTracker")
 	apiKey                = bsonutil.MustHaveTag(Settings{}, "Api")

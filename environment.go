@@ -229,6 +229,8 @@ func (e *envState) persistSettings() error {
 	registeredTypes := []interface{}{
 		map[interface{}]interface{}{},
 		map[string]interface{}{},
+		[]interface{}{},
+		[]KeyValuePair{},
 	}
 	err := deepCopy(*e.settings, &copy, registeredTypes)
 	if err != nil {
