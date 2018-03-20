@@ -237,7 +237,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ContentType = "${content_type}"
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
-			cmd.Visibility = "${optional}"
+			cmd.Optional = "${optional}"
 
 			conf.Expansions.Update(
 				map[string]string{
