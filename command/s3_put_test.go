@@ -237,6 +237,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			cmd.ContentType = "${content_type}"
 			cmd.ResourceDisplayName = "${display_name}"
 			cmd.Visibility = "${visibility}"
+			cmd.Visibility = "${optional}"
 
 			conf.Expansions.Update(
 				map[string]string{
@@ -246,6 +247,7 @@ func TestExpandS3PutParams(t *testing.T) {
 					"bucket":       "bck",
 					"content_type": "ct",
 					"display_name": "file",
+					"optional":     "true",
 					"visibility":   artifact.Private,
 				},
 			)
@@ -259,6 +261,7 @@ func TestExpandS3PutParams(t *testing.T) {
 			So(cmd.ResourceDisplayName, ShouldEqual, "file")
 			So(cmd.Visibility, ShouldEqual, "private")
 			So(cmd.workDir, ShouldEqual, "working_directory")
+			So(cmd.Optional, ShouldEqual, "true")
 
 		})
 
