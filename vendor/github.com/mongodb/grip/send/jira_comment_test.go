@@ -1,7 +1,6 @@
 package send
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/mongodb/grip/level"
@@ -69,7 +68,6 @@ func (j *JiraCommentSuite) TestSendMethod() {
 	j.Equal(mock.numSent, 0)
 
 	m := message.NewDefaultMessage(level.Debug, "sending debug level comment")
-	fmt.Println("--->", sender)
 	sender.Send(m)
 	j.Equal(mock.numSent, numShouldHaveSent)
 

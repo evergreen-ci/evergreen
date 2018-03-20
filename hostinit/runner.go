@@ -32,11 +32,11 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		GUID:     util.RandomString(),
 	}
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if adminSettings.ServiceFlags.HostinitDisabled {
+	if flags.HostinitDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"runner":  RunnerName,
 			"message": "hostinit is disabled, exiting",

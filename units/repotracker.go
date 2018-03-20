@@ -61,12 +61,12 @@ func (j *repotrackerJob) Run() {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.RepotrackerDisabled {
+	if flags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     repotrackerJobName,
 			"id":      j.ID(),

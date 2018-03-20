@@ -1,7 +1,6 @@
 {{define "scripts"}}
 {{if .User}}
   <script type="text/javascript" src="{{Static "js" "spawned_hosts.js"}}?hash={{ StaticsMD5 }}"></script>
-  <script type="text/javascript" src="{{Static "js" "js-yaml.min.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};

@@ -8,11 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type patchVariantsTasksRequest struct {
@@ -57,6 +57,15 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	// retrieve tasks and variant mappings' names
 	variantMappings := make(map[string]model.BuildVariant)
 	for _, variant := range project.BuildVariants {
+		tasksForVariant := []model.BuildVariantTaskUnit{}
+		for _, TaskFromVariant := range variant.Tasks {
+			if TaskFromVariant.IsGroup {
+				tasksForVariant = append(tasksForVariant, model.CreateTasksFromGroup(TaskFromVariant, project)...)
+			} else {
+				tasksForVariant = append(tasksForVariant, TaskFromVariant)
+			}
+		}
+		variant.Tasks = tasksForVariant
 		variantMappings[variant.Name] = variant
 	}
 
@@ -99,7 +108,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
-	if err = yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
+	if err = model.LoadProjectInto([]byte(projCtx.Patch.PatchedConfig), projCtx.Patch.Project, project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
 
@@ -199,6 +208,16 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				errors.Wrap(err, "Error finalizing patch"))
 			return
 		}
+
+		if projCtx.Patch.IsGithubPRPatch() {
+			job := units.NewGithubStatusUpdateJobForPatchWithVersion(projCtx.Patch.Version)
+			if err := uis.queue.Put(job); err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError,
+					errors.Wrap(err, "Error adding github status update job to queue"))
+				return
+			}
+		}
+
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
 		uis.WriteJSON(w, http.StatusOK, struct {
 			VersionId string `json:"version"`

@@ -260,4 +260,11 @@ filters.common.filter('conditional', function() {
       return '>=1d';
     }
   };
+})
+// Displays input value as percentage
+// "0.85 | percentage" => "85"
+.filter('percentage', function() {
+  return function(input) {
+    return input * 100
+  }
 });

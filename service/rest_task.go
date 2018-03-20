@@ -26,7 +26,6 @@ type RestTask struct {
 	DispatchTime        time.Time             `json:"dispatch_time"`
 	StartTime           time.Time             `json:"start_time"`
 	FinishTime          time.Time             `json:"finish_time"`
-	PushTime            time.Time             `json:"push_time"`
 	Version             string                `json:"version"`
 	Project             string                `json:"project"`
 	Revision            string                `json:"revision"`
@@ -100,7 +99,6 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.DispatchTime = srcTask.DispatchTime
 	destTask.StartTime = srcTask.StartTime
 	destTask.FinishTime = srcTask.FinishTime
-	destTask.PushTime = srcTask.PushTime
 	destTask.Version = srcTask.Version
 	destTask.Project = srcTask.Project
 	destTask.Revision = srcTask.Revision

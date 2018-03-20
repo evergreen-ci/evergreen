@@ -1,6 +1,6 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
   $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil,
-  PERF_DISCOVERY, PerfDiscoveryService
+  PERF_DISCOVERY, PerfDiscoveryService, uiGridConstants
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
@@ -59,25 +59,26 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var revision = vm.revisionSelect.selected
     var baselineTag = vm.tagSelect.selected.name
 
+    // Set loading flag to display spinner
+    vm.isLoading = true
+    // Display no data while loading is in progress
+    vm.gridOptions.data = []
+
     ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
       var version = res.data
-      PerfDiscoveryService.getData(
-        version, baselineTag
-      ).then(function(res) {
+      PerfDiscoveryService.getData(version, baselineTag).then(function(res) {
         vm.gridOptions.data = res
-
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
           res,
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridOptions
         )
-      })
+      }).finally(function() { vm.isLoading = false })
     })
   }
 
   vm.gridOptions = {
-    minRowsToShow: 18,
     enableFiltering: true,
     columnDefs: [
       {
@@ -105,18 +106,32 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       gridUtil.multiselectColDefMixin({
         name: 'Threads',
         field: 'threads',
+        type: 'number',
         width: 130,
       }),
       {
         name: 'Ratio',
         field: 'ratio',
-        cellFilter: 'number:2',
+        type: 'number',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD" />',
         enableFiltering: false,
-        width: 70,
+        sort: {
+          direction: uiGridConstants.DESC,
+        },
+        width: 80,
+      },
+      {
+        name: 'Average Ratio',
+        field: 'avgRatio',
+        type: 'number',
+        cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
+        enableFiltering: false,
+        width: 80,
       },
       {
         name: 'Trend',
         field: 'trendData',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
@@ -124,12 +139,15 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Avg and Self',
         field: 'avgVsSelf',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
+        width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
       },
       {
         name: 'ops/sec',
         field: 'speed',
+        type: 'number',
         cellFilter: 'number:2',
         enableFiltering: false,
         width: 100,
@@ -137,6 +155,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Baseline',
         field: 'baseSpeed',
+        type: 'number',
         cellFilter: 'number:2',
         enableFiltering: false,
         width: 120,

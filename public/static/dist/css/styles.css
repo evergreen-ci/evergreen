@@ -2310,11 +2310,12 @@ th {
 }
 .leftNav {
   position: fixed !important;
-  top: 108px;
+  top: 90px;
   width: 250px;
-  height: 100%;
+  height: 86%;
   background-color: #fafafa;
   list-style-type: none;
+  overflow-y: scroll;
 }
 label {
   font-weight: normal;
@@ -2398,5 +2399,23 @@ md-card-title .md-button {
 }
 .dismiss:hover {
   cursor: pointer;
+}
+.eventsTable {
+  min-width: 40%;
+}
+.eventsTable thead {
+  background-color: rgba(0, 0, 0, 0.54);
+  color: white;
+}
+.eventsTable td {
+  padding-left: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.eventsTable tbody tr:nth-child(odd) td {
+  background-color: rgba(0, 0, 0, 0.11);
+}
+.eventsTable tbody tr:nth-child(even) td {
+  background-color: rgba(0, 0, 0, 0.22);
 }
 /*# sourceMappingURL=/static/dist/less.map */

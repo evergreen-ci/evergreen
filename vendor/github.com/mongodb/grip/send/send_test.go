@@ -33,11 +33,13 @@ func TestSenderSuite(t *testing.T) {
 func (s *SenderSuite) SetupSuite() {
 	var err error
 	s.rand = rand.New(rand.NewSource(time.Now().Unix()))
-	s.tempDir, err = ioutil.TempDir("", fmt.Sprintf("%v", s.rand))
+	s.tempDir, err = ioutil.TempDir("", "sender-test-")
 	s.Require().NoError(err)
 }
 
 func (s *SenderSuite) SetupTest() {
+	s.Require().NoError(os.MkdirAll(s.tempDir, 0766))
+
 	l := LevelInfo{level.Info, level.Notice}
 	s.senders = map[string]Sender{
 		"slack": &slackJournal{Base: NewBase("slack")},
@@ -119,9 +121,6 @@ func (s *SenderSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.senders["multi"] = multi
 
-	s.tempDir, err = ioutil.TempDir("", "sender-test")
-	s.Require().NoError(err)
-
 	slackMocked, err := NewSlackLogger(&SlackOptions{
 		client:   &slackClientMock{},
 		Hostname: "testhost",
@@ -164,9 +163,6 @@ func (s *SenderSuite) SetupTest() {
 
 func (s *SenderSuite) TearDownTest() {
 	s.Require().NoError(os.RemoveAll(s.tempDir))
-	for _, sender := range s.senders {
-		s.NoError(sender.Close())
-	}
 }
 
 func (s *SenderSuite) functionalMockSenders() map[string]Sender {

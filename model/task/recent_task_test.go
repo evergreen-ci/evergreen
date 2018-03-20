@@ -23,7 +23,6 @@ func TestRecentTasks(t *testing.T) {
 			Secret:           fmt.Sprintf("secret-%d", i),
 			CreateTime:       time.Now(),
 			DispatchTime:     time.Now(),
-			PushTime:         time.Now(),
 			ScheduledTime:    time.Now(),
 			StartTime:        time.Now(),
 			FinishTime:       time.Now(),

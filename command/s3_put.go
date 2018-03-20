@@ -224,6 +224,7 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	var (
 		err           error
 		uploadedFiles []string
+		filesList     []string
 	)
 
 	timer := time.NewTimer(0)
@@ -239,7 +240,7 @@ retryLoop:
 		case <-ctx.Done():
 			return errors.New("s3 put operation canceled")
 		case <-timer.C:
-			filesList := []string{s3pc.LocalFile}
+			filesList = []string{s3pc.LocalFile}
 
 			if s3pc.isMulti() {
 				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
@@ -272,7 +273,7 @@ retryLoop:
 				}
 
 				fpath = filepath.Join(s3pc.workDir, fpath)
-				err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
+				err = thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -303,7 +304,20 @@ retryLoop:
 		}
 	}
 
-	return errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
+	if len(uploadedFiles) == 0 && s3pc.Optional {
+		return nil
+	}
+
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
+	if err != nil {
+		return err
+	}
+
+	if len(uploadedFiles) != len(filesList) && !s3pc.Optional {
+		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
+	}
+
+	return nil
 }
 
 // attachTaskFiles is responsible for sending the

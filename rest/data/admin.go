@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -34,6 +35,7 @@ func (ac *DBAdminConnector) GetBanner() (string, string, error) {
 // SetEvergreenSettings sets the admin settings document in the DB and event logs it
 func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSettings,
 	oldSettings *evergreen.Settings, u *user.DBUser, persist bool) (*evergreen.Settings, error) {
+
 	settingsAPI := restModel.NewConfigModel()
 	err := settingsAPI.BuildFromService(oldSettings)
 	if err != nil {
@@ -65,6 +67,7 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 		if err != nil {
 			return nil, errors.Wrap(err, "error saving new settings")
 		}
+		newSettings.Id = evergreen.ConfigDocID
 		return &newSettings, LogConfigChanges(&newSettings, oldSettings, u)
 	}
 
@@ -72,12 +75,8 @@ func (ac *DBAdminConnector) SetEvergreenSettings(changes *restModel.APIAdminSett
 }
 
 func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Settings, u *user.DBUser) error {
-	// log the root config document here
-	catcher := grip.NewSimpleCatcher()
-	if err := event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()); err != nil {
-		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
-	}
 
+	catcher := grip.NewSimpleCatcher()
 	// log the other config sub-documents
 	valConfig := reflect.ValueOf(*newSettings)
 	var oldStruct reflect.Value
@@ -120,6 +119,12 @@ func LogConfigChanges(newSettings *evergreen.Settings, oldSettings *evergreen.Se
 			catcher.Add(event.LogAdminEvent(section.SectionId(), oldInterface.(evergreen.ConfigSection), section, u.Username()))
 		}
 	}
+
+	// log the root config document
+	if err := event.LogAdminEvent(newSettings.SectionId(), oldSettings, newSettings, u.Username()); err != nil {
+		catcher.Add(errors.Wrap(err, "error saving event log for root document"))
+	}
+
 	return errors.WithStack(catcher.Resolve())
 }
 
@@ -168,6 +173,26 @@ func (ac *DBAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.Res
 
 func (ac *DBAdminConnector) RevertConfigTo(guid string, user string) error {
 	return event.RevertConfig(guid, user)
+}
+
+func (ac *DBAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
+	events, err := event.FindAdmin(event.AdminEventsBefore(before, n))
+	if err != nil {
+		return nil, err
+	}
+	out := []restModel.APIAdminEvent{}
+	catcher := grip.NewBasicCatcher()
+	for _, evt := range events {
+		apiEvent := restModel.APIAdminEvent{}
+		err = apiEvent.BuildFromService(evt)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		out = append(out, apiEvent)
+	}
+
+	return out, catcher.Resolve()
 }
 
 type MockAdminConnector struct {
@@ -240,4 +265,8 @@ func (ac *MockAdminConnector) RestartFailedTasks(queue amboy.Queue, opts model.R
 
 func (ac *MockAdminConnector) RevertConfigTo(guid string, user string) error {
 	return nil
+}
+
+func (ac *MockAdminConnector) GetAdminEventLog(before time.Time, n int) ([]restModel.APIAdminEvent, error) {
+	return nil, nil
 }

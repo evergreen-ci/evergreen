@@ -20,6 +20,8 @@ const (
 	tasksFlagName      = "tasks"
 	largeFlagName      = "large"
 	hostFlagName       = "host"
+	startTimeFlagName  = "time"
+	limitFlagName      = "limit"
 
 	anserDryRunFlagName  = "dry-run"
 	anserLimitFlagName   = "limit"
@@ -119,6 +121,21 @@ func addHostFlag(flags ...cli.Flag) []cli.Flag {
 		Usage: "specify the name of an evergreen host",
 	})
 
+}
+
+func addStartTimeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(startTimeFlagName, "t"),
+		Usage: "only search for events before this time (RFC 3339 format)",
+	})
+}
+
+func addLimitFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.IntFlag{
+		Name:  joinFlagNames(limitFlagName, "l"),
+		Usage: "return a maximum of this number of results",
+		Value: 10,
+	})
 }
 
 func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {

@@ -52,7 +52,6 @@ type uiTaskData struct {
 	Requester        string                  `json:"r"`
 	ExpectedDuration time.Duration           `json:"expected_duration"`
 	Priority         int64                   `json:"priority"`
-	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults      []uiTestResult          `json:"test_results"`
@@ -213,7 +212,6 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		DispatchTime:        projCtx.Task.DispatchTime.UnixNano(),
 		FinishTime:          projCtx.Task.FinishTime.UnixNano(),
 		ExpectedDuration:    projCtx.Task.ExpectedDuration,
-		PushTime:            projCtx.Task.PushTime,
 		TimeTaken:           projCtx.Task.TimeTaken,
 		Priority:            projCtx.Task.Priority,
 		Aborted:             projCtx.Task.Aborted,

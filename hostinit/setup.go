@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -828,11 +827,16 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}
 
 	// 4. Write a settings file for the user that owns the host, and scp it to the directory
-	outputStruct := model.CLISettings{
-		User:          owner.Id,
+	outputStruct := struct {
+		APIKey        string `json:"api_key"`
+		APIServerHost string `json:"api_server_host"`
+		UIServerHost  string `json:"ui_server_host"`
+		User          string `json:"user"`
+	}{
 		APIKey:        owner.APIKey,
 		APIServerHost: init.Settings.ApiUrl + "/api",
 		UIServerHost:  init.Settings.Ui.Url,
+		User:          owner.Id,
 	}
 	outputJSON, err := json.Marshal(outputStruct)
 	if err != nil {

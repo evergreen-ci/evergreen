@@ -67,6 +67,16 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		if msg.Priority() != level.Invalid {
 			assert.Equal(msg.Priority(), level.Error)
 		}
+
+		// check message annotation functionality
+		switch msg.(type) {
+		case *GroupComposer:
+			continue
+		default:
+			assert.NoError(msg.Annotate("k1", "foo"), "%T", msg)
+			assert.Error(msg.Annotate("k1", "foo"), "%T", msg)
+			assert.NoError(msg.Annotate("k2", "foo"), "%T", msg)
+		}
 	}
 }
 
@@ -265,4 +275,14 @@ func TestProcessTreeDoesNotHaveDuplicates(t *testing.T) {
 	}
 
 	assert.Equal(len(seen), len(procs))
+}
+
+func TestJiraIssueAnnotationOnlySupportsStrings(t *testing.T) {
+	assert := assert.New(t) // nolint
+
+	m := &jiraMessage{}
+
+	assert.Error(m.Annotate("k", 1))
+	assert.Error(m.Annotate("k", true))
+	assert.Error(m.Annotate("k", nil))
 }

@@ -185,6 +185,8 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 # userfacing targets for basic build and development operations
 build:cli
+build-alltests:$(testBin)
+build-all:build-alltests build
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
@@ -301,15 +303,15 @@ $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	go tool cover -html=$< -o $@
 # end test and coverage artifacts
-build-alltests: $(testBin)
-build-all: build-alltests build
 
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/coverage.* $(buildDir)/race.* $(clientBuildDir)
+	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/race.* $(buildDir)/output.* $(clientBuildDir)
+	rm -rf $(gopath)/pkg/
 phony += clean
 # end dependency targets
 
-# configure phony targets
+# configure special (and) phony targets
 .FORCE:
 .PHONY:$(phony) .FORCE
+.DEFAULT_GOAL:build

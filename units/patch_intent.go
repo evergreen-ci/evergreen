@@ -360,11 +360,11 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 }
 
 func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (canFinalize bool, err error) {
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, errors.Wrap(err, "github pr testing is disabled, error retrieving admin settings")
 	}
-	if adminSettings.ServiceFlags.GithubPRTestingDisabled {
+	if flags.GithubPRTestingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     patchIntentJobName,
 			"message": "github pr testing is disabled, not processing pull request",

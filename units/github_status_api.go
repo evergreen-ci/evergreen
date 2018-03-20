@@ -101,7 +101,7 @@ func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	return job
 }
 
-// NewGithubStatusUpdateForPatchWithVersion creates a job to update github's API
+// NewGithubStatusUpdateJobForPatchWithVersion creates a job to update github's API
 // from a Patch with specified version. Status will be reported as 'evergreen'
 func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
@@ -302,12 +302,12 @@ func (j *githubStatusUpdateJob) Run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.GithubStatusAPIDisabled {
+	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
 			"message": "github status updates are disabled, not updating status",

@@ -120,6 +120,8 @@ type Communicator interface {
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
 	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
+	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
+	RevertSettings(context.Context, string) error
 
 	// Host methods
 	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)

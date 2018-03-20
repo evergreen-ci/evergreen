@@ -226,8 +226,9 @@ describe('PerfDiscoveryServiceTest', function() {
       speed: 100,
       baseSpeed: 200,
       ratio: 0.5,
-      trendData: [0.25, 2],
-      avgVsSelf: [1.125, 0.5]
+      trendData: [0.25, 2, 0.5],
+      avgVsSelf: [1.125, 0.5],
+      avgRatio: 1.125,
     }])
 
   })

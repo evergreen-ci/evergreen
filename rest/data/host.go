@@ -86,7 +86,7 @@ func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID string, 
 }
 
 func (hc *DBHostConnector) SetHostStatus(host *host.Host, status, user string) error {
-	return host.SetStatus(status, user)
+	return host.SetStatus(status, user, "")
 }
 
 func (hc *DBHostConnector) SetHostExpirationTime(host *host.Host, newExp time.Time) error {

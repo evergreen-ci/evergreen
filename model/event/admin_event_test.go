@@ -2,11 +2,13 @@ package event
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -39,6 +41,7 @@ func (s *AdminEventSuite) TestEventLogging() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
@@ -60,6 +63,7 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
@@ -89,6 +93,7 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	s.NotEmpty(eventData.GUID)
@@ -98,6 +103,25 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.Equal(before.SMTP.Password, beforeVal.SMTP.Password)
 	s.Equal(after.SMTP.Port, afterVal.SMTP.Port)
 	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
+}
+
+func (s *AdminEventSuite) TestNoSpuriousLogging() {
+	before := evergreen.Settings{
+		ApiUrl: "api",
+		HostInit: evergreen.HostInitConfig{
+			SSHTimeoutSeconds: 10,
+		},
+	}
+	after := evergreen.Settings{
+		ApiUrl: "api",
+		HostInit: evergreen.HostInitConfig{
+			SSHTimeoutSeconds: 15,
+		},
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(5))
+	s.NoError(err)
+	s.Len(dbEvents, 0)
 }
 
 func (s *AdminEventSuite) TestNoChanges() {
@@ -129,6 +153,7 @@ func (s *AdminEventSuite) TestReverting() {
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	s.True(eventData.IsValid())
 	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
@@ -174,6 +199,7 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
 	eventData := dbEvents[0].Data.(*AdminEventData)
 	guid := eventData.GUID
 	s.NotEmpty(guid)
@@ -191,4 +217,20 @@ func (s *AdminEventSuite) TestRevertingRoot() {
 	s.Equal(before.Credentials, settings.Credentials)
 	s.Equal(before.SuperUsers, settings.SuperUsers)
 	s.Equal(after.Ui, settings.Ui)
+}
+
+func TestAdminEventsBeforeQuery(t *testing.T) {
+	testutil.HandleTestingErr(db.Clear(AllLogCollection), t, "error clearing collection")
+	assert := assert.New(t)
+	before := &evergreen.ServiceFlags{}
+	after := &evergreen.ServiceFlags{HostinitDisabled: true}
+	assert.NoError(LogAdminEvent("service_flags", before, after, "beforeNow"))
+	time.Sleep(10 * time.Millisecond)
+	now := time.Now()
+	time.Sleep(10 * time.Millisecond)
+	assert.NoError(LogAdminEvent("service_flags", before, after, "afterNow"))
+	events, err := FindAdmin(AdminEventsBefore(now, 5))
+	assert.NoError(err)
+	assert.Len(events, 1)
+	assert.True(events[0].Timestamp.Before(now))
 }

@@ -31,7 +31,6 @@ type UITask struct {
 	Id            string    `json:"id"`
 	CreateTime    time.Time `json:"create_time"`
 	DispatchTime  time.Time `json:"dispatch_time"`
-	PushTime      time.Time `json:"push_time"`
 	ScheduledTime time.Time `json:"scheduled_time"`
 	StartTime     time.Time `json:"start_time"`
 	FinishTime    time.Time `json:"finish_time"`
@@ -178,7 +177,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		}
 		var tasks []task.Task
 
-		fields := []string{task.CreateTimeKey, task.DispatchTimeKey, task.PushTimeKey,
+		fields := []string{task.CreateTimeKey, task.DispatchTimeKey,
 			task.ScheduledTimeKey, task.StartTimeKey, task.FinishTimeKey,
 			task.VersionKey, task.HostIdKey, task.StatusKey, task.HostIdKey,
 			task.DistroIdKey}
@@ -219,7 +218,6 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				Id:            t.Id,
 				CreateTime:    t.CreateTime,
 				DispatchTime:  t.DispatchTime,
-				PushTime:      t.PushTime,
 				ScheduledTime: t.ScheduledTime,
 				StartTime:     t.StartTime,
 				FinishTime:    t.FinishTime,

@@ -5,16 +5,7 @@ ignore:
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
 
 post:
-  - command: gotest.parse_files
-    type: system
-    params:
-      files:
-        - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
-  - command: attach.xunit_results
-    type: system
-    params:
-      files:
-        - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
+  - func: attach-test-results
   - command: s3.put
     type: system
     params:
@@ -49,7 +40,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
@@ -73,7 +64,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -85,7 +76,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -115,7 +106,7 @@ variables:
     name: smoke
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-mongodb
@@ -149,11 +140,6 @@ variables:
     stepback: false
     tags: ["lint"]
     commands:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: set-up-credentials
       - func: run-make
         vars: { target: "${task_name}" }
   - &version-constants
@@ -215,7 +201,7 @@ functions:
         $EVGHOME/bin/test.$(echo ${target} | sed 's/-/./') --test.v --test.timeout=10m
   set-up-credentials:
     command: shell.exec
-    type: system
+    type: setup
     params:
       silent: true
       script: |
@@ -280,7 +266,7 @@ functions:
 
   set-up-mongodb:
     - command: shell.exec
-      type: system
+      type: setup
       params:
         script: |
           set -o xtrace
@@ -299,7 +285,7 @@ functions:
           mkdir db_files
           mkdir db_logs
     - command: shell.exec
-      type: system
+      type: setup
       params:
         background: true
         script: |
@@ -311,7 +297,7 @@ functions:
           ./mongod${extension|} --dbpath ./db_files &
           echo "waiting for mongod to start up"
     - command: shell.exec
-      type: system
+      type: setup
       params:
         script: |
           set -o xtrace
@@ -320,7 +306,17 @@ functions:
           cd mongodb
           ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
           echo "mongod is up."
-
+  attach-test-results:
+    - command: gotest.parse_files
+      type: system
+      params:
+        files:
+          - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
+    - command: attach.xunit_results
+      type: system
+      params:
+        files:
+          - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
 
 #######################################
 #                Tasks                #
@@ -331,7 +327,7 @@ tasks:
     tags: [ "report" ]
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
@@ -344,7 +340,7 @@ tasks:
   - name: dist-test
     commands:
       - command: git.get_project
-        type: system
+        type: setup
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
@@ -724,6 +720,19 @@ tasks:
     tags: ["db", "xc", "agent"]
     name: xc-util
 
+task_groups:
+  - name: lint-group
+    max_hosts: 4
+    tasks:
+      - .lint
+    setup_group:
+      - command: git.get_project
+        type: system
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: set-up-credentials
+    teardown_task:
+      - func: attach-test-results
 
 buildvariants:
   - name: ubuntu1604
@@ -732,7 +741,7 @@ buildvariants:
       - ubuntu1604-test
     expansions:
       build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.4.7.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".smoke"
@@ -757,13 +766,13 @@ buildvariants:
       - archlinux-test
     expansions:
       build_env: "EVERGREEN_ALL=true RACE_ENABLED=true RUN_COUNT=5 TEST_TIMEOUT=15m"
-      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.4.7.tgz
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".race"
       - name: ".report"
         stepback: false
-      - name: ".lint"
+      - name: lint-group
         stepback: false
     display_tasks:
       - name: lint
@@ -777,7 +786,7 @@ buildvariants:
       - macos-1012
     expansions:
       build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
-      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.4.7.tgz
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.1.tgz
     tasks:
       - name: "dist"
       - name: ".test"
@@ -788,7 +797,7 @@ buildvariants:
       - windows-64-vs2015-small
     expansions:
       build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/cygdrive/c/go1.8/go/bin:$PATH"
-      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.4.7.zip
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.1.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
@@ -803,7 +812,7 @@ buildvariants:
       - rhel71-power8-test
     expansions:
       build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
-      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.4.7.tgz
+      mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.6.1.tgz
     tasks:
       - name: "dist-test"
         distros:

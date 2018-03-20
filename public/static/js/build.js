@@ -84,7 +84,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
       message: $scope.build.Version.message,
       author: $scope.build.Version.author,
       author_email: $scope.build.Version.author_email,
-      push_time: $scope.build.Version.create_time,
+      create_time: $scope.build.Version.create_time,
       gitspec: $scope.build.Build.gitspec,
       repo_owner: $scope.build.repo_owner,
       repo_name: $scope.build.repo_name

@@ -81,7 +81,6 @@ func (s *VersionSuite) SetupSuite() {
 		CreateTime:   timeField,
 		StartTime:    timeField,
 		FinishTime:   timeField,
-		PushTime:     timeField,
 		Version:      versionId,
 		BuildVariant: s.bv[0],
 	}
@@ -90,7 +89,6 @@ func (s *VersionSuite) SetupSuite() {
 		CreateTime:   timeField,
 		StartTime:    timeField,
 		FinishTime:   timeField,
-		PushTime:     timeField,
 		Version:      versionId,
 		BuildVariant: s.bv[1],
 	}

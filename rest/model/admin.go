@@ -1,7 +1,9 @@
 package model
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/send"
@@ -978,6 +980,7 @@ type APIServiceFlags struct {
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 }
 
 type APISlackConfig struct {
@@ -1163,6 +1166,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.RepotrackerPushEventDisabled = v.RepotrackerPushEventDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
+		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1184,6 +1188,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		RepotrackerPushEventDisabled: as.RepotrackerPushEventDisabled,
 		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
 		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 	}, nil
 }
 
@@ -1202,4 +1207,43 @@ func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 // ToService is not implemented for /admin/restart
 func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
+}
+
+func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
+	id := in.SectionId()
+	var out Model
+	if id == evergreen.ConfigDocID {
+		out = &APIAdminSettings{}
+		err := out.BuildFromService(reflect.ValueOf(in).Interface())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		structVal := reflect.ValueOf(*NewConfigModel())
+		for i := 0; i < structVal.NumField(); i++ {
+			// this assumes that the json tag is the same as the section ID
+			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			if tag != id {
+				continue
+			}
+
+			propName := structVal.Type().Field(i).Name
+			propVal := structVal.FieldByName(propName)
+			propInterface := propVal.Interface()
+			apiModel, ok := propInterface.(Model)
+			if !ok {
+				return nil, fmt.Errorf("unable to convert section %s to a Model interface", id)
+			}
+			out = apiModel
+		}
+		if out == nil {
+			return nil, fmt.Errorf("section %s is not defined in the APIAdminSettings struct", id)
+		}
+		err := out.BuildFromService(reflect.Indirect(reflect.ValueOf(in)).Interface())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
 }

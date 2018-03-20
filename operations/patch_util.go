@@ -106,17 +106,6 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		return err
 	}
 
-	if p.Alias != "" {
-		fmt.Printf("activated tasks on %d variants...\n", len(newPatch.VariantsTasks))
-		for _, v := range newPatch.VariantsTasks {
-			fmt.Printf("\ntasks for variant %s:\n", v.Variant)
-			for _, t := range v.Tasks {
-				fmt.Println(t)
-			}
-		}
-		fmt.Printf("\n")
-	}
-
 	fmt.Println("Patch successfully created.")
 	fmt.Print(patchDisp)
 	return nil
@@ -192,8 +181,8 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	// update tasks
 	if len(p.Tasks) == 0 {
 		p.Tasks = conf.FindDefaultTasks(p.Project)
-		if len(p.Tasks) == 0 && p.Finalize {
-			err = errors.Errorf("Need to specify at least one task with -t when finalizing." +
+		if len(p.Tasks) == 0 && p.Alias == "" && p.Finalize {
+			err = errors.Errorf("Need to specify at least one task or alias when finalizing." +
 				" Run with `-t all` to finalize against all tasks.")
 			return
 		}

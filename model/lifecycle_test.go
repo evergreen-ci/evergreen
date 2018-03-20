@@ -848,8 +848,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(len(b.Tasks), ShouldEqual, 2)
 			So(b.CreateTime.Truncate(time.Second), ShouldResemble,
 				v.CreateTime.Truncate(time.Second))
-			So(b.PushTime.Truncate(time.Second), ShouldResemble,
-				v.CreateTime.Truncate(time.Second))
 			So(b.Activated, ShouldEqual, v.BuildVariants[2].Activated)
 			So(b.Project, ShouldEqual, project.Identifier)
 			So(b.Revision, ShouldEqual, v.Revision)
@@ -886,8 +884,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
-			So(tasks[0].PushTime.Truncate(time.Second), ShouldResemble,
-				b.PushTime.Truncate(time.Second))
 			So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[0].Activated, ShouldEqual, b.Activated)
 			So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -904,8 +900,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
-			So(tasks[1].PushTime.Truncate(time.Second), ShouldResemble,
-				b.PushTime.Truncate(time.Second))
 			So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[1].Activated, ShouldEqual, b.Activated)
 			So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -922,8 +916,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
-			So(tasks[2].PushTime.Truncate(time.Second), ShouldResemble,
-				b.PushTime.Truncate(time.Second))
 			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[2].Activated, ShouldEqual, b.Activated)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -940,8 +932,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
-			So(tasks[3].PushTime.Truncate(time.Second), ShouldResemble,
-				b.PushTime.Truncate(time.Second))
 			So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[3].Activated, ShouldEqual, b.Activated)
 			So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -976,8 +966,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
-				So(tasks[0].PushTime.Truncate(time.Second), ShouldResemble,
-					b.PushTime.Truncate(time.Second))
 				So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[0].Activated, ShouldEqual, b.Activated)
 				So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -994,8 +982,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
-				So(tasks[1].PushTime.Truncate(time.Second), ShouldResemble,
-					b.PushTime.Truncate(time.Second))
 				So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[1].Activated, ShouldEqual, b.Activated)
 				So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -1012,8 +998,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
-				So(tasks[2].PushTime.Truncate(time.Second), ShouldResemble,
-					b.PushTime.Truncate(time.Second))
 				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[2].Activated, ShouldEqual, b.Activated)
 				So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -1030,8 +1014,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
-				So(tasks[3].PushTime.Truncate(time.Second), ShouldResemble,
-					b.PushTime.Truncate(time.Second))
 				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[3].Activated, ShouldEqual, b.Activated)
 				So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
@@ -1051,7 +1033,11 @@ func TestCreateTaskGroup(t *testing.T) {
   tasks:
   - name: example_task_1
   - name: example_task_2
+    depends_on:
+      - name: "example_task_1"
   - name: example_task_3
+    depends_on:
+      - name: "example_task_2"
   task_groups:
   - name: example_task_group
     max_hosts: 2
@@ -1111,13 +1097,17 @@ func TestCreateTaskGroup(t *testing.T) {
 	assert.NoError(err)
 	assert.Len(dbTasks, 3)
 	for _, t := range dbTasks {
+		if t.DisplayName == "example_task_1" {
+			assert.Equal("example_task_group", t.TaskGroup)
+		}
+		if t.DisplayName == "example_task_2" {
+			assert.Contains(t.DependsOn[0].TaskId, "example_task_1")
+			assert.Equal("example_task_group", t.TaskGroup)
+		}
 		if t.DisplayName == "example_task_3" {
 			assert.Empty(t.TaskGroup)
 			assert.NotContains(t.TaskGroup, "example_task_group")
-			assert.EqualValues(0, t.Priority)
-		} else {
-			assert.Equal("example_task_group", t.TaskGroup)
-			assert.EqualValues(50, t.Priority)
+			assert.Contains(t.DependsOn[0].TaskId, "example_task_2")
 		}
 	}
 }
@@ -1438,7 +1428,7 @@ func TestDisplayTaskRestart(t *testing.T) {
 
 	// test that restarting a task correctly resets the task and archives it
 	assert.NoError(resetTaskData())
-	assert.NoError(resetTask("displayTask"))
+	assert.NoError(resetTask("displayTask", "caller"))
 	archivedTasks, err := task.FindOldWithDisplayTasks(task.All)
 	assert.NoError(err)
 	assert.Len(archivedTasks, 3)
@@ -1606,4 +1596,15 @@ func resetTaskData() error {
 		return err
 	}
 	return nil
+}
+
+func TestShouldNotPatch(t *testing.T) {
+	assert := assert.New(t)
+	falseTmp := false
+	bv := BuildVariantTaskUnit{Patchable: &falseTmp}
+	assert.False(shouldNotPatchBuild(bv, evergreen.RepotrackerVersionRequester))
+	assert.True(shouldNotPatchBuild(bv, evergreen.PatchVersionRequester))
+	assert.True(shouldNotPatchBuild(bv, evergreen.GithubPRRequester))
+	bv.Patchable = nil
+	assert.False(shouldNotPatchBuild(bv, evergreen.GithubPRRequester))
 }

@@ -39,7 +39,7 @@ func (s *MetricsSuite) TestRunForIntervalAndSendMessages() {
 	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	ctx, cancel := context.WithCancel(context.Background())
 
-	go s.collector.processInfoCollector(ctx, 750*time.Millisecond, time.Second, 2)
+	go s.collector.processInfoCollector(ctx, 750*time.Millisecond)
 	time.Sleep(time.Second)
 	cancel()
 
@@ -83,7 +83,7 @@ func (s *MetricsSuite) TestCollectSubProcesses() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	go s.collector.processInfoCollector(ctx, 750*time.Millisecond, time.Second, 2)
+	go s.collector.processInfoCollector(ctx, 750*time.Millisecond)
 	time.Sleep(time.Second)
 	cancel()
 

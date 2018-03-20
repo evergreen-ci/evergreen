@@ -24,10 +24,23 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2018-03-05"
+	ClientVersion = "2018-03-14"
 
 	errNotFound = "not found"
 )
+
+// ConfigSection defines a sub-document in the evegreen config
+// any config sections must also be added to registry.go
+type ConfigSection interface {
+	// SectionId() returns the ID of the section to be used in the database document and struct tag
+	SectionId() string
+	// Get() populates the section from the DB
+	Get() error
+	// Set() upserts the section document into the DB
+	Set() error
+	// ValidateAndDefault() validates input and sets defaults
+	ValidateAndDefault() error
+}
 
 // AuthUser configures a user for our Naive authentication setup.
 type AuthUser struct {
@@ -711,6 +724,7 @@ type ServiceFlags struct {
 	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -736,7 +750,8 @@ func (c *ServiceFlags) Set() error {
 			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
 			repotrackerPushEventDisabledKey: c.RepotrackerPushEventDisabled,
 			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
-			githubStatusAPIDisabled:         c.GithubStatusAPIDisabled,
+			githubStatusAPIDisabledKey:      c.GithubStatusAPIDisabled,
+			backgroundStatsDisabledKey:      c.BackgroundStatsDisabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
@@ -855,19 +870,6 @@ func (c *Settings) ValidateAndDefault() error {
 		c.LogPath = LocalLoggingOverride
 	}
 	return nil
-}
-
-// ConfigSection defines a sub-document in the evegreen config
-// any config sections must also be added to registry.go
-type ConfigSection interface {
-	// SectionId() returns the ID of the section to be used in the database document and struct tag
-	SectionId() string
-	// Get() populates the section from the DB
-	Get() error
-	// Set() upserts the section document into the DB
-	Set() error
-	// ValidateAndDefault() validates input and sets defaults
-	ValidateAndDefault() error
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -1175,6 +1177,21 @@ func (n *NewRelicConfig) SetUp() (newrelic.Application, error) {
 		return nil, errors.Wrap(err, "error creating New Relic application")
 	}
 	return app, nil
+}
+
+func GetServiceFlags() (*ServiceFlags, error) {
+	section := ConfigRegistry.GetSection("service_flags")
+	if section == nil {
+		return nil, errors.New("unable to retrieve config section")
+	}
+	if err := section.Get(); err != nil {
+		return nil, errors.Wrap(err, "error retrieving section from DB")
+	}
+	flags, ok := section.(*ServiceFlags)
+	if !ok {
+		return nil, errors.New("unable to convert config section to service flags")
+	}
+	return flags, nil
 }
 
 func sliceContains(slice []string, elem string) bool {

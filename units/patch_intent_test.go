@@ -22,12 +22,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var testConfig = testutil.TestConfig()
-
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
-
 type PatchIntentUnitsSuite struct {
 	sender *send.InternalSender
 	env    *mock.Environment
@@ -50,6 +44,11 @@ type PatchIntentUnitsSuite struct {
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
 	suite.Run(t, new(PatchIntentUnitsSuite))
+}
+
+func (s *PatchIntentUnitsSuite) SetupSuite() {
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {

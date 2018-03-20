@@ -52,7 +52,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
       message: $scope.version.Version.message,
       author: $scope.version.Version.author,
       author_email: $scope.version.Version.author_email,
-      push_time: $scope.version.Version.create_time,
+      create_time: $scope.version.Version.create_time,
       gitspec: $scope.version.Version.revision,
       repo_owner: $scope.version.repo_owner,
       repo_name: $scope.version.repo_name
@@ -212,7 +212,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
     var groupedRevisions = [];
     var datesSeen = {}; // to avoid double-entering dates
     history.forEach(function(revision) {
-      var date = revision.push_time.substring(0, 10);
+      var date = revision.create_time.substring(0, 10);
 
       // if we haven't seen the date, add a new entry for it
       if (!datesSeen[date]) {

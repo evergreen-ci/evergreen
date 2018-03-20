@@ -69,6 +69,11 @@ func main() {
 	}
 
 	cmd := exec.Command(goBin, "build")
+
+	if system == runtime.GOOS && arch == runtime.GOARCH {
+		cmd.Args = append(cmd.Args, "-i")
+	}
+
 	ldf := fmt.Sprintf("-ldflags=%s", ldFlags)
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
 	cmd.Args = append(cmd.Args, ldf)

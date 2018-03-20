@@ -34,15 +34,14 @@ type Task struct {
 	Secret string `bson:"secret" json:"secret"`
 
 	// time information for task
-	// create - the time we created this task in our database
+	// create - the creation time for the task, derived from the commit time or the patch creation time.
 	// dispatch - the time the task runner starts up the agent on the host
-	// push - the time the commit generating this build was pushed to the remote
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
 	CreateTime    time.Time `bson:"create_time" json:"create_time"`
+	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
-	PushTime      time.Time `bson:"push_time" json:"push_time"`
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
 	StartTime     time.Time `bson:"start_time" json:"start_time"`
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
@@ -54,7 +53,7 @@ type Task struct {
 	TaskGroup         string `bson:"task_group" json:"task_group"`
 	TaskGroupMaxHosts int    `bson:"task_group_max_hosts,omitempty" json:"task_group_max_hosts,omitempty"`
 
-	// only relevant if the task is running.  the time of the last heartbeat
+	// only relevant if the task is runnin.  the time of the last heartbeat
 	// sent back by the agent
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
@@ -213,6 +212,14 @@ func IsFinished(t Task) bool {
 // IsDispatchable return true if the task should be dispatched
 func (t *Task) IsDispatchable() bool {
 	return t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
+func (t *Task) GetTaskCreatedTime() time.Time {
+	if t.IngestTime.IsZero() {
+		return t.CreateTime
+	}
+
+	return t.IngestTime
 }
 
 // satisfiesDependency checks a task the receiver task depends on
@@ -692,8 +699,6 @@ func displayTaskPriority(status string) int {
 	switch status {
 	case evergreen.TaskStarted:
 		return 10
-	case evergreen.TaskInactive:
-		return 20
 	case evergreen.TaskUndispatched:
 		return 40
 	case evergreen.TaskFailed:
@@ -708,6 +713,8 @@ func displayTaskPriority(status string) int {
 		return 90
 	case evergreen.TaskSucceeded:
 		return 100
+	case evergreen.TaskInactive:
+		return 110
 	}
 	return 1000
 }

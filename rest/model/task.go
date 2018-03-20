@@ -18,7 +18,6 @@ type APITask struct {
 	Id                 APIString        `json:"task_id"`
 	CreateTime         APITime          `json:"create_time"`
 	DispatchTime       APITime          `json:"dispatch_time"`
-	PushTime           APITime          `json:"push_time"`
 	ScheduledTime      APITime          `json:"scheduled_time"`
 	StartTime          APITime          `json:"start_time"`
 	FinishTime         APITime          `json:"finish_time"`
@@ -80,7 +79,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			Id:            APIString(v.Id),
 			CreateTime:    NewTime(v.CreateTime),
 			DispatchTime:  NewTime(v.DispatchTime),
-			PushTime:      NewTime(v.PushTime),
 			ScheduledTime: NewTime(v.ScheduledTime),
 			StartTime:     NewTime(v.StartTime),
 			FinishTime:    NewTime(v.FinishTime),
@@ -139,7 +137,6 @@ func (ad *APITask) ToService() (interface{}, error) {
 		Project:             string(ad.Branch),
 		CreateTime:          time.Time(ad.CreateTime),
 		DispatchTime:        time.Time(ad.DispatchTime),
-		PushTime:            time.Time(ad.PushTime),
 		ScheduledTime:       time.Time(ad.ScheduledTime),
 		StartTime:           time.Time(ad.StartTime),
 		FinishTime:          time.Time(ad.FinishTime),

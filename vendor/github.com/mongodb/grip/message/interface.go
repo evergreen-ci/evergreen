@@ -26,6 +26,11 @@ type Composer interface {
 	// above the logging threshold.
 	Loggable() bool
 
+	// Annotate makes it possible for Senders and Journalers to
+	// add structured data to a log message. May return an error
+	// when the key alrady exists.
+	Annotate(string, interface{}) error
+
 	// Priority returns the priority of the message.
 	Priority() level.Priority
 	SetPriority(level.Priority) error

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -169,4 +170,25 @@ func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 		return true
 	}
 	return false
+}
+
+// byTaskGroupOrder takes two tasks with the same build and non-empty task group
+// and considers one more important if it appears earlier in the task group task
+// list. This is to ensure that task groups are dispatched in the order that
+// they are defined.
+func byTaskGroupOrder(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
+	if t1.TaskGroup == "" ||
+		t2.TaskGroup == "" ||
+		t1.TaskGroup != t2.TaskGroup ||
+		t1.BuildId != t2.BuildId {
+		return 0, nil
+	}
+	earlier, err := model.EarlierInTaskGroup(&t1, &t2, t1.TaskGroup)
+	if err != nil {
+		return 0, errors.Wrapf(err, "error finding out which task is earlier (%s, %s)", t1.Id, t2.Id)
+	}
+	if earlier {
+		return 1, nil
+	}
+	return -1, nil
 }

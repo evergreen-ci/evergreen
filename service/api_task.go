@@ -79,7 +79,13 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		idleTimeStartAt = h.StartTime
 	}
 
-	job := units.NewCollectHostIdleDataJob(h, idleTimeStartAt, t.StartTime)
+	job := units.NewCollectHostIdleDataJob(*h, idleTimeStartAt, t.StartTime)
+	if err = as.queue.Put(job); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing host idle stats"))
+		return
+	}
+
+	job = units.NewCollectTaskStartDataJob(t, *h)
 	if err = as.queue.Put(job); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing task start stats"))
 		return
@@ -246,7 +252,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err := currentHost.DisablePoisonedHost()
+			err := currentHost.DisablePoisonedHost(msg)
 			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
@@ -435,13 +441,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		response.NewAgent = true
 	}
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		err = errors.Wrap(err, "error retrieving admin settings")
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusInternalServerError, err)
 	}
-	if adminSettings.ServiceFlags.TaskDispatchDisabled {
+	if flags.TaskDispatchDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
 		as.WriteJSON(w, http.StatusOK, response)
 		return

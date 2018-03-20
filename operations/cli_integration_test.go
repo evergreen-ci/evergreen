@@ -93,7 +93,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(projectRef.Insert(), ShouldBeNil)
 
 	// create a settings file for the command line client
-	settings := model.CLISettings{
+	settings := ClientSettings{
 		APIServerHost: testServer.URL + "/api",
 		UIServerHost:  "http://dev-evg.mongodb.com",
 		APIKey:        "testapikey",
