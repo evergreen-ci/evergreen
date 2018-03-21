@@ -30,7 +30,7 @@ func (s *notificationSuite) SetupTest() {
 	s.NoError(db.Clear(NotificationsCollection))
 	s.n = Notification{
 		Subscriber: event.Subscriber{
-			Type: "github_pull_request",
+			Type: event.GithubPullRequestSubscriberType,
 			Target: event.GithubPullRequestSubscriber{
 				Owner:    "evergreen-ci",
 				Repo:     "evergreen",
@@ -112,7 +112,7 @@ func (s *notificationSuite) TestInsertMany() {
 	n2 := Notification{
 		ID: bson.NewObjectId(),
 		Subscriber: event.Subscriber{
-			Type:   "slack",
+			Type:   event.SlackSubscriberType,
 			Target: "#general",
 		},
 		Payload: &payload,
@@ -122,7 +122,7 @@ func (s *notificationSuite) TestInsertMany() {
 	n3 := Notification{
 		ID: bson.NewObjectId(),
 		Subscriber: event.Subscriber{
-			Type:   "jira-comment",
+			Type:   event.JIRACommentSubscriberType,
 			Target: "ABC-1234",
 		},
 		Payload: &payload2,
@@ -153,13 +153,13 @@ func (s *notificationSuite) TestInsertMany() {
 			s.Equal("something failed", payload.Description)
 
 		} else if n.ID == slice[1].ID {
-			s.Equal("slack", n.Subscriber.Type)
+			s.Equal(event.SlackSubscriberType, n.Subscriber.Type)
 			payload, ok := n.Payload.(*string)
 			s.True(ok)
 			s.Equal("slack hi", *payload)
 
 		} else if n.ID == slice[2].ID {
-			s.Equal("jira-comment", n.Subscriber.Type)
+			s.Equal(event.JIRACommentSubscriberType, n.Subscriber.Type)
 			payload, ok := n.Payload.(*string)
 			s.True(ok)
 			s.Equal("jira hi", *payload)
@@ -173,7 +173,7 @@ func (s *notificationSuite) TestInsertMany() {
 func (s *notificationSuite) TestWebhookPayload() {
 	jsonData := `{"iama": "potato"}`
 	s.n.ID = bson.NewObjectId()
-	s.n.Subscriber.Type = "evergreen-webhook"
+	s.n.Subscriber.Type = event.EvergreenWebhookSubscriberType
 	s.n.Subscriber.Target = event.WebhookSubscriber{}
 	s.n.Payload = jsonData
 
@@ -193,7 +193,7 @@ func (s *notificationSuite) TestWebhookPayload() {
 
 func (s *notificationSuite) TestJIRACommentPayload() {
 	s.n.ID = bson.NewObjectId()
-	s.n.Subscriber.Type = "jira-comment"
+	s.n.Subscriber.Type = event.JIRACommentSubscriberType
 	target := "BF-1234"
 	s.n.Subscriber.Target = target
 	s.n.Payload = "hi"
@@ -214,7 +214,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 
 func (s *notificationSuite) TestJIRAIssuePayload() {
 	s.n.ID = bson.NewObjectId()
-	s.n.Subscriber.Type = "jira-issue"
+	s.n.Subscriber.Type = event.JIRAIssueSubscriberType
 	issue := "1234"
 	s.n.Subscriber.Target = &issue
 	s.n.Payload = &jiraIssuePayload{
@@ -260,7 +260,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 
 func (s *notificationSuite) TestEmailPayload() {
 	s.n.ID = bson.NewObjectId()
-	s.n.Subscriber.Type = "email"
+	s.n.Subscriber.Type = event.EmailSubscriberType
 	email := "a@a.a"
 	s.n.Subscriber.Target = &email
 	s.n.Payload = &EmailPayload{
@@ -290,7 +290,7 @@ func (s *notificationSuite) TestEmailPayload() {
 
 func (s *notificationSuite) TestSlackPayload() {
 	s.n.ID = bson.NewObjectId()
-	s.n.Subscriber.Type = "slack"
+	s.n.Subscriber.Type = event.SlackSubscriberType
 	slack := "#general"
 	s.n.Subscriber.Target = &slack
 	data := "text"
@@ -313,7 +313,7 @@ func (s *notificationSuite) TestSlackPayload() {
 
 func (s *notificationSuite) TestGithubPayload() {
 	s.n.ID = bson.NewObjectId()
-	s.n.Subscriber.Type = "github_pull_request"
+	s.n.Subscriber.Type = event.GithubPullRequestSubscriberType
 	s.n.Subscriber.Target = &event.GithubPullRequestSubscriber{}
 	s.n.Payload = &GithubStatusAPIPayload{
 		Status:      "failure",
