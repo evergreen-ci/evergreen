@@ -216,7 +216,7 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 }
 
 func (s *ClientSettings) FindDefaultAlias(project string) string {
-	for _,p := range s.Projects {
+	for _, p := range s.Projects {
 		if p.Name == project {
 			return p.Alias
 		}
@@ -225,7 +225,7 @@ func (s *ClientSettings) FindDefaultAlias(project string) string {
 }
 
 func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
-	for i,p := range s.Projects {
+	for i, p := range s.Projects {
 		if p.Name == project {
 			s.Projects[i].Alias = alias
 			return
