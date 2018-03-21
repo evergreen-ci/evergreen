@@ -357,8 +357,10 @@ func (s *GenerateSuite) TestValidateNoRecursiveGenerateTasks() {
 	s.Error(c.Resolve())
 }
 
-func (s *GenerateSuite) TestaddGeneratedProjectToConfig() {
-	cachedProject := projectMaps{}
+func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
+	p := &Project{}
+	err := LoadProjectInto([]byte(sampleProjYml), "", p)
+	cachedProject := cacheProjectData(p)
 	g := sampleGeneratedProject
 	config, err := g.addGeneratedProjectToConfig(sampleProjYml, cachedProject)
 	s.NoError(err)

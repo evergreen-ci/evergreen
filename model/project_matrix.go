@@ -39,7 +39,7 @@ type matrix struct {
 	BatchTime   *int              `yaml:"batchtime"`
 	Stepback    *bool             `yaml:"stepback"`
 	RunOn       parserStringSlice `yaml:"run_on"`
-	Tasks       parserBVTaskUnits     `yaml:"tasks"`
+	Tasks       parserBVTaskUnits `yaml:"tasks"`
 	Rules       []matrixRule      `yaml:"rules"`
 }
 
@@ -403,7 +403,7 @@ type matrixRule struct {
 type ruleAction struct {
 	Set         *axisValue        `yaml:"set"`
 	RemoveTasks parserStringSlice `yaml:"remove_tasks"`
-	AddTasks    parserBVTaskUnits     `yaml:"add_tasks"`
+	AddTasks    parserBVTaskUnits `yaml:"add_tasks"`
 }
 
 // mergeAxisValue overwrites a parserBV's fields based on settings
@@ -503,7 +503,7 @@ func expandParserBVTask(pbvt parserBVTaskUnit, exp util.Expansions) (parserBVTas
 		if err != nil {
 			return parserBVTaskUnit{}, errors.Wrapf(err, "expanding depends_on[%d/%d].status", i, len(pbvt.DependsOn))
 		}
-		newDep.taskSelector, err = expandTaskSelector(d.taskSelector, exp)
+		newDep.TaskSelector, err = expandTaskSelector(d.TaskSelector, exp)
 		if err != nil {
 			return parserBVTaskUnit{}, errors.Wrapf(err, "expanding depends_on[%d/%d]", i, len(pbvt.DependsOn))
 		}
