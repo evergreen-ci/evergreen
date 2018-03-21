@@ -130,22 +130,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return
 	}
 
-	// If somebody passed an --alias
-	if p.Alias != "" {
-		// Check if there's an alias as the default, and if not, ask to save the cl one
-		defaultAlias := conf.FindDefaultAlias(p.Project)
-		if defaultAlias == "" && !p.SkipConfirm &&
-			confirm(fmt.Sprintf("Set %v as the default alias for project '%v'?",
-				p.Alias, p.Project), false) {
-			conf.SetDefaultAlias(p.Project, p.Alias)
-			if err = conf.Write(""); err != nil {
-				fmt.Printf("warning - failed to set default alias: %v\n", err)
-			}
-		}
-	} else {
-		// No --alias was passed, use the default
-		p.Alias = conf.FindDefaultAlias(p.Project)
-	}
+	loadAlias(p, conf)
 
 	// Validate the alias if it exists
 	if p.Alias != "" {
@@ -222,6 +207,28 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 
 	if p.Description == "" && !p.SkipConfirm {
 		p.Description = prompt("Enter a description for this patch (optional):")
+	}
+
+	return
+}
+
+// Sets the patch's alias to either the passed in option or the default
+func loadAlias(p *patchParams, conf *ClientSettings) (err error) {
+	// If somebody passed an --alias
+	if p.Alias != "" {
+		// Check if there's an alias as the default, and if not, ask to save the cl one
+		defaultAlias := conf.FindDefaultAlias(p.Project)
+		if defaultAlias == "" && !p.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default alias for project '%v'?",
+				p.Alias, p.Project), false) {
+			conf.SetDefaultAlias(p.Project, p.Alias)
+			if err = conf.Write(""); err != nil {
+				fmt.Printf("warning - failed to set default alias: %v\n", err)
+			}
+		}
+	} else {
+		// No --alias was passed, use the default
+		p.Alias = conf.FindDefaultAlias(p.Project)
 	}
 
 	return
