@@ -1,4 +1,4 @@
-mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
+mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata, MPA_UI) {
 
   /*********************
    * UTILITY FUNCTIONS *
@@ -89,6 +89,8 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
         var data = {
           build: extracted.build,
           task: extracted.task,
+          taskURL: MPA_UI.TASK_BY_ID({task_id: ctx.taskId}),
+          buildURL: MPA_UI.BUILD_BY_ID({build_id: ctx.buildId}),
           test: item.name,
           threads: +threads,
           speed: speed.ops_per_sec,
@@ -194,6 +196,7 @@ mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata) {
       return items.concat(_.map(build.tasks, function(taskData, taskName) {
         return {
           taskId: taskData.task_id,
+          buildId: build.id,
           taskName: taskName,
           buildName: build.name,
         }

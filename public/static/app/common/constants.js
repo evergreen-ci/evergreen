@@ -25,6 +25,7 @@ mciModule
     // WATERFALL API
     WATERFALL_VERSIONS_ROWS: _.template('{base}/waterfall/{project_id}/versions'),
   })
+
   .constant('API_TASKDATA', {
     BASE: '/plugin/json',
     TASK_BY_ID: _.template('{base}/task/{task_id}/{name}/'),
@@ -33,4 +34,10 @@ mciModule
     TASK_HISTORY: _.template('{base}/history/{task_id}/{name}'),
 
     PROJECT_TAGS: _.template('{base}/tags/'),
+  })
+
+  // Multi Page App User Interface routes
+  .constant('MPA_UI', {
+    BUILD_BY_ID: _.template('/build/{build_id}'),
+    TASK_BY_ID: _.template('/task/{task_id}'),
   })

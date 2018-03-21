@@ -1,4 +1,15 @@
 mciModule.run(function($templateCache) {
+  $templateCache.put('perf-discovery-link',
+    '<div class="ui-grid-cell-contents">' +
+      '<a href="{{grid.appScope.$ctrl.getCellUrl(row, col)}}"' +
+         'target="_blank"' +
+         'rel="noopener"'+
+      '>' +
+        '{{COL_FIELD}}' +
+      '</a>' +
+    '</div>'
+  )
+
   $templateCache.put('perf-discovery-ratio',
     '<div class="ui-grid-cell-contents" style="background: {{color}}">' +
       '{{ratio | percentage | number : 0}}' +
