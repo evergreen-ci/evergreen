@@ -15,7 +15,7 @@ func ReadJSONInto(r io.ReadCloser, data interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "error reading JSON (%s)", string(bytes))
 	}
-	return errors.Wrapf(json.Unmarshal(bytes, data), "error attempting to unmarshal into %T: %s", data, string(bytes))
+	return errors.Wrapf(json.Unmarshal(bytes, data), "error attempting to unmarshal into %T", data)
 }
 
 func WriteJSONInto(fn string, data interface{}) error {

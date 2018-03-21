@@ -188,7 +188,7 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 		return err
 	}
 	if len(md) == 0 {
-		md = nil
+		return errors.New("variant selector must not be empty")
 	}
 	vs.matrixSelector = md
 	return nil

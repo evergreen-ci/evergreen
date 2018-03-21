@@ -117,14 +117,16 @@ func (s *generateSuite) TestMakeJsonOfAllFiles() {
   "thing": "two"
 }
 `)
-	data := makeJsonOfAllFiles([][]byte{thingOne, thingTwo}, nil)
+	data, err := makeJsonOfAllFiles([][]byte{thingOne, thingTwo})
+	s.NoError(err)
 	s.Len(data, 2)
 	jsonBytes, err := json.Marshal(data)
 	s.NoError(err)
 	s.Contains(string(jsonBytes), "one")
 	s.Contains(string(jsonBytes), "two")
 
-	data = makeJsonOfAllFiles([][]byte{thingOne}, nil)
+	data, err = makeJsonOfAllFiles([][]byte{thingOne})
+	s.NoError(err)
 	s.Len(data, 1)
 	jsonBytes, err = json.Marshal(data)
 	s.Contains(string(jsonBytes), "one")
