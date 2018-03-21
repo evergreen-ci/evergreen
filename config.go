@@ -871,22 +871,22 @@ func (c *Settings) ValidateAndDefault() error {
 		catcher.Add(errors.New("Config directory must not be empty"))
 	}
 	if len(c.CredentialsNew) > 0 {
-		if c.Credentials, err = c.CredentialsNew.KvSliceToMap(); err != nil {
+		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing credentials"))
 		}
 	}
 	if len(c.ExpansionsNew) > 0 {
-		if c.Expansions, err = c.ExpansionsNew.KvSliceToMap(); err != nil {
+		if c.Expansions, err = c.ExpansionsNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing expansions"))
 		}
 	}
 	if len(c.KeysNew) > 0 {
-		if c.Keys, err = c.KeysNew.KvSliceToMap(); err != nil {
+		if c.Keys, err = c.KeysNew.Map(); err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing keys"))
 		}
 	}
 	if len(c.PluginsNew) > 0 {
-		tempPlugins, err := c.PluginsNew.KvSliceToMapNested()
+		tempPlugins, err := c.PluginsNew.NestedMap()
 		if err != nil {
 			catcher.Add(errors.Wrap(err, "error parsing plugins"))
 		}

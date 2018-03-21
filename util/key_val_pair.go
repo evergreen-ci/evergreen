@@ -13,7 +13,7 @@ type KeyValuePair struct {
 
 type KeyValuePairSlice []KeyValuePair
 
-func (in KeyValuePairSlice) KvSliceToMap() (map[string]string, error) {
+func (in KeyValuePairSlice) Map() (map[string]string, error) {
 	out := map[string]string{}
 	for _, pair := range in {
 		if _, exists := out[pair.Key]; exists {
@@ -30,7 +30,7 @@ func (in KeyValuePairSlice) KvSliceToMap() (map[string]string, error) {
 	return out, nil
 }
 
-func (in KeyValuePairSlice) KvSliceToMapNested() (map[string]map[string]string, error) {
+func (in KeyValuePairSlice) NestedMap() (map[string]map[string]string, error) {
 	out := map[string]map[string]string{}
 	for _, pair := range in {
 		if _, exists := out[pair.Key]; exists {
@@ -38,7 +38,7 @@ func (in KeyValuePairSlice) KvSliceToMapNested() (map[string]map[string]string, 
 		}
 		switch v := pair.Value.(type) {
 		case KeyValuePairSlice:
-			outMap, err := v.KvSliceToMap()
+			outMap, err := v.Map()
 			if err != nil {
 				return nil, errors.Wrapf(err, "error parsing key '%s'", pair.Key)
 			}
@@ -54,7 +54,7 @@ func (in KeyValuePairSlice) KvSliceToMapNested() (map[string]map[string]string, 
 	return out, nil
 }
 
-func MapToKvSlice(in map[string]string) []KeyValuePair {
+func MakeKeyValuePair(in map[string]string) []KeyValuePair {
 	out := []KeyValuePair{}
 	for k, v := range in {
 		out = append(out, KeyValuePair{Key: k, Value: v})
@@ -62,7 +62,7 @@ func MapToKvSlice(in map[string]string) []KeyValuePair {
 	return out
 }
 
-func MapToKvSliceNested(in map[string]map[string]string) []KeyValuePair {
+func MakeNestedKeyValuePair(in map[string]map[string]string) []KeyValuePair {
 	out := []KeyValuePair{}
 	for k1, v1 := range in {
 		tempKvSlice := []KeyValuePair{}
