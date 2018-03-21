@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -502,7 +501,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.
 				// TODO: progress bars.
-				length, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
+				length := resp.ContentLength
 				sizeLog := ""
 				if length > 0 {
 					sizeLog = fmt.Sprintf(" (%s)", humanize.Bytes(uint64(length)))
