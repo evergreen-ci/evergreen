@@ -225,7 +225,6 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 		Type:        "5",
 		Components:  []string{"6"},
 		Labels:      []string{"7"},
-		// ... other fields
 		Fields: map[string]string{
 			"8":  "9",
 			"10": "11",
