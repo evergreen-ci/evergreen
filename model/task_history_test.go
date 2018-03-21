@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -1132,6 +1133,7 @@ func TestCompareQueryRunTimes(t *testing.T) {
 	systemTypes := []string{TestCommandType, SystemCommandType, SetupCommandType}
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection, version.Collection, testresult.Collection),
 		t, "Error clearing collections")
+	assert.NoError(db.EnsureIndex(testresult.Collection, mgo.Index{Key: []string{"task_id", "task_execution"}}))
 	project := "proj"
 	now := time.Now()
 
