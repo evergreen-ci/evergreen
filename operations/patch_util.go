@@ -130,7 +130,10 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return
 	}
 
-	loadAlias(p, conf)
+	if err := loadAlias(p, conf); err != nil {
+		err = errors.Errorf("error when setting alias")
+		return
+	}
 
 	// Validate the alias if it exists
 	if p.Alias != "" {
