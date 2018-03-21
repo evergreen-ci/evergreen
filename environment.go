@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/queue"
@@ -229,6 +230,8 @@ func (e *envState) persistSettings() error {
 	registeredTypes := []interface{}{
 		map[interface{}]interface{}{},
 		map[string]interface{}{},
+		[]interface{}{},
+		[]util.KeyValuePair{},
 	}
 	err := deepCopy(*e.settings, &copy, registeredTypes)
 	if err != nil {
