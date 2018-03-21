@@ -282,7 +282,12 @@ func TestAddExecutionMigration(t *testing.T) {
 	require.NoError(err, "%+v", info)
 
 	// run a noop migration
-	gen, err := addExecutionToTasksGenerator(env, dbName, 0)
+	args := migrationGeneratorFactoryOptions{
+		db:    dbName,
+		limit: 0,
+		id:    "migration-testresults-legacy-no-execution",
+	}
+	gen, err := addExecutionToTasksGenerator(env, args)
 	assert.NoError(err)
 	assert.NotNil(gen)
 
@@ -310,7 +315,7 @@ func TestAddExecutionMigration(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	gen, err = addExecutionToTasksGenerator(env, dbName, 0)
+	gen, err = addExecutionToTasksGenerator(env, args)
 	assert.NoError(err)
 	assert.NotNil(gen)
 

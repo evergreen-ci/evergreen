@@ -19,6 +19,8 @@ const (
 	eventTypeTheme        = "THEME_CHANGED"
 	eventTypeServiceFlags = "SERVICE_FLAGS_CHANGED"
 	eventTypeValueChanged = "CONFIG_VALUE_CHANGED"
+
+	migrationAdminEventRestructure = "admin-event-restructure"
 )
 
 type eventDataOld struct {
@@ -43,19 +45,19 @@ type configDataChange struct {
 	After  db.Document `bson:"after"`
 }
 
-func adminEventRestructureGenerator(env anser.Environment, dbName string, limit int) (anser.Generator, error) {
+func adminEventRestructureGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const migrationName = "admin_event_restructure"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeAdminEventMigration(dbName)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeAdminEventMigration(args.db)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         dbName,
+			DB:         args.db,
 			Collection: eventCollection,
 		},
-		Limit: limit,
+		Limit: args.limit,
 		Query: db.Document{
 			"r_id":        "",
 			"data.r_type": adminDataType,
@@ -82,7 +84,7 @@ func adminEventRestructureGenerator(env anser.Environment, dbName string, limit 
 				},
 			},
 		},
-		JobID: "migration-admin-event-restructure",
+		JobID: args.id,
 	}
 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil

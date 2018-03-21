@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	projectVarsCollection  = "project_vars"
-	projectAliasCollection = "project_aliases"
+	migrationProjectAliasesToCollection = "project-aliases-to-collection"
+	projectVarsCollection               = "project_vars"
+	projectAliasCollection              = "project_aliases"
 )
 
 type patchDefinition struct {
@@ -21,26 +22,26 @@ type patchDefinition struct {
 	Tags    []string `bson:"tags"`
 }
 
-func projectAliasesToCollectionGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) {
+func projectAliasesToCollectionGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const migrationName = "project_aliases_to_collection"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeProjectAliasMigration(db)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeProjectAliasMigration(args.db)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         db,
+			DB:         args.db,
 			Collection: projectVarsCollection,
 		},
-		Limit: limit,
+		Limit: args.limit,
 		Query: bson.M{
 			"patch_definitions": bson.M{
 				"$exists": true,
 				"$ne":     []interface{}{},
 			},
 		},
-		JobID: "migration-project-aliases-to-collection",
+		JobID: args.id,
 	}
 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil

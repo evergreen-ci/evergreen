@@ -74,6 +74,18 @@ var (
 		}
 		return nil
 	}
+
+	addPositionalMigrationIds = func(c *cli.Context) error {
+		if c.NArg() == 0 {
+			return nil
+		}
+
+		for _, arg := range c.Args() {
+			c.Set(anserMigrationIDFlagName, arg)
+		}
+
+		return nil
+	}
 )
 
 func requireFileExists(name string) cli.BeforeFunc {
