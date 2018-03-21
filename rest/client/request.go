@@ -57,7 +57,7 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 		if err != nil {
 			return nil, err
 		}
-		r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
+		r.Header.Add(evergreen.ContentLengthHeader, strconv.FormatInt(r.ContentLength, 10))
 		r.Body = ioutil.NopCloser(bytes.NewReader(out))
 	}
 	if err != nil {
