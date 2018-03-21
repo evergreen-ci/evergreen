@@ -92,64 +92,64 @@ func makeTaskMigrationFunction(database, collection string) db.MigrationOperatio
 	}
 }
 
-func addExecutionToTasksGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) { //nolint
+func addExecutionToTasksGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { //nolint
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         db,
+			DB:         args.db,
 			Collection: tasksCollection,
 		},
-		Limit: limit,
+		Limit: args.limit,
 		Query: bson.M{
 			"execution": bson.M{"$exists": false},
 		},
-		JobID: "migration-testresults-legacy-no-execution",
+		JobID: args.id,
 	}
 
 	return anser.NewSimpleMigrationGenerator(env, opts, bson.M{"$set": bson.M{"execution": 0}}), nil
 }
 
-func testResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) { // nolint: deadcode, megacheck
+func testResultsGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "tasks_testresults"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(db, tasksCollection)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(args.db, tasksCollection)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         db,
+			DB:         args.db,
 			Collection: tasksCollection,
 		},
-		Limit: limit,
+		Limit: args.limit,
 		Query: bson.M{
 			"test_results.0": bson.M{"$exists": true},
 			"execution":      bson.M{"$exists": true},
 		},
-		JobID:     "migration-testresults-tasks",
+		JobID:     args.id,
 		DependsOn: []string{"migration-testresults-legacy-no-execution"},
 	}
 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
 }
 
-func oldTestResultsGenerator(env anser.Environment, db string, limit int) (anser.Generator, error) { // nolint: deadcode, megacheck
+func oldTestResultsGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) { // nolint: deadcode, megacheck
 	const migrationName = "old_tasks_testresults"
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(db, oldTasksCollection)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeTaskMigrationFunction(args.db, oldTasksCollection)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         db,
+			DB:         args.db,
 			Collection: oldTasksCollection,
 		},
-		Limit: limit,
+		Limit: args.limit,
 		Query: bson.M{
 			"test_results.0": bson.M{"$exists": true},
 			"execution":      bson.M{"$exists": true},
 		},
-		JobID:     "migration-testresults-oldtasks",
+		JobID:     args.id,
 		DependsOn: []string{"migration-testresults-legacy-no-execution"},
 	}
 

@@ -127,7 +127,13 @@ func (s *githubHookMigrationSuite) SetupTest() {
 }
 
 func (s *githubHookMigrationSuite) TestMigration() {
-	gen, err := githubHooksToCollectionGenerator(anser.GetEnvironment(), s.database, 50)
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 50,
+		id:    "migration-github-hooks-to-collection",
+	}
+
+	gen, err := githubHooksToCollectionGenerator(anser.GetEnvironment(), args)
 	s.NoError(err)
 	gen.Run()
 	s.NoError(gen.Error())

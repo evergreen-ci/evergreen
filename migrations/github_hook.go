@@ -12,30 +12,30 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func githubHooksToCollectionGenerator(env anser.Environment, db string, _ int) (anser.Generator, error) {
+func githubHooksToCollectionGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const (
 		projectVarsCollection = "project_vars"
 		migrationName         = "github_hooks_to_collection_generator"
 		githubHookIDKey       = "github_hook_id"
 	)
 
-	if err := env.RegisterManualMigrationOperation(migrationName, makeGithubHooksMigration(db)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationName, makeGithubHooksMigration(args.db)); err != nil {
 		return nil, err
 	}
 
 	opts := model.GeneratorOptions{
 		NS: model.Namespace{
-			DB:         db,
+			DB:         args.db,
 			Collection: projectVarsCollection,
 		},
-		Limit: 50,
+		Limit: args.limit,
 		Query: bson.M{
 			githubHookIDKey: bson.M{
 				"$exists": true,
 				"$ne":     0,
 			},
 		},
-		JobID: "migration-github-hooks-to-collection",
+		JobID: args.id,
 	}
 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil

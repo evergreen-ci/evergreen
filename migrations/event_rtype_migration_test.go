@@ -74,7 +74,13 @@ func (s *eventRTypeMigrationSuite) SetupTest() {
 }
 
 func (s *eventRTypeMigrationSuite) TestMigration() {
-	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), s.database, 50)
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 50,
+		id:    "migration-event-rtype-to-root-alllogs",
+	}
+
+	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
 	gen.Run()
 	s.Require().NoError(gen.Error())

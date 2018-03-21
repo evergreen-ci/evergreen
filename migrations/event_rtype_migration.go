@@ -12,7 +12,7 @@ import (
 func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode
 	nowTime := time.Now()
 
-	return func(env anser.Environment, db string, limit int) (anser.Generator, error) {
+	return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 		const (
 			resourceTypeKey = "r_type"
 			dataKey         = "data"
@@ -21,16 +21,16 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 		var embeddedResourceTypeKey = bsonutil.GetDottedKeyName(dataKey, resourceTypeKey)
 		opts := model.GeneratorOptions{
 			NS: model.Namespace{
-				DB:         db,
+				DB:         args.db,
 				Collection: collection,
 			},
-			Limit: limit,
+			Limit: args.limit,
 			Query: bson.M{
 				resourceTypeKey: bson.M{
 					"$exists": false,
 				},
 			},
-			JobID: "migration-event-rtype-to-root",
+			JobID: args.id,
 		}
 
 		return anser.NewSimpleMigrationGenerator(env, opts, bson.M{

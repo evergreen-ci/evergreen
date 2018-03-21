@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser"
@@ -19,6 +20,7 @@ type Options struct {
 	Target   int
 	Workers  int
 	DryRun   bool
+	IDs      []string
 	Period   time.Duration
 	Database string
 	Session  db.Session
@@ -54,7 +56,13 @@ func (opts Options) Setup(ctx context.Context) (anser.Environment, error) {
 	return env, nil
 }
 
-type migrationGeneratorFactory func(anser.Environment, string, int) (anser.Generator, error)
+type migrationGeneratorFactoryOptions struct {
+	id    string
+	db    string
+	limit int
+}
+
+type migrationGeneratorFactory func(anser.Environment, migrationGeneratorFactoryOptions) (anser.Generator, error)
 
 // Application is where the migrations are registered and defined,
 // before being handed off to another calling environment for
@@ -73,22 +81,48 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		return nil, err
 	}
 
-	generatorFactories := []migrationGeneratorFactory{
-		//addExecutionToTasksGenerator,
-		//oldTestResultsGenerator,
-		//testResultsGenerator,
-		projectAliasesToCollectionGenerator,
-		githubHooksToCollectionGenerator,
-		zeroDateFixGenerator(githubToken),
-		adminEventRestructureGenerator,
+	generatorFactories := map[string]migrationGeneratorFactory{
+		// Early Migrations, disabled because the generator queries are not properly indexed.
+		//
+		// "migration-testresults-legacy-no-execution": addExecutionToTasksGenerator,
+		// "migration-testresults-oldtasks": oldTestResultsGenerator,
+		// "migration-testresults-tasks": testResultsGenerator,
+
+		"migration-project-aliases-to-collection": projectAliasesToCollectionGenerator,
+		"migration-github-hooks-to-collection":    githubHooksToCollectionGenerator,
+		"migration-zero-date-fix":                 zeroDateFixGenerator(githubToken),
+		"migration-admin-event-restructure":       adminEventRestructureGenerator,
+
 		// Waiting until later to run these migrations.
-		//makeEventRTypeMigration(event.AllLogCollection),
-		//makeEventRTypeMigration(event.TaskLogCollection),
+		//
+		// "migration-event-rtype-to-root-alllogs": makeEventRTypeMigration(event.AllLogCollection),
+		// "migration-event-rtype-to-root-tasklog": makeEventRTypeMigration(event.TaskLogCollection),
+
+	}
+	catcher := grip.NewBasicCatcher()
+
+	for _, id := range opts.IDs {
+		if _, ok := generatorFactories[id]; !ok {
+			catcher.Add(errors.Errorf("no migration defined matching id '%s'", id))
+		}
 	}
 
-	catcher := grip.NewBasicCatcher()
-	for _, factory := range generatorFactories {
-		generator, err := factory(env, opts.Database, opts.Limit)
+	if catcher.HasErrors() {
+		return nil, catcher.Resolve()
+	}
+
+	for name, factory := range generatorFactories {
+		if opts.shouldSkipMigration(name) {
+			continue
+		}
+
+		args := migrationGeneratorFactoryOptions{
+			id:    name,
+			db:    opts.Database,
+			limit: opts.Limit,
+		}
+
+		generator, err := factory(env, args)
 		catcher.Add(err)
 		if generator != nil {
 			app.Generators = append(app.Generators, generator)
@@ -104,4 +138,16 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 	}
 
 	return app, nil
+}
+
+func (opts Options) shouldSkipMigration(id string) bool {
+	if len(opts.IDs) == 0 {
+		return false
+	}
+
+	if util.StringSliceContains(opts.IDs, id) {
+		return false
+	}
+
+	return true
 }

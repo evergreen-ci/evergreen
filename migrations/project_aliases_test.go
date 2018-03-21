@@ -75,7 +75,13 @@ func (s *projectAliasMigration) SetupTest() {
 }
 
 func (s *projectAliasMigration) TestMigration() {
-	gen, err := projectAliasesToCollectionGenerator(anser.GetEnvironment(), s.database, 50)
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 50,
+		id:    "migration-project-aliases-to-collection",
+	}
+
+	gen, err := projectAliasesToCollectionGenerator(anser.GetEnvironment(), args)
 	s.NoError(err)
 	gen.Run()
 	s.NoError(gen.Error())
