@@ -40,10 +40,7 @@ variables:
     # correspond to a make target for the build operation.
     name: test
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: get-project
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
@@ -64,10 +61,7 @@ variables:
     # that suite
     name: test
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: get-project
       - func: set-up-credentials
       - func: run-make
         vars: { target: "${task_name}" }
@@ -76,10 +70,7 @@ variables:
     # running mongod started for testing.
     name: test
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: get-project
       - func: set-up-credentials
       - func: set-up-mongodb
       - func: run-make
@@ -106,10 +97,7 @@ variables:
   - &run-smoke-test
     name: smoke
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: get-project
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "set-var set-project-var load-smoke-data" }
@@ -136,13 +124,6 @@ variables:
       - func: run-make
         vars:
           target: "${task_name}"
-  - &run-lint
-    name: test
-    stepback: false
-    tags: ["lint"]
-    commands:
-      - func: run-make
-        vars: { target: "${task_name}" }
   - &version-constants
     nodejs_version: "6.11.1"
 
@@ -150,6 +131,11 @@ variables:
 #              Functions              #
 #######################################
 functions:
+  get-project:
+    command: git.get_project
+    type: setup
+    params:
+      directory: gopath/src/github.com/evergreen-ci/evergreen
   run-make:
     command: shell.exec
     params:
@@ -327,10 +313,7 @@ tasks:
   - name: coverage
     tags: [ "report" ]
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: get-project
       - func: set-up-credentials
       - func: set-up-mongodb
       - func: run-make
@@ -340,10 +323,7 @@ tasks:
           build_env: "EVERGREEN_ALL=true"
   - name: dist-test
     commands:
-      - command: git.get_project
-        type: setup
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: get-project
       - func: run-make
         vars:
           target: "${task_name}"
@@ -365,6 +345,26 @@ tasks:
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
+  - name: generate-lint
+    commands:
+      - func: get-project
+      - func: run-make
+        vars: { target: "${task_name}" }
+      - command: s3.put
+        type: system
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/generate-lint.json
+          remote_file: evergreen/${build_id}-${build_variant}/generate-lint.json
+          bucket: mciuploads
+          content_type: application/json
+          permissions: public-read
+          display_name: generate-lint.json
+      - command: generate.tasks
+        params:
+          files:
+            - gopath/src/github.com/evergreen-ci/evergreen/generate-lint.json
 
   - <<: *run-go-test-suite
     name: js-test
@@ -607,100 +607,6 @@ tasks:
     tags: ["db", "race"]
     name: race-migrations
 
-  # lint tasks
-  - <<: *run-lint
-    name: lint-agent
-  - <<: *run-lint
-    name: lint-alerts
-  - <<: *run-lint
-    name: lint-auth
-  - <<: *run-lint
-    name: lint-operations
-  - <<: *run-lint
-    name: lint-cloud
-  - <<: *run-lint
-    name: lint-command
-  - <<: *run-lint
-    name: lint-db
-  - <<: *run-lint
-    name: lint-evergreen
-  - <<: *run-lint
-    name: lint-hostinit
-  - <<: *run-lint
-    name: lint-migrations
-  - <<: *run-lint
-    name: lint-model
-  - <<: *run-lint
-    name: lint-model-alert
-  - <<: *run-lint
-    name: lint-model-alertrecord
-  - <<: *run-lint
-    name: lint-model-artifact
-  - <<: *run-lint
-    name: lint-model-build
-  - <<: *run-lint
-    name: lint-model-distro
-  - <<: *run-lint
-    name: lint-model-event
-  - <<: *run-lint
-    name: lint-model-grid
-  - <<: *run-lint
-    name: lint-model-host
-  - <<: *run-lint
-    name: lint-model-manifest
-  - <<: *run-lint
-    name: lint-model-patch
-  - <<: *run-lint
-    name: lint-model-task
-  - <<: *run-lint
-    name: lint-model-testresult
-  - <<: *run-lint
-    name: lint-model-testutil
-  - <<: *run-lint
-    name: lint-model-user
-  - <<: *run-lint
-    name: lint-model-version
-  - <<: *run-lint
-    name: lint-monitor
-  - <<: *run-lint
-    name: lint-notify
-  - <<: *run-lint
-    name: lint-plugin
-  - <<: *run-lint
-    name: lint-plugin-builtin-buildbaron
-  - <<: *run-lint
-    name: lint-plugin-builtin-manifest
-  - <<: *run-lint
-    name: lint-plugin-builtin-perfdash
-  - <<: *run-lint
-    name: lint-repotracker
-  - <<: *run-lint
-    name: lint-rest-client
-  - <<: *run-lint
-    name: lint-rest-data
-  - <<: *run-lint
-    name: lint-rest-model
-  - <<: *run-lint
-    name: lint-rest-route
-  - <<: *run-lint
-    name: lint-scheduler
-  - <<: *run-lint
-    name: lint-service
-  - <<: *run-lint
-    name: lint-spawn
-  - <<: *run-lint
-    name: lint-subprocess
-  - <<: *run-lint
-    name: lint-taskrunner
-  - <<: *run-lint
-    name: lint-thirdparty
-  - <<: *run-lint
-    name: lint-units
-  - <<: *run-lint
-    name: lint-util
-  - <<: *run-lint
-    name: lint-validator
-
   # cross compiled test suites
   - <<: *run-xc-test-suite
     tags: ["nodb", "xc", "agent"]
@@ -720,20 +626,6 @@ tasks:
   - <<: *run-xc-test-suite-with-mongodb
     tags: ["db", "xc", "agent"]
     name: xc-util
-
-task_groups:
-  - name: lint-group
-    max_hosts: 4
-    tasks:
-      - .lint
-    setup_group:
-      - command: git.get_project
-        type: system
-        params:
-          directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: set-up-credentials
-    teardown_task:
-      - func: attach-test-results
 
 buildvariants:
   - name: ubuntu1604
@@ -773,12 +665,7 @@ buildvariants:
       - name: ".race"
       - name: ".report"
         stepback: false
-      - name: lint-group
-        stepback: false
-    display_tasks:
-      - name: lint
-        execution_tasks:
-        - ".lint"
+      - name: generate-lint
 
   - name: osx
     display_name: OSX
