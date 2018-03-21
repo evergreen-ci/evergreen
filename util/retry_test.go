@@ -91,20 +91,6 @@ func TestNonRetriableFailure(t *testing.T) {
 	})
 }
 
-//func TestRehttpDelay(t *testing.T) {
-// 	assert := assert.New(t)
-//
-// 	f := rehttpDelay(time.Second, 5)
-// 	b := getBackoff(time.Second, 5)
-//
-// 	for i := 0; i < 5; i++ {
-// 		attempt := rehttp.Attempt{
-// 			Index: i,
-// 		}
-// 		assert.Equal(b.Duration(), f(attempt))
-// 	}
-// }
-
 type mockTransport struct {
 	count         int
 	expectedToken string
@@ -135,12 +121,8 @@ func TestRetryableOauthClient(t *testing.T) {
 	token, err := testConfig.GetGithubOauthToken()
 	assert.NoError(err)
 
-	c, err := GetRetryableHTTPClientForOauth2(token, func(attempt rehttp.Attempt) bool {
-		if attempt.Index == 4 {
-			return false
-		}
-		return true
-	}, rehttpDelay(time.Nanosecond, 5))
+	c, err := GetRetryableHTTPClientForOauth2(token, rehttp.RetryMaxRetries(4),
+		RehttpDelay(time.Nanosecond, 5))
 	defer PutRetryableHTTPClientForOauth2(c)
 	assert.NoError(err)
 

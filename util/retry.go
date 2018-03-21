@@ -75,7 +75,7 @@ func Retry(op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
 	return false, errors.New("unable to complete retry operation")
 }
 
-func rehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
+func RehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
 	backoff := getBackoff(initialSleep, numAttempts)
 	return func(attempt rehttp.Attempt) time.Duration {
 		return backoff.ForAttempt(float64(attempt.Index))
