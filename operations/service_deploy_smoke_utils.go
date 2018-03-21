@@ -68,7 +68,32 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
 	return errors.Wrapf(catcher.Resolve(), "failed to get %d endpoints", catcher.Len())
 }
 
-func checkTaskByCommit(username, key, commit string) error {
+func getLatestGithubCommit() (string, error) {
+	client := util.GetHttpClient()
+	defer util.PutHttpClient(client)
+
+	resp, err := client.Get("https://api.github.com/repos/evergreen-ci/evergreen/git/refs/heads/master")
+	defer resp.Body.Close()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get latest commit from GitHub")
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", errors.Wrap(err, "error reading response body from GitHub")
+	}
+
+	latest := struct {
+		Object struct {
+			Sha string `json:"sha"`
+		} `json:"object"`
+	}{}
+	if err = json.Unmarshal(body, &latest); err != nil {
+		return "", errors.Wrap(err, "error unmarshaling response from GitHub")
+	}
+	return latest.Object.Sha, nil
+}
+
+func checkTaskByCommit(username, key string) error {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)
 
@@ -80,8 +105,16 @@ func checkTaskByCommit(username, key, commit string) error {
 			return errors.New("error getting builds for version")
 		}
 		time.Sleep(10 * time.Second)
-		grip.Infof("checking for a build of %s (%d/30)", commit, i+1)
-		resp, err := client.Get(smokeUrlPrefix + smokeUiPort + "/rest/v2/versions/evergreen_" + commit + "/builds")
+
+		latest, err := getLatestGithubCommit()
+		if err != nil {
+			grip.Error(errors.Wrap(err, "error getting latest GitHub commit"))
+			continue
+		}
+
+		grip.Infof("checking for a build of %s (%d/30)", latest, i+1)
+
+		resp, err := client.Get(smokeUrlPrefix + smokeUiPort + "/rest/v2/versions/evergreen_" + latest + "/builds")
 		if err != nil {
 			grip.Info(err)
 			continue
@@ -169,7 +202,7 @@ OUTER:
 
 func checkTask(client *http.Client, username, key string, builds []apimodels.APIBuild, taskIndex int) (apimodels.APITask, error) {
 	task := apimodels.APITask{}
-	grip.Infof("checking for task", builds[0].Tasks[taskIndex])
+	grip.Infof("checking for task %s", builds[0].Tasks[taskIndex])
 	r, err := http.NewRequest("GET", smokeUrlPrefix+smokeUiPort+"/rest/v2/tasks/"+builds[0].Tasks[taskIndex], nil)
 	if err != nil {
 		return task, errors.Wrap(err, "failed to make request")
