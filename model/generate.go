@@ -115,8 +115,8 @@ func (g *GeneratedProject) AddGeneratedProjectToVersion() error {
 		return errors.Wrap(err, "error creating config from generated config")
 	}
 	v.Config = config
-	if err := version.UpdateOne(version.ById(v.Id), bson.M{"$set": bson.M{version.ConfigKey: config}}); err != nil {
-		return errors.Wrapf(err, "error getting version %s", v.Id)
+	if err := version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{"$set": bson.M{version.ConfigKey: v.Config}}); err != nil {
+		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
 
 	// Save new builds and tasks to the db.

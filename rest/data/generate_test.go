@@ -130,6 +130,13 @@ func TestGenerateTasks(t *testing.T) {
 	require := require.New(t)
 	require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection))
 	defer require.NoError(db.ClearCollections(version.Collection, task.Collection))
+	randomVersion := version.Version{
+		Id:         "random_version",
+		Identifier: "mci",
+		Config:     sampleBaseProject,
+		BuildIds:   []string{"sample_build_id"},
+	}
+	require.NoError(randomVersion.Insert())
 	sampleVersion := version.Version{
 		Id:         "sample_version",
 		Identifier: "mci",
