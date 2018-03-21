@@ -9,6 +9,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const (
+	migrationEventRtypeRestructureAllLogs  = "event-rtype-to-root-alllogs"
+	migrationEventRtypeRestructureTaskLogs = "event-rtype-to-root-tasklogs"
+)
+
 func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode
 	nowTime := time.Now()
 

@@ -17,6 +17,10 @@ const (
 
 	// testResultsCollection is the name of the testresults collection in the database.
 	testResultsCollection = "testresults"
+
+	migrationTestResultsLegacyExecution = "testresults-legacy-no-execution"
+	migrationTestResultsOldTasks        = "testresults-oldtasks"
+	migrationTestResultsTasks           = "testresults-tasks"
 )
 
 // testResult is an element of the embedded test_results array in a task.
@@ -126,7 +130,7 @@ func testResultsGenerator(env anser.Environment, args migrationGeneratorFactoryO
 			"execution":      bson.M{"$exists": true},
 		},
 		JobID:     args.id,
-		DependsOn: []string{"migration-testresults-legacy-no-execution"},
+		DependsOn: []string{migrationTestResultsLegacyExecution},
 	}
 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
@@ -150,7 +154,7 @@ func oldTestResultsGenerator(env anser.Environment, args migrationGeneratorFacto
 			"execution":      bson.M{"$exists": true},
 		},
 		JobID:     args.id,
-		DependsOn: []string{"migration-testresults-legacy-no-execution"},
+		DependsOn: []string{migrationTestResultsLegacyExecution},
 	}
 
 	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil

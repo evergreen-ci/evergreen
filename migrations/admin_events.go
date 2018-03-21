@@ -19,6 +19,8 @@ const (
 	eventTypeTheme        = "THEME_CHANGED"
 	eventTypeServiceFlags = "SERVICE_FLAGS_CHANGED"
 	eventTypeValueChanged = "CONFIG_VALUE_CHANGED"
+
+	migrationAdminEventRestructure = "admin-event-restructure"
 )
 
 type eventDataOld struct {

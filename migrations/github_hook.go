@@ -12,6 +12,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const migrationGithubHooksToCollection = "github-hooks-to-collection"
+
 func githubHooksToCollectionGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 	const (
 		projectVarsCollection = "project_vars"

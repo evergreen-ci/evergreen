@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/pool"
 	"github.com/mongodb/amboy/queue"
@@ -84,20 +85,16 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 	generatorFactories := map[string]migrationGeneratorFactory{
 		// Early Migrations, disabled because the generator queries are not properly indexed.
 		//
-		// "migration-testresults-legacy-no-execution": addExecutionToTasksGenerator,
-		// "migration-testresults-oldtasks": oldTestResultsGenerator,
-		// "migration-testresults-tasks": testResultsGenerator,
+		// migrationTestResultsLegacyExecution: addExecutionToTasksGenerator,
+		// migrationTestResultsOldTasks: oldTestResultsGenerator,
+		// migrationTestResultstasks: testResultsGenerator,
 
-		"migration-project-aliases-to-collection": projectAliasesToCollectionGenerator,
-		"migration-github-hooks-to-collection":    githubHooksToCollectionGenerator,
-		"migration-zero-date-fix":                 zeroDateFixGenerator(githubToken),
-		"migration-admin-event-restructure":       adminEventRestructureGenerator,
-
-		// Waiting until later to run these migrations.
-		//
-		// "migration-event-rtype-to-root-alllogs": makeEventRTypeMigration(event.AllLogCollection),
-		// "migration-event-rtype-to-root-tasklog": makeEventRTypeMigration(event.TaskLogCollection),
-
+		migrationProjectAliasesToCollection:    projectAliasesToCollectionGenerator,
+		migrationGithubHooksToCollection:       githubHooksToCollectionGenerator,
+		migrationZeroDateFix:                   zeroDateFixGenerator(githubToken),
+		migrationAdminEventRestructure:         adminEventRestructureGenerator,
+		migrationEventRtypeRestructureAllLogs:  makeEventRTypeMigration(event.AllLogCollection),
+		migrationEventRtypeRestructureTaskLogs: makeEventRTypeMigration(event.TaskLogCollection),
 	}
 	catcher := grip.NewBasicCatcher()
 

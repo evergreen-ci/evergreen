@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	projectVarsCollection  = "project_vars"
-	projectAliasCollection = "project_aliases"
+	migrationProjectAliasesToCollection = "project-aliases-to-collection"
+	projectVarsCollection               = "project_vars"
+	projectAliasCollection              = "project_aliases"
 )
 
 type patchDefinition struct {

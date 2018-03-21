@@ -15,6 +15,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const migrationZeroDateFix = "zero-date-fix"
+
 func zeroDateFixGenerator(githubToken string) migrationGeneratorFactory {
 	return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 		const (
