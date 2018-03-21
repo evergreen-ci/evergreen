@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/PuerkitoBio/rehttp"
 	"github.com/jpillora/backoff"
 	"github.com/pkg/errors"
 )
@@ -72,4 +73,11 @@ func Retry(op RetriableFunc, attempts int, sleep time.Duration) (bool, error) {
 	}
 
 	return false, errors.New("unable to complete retry operation")
+}
+
+func rehttpDelay(initialSleep time.Duration, numAttempts int) rehttp.DelayFn {
+	backoff := getBackoff(initialSleep, numAttempts)
+	return func(attempt rehttp.Attempt) time.Duration {
+		return backoff.ForAttempt(float64(attempt.Index))
+	}
 }

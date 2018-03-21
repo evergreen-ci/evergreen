@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/rehttp"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )
@@ -60,7 +61,17 @@ func GetHttpClientForOauth2(oauthToken string) (*http.Client, error) {
 	}
 
 	return client, nil
+}
+func GetRetryableHTTPClientForOauth2(oauthToken string, fRetry rehttp.RetryFn, fDelay rehttp.DelayFn) (*http.Client, error) {
+	client, err := GetHttpClientForOauth2(oauthToken)
 
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to oauth client")
+	}
+
+	client.Transport = rehttp.NewTransport(client.Transport, fRetry, fDelay)
+
+	return client, nil
 }
 
 func PutHttpClient(c *http.Client) {
@@ -72,4 +83,8 @@ func PutHttpClientForOauth2(c *http.Client) {
 	oauthTransport := c.Transport.(*oauth2.Transport)
 	c.Transport = oauthTransport.Base
 	PutHttpClient(c)
+}
+func PutRetryableHTTPClientForOauth2(c *http.Client) {
+	c.Transport = c.Transport.(*rehttp.Transport).RoundTripper
+	PutHttpClientForOauth2(c)
 }
