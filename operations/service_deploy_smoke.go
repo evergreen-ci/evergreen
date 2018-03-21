@@ -140,9 +140,9 @@ func smokeRunBinary(exit chan error, name, wd, bin string, cmdParts ...string) e
 func smokeTestEndpoints() cli.Command {
 	const (
 		testFileFlagName = "test-file"
-		commitFlagName   = "commit"
 		userNameFlagName = "username"
 		userKeyFlagName  = "key"
+		checkBuildName   = "check-build"
 	)
 
 	wd, err := os.Getwd()
@@ -158,10 +158,6 @@ func smokeTestEndpoints() cli.Command {
 				Value: filepath.Join(wd, "scripts", "smoke_test.yml"),
 			},
 			cli.StringFlag{
-				Name:  commitFlagName,
-				Usage: "verify a task as run for this commit",
-			},
-			cli.StringFlag{
 				Name:  userNameFlagName,
 				Usage: "username to use with the API",
 			},
@@ -169,11 +165,14 @@ func smokeTestEndpoints() cli.Command {
 				Name:  userKeyFlagName,
 				Usage: "key to use with the API",
 			},
+			cli.BoolFlag{
+				Name:  checkBuildName,
+				Usage: "verify agent has built latest commit",
+			},
 		},
 		Before: mergeBeforeFuncs(setupSmokeTest(err)),
 		Action: func(c *cli.Context) error {
 			testFile := c.String(testFileFlagName)
-			commit := c.String(commitFlagName)
 			username := c.String(userNameFlagName)
 			key := c.String(userKeyFlagName)
 
@@ -187,10 +186,9 @@ func smokeTestEndpoints() cli.Command {
 				return errors.Wrap(err, "error unmarshalling yaml")
 			}
 
-			if commit != "" {
-				return errors.Wrap(checkTaskByCommit(username, key, commit), "check task failed")
+			if c.Bool(checkBuildName) {
+				return errors.Wrap(checkTaskByCommit(username, key), "check task failed")
 			}
-
 			return errors.WithStack(tests.checkEndpoints())
 		},
 	}
