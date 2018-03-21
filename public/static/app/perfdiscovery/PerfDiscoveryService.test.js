@@ -12,32 +12,38 @@ describe('PerfDiscoveryServiceTest', function() {
     var version = {
       builds: {
         buildA: {
+          id: 'baid',
           name: 'buildAName',
           tasks: { taskA: {task_id: 'idA'}, taskB: {task_id: 'idB'}, } },
         buildB: {
+          id: 'bbid',
           name: 'buildBName',
           tasks: { taskC: {task_id: 'idC'}, taskD: {task_id: 'idD'}, } } } }
 
     expect(
       service._extractTasks(version)
     ).toEqual([{
+      buildId: 'baid',
       taskId: 'idA',
       taskName: 'taskA',
       buildName: 'buildAName',
     }, {
+      buildId: 'baid',
       taskId: 'idB',
       taskName: 'taskB',
       buildName: 'buildAName',
     }, {
+      buildId: 'bbid',
       taskId: 'idC',
       taskName: 'taskC',
       buildName: 'buildBName',
     }, {
+      buildId: 'bbid',
       taskId: 'idD',
       taskName: 'taskD',
       buildName: 'buildBName',
     }])
-  })
+})
 
   it('extracts storageEngine from build name', function() {
     expect(
@@ -77,7 +83,9 @@ describe('PerfDiscoveryServiceTest', function() {
         16: {ops_per_sec: 200},
       }
     }
-    var ctx = { buildName: 'b-wt', taskName: 't' }
+    var ctx = {
+      buildName: 'b-wt', taskName: 't', taskId: 'tid', buildId: 'bid'
+    }
     var receiver = {}
 
     service._processItem(item, receiver, ctx)
@@ -87,6 +95,8 @@ describe('PerfDiscoveryServiceTest', function() {
       'b-wt-t-name-8': {
         build: 'b',
         task: 't',
+        buildURL: '/build/bid',
+        taskURL: '/task/tid',
         storageEngine: 'wt',
         test: 'name',
         threads: 8,
@@ -95,6 +105,8 @@ describe('PerfDiscoveryServiceTest', function() {
       'b-wt-t-name-16': {
         build: 'b',
         task: 't',
+        buildURL: '/build/bid',
+        taskURL: '/task/tid',
         storageEngine: 'wt',
         test: 'name',
         threads: 16,
