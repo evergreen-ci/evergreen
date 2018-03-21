@@ -116,14 +116,15 @@ const (
 )
 
 const (
-	AuthTokenCookie   = "mci-token"
-	TaskSecretHeader  = "Task-Secret"
-	HostHeader        = "Host-Id"
-	HostSecretHeader  = "Host-Secret"
-	ContentTypeHeader = "Content-Type"
-	ContentTypeValue  = "application/json"
-	APIUserHeader     = "Api-User"
-	APIKeyHeader      = "Api-Key"
+	AuthTokenCookie     = "mci-token"
+	TaskSecretHeader    = "Task-Secret"
+	HostHeader          = "Host-Id"
+	HostSecretHeader    = "Host-Secret"
+	ContentTypeHeader   = "Content-Type"
+	ContentTypeValue    = "application/json"
+	ContentLengthHeader = "Content-Length"
+	APIUserHeader       = "Api-User"
+	APIKeyHeader        = "Api-Key"
 )
 
 // cloud provider related constants
