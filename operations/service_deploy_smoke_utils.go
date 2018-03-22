@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -73,24 +74,23 @@ func getLatestGithubCommit() (string, error) {
 	defer util.PutHttpClient(client)
 
 	resp, err := client.Get("https://api.github.com/repos/evergreen-ci/evergreen/git/refs/heads/master")
-	defer resp.Body.Close()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get latest commit from GitHub")
 	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "error reading response body from GitHub")
 	}
 
-	latest := struct {
-		Object struct {
-			Sha string `json:"sha"`
-		} `json:"object"`
-	}{}
+	latest := github.Reference{}
 	if err = json.Unmarshal(body, &latest); err != nil {
 		return "", errors.Wrap(err, "error unmarshaling response from GitHub")
 	}
-	return latest.Object.Sha, nil
+	if latest.Object != nil && latest.Object.SHA != nil && *latest.Object.SHA != "" {
+		return *latest.Object.SHA, nil
+	}
+	return "", errors.New("could not find latest commit in response")
 }
 
 func checkTaskByCommit(username, key string) error {
