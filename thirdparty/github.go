@@ -40,7 +40,6 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 	url := attempt.Request.URL.String()
 	if attempt.Response.StatusCode == http.StatusUnauthorized {
 		grip.Error(errors.Errorf("Calling github %s on %s failed: got 'unauthorized' response", attempt.Request.Method, url))
-		return false
 	}
 	if attempt.Response.StatusCode != http.StatusOK {
 		grip.Error(errors.Errorf("Calling github %s on %s got a bad response code: %v", attempt.Request.Method, url, attempt.Response.StatusCode))

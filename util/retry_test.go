@@ -140,3 +140,25 @@ func TestRetryableOauthClient(t *testing.T) {
 	assert.Equal(5, transport.count)
 	assert.Equal(http.StatusOK, resp.StatusCode)
 }
+
+func TestRetryableOauthClient4xxDoesntRetry(t *testing.T) {
+	assert := assert.New(t)
+
+	c, err := GetRetryableHTTPClientForOauth2("token something", rehttp.RetryAll(rehttp.RetryTemporaryErr(), rehttp.RetryMaxRetries(4)),
+		RehttpDelay(time.Nanosecond, 5))
+	defer PutRetryableHTTPClientForOauth2(c)
+	assert.NoError(err)
+
+	transport := &mockTransport{expectedToken: "nope"}
+	oldTransport := c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base
+	defer func() {
+		c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base = oldTransport
+	}()
+	c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base = transport
+
+	resp, err := c.Get("https://example.com")
+	assert.NoError(err)
+	assert.NotNil(resp)
+	assert.Equal(1, transport.count)
+	assert.Equal(http.StatusForbidden, resp.StatusCode)
+}
