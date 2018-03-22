@@ -95,6 +95,7 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		migrationAdminEventRestructure:         adminEventRestructureGenerator,
 		migrationEventRtypeRestructureAllLogs:  makeEventRTypeMigration(event.AllLogCollection),
 		migrationEventRtypeRestructureTaskLogs: makeEventRTypeMigration(event.TaskLogCollection),
+		migrationSetDefaultBranch:              setDefaultBranchMigrationGenerator,
 	}
 	catcher := grip.NewBasicCatcher()
 
