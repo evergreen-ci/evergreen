@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/rehttp"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -114,20 +113,13 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func TestRetryableOauthClient(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestRetryableOauthClient")
-
 	assert := assert.New(t)
-	token, err := testConfig.GetGithubOauthToken()
-	assert.NoError(err)
-
-	c, err := GetRetryableHTTPClientForOauth2(token, rehttp.RetryMaxRetries(4),
+	c, err := GetRetryableHTTPClientForOauth2("token hi", rehttp.RetryMaxRetries(4),
 		RehttpDelay(time.Nanosecond, 5))
 	defer PutRetryableHTTPClientForOauth2(c)
 	assert.NoError(err)
 
-	split := strings.Split(token, " ")
-	transport := &mockTransport{expectedToken: split[1]}
+	transport := &mockTransport{expectedToken: "hi"}
 	oldTransport := c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base
 	defer func() {
 		c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base = oldTransport
