@@ -151,6 +151,9 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, FileNotFoundError{filepath: path}
+	}
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying '%s/%s' for '%s': %v", owner, repo, path, err)
 		grip.Error(errMsg)
@@ -161,10 +164,6 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, FileNotFoundError{filepath: path}
-	}
-
 	if resp.StatusCode != http.StatusOK {
 		respBody, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
