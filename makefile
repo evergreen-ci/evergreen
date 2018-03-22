@@ -34,7 +34,6 @@ distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
-latestUpstreamHash := $(shell git rev-parse master@{upstream})
 ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
@@ -108,7 +107,7 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --runner --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
-	./$< service deploy test-endpoints --commit $(latestUpstreamHash) --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (killall $<; exit 1)
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (killall $<; exit 1)
 	killall $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
