@@ -274,8 +274,8 @@
             ng-hide="toolBar.hidden"
             ng-mouseleave="toolBar.isOpen=false"
             md-direction="left"
-            style="pointer-events:auto">
-            <md-fab-trigger class="align-with-text">
+            style="pointer-events:none">
+            <md-fab-trigger class="align-with-text" style="pointer-events:all">
               <md-button aria-label="menu"
                          ng-mouseenter="toolBar.isOpen=true"
                          class="md-fab md-primary">

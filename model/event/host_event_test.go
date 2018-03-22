@@ -31,7 +31,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			// log some events, sleeping in between to make sure the times are different
 			LogHostCreated(hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostStatusChanged(hostId, evergreen.HostRunning, evergreen.HostTerminated, "user")
+			LogHostStatusChanged(hostId, evergreen.HostRunning, evergreen.HostTerminated, "user", "myLogs")
 			time.Sleep(1 * time.Millisecond)
 			LogHostDNSNameSet(hostId, hostname)
 			time.Sleep(1 * time.Millisecond)
@@ -73,7 +73,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldEqual, evergreen.HostRunning)
 			So(eventData.NewStatus, ShouldEqual, evergreen.HostTerminated)
-			So(eventData.Logs, ShouldBeBlank)
+			So(eventData.Logs, ShouldEqual, "myLogs")
 			So(eventData.Hostname, ShouldBeBlank)
 			So(eventData.TaskId, ShouldBeBlank)
 			So(eventData.TaskPid, ShouldBeBlank)

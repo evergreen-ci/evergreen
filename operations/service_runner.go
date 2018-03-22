@@ -49,7 +49,7 @@ func handcrankRunner() cli.Command {
 		Flags: mergeFlagSlices(addDbSettingsFlags(), serviceConfigFlags(cli.StringFlag{
 			Name: joinFlagNames("runner", "r", "n", "name", "single"),
 		})),
-		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
+		Before: mergeBeforeFuncs(setupRunner()),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			name := c.String("runner")
@@ -82,7 +82,7 @@ func startRunnerService() cli.Command {
 		Name:   "runner",
 		Usage:  "run evergreen background worker",
 		Flags:  mergeFlagSlices(addDbSettingsFlags(), serviceConfigFlags()),
-		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
+		Before: mergeBeforeFuncs(setupRunner()),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			db := parseDB(c)
@@ -143,7 +143,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		sysStatsInterval        = 15 * time.Second
 	)
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, units.PopulateActivationJobs())
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), backgroundStatsInterval, time.Now(), opts,
+		amboy.GroupQueueOperationFactory(units.PopulateActivationJobs(), units.PopulateHostMonitoring(env)))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs())
 

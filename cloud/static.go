@@ -67,7 +67,7 @@ func (staticMgr *staticManager) CanSpawn() (bool, error) {
 func (staticMgr *staticManager) TerminateInstance(ctx context.Context, host *host.Host, user string) error {
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
-		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User)
+		event.LogHostStatusChanged(host.Id, host.Status, evergreen.HostDecommissioned, evergreen.User, "")
 		grip.Debugf("Removing decommissioned %s static host (%s)", host.Distro, host.Host)
 		if err := host.Remove(); err != nil {
 			grip.Errorf("Error removing decommissioned %s static host (%s): %+v",

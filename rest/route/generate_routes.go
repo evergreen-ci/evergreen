@@ -19,6 +19,7 @@ import (
 func getGenerateManager(route string, version int) *RouteManager {
 	h := &generateHandler{}
 	generate := MethodHandler{
+		Authenticator:  &NoAuthAuthenticator{},
 		RequestHandler: h.Handler(),
 		MethodType:     http.MethodPost,
 	}
@@ -42,9 +43,10 @@ func (h *generateHandler) Handler() RequestHandler {
 func (h *generateHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	var err error
 	if h.files, err = parseJson(r); err != nil {
+		failedJson := []byte{}
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
-			Message:    fmt.Sprintf("error reading JSON from body (%s)", err),
+			Message:    fmt.Sprintf("error reading JSON from body (%s):\n%s", err, string(failedJson)),
 		}
 	}
 	vars := mux.Vars(r)

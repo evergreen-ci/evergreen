@@ -100,20 +100,21 @@ func processErrorItem(rec hostRecord, errors errorRecord) string {
 		fmt.Sprintf("Consecutive Failures: %d", errors.count),
 	}
 
+	errorsString := strings.Join(errors.errors, "\n")
+	errorLines := strings.Split(errorsString, "\n")
+	lines = append(lines, "\n\n\t"+strings.Join(errorLines, "\n\t"))
+
 	if rec.provider == evergreen.ProviderNameStatic {
 		env := evergreen.GetEnvironment()
 		queue := env.LocalQueue()
 
 		lines = append(lines, "Action: Disabled Host")
-		err := errors.host.DisablePoisonedHost()
+		err := errors.host.DisablePoisonedHost(errorsString)
 
 		job := units.NewDecoHostNotifyJob(env, errors.host, err,
 			"host encountered consecutive set up failures")
 		grip.Critical(queue.Put(job))
 	}
-
-	errorLines := strings.Split(strings.Join(errors.errors, "\n"), "\n")
-	lines = append(lines, "\n\n\t"+strings.Join(errorLines, "\n\t"))
 
 	return strings.Join(lines, "\n")
 }

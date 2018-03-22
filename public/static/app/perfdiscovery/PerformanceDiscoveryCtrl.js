@@ -4,6 +4,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
+  var grid
 
   vm.revisionSelect = {
     options: [],
@@ -21,8 +22,9 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   // version revision into version drop down
   vm.getVersionOptions = function(query) {
     var opts = vm.revisionSelect.options
-    // 40 is githash length; don't allow user type invalid githash
-    if (query.length == 40 && opts.indexOf(query) == -1) {
+    // 24 is patch id length; 40 is githash length
+    // don't allow user type invalid version identifier
+    if (_.contains([24, 40], query.length) && opts.indexOf(query) == -1) {
       return opts.concat(query)
     }
     return opts
@@ -78,8 +80,20 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     })
   }
 
+  // Returns a predefined URL for given `row` and `col`
+  // Works with build abd task columns only
+  vm.getCellUrl = function(row, col) {
+    return row.entity[{
+      build: 'buildURL',
+      task: 'taskURL',
+    }[col.field]]
+  }
+
   vm.gridOptions = {
     enableFiltering: true,
+    onRegisterApi: function(gridApi) {
+      grid = gridApi.grid;
+    },
     columnDefs: [
       {
         name: 'Link',
@@ -90,6 +104,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       gridUtil.multiselectColDefMixin({
         name: 'Build',
         field: 'build',
+        cellTemplate: 'perf-discovery-link',
       }),
       gridUtil.multiselectColDefMixin({
         name: 'Storage Engine',
@@ -98,6 +113,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       gridUtil.multiselectColDefMixin({
         name: 'Task',
         field: 'task',
+        cellTemplate: 'perf-discovery-link',
       }),
       {
         name: 'Test',

@@ -22,9 +22,10 @@ import (
 
 type githubStatusUpdateSuite struct {
 	suite.Suite
-	patchDoc *patch.Patch
-	buildDoc *build.Build
-	cancel   func()
+	patchDoc   *patch.Patch
+	buildDoc   *build.Build
+	cancel     context.CancelFunc
+	testConfig *evergreen.Settings
 }
 
 func TestGithubStatusUpdate(t *testing.T) {
@@ -258,8 +259,8 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	// this test in the suite will fail after the 1000th time).
 	// It's still useful for manual testing
 	s.T().Skip("Github Status API is limited")
-	testutil.ConfigureIntegrationTest(s.T(), testConfig, "TestWithGithub")
-	evergreen.GetEnvironment().Settings().Credentials = testConfig.Credentials
+	testutil.ConfigureIntegrationTest(s.T(), s.testConfig, "TestWithGithub")
+	evergreen.GetEnvironment().Settings().Credentials = s.testConfig.Credentials
 	evergreen.GetEnvironment().Settings().Ui.Url = "http://example.com"
 
 	s.patchDoc.GithubPatchData.BaseRepo = "sample"

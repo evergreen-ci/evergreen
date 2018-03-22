@@ -23,28 +23,6 @@ import (
 type HostMonitor struct {
 	// will be used to determine what hosts need to be terminated
 	flaggingFuncs []hostFlagger
-
-	// will be used to perform regular checks on hosts
-	monitoringFuncs []hostMonitoringFunc
-}
-
-// run through the list of host monitoring functions. returns any errors that
-// occur while running the monitoring functions
-func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergreen.Settings) error {
-	// used to store any errors that occur
-	catcher := grip.NewBasicCatcher()
-
-	for _, f := range hm.monitoringFuncs {
-		if ctx.Err() != nil {
-			catcher.Add(errors.New("host monitor canceled"))
-			break
-		}
-
-		// continue on error to allow the other monitoring functions to run
-		catcher.Add(f(ctx, settings))
-	}
-
-	return catcher.Resolve()
 }
 
 // run through the list of host flagging functions, finding all hosts that
@@ -188,7 +166,7 @@ func terminateHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		hostBillingEnds = hostBillingEnds.Add(pad)
 	}
 
-	job := units.NewCollectHostIdleDataJob(h, idleTimeStartsAt, hostBillingEnds)
+	job := units.NewCollectHostIdleDataJob(*h, idleTimeStartsAt, hostBillingEnds)
 	if err := env.LocalQueue().Put(job); err != nil {
 		return errors.Wrap(err, "problem queuing host end stats job")
 	}

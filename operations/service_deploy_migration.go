@@ -19,6 +19,7 @@ func deployMigration() cli.Command {
 		Aliases: []string{"migrations", "migrate", "migration"},
 		Usage:   "database migration tool",
 		Flags:   mergeFlagSlices(serviceConfigFlags(), addMigrationRuntimeFlags(), addDbSettingsFlags()),
+		Before:  addPositionalMigrationIds,
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
@@ -36,6 +37,7 @@ func deployMigration() cli.Command {
 				Limit:    c.Int(anserLimitFlagName),
 				DryRun:   c.Bool(anserDryRunFlagName),
 				Workers:  c.Int(anserWorkersFlagName),
+				IDs:      c.StringSlice(anserMigrationIDFlagName),
 				Session:  env.Session(),
 				Database: settings.Database.DB,
 			}

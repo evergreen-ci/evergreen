@@ -23,11 +23,12 @@ const (
 	startTimeFlagName  = "time"
 	limitFlagName      = "limit"
 
-	anserDryRunFlagName  = "dry-run"
-	anserLimitFlagName   = "limit"
-	anserTargetFlagName  = "target"
-	anserWorkersFlagName = "workers"
-	anserPeriodFlagName  = "period"
+	anserDryRunFlagName      = "dry-run"
+	anserLimitFlagName       = "limit"
+	anserTargetFlagName      = "target"
+	anserWorkersFlagName     = "workers"
+	anserPeriodFlagName      = "period"
+	anserMigrationIDFlagName = "id"
 
 	dbUrlFlagName      = "url"
 	dbSslFlagName      = "ssl"
@@ -152,6 +153,10 @@ func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
 			Name:  joinFlagNames(anserTargetFlagName, "t"),
 			Usage: "target number of migrations",
 			Value: 60,
+		},
+		cli.StringSliceFlag{
+			Name:  joinFlagNames(anserMigrationIDFlagName, "i"),
+			Usage: "Specify one or more times to limit to a specific (named) subset of migrations",
 		},
 		cli.IntFlag{
 			Name:  joinFlagNames(anserWorkersFlagName, "j"),

@@ -2,6 +2,39 @@
   height: 100%;
 }
 
+/* Header */
+/* Fix drop down styles (collision) */
+input[type="search"].form-control {
+  box-sizing: inherit;
+  -webkit-box-sizing: inherit;
+}
+
+.perf-discovery-header {
+  margin-top: 5px;
+  padding: 10px;
+  color: #555;
+  font-size: 14px;
+}
+
+.perf-discovery-select {
+  margin-right: 15px;
+}
+
+.perf-discovery-select .ui-select-container {
+  display: inline-block;
+  vertical-align: middle;
+  margin-top: -5px;
+}
+
+.perf-discovery-select-left .ui-select-container {
+  width: 390px;
+}
+
+.perf-discovery-select-right .ui-select-container {
+  width: 300px;
+}
+
+/* Grid */
 .ui-grid-overlay {
   position: absolute;
   top: 20%;
@@ -15,6 +48,7 @@
   margin: 0;
 }
 
+/* SVG */
 /* sane default value */
 line {
   stroke: black;

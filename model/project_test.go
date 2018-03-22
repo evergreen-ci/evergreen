@@ -14,6 +14,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestFindProject(t *testing.T) {
@@ -1022,4 +1023,20 @@ func (s *projectSuite) TestNewPatchTaskIdTable() {
 			Variant:  "test",
 			TaskName: "task2",
 		}])
+}
+
+// TestRoundTripIntermediateProjectWithDependsOn ensures that inlining works correctly in depends_on.
+func (s *projectSuite) TestRoundTripIntermediateProjectWithDependsOn() {
+	projYml := `
+tasks:
+- name: test
+  depends_on:
+    - name: dist-test
+`
+	intermediate, errs := createIntermediateProject([]byte(projYml))
+	s.Len(errs, 0)
+	marshaled, err := yaml.Marshal(intermediate)
+	s.NoError(err)
+	unmarshaled := parserProject{}
+	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }
