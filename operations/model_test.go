@@ -60,7 +60,7 @@ func TestFindDefaultAlias(t *testing.T) {
 func TestSetDefaultAlias(t *testing.T) {
 	assert := assert.New(t)
 
-	// Set the default alias for a project that doesn't have one
+	// Set the default alias for a project
 	conf3 := ClientProjectConf{
 		Name:     "test",
 		Default:  true,
@@ -91,5 +91,24 @@ func TestSetDefaultAlias(t *testing.T) {
 	}
 
 	client3.SetDefaultAlias(p3.Project, p3.Alias)
+	assert.Len(client3.Projects, 1)
 	assert.Equal(client3.Projects[0].Alias, "defaultAlias")
+
+	// If no project is present with the given name, add a new project with the requested alias
+	p4 := &patchParams{
+		Project:     "test2",
+		Variants:    conf3.Variants,
+		Tasks:       conf3.Tasks,
+		Description: "",
+		Alias:       "newDefaultAlias",
+		SkipConfirm: false,
+		Finalize:    false,
+		Large:       false,
+		ShowSummary: false,
+	}
+
+	client3.SetDefaultAlias(p4.Project, p4.Alias)
+	assert.Len(client3.Projects, 2)
+	assert.Equal(client3.Projects[0].Alias, "defaultAlias")
+	assert.Equal(client3.Projects[1].Alias, "newDefaultAlias")
 }
