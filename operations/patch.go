@@ -38,6 +38,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 func Patch() cli.Command {
 	return cli.Command{
 		Name:    "patch",
+		Before:  setPlainLogger,
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to evergreen",
 		Flags:   getPatchFlags(),

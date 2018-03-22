@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -75,9 +76,9 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 			return nil
 		}
 	} else if !p.SkipConfirm && diffData.patchSummary != "" {
-		fmt.Println(diffData.patchSummary)
+		grip.Info(diffData.patchSummary)
 		if diffData.log != "" {
-			fmt.Println(diffData.log)
+			grip.Info(diffData.log)
 		}
 
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
@@ -106,8 +107,8 @@ func (p *patchParams) createPatch(ac *legacyClient, conf *ClientSettings, diffDa
 		return err
 	}
 
-	fmt.Println("Patch successfully created.")
-	fmt.Print(patchDisp)
+	grip.Info("Patch successfully created.")
+	grip.Info(patchDisp)
 	return nil
 }
 
@@ -120,7 +121,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 			!p.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", p.Project), true) {
 			conf.SetDefaultProject(p.Project)
 			if err = conf.Write(""); err != nil {
-				fmt.Printf("warning - failed to set default project: %v\n", err)
+				grip.Warningf("warning - failed to set default project: %v\n", err)
 			}
 		}
 	}
@@ -131,7 +132,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 	}
 
 	if err = loadAlias(p, conf); err != nil {
-		fmt.Printf("warning - failed to set default alias: %v\n", err)
+		grip.Warningf("warning - failed to set default alias: %v\n", err)
 	}
 
 	// Validate the alias if it exists
@@ -178,7 +179,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 				p.Variants, p.Project), false) {
 			conf.SetDefaultVariants(p.Project, p.Variants...)
 			if err = conf.Write(""); err != nil {
-				fmt.Printf("warning - failed to set default variants: %v\n", err)
+				grip.Warningf("warning - failed to set default variants: %v\n", err)
 			}
 		}
 	}
@@ -198,7 +199,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 				p.Tasks, p.Project), false) {
 			conf.SetDefaultTasks(p.Project, p.Tasks...)
 			if err := conf.Write(""); err != nil {
-				fmt.Printf("warning - failed to set default tasks: %v\n", err)
+				grip.Warningf("warning - failed to set default tasks: %v\n", err)
 			}
 		}
 	}
