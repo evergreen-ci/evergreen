@@ -131,7 +131,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return
 	}
 
-	if err = loadAlias(p, conf); err != nil {
+	if err = p.loadAlias(conf); err != nil {
 		grip.Warningf("warning - failed to set default alias: %v\n", err)
 	}
 
@@ -212,7 +212,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 }
 
 // Sets the patch's alias to either the passed in option or the default
-func loadAlias(p *patchParams, conf *ClientSettings) error {
+func (p *patchParams) loadAlias(conf *ClientSettings) error {
 	// If somebody passed an --alias
 	if p.Alias != "" {
 		// Check if there's an alias as the default, and if not, ask to save the cl one
