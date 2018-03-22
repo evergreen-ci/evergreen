@@ -80,11 +80,12 @@ var (
 			return nil
 		}
 
+		catcher := grip.NewSimpleCatcher()
 		for _, arg := range c.Args() {
-			c.Set(anserMigrationIDFlagName, arg)
+			catcher.Add(c.Set(anserMigrationIDFlagName, arg))
 		}
 
-		return nil
+		return catcher.Resolve()
 	}
 )
 

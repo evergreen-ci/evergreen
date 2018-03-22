@@ -17,7 +17,10 @@ const (
 
 	// testResultsCollection is the name of the testresults collection in the database.
 	testResultsCollection = "testresults"
+)
 
+//nolint: deadcode, megacheck
+const (
 	migrationTestResultsLegacyExecution = "testresults-legacy-no-execution"
 	migrationTestResultsOldTasks        = "testresults-oldtasks"
 	migrationTestResultsTasks           = "testresults-tasks"
