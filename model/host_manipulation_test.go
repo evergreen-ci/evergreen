@@ -17,7 +17,6 @@ import (
 func TestHostDocumentConsistency(t *testing.T) {
 	assert := assert.New(t)
 	const hostName = "hostName"
-	const staticProvider = "static"
 	const secret = "iamasecret"
 	const agentRevision = "12345"
 	const distroName = "testStaticDistro"
@@ -53,7 +52,7 @@ func TestHostDocumentConsistency(t *testing.T) {
 			Id:                    hostName + hostInterval,
 			Host:                  hostName + hostInterval,
 			Distro:                staticTestDistro,
-			Provider:              staticProvider,
+			Provider:              evergreen.HostTypeStatic,
 			CreationTime:          now,
 			Secret:                secret,
 			AgentRevision:         agentRevision,
@@ -72,7 +71,7 @@ func TestHostDocumentConsistency(t *testing.T) {
 		assert.NotNil(hostFromDB)
 		assert.Equal(hostName+hostInterval, hostFromDB.Id)
 		assert.Equal(hostName+hostInterval, hostFromDB.Host)
-		assert.Equal(staticProvider, hostFromDB.Provider)
+		assert.Equal(evergreen.HostTypeStatic, hostFromDB.Provider)
 		assert.Equal(distroName+distroInterval, hostFromDB.Distro.Id)
 		assert.Equal(secret, hostFromDB.Secret)
 		assert.Equal(agentRevision, hostFromDB.AgentRevision)
