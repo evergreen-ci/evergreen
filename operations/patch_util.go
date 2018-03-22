@@ -130,9 +130,8 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 		return
 	}
 
-	if err := loadAlias(p, conf); err != nil {
-		err = errors.Errorf("error when setting alias")
-		return
+	if err = loadAlias(p, conf); err != nil {
+		fmt.Printf("warning - failed to set default alias: %v\n", err)
 	}
 
 	// Validate the alias if it exists
@@ -216,7 +215,7 @@ func (p *patchParams) validatePatchCommand(ctx context.Context, conf *ClientSett
 }
 
 // Sets the patch's alias to either the passed in option or the default
-func loadAlias(p *patchParams, conf *ClientSettings) (err error) {
+func loadAlias(p *patchParams, conf *ClientSettings) error {
 	// If somebody passed an --alias
 	if p.Alias != "" {
 		// Check if there's an alias as the default, and if not, ask to save the cl one
@@ -225,8 +224,8 @@ func loadAlias(p *patchParams, conf *ClientSettings) (err error) {
 			confirm(fmt.Sprintf("Set %v as the default alias for project '%v'?",
 				p.Alias, p.Project), false) {
 			conf.SetDefaultAlias(p.Project, p.Alias)
-			if err = conf.Write(""); err != nil {
-				fmt.Printf("warning - failed to set default alias: %v\n", err)
+			if err := conf.Write(""); err != nil {
+				return err
 			}
 		}
 	} else {
@@ -234,7 +233,7 @@ func loadAlias(p *patchParams, conf *ClientSettings) (err error) {
 		p.Alias = conf.FindDefaultAlias(p.Project)
 	}
 
-	return
+	return nil
 }
 
 // Returns an error if the diff is greater than the system limit, or if it's above the large
