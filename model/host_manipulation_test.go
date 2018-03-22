@@ -1,6 +1,8 @@
 package model
 
 import (
+	"math/rand"
+	"strconv"
 	"testing"
 	"time"
 
@@ -9,21 +11,77 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHostDocumentConsistency(t *testing.T) {
-	const hostName = "host1.test.10gen.cc"
+	assert := assert.New(t)
+	const hostName = "hostName"
 	const staticProvider = "static"
 	const secret = "iamasecret"
 	const agentRevision = "12345"
 	const distroName = "testStaticDistro"
+	const numHosts = 100
+	const numDistros = 10
+	const hostsPerDistro = numHosts / numDistros
 	now := time.Now()
 
-	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestHostDocumentConsistency")
-	assert := assert.New(t)
+	assert.NoError(db.Clear(distro.Collection))
+	assert.NoError(db.Clear(host.Collection))
 
+	// test 100 hosts in 10 distros to make sure they match afterwards
+	for i := 0; i < numHosts; i++ {
+		hostInterval := strconv.Itoa(i)
+		distroInterval := strconv.Itoa(i / hostsPerDistro)
+		hosts := []cloud.StaticHost{}
+		for j := (i / hostsPerDistro * hostsPerDistro); j < ((i/hostsPerDistro + 1) * hostsPerDistro); j++ {
+			hosts = append(hosts, cloud.StaticHost{Name: hostName + strconv.Itoa(j)})
+		}
+		shuffledHosts := []cloud.StaticHost{}
+		for _, idx := range rand.Perm(len(hosts)) {
+			shuffledHosts = append(shuffledHosts, hosts[idx])
+		}
+		staticTestDistro := distro.Distro{
+			Id:       distroName + distroInterval,
+			Provider: evergreen.ProviderNameStatic,
+			ProviderSettings: &map[string]interface{}{
+				"hosts": shuffledHosts,
+			},
+		}
+		_ = staticTestDistro.Insert()
+		referenceHost := &host.Host{
+			Id:                    hostName + hostInterval,
+			Host:                  hostName + hostInterval,
+			Distro:                staticTestDistro,
+			Provider:              staticProvider,
+			CreationTime:          now,
+			Secret:                secret,
+			AgentRevision:         agentRevision,
+			LastCommunicationTime: now,
+		}
+		assert.NoError(referenceHost.Insert())
+	}
+
+	assert.NoError(UpdateStaticHosts())
+
+	for i := 0; i < numHosts; i++ {
+		hostInterval := strconv.Itoa(i)
+		distroInterval := strconv.Itoa(i / hostsPerDistro)
+		hostFromDB, err := host.FindOne(host.ById(hostName + hostInterval))
+		assert.NoError(err)
+		assert.NotNil(hostFromDB)
+		assert.Equal(hostName+hostInterval, hostFromDB.Id)
+		assert.Equal(hostName+hostInterval, hostFromDB.Host)
+		assert.Equal(staticProvider, hostFromDB.Provider)
+		assert.Equal(distroName+distroInterval, hostFromDB.Distro.Id)
+		assert.Equal(secret, hostFromDB.Secret)
+		assert.Equal(agentRevision, hostFromDB.AgentRevision)
+		assert.WithinDuration(now, hostFromDB.LastCommunicationTime, 1*time.Millisecond)
+		assert.False(hostFromDB.UserHost)
+	}
+
+	// test that upserting a host does not clear out fields not set by UpdateStaticHosts
+	const staticHostName = "staticHost"
 	staticTestDistro := &distro.Distro{
 		Id:       distroName,
 		Provider: evergreen.ProviderNameStatic,
@@ -31,39 +89,6 @@ func TestHostDocumentConsistency(t *testing.T) {
 			"hosts": []cloud.StaticHost{cloud.StaticHost{Name: hostName}},
 		},
 	}
-
-	assert.NoError(db.Clear(distro.Collection))
-	assert.NoError(db.Clear(host.Collection))
-	assert.NoError(staticTestDistro.Insert())
-
-	referenceHost := &host.Host{
-		Id:                    hostName,
-		Host:                  hostName,
-		Distro:                *staticTestDistro,
-		Provider:              staticProvider,
-		CreationTime:          now,
-		Secret:                secret,
-		AgentRevision:         agentRevision,
-		LastCommunicationTime: now,
-	}
-	assert.NoError(referenceHost.Insert())
-	assert.NoError(UpdateStaticHosts())
-
-	hostFromDB, err := host.FindOne(host.ById(hostName))
-	assert.NoError(err)
-	assert.NotNil(hostFromDB)
-
-	assert.Equal(hostName, hostFromDB.Id)
-	assert.Equal(hostName, hostFromDB.Host)
-	assert.Equal(staticProvider, hostFromDB.Provider)
-	assert.Equal(distroName, hostFromDB.Distro.Id)
-	assert.Equal(secret, hostFromDB.Secret)
-	assert.Equal(agentRevision, hostFromDB.AgentRevision)
-	assert.WithinDuration(now, hostFromDB.LastCommunicationTime, 1*time.Millisecond)
-	assert.False(hostFromDB.UserHost)
-
-	// test that upserting a host does not clear out fields not set by UpdateStaticHosts
-	const staticHostName = "staticHost"
 	staticReferenceHost := host.Host{
 		Id:           staticHostName,
 		User:         "user",
@@ -80,9 +105,9 @@ func TestHostDocumentConsistency(t *testing.T) {
 	staticReferenceHost.LastCommunicationTime = time.Now()
 	staticReferenceHost.AgentRevision = "agent_rev"
 	assert.NoError(staticReferenceHost.Insert())
-	_, err = staticTestHost.Upsert()
+	_, err := staticTestHost.Upsert()
 	assert.NoError(err)
-	hostFromDB, err = host.FindOne(host.ById(staticHostName))
+	hostFromDB, err := host.FindOne(host.ById(staticHostName))
 	assert.NoError(err)
 	assert.NotNil(hostFromDB)
 	assert.Equal(staticHostName, hostFromDB.Id)
