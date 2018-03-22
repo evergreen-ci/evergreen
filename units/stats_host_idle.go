@@ -41,9 +41,9 @@ func newHostIdleJob() *collecHostIdleDataJob {
 	return j
 }
 
-func NewCollectHostIdleDataJob(h host.Host, startTime, finishTime time.Time) amboy.Job {
+func NewCollectHostIdleDataJob(h *host.Host, startTime, finishTime time.Time) amboy.Job {
 	j := newHostIdleJob()
-	j.host = &h
+	j.host = h
 	j.HostID = h.Id
 	j.StartTime = startTime
 	j.FinishTime = finishTime

@@ -45,12 +45,12 @@ func newTaskStartJob() *collectTaskStartDataJob {
 	return j
 }
 
-func NewCollectTaskStartDataJob(t *task.Task, h host.Host) amboy.Job {
+func NewCollectTaskStartDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j := newTaskStartJob()
 	j.TaskID = t.Id
 	j.HostID = h.Id
 	j.task = t
-	j.host = &h
+	j.host = h
 	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskStartDataJobName, j.TaskID, j.HostID, job.GetNumber()))
 	return j
 }

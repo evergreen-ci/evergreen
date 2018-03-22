@@ -166,7 +166,7 @@ func terminateHost(ctx context.Context, env evergreen.Environment, h *host.Host,
 		hostBillingEnds = hostBillingEnds.Add(pad)
 	}
 
-	job := units.NewCollectHostIdleDataJob(*h, idleTimeStartsAt, hostBillingEnds)
+	job := units.NewCollectHostIdleDataJob(h, idleTimeStartsAt, hostBillingEnds)
 	if err := env.LocalQueue().Put(job); err != nil {
 		return errors.Wrap(err, "problem queuing host end stats job")
 	}
