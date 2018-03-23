@@ -52,7 +52,7 @@ func uiStatus(task waterfallTask) string {
 			return evergreen.TaskInactive
 		}
 	default:
-		return ""
+		return task.Status
 	}
 }
 
