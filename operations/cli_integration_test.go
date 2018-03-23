@@ -136,7 +136,7 @@ func TestCLIFetchSource(t *testing.T) {
 			finalize:    false,
 		}
 
-		client, err := NewClientSetttings(testSetup.settingsFilePath)
+		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
@@ -226,7 +226,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		}).Upsert()
 		So(err, ShouldBeNil)
 
-		client, err := NewClientSetttings(testSetup.settingsFilePath)
+		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
 		_, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
@@ -327,7 +327,7 @@ func TestCLIFunctions(t *testing.T) {
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
 
-		client, err := NewClientSetttings(testSetup.settingsFilePath)
+		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
 		ac, _, err := client.getLegacyClients()
 		So(err, ShouldBeNil)

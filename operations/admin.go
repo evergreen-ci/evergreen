@@ -86,7 +86,7 @@ func adminSetBanner() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
@@ -127,7 +127,7 @@ func adminServiceChange(disable bool) cli.ActionFunc {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		conf, err := NewClientSetttings(confPath)
+		conf, err := NewClientSettings(confPath)
 		if err != nil {
 			return errors.Wrap(err, "problem loading configuration")
 		}
@@ -195,7 +195,7 @@ func doViewSettings() cli.ActionFunc {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		conf, err := NewClientSetttings(confPath)
+		conf, err := NewClientSettings(confPath)
 		if err != nil {
 			return errors.Wrap(err, "problem loading configuration")
 		}
@@ -244,7 +244,7 @@ func updateSettings() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
@@ -291,7 +291,7 @@ func listEvents() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
@@ -328,7 +328,7 @@ func revert() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}

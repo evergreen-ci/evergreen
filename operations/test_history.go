@@ -156,7 +156,7 @@ func TestHistory() cli.Command {
 			}
 
 			// set up clients
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}

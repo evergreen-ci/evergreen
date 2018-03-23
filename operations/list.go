@@ -80,7 +80,7 @@ func List() cli.Command {
 }
 
 func listProjects(ctx context.Context, confPath string) error {
-	conf, err := NewClientSetttings(confPath)
+	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
@@ -121,7 +121,7 @@ func listProjects(ctx context.Context, confPath string) error {
 }
 
 func listVariants(ctx context.Context, confPath, project, filename string) error {
-	conf, err := NewClientSetttings(confPath)
+	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
@@ -171,7 +171,7 @@ func listVariants(ctx context.Context, confPath, project, filename string) error
 }
 
 func listTasks(ctx context.Context, confPath, project, filename string) error {
-	conf, err := NewClientSetttings(confPath)
+	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
@@ -209,7 +209,7 @@ func listTasks(ctx context.Context, confPath, project, filename string) error {
 }
 
 func listAliases(ctx context.Context, confPath, project, filename string) error {
-	conf, err := NewClientSetttings(confPath)
+	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
@@ -243,7 +243,7 @@ func listAliases(ctx context.Context, confPath, project, filename string) error 
 }
 
 func listDistros(ctx context.Context, confPath string, onlyUserSpawnable bool) error {
-	conf, err := NewClientSetttings(confPath)
+	conf, err := NewClientSettings(confPath)
 	if err != nil {
 		return errors.Wrap(err, "problem loading configuration")
 	}
