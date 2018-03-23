@@ -2,9 +2,11 @@ package event
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestRecentHostStatusFinder(t *testing.T) {
@@ -48,4 +50,44 @@ func TestRecentHostStatusFinder(t *testing.T) {
 	assert.False(AllRecentHostEventsMatchStatus("none", 2, "two"))
 	assert.False(AllRecentHostEventsMatchStatus("none", 1, "two"))
 	assert.False(AllRecentHostEventsMatchStatus("none", 1, "one"))
+
+	assert.NoError(db.Clear(AllLogCollection))
+	data := []bson.M{
+		{
+			"_id":           bson.NewObjectId(),
+			TimestampKey:    time.Now(),
+			ResourceIdKey:   "test",
+			ResourceTypeKey: ResourceTypeHost,
+			TypeKey:         EventTaskFinished,
+			DataKey: bson.M{
+				ResourceTypeKey:   ResourceTypeHost,
+				hostDataStatusKey: "one",
+			},
+		},
+		{
+			"_id":         bson.NewObjectId(),
+			TimestampKey:  time.Now(),
+			ResourceIdKey: "test",
+			TypeKey:       EventTaskFinished,
+			DataKey: bson.M{
+				ResourceTypeKey:   ResourceTypeHost,
+				hostDataStatusKey: "one",
+			},
+		},
+		{
+			"_id":           bson.NewObjectId(),
+			TimestampKey:    time.Now(),
+			ResourceIdKey:   "test",
+			ResourceTypeKey: ResourceTypeHost,
+			TypeKey:         EventTaskFinished,
+			DataKey: bson.M{
+				hostDataStatusKey: "one",
+			},
+		},
+	}
+
+	for i := range data {
+		assert.NoError(db.Insert(AllLogCollection, data[i]))
+	}
+	assert.True(AllRecentHostEventsMatchStatus("test", 3, "one"))
 }

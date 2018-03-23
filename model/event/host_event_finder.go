@@ -7,12 +7,12 @@ import (
 )
 
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
+	or := eitherResourceTypeKeyIs(ResourceTypeHost)
+	or[TypeKey] = EventTaskFinished
+	or[ResourceIdKey] = hostId
+
 	pipeline := []bson.M{
-		{"$match": bson.M{
-			TypeKey:         EventTaskFinished,
-			ResourceIdKey:   hostId,
-			ResourceTypeKey: ResourceTypeHost,
-		}},
+		{"$match": or},
 		{"$sort": bson.M{TimestampKey: -1}},
 		{"$limit": n},
 		{"$group": bson.M{
