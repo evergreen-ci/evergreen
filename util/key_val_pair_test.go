@@ -21,7 +21,6 @@ func TestKvPairSuite(t *testing.T) {
 func (s *KvPairSuite) SetupSuite() {
 	s.kvSlice = KeyValuePairSlice{
 		{Key: "key1", Value: "value1"},
-		{Key: "key2", Value: "value2"},
 	}
 	s.kvSliceNested = KeyValuePairSlice{
 		{Key: "key3", Value: KeyValuePairSlice{
@@ -30,7 +29,6 @@ func (s *KvPairSuite) SetupSuite() {
 	}
 	s.testMap = map[string]string{
 		"key1": "value1",
-		"key2": "value2",
 	}
 	s.testMapNested = map[string]map[string]string{
 		"key3": map[string]string{
