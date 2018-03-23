@@ -49,6 +49,7 @@ func (tr *TaskRunner) Run(ctx context.Context) error {
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 
 	grip.Info(message.Fields{
 		"runner":     RunnerName,
