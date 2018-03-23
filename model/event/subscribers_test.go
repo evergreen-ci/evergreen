@@ -16,7 +16,7 @@ func TestSubscribers(t *testing.T) {
 	targetTicket := "BF-1234"
 	subs := []Subscriber{
 		{
-			Type: "github_pull_request",
+			Type: GithubPullRequestSubscriberType,
 			Target: &GithubPullRequestSubscriber{
 				Owner:    "evergreen-ci",
 				Repo:     "evergreen",
@@ -25,22 +25,22 @@ func TestSubscribers(t *testing.T) {
 			},
 		},
 		{
-			Type: "evergreen-webhook",
+			Type: EvergreenWebhookSubscriberType,
 			Target: &WebhookSubscriber{
 				URL:    "https://example.com",
 				Secret: []byte("hi"),
 			},
 		},
 		{
-			Type:   "email",
+			Type:   EmailSubscriberType,
 			Target: &email,
 		},
 		{
-			Type:   "jira-issue",
+			Type:   JIRAIssueSubscriberType,
 			Target: &targetProject,
 		},
 		{
-			Type:   "jira-comment",
+			Type:   JIRACommentSubscriberType,
 			Target: &targetTicket,
 		},
 	}

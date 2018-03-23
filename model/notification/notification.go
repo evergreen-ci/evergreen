@@ -77,7 +77,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	}
 
 	if err := temp.Payload.Unmarshal(n.Payload); err != nil {
-		return errors.Errorf("error unmarshalling payload")
+		return errors.Wrap(err, "error unmarshalling payload")
 	}
 
 	n.ID = temp.ID
@@ -102,7 +102,7 @@ func (n *Notification) MarkSent() error {
 	}
 
 	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
-		return errors.New("failed to update notification")
+		return errors.Wrap(err, "failed to update notification")
 	}
 
 	return nil
@@ -131,7 +131,7 @@ func (n *Notification) MarkError(sendErr error) error {
 
 	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
 		n.Error = ""
-		return errors.New("failed to add error to notification")
+		return errors.Wrap(err, "failed to add error to notification")
 	}
 
 	return nil
