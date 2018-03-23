@@ -57,10 +57,12 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	var started int
-	for _, h := range startQueue {
+	for idx := range startQueue {
 		if ctx.Err() != nil {
 			return errors.New("hostinit run canceled")
 		}
+
+		h := &startQueue[idx]
 
 		if h.UserHost {
 			// pass:
@@ -104,7 +106,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			continue
 		}
 
-		_, err = cloudManager.SpawnHost(ctx, &h)
+		_, err = cloudManager.SpawnHost(ctx, h)
 		if err != nil {
 			// we should maybe try and continue-on-error
 			// here, if we get many errors, but the chance
