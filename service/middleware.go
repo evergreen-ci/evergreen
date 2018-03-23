@@ -385,7 +385,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				if err != nil {
 					grip.Infof("Error looking up user %s: %+v", dbUser.Username(), err)
 				} else {
-					r = setRequestUser(r, dbUser).WithContext(ctx)
+					r = setRequestUser(r, dbUser)
 				}
 			}
 		} else if len(authDataAPIKey) > 0 {
