@@ -201,6 +201,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(responseRef.Branch) == 0 {
+		http.Error(w, fmt.Sprintf("no branch specified", err), http.StatusBadRequest)
+		return
+	}
+
 	errs := []string{}
 	for i, pd := range responseRef.ProjectAliases {
 		if strings.TrimSpace(pd.Alias) == "" {
