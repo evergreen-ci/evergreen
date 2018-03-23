@@ -47,7 +47,7 @@ type unmarshalNotification struct {
 func (n *Notification) SetBSON(raw bson.Raw) error {
 	temp := unmarshalNotification{}
 	if err := raw.Unmarshal(&temp); err != nil {
-		return err
+		return errors.Wrap(err, "can't unmarshal notification")
 	}
 
 	switch temp.Subscriber.Type {
