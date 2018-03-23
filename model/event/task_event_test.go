@@ -46,7 +46,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 
 			eventData, ok := event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -58,7 +58,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldEqual, hostId)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -70,7 +70,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldEqual, hostId)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -82,7 +82,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldBeBlank)
@@ -94,7 +94,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(event.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
 			So(eventData.Status, ShouldEqual, evergreen.TaskSucceeded)

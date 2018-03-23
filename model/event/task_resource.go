@@ -18,13 +18,11 @@ const (
 // capture aggregated system metrics (cpu, memory, network) for the
 // system as a whole.
 type TaskSystemResourceData struct {
-	ResourceType string              `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	SystemInfo   *message.SystemInfo `bson:"system_info" json:"system_info" yaml:"system_info"`
+	SystemInfo *message.SystemInfo `bson:"system_info" json:"system_info" yaml:"system_info"`
 }
 
 var (
-	TaskSystemResourceDataSysInfoKey      = bsonutil.MustHaveTag(TaskSystemResourceData{}, "SystemInfo")
-	TaskSystemResourceDataResourceTypeKey = bsonutil.MustHaveTag(TaskSystemResourceData{}, "ResourceType")
+	TaskSystemResourceDataSysInfoKey = bsonutil.MustHaveTag(TaskSystemResourceData{}, "SystemInfo")
 
 	SysInfoCPUKey        = bsonutil.MustHaveTag(message.SystemInfo{}, "CPU")
 	SysInfoCPUPercentKey = bsonutil.MustHaveTag(message.SystemInfo{}, "CPUPercent")
@@ -109,19 +107,14 @@ var (
 	SysInfoDiskIOCountersSerialNumberKey     = bsonutil.MustHaveTag(message.SystemInfo{}.IOStat, "SerialNumber")
 )
 
-// IsValid is part of the Data interface used in the conversion of
-// Event documents from to TaskSystemResourceData.
-func (d TaskSystemResourceData) IsValid() bool {
-	return d.ResourceType == EventTaskSystemInfo
-}
-
 // LogTaskSystemData saves a SystemInfo object to the event log for a
 // task.
 func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 	event := EventLogEntry{
-		ResourceId: taskId,
-		Timestamp:  info.Base.Time,
-		EventType:  EventTaskSystemInfo,
+		ResourceType: EventTaskSystemInfo,
+		ResourceId:   taskId,
+		Timestamp:    info.Base.Time,
+		EventType:    EventTaskSystemInfo,
 	}
 
 	if event.Timestamp.IsZero() {
@@ -130,8 +123,7 @@ func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 	}
 
 	data := TaskSystemResourceData{
-		ResourceType: EventTaskSystemInfo,
-		SystemInfo:   info,
+		SystemInfo: info,
 	}
 	event.Data = data
 
@@ -143,13 +135,11 @@ func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 // in a type that implements the event.Data interface. ProcessInfo structs
 // represent system resource usage information for a single process (PID).
 type TaskProcessResourceData struct {
-	ResourceType string                 `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	Processes    []*message.ProcessInfo `bson:"processes" json:"processes"`
+	Processes []*message.ProcessInfo `bson:"processes" json:"processes"`
 }
 
 var (
-	TaskProcessResourceDataSysInfoKey      = bsonutil.MustHaveTag(TaskProcessResourceData{}, "Processes")
-	TaskProcessResourceDataResourceTypeKey = bsonutil.MustHaveTag(TaskProcessResourceData{}, "ResourceType")
+	TaskProcessResourceDataSysInfoKey = bsonutil.MustHaveTag(TaskProcessResourceData{}, "Processes")
 
 	ProcInfoPidKey     = bsonutil.MustHaveTag(message.ProcessInfo{}, "Pid")
 	ProcInfoParentKey  = bsonutil.MustHaveTag(message.ProcessInfo{}, "Parent")
@@ -197,12 +187,6 @@ var (
 	ProcInfoMemInfoStatSwapKey = bsonutil.MustHaveTag(message.ProcessInfo{}.Memory, "Swap")
 )
 
-// IsValid is part of the Data interface used in the conversion of
-// Event documents from to TaskProcessResourceData..
-func (d TaskProcessResourceData) IsValid() bool {
-	return d.ResourceType == EventTaskProcessInfo
-}
-
 // LogTaskProcessData saves a slice of ProcessInfo objects to the
 // event log under the specified task.
 func LogTaskProcessData(taskId string, procs []*message.ProcessInfo) {
@@ -220,15 +204,15 @@ func LogTaskProcessData(taskId string, procs []*message.ProcessInfo) {
 	}
 
 	data := TaskProcessResourceData{
-		ResourceType: EventTaskProcessInfo,
-		Processes:    procs,
+		Processes: procs,
 	}
 
 	event := EventLogEntry{
-		Timestamp:  ts,
-		ResourceId: taskId,
-		EventType:  EventTaskProcessInfo,
-		Data:       data,
+		ResourceType: EventTaskProcessInfo,
+		Timestamp:    ts,
+		ResourceId:   taskId,
+		EventType:    EventTaskProcessInfo,
+		Data:         data,
 	}
 
 	grip.Error(message.NewErrorWrap(NewDBEventLogger(TaskLogCollection).LogEvent(&event),

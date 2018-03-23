@@ -3,6 +3,7 @@ package event
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,50 +39,14 @@ func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
 	}
 }
 
-func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
-	logger := NewDBEventLogger(AllLogCollection)
-	for k, v := range eventRegistry {
-		event := EventLogEntry{
-			ResourceId: "TEST1",
-			EventType:  "TEST2",
-			Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-			Data:       v(),
-		}
-		found, rTypeTag := findResourceTypeIn(event.Data)
-		s.True(found)
-		s.Equal(k, rTypeTag)
-		if e, ok := event.Data.(*rawAdminEventData); ok {
-			// sad violin is sad. bson.Raw cannot be empty, so
-			// we set the Kind to 0x0A, which is a BSON null
-			e.Changes.Before = bson.Raw{
-				Kind: 0x0A,
-			}
-			e.Changes.After = bson.Raw{
-				Kind: 0x0A,
-			}
-		}
-
-		s.Equal("TEST1", event.ResourceId)
-		s.Equal("TEST2", event.EventType)
-		s.NoError(logger.LogEvent(&event))
-		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
-		s.NoError(err)
-		s.Require().Len(fetchedEvents, 1)
-		s.True(fetchedEvents[0].Data.IsValid())
-		s.IsType(v(), fetchedEvents[0].Data)
-		s.NotNil(fetchedEvents[0].Data)
-		s.NoError(db.ClearCollections(AllLogCollection))
-	}
-}
-
 // resource_type in data should be copied to root document
-const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 // resource_type in root document
 const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 // resource_type in both
-const expectedJSON3 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON3 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
@@ -105,13 +70,13 @@ func (s *eventSuite) TestWithRealData() {
 
 	// unmarshaller works with r_type in the embedded document set
 	data := bson.M{
-		idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
-		TimestampKey:   date,
-		ResourceIdKey:  "macos.example.com",
-		TypeKey:        "HOST_TASK_FINISHED",
-		processedAtKey: date,
+		idKey:           bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
+		TimestampKey:    date,
+		ResourceIdKey:   "macos.example.com",
+		TypeKey:         "HOST_TASK_FINISHED",
+		processedAtKey:  date,
+		ResourceTypeKey: "HOST",
 		DataKey: bson.M{
-			ResourceTypeKey:   "HOST",
 			"t_id":            "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
 			hostDataStatusKey: "success",
 		},
@@ -129,8 +94,8 @@ func (s *eventSuite) TestWithRealData() {
 		s.IsType(&HostEventData{}, entries[0].Data)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
-		s.True(found)
-		s.Equal("HOST", tag)
+		s.False(found)
+		s.Empty(tag)
 
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
@@ -163,7 +128,7 @@ func (s *eventSuite) TestWithRealData() {
 		s.IsType(&HostEventData{}, entries[0].Data)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
-		s.True(found)
+		s.False(found)
 		s.Empty(tag)
 
 		var bytes []byte
@@ -198,8 +163,8 @@ func (s *eventSuite) TestWithRealData() {
 		s.Equal("HOST", entries[0].ResourceType)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
-		s.True(found)
-		s.Equal("HOST", tag)
+		s.False(found)
+		s.Empty(tag)
 
 		var bytes []byte
 		bytes, err := json.Marshal(entries[0])
@@ -233,8 +198,8 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 		found, rTypeTag := findResourceTypeIn(event)
 
 		t := reflect.TypeOf(event)
-		s.True(found, `'%s' does not have a bson:"r_type,omitempty" tag`, t.String())
-		s.Equal(k, rTypeTag, "'%s''s r_type does not match the registry key", t.String())
+		s.False(found, `'%s' has a bson:"r_type,omitempty" tag, but should not`, t.String())
+		s.Empty(rTypeTag)
 
 		// ensure all fields have bson and json tags
 		elem := t.Elem()
@@ -317,10 +282,11 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
-		ResourceId: "TEST1",
-		EventType:  "TEST2",
-		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:       NewEventFromType(ResourceTypeHost),
+		ResourceType: ResourceTypeHost,
+		ResourceId:   "TEST1",
+		EventType:    "TEST2",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeHost),
 	}
 	processed, ptime := event.Processed()
 	s.False(processed)
@@ -347,53 +313,21 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.True(ptime.After(startTime))
 }
 
-func (s *eventSuite) TestQueryWithBothRTypes() {
-	data := []bson.M{
-		{
-			resourceTypeKey: "test",
-			DataKey:         bson.M{},
-		},
-		{
-			DataKey: bson.M{
-				resourceTypeKey: "test",
-			},
-		},
-		{
-			resourceTypeKey: "test",
-			DataKey: bson.M{
-				resourceTypeKey: "somethingelse",
-			},
-		},
-	}
-
-	for i := range data {
-		s.NoError(db.Insert(AllLogCollection, data[i]))
-	}
-
-	out := []bson.M{}
-	s.NoError(db.FindAllQ(AllLogCollection, db.Query(eitherResourceTypeKeyIs("test")), &out))
-
-	s.Len(out, 3)
-}
-
 func (s *eventSuite) TestFindUnprocessedEvents() {
 	data := []bson.M{
 		{
-			DataKey: bson.M{
-				resourceTypeKey: ResourceTypeHost,
-			},
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
 		},
 		{
-			processedAtKey: time.Time{},
-			DataKey: bson.M{
-				resourceTypeKey: ResourceTypeHost,
-			},
+			processedAtKey:  time.Time{},
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
 		},
 		{
-			processedAtKey: time.Now(),
-			DataKey: bson.M{
-				resourceTypeKey: ResourceTypeHost,
-			},
+			processedAtKey:  time.Now(),
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
 		},
 	}
 	for i := range data {
@@ -408,4 +342,49 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		s.Zero(ptime)
 		s.False(processed)
 	})
+}
+
+// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
+// If found, this function returns true, and the value of that field
+// If not, this function returns false. If it the struct had "r_type" (without
+// omitempty), it will return that field's value, otherwise it returns an
+// empty string
+func findResourceTypeIn(data interface{}) (bool, string) {
+	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
+
+	if data == nil {
+		return false, ""
+	}
+
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
+		if len(bsonTag) == 0 {
+			continue
+		}
+
+		if fieldType.Type.Kind() != reflect.String {
+			return false, ""
+		}
+
+		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
+			continue
+		}
+
+		structData := v.Field(i).String()
+		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
+	}
+
+	return false, ""
 }

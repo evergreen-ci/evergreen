@@ -8,10 +8,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func embeddedResourceTypeKey() string {
-	return bsonutil.GetDottedKeyName(DataKey, resourceTypeKey)
-}
-
 // UnprocessedEvents returns a bson.M query to fetch all unprocessed events
 func UnprocessedEvents() bson.M {
 	return bson.M{
@@ -23,14 +19,7 @@ func UnprocessedEvents() bson.M {
 
 func eitherResourceTypeKeyIs(key string) bson.M {
 	return bson.M{
-		"$or": []bson.M{
-			{
-				embeddedResourceTypeKey(): key,
-			},
-			{
-				resourceTypeKey: key,
-			},
-		},
+		resourceTypeKey: key,
 	}
 }
 

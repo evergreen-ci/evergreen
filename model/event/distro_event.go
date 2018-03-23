@@ -18,24 +18,18 @@ const (
 
 // DistroEventData implements EventData.
 type DistroEventData struct {
-	// necessary for IsValid
-	ResourceType string      `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	DistroId     string      `bson:"d_id,omitempty" json:"d_id,omitempty"`
-	UserId       string      `bson:"u_id,omitempty" json:"u_id,omitempty"`
-	Data         interface{} `bson:"dstr,omitempty" json:"dstr,omitempty"`
-}
-
-func (d DistroEventData) IsValid() bool {
-	return d.ResourceType == ResourceTypeDistro
+	DistroId string      `bson:"d_id,omitempty" json:"d_id,omitempty"`
+	UserId   string      `bson:"u_id,omitempty" json:"u_id,omitempty"`
+	Data     interface{} `bson:"dstr,omitempty" json:"dstr,omitempty"`
 }
 
 func LogDistroEvent(distroId string, eventType string, eventData DistroEventData) {
-	eventData.ResourceType = ResourceTypeDistro
 	event := EventLogEntry{
-		ResourceId: distroId,
-		Timestamp:  time.Now(),
-		EventType:  eventType,
-		Data:       eventData,
+		ResourceId:   distroId,
+		Timestamp:    time.Now(),
+		EventType:    eventType,
+		Data:         eventData,
+		ResourceType: ResourceTypeDistro,
 	}
 
 	if err := NewDBEventLogger(AllLogCollection).LogEvent(&event); err != nil {

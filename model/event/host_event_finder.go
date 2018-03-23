@@ -9,9 +9,9 @@ import (
 func getRecentStatusesForHost(hostId string, n int) (int, []string) {
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			TypeKey:       EventTaskFinished,
-			ResourceIdKey: hostId,
-			bsonutil.GetDottedKeyName(DataKey, hostDataResourceTypeKey): ResourceTypeHost,
+			TypeKey:         EventTaskFinished,
+			ResourceIdKey:   hostId,
+			ResourceTypeKey: ResourceTypeHost,
 		}},
 		{"$sort": bson.M{TimestampKey: -1}},
 		{"$limit": n},

@@ -1,8 +1,6 @@
 package event
 
 import (
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
@@ -21,20 +19,15 @@ type EventLogEntry struct {
 	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
 
-	Timestamp  time.Time `bson:"ts" json:"timestamp"`
-	ResourceId string    `bson:"r_id" json:"resource_id"`
-	EventType  string    `bson:"e_type" json:"event_type"`
-	Data       Data      `bson:"data" json:"data"`
+	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
+	ResourceId string      `bson:"r_id" json:"resource_id"`
+	EventType  string      `bson:"e_type" json:"event_type"`
+	Data       interface{} `bson:"data" json:"data"`
 }
 
 // Type returns the resource type (i.e. event data type). It will reflect into
 // the Data interface if required.
 func (e *EventLogEntry) Type() string {
-	if len(e.ResourceType) == 0 {
-		_, rtype := findResourceTypeIn(e.Data)
-		return rtype
-	}
-
 	return e.ResourceType
 }
 
@@ -72,40 +65,19 @@ var (
 
 const resourceTypeKey = "r_type"
 
-type Data interface {
-	IsValid() bool
-}
-
 func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	temp := unmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
-	e.ResourceType = temp.ResourceType
-	if len(e.ResourceType) == 0 {
-		// Try and fetch r_type in the data subdoc
-		rawD := bson.RawD{}
-		if err := temp.Data.Unmarshal(&rawD); err != nil {
-			return errors.Wrap(err, "can't unmarshal raw event data")
-		}
-
-		for i := range rawD {
-			if rawD[i].Name == resourceTypeKey {
-				if err := rawD[i].Value.Unmarshal(&e.ResourceType); err != nil {
-					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
-				}
-				break
-			}
-		}
-	}
-	if len(e.ResourceType) == 0 {
+	if len(temp.ResourceType) == 0 {
 		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
-	e.Data = NewEventFromType(e.ResourceType)
+	e.Data = NewEventFromType(temp.ResourceType)
 	if e.Data == nil {
-		return errors.Errorf("unknown resource type '%s'", e.ResourceType)
+		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")
@@ -116,51 +88,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	e.ResourceId = temp.ResourceId
 	e.EventType = temp.EventType
 	e.ProcessedAt = temp.ProcessedAt
+	e.ResourceType = temp.ResourceType
 
 	return nil
-}
-
-// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
-// If found, this function returns true, and the value of that field
-// If not, this function returns false. If it the struct had "r_type" (without
-// omitempty), it will return that field's value, otherwise it returns an
-// empty string
-func findResourceTypeIn(data interface{}) (bool, string) {
-	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
-
-	if data == nil {
-		return false, ""
-	}
-
-	v := reflect.ValueOf(data)
-	t := reflect.TypeOf(data)
-
-	if t.Kind() == reflect.Ptr {
-		v = v.Elem()
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return false, ""
-	}
-
-	for i := 0; i < v.NumField(); i++ {
-		fieldType := t.Field(i)
-		bsonTag := fieldType.Tag.Get("bson")
-		if len(bsonTag) == 0 {
-			continue
-		}
-
-		if fieldType.Type.Kind() != reflect.String {
-			return false, ""
-		}
-
-		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
-			continue
-		}
-
-		structData := v.Field(i).String()
-		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
-	}
-
-	return false, ""
 }

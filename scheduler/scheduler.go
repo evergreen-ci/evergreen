@@ -321,7 +321,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	for d, t := range schedulerEvents {
 		event.LogSchedulerEvent(event.SchedulerEventData{
-			ResourceType:  event.ResourceTypeScheduler,
 			TaskQueueInfo: t,
 			DistroId:      d,
 		})

@@ -26,16 +26,12 @@ func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if event.Data == nil {
 		return errors.New("event log entry cannot have nil Data")
 	}
+	if len(event.ResourceType) == 0 {
+		return errors.New("event log entry has no r_type")
+	}
 	if !event.ID.Valid() {
 		event.ID = bson.NewObjectId()
 	}
-
-	found, rType := findResourceTypeIn(event.Data)
-	if !found {
-		return errors.New("event log data has no r_type")
-	}
-
-	event.ResourceType = rType
 	return db.Insert(l.collection, event)
 }
 
