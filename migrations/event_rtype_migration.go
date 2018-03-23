@@ -15,10 +15,11 @@ const (
 	migrationEventRtypeRestructureTaskLogs = "event-rtype-to-root-tasklogs"
 )
 
-const migrationTime = "21 Oct 15 16:29 PDT"
+const migrationTime = "2015-10-21T16:29:00-07:00"
 
 func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode
-	bttf, err := time.Parse(time.RFC822, migrationTime)
+	loc, _ := time.LoadLocation("UTC")
+	bttf, err := time.ParseInLocation(time.RFC3339, migrationTime, loc)
 	if err != nil {
 		return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 			return nil, errors.Wrap(err, "time is invalid")

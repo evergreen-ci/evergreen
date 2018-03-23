@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/anser"
 	anserdb "github.com/mongodb/anser/db"
 	"github.com/stretchr/testify/suite"
@@ -97,10 +96,11 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 	out := []bson.M{}
 	s.Require().NoError(db.FindAllQ(allLogCollection, db.Q{}, &out))
 	s.Len(out, 3)
-	expectedTime, err := time.Parse(time.RFC822, migrationTime)
+	location, err := time.LoadLocation("UTC")
+	s.NoError(err)
+	expectedTime, err := time.ParseInLocation(time.RFC3339, migrationTime, location)
 	s.NoError(err)
 	s.NotZero(expectedTime)
-	pp.Println(expectedTime.String())
 
 	for _, e := range out {
 		eventData, ok := e["data"]
