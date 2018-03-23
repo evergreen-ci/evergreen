@@ -11,8 +11,6 @@ import (
 var testConfig = testutil.TestConfig()
 
 const (
-	commitsURL = "https://api.github.com/repos/deafgoat/mci-test/commits"
-
 	patchText = `
 diff --git a/test.txt b/test.txt
 index 4897035..09740ad 100644
@@ -40,15 +38,6 @@ index 0000000..e69de29
 
 func init() {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
-
-func TestGetGithubCommits(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetGithubCommits")
-	assert := assert.New(t)
-
-	githubCommits, _, err := GetGithubCommits("", commitsURL)
-	assert.NoError(err)
-	assert.Len(githubCommits, 3)
 }
 
 func TestGetPatchSummaries(t *testing.T) {
