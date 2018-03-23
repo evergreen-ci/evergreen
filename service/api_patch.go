@@ -172,7 +172,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, repoOwner, repo, githash)
@@ -286,7 +286,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 		p.PatchedConfig = string(projectYamlBytes)
-		_, err = model.FinalizePatch(p, evergreen.PatchVersionRequester, githubOauthToken)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

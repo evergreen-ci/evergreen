@@ -64,7 +64,7 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		Branch:      projectRef.Branch,
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	// populate modules

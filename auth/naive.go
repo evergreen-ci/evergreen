@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"net/http"
@@ -25,7 +26,7 @@ func NewNaiveUserManager(naiveAuthConfig *evergreen.NaiveAuthConfig) (*NaiveUser
 // GetUserByToken does a find by creating a temporary token from the index of the user on the list,
 // the email of the user and a hash of the username and password, checking it against the token string
 // and returning a User if there is a match.
-func (b *NaiveUserManager) GetUserByToken(token string) (User, error) {
+func (b *NaiveUserManager) GetUserByToken(ctx context.Context, token string) (User, error) {
 	for i, user := range b.users {
 		//check to see if token exists
 		possibleToken := fmt.Sprintf("%v:%v:%v", i, user.Email, md5.Sum([]byte(user.Username+user.Password)))

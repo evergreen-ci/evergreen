@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -206,7 +207,11 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		if projCtx.Patch.IsGithubPRPatch() {
 			requester = evergreen.GithubPRRequester
 		}
-		ver, err := model.FinalizePatch(projCtx.Patch, requester, githubOauthToken)
+
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		ver, err := model.FinalizePatch(ctx, projCtx.Patch, requester, githubOauthToken)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))

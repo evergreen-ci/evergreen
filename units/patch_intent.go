@@ -147,7 +147,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	canFinalize := true
 	switch j.IntentType {
 	case patch.CliIntentType:
-		catcher.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
+		catcher.Add(j.buildCliPatchDoc(ctx, patchDoc, githubOauthToken))
 
 	case patch.GithubIntentType:
 		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, githubOauthToken)
@@ -240,7 +240,7 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 	}
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+		if _, err := model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
@@ -320,7 +320,7 @@ func doGithubRequest(client *http.Client, req *http.Request, accept string) (str
 	return string(bytes), nil
 }
 
-func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
 	defer j.intent.SetProcessed()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
@@ -330,7 +330,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,

@@ -54,8 +54,8 @@ func NewGithubUserManager(g *evergreen.GithubAuthConfig) (*GithubUserManager, er
 // If there are Authorized Users, it checks the authorized usernames against the GitHub user's login
 // If there is no match and there is an organization it checks the user's organizations against
 // the UserManager's Authorized organization string.
-func (gum *GithubUserManager) GetUserByToken(token string) (User, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+func (gum *GithubUserManager) GetUserByToken(ctx context.Context, token string) (User, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	user, isMember, err := thirdparty.GetGithubUser(ctx, token, gum.AuthorizedOrganization)
@@ -133,7 +133,7 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWrit
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
 		githubResponse, err := thirdparty.GithubAuthenticate(ctx, code, gum.ClientId, gum.ClientSecret)

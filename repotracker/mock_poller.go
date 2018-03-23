@@ -1,6 +1,8 @@
 package repotracker
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model"
 )
 
@@ -36,11 +38,11 @@ func (d *mockRepoPoller) clearError() (err error) {
 	return err
 }
 
-func (d *mockRepoPoller) GetChangedFiles(commitRevision string) ([]string, error) {
+func (d *mockRepoPoller) GetChangedFiles(ctx context.Context, commitRevision string) ([]string, error) {
 	return nil, nil
 }
 
-func (d *mockRepoPoller) GetRemoteConfig(revision string) (*model.Project, error) {
+func (d *mockRepoPoller) GetRemoteConfig(ctx context.Context, revision string) (*model.Project, error) {
 	d.ConfigGets++
 	if d.nextError != nil {
 		return nil, d.clearError()

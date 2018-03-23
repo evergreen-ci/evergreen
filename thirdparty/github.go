@@ -488,7 +488,7 @@ func GetGithubUser(ctx context.Context, token string, requiredOrg string) (*Gith
 
 	var isMember bool
 	if len(requiredOrg) > 0 {
-		isMember, _, err = client.Organizations.IsMember(context.TODO(), requiredOrg, *user.Login)
+		isMember, _, err = client.Organizations.IsMember(ctx, requiredOrg, *user.Login)
 		if err != nil {
 			return nil, false, errors.Wrapf(err, "Could check if user was org member")
 		}

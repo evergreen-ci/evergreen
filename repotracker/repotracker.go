@@ -1,6 +1,7 @@
 package repotracker
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -41,10 +42,10 @@ type RepoTracker struct {
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
 	// the given revision.
-	GetRemoteConfig(revision string) (*model.Project, error)
+	GetRemoteConfig(ctx context.Context, revision string) (*model.Project, error)
 
 	// Fetches a list of all filepaths modified by a given revision.
-	GetChangedFiles(revision string) ([]string, error)
+	GetChangedFiles(ctx context.Context, revision string) ([]string, error)
 
 	// Fetches all changes since the 'revision' specified - with the most recent
 	// revision appearing as the first element in the slice.
@@ -72,7 +73,7 @@ func (p projectConfigError) Error() string {
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
-func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) error {
+func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRevisionsToFetch int) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
@@ -148,7 +149,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 
 	if len(revisions) > 0 {
 		var lastVersion *version.Version
-		lastVersion, err = repoTracker.StoreRevisions(revisions)
+		lastVersion, err = repoTracker.StoreRevisions(ctx, revisions)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message": "problem sorting revisions for repository",
@@ -318,7 +319,7 @@ func sanityCheckOrderNum(revOrderNum int, projectId string) error {
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.
 // This function is idempotent with regard to storing the same version multiple times.
-func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newestVersion *version.Version, err error) {
+func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []model.Revision) (newestVersion *version.Version, err error) {
 	defer func() {
 		if newestVersion != nil {
 			// Fetch the updated version doc, so that we include buildvariants in the result
@@ -367,7 +368,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 			// this will get caught at the top level where it's logged as an alert.
 			panic(err)
 		}
-		project, err := repoTracker.GetProjectConfig(revision)
+		project, err := repoTracker.GetProjectConfig(ctx, revision)
 		if err != nil {
 			projectError, isProjectError := err.(projectConfigError)
 			if isProjectError {
@@ -414,7 +415,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 
 		// "Ignore" a version if all changes are to ignored files
 		if len(project.Ignore) > 0 {
-			filenames, err := repoTracker.GetChangedFiles(revision)
+			filenames, err := repoTracker.GetChangedFiles(ctx, revision)
 			if err != nil {
 				return nil, errors.Wrap(err, "error checking GitHub for ignored files")
 			}
@@ -443,14 +444,14 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 // returning a remote config if the project references a remote repository
 // configuration file - via the Identifier. Otherwise it defaults to the local
 // project file. An erroneous project file may be returned along with an error.
-func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Project, error) {
+func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision string) (*model.Project, error) {
 	projectRef := repoTracker.ProjectRef
 	if projectRef.LocalConfig != "" {
 		// return the Local config from the project Ref.
 		p, err := model.FindProject("", projectRef)
 		return p, err
 	}
-	project, err := repoTracker.GetRemoteConfig(revision)
+	project, err := repoTracker.GetRemoteConfig(ctx, revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:

@@ -221,7 +221,7 @@ func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, pr
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
+func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
 	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
@@ -236,7 +236,7 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		return nil, errors.WithStack(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)

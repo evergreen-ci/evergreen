@@ -20,8 +20,7 @@ type GithubRepositoryPoller struct {
 
 // NewGithubRepositoryPoller constructs and returns a pointer to a
 //GithubRepositoryPoller struct
-func NewGithubRepositoryPoller(projectRef *model.ProjectRef,
-	oauthToken string) *GithubRepositoryPoller {
+func NewGithubRepositoryPoller(projectRef *model.ProjectRef, oauthToken string) *GithubRepositoryPoller {
 	return &GithubRepositoryPoller{
 		ProjectRef: projectRef,
 		OauthToken: oauthToken,
@@ -51,8 +50,9 @@ func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision 
 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
-func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision string) (projectConfig *model.Project, err error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, projectFileRevision string) (projectConfig *model.Project, err error) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	// find the project configuration file for the given repository revision
@@ -81,7 +81,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(projectFileRevision s
 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
-func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(commitRevision string) ([]string, error) {
+func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, commitRevision string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	defer cancel()
 
