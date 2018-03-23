@@ -6,6 +6,7 @@ import (
 	"github.com/mongodb/anser"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/anser/model"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -14,8 +15,15 @@ const (
 	migrationEventRtypeRestructureTaskLogs = "event-rtype-to-root-tasklogs"
 )
 
+const migrationTime = "21 Oct 15 16:29 PDT"
+
 func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode
-	nowTime := time.Now()
+	bttf, err := time.Parse(time.RFC822, migrationTime)
+	if err != nil {
+		return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
+			return nil, errors.Wrap(err, "time is invalid")
+		}
+	}
 
 	return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 		const (
@@ -24,6 +32,9 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 			processedAtKey  = "processed_at"
 		)
 		var embeddedResourceTypeKey = bsonutil.GetDottedKeyName(dataKey, resourceTypeKey)
+		notExists := bson.M{
+			"$exists": false,
+		}
 		opts := model.GeneratorOptions{
 			NS: model.Namespace{
 				DB:         args.db,
@@ -31,16 +42,18 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 			},
 			Limit: args.limit,
 			Query: bson.M{
-				resourceTypeKey: bson.M{
+				processedAtKey: bson.M{
 					"$exists": false,
+					"$ne":     bttf,
 				},
+				resourceTypeKey: notExists,
 			},
 			JobID: args.id,
 		}
 
 		return anser.NewSimpleMigrationGenerator(env, opts, bson.M{
 			"$set": bson.M{
-				processedAtKey: nowTime,
+				processedAtKey: bttf,
 			},
 			"$rename": bson.M{
 				embeddedResourceTypeKey: resourceTypeKey,
