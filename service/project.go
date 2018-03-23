@@ -202,7 +202,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(responseRef.Branch) == 0 {
-		http.Error(w, fmt.Sprintf("no branch specified", err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("no branch specified %v", err), http.StatusBadRequest)
 		return
 	}
 
