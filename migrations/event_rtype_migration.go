@@ -32,9 +32,7 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 			processedAtKey  = "processed_at"
 		)
 		var embeddedResourceTypeKey = bsonutil.GetDottedKeyName(dataKey, resourceTypeKey)
-		notExists := bson.M{
-			"$exists": false,
-		}
+
 		opts := model.GeneratorOptions{
 			NS: model.Namespace{
 				DB:         args.db,
@@ -46,7 +44,9 @@ func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //no
 					"$exists": false,
 					"$ne":     bttf,
 				},
-				resourceTypeKey: notExists,
+				resourceTypeKey: bson.M{
+					"$exists": false,
+				},
 			},
 			JobID: args.id,
 		}
