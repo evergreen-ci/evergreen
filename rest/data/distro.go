@@ -62,7 +62,7 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
 	// DistroCost model.
 	dc := res[0]
 	dc.Provider = d.Provider
-	dc.ProviderSettings = (d.ProviderSettings)
+	dc.ProviderSettings = *(d.ProviderSettings)
 
 	return &dc, nil
 }
@@ -92,7 +92,7 @@ func (mdc *MockDistroConnector) FindCostByDistroId(distroId string,
 		if d.Id == distroId {
 			dc.DistroId = distroId
 			provider = d.Provider
-			settings = d.ProviderSettings
+			settings = *d.ProviderSettings
 		}
 	}
 
