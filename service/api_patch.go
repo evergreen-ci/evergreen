@@ -229,6 +229,8 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
 	p, err := getPatchFromRequest(r)
 	if err != nil {
@@ -273,7 +275,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		patchedProject, err := validator.GetPatchedProject(p, githubOauthToken)
+		patchedProject, err := validator.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

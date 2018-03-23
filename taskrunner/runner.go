@@ -40,7 +40,7 @@ func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 		"message": "starting runner process",
 	})
 
-	if err := NewTaskRunner(config).Run(); err != nil {
+	if err := NewTaskRunner(config).Run(ctx); err != nil {
 		grip.Error(message.Fields{
 			"runner":  RunnerName,
 			"error":   err.Error(),

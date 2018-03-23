@@ -38,7 +38,7 @@ type agentStartData struct {
 	Settings *evergreen.Settings
 }
 
-func (tr *TaskRunner) Run() error {
+func (tr *TaskRunner) Run(ctx context.Context) error {
 	// Find all hosts that are running and have a LCT (last communication time)
 	// of 0 or ones that haven't been communicated in MaxLCT time.
 	// These are the hosts that need to have agents dispatched
@@ -47,8 +47,8 @@ func (tr *TaskRunner) Run() error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 
 	grip.Info(message.Fields{
 		"runner":     RunnerName,
@@ -92,5 +92,6 @@ func (tr *TaskRunner) Run() error {
 		"workers":       workers,
 		"duration_secs": time.Since(startAt).Seconds(),
 	})
+
 	return errorCollector.report()
 }

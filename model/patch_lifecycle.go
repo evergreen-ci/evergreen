@@ -107,7 +107,7 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
 // of the current project and returns an unmarshalled version of the project
 // with the patch applied
-func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
+func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) (
 	*Project, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
@@ -200,7 +200,6 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			return nil, errors.Wrap(err, "problem configuring command output")
 		}
 
-		ctx := context.TODO()
 		if err = patchCmd.Run(ctx); err != nil {
 			return nil, errors.Errorf("could not run patch command: %v", err)
 		}
