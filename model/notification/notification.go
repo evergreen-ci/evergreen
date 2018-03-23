@@ -59,7 +59,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 		n.Payload = &EmailPayload{}
 
 	case event.JIRAIssueSubscriberType:
-		n.Payload = &jiraIssuePayload{}
+		n.Payload = &message.JiraIssue{}
 
 	case event.JIRACommentSubscriberType:
 		str := ""
@@ -141,7 +141,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
 		payload, ok := n.Payload.(*string)
-		if !ok {
+		if !ok || payload == nil {
 			return nil, errors.New("evergreen-webhook payload is invalid")
 		}
 		c := message.NewString(*payload)
@@ -154,7 +154,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 	case event.EmailSubscriberType:
 		// TODO make real composer for this
 		payload, ok := n.Payload.(*EmailPayload)
-		if !ok {
+		if !ok || payload == nil {
 			return nil, errors.New("email payload is invalid")
 		}
 
@@ -169,26 +169,18 @@ func (n *Notification) Composer() (message.Composer, error) {
 		if !ok {
 			return nil, errors.New("jira-issue subscriber is invalid")
 		}
-		payload, ok := n.Payload.(*jiraIssuePayload)
-		if !ok {
+		payload, ok := n.Payload.(*message.JiraIssue)
+		if !ok || payload == nil {
 			return nil, errors.New("jira-issue payload is invalid")
 		}
 
-		return message.MakeJiraMessage(message.JiraIssue{
-			Project:     *project,
-			Summary:     payload.Summary,
-			Description: payload.Description,
-			Reporter:    payload.Reporter,
-			Assignee:    payload.Assignee,
-			Type:        payload.Type,
-			Components:  payload.Components,
-			Labels:      payload.Labels,
-			Fields:      payload.Fields,
-		}), nil
+		payload.Project = *project
+
+		return message.MakeJiraMessage(*payload), nil
 
 	case event.JIRACommentSubscriberType:
 		payload, ok := n.Payload.(*string)
-		if !ok {
+		if !ok || payload == nil {
 			return nil, errors.New("jira-comment payload is invalid")
 		}
 
@@ -202,7 +194,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 	case event.SlackSubscriberType:
 		// TODO figure out slack message structure that works
 		payload, ok := n.Payload.(*string)
-		if !ok {
+		if !ok || payload == nil {
 			return nil, errors.New("slack payload is invalid")
 		}
 
@@ -216,7 +208,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 	case event.GithubPullRequestSubscriberType:
 		// TODO make real composer for this
 		payload, ok := n.Payload.(*GithubStatusAPIPayload)
-		if !ok {
+		if !ok || payload == nil {
 			return nil, errors.New("github-pull-request payload is invalid")
 		}
 

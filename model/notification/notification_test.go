@@ -217,7 +217,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 	s.n.Subscriber.Type = event.JIRAIssueSubscriberType
 	issue := "1234"
 	s.n.Subscriber.Target = &issue
-	s.n.Payload = &jiraIssuePayload{
+	s.n.Payload = &message.JiraIssue{
 		Summary:     "1",
 		Description: "2",
 		Reporter:    "3",
