@@ -507,11 +507,11 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 		return 0, errors.New("Evergreen is not configured for Github Webhooks")
 	}
 
-	httpClient, err := util.GetHttpClientForOauth2(token)
+	httpClient, err := util.GetOAuth2HttpClient(token)
 	if err != nil {
 		return 0, err
 	}
-	defer util.PutHttpClientForOauth2(httpClient)
+	defer util.PutHttpClient(httpClient)
 	client := github.NewClient(httpClient)
 	newHook := github.Hook{
 		Name:   github.String("web"),
