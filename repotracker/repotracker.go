@@ -301,7 +301,7 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err
 // Verifies that the given revision order number is higher than the latest number stored for the project.
 func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester))
-	if err != nil {
+	if err != nil || latest == nil {
 		return errors.Wrap(err, "Error getting latest version")
 	}
 
