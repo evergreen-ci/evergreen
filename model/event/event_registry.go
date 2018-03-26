@@ -52,3 +52,8 @@ func taskProcessResourceEventFactory() interface{} {
 func adminEventFactory() interface{} {
 	return &rawAdminEventData{}
 }
+
+func isSubscribable(eventType string) bool {
+	// TODO
+	return false
+}

@@ -40,13 +40,7 @@ func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
 }
 
 // resource_type in data should be copied to root document
-const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
-
-// resource_type in root document
-const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
-
-// resource_type in both
-const expectedJSON3 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
@@ -100,7 +94,7 @@ func (s *eventSuite) TestWithRealData() {
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON1, string(bytes))
+		s.Equal(expectedJSON, string(bytes))
 	})
 
 	// unmarshaller works with r_type in the root document set
@@ -134,7 +128,7 @@ func (s *eventSuite) TestWithRealData() {
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON2, string(bytes))
+		s.Equal(expectedJSON, string(bytes))
 	})
 
 	// unmarshaller works with both r_type fields set
@@ -169,7 +163,7 @@ func (s *eventSuite) TestWithRealData() {
 		var bytes []byte
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON3, string(bytes))
+		s.Equal(expectedJSON, string(bytes))
 	})
 }
 
@@ -211,9 +205,7 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 
 			if _, ok := event.(*rawAdminEventData); !ok {
 				s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
-				if bsonTag == resourceTypeKey {
-					s.Equal("resource_type", jsonTag)
-				}
+				s.NotEqual("resource_type", jsonTag, `'%s' has a json:"resource_type" tag, but should not`, t.String())
 			}
 		}
 	}
@@ -297,6 +289,12 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
 
 	s.NoError(logger.LogEvent(&event))
+
+	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
+		"$unset": bson.M{
+			"processed_at": 1,
+		},
+	}))
 
 	var fetchedEvent EventLogEntry
 	err := db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent)

@@ -32,6 +32,14 @@ func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		event.ID = bson.NewObjectId()
 	}
+	if !isSubscribable(event.ResourceType) {
+		const notSubscribableTime = "2015-10-21T16:29:01-07:00"
+
+		loc, _ := time.LoadLocation("UTC")
+		bttf, _ := time.ParseInLocation(time.RFC3339, notSubscribableTime, loc)
+		event.ProcessedAt = bttf
+	}
+
 	return db.Insert(l.collection, event)
 }
 
