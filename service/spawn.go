@@ -138,6 +138,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	u := MustHaveUser(r)
 	updateParams := restModel.APISpawnHostModify{}
+	ctx := r.Context()
 
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -188,7 +189,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid password"))
 			return
 		}
-		if err := spawn.SetHostRDPPassword(context.TODO(), h, pwd); err != nil {
+		if err := spawn.SetHostRDPPassword(ctx, h, pwd); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}

@@ -82,6 +82,8 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 }
 
 func (j *patchIntentProcessor) Run() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	defer j.MarkComplete()
 
 	if j.env == nil {
@@ -103,7 +105,7 @@ func (j *patchIntentProcessor) Run() {
 
 	patchDoc := j.intent.NewPatch()
 
-	if err = j.finishPatch(patchDoc, githubOauthToken); err != nil {
+	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
 		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
 			j.AddError(j.env.LocalQueue().Put(NewGithubStatusUpdateJobForBadConfig(j.intent.ID())))
@@ -138,17 +140,17 @@ func (j *patchIntentProcessor) Run() {
 	}
 }
 
-func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
 	catcher := grip.NewBasicCatcher()
 
 	var err error
 	canFinalize := true
 	switch j.IntentType {
 	case patch.CliIntentType:
-		catcher.Add(j.buildCliPatchDoc(patchDoc, githubOauthToken))
+		catcher.Add(j.buildCliPatchDoc(ctx, patchDoc, githubOauthToken))
 
 	case patch.GithubIntentType:
-		canFinalize, err = j.buildGithubPatchDoc(patchDoc, githubOauthToken)
+		canFinalize, err = j.buildGithubPatchDoc(ctx, patchDoc, githubOauthToken)
 		catcher.Add(err)
 
 	default:
@@ -182,7 +184,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	}
 
 	// Get and validate patched config and add it to the patch document
-	project, err := validator.GetPatchedProject(patchDoc, githubOauthToken)
+	project, err := validator.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {
 		return errors.Wrap(err, errInvalidPatchedConfig)
 	}
@@ -238,7 +240,7 @@ func (j *patchIntentProcessor) finishPatch(patchDoc *patch.Patch, githubOauthTok
 	}
 
 	if canFinalize && j.intent.ShouldFinalizePatch() {
-		if _, err := model.FinalizePatch(patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
+		if _, err := model.FinalizePatch(ctx, patchDoc, j.intent.RequesterIdentity(), githubOauthToken); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":     "Failed to finalize patch document",
 				"job":         j.ID(),
@@ -318,7 +320,7 @@ func doGithubRequest(client *http.Client, req *http.Request, accept string) (str
 	return string(bytes), nil
 }
 
-func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOauthToken string) error {
+func (j *patchIntentProcessor) buildCliPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) error {
 	defer j.intent.SetProcessed()
 	projectRef, err := model.FindOneProjectRef(patchDoc.Project)
 	if err != nil {
@@ -328,7 +330,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 		return errors.Errorf("Could not find project ref '%s'", patchDoc.Project)
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner,
@@ -359,7 +361,7 @@ func (j *patchIntentProcessor) buildCliPatchDoc(patchDoc *patch.Patch, githubOau
 	return nil
 }
 
-func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, githubOauthToken string) (canFinalize bool, err error) {
+func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc *patch.Patch, githubOauthToken string) (bool, error) {
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		return false, errors.Wrap(err, "github pr testing is disabled, error retrieving admin settings")
@@ -402,7 +404,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(patchDoc *patch.Patch, github
 		return false, errors.Errorf("Could not find project vars for project '%s'", projectRef.Identifier)
 	}
 
-	isMember, err := authAndFetchPRMergeBase(context.TODO(), patchDoc, mustBeMemberOfOrg,
+	isMember, err := authAndFetchPRMergeBase(ctx, patchDoc, mustBeMemberOfOrg,
 		patchDoc.GithubPatchData.Author, githubOauthToken)
 	if err != nil {
 		grip.Error(message.WrapError(err, message.Fields{

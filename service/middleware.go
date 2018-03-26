@@ -375,7 +375,8 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		}
 
 		if len(token) > 0 {
-			dbUser, err := um.GetUserByToken(token)
+			ctx := r.Context()
+			dbUser, err := um.GetUserByToken(ctx, token)
 			if err != nil {
 				grip.Infof("Error getting user %s: %+v", authDataName, err)
 			} else {

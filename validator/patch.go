@@ -14,10 +14,7 @@ import (
 
 // GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
 // and applying the patch to the latest remote configuration. The error returned can be a validation error.
-func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
-	defer cancel()
-
+func GetPatchedProject(ctx context.Context, p *patch.Patch, githubOauthToken string) (*model.Project, error) {
 	if p.Version != "" {
 		return nil, errors.Errorf("Patch %v already finalized", p.Version)
 	}
@@ -25,6 +22,10 @@ func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project,
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
 	// try to get the remote project file data at the requested revision
 	var projectFileBytes []byte
@@ -62,7 +63,7 @@ func GetPatchedProject(p *patch.Patch, githubOauthToken string) (*model.Project,
 
 	// apply remote configuration patch if needed
 	if !p.IsGithubPRPatch() && p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
-		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
+		project, err = model.MakePatchedConfig(ctx, p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, errors.Wrapf(err, "Could not patch remote configuration file")
 		}
