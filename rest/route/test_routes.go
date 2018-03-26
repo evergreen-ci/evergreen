@@ -65,12 +65,16 @@ func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request
 			StatusCode: http.StatusNotFound,
 		}
 	}
+	var executionInt int
+	var err error
 	execution := r.URL.Query().Get("execution")
-	executionInt, err := strconv.Atoi(execution)
-	if err != nil && execution != "" {
-		return rest.APIError{
-			Message:    "Invalid execution",
-			StatusCode: http.StatusBadRequest,
+	if execution != "" {
+		executionInt, err = strconv.Atoi(execution)
+		if err != nil {
+			return rest.APIError{
+				Message:    "Invalid execution",
+				StatusCode: http.StatusBadRequest,
+			}
 		}
 	}
 	tgh.Args = testGetHandlerArgs{
