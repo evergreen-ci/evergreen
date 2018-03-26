@@ -25,9 +25,9 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, filename, status string, li
 	if len(res) == 0 {
 		var message string
 		if status != "" {
-			message = fmt.Sprintf("tests for task with taskId '%s' and status '%s' not found", taskId, status)
+			message = fmt.Sprintf("tests for task with taskId '%s', execution %d, and status '%s' not found", taskId, execution, status)
 		} else {
-			message = fmt.Sprintf("tests for task with taskId '%s' not found", taskId)
+			message = fmt.Sprintf("tests for task with taskId '%s' and execution %d not found", taskId, execution)
 		}
 		return []testresult.TestResult{}, &rest.APIError{
 			StatusCode: http.StatusNotFound,
