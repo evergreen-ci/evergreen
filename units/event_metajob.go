@@ -150,7 +150,7 @@ func (j *eventMetaJob) Run() {
 
 		if flags.EventProcessingDisabled {
 			for i := range notifications {
-				j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID))
+				j.addError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
 			}
 		}
 
