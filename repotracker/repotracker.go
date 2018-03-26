@@ -642,7 +642,8 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		})
 	}
 
-	if err := v.Insert(); !db.IsDuplicateKey(err) {
+	err := v.Insert()
+	if err != nil && !db.IsDuplicateKey(err) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
 			"message": "problem inserting version",

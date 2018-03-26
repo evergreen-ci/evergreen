@@ -483,9 +483,11 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 
 	// insert all of the build's tasks into the db
 	for _, task := range tasksForBuild {
-		if err := task.Insert(); !db.IsDuplicateKey(err) {
-			return "", errors.Wrapf(err, "error inserting task %s", task.Id)
+		err = task.Insert()
+		if err == nil || db.IsDuplicateKey(err) {
+			continue
 		}
+		return "", errors.Wrapf(err, "error inserting task %s", task.Id)
 	}
 
 	// create task caches for all of the tasks, and place them into the build
@@ -499,7 +501,8 @@ func CreateBuildFromVersion(project *Project, v *version.Version, taskIds TaskId
 	b.Tasks = CreateTasksCache(tasks)
 
 	// insert the build
-	if err := b.Insert(); !db.IsDuplicateKey(err) {
+	err = b.Insert()
+	if err != nil && !db.IsDuplicateKey(err) {
 		return "", errors.Wrapf(err, "error inserting build %v", b.Id)
 	}
 
