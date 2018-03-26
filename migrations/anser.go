@@ -124,6 +124,7 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		catcher.Add(err)
 		if generator != nil {
 			app.Generators = append(app.Generators, generator)
+			grip.Debugf("adding generator named: %s", name)
 		}
 	}
 
