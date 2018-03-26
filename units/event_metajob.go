@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -150,7 +151,7 @@ func (j *eventMetaJob) Run() {
 
 		if flags.EventProcessingDisabled {
 			for i := range notifications {
-				j.addError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+				j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
 			}
 		}
 
@@ -195,6 +196,7 @@ func makeEventNotificationJob() *eventNotificationJob {
 
 func newEventNotificationJob(id bson.ObjectId) amboy.Job {
 	j := makeEventNotificationJob()
+	j.NotificationID = id
 
 	j.SetID(fmt.Sprintf("%s:%s", eventNotificationJobName, id.Hex()))
 	return j
@@ -391,13 +393,13 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 		return err
 	}
 
-	raw, ok := c.Raw().(message.Fields)
-	if !ok {
-		return errors.New("composer was invalid")
-	}
+	//raw, ok := c.Raw().(string)
+	//if !ok {
+	//	return errors.New("evergreen-webhook composer was invalid")
+	//}
 
-	hookSubscriber, ok := n.Subscriber.Target.(event.WebhookSubscriber)
-	if !ok {
+	hookSubscriber, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
+	if !ok || hookSubscriber == nil {
 		return fmt.Errorf("evergreen-webhook invalid subscriber")
 	}
 
@@ -405,7 +407,10 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	if err != nil {
 		return errors.Wrap(err, "evergreen-webhook bad URL")
 	}
-	u.Scheme = "https"
+
+	if !strings.HasPrefix(u.Host, "127.0.0.1:") {
+		u.Scheme = "http"
+	}
 
 	payload := []byte(c.String())
 	reader := bytes.NewReader(payload)
@@ -419,12 +424,14 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 		return errors.Wrap(err, "failed to calculate hash")
 	}
 
-	for k, v := range raw["headers"].(map[string]string) {
-		req.Header.Add(k, v)
-	}
+	//for k, v := range raw["headers"].(map[string]string) {
+	//	req.Header.Add(k, v)
+	//}
 
 	req.Header.Del("X-Evergreen-Signature")
 	req.Header.Add("X-Evergreen-Signature", hash)
+	req.Header.Del("X-Evergreen-Notification-ID")
+	req.Header.Add("X-Evergreen-Notification-ID", j.NotificationID.Hex())
 
 	ctx, cancel := context.WithTimeout(req.Context(), evergreenWebhookTimeout)
 	defer cancel()
@@ -435,9 +442,11 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	defer util.PutHttpClient(client)
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
-		return errors.Wrap(err, "evergreen-webhook failed to sent webhook data")
+		return errors.Wrap(err, "evergreen-webhook failed to send webhook data")
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errors.Errorf("evergreen-webhook response status was %d", resp.StatusCode)
