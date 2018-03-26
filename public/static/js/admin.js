@@ -13,8 +13,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
   $scope.getSettings = function() {
     var successHandler = function(resp) {
       if (resp.data.slack && resp.data.slack.options) {
-        let fields = resp.data.slack.options.fields;
-        let fieldsSet = [];
+        var fields = resp.data.slack.options.fields;
+        var fieldsSet = [];
         for (var field in fields) {
           fieldsSet.push(field);
         }
@@ -23,14 +23,14 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
       $scope.tempCredentials = [];
       _.each(resp.data.credentials, function(val, key) {
-        let obj = {};
+        var obj = {};
         obj[key] = val;
         $scope.tempCredentials.push(obj);
       });
 
       $scope.tempExpansions = [];
       _.each(resp.data.expansions, function(val, key) {
-        let obj = {};
+        var obj = {};
         obj[key] = val;
         $scope.tempExpansions.push(obj);
       });
@@ -54,8 +54,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     }
 
     if ($scope.Settings.slack && $scope.Settings.slack.options) {
-      let fields = $scope.Settings.slack.options.fields;
-      let fieldsSet = {};
+      var fields = $scope.Settings.slack.options.fields;
+      var fieldsSet = {};
       for (var i = 0; i < fields.length; i++) {
         fieldsSet[fields[i]] = true;
       }
