@@ -95,8 +95,8 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
 	grip.Debugln("Loading On Demand pricing from", endpoint)
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	resp, err := client.Get(endpoint)
 	if resp != nil {
@@ -333,8 +333,8 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
 	grip.Debugln("Loading EBS pricing from", endpoint)
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	resp, err := client.Get(endpoint)
 	if resp != nil {

@@ -160,11 +160,11 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 		return err
 	}
 
-	httpClient, err := util.GetOAuth2HttpClient(githubOauthToken)
+	httpClient, err := util.GetOAuth2HTTPClient(githubOauthToken)
 	if err != nil {
 		return err
 	}
-	defer util.PutHttpClient(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	newStatus := github.RepoStatus{

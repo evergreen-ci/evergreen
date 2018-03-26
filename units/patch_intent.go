@@ -268,11 +268,11 @@ func buildPatchURL(gp *patch.GithubPatch) string {
 }
 
 func fetchDiffFromGithub(gh *patch.GithubPatch, token string) (string, []patch.Summary, error) {
-	client, err := util.GetOAuth2HttpClient(token)
+	client, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
 		return "", nil, errors.Wrap(err, "error getting http client")
 	}
-	defer util.PutHttpClient(client)
+	defer util.PutHTTPClient(client)
 
 	req, err := http.NewRequest("GET", buildPatchURL(gh), nil)
 	if err != nil {
@@ -459,11 +459,11 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	httpClient, err := util.GetOAuth2HttpClient(githubOauthToken)
+	httpClient, err := util.GetOAuth2HTTPClient(githubOauthToken)
 	if err != nil {
 		return false, err
 	}
-	defer util.PutHttpClient(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	// doesn't count against API limits

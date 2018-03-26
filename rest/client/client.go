@@ -65,14 +65,14 @@ func (c *communicatorImpl) resetClient() {
 	defer c.mutex.Unlock()
 
 	if c.httpClient != nil {
-		util.PutHttpClient(c.httpClient)
+		util.PutHTTPClient(c.httpClient)
 	}
 
-	c.httpClient = util.GetHttpClient()
+	c.httpClient = util.GetHTTPClient()
 	c.httpClient.Timeout = heartbeatTimeout
 }
 
-func (c *communicatorImpl) Close() { util.PutHttpClient(c.httpClient) }
+func (c *communicatorImpl) Close() { util.PutHTTPClient(c.httpClient) }
 
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {

@@ -95,9 +95,9 @@ func init() {
 	}
 }
 
-func GetHttpClient() *http.Client { return httpClientPool.Get().(*http.Client) }
+func GetHTTPClient() *http.Client { return httpClientPool.Get().(*http.Client) }
 
-func PutHttpClient(c *http.Client) {
+func PutHTTPClient(c *http.Client) {
 	c.Timeout = httpClientTimeout
 
 	switch c.Transport.(type) {
@@ -108,14 +108,14 @@ func PutHttpClient(c *http.Client) {
 		oauthClientPool.put(c)
 	case *rehttp.Transport:
 		c.Transport = c.Transport.(*rehttp.Transport).RoundTripper
-		PutHttpClient(c)
+		PutHTTPClient(c)
 	default:
 		c.Transport = newConfiguredBaseTransport()
 		httpClientPool.Put(c)
 	}
 }
 
-func GetOAuth2HttpClient(oauthToken string) (*http.Client, error) {
+func GetOAuth2HTTPClient(oauthToken string) (*http.Client, error) {
 	if oauthToken == "" {
 		return nil, errors.New("oauth token cannot be empty")
 	}
@@ -129,8 +129,8 @@ func GetOAuth2HttpClient(oauthToken string) (*http.Client, error) {
 	return oauthClientPool.getOrMake(oauthToken).Get().(*http.Client), nil
 }
 
-func GetRetryableHttpClientForOauth2(oauthToken string, fRetry rehttp.RetryFn, fDelay rehttp.DelayFn) (*http.Client, error) {
-	client, err := GetOAuth2HttpClient(oauthToken)
+func GetRetryableOauth2HTTPClient(oauthToken string, fRetry rehttp.RetryFn, fDelay rehttp.DelayFn) (*http.Client, error) {
+	client, err := GetOAuth2HTTPClient(oauthToken)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to oauth client")

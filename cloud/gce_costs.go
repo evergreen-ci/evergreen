@@ -193,8 +193,8 @@ func parseMachineType(m string) (*machineType, error) {
 // If this function errors, that means Google may have changed the way
 // it structures its pricing data in the JSON file.
 func getComputePrices() (*computePrices, error) {
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	// Read the data from the endpoint.
 	res, err := client.Get(pricesJSON)

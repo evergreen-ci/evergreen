@@ -30,8 +30,8 @@ type smokeEndpointTestDefinitions struct {
 }
 
 func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 	client.Timeout = time.Second
 
 	// wait for web service to start
@@ -70,8 +70,8 @@ func (tests smokeEndpointTestDefinitions) checkEndpoints() error {
 }
 
 func getLatestGithubCommit() (string, error) {
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	resp, err := client.Get("https://api.github.com/repos/evergreen-ci/evergreen/git/refs/heads/master")
 	if err != nil {
@@ -94,8 +94,8 @@ func getLatestGithubCommit() (string, error) {
 }
 
 func checkTaskByCommit(username, key string) error {
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	var builds []apimodels.APIBuild
 	var build apimodels.APIBuild

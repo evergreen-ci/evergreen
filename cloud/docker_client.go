@@ -79,7 +79,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	c.apiVersion = apiVersion
 
 	// Create HTTP client
-	c.httpClient = util.GetHttpClient()
+	c.httpClient = util.GetHTTPClient()
 	return nil
 }
 

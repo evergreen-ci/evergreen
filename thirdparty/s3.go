@@ -84,8 +84,8 @@ func NewS3Session(auth *aws.Auth, region aws.Region, client *http.Client) *s3.S3
 }
 
 func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path, toS3Bucket, toS3Path, permissionACL string) error {
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	destinationPath := fmt.Sprintf("http://%v.s3.amazonaws.com/%v",
 		toS3Bucket, toS3Path)
@@ -168,8 +168,8 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 	}
 	defer localFileReader.Close()
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	session := NewS3Session(pushAuth, aws.USEast, client)
 	bucket := session.Bucket(urlParsed.Host)
@@ -184,8 +184,8 @@ func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	session := NewS3Session(auth, aws.USEast, client)
 
