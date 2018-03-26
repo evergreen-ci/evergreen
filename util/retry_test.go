@@ -114,10 +114,10 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func TestRetryableOauthClient(t *testing.T) {
 	assert := assert.New(t)
-	c, err := GetRetryableHttpClientForOauth2("token hi", rehttp.RetryMaxRetries(4),
+	c, err := GetRetryableOauth2HTTPClient("token hi", rehttp.RetryMaxRetries(4),
 		RehttpDelay(time.Nanosecond, 5))
 	assert.NoError(err)
-	defer PutHttpClient(c)
+	defer PutHTTPClient(c)
 
 	transport := &mockTransport{expectedToken: "hi"}
 	oldTransport := c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base
@@ -136,10 +136,10 @@ func TestRetryableOauthClient(t *testing.T) {
 func TestRetryableOauthClient4xxDoesntRetry(t *testing.T) {
 	assert := assert.New(t)
 
-	c, err := GetRetryableHttpClientForOauth2("token something", rehttp.RetryAll(rehttp.RetryTemporaryErr(), rehttp.RetryMaxRetries(4)),
+	c, err := GetRetryableOauth2HTTPClient("token something", rehttp.RetryAll(rehttp.RetryTemporaryErr(), rehttp.RetryMaxRetries(4)),
 		RehttpDelay(time.Nanosecond, 5))
 	assert.NoError(err)
-	defer PutHttpClient(c)
+	defer PutHTTPClient(c)
 
 	transport := &mockTransport{expectedToken: "nope"}
 	oldTransport := c.Transport.(*rehttp.Transport).RoundTripper.(*oauth2.Transport).Base
