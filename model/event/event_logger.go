@@ -8,6 +8,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const notSubscribableTimeString = "2015-10-21T16:29:01-07:00"
+
 type EventLogger interface {
 	LogEvent(event *EventLogEntry) error
 }
@@ -33,11 +35,12 @@ func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 		event.ID = bson.NewObjectId()
 	}
 	if !isSubscribable(event.ResourceType) {
-		const notSubscribableTime = "2015-10-21T16:29:01-07:00"
-
 		loc, _ := time.LoadLocation("UTC")
-		bttf, _ := time.ParseInLocation(time.RFC3339, notSubscribableTime, loc)
-		event.ProcessedAt = bttf
+		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
+		if err != nil {
+			return errors.Wrap(err, "failed to set processed time")
+		}
+		event.ProcessedAt = notSubscribableTime
 	}
 
 	return db.Insert(l.collection, event)

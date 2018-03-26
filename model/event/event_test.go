@@ -312,7 +312,24 @@ func (s *eventSuite) TestMarkProcessed() {
 }
 
 func (s *eventSuite) TestFindUnprocessedEvents() {
+	const migrationTimeString = "2015-10-21T16:29:00-07:00"
+	loc, _ := time.LoadLocation("UTC")
+	migrationTime, err := time.ParseInLocation(time.RFC3339, migrationTimeString, loc)
+	s.NoError(err)
+	notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
+	s.NoError(err)
+
 	data := []bson.M{
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  notSubscribableTime,
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  migrationTime,
+		},
 		{
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
