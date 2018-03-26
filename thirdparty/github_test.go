@@ -45,7 +45,7 @@ func (s *githubSuite) SetupTest() {
 	s.Require().NotNil(s.cancel)
 }
 
-func (s *githubSuite) TeardownTest() {
+func (s *githubSuite) TearDownTest() {
 	s.NoError(s.ctx.Err())
 	s.cancel()
 }

@@ -215,15 +215,6 @@ func newEventNotificationJob(id bson.ObjectId) amboy.Job {
 	return j
 }
 
-const (
-	githubPullRequestSubscriberType = "github_pull_request"
-	slackSubscriberType             = "slack"
-	jiraIssueSubscriberType         = "jira-issue"
-	jiraCommentSubscriberType       = "jira-comment"
-	evergreenWebhookSubscriberType  = "evergreen-webhook"
-	emailSubscriberType             = "email"
-)
-
 func (j *eventNotificationJob) Run() {
 	defer j.MarkComplete()
 
@@ -545,14 +536,13 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		return errors.Wrap(err, "email settings are invalid")
 	}
 
-	j.send(sender, c, n)
-
-	return nil
+	return j.send(sender, c, n)
 }
 
-func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) {
-	s.SetErrorHandler(getSendErrorHandler(n))
+func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) error {
+	err := s.SetErrorHandler(getSendErrorHandler(n))
 	s.Send(c)
+	return err
 }
 
 func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
