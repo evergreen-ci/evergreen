@@ -98,14 +98,6 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)
 
-	resp, err := client.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return errors.Wrapf(err, "fetching %v", endpoint)
-	}
-	grip.Debug("Parsing on-demand pricing")
 	details := struct {
 		Terms    Terms
 		Products map[string]struct {
@@ -121,8 +113,25 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 			}
 		}
 	}{}
-	if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
-		return errors.Wrap(err, "parsing response body")
+
+	_, err := util.Retry(func() (bool, error) {
+		resp, err := client.Get(endpoint)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return true, errors.Wrapf(err, "fetching %v", endpoint)
+		}
+		grip.Debug("Parsing on-demand pricing")
+
+		if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
+			return true, errors.Wrap(err, "parsing response body")
+		}
+		return false, nil
+	}, awsClientImplRetries, awsClientImplStartPeriod)
+
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	for _, p := range details.Products {
@@ -336,17 +345,26 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 	client := util.GetHttpClient()
 	defer util.PutHttpClient(client)
 
-	resp, err := client.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	var data []byte
+
+	_, err := util.Retry(func() (bool, error) {
+		resp, err := client.Get(endpoint)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return true, errors.Wrapf(err, "fetching %s", endpoint)
+		}
+		data, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return true, errors.Wrap(err, "reading response body")
+		}
+		return false, nil
+	}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
-		return errors.Wrapf(err, "fetching %s", endpoint)
+		return errors.WithStack(err)
 	}
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errors.Wrap(err, "reading response body")
-	}
+
 	matches := ebsRegex.FindSubmatch(data)
 	if len(matches) < 2 {
 		return errors.Errorf("could not find price JSON in response from %v", endpoint)
