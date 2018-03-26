@@ -82,7 +82,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(ctx context.Context, 
 // GetRemoteConfig fetches the contents of a remote github repository's
 // configuration data as at a given revision
 func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(ctx context.Context, commitRevision string) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	// get the entire commit, then pull the files from it
