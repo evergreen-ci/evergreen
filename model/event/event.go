@@ -25,12 +25,6 @@ type EventLogEntry struct {
 	Data       interface{} `bson:"data" json:"data"`
 }
 
-// Type returns the resource type (i.e. event data type). It will reflect into
-// the Data interface if required.
-func (e *EventLogEntry) Type() string {
-	return e.ResourceType
-}
-
 // Processed is whether or not this event has been processed. An event
 // which has been processed has successfully have notifications intents
 // created and stored, but does not indicate whether or not these
