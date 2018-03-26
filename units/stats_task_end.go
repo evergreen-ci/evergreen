@@ -68,6 +68,8 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 }
 
 func (j *collectTaskEndDataJob) Run() {
+	defer j.MarkComplete()
+
 	var err error
 	if j.task == nil {
 		j.task, err = task.FindOneId(j.TaskID)
