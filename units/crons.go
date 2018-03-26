@@ -90,7 +90,7 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(5).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
