@@ -237,12 +237,12 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		return nil, errors.WithStack(err)
 	}
 
-	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
-	}
-	if gitCommit == nil {
-		return nil, errors.New("Couldn't fetch commit information; git commit doesn't exist")
 	}
 
 	patchVersion := &version.Version{

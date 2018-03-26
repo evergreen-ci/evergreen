@@ -280,7 +280,7 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err
 	projectRef := repoTracker.ProjectRef
 	subject := fmt.Sprintf(notify.RepotrackerFailurePreface,
 		projectRef.Identifier, lastRevision)
-	url := fmt.Sprintf("%v/%v/%v/commits/%v", thirdparty.GithubBase,
+	url := fmt.Sprintf("https://api.github.com/%v/%v/commits/%v",
 		projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	msg := fmt.Sprintf("Could not find last known revision '%v' "+
 		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)

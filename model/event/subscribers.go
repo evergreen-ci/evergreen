@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	githubPullRequestSubscriberType = "github_pull_request"
-	jiraIssueSubscriberType         = "jira-issue"
-	jiraCommentSubscriberType       = "jira-comment"
-	evergreenWebhookSubscriberType  = "evergreen-webhook"
-	emailSubscriberType             = "email"
-	slackSubscriberType             = "slack"
+	GithubPullRequestSubscriberType = "github_pull_request"
+	JIRAIssueSubscriberType         = "jira-issue"
+	JIRACommentSubscriberType       = "jira-comment"
+	EvergreenWebhookSubscriberType  = "evergreen-webhook"
+	EmailSubscriberType             = "email"
+	SlackSubscriberType             = "slack"
 )
 
 //nolint: deadcode, megacheck
@@ -43,13 +43,13 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	s.Type = temp.Type
 
 	switch s.Type {
-	case githubPullRequestSubscriberType:
+	case GithubPullRequestSubscriberType:
 		s.Target = &GithubPullRequestSubscriber{}
 
-	case evergreenWebhookSubscriberType:
+	case EvergreenWebhookSubscriberType:
 		s.Target = &WebhookSubscriber{}
 
-	case jiraIssueSubscriberType, jiraCommentSubscriberType, emailSubscriberType, slackSubscriberType:
+	case JIRAIssueSubscriberType, JIRACommentSubscriberType, EmailSubscriberType, SlackSubscriberType:
 		str := ""
 		s.Target = &str
 

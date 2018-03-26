@@ -208,7 +208,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           batch_time: parseInt($scope.projectRef.batch_time),
           deactivate_previous: $scope.projectRef.deactivate_previous,
           relative_url: $scope.projectRef.relative_url,
-          branch_name: $scope.projectRef.branch_name,
+          branch_name: $scope.projectRef.branch_name || "master",
           owner_name: $scope.projectRef.owner_name,
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,

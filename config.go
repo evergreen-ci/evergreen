@@ -8,6 +8,7 @@ import (
 	"time"
 
 	legacyDB "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/amboy/logger"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -24,7 +25,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2018-03-14"
+	ClientVersion = "2018-03-22"
 
 	errNotFound = "not found"
 )
@@ -810,18 +811,22 @@ type Settings struct {
 	ClientBinariesDir  string                    `yaml:"client_binaries_dir" bson:"client_binaries_dir" json:"client_binaries_dir"`
 	ConfigDir          string                    `yaml:"configdir" bson:"configdir" json:"configdir"`
 	Credentials        map[string]string         `yaml:"credentials" bson:"credentials" json:"credentials"`
+	CredentialsNew     util.KeyValuePairSlice    `yaml:"credentials_new" bson:"credentials_new" json:"credentials_new"`
 	Database           DBSettings                `yaml:"database"`
 	Expansions         map[string]string         `yaml:"expansions" bson:"expansions" json:"expansions"`
+	ExpansionsNew      util.KeyValuePairSlice    `yaml:"expansions_new" bson:"expansions_new" json:"expansions_new"`
 	GithubPRCreatorOrg string                    `yaml:"github_pr_creator_org" bson:"github_pr_creator_org" json:"github_pr_creator_org"`
 	HostInit           HostInitConfig            `yaml:"hostinit" bson:"hostinit" json:"hostinit" id:"hostinit"`
 	IsNonProd          bool                      `yaml:"isnonprod" bson:"isnonprod" json:"isnonprod"`
 	Jira               JiraConfig                `yaml:"jira" bson:"jira" json:"jira" id:"jira"`
 	Keys               map[string]string         `yaml:"keys" bson:"keys" json:"keys"`
+	KeysNew            util.KeyValuePairSlice    `yaml:"keys_new" bson:"keys_new" json:"keys_new"`
 	LoggerConfig       LoggerConfig              `yaml:"logger_config" bson:"logger_config" json:"logger_config" id:"logger_config"`
 	LogPath            string                    `yaml:"log_path" bson:"log_path" json:"log_path"`
 	NewRelic           NewRelicConfig            `yaml:"new_relic" bson:"new_relic" json:"new_relic" id:"new_relic"`
 	Notify             NotifyConfig              `yaml:"notify" bson:"notify" json:"notify" id:"notify"`
 	Plugins            PluginConfig              `yaml:"plugins" bson:"plugins" json:"plugins"`
+	PluginsNew         util.KeyValuePairSlice    `yaml:"plugins_new" bson:"plugins_new" json:"plugins_new"`
 	PprofPort          string                    `yaml:"pprof_port" bson:"pprof_port" json:"pprof_port"`
 	Providers          CloudProviders            `yaml:"providers" bson:"providers" json:"providers" id:"providers"`
 	RepoTracker        RepoTrackerConfig         `yaml:"repotracker" bson:"repotracker" json:"repotracker" id:"repotracker"`
@@ -851,13 +856,17 @@ func (c *Settings) Set() error {
 			clientBinariesDirKey:  c.ClientBinariesDir,
 			configDirKey:          c.ConfigDir,
 			credentialsKey:        c.Credentials,
+			credentialsNewKey:     c.CredentialsNew,
 			expansionsKey:         c.Expansions,
+			expansionsNewKey:      c.ExpansionsNew,
 			githubPRCreatorOrgKey: c.GithubPRCreatorOrg,
 			isNonProdKey:          c.IsNonProd,
 			keysKey:               c.Keys,
+			keysNewKey:            c.KeysNew,
 			logPathKey:            c.LogPath,
 			pprofPortKey:          c.PprofPort,
 			pluginsKey:            c.Plugins,
+			pluginsNewKey:         c.PluginsNew,
 			splunkKey:             c.Splunk,
 			superUsersKey:         c.SuperUsers,
 		},
@@ -865,12 +874,41 @@ func (c *Settings) Set() error {
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())
 }
 func (c *Settings) ValidateAndDefault() error {
+	var err error
 	catcher := grip.NewSimpleCatcher()
 	if c.ApiUrl == "" {
 		catcher.Add(errors.New("API hostname must not be empty"))
 	}
 	if c.ConfigDir == "" {
 		catcher.Add(errors.New("Config directory must not be empty"))
+	}
+	if len(c.CredentialsNew) > 0 {
+		if c.Credentials, err = c.CredentialsNew.Map(); err != nil {
+			catcher.Add(errors.Wrap(err, "error parsing credentials"))
+		}
+	}
+	if len(c.ExpansionsNew) > 0 {
+		if c.Expansions, err = c.ExpansionsNew.Map(); err != nil {
+			catcher.Add(errors.Wrap(err, "error parsing expansions"))
+		}
+	}
+	if len(c.KeysNew) > 0 {
+		if c.Keys, err = c.KeysNew.Map(); err != nil {
+			catcher.Add(errors.Wrap(err, "error parsing keys"))
+		}
+	}
+	if len(c.PluginsNew) > 0 {
+		tempPlugins, err := c.PluginsNew.NestedMap()
+		if err != nil {
+			catcher.Add(errors.Wrap(err, "error parsing plugins"))
+		}
+		c.Plugins = map[string]map[string]interface{}{}
+		for k1, v1 := range tempPlugins {
+			c.Plugins[k1] = map[string]interface{}{}
+			for k2, v2 := range v1 {
+				c.Plugins[k1][k2] = v2
+			}
+		}
 	}
 	if catcher.HasErrors() {
 		return catcher.Resolve()

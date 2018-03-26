@@ -1,6 +1,9 @@
 package repotracker
 
 import (
+	"context"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -92,7 +95,10 @@ func ActivateBuildsForProject(conf *evergreen.Settings, project model.ProjectRef
 // CheckGithubAPIResources returns true when the github API is ready,
 // accessible and with sufficient quota to satisfy our needs
 func CheckGithubAPIResources(githubToken string) bool {
-	status, err := thirdparty.GetGithubAPIStatus()
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	status, err := thirdparty.GetGithubAPIStatus(ctx)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
@@ -119,7 +125,7 @@ func CheckGithubAPIResources(githubToken string) bool {
 		})
 	}
 
-	remaining, err := thirdparty.CheckGithubAPILimit(githubToken)
+	remaining, err := thirdparty.CheckGithubAPILimit(ctx, githubToken)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,

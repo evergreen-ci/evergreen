@@ -202,7 +202,11 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ver, err := model.FinalizePatch(projCtx.Patch, evergreen.PatchVersionRequester, githubOauthToken)
+		requester := evergreen.PatchVersionRequester
+		if projCtx.Patch.IsGithubPRPatch() {
+			requester = evergreen.GithubPRRequester
+		}
+		ver, err := model.FinalizePatch(projCtx.Patch, requester, githubOauthToken)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrap(err, "Error finalizing patch"))

@@ -74,7 +74,13 @@ func (s *eventRTypeMigrationSuite) SetupTest() {
 }
 
 func (s *eventRTypeMigrationSuite) TestMigration() {
-	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), s.database, 50)
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 50,
+		id:    "migration-event-rtype-to-root-alllogs",
+	}
+
+	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
 	gen.Run()
 	s.Require().NoError(gen.Error())
@@ -90,6 +96,11 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 	out := []bson.M{}
 	s.Require().NoError(db.FindAllQ(allLogCollection, db.Q{}, &out))
 	s.Len(out, 3)
+	location, err := time.LoadLocation("UTC")
+	s.NoError(err)
+	expectedTime, err := time.ParseInLocation(time.RFC3339, migrationTime, location)
+	s.NoError(err)
+	s.NotZero(expectedTime)
 
 	for _, e := range out {
 		eventData, ok := e["data"]
@@ -108,19 +119,28 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 			s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventDataBSON["t_id"])
 			s.Equal("success", eventDataBSON["t_st"])
 
+			t, ok := e["processed_at"].(time.Time)
+			s.True(ok)
+			s.True(expectedTime.Equal(t))
+
 		} else if id.Hex() == "5949645c9acd9604fdd202d8" {
 			s.Equal("HOST", e["r_type"])
 			s.Equal("HOST_TASK_FINISHED", e["e_type"])
-
 			s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventDataBSON["t_id"])
 			s.Equal("failed", eventDataBSON["t_st"])
-			s.True(e["processed_at"].(time.Time).Equal(time.Time{}.Add(-time.Hour)))
+
+			t, ok := e["processed_at"].(time.Time)
+			s.True(ok)
+			s.True(t.Equal(time.Time{}.Add(-time.Hour)))
 
 		} else if id.Hex() == "5949645c9acd9604fdd202d9" {
 			s.Equal("SOMETHINGELSE", e["r_type"])
 			s.Equal("SOMETHING_AWESOME", e["e_type"])
-
 			s.Equal("data", eventDataBSON["other"])
+
+			t, ok := e["processed_at"].(time.Time)
+			s.True(ok)
+			s.True(expectedTime.Equal(t))
 
 		} else {
 			s.T().Error("unknown object id")

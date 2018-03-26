@@ -31,7 +31,7 @@ func LastGreen() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}

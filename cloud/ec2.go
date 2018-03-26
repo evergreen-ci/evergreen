@@ -312,10 +312,18 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	}
 
 	ec2Settings := &EC2ProviderSettings{}
-	if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
+	if h.Distro.ProviderSettings != nil {
+		if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
+			return nil, errors.Wrapf(err, "Error decoding params for distro %+v: %+v", h.Distro.Id, ec2Settings)
+		}
 	}
-
+	grip.Debug(message.Fields{
+		"message":   "mapstructure comparison",
+		"input":     *h.Distro.ProviderSettings,
+		"output":    *ec2Settings,
+		"inputraw":  fmt.Sprintf("%#v", *h.Distro.ProviderSettings),
+		"outputraw": fmt.Sprintf("%#v", *ec2Settings),
+	})
 	if err := ec2Settings.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %s: and %+v", h.Distro.Id, ec2Settings)
 	}

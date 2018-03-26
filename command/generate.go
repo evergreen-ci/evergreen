@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -52,7 +53,10 @@ func (c *generateTask) Execute(ctx context.Context, comm client.Communicator, lo
 	if catcher.HasErrors() {
 		return errors.WithStack(catcher.Resolve())
 	}
-	post := makeJsonOfAllFiles(jsonBytes)
+	post, err := makeJsonOfAllFiles(jsonBytes)
+	if err != nil {
+		return errors.Wrap(err, "problem parsing JSON")
+	}
 	return errors.Wrap(comm.GenerateTasks(ctx, td, post), "Problem posting task data")
 }
 
@@ -78,13 +82,17 @@ func generateTaskForFile(fn string, conf *model.TaskConfig) ([]byte, error) {
 
 // makeJsonOfAllFiles creates a single JSON document that is an array of all JSON files. This allows
 // us to avoid posting multiple JSON files.
-func makeJsonOfAllFiles(jsonBytes [][]byte) []byte {
-	post := []byte("[")
+func makeJsonOfAllFiles(jsonBytes [][]byte) ([]json.RawMessage, error) {
+	catcher := grip.NewBasicCatcher()
+	post := []json.RawMessage{}
 	for _, j := range jsonBytes {
-		post = append(post, j...)
-		post = append(post, byte(','))
+		jsonRaw := json.RawMessage{}
+		if err := json.Unmarshal(j, &jsonRaw); err != nil {
+
+			catcher.Add(errors.Wrap(err, "error unmarshaling JSON for generate.tasks"))
+			continue
+		}
+		post = append(post, jsonRaw)
 	}
-	post = post[:len(post)-1] // strip trailing comma
-	post = append(post, byte(']'))
-	return post
+	return post, catcher.Resolve()
 }

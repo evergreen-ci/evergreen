@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -58,10 +59,9 @@ type Mock struct {
 	SysInfo  map[string]*message.SystemInfo
 
 	// data collected by mocked methods
-	logMessages map[string][]apimodels.LogMessage
-	PatchFiles  map[string]string
-	keyVal      map[string]*serviceModel.KeyVal
-
+	logMessages     map[string][]apimodels.LogMessage
+	PatchFiles      map[string]string
+	keyVal          map[string]*serviceModel.KeyVal
 	LastMessageSent time.Time
 
 	mu sync.RWMutex
@@ -495,7 +495,7 @@ func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, er
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, json []byte) error {
+func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	if td.ID != "mock_id" {
 		return errors.New("mock failed, wrong id")
 	}

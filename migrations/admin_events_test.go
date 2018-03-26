@@ -100,7 +100,13 @@ func (s *adminEventSuite) SetupTest() {
 }
 
 func (s *adminEventSuite) TestMigration() {
-	gen, err := adminEventRestructureGenerator(anser.GetEnvironment(), s.database, 10)
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 10,
+		id:    "migration-admin-event-restructure",
+	}
+
+	gen, err := adminEventRestructureGenerator(anser.GetEnvironment(), args)
 	s.NoError(err)
 	gen.Run()
 	s.NoError(gen.Error())
