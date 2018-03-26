@@ -162,8 +162,10 @@ func TestAPIServiceFlagsModelInterface(t *testing.T) {
 		v := reflect.ValueOf(&flags).Elem()
 		for i := 0; i < v.NumField(); i++ {
 			f := v.Field(i)
-			f.SetBool(true)
-			assert.True(f.Bool())
+			if f.Kind() == reflect.Bool {
+				f.SetBool(true)
+				assert.True(f.Bool())
+			}
 		}
 	}, "error setting all fields to true")
 
@@ -182,8 +184,10 @@ func allStructFieldsTrue(t *testing.T, s interface{}) {
 	elem := reflect.ValueOf(s).Elem()
 	for i := 0; i < elem.NumField(); i++ {
 		f := elem.Field(i)
-		if !f.Bool() {
-			t.Errorf("all fields should be true, but '%s' was false", reflect.TypeOf(s).Elem().Field(i).Name)
+		if f.Kind() == reflect.Bool {
+			if !f.Bool() {
+				t.Errorf("all fields should be true, but '%s' was false", reflect.TypeOf(s).Elem().Field(i).Name)
+			}
 		}
 	}
 }

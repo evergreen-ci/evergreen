@@ -14,7 +14,3 @@ func getTriggers(resourceType string) []trigger {
 
 	return triggers
 }
-
-func hostTriggerFactory() []trigger {
-	return nil
-}

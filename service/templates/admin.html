@@ -173,10 +173,16 @@ Admin Settings
                         </md-radio-group></td>
                       </tr>
                       <tr>
+                        <td>Background Stats Collectors</td>
+                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.background_stats_disabled">
+                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
+                        </md-radio-group></td>
+                      </tr>
+                      <tr>
                           <td>&nbsp;</td>
                       </tr>
                       <tr>
-                        <td>Notification Processing</td>
+                        <td>Event Processing</td>
                         <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.event_processing_disabled">
                           <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
                         </md-radio-group></td>
@@ -208,12 +214,6 @@ Admin Settings
                       <tr>
                         <td>Github PR Status Notifications</td>
                         <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.github_status_api_disabled">
-                          <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
-                        </md-radio-group></td>
-                      </tr>
-                      <tr>
-                        <td>Background Stats Collectors</td>
-                        <td colspan="2"><md-radio-group data-ng-model="Settings.service_flags.background_stats_disabled">
                           <md-radio-button data-ng-value="false"></md-radio-button><md-radio-button data-ng-value="true"></md-radio-button>
                         </md-radio-group></td>
                       </tr>

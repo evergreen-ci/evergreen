@@ -150,7 +150,7 @@ func (j *eventMetaJob) Run() {
 
 		if flags.EventProcessingDisabled {
 			for i := range notifications {
-				j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+				j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID))
 			}
 		}
 
@@ -248,42 +248,41 @@ func (j *eventNotificationJob) Run() {
 
 	var sendError error
 	switch n.Subscriber.Type {
-	// TODO I'm tired
-	//case githubPullRequestSubscriberType:
-	//	if err = checkFlag(flags.GithubStatusAPIDisabled); err != nil {
-	//		j.AddError(err)
-	//		return
-	//	}
+	case event.GithubPullRequestSubscriberType:
+		if err = checkFlag(flags.GithubStatusAPIDisabled); err != nil {
+			j.AddError(err)
+			return
+		}
 
-	case slackSubscriberType:
+	case event.SlackSubscriberType:
 		if err = checkFlag(flags.SlackNotificationsDisabled); err != nil {
 			j.AddError(err)
 			return
 		}
 		sendError = j.slackMessage(n)
 
-	case jiraIssueSubscriberType:
+	case event.JIRAIssueSubscriberType:
 		if err = checkFlag(flags.JIRANotificationsDisabled); err != nil {
 			j.AddError(err)
 			return
 		}
 		sendError = j.jiraIssue(n)
 
-	case jiraCommentSubscriberType:
+	case event.JIRACommentSubscriberType:
 		if err = checkFlag(flags.JIRANotificationsDisabled); err != nil {
 			j.AddError(err)
 			return
 		}
 		sendError = j.jiraComment(n)
 
-	case evergreenWebhookSubscriberType:
+	case event.EvergreenWebhookSubscriberType:
 		if err = checkFlag(flags.WebhookNotificationsDisabled); err != nil {
 			j.AddError(err)
 			return
 		}
 		sendError = j.evergreenWebhook(n)
 
-	case emailSubscriberType:
+	case event.EmailSubscriberType:
 		if err = checkFlag(flags.EmailNotificationsDisabled); err != nil {
 			j.AddError(err)
 			return
@@ -373,7 +372,7 @@ func (j *eventNotificationJob) jiraIssue(n *notification.Notification) error {
 // calculatHMACHash calculates a sha256 HMAC has of the body with the given
 // secret. The body must NOT be modified after calculating this hash
 func calculateHMACHash(secret []byte, body []byte) (string, error) {
-	// from genMAC in google/go-github/github/messages.go
+	// from genMAC in github.com/google/go-github/github/messages.go
 	mac := hmac.New(sha256.New, secret)
 	n, err := mac.Write(body)
 	if n != len(body) {
@@ -548,7 +547,7 @@ func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
 func checkFlag(flag bool) error {
 	if flag {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"job":     eventMetaJobName,
+			"job":     eventNotificationJobName,
 			"message": "sender is disabled, not sending notification",
 		})
 		return errors.New("sender is disabled, not sending notification")

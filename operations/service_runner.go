@@ -141,8 +141,13 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	const (
 		backgroundStatsInterval = time.Minute
 		sysStatsInterval        = 15 * time.Second
+		eventProcessingInterval = 5 * time.Minute
 	)
 
+	// !!DANGER!! Don't uncomment until __AFTER__ ALL event-rtype-* migrations are
+	// complete unless you want to brutally kill production!
+	// (read: it would load > 1 billion documents into memory)
+	//NONONONOamboy.IntervalQueueOperation(ctx, env.RemoteQueue(), eventProcessingInterval, time.Now(), opts, units.NewEventMetaJob)
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), backgroundStatsInterval, time.Now(), opts, units.PopulateHostMonitoring(env))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 2*time.Minute, time.Now(), opts, units.PopulateActivationJobs(4))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs(30))

@@ -12,7 +12,7 @@ type trigger func(*event.EventLogEntry) ([]Notification, error)
 // a slice of notifications, and an error object representing all errors
 // that occurred while processing triggers
 
-// It is possible for this notification to return notifications and errors at the
+// It is possible for this function to return notifications and errors at the
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(event *event.EventLogEntry) ([]Notification, error) {
