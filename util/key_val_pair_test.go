@@ -53,7 +53,15 @@ func (s *KvPairSuite) TestKvSliceToMapNested() {
 
 func (s *KvPairSuite) TestMapToKvSlice() {
 	out := MakeKeyValuePair(s.testMap)
-	s.EqualValues(s.kvSlice, out)
+	matches := 0
+	for _, testPair := range out {
+		for _, refPair := range s.kvSlice {
+			if testPair.Key == refPair.Key && testPair.Value == refPair.Value {
+				matches++
+			}
+		}
+	}
+	s.Equal(2, matches)
 }
 
 func (s *KvPairSuite) TestMapToKvSliceNested() {

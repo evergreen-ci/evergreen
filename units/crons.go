@@ -18,7 +18,7 @@ import (
 
 const tsFormat = "2006-01-02.15-04-05"
 
-func PopulateCatchupJobs() amboy.QueueOperation {
+func PopulateCatchupJobs(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -38,7 +38,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(30).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -69,7 +69,7 @@ func PopulateCatchupJobs() amboy.QueueOperation {
 	}
 }
 
-func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
+func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -90,7 +90,7 @@ func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(5).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {
@@ -105,7 +105,7 @@ func PopulateRepotrackerPollingJobs() amboy.QueueOperation {
 	}
 }
 
-func PopulateActivationJobs() amboy.QueueOperation {
+func PopulateActivationJobs(part int) amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
 		if err != nil {
@@ -126,7 +126,7 @@ func PopulateActivationJobs() amboy.QueueOperation {
 			return errors.WithStack(err)
 		}
 
-		ts := util.RoundPartOfHour(2).Format(tsFormat)
+		ts := util.RoundPartOfHour(part).Format(tsFormat)
 
 		catcher := grip.NewBasicCatcher()
 		for _, proj := range projects {

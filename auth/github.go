@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"net/http"
@@ -54,24 +55,25 @@ func NewGithubUserManager(g *evergreen.GithubAuthConfig) (*GithubUserManager, er
 // If there is no match and there is an organization it checks the user's organizations against
 // the UserManager's Authorized organization string.
 func (gum *GithubUserManager) GetUserByToken(token string) (User, error) {
-	user, organizations, err := thirdparty.GetGithubUser(token)
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	user, isMember, err := thirdparty.GetGithubUser(ctx, token, gum.AuthorizedOrganization)
 	if err != nil {
 		return nil, err
 	}
 	if user != nil {
-		if gum.AuthorizedUsers != nil {
-			for _, u := range gum.AuthorizedUsers {
-				if u == user.Username() {
-					return user, nil
+		if !isMember {
+			if gum.AuthorizedUsers != nil {
+				for _, u := range gum.AuthorizedUsers {
+					if u == user.Username() {
+						return user, nil
+					}
 				}
 			}
-		}
-		if gum.AuthorizedOrganization != "" {
-			for _, organization := range organizations {
-				if organization.Login == gum.AuthorizedOrganization {
-					return user, nil
-				}
-			}
+
+		} else {
+			return user, nil
 		}
 	}
 
@@ -130,7 +132,11 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWrit
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
-		githubResponse, err := thirdparty.GithubAuthenticate(code, gum.ClientId, gum.ClientSecret)
+
+		ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+		defer cancel()
+
+		githubResponse, err := thirdparty.GithubAuthenticate(ctx, code, gum.ClientId, gum.ClientSecret)
 		if err != nil {
 			grip.Errorf("Error sending code and authentication info to Github: %+v", err)
 			return

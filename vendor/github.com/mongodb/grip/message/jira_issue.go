@@ -13,16 +13,16 @@ type jiraMessage struct {
 // To see whether you have the right permissions to create an issue with certain
 // fields, check your JIRA interface on the web.
 type JiraIssue struct {
-	Project     string
-	Summary     string
-	Description string
-	Reporter    string
-	Assignee    string
-	Type        string
-	Components  []string
-	Labels      []string
+	Project     string   `bson:"project" json:"project" yaml:"project"`
+	Summary     string   `bson:"summary" json:"summary" yaml:"summary"`
+	Description string   `bson:"description" json:"description" yaml:"description"`
+	Reporter    string   `bson:"reporter" json:"reporter" yaml:"reporter"`
+	Assignee    string   `bson:"assignee" json:"assignee" yaml:"assignee"`
+	Type        string   `bson:"type" json:"type" yaml:"type"`
+	Components  []string `bson:"components" json:"components" yaml:"components"`
+	Labels      []string `bson:"labels" json:"labels" yaml:"labels"`
 	// ... other fields
-	Fields map[string]string
+	Fields map[string]string `bson:"fields" json:"fields" yaml:"fields"`
 }
 
 // JiraField is a struct composed of a key-value pair.

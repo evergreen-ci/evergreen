@@ -1,9 +1,11 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -170,14 +172,12 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	commitInfo, err := thirdparty.GetCommitEvent(githubOauthToken, repoOwner, repo, githash)
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+
+	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, repoOwner, repo, githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	if commitInfo == nil {
-		as.WriteJSON(w, http.StatusBadRequest, errors.New("commit hash doesn't seem to exist"))
 		return
 	}
 
