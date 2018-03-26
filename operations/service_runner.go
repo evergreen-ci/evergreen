@@ -147,7 +147,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	// !!DANGER!! Don't uncomment until __AFTER__ ALL event-rtype-* migrations are
 	// complete unless you want to brutally kill production!
 	// (read: it would load > 1 billion documents into memory)
-	//NONONONOamboy.IntervalQueueOperation(ctx, env.RemoteQueue(), eventProcessingInterval, time.Now(), opts, units.NewEventMetaJob)
+	//NONONONOamboy.IntervalQueueOperation(ctx, env.RemoteQueue(), eventProcessingInterval, time.Now(), opts, units.NewEventMetaJobQueueOperation(event.NotificationCollection))
+	//NONONONOamboy.IntervalQueueOperation(ctx, env.RemoteQueue(), eventProcessingInterval, time.Now(), opts, units.NewEventMetaJobQueueOperation(event.AllLogCollection))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), backgroundStatsInterval, time.Now(), opts, units.PopulateHostMonitoring(env))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 2*time.Minute, time.Now(), opts, units.PopulateActivationJobs(4))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs(30))

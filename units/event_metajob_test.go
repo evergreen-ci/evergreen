@@ -1,16 +1,19 @@
 package units
 
 import (
+	"context"
 	"crypto/hmac"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
@@ -24,6 +27,7 @@ import (
 
 type eventMetaJobSuite struct {
 	suite.Suite
+	cancel func()
 }
 
 func TestEventMetaJob(t *testing.T) {
@@ -31,11 +35,21 @@ func TestEventMetaJob(t *testing.T) {
 }
 
 func (s *eventMetaJobSuite) SetupSuite() {
+	evergreen.ResetEnvironment()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 }
 
+func (s *eventMetaJobSuite) TearDownSuite() {
+	s.cancel()
+}
+
 func (s *eventMetaJobSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection))
 
 	events := []event.EventLogEntry{
 		{
@@ -54,12 +68,29 @@ func (s *eventMetaJobSuite) SetupTest() {
 	}
 
 	logger := event.NewDBEventLogger(event.AllLogCollection)
+	logger2 := event.NewDBEventLogger(event.TaskLogCollection)
 	for i := range events {
 		s.NoError(logger.LogEvent(&events[i]))
+		s.NoError(logger2.LogEvent(&events[i]))
 	}
 }
 
-func (s *eventMetaJobSuite) TestJob() {
+func (s *eventMetaJobSuite) TestDegradedMode() {
+	flags := evergreen.ServiceFlags{
+		EventProcessingDisabled: true,
+	}
+	s.NoError(flags.Set())
+
+	job := NewEventMetaJob(event.AllLogCollection)
+	job.Run()
+	s.EqualError(job.Error(), "events processing is disabled, all events will be marked processed")
+
+	out := []event.EventLogEntry{}
+	s.NoError(db.FindAllQ(event.AllLogCollection, db.Query(event.UnprocessedEvents()), &out))
+	s.Empty(out)
+
+	s.NoError(db.FindAllQ(event.TaskLogCollection, db.Query(event.UnprocessedEvents()), &out))
+	s.Len(out, 1)
 }
 
 type eventNotificationSuite struct {
@@ -77,7 +108,7 @@ func (s *eventNotificationSuite) SetupSuite() {
 }
 
 func (s *eventNotificationSuite) SetupTest() {
-	s.NoError(db.ClearCollections(notification.NotificationsCollection))
+	s.NoError(db.ClearCollections(notification.NotificationsCollection, evergreen.ConfigCollection))
 	s.webhook = notification.Notification{
 		ID: bson.NewObjectId(),
 		Subscriber: event.Subscriber{
@@ -164,6 +195,24 @@ func (s *eventNotificationSuite) notificationHasError(id bson.ObjectId, e string
 
 	s.Equal(e, n.Error)
 	return n.SentAt
+}
+
+func (s *eventNotificationSuite) TestDegradedMode() {
+	flags := evergreen.ServiceFlags{
+		JIRANotificationsDisabled:    true,
+		SlackNotificationsDisabled:   true,
+		EmailNotificationsDisabled:   true,
+		WebhookNotificationsDisabled: true,
+		GithubStatusAPIDisabled:      true,
+		BackgroundStatsDisabled:      true,
+	}
+	s.NoError(flags.Set())
+
+	job := newEventNotificationJob(s.webhook.ID)
+	job.Run()
+	s.EqualError(job.Error(), "sender is disabled, not sending notification")
+
+	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {

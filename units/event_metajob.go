@@ -46,6 +46,8 @@ func init() {
 type eventMetaJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
+
+	Collection string `bson:"collection" json:"collection" yaml:"collection"`
 }
 
 func makeEventMetaJob() *eventMetaJob {
@@ -62,14 +64,23 @@ func makeEventMetaJob() *eventMetaJob {
 	return j
 }
 
-func NewEventMetaJob() amboy.Job {
+func NewEventMetaJob(collection string) amboy.Job {
 	j := makeEventMetaJob()
 	j.env = evergreen.GetEnvironment()
+	j.Collection = collection
 
-	// TODO: safe?
+	// TODO: not safe
 	j.SetID(fmt.Sprintf("%s:%s:%d", eventMetaJobName, time.Now().String(), job.GetNumber()))
 
 	return j
+}
+
+func NewEventMetaJobQueueOperation(collection string) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		err := queue.Put(NewEventMetaJob(collection))
+
+		return errors.Wrap(err, "failed to queue event-metajob")
+	}
 }
 
 func (j *eventMetaJob) Run() {
@@ -90,10 +101,14 @@ func (j *eventMetaJob) Run() {
 			"job":     eventMetaJobName,
 			"message": "events processing is disabled, all events will be marked processed",
 		})
+
+		j.AddError(errors.New("events processing is disabled, all events will be marked processed"))
+		j.AddError(event.MarkAllEventsProcessed(j.Collection))
+		return
 	}
 
-	events, err := event.Find(event.AllLogCollection, db.Query(event.UnprocessedEvents()))
-	logger := event.NewDBEventLogger(event.AllLogCollection)
+	events, err := event.Find(j.Collection, db.Query(event.UnprocessedEvents()))
+	logger := event.NewDBEventLogger(j.Collection)
 
 	if err != nil {
 		j.AddError(err)
@@ -149,10 +164,8 @@ func (j *eventMetaJob) Run() {
 			continue
 		}
 
-		if flags.EventProcessingDisabled {
-			for i := range notifications {
-				j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
-			}
+		for i := range notifications {
+			j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
 		}
 
 		j.AddError(logger.MarkProcessed(&events[i]))
@@ -253,12 +266,14 @@ func (j *eventNotificationJob) Run() {
 	case event.GithubPullRequestSubscriberType:
 		if err = checkFlag(flags.GithubStatusAPIDisabled); err != nil {
 			j.AddError(err)
+			j.AddError(n.MarkError(err))
 			return
 		}
 
 	case event.SlackSubscriberType:
 		if err = checkFlag(flags.SlackNotificationsDisabled); err != nil {
 			j.AddError(err)
+			j.AddError(n.MarkError(err))
 			return
 		}
 		sendError = j.slackMessage(n)
@@ -266,6 +281,7 @@ func (j *eventNotificationJob) Run() {
 	case event.JIRAIssueSubscriberType:
 		if err = checkFlag(flags.JIRANotificationsDisabled); err != nil {
 			j.AddError(err)
+			j.AddError(n.MarkError(err))
 			return
 		}
 		sendError = j.jiraIssue(n)
@@ -273,6 +289,7 @@ func (j *eventNotificationJob) Run() {
 	case event.JIRACommentSubscriberType:
 		if err = checkFlag(flags.JIRANotificationsDisabled); err != nil {
 			j.AddError(err)
+			j.AddError(n.MarkError(err))
 			return
 		}
 		sendError = j.jiraComment(n)
@@ -280,6 +297,7 @@ func (j *eventNotificationJob) Run() {
 	case event.EvergreenWebhookSubscriberType:
 		if err = checkFlag(flags.WebhookNotificationsDisabled); err != nil {
 			j.AddError(err)
+			j.AddError(n.MarkError(err))
 			return
 		}
 		sendError = j.evergreenWebhook(n)
@@ -287,6 +305,7 @@ func (j *eventNotificationJob) Run() {
 	case event.EmailSubscriberType:
 		if err = checkFlag(flags.EmailNotificationsDisabled); err != nil {
 			j.AddError(err)
+			j.AddError(n.MarkError(err))
 			return
 		}
 		sendError = j.email(n)

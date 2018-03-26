@@ -409,3 +409,40 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		s.False(processed)
 	})
 }
+
+func (s *eventSuite) TestMarkAllEventsProcessed() {
+	data := []bson.M{
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+		{
+			idKey:           bson.ObjectIdHex("507f191e810c19729de860ea"),
+			processedAtKey:  time.Time{}.Add(time.Second),
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+	}
+	for i := range data {
+		s.NoError(db.Insert(AllLogCollection, data[i]))
+	}
+
+	s.NoError(MarkAllEventsProcessed(AllLogCollection))
+
+	events, err := Find(AllLogCollection, db.Q{})
+	s.NoError(err)
+	s.Len(events, 3)
+
+	for i := range events {
+		processed, ptime := events[i].Processed()
+		s.NotZero(ptime)
+		s.True(processed)
+		if events[i].ID.Hex() == "507f191e810c19729de860ea" {
+			s.True(events[i].ProcessedAt.Equal(time.Time{}.Add(time.Second)))
+		}
+	}
+}
