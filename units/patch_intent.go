@@ -117,12 +117,11 @@ func (j *patchIntentProcessor) Run() {
 		var update amboy.Job
 		if len(patchDoc.Version) == 0 {
 			update = NewGithubStatusUpdateJobForExternalPatch(patchDoc.Id.Hex())
-
 		} else {
 			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		}
-		err = j.env.RemoteQueue().Put(update)
-		j.AddError(err)
+		update.Run()
+		j.AddError(j.Error())
 		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
 			"message":            "Failed to queue status update",
 			"job":                j.ID(),
