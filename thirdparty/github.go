@@ -32,6 +32,10 @@ const (
 )
 
 func githubShouldRetry(attempt rehttp.Attempt) bool {
+	if attempt.Response == nil {
+		return true
+	}
+
 	limit := parseGithubRateLimit(attempt.Response.Header)
 	if limit.Remaining == 0 {
 		return false
