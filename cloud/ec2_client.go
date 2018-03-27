@@ -82,7 +82,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 		return errors.New("creds must not be nil")
 	}
 	if c.session == nil {
-		c.httpClient = util.GetHttpClient()
+		c.httpClient = util.GetHTTPClient()
 		s, err := session.NewSession(&aws.Config{
 			HTTPClient:  c.httpClient,
 			Region:      makeStringPtr(defaultRegion),
@@ -99,7 +99,7 @@ func (c *awsClientImpl) Create(creds *credentials.Credentials) error {
 
 func (c *awsClientImpl) Close() {
 	if c.httpClient != nil {
-		util.PutHttpClient(c.httpClient)
+		util.PutHTTPClient(c.httpClient)
 		c.httpClient = nil
 	}
 }

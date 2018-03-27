@@ -136,6 +136,9 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
@@ -143,7 +146,7 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	s.Require().NoError(j.finishPatch(patchDoc, githubOauthToken))
+	s.Require().NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.Require().NoError(j.Error())
 	s.Require().False(j.HasErrors())
 
@@ -151,6 +154,9 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
@@ -169,7 +175,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(patchDoc, githubOauthToken)
+	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
 }

@@ -27,9 +27,11 @@ func deployMigration() cli.Command {
 			db := parseDB(c)
 			env := evergreen.GetEnvironment()
 			err := env.Configure(ctx, c.String(confFlagName), db)
-
 			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			settings := env.Settings()
+
+			// avoid working on remote jobs during migrations
+			env.RemoteQueue().Runner().Close()
 
 			opts := migrations.Options{
 				Period:   c.Duration(anserPeriodFlagName),
@@ -53,6 +55,7 @@ func deployMigration() cli.Command {
 				return errors.Wrap(err, "problem configuring migration application")
 			}
 
+			grip.Debug("completed migration setup running generator and then migrations")
 			return errors.Wrap(app.Run(ctx), "problem running migration operation")
 		},
 	}

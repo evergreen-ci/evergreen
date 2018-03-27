@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -61,6 +62,9 @@ func (j *repotrackerJob) Run() {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
@@ -97,13 +101,13 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
-	if !repotracker.CheckGithubAPIResources(token) {
+	if !repotracker.CheckGithubAPIResources(ctx, token) {
 		j.AddError(errors.Errorf("skipping repotracker run [%s] for %s because of github limit issues",
 			j.ID(), j.ProjectID))
 		return
 	}
 
-	err = repotracker.CollectRevisionsForProject(settings, *ref,
+	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref,
 		settings.RepoTracker.MaxRepoRevisionsToSearch)
 
 	if err != nil {

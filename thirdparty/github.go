@@ -32,6 +32,10 @@ const (
 )
 
 func githubShouldRetry(attempt rehttp.Attempt) bool {
+	if attempt.Response == nil {
+		return true
+	}
+
 	limit := parseGithubRateLimit(attempt.Response.Header)
 	if limit.Remaining == 0 {
 		return false
@@ -57,8 +61,7 @@ func githubShouldRetry(attempt rehttp.Attempt) bool {
 
 func getGithubClient(token string) (*http.Client, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), rehttp.RetryTemporaryErr(), githubShouldRetry)
-	return util.GetRetryableHTTPClientForOauth2(token, all,
-		util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+	return util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from
@@ -68,7 +71,7 @@ func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, 
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 
@@ -136,7 +139,7 @@ func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash stri
 	if err != nil {
 		return nil, errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	var opt *github.RepositoryContentGetOptions
@@ -191,7 +194,7 @@ func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo
 	if err != nil {
 		return "", errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	compare, resp, err := client.Repositories.CompareCommits(ctx,
@@ -229,7 +232,7 @@ func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash st
 	if err != nil {
 		return nil, errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	grip.Info(message.Fields{
@@ -284,7 +287,7 @@ func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch str
 	if err != nil {
 		return nil, errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", repoOwner, repo, branch)
@@ -341,8 +344,8 @@ func githubRequest(ctx context.Context, method string, url string, oauthToken st
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	return client.Do(req)
 }
@@ -467,7 +470,7 @@ func GetGithubUser(ctx context.Context, token string, requiredOrg string) (*Gith
 	if err != nil {
 		return nil, false, errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	user, resp, err := client.Users.Get(ctx, "")
@@ -488,7 +491,7 @@ func GetGithubUser(ctx context.Context, token string, requiredOrg string) (*Gith
 
 	var isMember bool
 	if len(requiredOrg) > 0 {
-		isMember, _, err = client.Organizations.IsMember(context.TODO(), requiredOrg, *user.Login)
+		isMember, _, err = client.Organizations.IsMember(ctx, requiredOrg, *user.Login)
 		if err != nil {
 			return nil, false, errors.Wrapf(err, "Could check if user was org member")
 		}
@@ -514,7 +517,7 @@ func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) 
 	if err != nil {
 		return 0, errors.Wrap(err, "can't fetch data from github")
 	}
-	defer util.PutRetryableHTTPClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	limits, resp, err := client.RateLimits(ctx)

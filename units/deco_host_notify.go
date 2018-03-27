@@ -88,8 +88,8 @@ func (j *decoHostNotifyJob) Run() {
 	}
 
 	// otherwise, it was a static host and we should create jira tickets for this.
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()

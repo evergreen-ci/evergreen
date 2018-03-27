@@ -203,8 +203,8 @@ func (c *s3get) get(ctx context.Context) error {
 		SecretKey: c.AwsSecret,
 	}
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	session := thirdparty.NewS3Session(auth, aws.USEast, client)
 	bucket := session.Bucket(c.Bucket)

@@ -11,11 +11,17 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
 const collectHostIdleDataJobName = "collect-host-idle-data"
+
+func init() {
+	registry.AddJobType(collectHostIdleDataJobName,
+		func() amboy.Job { return newHostIdleJob() })
+}
 
 type collecHostIdleDataJob struct {
 	HostID     string    `bson:"host_id" json:"host_id" yaml:"host_id"`

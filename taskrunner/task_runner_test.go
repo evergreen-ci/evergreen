@@ -38,6 +38,9 @@ func (self *MockHostGateway) AgentNeedsBuild() (bool, error) {
 }
 
 func TestTaskRunner(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("with a mocked task runner and a free host", t, func() {
 		if err := db.ClearCollections(host.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
@@ -55,7 +58,7 @@ func TestTaskRunner(t *testing.T) {
 		So(h1.Insert(), ShouldBeNil)
 
 		Convey("running the task runner should modify the host's revision", func() {
-			So(tr.Run(), ShouldBeNil)
+			So(tr.Run(ctx), ShouldBeNil)
 		})
 
 	})

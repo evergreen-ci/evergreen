@@ -3,6 +3,7 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model/testresult"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -64,9 +65,22 @@ func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request
 			StatusCode: http.StatusNotFound,
 		}
 	}
+	var executionInt int
+	var err error
+	execution := r.URL.Query().Get("execution")
+	if execution != "" {
+		executionInt, err = strconv.Atoi(execution)
+		if err != nil {
+			return rest.APIError{
+				Message:    "Invalid execution",
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	}
 	tgh.Args = testGetHandlerArgs{
-		taskId:     projCtx.Task.Id,
-		testStatus: r.URL.Query().Get("status"),
+		taskId:        projCtx.Task.Id,
+		testStatus:    r.URL.Query().Get("status"),
+		testExecution: executionInt,
 	}
 	return tgh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
