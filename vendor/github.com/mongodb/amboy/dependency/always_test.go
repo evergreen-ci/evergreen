@@ -33,7 +33,7 @@ func (s *AlwaysRebuildSuite) TestConstructorCreatesObjectWithExpectedValues() {
 }
 
 func (s *AlwaysRebuildSuite) TestHasComposedJobEdgesInstance() {
-	s.IsType(s.dep.JobEdges, &JobEdges{})
+	s.IsType(s.dep.JobEdges, JobEdges{})
 
 	var ok bool
 	var dep interface{} = s.dep

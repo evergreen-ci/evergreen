@@ -83,7 +83,7 @@ func (g *Group) Run() {
 
 	g.mutex.RLock()
 	for _, job := range g.Jobs {
-		runnableJob, err := registry.ConvertToJob(job, amboy.JSON)
+		runnableJob, err := job.Resolve(amboy.JSON)
 		if err != nil {
 			g.AddError(err)
 			continue

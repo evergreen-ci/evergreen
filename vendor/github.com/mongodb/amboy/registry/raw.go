@@ -5,7 +5,7 @@ import (
 
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
+	legacyBSON "gopkg.in/mgo.v2/bson"
 )
 
 type rawJob struct {
@@ -14,7 +14,7 @@ type rawJob struct {
 	job  interface{}
 }
 
-func (j *rawJob) SetBSON(r bson.Raw) error { j.Body = r.Data; return nil }
+func (j *rawJob) SetBSON(r legacyBSON.Raw) error { j.Body = r.Data; return nil }
 func (j *rawJob) GetBSON() (interface{}, error) { // Get ~= Marshal
 	if j.job != nil {
 		return j.job, nil
@@ -26,7 +26,7 @@ func (j *rawJob) GetBSON() (interface{}, error) { // Get ~= Marshal
 	}
 
 	job := factory()
-	if err = amboy.ConvertFrom(amboy.BSON, j.Body, job); err != nil {
+	if err = convertFrom(amboy.BSON, j.Body, job); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	j.job = job
@@ -49,7 +49,7 @@ func (j *rawJob) UnmarshalYAML(um func(interface{}) error) error {
 
 	j.job = job
 
-	j.Body, err = amboy.ConvertTo(amboy.YAML, job)
+	j.Body, err = convertTo(amboy.YAML, job)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (j *rawJob) MarshalYAML() (interface{}, error) {
 	}
 
 	job := factory()
-	if err = amboy.ConvertFrom(amboy.YAML, j.Body, job); err != nil {
+	if err = convertFrom(amboy.YAML, j.Body, job); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	j.job = job
@@ -87,7 +87,28 @@ func (j *rawJob) MarshalJSON() ([]byte, error) {
 
 	var err error
 
-	j.Body, err = amboy.ConvertTo(amboy.JSON, j.job)
+	j.Body, err = convertTo(amboy.JSON, j.job)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return j.Body, nil
+}
+
+func (j *rawJob) UnmarshalBSON(in []byte) error { j.Body = in; return nil }
+func (j *rawJob) MarshalBSON() ([]byte, error) {
+	if j.Body != nil {
+		return j.Body, nil
+	}
+
+	if j.job == nil {
+		return nil, errors.New("nil job defined")
+	}
+
+	var err error
+
+	j.Body, err = convertTo(amboy.BSON2, j.job)
 
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -104,7 +125,7 @@ type rawDependency struct {
 	dep  interface{}
 }
 
-func (d *rawDependency) SetBSON(r bson.Raw) error { d.Body = r.Data; return nil }
+func (d *rawDependency) SetBSON(r legacyBSON.Raw) error { d.Body = r.Data; return nil }
 func (d *rawDependency) GetBSON() (interface{}, error) { // Get ~= Marshal
 	if d.dep != nil {
 		return d.dep, nil
@@ -117,7 +138,7 @@ func (d *rawDependency) GetBSON() (interface{}, error) { // Get ~= Marshal
 
 	dep := factory()
 
-	if err = amboy.ConvertFrom(amboy.BSON, d.Body, dep); err != nil {
+	if err = convertFrom(amboy.BSON, d.Body, dep); err != nil {
 		return nil, errors.WithStack(err)
 	}
 
@@ -139,7 +160,7 @@ func (d *rawDependency) UnmarshalYAML(um func(interface{}) error) error {
 
 	d.dep = dep
 
-	d.Body, err = amboy.ConvertTo(amboy.YAML, dep)
+	d.Body, err = convertTo(amboy.YAML, dep)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -158,7 +179,7 @@ func (d *rawDependency) MarshalYAML() (interface{}, error) {
 	}
 
 	dep := factory()
-	if err = amboy.ConvertFrom(amboy.YAML, d.Body, dep); err != nil {
+	if err = convertFrom(amboy.YAML, d.Body, dep); err != nil {
 		return nil, errors.WithStack(err)
 	}
 	d.dep = dep
@@ -177,7 +198,27 @@ func (d *rawDependency) MarshalJSON() ([]byte, error) {
 	}
 
 	var err error
-	d.Body, err = amboy.ConvertTo(amboy.JSON, d.dep)
+	d.Body, err = convertTo(amboy.JSON, d.dep)
+
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return d.Body, nil
+}
+
+func (d *rawDependency) UnmarshalBSON(in []byte) error { d.Body = in; return nil }
+func (d *rawDependency) MarshalBSON() ([]byte, error) {
+	if d.Body != nil {
+		return d.Body, nil
+	}
+
+	if d.dep == nil {
+		return nil, errors.New("nil dependency defined")
+	}
+
+	var err error
+	d.Body, err = convertTo(amboy.BSON2, d.dep)
 
 	if err != nil {
 		return nil, errors.WithStack(err)

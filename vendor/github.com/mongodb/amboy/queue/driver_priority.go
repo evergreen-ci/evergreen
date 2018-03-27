@@ -18,6 +18,7 @@ import (
 // PriorityStorage instance. This allows "local" (i.e. intraprocess)
 // shared queues that dispatch jobs in priority order.
 type priorityDriver struct {
+	name    string
 	storage *priorityStorage
 	closer  context.CancelFunc
 	LockManager
@@ -26,11 +27,14 @@ type priorityDriver struct {
 // NewPriorityDriver returns an initialized Priority Driver instances.
 func NewPriorityDriver() Driver {
 	p := &priorityDriver{
+		name:    uuid.NewV4().String(),
 		storage: makePriorityStorage(),
 	}
 
 	return p
 }
+
+func (p *priorityDriver) ID() string { return p.name }
 
 // Open initilizes the resources of the Driver, and is part of the
 // Driver interface. In the case of the Priority Driver, this
@@ -42,7 +46,7 @@ func (p *priorityDriver) Open(ctx context.Context) error {
 
 	_, cancel := context.WithCancel(ctx)
 	p.closer = cancel
-	p.LockManager = NewLockManager(ctx, uuid.NewV4().String(), p)
+	p.LockManager = NewLockManager(ctx, p)
 
 	return nil
 }
