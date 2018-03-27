@@ -31,10 +31,11 @@ var mciModule = angular.module('MCI', [
   'ui.grid.autoResize',
   'ui.grid.pinning',
   'ui.select',
-], function($interpolateProvider) {
+], function($interpolateProvider, $locationProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
   $interpolateProvider.startSymbol('[[');
   $interpolateProvider.endSymbol(']]');
+  $locationProvider.hashPrefix('!')
 }).factory('$now', [function() {
   return {
     now: function() {

@@ -1,10 +1,10 @@
-describe('PerfDiscoveryServiceTest', function() {
+describe('PerfDiscoveryDataServiceTest', function() {
   beforeEach(module('MCI'));
 
   var service, $httpBackend
 
   beforeEach(inject(function($injector) {
-    service = $injector.get('PerfDiscoveryService')
+    service = $injector.get('PerfDiscoveryDataService')
     $httpBackend = $injector.get('$httpBackend')
   }))
 
