@@ -142,7 +142,7 @@ mciModule.factory('PerfDiscoveryStateService', function(
       deserializeFiltering(params),
       deserializeSorting(params),
       deserializeFromVersion(params),
-      deserializeToVersion(params),
+      deserializeToVersion(params)
     )
   }
 
@@ -163,6 +163,6 @@ mciModule.factory('PerfDiscoveryStateService', function(
     applyState: applyState,
     applyStateToGrid: applyStateToGrid,
     onSortChanged: onSortChanged,
-    onFilteringChanged, onFilteringChanged,
+    onFilteringChanged: onFilteringChanged,
   }
 })
