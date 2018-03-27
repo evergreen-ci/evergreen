@@ -23,7 +23,7 @@ import (
 
 // Key used for storing variables in request context with type safety.
 type (
-	RequestCtxKey int
+	reqCtxKey int
 )
 
 type (
@@ -55,8 +55,9 @@ type (
 const (
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
-	RequestTask           reqTaskKey           = 0
-	RequestProjectContext reqProjectContextKey = 0
+	RequestTask reqCtxKey = iota
+	RequestProjectContext
+	requestID
 
 	remoteAddrHeaderName = "X-Cluster-Client-Ip"
 )
@@ -444,6 +445,8 @@ func NewRecoveryLogger() *RecoveryLogger {
 func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
 	reqID := <-l.ids
+
+	r = setRequestID(r, reqID)
 
 	remote := r.Header.Get(remoteAddrHeaderName)
 	if remote == "" {

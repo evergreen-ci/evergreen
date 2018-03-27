@@ -37,7 +37,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
-		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %v: %v", t.Id, err))
 		return
 	}
 
