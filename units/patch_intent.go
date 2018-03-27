@@ -108,7 +108,7 @@ func (j *patchIntentProcessor) Run() {
 	if err = j.finishPatch(ctx, patchDoc, githubOauthToken); err != nil {
 		j.AddError(err)
 		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
-			j.AddError(j.env.LocalQueue().Put(NewGithubStatusUpdateJobForBadConfig(j.intent.ID())))
+			j.AddError(j.env.RemoteQueue().Put(NewGithubStatusUpdateJobForBadConfig(j.intent.ID())))
 		}
 		return
 	}
@@ -121,7 +121,7 @@ func (j *patchIntentProcessor) Run() {
 		} else {
 			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		}
-		err = j.env.LocalQueue().Put(update)
+		err = j.env.RemoteQueue().Put(update)
 		j.AddError(err)
 		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
 			"message":            "Failed to queue status update",
