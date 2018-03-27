@@ -53,7 +53,8 @@ mciModule.factory('EvgUiGridUtil', function() {
       filter: {
         noTerm: true,
         condition: multiselectConditionFn,
-        options: []
+        options: [],
+        mode: 'multi',
       }
     }, colDef)
   }
