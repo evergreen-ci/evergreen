@@ -1,6 +1,7 @@
 package units
 
 import (
+	"bufio"
 	"context"
 	"crypto/hmac"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -98,6 +100,7 @@ type eventNotificationSuite struct {
 	suite.Suite
 
 	webhook notification.Notification
+	email   notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -121,8 +124,19 @@ func (s *eventNotificationSuite) SetupTest() {
 		},
 		Payload: "o hai",
 	}
+	s.email = notification.Notification{
+		ID: bson.NewObjectId(),
+		Subscriber: event.Subscriber{
+			Type:   event.EmailSubscriberType,
+			Target: "o@hai.hai",
+		},
+		Payload: notification.EmailPayload{
+			Subject: "o hai",
+			Body:    "i'm a notification",
+		},
+	}
 
-	s.NoError(notification.InsertMany(s.webhook))
+	s.NoError(notification.InsertMany(s.webhook, s.email))
 }
 
 type mockWebhookHandler struct {
@@ -194,7 +208,15 @@ func (s *eventNotificationSuite) notificationHasError(id bson.ObjectId, pattern 
 	s.Require().NoError(err)
 	s.Require().NotNil(n)
 
-	s.True(regexp.MatchString(pattern, n.Error))
+	if len(pattern) == 0 {
+		s.Empty(n.Error)
+
+	} else {
+		match, err := regexp.MatchString(pattern, n.Error)
+		s.NoError(err)
+		s.True(match)
+	}
+
 	return n.SentAt
 }
 
@@ -214,6 +236,12 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	s.EqualError(job.Error(), "sender is disabled, not sending notification")
 
 	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
+
+	job = newEventNotificationJob(s.email.ID)
+	job.Run()
+	s.EqualError(job.Error(), "sender is disabled, not sending notification")
+
+	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
@@ -223,9 +251,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
 	errMsg := job.Error().Error()
 
 	pattern := "evergreen-webhook failed to send webhook data: Post http://127.0.0.1:12345: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
-
 	s.True(regexp.MatchString(pattern, errMsg))
-
 	s.NotZero(s.notificationHasError(s.webhook.ID, pattern))
 }
 
@@ -263,7 +289,8 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 		secret: []byte("somethingelse"),
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	s.NoError(err)
+	s.Require().NoError(err)
+	defer ln.Close()
 	s.NoError(db.UpdateId(notification.NotificationsCollection, s.webhook.ID, bson.M{
 		"$set": bson.M{
 			"subscriber.target.url": "http://" + ln.Addr().String(),
@@ -281,6 +308,137 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 	s.EqualError(job.Error(), "evergreen-webhook response status was 400")
 	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook response status was 400"))
 	s.Error(job.Error())
+}
 
-	s.NoError(ln.Close())
+func (s *eventNotificationSuite) TestEmail() {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	s.Require().NoError(err)
+	defer ln.Close()
+
+	addr := strings.Split(ln.Addr().String(), ":")
+	s.Require().Len(addr, 2)
+
+	port, err := strconv.Atoi(addr[1])
+	s.Require().NoError(err)
+
+	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
+	job.settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	job.settings.Notify = evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			From:     "evergreen@example.com",
+			Server:   "127.0.0.1",
+			Port:     port,
+			Username: "much",
+			Password: "security",
+		},
+	}
+
+	go func() {
+		s.EqualError(smtpServer(ln), "EOF")
+	}()
+	time.Sleep(time.Second)
+
+	job.Run()
+	s.NoError(job.Error())
+	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
+	s.Nil(job.Error())
+}
+
+func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
+	var err error
+	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
+	job.settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	job.settings.Notify = evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			From:     "evergreen@example.com",
+			Server:   "127.0.0.1",
+			Port:     12345,
+			Username: "much",
+			Password: "security",
+		},
+	}
+
+	job.Run()
+	s.Require().Error(job.Error())
+
+	time.Sleep(time.Second)
+
+	errMsg := job.Error().Error()
+	pattern := "email settings are invalid: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
+	s.True(regexp.MatchString(pattern, errMsg))
+	s.NotZero(s.notificationHasError(s.email.ID, pattern))
+}
+
+func smtpServer(ln net.Listener) error {
+	defer ln.Close()
+
+	conn, err := ln.Accept()
+	if err != nil {
+		grip.Error(err)
+		return err
+	}
+	defer conn.Close()
+
+	grip.Info("Accepted connection")
+
+	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP Postfix\r\n"))
+	if err != nil {
+		grip.Error(err)
+		return err
+	}
+
+	for {
+		message, err := bufio.NewReader(conn).ReadString('\n')
+		grip.Error(err)
+		if err != nil {
+			return err
+		}
+		grip.Infof("C: %s", message)
+
+		msg := ""
+		if strings.HasPrefix(message, "EHLO ") {
+			msg = "250-localhost Hello localhost\r\n250-SIZE 5000\r\n250 AUTH LOGIN PLAIN"
+
+		} else if strings.HasPrefix(message, "AUTH ") {
+			msg = "235 2.7.0 Authentication successful"
+
+		} else if strings.HasPrefix(message, "DATA") {
+			msg = "354 End data with <CR><LF>.<CR><LF>"
+			_, err = conn.Write([]byte(msg + "\r\n"))
+			grip.Error(err)
+			if err != nil {
+				return err
+			}
+
+			bytes := make([]byte, 5000)
+			_, err = conn.Read(bytes)
+			grip.Error(err)
+			if err != nil {
+				return err
+			}
+			message = string(bytes)
+			grip.Infof("C: %s", message)
+			//if !strings.HasSuffix(message, "\r\n.\r\n") {
+			//	return errors.New("payload unexpected")
+			//}
+			msg = "250 Ok: queued as 9001"
+
+		} else if strings.HasPrefix(message, "QUIT") {
+			msg = "221 Bye"
+
+		} else {
+			msg = "250 Ok"
+		}
+
+		if msg != "" {
+			grip.Infof("S: %s\n", msg)
+			_, err = conn.Write([]byte(msg + "\r\n"))
+			grip.Error(err)
+			if msg == "221 Bye" || err != nil {
+				return err
+			}
+		}
+	}
 }

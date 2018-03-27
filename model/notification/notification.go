@@ -101,7 +101,7 @@ func (n *Notification) MarkSent() error {
 		},
 	}
 
-	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
+	if err := db.UpdateId(NotificationsCollection, n.ID, update); err != nil {
 		return errors.Wrap(err, "failed to update notification")
 	}
 
@@ -129,7 +129,7 @@ func (n *Notification) MarkError(sendErr error) error {
 	}
 	n.Error = errMsg
 
-	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
+	if err := db.UpdateId(NotificationsCollection, n.ID, update); err != nil {
 		n.Error = ""
 		return errors.Wrap(err, "failed to add error to notification")
 	}

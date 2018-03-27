@@ -3,7 +3,7 @@ package notification
 type EmailPayload struct {
 	Headers map[string]string `bson:"headers"`
 	Subject string            `bson:"subject"`
-	Body    []byte            `bson:"body"`
+	Body    string            `bson:"body"`
 }
 
 type GithubStatusAPIPayload struct {

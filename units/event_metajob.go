@@ -234,13 +234,15 @@ func (j *eventNotificationJob) Run() {
 		return
 	}
 
-	j.settings, err = evergreen.GetConfig()
-	j.AddError(err)
-	if err == nil && j.settings == nil {
-		j.AddError(errors.New("settings object is nil"))
-	}
-	if j.HasErrors() {
-		return
+	if j.settings == nil {
+		j.settings, err = evergreen.GetConfig()
+		j.AddError(err)
+		if err == nil && j.settings == nil {
+			j.AddError(errors.New("settings object is nil"))
+		}
+		if j.HasErrors() {
+			return
+		}
 	}
 
 	n, err := notification.Find(j.NotificationID)
@@ -448,8 +450,8 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 
 	req = req.WithContext(ctx)
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	resp, err := client.Do(req)
 	if resp != nil {
@@ -502,7 +504,7 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 	if smtpConf == nil {
 		return fmt.Errorf("email smtp settings are empty")
 	}
-	recipient, ok := n.Subscriber.Target.(string)
+	recipient, ok := n.Subscriber.Target.(*string)
 	if !ok {
 		return fmt.Errorf("email recipient email is not a string")
 	}
@@ -524,11 +526,12 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		Username:          smtpConf.Username,
 		Password:          smtpConf.Password,
 		PlainTextContents: false,
+		NameAsSubject:     true,
 		GetContents: func(opts *send.SMTPOptions, m message.Composer) (string, string) {
 			return fields["subject"].(string), fields["body"].(string)
 		},
 	}
-	if err = opts.AddRecipients(recipient); err != nil {
+	if err = opts.AddRecipients(*recipient); err != nil {
 		return errors.Wrap(err, "email was invalid")
 	}
 	sender, err := send.MakeSMTPLogger(&opts)
@@ -536,13 +539,17 @@ func (j *eventNotificationJob) email(n *notification.Notification) error {
 		return errors.Wrap(err, "email settings are invalid")
 	}
 
-	return j.send(sender, c, n)
+	j.send(sender, c, n)
+	return nil
 }
 
-func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) error {
+func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notification.Notification) {
 	err := s.SetErrorHandler(getSendErrorHandler(n))
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":         "failed to set error handler",
+		"notification_id": n.ID.Hex(),
+	}))
 	s.Send(c)
-	return err
 }
 
 func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
