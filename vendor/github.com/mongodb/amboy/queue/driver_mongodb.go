@@ -68,7 +68,7 @@ func NewMongoDBDriver(name string, opts MongoDBOptions) Driver {
 		mongodbURI:       opts.URI,
 		priority:         opts.Priority,
 		respectWaitUntil: opts.CheckWaitUntil,
-		useNewQuery:      true,
+		useNewQuery:      false,
 		instanceID:       fmt.Sprintf("%s.%s.%s", name, host, uuid.NewV4()),
 	}
 }
