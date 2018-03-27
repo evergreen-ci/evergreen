@@ -26,8 +26,8 @@ func (s *Service) createJobResponseBase() *createResponse {
 
 func (s *Service) createJob(payload *registry.JobInterchange) (*createResponse, error) {
 	resp := s.createJobResponseBase()
+	j, err := payload.Resolve(amboy.JSON)
 
-	j, err := registry.ConvertToJob(payload, amboy.JSON)
 	if err != nil {
 		resp.Error = err.Error()
 		return resp, err

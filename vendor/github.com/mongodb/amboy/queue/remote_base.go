@@ -117,6 +117,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 		case <-timer.C:
 			stat := j.Status()
 			stat.InProgress = false
+			stat.Complete = true
 			j.SetStatus(stat)
 
 			if err := q.driver.Save(j); err != nil {
