@@ -112,6 +112,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 		id, ok := e["_id"].(bson.ObjectId)
 		s.True(ok)
 
+		var t time.Time
 		if id.Hex() == "5949645c9acd9604fdd202d7" {
 			s.Equal("HOST", e["r_type"])
 			s.Equal("HOST_TASK_FINISHED", e["e_type"])
@@ -119,7 +120,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 			s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventDataBSON["t_id"])
 			s.Equal("success", eventDataBSON["t_st"])
 
-			t, ok := e["processed_at"].(time.Time)
+			t, ok = e["processed_at"].(time.Time)
 			s.True(ok)
 			s.True(expectedTime.Equal(t))
 
@@ -129,7 +130,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 			s.Equal("mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44", eventDataBSON["t_id"])
 			s.Equal("failed", eventDataBSON["t_st"])
 
-			t, ok := e["processed_at"].(time.Time)
+			t, ok = e["processed_at"].(time.Time)
 			s.True(ok)
 			s.True(t.Equal(time.Time{}.Add(-time.Hour)))
 
@@ -138,7 +139,7 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 			s.Equal("SOMETHING_AWESOME", e["e_type"])
 			s.Equal("data", eventDataBSON["other"])
 
-			t, ok := e["processed_at"].(time.Time)
+			t, ok = e["processed_at"].(time.Time)
 			s.True(ok)
 			s.True(expectedTime.Equal(t))
 

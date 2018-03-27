@@ -55,8 +55,7 @@ type HostEventData struct {
 }
 
 var (
-	hostDataResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
-	hostDataStatusKey       = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+	hostDataStatusKey = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
 )
 
 func (self HostEventData) IsValid() bool {
