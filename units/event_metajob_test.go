@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -188,12 +189,12 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	return
 }
 
-func (s *eventNotificationSuite) notificationHasError(id bson.ObjectId, e string) time.Time {
+func (s *eventNotificationSuite) notificationHasError(id bson.ObjectId, pattern string) time.Time {
 	n, err := notification.Find(id)
 	s.Require().NoError(err)
 	s.Require().NotNil(n)
 
-	s.Equal(e, n.Error)
+	s.True(regexp.MatchString(pattern, n.Error))
 	return n.SentAt
 }
 
@@ -218,8 +219,14 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
 	job := newEventNotificationJob(s.webhook.ID)
 	job.Run()
-	s.EqualError(job.Error(), "evergreen-webhook failed to send webhook data: Post http://127.0.0.1:12345: dial tcp 127.0.0.1:12345: connect: connection refused")
-	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook failed to send webhook data: Post http://127.0.0.1:12345: dial tcp 127.0.0.1:12345: connect: connection refused"))
+	s.Require().NotNil(job.Error())
+	errMsg := job.Error().Error()
+
+	pattern := "evergreen-webhook failed to send webhook data: Post http://127.0.0.1:12345: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
+
+	s.True(regexp.MatchString(pattern, errMsg))
+
+	s.NotZero(s.notificationHasError(s.webhook.ID, pattern))
 }
 
 func (s *eventNotificationSuite) TestEvergreenWebhook() {
