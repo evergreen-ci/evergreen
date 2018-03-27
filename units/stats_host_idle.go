@@ -58,6 +58,7 @@ func NewCollectHostIdleDataJob(h host.Host, startTime, finishTime time.Time) amb
 }
 
 func (j *collecHostIdleDataJob) Run() {
+	defer j.MarkComplete()
 	var err error
 
 	if j.host == nil {
