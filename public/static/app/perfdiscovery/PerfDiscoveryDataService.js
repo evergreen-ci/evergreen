@@ -1,4 +1,4 @@
-mciModule.factory('PerfDiscoveryService', function($q, ApiV1, ApiTaskdata, MPA_UI) {
+mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, MPA_UI) {
 
   /*********************
    * UTILITY FUNCTIONS *

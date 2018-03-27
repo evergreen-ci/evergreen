@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -298,10 +299,21 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string, err
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
-func sanityCheckOrderNum(revOrderNum int, projectId string) error {
+func sanityCheckOrderNum(revOrderNum int, projectId, revision string) error {
 	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester))
-	if err != nil {
+	if err != nil || latest == nil {
 		return errors.Wrap(err, "Error getting latest version")
+	}
+
+	if latest.Revision == revision {
+		grip.Critical(message.Fields{
+			"project":   projectId,
+			"runner":    RunnerName,
+			"rev_num":   revOrderNum,
+			"revision":  revision,
+			"latest_id": latest.Id,
+		})
+		return errors.New("refusing to add a new version with a duplicate revision id")
 	}
 
 	// When there are no versions in the db yet, sanity check is moot
@@ -362,10 +374,14 @@ func (repoTracker *RepoTracker) StoreRevisions(ctx context.Context, revisions []
 			"project": ref.Identifier,
 		}))
 
-		if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier); err != nil {
+		if err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier, revisions[i].Revision); err != nil {
 			// something seriously wrong (bad data in db?) so fail now
 			//
 			// this will get caught at the top level where it's logged as an alert.
+			//
+			// since all repotracker code now runs in an
+			// amboy job, it won't actually retry, and it
+			// won't take down the worker.
 			panic(err)
 		}
 		project, err := repoTracker.GetProjectConfig(ctx, revision)
@@ -626,7 +642,8 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		})
 	}
 
-	if err := v.Insert(); err != nil {
+	err := v.Insert()
+	if err != nil && !db.IsDuplicateKey(err) {
 		grip.Error(message.WrapError(err, message.Fields{
 			"runner":  RunnerName,
 			"message": "problem inserting version",

@@ -1,10 +1,21 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil,
-  PERF_DISCOVERY, PerfDiscoveryService, uiGridConstants
+  $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil, PERF_DISCOVERY,
+  PerfDiscoveryDataService, PerfDiscoveryStateService, uiGridConstants
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
+  var stateUtil = PerfDiscoveryStateService
   var grid
+  // Load state from the URL
+  var state = stateUtil.readState({
+    // Default sorting
+    sort: {
+      ratio: {
+        priority: 0,
+        direction: uiGridConstants.DESC,
+      }
+    }
+  })
 
   vm.revisionSelect = {
     options: [],
@@ -41,7 +52,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     vm.revisionSelect.options = _.map(vm.versions, function(d) {
       return d.revision
     })
-    vm.revisionSelect.selected = _.first(vm.revisionSelect.options)
+
+    // Sets 'compare from' version from the state if available
+    // Sets the first revision from the list otherwise
+    vm.revisionSelect.selected = state.from
+      ? state.from
+      : _.first(vm.revisionSelect.options)
   })
 
   var whenQueryTags = ApiTaskdata.getProjectTags(projectId).then(function(res){
@@ -49,7 +65,13 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     vm.tagSelect.options = _.map(res.data, function(d, i) {
       return {id: d.obj.revision, name: d.name}
     })
-    vm.tagSelect.selected = _.first(vm.tagSelect.options)
+
+    // Sets 'compare to' version from the state if available
+    // Sets the first tag from the list otherwise
+    var found = _.findWhere(vm.tagSelect.options, {name: state.to})
+    vm.tagSelect.selected = found
+      ? found
+      : _.first(vm.tagSelect.options)
   })
 
   $q.all([whenQueryRevisions, whenQueryTags]).then(function() {
@@ -61,6 +83,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var revision = vm.revisionSelect.selected
     var baselineTag = vm.tagSelect.selected.name
 
+    // Update permalink
+    stateUtil.applyState(state, {
+      from: revision,
+      to: baselineTag,
+    })
+
     // Set loading flag to display spinner
     vm.isLoading = true
     // Display no data while loading is in progress
@@ -68,7 +96,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
     ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
       var version = res.data
-      PerfDiscoveryService.getData(version, baselineTag).then(function(res) {
+      PerfDiscoveryDataService.getData(version, baselineTag).then(function(res) {
         vm.gridOptions.data = res
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
@@ -93,6 +121,17 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     enableFiltering: true,
     onRegisterApi: function(gridApi) {
       grid = gridApi.grid;
+      // Using _.once, because this behavior is required on init only
+      gridApi.core.on.rowsRendered($scope, _.once(function() {
+        stateUtil.applyStateToGrid(state, grid)
+        // Set handlers after grid initialized
+        gridApi.core.on.sortChanged(
+          $scope, stateUtil.onSortChanged(state)
+        )
+        gridApi.core.on.filterChanged(
+          $scope, stateUtil.onFilteringChanged(state, grid)
+        )
+      }))
     },
     columnDefs: [
       {
@@ -131,9 +170,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         type: 'number',
         cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD" />',
         enableFiltering: false,
-        sort: {
-          direction: uiGridConstants.DESC,
-        },
         width: 80,
       },
       {
