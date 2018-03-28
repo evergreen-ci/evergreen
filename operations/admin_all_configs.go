@@ -11,12 +11,24 @@ import (
 )
 
 func fetchAllProjectConfigs() cli.Command {
+	const (
+		includeDisabledFlagName = "include-disabled"
+	)
+
 	return cli.Command{
 		Name:    "all-configs",
 		Aliases: []string{"all-configs"},
-		Usage:   "download the configuration files of all evergreen projects to the current directory",
-		Before:  setPlainLogger,
+		Flags: cli.Flag{
+			cli.BoolTFlag{
+				Name:  includeDisabledFlagName,
+				Usage: "include disabled projects",
+			},
+		},
+		Usage:  "download the configuration files of all evergreen projects to the current directory",
+		Before: setPlainLogger,
 		Action: func(c *cli.Context) error {
+			includeDisabled := c.BoolT(includeDisabledFlagName)
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -39,7 +51,9 @@ func fetchAllProjectConfigs() cli.Command {
 
 			catcher := grip.NewSimpleCatcher()
 			for _, p := range projects {
-				catcher.Add(fetchAndWriteConfig(rc, p.Identifier))
+				if p.Enabled || includeDisabled {
+					catcher.Add(fetchAndWriteConfig(rc, p.Identifier))
+				}
 			}
 
 			return catcher.Resolve()
