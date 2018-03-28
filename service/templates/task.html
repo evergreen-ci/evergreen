@@ -156,6 +156,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td>
                   <span ng-hide="task.status == 'undispatched'">
                     <span ng-show="timeTaken>0"> [[timeTaken | stringifyNanoseconds]] </span>
+                    <span ng-show="timeTaken<0"> [[0 | stringifyNanoseconds]] </span>
                     <span ng-show="task.display_only && task.finish_time > 0">(cumulative)</span>
                     <span ng-show="timeTaken==0"> Not Started </span>
                   </span>
