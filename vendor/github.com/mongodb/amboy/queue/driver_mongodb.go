@@ -499,7 +499,7 @@ func (d *mongoDB) Stats() amboy.QueueStats {
 		"message":    "problem counting pending jobs",
 	}))
 
-	numLocked, err := jobs.Find(bson.M{"status.in_prog": true}).Count()
+	numLocked, err := jobs.Find(bson.M{"status.completed": false, "status.in_prog": true}).Count()
 
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,

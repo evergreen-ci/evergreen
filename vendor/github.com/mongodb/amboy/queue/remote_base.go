@@ -116,9 +116,14 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			return
 		case <-timer.C:
 			stat := j.Status()
+			ti := j.TimeInfo()
 			stat.InProgress = false
 			stat.Completed = true
 			j.SetStatus(stat)
+			j.UpdateTimeInfo(amboy.JobTimeInfo{
+				Start: ti.Start,
+				End:   time.Now(),
+			})
 
 			if err := q.driver.Save(j); err != nil {
 				grip.Warningf("problem persisting job '%s', %+v", j.ID(), err)
