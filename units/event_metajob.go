@@ -174,15 +174,14 @@ func (j *eventMetaJob) Run() {
 	totalDuration := endTime.Sub(startTime)
 
 	grip.Info(message.Fields{
-		"job_id":        j.ID(),
-		"job":           eventMetaJobName,
-		"source":        "events-processing",
-		"message":       "stats",
-		"start_time":    startTime.String(),
-		"end_time":      endTime.String(),
-		"duration":      totalDuration.String(),
-		"n":             len(events),
-		"degraded_mode": flags.EventProcessingDisabled,
+		"job_id":     j.ID(),
+		"job":        eventMetaJobName,
+		"source":     "events-processing",
+		"message":    "stats",
+		"start_time": startTime.String(),
+		"end_time":   endTime.String(),
+		"duration":   totalDuration.String(),
+		"n":          len(events),
 	})
 }
 
@@ -262,6 +261,8 @@ func (j *eventNotificationJob) Run() {
 			j.AddError(n.MarkError(err))
 			return
 		}
+
+		sendError = errors.New("unimplemented")
 
 	case event.SlackSubscriberType:
 		if err = checkFlag(flags.SlackNotificationsDisabled); err != nil {

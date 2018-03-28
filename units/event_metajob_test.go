@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/hmac"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -333,15 +334,40 @@ func (s *eventNotificationSuite) TestEmail() {
 			Password: "security",
 		},
 	}
+	body := make(chan string, 1)
 
 	go func() {
-		s.EqualError(smtpServer(ln), "EOF")
+		s.EqualError(smtpServer(ln, body), "EOF")
 	}()
-	time.Sleep(time.Second)
 
 	job.Run()
+
+	bodyText := <-body
+
+	s.NotEmpty(bodyText)
+
+	split := strings.Split(bodyText, "\r\n")
+	for i := range split {
+		if strings.HasPrefix(split[i], "To: ") {
+			s.Equal("To: <o@hai.hai>", split[i])
+
+		} else if strings.HasPrefix(split[i], "Subject: ") {
+			s.Equal("Subject: o hai", split[i])
+
+		} else if match, _ := regexp.MatchString(".*:", split[i]); !match {
+			base64Body := ""
+			for ; split[i] != "." || i == len(split); i++ {
+				base64Body += split[i]
+			}
+			data, err := base64.StdEncoding.DecodeString(base64Body)
+			s.NoError(err)
+			s.Equal("i'm a notification", string(data))
+			break
+		}
+	}
+
 	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
+	s.NotZero(s.notificationHasError(s.email.ID, ""))
 	s.Nil(job.Error())
 }
 
@@ -363,15 +389,13 @@ func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
 	job.Run()
 	s.Require().Error(job.Error())
 
-	time.Sleep(time.Second)
-
 	errMsg := job.Error().Error()
 	pattern := "email settings are invalid: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
 	s.True(regexp.MatchString(pattern, errMsg))
 	s.NotZero(s.notificationHasError(s.email.ID, pattern))
 }
 
-func smtpServer(ln net.Listener) error {
+func smtpServer(ln net.Listener, bodyOut chan string) error {
 	defer ln.Close()
 
 	conn, err := ln.Accept()
@@ -412,17 +436,19 @@ func smtpServer(ln net.Listener) error {
 				return err
 			}
 
-			bytes := make([]byte, 5000)
-			_, err = conn.Read(bytes)
-			grip.Error(err)
-			if err != nil {
-				return err
+			message := ""
+			bytes := make([]byte, 1)
+			for !strings.HasSuffix(message, "\r\n.\r\n") {
+				_, err = conn.Read(bytes)
+				grip.Error(err)
+				if err != nil {
+					return err
+				}
+				message += string(bytes)
 			}
-			message = string(bytes)
 			grip.Infof("C: %s", message)
-			//if !strings.HasSuffix(message, "\r\n.\r\n") {
-			//	return errors.New("payload unexpected")
-			//}
+			bodyOut <- message
+
 			msg = "250 Ok: queued as 9001"
 
 		} else if strings.HasPrefix(message, "QUIT") {

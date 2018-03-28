@@ -268,7 +268,7 @@ func (s *notificationSuite) TestEmailPayload() {
 			"10": "11",
 		},
 		Subject: "subject",
-		Body:    []byte("body"),
+		Body:    "body",
 	}
 
 	s.NoError(InsertMany(s.n))
