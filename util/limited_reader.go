@@ -23,12 +23,12 @@ func NewRequestReader(req *http.Request) io.ReadCloser {
 
 // NewRequestReaderWithSize returns an io.ReadCloser closer for the body of an
 // *http.Request with a user-specified size.
-func NewRequestReaderWithSize(req *http.Request, size int) io.ReadCloser {
+func NewRequestReaderWithSize(req *http.Request, size int64) io.ReadCloser {
 	return &requestReader{
 		req: req,
 		LimitedReader: &io.LimitedReader{
 			R: req.Body,
-			N: maxRequestSize,
+			N: size,
 		},
 	}
 }
