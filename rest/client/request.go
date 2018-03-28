@@ -184,6 +184,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 					"attempt":   i,
 					"max":       c.maxAttempts,
 					"path":      info.path,
+					"len":       len(out),
 					"wait_secs": backoff.ForAttempt(float64(i)).Seconds(),
 				}))
 			} else if resp.StatusCode == http.StatusOK {
