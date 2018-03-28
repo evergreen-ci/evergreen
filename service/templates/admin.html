@@ -40,7 +40,7 @@ Admin Settings
   <section layout="row" flex>
 
     <md-content flex="15">
-      <md-sidenav id="sideNav" class="leftNav md-sidenav-left" md-is-locked-open="true" >
+      <md-sidenav id="sideNav" class="leftNav md-sidenav-left" md-is-locked-open="true" style="z-index:0">
         <md-content layout-padding style="background-color:rgb(250,250,250)">
           <div id="navLinks">
             <div>Degraded Mode</div>
@@ -89,7 +89,7 @@ Admin Settings
     <md-content id="main" flex="85" layout-padding>
       <notify-box ng-init="destination='errorHeader'"></notify-box>
       <md-card style="width:99%">
-        <form ngSubmit="saveSettings()">
+        <form ngSubmit="saveSettings()" style="min-width:1225px; overflow-x:scroll;">
           <md-card-content class="squeezeAll">
 
             <section layout="row" flex>
