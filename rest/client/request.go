@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -52,14 +53,19 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
 	if data != nil {
-		var out []byte
-		out, err = json.Marshal(data)
-		if err != nil {
-			return nil, err
+		if rc, ok := data.(io.ReadCloser); ok {
+			r.Body = rc
+		} else {
+			var out []byte
+			out, err = json.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+			r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
+			r.Body = ioutil.NopCloser(bytes.NewReader(out))
 		}
-		r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
-		r.Body = ioutil.NopCloser(bytes.NewReader(out))
 	}
+
 	if err != nil {
 		return nil, errors.New("Error building request")
 	}
@@ -143,16 +149,27 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+	var err error
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
-		err := errors.New("no task secret provided")
+		err = errors.New("no task secret provided")
 		grip.Error(err)
 		return nil, err
 	}
 
-	r, err := c.createRequest(info, data)
+	var out []byte
+	if data != nil {
+		out, err = json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	r, err := c.createRequest(info, ioutil.NopCloser(bytes.NewReader(out)))
 	if err != nil {
 		return nil, err
 	}
+
+	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
 	var dur time.Duration
 	timer := time.NewTimer(0)
@@ -163,6 +180,10 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
+			if data != nil {
+				r.Body = ioutil.NopCloser(bytes.NewReader(out))
+			}
+
 			resp, err := c.doRequest(ctx, r)
 			if err != nil {
 				// for an error, don't return, just retry
@@ -171,6 +192,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 					"attempt":   i,
 					"max":       c.maxAttempts,
 					"path":      info.path,
+					"len":       len(out),
 					"wait_secs": backoff.ForAttempt(float64(i)).Seconds(),
 				}))
 			} else if resp.StatusCode == http.StatusOK {

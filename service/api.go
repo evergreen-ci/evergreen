@@ -592,6 +592,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"method":  r.Method,
 		"url":     r.URL.String(),
 		"code":    code,
+		"len":     r.ContentLength,
 		"request": GetRequestID(r),
 	}))
 
