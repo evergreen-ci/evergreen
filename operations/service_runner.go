@@ -141,7 +141,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	const (
 		backgroundStatsInterval = time.Minute
 		sysStatsInterval        = 15 * time.Second
-		eventProcessingInterval = 5 * time.Minute
+		eventProcessingInterval = 5 * time.Minute //nolint
 	)
 
 	// !!DANGER!! Don't uncomment until __AFTER__ ALL event-rtype-* migrations are

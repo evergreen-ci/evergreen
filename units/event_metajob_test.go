@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -151,7 +150,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	job := NewEventMetaJob(event.AllLogCollection).(*eventMetaJob)
 	job.flags = &flags
-	job.dispatch(s.n)
+	s.NoError(job.dispatch(s.n))
 	s.NoError(job.Error())
 
 	out := []notification.Notification{}
@@ -235,7 +234,6 @@ func (s *eventNotificationSuite) SetupTest() {
 
 type mockWebhookHandler struct {
 	secret []byte
-	m      sync.Mutex
 
 	body []byte
 	err  error
@@ -260,12 +258,12 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	mid := req.Header.Get("X-Evergreen-Notification-ID")
+	mid := req.Header.Get(evergreenNotificationIDHeader)
 	if len(mid) == 0 {
 		m.error(errors.New("no message id"), w)
 		return
 	}
-	sig := []byte(req.Header.Get("X-Evergreen-Signature"))
+	sig := []byte(req.Header.Get(evergreenHMACHeader))
 	if len(sig) == 0 {
 		m.error(errors.New("no signature"), w)
 		return
@@ -294,7 +292,6 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		"signature": string(sig),
 		"body":      string(body),
 	})
-	return
 }
 
 func (s *eventNotificationSuite) notificationHasError(id bson.ObjectId, pattern string) time.Time {
@@ -440,6 +437,7 @@ func (s *eventNotificationSuite) TestEmail() {
 	s.NotEmpty(bodyText)
 
 	split := strings.Split(bodyText, "\r\n")
+	c := regexp.MustCompile(".*:")
 	for i := range split {
 		if strings.HasPrefix(split[i], "To: ") {
 			s.Equal("To: <o@hai.hai>", split[i])
@@ -447,7 +445,7 @@ func (s *eventNotificationSuite) TestEmail() {
 		} else if strings.HasPrefix(split[i], "Subject: ") {
 			s.Equal("Subject: o hai", split[i])
 
-		} else if match, _ := regexp.MatchString(".*:", split[i]); !match {
+		} else if !c.MatchString(split[i]) {
 			base64Body := ""
 			for ; split[i] != "." || i == len(split); i++ {
 				base64Body += split[i]
@@ -500,7 +498,7 @@ func smtpServer(ln net.Listener, bodyOut chan string) error {
 
 	grip.Info("Accepted connection")
 
-	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP Postfix\r\n"))
+	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP garbagesmtp\r\n"))
 	if err != nil {
 		grip.Error(err)
 		return err
@@ -514,48 +512,48 @@ func smtpServer(ln net.Listener, bodyOut chan string) error {
 		}
 		grip.Infof("C: %s", message)
 
-		msg := ""
+		var out string
 		if strings.HasPrefix(message, "EHLO ") {
-			msg = "250-localhost Hello localhost\r\n250-SIZE 5000\r\n250 AUTH LOGIN PLAIN"
+			out = "250-localhost Hello localhost\r\n250-SIZE 5000\r\n250 AUTH LOGIN PLAIN"
 
 		} else if strings.HasPrefix(message, "AUTH ") {
-			msg = "235 2.7.0 Authentication successful"
+			out = "235 2.7.0 Authentication successful"
 
 		} else if strings.HasPrefix(message, "DATA") {
-			msg = "354 End data with <CR><LF>.<CR><LF>"
-			_, err = conn.Write([]byte(msg + "\r\n"))
+			out = "354 End data with <CR><LF>.<CR><LF>"
+			_, err = conn.Write([]byte(out + "\r\n"))
 			grip.Error(err)
 			if err != nil {
 				return err
 			}
 
-			message := ""
+			input := ""
 			bytes := make([]byte, 1)
-			for !strings.HasSuffix(message, "\r\n.\r\n") {
+			for !strings.HasSuffix(input, "\r\n.\r\n") {
 				_, err = conn.Read(bytes)
 				grip.Error(err)
 				if err != nil {
 					return err
 				}
-				message += string(bytes)
+				input += string(bytes)
 			}
-			grip.Infof("C: %s", message)
-			bodyOut <- message
+			grip.Infof("C: %s", input)
+			bodyOut <- input
 
-			msg = "250 Ok: queued as 9001"
+			out = "250 Ok: queued as 9001"
 
 		} else if strings.HasPrefix(message, "QUIT") {
-			msg = "221 Bye"
+			out = "221 Bye"
 
 		} else {
-			msg = "250 Ok"
+			out = "250 Ok"
 		}
 
-		if msg != "" {
-			grip.Infof("S: %s\n", msg)
-			_, err = conn.Write([]byte(msg + "\r\n"))
+		if out != "" {
+			grip.Infof("S: %s\n", out)
+			_, err = conn.Write([]byte(out + "\r\n"))
 			grip.Error(err)
-			if msg == "221 Bye" || err != nil {
+			if out == "221 Bye" || err != nil {
 				return err
 			}
 		}

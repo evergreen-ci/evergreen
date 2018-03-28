@@ -36,6 +36,9 @@ const (
 	evergreenWebhookTimeout  = 5 * time.Second
 
 	EventMetaJobPeriod = 5 * time.Minute
+
+	evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
+	evergreenHMACHeader           = "X-Evergreen-Signature"
 )
 
 func init() {
@@ -73,7 +76,6 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 type eventMetaJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
-	n        []notification.Notification
 	events   []event.EventLogEntry
 	flags    *evergreen.ServiceFlags
 
@@ -115,14 +117,10 @@ func NewEventMetaJobQueueOperation(collection string) amboy.QueueOperation {
 
 func (j *eventMetaJob) fetchEvents() (err error) {
 	j.events, err = event.Find(j.Collection, db.Query(event.UnprocessedEvents()))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func (j eventMetaJob) dispatchLoop() error {
+func (j *eventMetaJob) dispatchLoop() error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
 	startTime := time.Now()
@@ -166,7 +164,8 @@ func (j eventMetaJob) dispatchLoop() error {
 
 	return catcher.Resolve()
 }
-func (j eventMetaJob) dispatch(notifications []notification.Notification) error {
+
+func (j *eventMetaJob) dispatch(notifications []notification.Notification) error {
 	catcher := grip.NewSimpleCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
@@ -437,6 +436,7 @@ func calculateHMACHash(secret []byte, body []byte) (string, error) {
 }
 
 func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) error {
+	// TODO create a proper composer for evergreen webhooks
 	c, err := n.Composer()
 	if err != nil {
 		return err
@@ -477,10 +477,10 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	//	req.Header.Add(k, v)
 	//}
 
-	req.Header.Del("X-Evergreen-Signature")
-	req.Header.Add("X-Evergreen-Signature", hash)
-	req.Header.Del("X-Evergreen-Notification-ID")
-	req.Header.Add("X-Evergreen-Notification-ID", j.NotificationID.Hex())
+	req.Header.Del(evergreenHMACHeader)
+	req.Header.Add(evergreenHMACHeader, hash)
+	req.Header.Del(evergreenNotificationIDHeader)
+	req.Header.Add(evergreenNotificationIDHeader, j.NotificationID.Hex())
 
 	ctx, cancel := context.WithTimeout(req.Context(), evergreenWebhookTimeout)
 	defer cancel()
@@ -520,7 +520,10 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 	}
 	// TODO other attributes
 
-	sender, err := send.NewSlackLogger(&opts, j.settings.Slack.Token, send.LevelInfo{level.Notice, level.Notice})
+	sender, err := send.NewSlackLogger(&opts, j.settings.Slack.Token, send.LevelInfo{
+		Default:   level.Notice,
+		Threshold: level.Notice,
+	})
 	if err != nil {
 		return errors.Wrap(err, "slack sender error")
 	}
