@@ -176,6 +176,20 @@ func TestParserFunctionality(t *testing.T) {
 		So(results[1].Status, ShouldEqual, PASS)
 		So(results[2].Status, ShouldEqual, FAIL)
 	})
+
+	Convey("gotest log with negative duration", t, func() {
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "6_simple.log"))
+		So(err, ShouldBeNil)
+
+		parser := &goTestParser{Suite: "test"}
+		err = parser.Parse(bytes.NewBuffer(logdata))
+		So(err, ShouldBeNil)
+
+		results := parser.Results()
+		So(len(results), ShouldEqual, 1)
+		So(results[0].Status, ShouldEqual, PASS)
+	})
+
 }
 
 func matchResultWithLog(tr *goTestResult, logs []string) {
