@@ -46,7 +46,7 @@ func startWebService() cli.Command {
 			sender, err := settings.GetSender(env)
 			grip.CatchEmergencyFatal(err)
 			grip.CatchEmergencyFatal(grip.SetSender(sender))
-			queue := env.RemoteQueue()
+			queue := env.LocalQueue()
 
 			defer sender.Close()
 			defer recovery.LogStackTraceAndExit("evergreen service")
