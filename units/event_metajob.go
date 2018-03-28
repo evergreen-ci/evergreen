@@ -187,12 +187,13 @@ func (j *eventMetaJob) Run() {
 		return
 	}
 
-	flags, err := evergreen.GetServiceFlags()
+	var err error
+	j.flags, err = evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if flags.EventProcessingDisabled {
+	if j.flags.EventProcessingDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     eventMetaJobName,
 			"message": "events processing is disabled, all events will be marked processed",

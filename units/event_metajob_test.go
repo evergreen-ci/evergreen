@@ -38,22 +38,19 @@ func TestEventMetaJob(t *testing.T) {
 	suite.Run(t, &eventMetaJobSuite{})
 }
 
-func (s *eventMetaJobSuite) SetupSuite() {
-	evergreen.ResetEnvironment()
+func (s *eventMetaJobSuite) TearDownTest() {
+	s.cancel()
+}
 
+func (s *eventMetaJobSuite) SetupTest() {
+	evergreen.ResetEnvironment()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
-}
 
-func (s *eventMetaJobSuite) TearDownSuite() {
-	s.cancel()
-}
-
-func (s *eventMetaJobSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.NotificationsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.NotificationsCollection, event.SubscriptionsCollection))
 
 	events := []event.EventLogEntry{
 		{
@@ -148,6 +145,8 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	s.NoError(notification.InsertMany(s.n...))
 
+	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats()
+
 	job := NewEventMetaJob(event.AllLogCollection).(*eventMetaJob)
 	job.flags = &flags
 	s.NoError(job.dispatch(s.n))
@@ -161,11 +160,11 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	}
 
 	stats := evergreen.GetEnvironment().RemoteQueue().Stats()
-	s.Equal(0, stats.Running)
-	s.Equal(0, stats.Completed)
-	s.Equal(0, stats.Pending)
-	s.Equal(0, stats.Blocked)
-	s.Equal(0, stats.Total)
+	s.Equal(startingStats.Running, stats.Running)
+	s.Equal(startingStats.Blocked, stats.Blocked)
+	s.Equal(startingStats.Completed, stats.Completed)
+	s.Equal(startingStats.Pending, stats.Pending)
+	s.Equal(startingStats.Total, stats.Total)
 }
 
 func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
@@ -187,6 +186,107 @@ func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
 	for i := range s.n {
 		s.False(notificationIsEnabled(&flags, &s.n[i]))
 	}
+}
+
+func (s *eventMetaJobSuite) TestEndToEnd() {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	s.Require().NoError(err)
+	defer ln.Close()
+
+	addr := strings.Split(ln.Addr().String(), ":")
+	s.Require().Len(addr, 2)
+
+	port, err := strconv.Atoi(addr[1])
+	s.Require().NoError(err)
+
+	notifyConfig := evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			From:     "evergreen@example.com",
+			Server:   "127.0.0.1",
+			Port:     port,
+			Username: "much",
+			Password: "security",
+		},
+	}
+	s.Require().NoError(notifyConfig.Set())
+
+	s.Require().True(evergreen.GetEnvironment().RemoteQueue().Started())
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, notification.NotificationsCollection, event.SubscriptionsCollection))
+
+	e := event.EventLogEntry{
+		ResourceType: event.ResourceTypeTest,
+		Data: &event.TestEvent{
+			ResourceType: event.ResourceTypeTest,
+			Message:      "i'm an event driven notification",
+		},
+	}
+
+	logger := event.NewDBEventLogger(event.AllLogCollection)
+	s.NoError(logger.LogEvent(&e))
+
+	subs := []event.Subscription{
+		{
+			ID:      bson.NewObjectId(),
+			Type:    "test",
+			Trigger: "test",
+			Selectors: []event.Selector{
+				{
+					Type: "test",
+					Data: "awesomeness",
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.EmailSubscriberType,
+				Target: "test1@no.op",
+			},
+		},
+		{
+			ID:      bson.NewObjectId(),
+			Type:    "test",
+			Trigger: "test",
+			Selectors: []event.Selector{
+				{
+					Type: "test",
+					Data: "awesomeness",
+				},
+				{
+					Type: "test2",
+					Data: "dontpickme",
+				},
+			},
+			Subscriber: event.Subscriber{
+				Type:   event.EmailSubscriberType,
+				Target: "test3@no.op",
+			},
+		},
+	}
+
+	for i := range subs {
+		s.NoError(subs[i].Upsert())
+	}
+
+	bodyC := make(chan string, 1)
+	go func() {
+		s.EqualError(smtpServer(ln, bodyC), "EOF")
+	}()
+
+	job := NewEventMetaJob(event.AllLogCollection)
+	job.Run()
+	s.NoError(job.Error())
+
+	bodyText := <-bodyC
+
+	body := parseEmailBody(bodyText)
+	s.Equal(`"evergreen" <evergreen@example.com>`, body["From"])
+	s.Equal(`<test1@no.op>`, body["To"])
+	s.Equal(`Hi`, body["Subject"])
+	s.Equal(`event says 'i'm an event driven notification'`, body["body"])
+
+	out := []notification.Notification{}
+	s.NoError(db.FindAllQ(notification.NotificationsCollection, db.Q{}, &out))
+	s.Require().Len(out, 1)
+	s.NotZero(out[0].SentAt)
+	s.Empty(out[0].Error)
 }
 
 type eventNotificationSuite struct {
@@ -436,26 +536,10 @@ func (s *eventNotificationSuite) TestEmail() {
 
 	s.NotEmpty(bodyText)
 
-	split := strings.Split(bodyText, "\r\n")
-	c := regexp.MustCompile(".*:")
-	for i := range split {
-		if strings.HasPrefix(split[i], "To: ") {
-			s.Equal("To: <o@hai.hai>", split[i])
-
-		} else if strings.HasPrefix(split[i], "Subject: ") {
-			s.Equal("Subject: o hai", split[i])
-
-		} else if !c.MatchString(split[i]) {
-			base64Body := ""
-			for ; split[i] != "." || i == len(split); i++ {
-				base64Body += split[i]
-			}
-			data, err := base64.StdEncoding.DecodeString(base64Body)
-			s.NoError(err)
-			s.Equal("i'm a notification", string(data))
-			break
-		}
-	}
+	email := parseEmailBody(bodyText)
+	s.Equal("<o@hai.hai>", email["To"])
+	s.Equal("o hai", email["Subject"])
+	s.Equal("i'm a notification", string(email["body"]))
 
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.email.ID, ""))
@@ -498,7 +582,7 @@ func smtpServer(ln net.Listener, bodyOut chan string) error {
 
 	grip.Info("Accepted connection")
 
-	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP garbagesmtp\r\n"))
+	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP imsorrysmtp\r\n"))
 	if err != nil {
 		grip.Error(err)
 		return err
@@ -558,4 +642,33 @@ func smtpServer(ln net.Listener, bodyOut chan string) error {
 			}
 		}
 	}
+}
+
+func parseEmailBody(body string) map[string]string {
+	m := map[string]string{}
+	c := regexp.MustCompile(".+:.+")
+	s := strings.Split(body, "\r\n")
+	for i := range s {
+		if c.MatchString(s[i]) {
+			header := strings.SplitN(s[i], ":", 2)
+			m[header[0]] = strings.Trim(header[1], " ")
+
+		} else {
+			body := ""
+			for ; s[i] != "." || i == len(s); i++ {
+				body += s[i]
+			}
+			if enc, ok := m["Content-Transfer-Encoding"]; ok && enc == "base64" {
+				data, err := base64.StdEncoding.DecodeString(body)
+				grip.Error(err)
+				if err == nil {
+					m["body"] = string(data)
+				}
+			} else {
+				m["body"] = body
+			}
+			break
+		}
+	}
+	return m
 }

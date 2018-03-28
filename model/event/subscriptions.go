@@ -69,17 +69,7 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 				subscriptionSubscriberKey:     1,
 				subscriptionRegexSelectorsKey: 1,
 				"keep": bson.M{
-					"$and": []bson.M{
-						{
-							"$ne": []interface{}{
-								"$" + subscriptionSelectorsKey,
-								[]interface{}{},
-							},
-						},
-						{
-							"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
-						},
-					},
+					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
 				},
 			},
 		},

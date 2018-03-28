@@ -13,6 +13,7 @@ func init() {
 		EventTaskSystemInfo:   taskSystemResourceEventFactory,
 		EventTaskProcessInfo:  taskProcessResourceEventFactory,
 		ResourceTypeAdmin:     adminEventFactory,
+		ResourceTypeTest:      testEventFactory,
 	}
 }
 
@@ -64,5 +65,11 @@ func taskProcessResourceEventFactory() Data {
 func adminEventFactory() Data {
 	return &rawAdminEventData{
 		ResourceType: ResourceTypeAdmin,
+	}
+}
+
+func testEventFactory() Data {
+	return &TestEvent{
+		ResourceType: ResourceTypeTest,
 	}
 }
