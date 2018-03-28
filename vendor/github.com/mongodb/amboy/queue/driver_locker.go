@@ -36,8 +36,8 @@ type lockManager struct {
 // implementations. This operation does *not* start the background
 // thread. The name *must* be unique per driver/queue combination, to
 // ensure that each driver/queue can have exclusive locks over jobs.
-func NewLockManager(ctx context.Context, name string, d Driver) LockManager {
-	l := newLockManager(name, d)
+func NewLockManager(ctx context.Context, d Driver) LockManager {
+	l := newLockManager(d.ID(), d)
 	l.start(ctx)
 	return l
 }

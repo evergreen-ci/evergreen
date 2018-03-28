@@ -351,6 +351,11 @@ func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, e
 		return false, errors.Errorf("host %s terminated due to failure before setup", host.Id)
 	}
 
+	// if the host isn't up yet, we can't do anything
+	if hostStatus != cloud.StatusRunning {
+		return false, nil
+	}
+
 	// set the host's dns name, if it is not set
 	if host.Host == "" {
 		var hostDNS string
@@ -371,11 +376,6 @@ func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, e
 		if err = host.SetDNSName(hostDNS); err != nil {
 			return false, errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
 		}
-	}
-
-	// if the host isn't up yet, we can't do anything
-	if hostStatus != cloud.StatusRunning {
-		return false, nil
 	}
 
 	return true, nil

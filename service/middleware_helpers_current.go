@@ -35,6 +35,20 @@ func setRequestUser(r *http.Request, u auth.User) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), evergreen.RequestUser, u))
 }
 
+func setRequestID(r *http.Request, id int) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), requestID, id))
+}
+
+func GetRequestID(r *http.Request) int {
+	if rv := r.Context().Value(requestID); rv != nil {
+		if id, ok := rv.(int); ok {
+			return id
+		}
+	}
+
+	return 0
+}
+
 // GetTask loads the task attached to a request.
 func GetTask(r *http.Request) *task.Task {
 	if rv := r.Context().Value(model.ApiTaskKey); rv != nil {

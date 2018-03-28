@@ -69,7 +69,7 @@ func (s *JobGroupSuite) TestAllJobsAreCompleteAfterRunningGroup() {
 	for _, interchange := range s.job.Jobs {
 		s.True(interchange.Status.Completed)
 
-		job, err := registry.ConvertToJob(interchange, amboy.JSON)
+		job, err := interchange.Resolve(amboy.JSON)
 		s.NoError(err)
 		s.True(job.Status().Completed)
 		s.IsType(&ShellJob{}, job)
@@ -99,7 +99,8 @@ func (s *JobGroupSuite) TestJobResultsPersistAfterGroupRuns() {
 
 	interchange, exists := s.job.Jobs[fail.ID()]
 	s.True(exists)
-	job, err := registry.ConvertToJob(interchange, amboy.JSON)
+
+	job, err := interchange.Resolve(amboy.JSON)
 	s.NoError(err)
 	s.False(job.Status().Completed)
 	s.IsType(&ShellJob{}, job)

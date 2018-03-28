@@ -27,7 +27,7 @@ type LocalFile struct {
 	Dependencies []string `bson:"dependencies" json:"dependencies" yaml:"dependencies"`
 
 	T TypeInfo `bson:"type" json:"type" yaml:"type"`
-	*JobEdges
+	JobEdges
 }
 
 // NewLocalFile creates a dependency object that checks if
@@ -56,7 +56,7 @@ func NewLocalFileInstance() *LocalFile {
 			Name:    LocalFileRelationship,
 			Version: 0,
 		},
-		JobEdges: NewJobEdges(),
+		JobEdges: *NewJobEdges(),
 	}
 }
 

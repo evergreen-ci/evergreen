@@ -118,7 +118,7 @@ func (s *CreateJobSuite) TestRequestToAddJobThatAlreadyExists() {
 	rb, err := json.Marshal(payload)
 	s.NoError(err)
 
-	j, err := registry.ConvertToJob(payload, amboy.JSON)
+	j, err := payload.Resolve(amboy.JSON)
 	s.NoError(err)
 
 	s.NoError(s.service.queue.Put(j))

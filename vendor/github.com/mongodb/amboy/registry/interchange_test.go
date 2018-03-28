@@ -28,9 +28,15 @@ func TestJobInterchangeSuiteJSON(t *testing.T) {
 	suite.Run(t, s)
 }
 
-func TestJobInterchangeSuiteBSON(t *testing.T) {
+func TestJobInterchangeSuiteLegacyBSON(t *testing.T) {
 	s := new(JobInterchangeSuite)
 	s.format = amboy.BSON
+	suite.Run(t, s)
+}
+
+func TestJobInterchangeSuiteBSON(t *testing.T) {
+	s := new(JobInterchangeSuite)
+	s.format = amboy.BSON2
 	suite.Run(t, s)
 }
 
@@ -48,10 +54,10 @@ func (s *JobInterchangeSuite) TestRoundTripHighLevel() {
 	i, err := MakeJobInterchange(s.job, s.format)
 	s.NoError(err)
 
-	outJob, err := ConvertToJob(i, s.format)
+	outJob, err := i.Resolve(s.format)
 	s.NoError(err)
 
-	if s.format == amboy.BSON {
+	if s.format == amboy.BSON || s.format == amboy.BSON2 {
 		// mgo/bson seems to unset/nil the private map in the
 		// implementation of the dependency. It's not material
 		// to this test so we fake it out
@@ -68,40 +74,12 @@ func (s *JobInterchangeSuite) TestRoundTripLowLevel() {
 	i.Job.job = nil
 	i.Dependency.Dependency.dep = nil
 
-	out, err := amboy.ConvertTo(s.format, i)
-	s.NoError(err)
+	j2, err := i.Resolve(s.format)
 
-	i2 := &JobInterchange{
-		Type: i.Type,
-		Job: &rawJob{
-			Type: i.Type,
-		},
-		Dependency: &DependencyInterchange{
-			Type: i.Dependency.Type,
-			Dependency: &rawDependency{
-				Type: i.Dependency.Type,
-			},
-		},
+	if s.NoError(err) {
+		j2.SetDependency(dependency.NewAlways())
+		s.Equal(s.job, j2)
 	}
-	err = amboy.ConvertFrom(s.format, out, i2)
-
-	if s.format == amboy.BSON {
-		// the bson parser does weird things to unset/reset private values.
-		//
-		// these are just used for optimizations for other
-		// formats, and are not ever actually used in normal
-		// round-trip formats
-		i2.Job.Type = i.Type
-		i2.Dependency.Dependency.Type = i.Dependency.Type
-		i2.Job.job = nil
-		i2.Dependency.Dependency.dep = nil
-		i.Job.job = nil
-		i.Dependency.Dependency.dep = nil
-	}
-
-	s.NoError(err)
-
-	s.Equal(i, i2)
 }
 
 func (s *JobInterchangeSuite) TestConversionToInterchangeMaintainsMetaDataFidelity() {
@@ -120,7 +98,7 @@ func (s *JobInterchangeSuite) TestConversionFromInterchangeMaintainsFidelity() {
 		return
 	}
 
-	j, err := ConvertToJob(i, s.format)
+	j, err := i.Resolve(s.format)
 
 	if s.NoError(err) {
 		s.IsType(s.job, j)
@@ -139,7 +117,7 @@ func (s *JobInterchangeSuite) TestUnregisteredTypeCannotConvertToJob() {
 
 	i, err := MakeJobInterchange(s.job, s.format)
 	if s.NoError(err) {
-		j, err := ConvertToJob(i, s.format)
+		j, err := i.Resolve(s.format)
 		s.Nil(j)
 		s.Error(err)
 	}
@@ -150,7 +128,7 @@ func (s *JobInterchangeSuite) TestMismatchedVersionResultsInErrorOnConversion() 
 
 	i, err := MakeJobInterchange(s.job, s.format)
 	if s.NoError(err) {
-		j, err := ConvertToJob(i, s.format)
+		j, err := i.Resolve(s.format)
 		s.Nil(j)
 		s.Error(err)
 	}
@@ -160,7 +138,7 @@ func (s *JobInterchangeSuite) TestConvertToJobForUnknownJobType() {
 	s.job.T.Name = "missing-job-type"
 	i, err := MakeJobInterchange(s.job, s.format)
 	if s.NoError(err) {
-		j, err := ConvertToJob(i, s.format)
+		j, err := i.Resolve(s.format)
 		s.Nil(j)
 		s.Error(err)
 	}
@@ -171,7 +149,7 @@ func (s *JobInterchangeSuite) TestMismatchedDependencyCausesJobConversionToError
 
 	i, err := MakeJobInterchange(s.job, s.format)
 	if s.NoError(err) {
-		j, err := ConvertToJob(i, s.format)
+		j, err := i.Resolve(s.format)
 		s.Error(err)
 		s.Nil(j)
 	}
@@ -191,7 +169,7 @@ func (s *JobInterchangeSuite) TestTimeInfoPersists() {
 	if s.NoError(err) {
 		s.Equal(i.TimeInfo, ti)
 
-		j, err := ConvertToJob(i, s.format)
+		j, err := i.Resolve(s.format)
 		s.NoError(err)
 		if s.NotNil(j) {
 			s.Equal(ti, j.TimeInfo())
