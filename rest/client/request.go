@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -52,14 +53,19 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
 	if data != nil {
-		var out []byte
-		out, err = json.Marshal(data)
-		if err != nil {
-			return nil, err
+		if rc, ok := data.(io.ReadCloser); ok {
+			r.Body = rc
+		} else {
+			var out []byte
+			out, err = json.Marshal(data)
+			if err != nil {
+				return nil, err
+			}
+			r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
+			r.Body = ioutil.NopCloser(bytes.NewReader(out))
 		}
-		r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
-		r.Body = ioutil.NopCloser(bytes.NewReader(out))
 	}
+
 	if err != nil {
 		return nil, errors.New("Error building request")
 	}
@@ -149,11 +155,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		return nil, err
 	}
 
-	r, err := c.createRequest(info, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	var out []byte
 	if data != nil {
 		out, err = json.Marshal(data)
@@ -161,6 +162,13 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			return nil, err
 		}
 	}
+
+	r, err := c.createRequest(info, ioutil.NopCloser(bytes.NewReader(out)))
+	if err != nil {
+		return nil, err
+	}
+
+	r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 
 	var dur time.Duration
 	timer := time.NewTimer(0)
@@ -172,7 +180,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			return nil, errors.New("request canceled")
 		case <-timer.C:
 			if data != nil {
-				r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 				r.Body = ioutil.NopCloser(bytes.NewReader(out))
 			}
 
