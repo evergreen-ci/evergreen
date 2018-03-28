@@ -27,7 +27,7 @@ type Host struct {
 	Provider string        `bson:"host_type" json:"host_type"`
 
 	// secondary (external) identifier for the host
-	ExtIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
 
 	// physical location of host
 	Project string `bson:"project" json:"project"`
@@ -641,6 +641,6 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 func (h *Host) SetExtId() error {
 	return UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{ExtIdKey: h.ExtIdentifier}},
+		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
 }

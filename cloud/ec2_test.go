@@ -564,3 +564,10 @@ func (s *EC2Suite) TestGetProvider() {
 	s.NoError(err)
 	s.Equal(onDemandProvider, provider)
 }
+
+func (s *EC2Suite) TestPersistInstanceId() {
+	h := &host.Host{Id: "instance_id"}
+	_, err := s.onDemandManager.GetDNSName(context.Background(), h)
+	s.NoError(err)
+	s.Equal("instance_id", h.ExternalIdentifier)
+}

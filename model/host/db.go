@@ -29,7 +29,7 @@ var (
 	DistroKey                  = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                = bsonutil.MustHaveTag(Host{}, "Provider")
 	ProvisionedKey             = bsonutil.MustHaveTag(Host{}, "Provisioned")
-	ExtIdKey                   = bsonutil.MustHaveTag(Host{}, "ExtIdentifier")
+	ExtIdKey                   = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
 	RunningTaskKey             = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
 	RunningTaskBuildVariantKey = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
