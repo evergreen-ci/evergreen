@@ -47,6 +47,7 @@ func NewVersionActiationJob(project string, id string) amboy.Job {
 	j.Project = project
 
 	j.SetID(fmt.Sprintf("%s.%s.%s", versionActivationCatchupJobName, project, id))
+	j.SetPriority(-1)
 	return j
 }
 

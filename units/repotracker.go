@@ -50,7 +50,6 @@ func makeRepotrackerJob() *repotrackerJob {
 func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 	job := makeRepotrackerJob()
 	job.ProjectID = projectID
-
 	job.SetID(fmt.Sprintf("%s:%s:%s", repotrackerJobName, msgID, projectID))
 	return job
 }
