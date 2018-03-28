@@ -149,8 +149,9 @@ func (c *communicatorImpl) doRequest(ctx context.Context, r *http.Request) (*htt
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+	var err error
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
-		err := errors.New("no task secret provided")
+		err = errors.New("no task secret provided")
 		grip.Error(err)
 		return nil, err
 	}
