@@ -1,6 +1,7 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil, PERF_DISCOVERY,
-  PerfDiscoveryDataService, PerfDiscoveryStateService, uiGridConstants
+  $q, $scope, $window, ApiTaskdata, ApiV1, ApiV2, EVG, EvgUiGridUtil,
+  PERF_DISCOVERY, PerfDiscoveryDataService, PerfDiscoveryStateService,
+  uiGridConstants
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
@@ -35,13 +36,19 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var opts = vm.revisionSelect.options
     // 24 is patch id length; 40 is githash length
     // don't allow user type invalid version identifier
-    if (_.contains([24, 40], query.length) && opts.indexOf(query) == -1) {
+    var isValid = _.contains(
+      [EVG.GIT_HASH_LEN, EVG.PATCH_ID_LEN], query.length
+    )
+
+    if (isValid && opts.indexOf(query) == -1) {
       return opts.concat(query)
     }
+
     return opts
   }
 
-  var whenQueryRevisions = ApiV1.getWaterfallVersionsRows(projectId).then(function(res) {
+  var versionsQ = ApiV1.getWaterfallVersionsRows(projectId)
+  var whenQueryRevisions = versionsQ.then(function(res) {
     vm.versions = _.map(
       _.where(
         res.data.versions, {rolled_up: false} // Filter versions with data
@@ -94,9 +101,37 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     // Display no data while loading is in progress
     vm.gridOptions.data = []
 
-    ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
-      var version = res.data
-      PerfDiscoveryDataService.getData(version, baselineTag).then(function(res) {
+    function isPatchId(revision) {
+      return revision.length == EVG.PATCH_ID_LEN
+    }
+
+    // Depending on is revision patch id or version id
+    // Different steps should be performed
+    // Patch id requires additional step
+    var chain = isPatchId(revision)
+      ? ApiV2.getPatchById(revision).then(
+          function(res) { return res.data.git_hash }, // Adaptor fn
+          function(err) { // Hanle error
+            console.error('Patch not found');
+            return $q.reject()
+          })
+      : $q.resolve(revision)
+
+    chain
+      // Get version by revision
+      .then(function(revision) {
+        return ApiV1.getVersionByRevision(projectId, revision)
+      })
+      // Extract version object
+      .then(function(res) {
+        return res.data
+      })
+      // Load perf data
+      .then(function(version) {
+        return PerfDiscoveryDataService.getData(version, baselineTag)
+      })
+      // Apply perf data
+      .then(function(res) {
         vm.gridOptions.data = res
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
@@ -104,8 +139,9 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridOptions
         )
-      }).finally(function() { vm.isLoading = false })
-    })
+      })
+      // Stop spinner
+      .finally(function() { vm.isLoading = false })
   }
 
   // Returns a predefined URL for given `row` and `col`
