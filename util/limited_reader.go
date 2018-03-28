@@ -18,6 +18,12 @@ type requestReader struct {
 // *http.Request, using a limited reader internally to avoid unbounded
 // reading from the request body. The reader is limited to 16 megabytes.
 func NewRequestReader(req *http.Request) io.ReadCloser {
+	return NewRequestReaderWithSize(req, maxRequestSize)
+}
+
+// NewRequestReaderWithSize returns an io.ReadCloser closer for the body of an
+// *http.Request with a user-specified size.
+func NewRequestReaderWithSize(req *http.Request, size int) io.ReadCloser {
 	return &requestReader{
 		req: req,
 		LimitedReader: &io.LimitedReader{

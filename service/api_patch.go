@@ -45,7 +45,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
 	}{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
