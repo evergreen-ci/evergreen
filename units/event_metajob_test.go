@@ -266,9 +266,10 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	}
 
 	bodyC := make(chan string, 1)
-	go func() {
-		s.EqualError(smtpServer(ln, bodyC), "EOF")
-	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go smtpServer(ctx, ln, bodyC)
 
 	job := NewEventMetaJob(event.AllLogCollection)
 	job.Run()
@@ -282,9 +283,11 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Equal(`Hi`, body["Subject"])
 	s.Equal(`event says 'i'm an event driven notification'`, body["body"])
 
+	time.Sleep(5 * time.Second)
 	out := []notification.Notification{}
 	s.NoError(db.FindAllQ(notification.NotificationsCollection, db.Q{}, &out))
 	s.Require().Len(out, 1)
+
 	s.NotZero(out[0].SentAt)
 	s.Empty(out[0].Error)
 }
@@ -496,6 +499,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 	}()
 
 	job.Run()
+
 	s.EqualError(job.Error(), "evergreen-webhook response status was 400")
 	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook response status was 400"))
 	s.Error(job.Error())
@@ -526,9 +530,9 @@ func (s *eventNotificationSuite) TestEmail() {
 	}
 	body := make(chan string, 1)
 
-	go func() {
-		s.EqualError(smtpServer(ln, body), "EOF")
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go smtpServer(ctx, ln, body)
 
 	job.Run()
 
@@ -570,7 +574,7 @@ func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
 	s.NotZero(s.notificationHasError(s.email.ID, pattern))
 }
 
-func smtpServer(ln net.Listener, bodyOut chan string) error {
+func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error {
 	defer ln.Close()
 
 	conn, err := ln.Accept()
@@ -589,6 +593,12 @@ func smtpServer(ln net.Listener, bodyOut chan string) error {
 	}
 
 	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		default:
+		}
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		grip.Error(err)
 		if err != nil {
