@@ -16,6 +16,7 @@ const (
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
 	Id                 APIString        `json:"task_id"`
+	ProductId          APIString        `json:"product_id"`
 	CreateTime         APITime          `json:"create_time"`
 	DispatchTime       APITime          `json:"dispatch_time"`
 	ScheduledTime      APITime          `json:"scheduled_time"`
@@ -77,6 +78,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	case *task.Task:
 		(*at) = APITask{
 			Id:            APIString(v.Id),
+			ProductId:     APIString(v.Project),
 			CreateTime:    NewTime(v.CreateTime),
 			DispatchTime:  NewTime(v.DispatchTime),
 			ScheduledTime: NewTime(v.ScheduledTime),
