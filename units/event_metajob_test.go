@@ -32,6 +32,7 @@ import (
 type eventMetaJobSuite struct {
 	suite.Suite
 	cancel func()
+	n      []notification.Notification
 }
 
 func TestEventMetaJob(t *testing.T) {
@@ -53,7 +54,7 @@ func (s *eventMetaJobSuite) TearDownSuite() {
 }
 
 func (s *eventMetaJobSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.NotificationsCollection))
 
 	events := []event.EventLogEntry{
 		{
@@ -77,6 +78,45 @@ func (s *eventMetaJobSuite) SetupTest() {
 		s.NoError(logger.LogEvent(&events[i]))
 		s.NoError(logger2.LogEvent(&events[i]))
 	}
+
+	s.n = []notification.Notification{
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.GithubPullRequestSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.JIRAIssueSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.JIRACommentSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.EvergreenWebhookSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.EmailSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.SlackSubscriberType,
+			},
+		},
+	}
 }
 
 func (s *eventMetaJobSuite) TestDegradedMode() {
@@ -97,49 +137,42 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	s.Len(out, 1)
 }
 
-// TODO: No events implemented, can't test this yet
-//func (s *eventMetaJobSuite) TestSenderDegradedModePreventsJobInsertion() {
-//	job := NewEventMetaJob(event.AllLogCollection)
-//	job.Run()
-//	s.EqualError(job.Error())
-//}
+func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
+	flags := evergreen.ServiceFlags{
+		JIRANotificationsDisabled:    true,
+		SlackNotificationsDisabled:   true,
+		EmailNotificationsDisabled:   true,
+		WebhookNotificationsDisabled: true,
+		GithubStatusAPIDisabled:      true,
+		BackgroundStatsDisabled:      true,
+	}
+
+	s.NoError(notification.InsertMany(s.n...))
+
+	job := NewEventMetaJob(event.AllLogCollection).(*eventMetaJob)
+	job.flags = &flags
+	job.dispatch(s.n)
+	s.NoError(job.Error())
+
+	out := []notification.Notification{}
+	s.NoError(db.FindAllQ(notification.NotificationsCollection, db.Q{}, &out))
+	s.Len(out, 6)
+	for i := range out {
+		s.Equal("sender disabled", out[i].Error)
+	}
+
+	stats := evergreen.GetEnvironment().RemoteQueue().Stats()
+	s.Equal(0, stats.Running)
+	s.Equal(0, stats.Completed)
+	s.Equal(0, stats.Pending)
+	s.Equal(0, stats.Blocked)
+	s.Equal(0, stats.Total)
+}
 
 func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
 	flags := evergreen.ServiceFlags{}
-	n := []notification.Notification{
-		{
-			Subscriber: event.Subscriber{
-				Type: event.GithubPullRequestSubscriberType,
-			},
-		},
-		{
-			Subscriber: event.Subscriber{
-				Type: event.JIRAIssueSubscriberType,
-			},
-		},
-		{
-			Subscriber: event.Subscriber{
-				Type: event.JIRACommentSubscriberType,
-			},
-		},
-		{
-			Subscriber: event.Subscriber{
-				Type: event.EvergreenWebhookSubscriberType,
-			},
-		},
-		{
-			Subscriber: event.Subscriber{
-				Type: event.EmailSubscriberType,
-			},
-		},
-		{
-			Subscriber: event.Subscriber{
-				Type: event.SlackSubscriberType,
-			},
-		},
-	}
-	for i := range n {
-		s.True(notificationIsEnabled(&flags, &n[i]))
+	for i := range s.n {
+		s.True(notificationIsEnabled(&flags, &s.n[i]))
 	}
 
 	flags = evergreen.ServiceFlags{
@@ -152,8 +185,8 @@ func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
 	}
 	s.Require().NoError(flags.Set())
 
-	for i := range n {
-		s.False(notificationIsEnabled(&flags, &n[i]))
+	for i := range s.n {
+		s.False(notificationIsEnabled(&flags, &s.n[i]))
 	}
 }
 

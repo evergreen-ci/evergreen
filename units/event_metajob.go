@@ -73,6 +73,9 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 type eventMetaJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
+	n        []notification.Notification
+	events   []event.EventLogEntry
+	flags    *evergreen.ServiceFlags
 
 	Collection string `bson:"collection" json:"collection" yaml:"collection"`
 }
@@ -110,6 +113,73 @@ func NewEventMetaJobQueueOperation(collection string) amboy.QueueOperation {
 	}
 }
 
+func (j *eventMetaJob) fetchEvents() (err error) {
+	j.events, err = event.Find(j.Collection, db.Query(event.UnprocessedEvents()))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (j eventMetaJob) dispatchLoop() error {
+	// TODO: if this is a perf problem, it could be multithreaded. For now,
+	// we just log time
+	startTime := time.Now()
+	logger := event.NewDBEventLogger(j.Collection)
+	catcher := grip.NewSimpleCatcher()
+	for i := range j.events {
+		var notifications []notification.Notification
+		notifications, err := notification.NotificationsFromEvent(&j.events[i])
+		catcher.Add(err)
+
+		grip.Error(message.WrapError(err, message.Fields{
+			"job_id":     j.ID(),
+			"job":        eventMetaJobName,
+			"source":     "events-processing",
+			"message":    "errors processing triggers for event",
+			"event_id":   j.events[i].ID.Hex(),
+			"event_type": j.events[i].Type(),
+		}))
+
+		if err = notification.InsertMany(notifications...); err != nil {
+			catcher.Add(err)
+			continue
+		}
+
+		catcher.Add(j.dispatch(notifications))
+		catcher.Add(logger.MarkProcessed(&j.events[i]))
+	}
+	endTime := time.Now()
+	totalDuration := endTime.Sub(startTime)
+
+	grip.Info(message.Fields{
+		"job_id":     j.ID(),
+		"job":        eventMetaJobName,
+		"source":     "events-processing",
+		"message":    "stats",
+		"start_time": startTime.String(),
+		"end_time":   endTime.String(),
+		"duration":   totalDuration.String(),
+		"n":          len(j.events),
+	})
+
+	return catcher.Resolve()
+}
+func (j eventMetaJob) dispatch(notifications []notification.Notification) error {
+	catcher := grip.NewSimpleCatcher()
+	for i := range notifications {
+		if notificationIsEnabled(j.flags, &notifications[i]) {
+			catcher.Add(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+
+		} else {
+			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
+		}
+	}
+
+	return catcher.Resolve()
+}
+
 func (j *eventMetaJob) Run() {
 	defer j.MarkComplete()
 
@@ -133,15 +203,11 @@ func (j *eventMetaJob) Run() {
 		return
 	}
 
-	events, err := event.Find(j.Collection, db.Query(event.UnprocessedEvents()))
-	logger := event.NewDBEventLogger(j.Collection)
-
-	if err != nil {
-		j.AddError(err)
+	j.AddError(j.fetchEvents())
+	if j.HasErrors() {
 		return
 	}
-
-	if len(events) == 0 {
+	if len(j.events) == 0 {
 		grip.Info(message.Fields{
 			"job_id":  j.ID(),
 			"job":     eventMetaJobName,
@@ -152,68 +218,7 @@ func (j *eventMetaJob) Run() {
 		return
 	}
 
-	// TODO: if this is a perf problem, it could be multithreaded. For now,
-	// we just log time
-	startTime := time.Now()
-	for i := range events {
-		triggerStartTime := time.Now()
-
-		var notifications []notification.Notification
-		notifications, err = notification.NotificationsFromEvent(&events[i])
-
-		triggerEndTime := time.Now()
-		triggerDuration := triggerEndTime.Sub(triggerStartTime)
-		j.AddError(err)
-		grip.Info(message.Fields{
-			"job_id":            j.ID(),
-			"job":               eventMetaJobName,
-			"source":            "events-processing",
-			"message":           "event-stats",
-			"event_id":          events[i].ID.Hex(),
-			"event_type":        events[i].Type(),
-			"start_time":        triggerStartTime.String(),
-			"end_time":          triggerEndTime.String(),
-			"duration":          triggerDuration.String(),
-			"num_notifications": len(notifications),
-		})
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_id":     j.ID(),
-			"job":        eventMetaJobName,
-			"source":     "events-processing",
-			"message":    "errors processing triggers for event",
-			"event_id":   events[i].ID.Hex(),
-			"event_type": events[i].Type(),
-		}))
-
-		if err = notification.InsertMany(notifications...); err != nil {
-			j.AddError(err)
-			continue
-		}
-
-		for i := range notifications {
-			if notificationIsEnabled(flags, &notifications[i]) {
-				j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
-
-			} else {
-				j.AddError(notifications[i].MarkError(errors.New("sender disabled")))
-			}
-		}
-
-		j.AddError(logger.MarkProcessed(&events[i]))
-	}
-	endTime := time.Now()
-	totalDuration := endTime.Sub(startTime)
-
-	grip.Info(message.Fields{
-		"job_id":     j.ID(),
-		"job":        eventMetaJobName,
-		"source":     "events-processing",
-		"message":    "stats",
-		"start_time": startTime.String(),
-		"end_time":   endTime.String(),
-		"duration":   totalDuration.String(),
-		"n":          len(events),
-	})
+	j.AddError(j.dispatchLoop())
 }
 
 type eventNotificationJob struct {
