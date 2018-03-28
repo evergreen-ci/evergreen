@@ -149,9 +149,17 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		return nil, err
 	}
 
-	r, err := c.createRequest(info, data)
+	r, err := c.createRequest(info, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	var out []byte
+	if data != nil {
+		out, err = json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var dur time.Duration
@@ -163,6 +171,11 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
+			if len(out) > 0 {
+				r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
+				r.Body = ioutil.NopCloser(bytes.NewReader(out))
+			}
+
 			resp, err := c.doRequest(ctx, r)
 			if err != nil {
 				// for an error, don't return, just retry
