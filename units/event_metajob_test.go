@@ -87,7 +87,7 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 
 	job := NewEventMetaJob(event.AllLogCollection)
 	job.Run()
-	s.EqualError(job.Error(), "events processing is disabled, all events will be marked processed")
+	s.NoError(job.Error())
 
 	out := []event.EventLogEntry{}
 	s.NoError(db.FindAllQ(event.AllLogCollection, db.Query(event.UnprocessedEvents()), &out))
@@ -95,6 +95,66 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 
 	s.NoError(db.FindAllQ(event.TaskLogCollection, db.Query(event.UnprocessedEvents()), &out))
 	s.Len(out, 1)
+}
+
+// TODO: No events implemented, can't test this yet
+//func (s *eventMetaJobSuite) TestSenderDegradedModePreventsJobInsertion() {
+//	job := NewEventMetaJob(event.AllLogCollection)
+//	job.Run()
+//	s.EqualError(job.Error())
+//}
+
+func (s *eventMetaJobSuite) TestNotificationIsEnabled() {
+	flags := evergreen.ServiceFlags{}
+	n := []notification.Notification{
+		{
+			Subscriber: event.Subscriber{
+				Type: event.GithubPullRequestSubscriberType,
+			},
+		},
+		{
+			Subscriber: event.Subscriber{
+				Type: event.JIRAIssueSubscriberType,
+			},
+		},
+		{
+			Subscriber: event.Subscriber{
+				Type: event.JIRACommentSubscriberType,
+			},
+		},
+		{
+			Subscriber: event.Subscriber{
+				Type: event.EvergreenWebhookSubscriberType,
+			},
+		},
+		{
+			Subscriber: event.Subscriber{
+				Type: event.EmailSubscriberType,
+			},
+		},
+		{
+			Subscriber: event.Subscriber{
+				Type: event.SlackSubscriberType,
+			},
+		},
+	}
+	for i := range n {
+		s.True(notificationIsEnabled(&flags, &n[i]))
+	}
+
+	flags = evergreen.ServiceFlags{
+		JIRANotificationsDisabled:    true,
+		SlackNotificationsDisabled:   true,
+		EmailNotificationsDisabled:   true,
+		WebhookNotificationsDisabled: true,
+		GithubStatusAPIDisabled:      true,
+		BackgroundStatsDisabled:      true,
+	}
+	s.Require().NoError(flags.Set())
+
+	for i := range n {
+		s.False(notificationIsEnabled(&flags, &n[i]))
+	}
 }
 
 type eventNotificationSuite struct {

@@ -43,6 +43,33 @@ func init() {
 	registry.AddJobType(eventNotificationJobName, func() amboy.Job { return makeEventNotificationJob() })
 }
 
+func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notification) bool {
+	switch n.Subscriber.Type {
+	case event.GithubPullRequestSubscriberType:
+		return !flags.GithubStatusAPIDisabled
+
+	case event.JIRAIssueSubscriberType, event.JIRACommentSubscriberType:
+		return !flags.JIRANotificationsDisabled
+
+	case event.EvergreenWebhookSubscriberType:
+		return !flags.WebhookNotificationsDisabled
+
+	case event.EmailSubscriberType:
+		return !flags.EmailNotificationsDisabled
+
+	case event.SlackSubscriberType:
+		return !flags.SlackNotificationsDisabled
+
+	default:
+		grip.Alert(message.Fields{
+			"message": "notificationIsEnabled saw unknown subscriber type",
+			"cause":   "programmer error",
+		})
+	}
+
+	return false
+}
+
 type eventMetaJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	env      evergreen.Environment
@@ -102,7 +129,6 @@ func (j *eventMetaJob) Run() {
 			"message": "events processing is disabled, all events will be marked processed",
 		})
 
-		j.AddError(errors.New("events processing is disabled, all events will be marked processed"))
 		j.AddError(event.MarkAllEventsProcessed(j.Collection))
 		return
 	}
@@ -165,7 +191,12 @@ func (j *eventMetaJob) Run() {
 		}
 
 		for i := range notifications {
-			j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+			if notificationIsEnabled(flags, &notifications[i]) {
+				j.AddError(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+
+			} else {
+				j.AddError(notifications[i].MarkError(errors.New("sender disabled")))
+			}
 		}
 
 		j.AddError(logger.MarkProcessed(&events[i]))
