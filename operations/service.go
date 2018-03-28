@@ -37,7 +37,6 @@ func deploy() cli.Command {
 			deployDataTransforms(),
 			smokeStartEvergreen(),
 			smokeTestEndpoints(),
-			fetchAllProjectConfigs(),
 		},
 	}
 }
