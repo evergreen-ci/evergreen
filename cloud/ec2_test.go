@@ -475,7 +475,7 @@ func (s *EC2Suite) TestOnUp() {
 }
 
 func (s *EC2Suite) TestGetDNSName() {
-	dns, err := s.onDemandManager.GetDNSName(context.Background(), &host.Host{})
+	dns, err := s.onDemandManager.GetDNSName(context.Background(), &host.Host{Id: "instance_id"})
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 }

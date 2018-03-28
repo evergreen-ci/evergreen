@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -45,6 +46,12 @@ type AWSClient interface {
 
 	// DescribeSpotInstanceRequests is a wrapper for ec2.DescribeSpotInstanceRequests.
 	DescribeSpotInstanceRequests(context.Context, *ec2.DescribeSpotInstanceRequestsInput) (*ec2.DescribeSpotInstanceRequestsOutput, error)
+
+	// DescribeSpotRequestsAndSave is a wrapper for DescribeSpotInstanceRequests that also saves instance IDs to the db
+	DescribeSpotRequestsAndSave(context.Context, []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error)
+
+	// GetSpotInstanceId returns the instance ID if already saved, otherwise looks it up
+	GetSpotInstanceId(context.Context, *host.Host) (string, error)
 
 	// CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
 	CancelSpotInstanceRequests(context.Context, *ec2.CancelSpotInstanceRequestsInput) (*ec2.CancelSpotInstanceRequestsOutput, error)
@@ -293,6 +300,59 @@ func (c *awsClientImpl) DescribeSpotInstanceRequests(ctx context.Context, input 
 		return nil, err
 	}
 	return output, nil
+}
+
+func (c *awsClientImpl) DescribeSpotRequestsAndSave(ctx context.Context, hosts []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+	spotRequestIds := []*string{}
+	for idx := range hosts {
+		h := hosts[idx]
+		if h == nil {
+			return nil, errors.New("unable to describe spot request for nil host")
+		}
+		spotRequestIds = append(spotRequestIds, makeStringPtr(h.Id))
+	}
+	apiInput := &ec2.DescribeSpotInstanceRequestsInput{
+		SpotInstanceRequestIds: spotRequestIds,
+	}
+
+	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
+	if err != nil {
+		return nil, errors.Wrap(err, "error describing spot requests")
+	}
+
+	catcher := grip.NewSimpleCatcher()
+	for idx := range hosts {
+		h := hosts[idx]
+		for idx := range instances.SpotInstanceRequests {
+			instance := instances.SpotInstanceRequests[idx]
+			if instance.SpotInstanceRequestId != nil && *instance.SpotInstanceRequestId == h.Id {
+				if instance.InstanceId != nil {
+					h.ExtIdentifier = *instance.InstanceId
+				}
+			}
+		}
+		if h.ExtIdentifier != "" {
+			catcher.Add(h.SetExtId())
+		}
+	}
+
+	return instances, catcher.Resolve()
+}
+
+func (c *awsClientImpl) GetSpotInstanceId(ctx context.Context, h *host.Host) (string, error) {
+	if h == nil {
+		return "", errors.New("unable to get spot instance for nil host")
+	}
+	if h.ExtIdentifier != "" {
+		return h.ExtIdentifier, nil
+	}
+
+	_, err := c.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
+	if err != nil {
+		return "", err
+	}
+
+	return h.ExtIdentifier, nil
 }
 
 // CancelSpotInstanceRequests is a wrapper for ec2.CancelSpotInstanceRequests.
@@ -567,6 +627,49 @@ func (c *awsClientMock) DescribeSpotInstanceRequests(ctx context.Context, input 
 			},
 		},
 	}, nil
+}
+
+func (c *awsClientMock) DescribeSpotRequestsAndSave(ctx context.Context, hosts []*host.Host) (*ec2.DescribeSpotInstanceRequestsOutput, error) {
+	spotRequestIds := []*string{}
+	for idx := range hosts {
+		h := hosts[idx]
+		spotRequestIds = append(spotRequestIds, makeStringPtr(h.Id))
+	}
+	apiInput := &ec2.DescribeSpotInstanceRequestsInput{
+		SpotInstanceRequestIds: spotRequestIds,
+	}
+
+	instances, err := c.DescribeSpotInstanceRequests(ctx, apiInput)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx := range hosts {
+		h := hosts[idx]
+		for idx := range instances.SpotInstanceRequests {
+			instance := instances.SpotInstanceRequests[idx]
+			if instance.SpotInstanceRequestId != nil && *instance.SpotInstanceRequestId == h.Id {
+				if instance.InstanceId != nil {
+					h.ExtIdentifier = *instance.InstanceId
+				}
+			}
+		}
+	}
+
+	return instances, nil
+}
+
+func (c *awsClientMock) GetSpotInstanceId(ctx context.Context, h *host.Host) (string, error) {
+	if h.ExtIdentifier != "" {
+		return h.ExtIdentifier, nil
+	}
+
+	_, err := c.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
+	if err != nil {
+		return "", err
+	}
+
+	return h.ExtIdentifier, nil
 }
 
 // CancelSpotInstanceRequests is a mock for ec2.CancelSpotInstanceRequests.
