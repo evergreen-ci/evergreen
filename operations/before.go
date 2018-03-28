@@ -109,6 +109,20 @@ func requireStringFlag(name string) cli.BeforeFunc {
 	}
 }
 
+func requireStringSliceValueChoices(name string, options []string) cli.BeforeFunc {
+	return func(c *cli.Context) error {
+		catcher := grip.NewBasicCatcher()
+		for _, val := range c.StringSlice(name) {
+			if !util.StringSliceContains(options, val) {
+				catcher.Add(errors.Errorf("flag '--%s' value of '%s' is not an acceptable value %s",
+					name, val, options))
+			}
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func requireStringValueChoices(name string, options []string) cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		val := c.String(name)
@@ -116,6 +130,7 @@ func requireStringValueChoices(name string, options []string) cli.BeforeFunc {
 			return errors.Errorf("flag '--%s' value of '%s' is not an acceptable value %s",
 				name, val, options)
 		}
+
 		return nil
 	}
 }
