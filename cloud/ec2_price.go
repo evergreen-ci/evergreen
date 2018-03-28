@@ -56,16 +56,14 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 		}
 		return price * dur.Hours(), nil
 	}
-	spotDetails, err := client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-	})
+	instanceId, err := client.GetSpotInstanceId(ctx, h)
 	if err != nil {
-		return 0, errors.Wrap(err, "error getting spot info")
+		return 0, errors.Wrap(err, "error getting spot instance ID")
 	}
-	if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+	if instanceId == "" {
 		return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 	}
-	instance, err := client.GetInstanceInfo(ctx, *spotDetails.SpotInstanceRequests[0].InstanceId)
+	instance, err := client.GetInstanceInfo(ctx, instanceId)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
@@ -276,16 +274,13 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 	defer cpf.Unlock()
 	instanceID := h.Id
 	if isHostSpot(h) {
-		spotDetails, err := client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-		})
+		instanceID, err := client.GetSpotInstanceId(ctx, h)
 		if err != nil {
-			return 0, errors.Wrap(err, "error getting spot info")
+			return 0, errors.Wrap(err, "error getting spot instance ID")
 		}
-		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+		if instanceID == "" {
 			return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
-		instanceID = *spotDetails.SpotInstanceRequests[0].InstanceId
 	}
 	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {

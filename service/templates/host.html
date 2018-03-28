@@ -65,6 +65,10 @@ Evergreen - Host {{.Host.Id}}
           <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.host]]</div>
         </div>
         <div class="row">
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>External Identifier</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.ext_identifier]]</div>
+        </div>
+        <div class="row">
           <div class="host-info col-lg-3 col-md-3 col-sm-3" style="margin-top: 5px;"><b>SSH Command</b> </div>
           <div class="entry col-lg-9 col-md-9 col-sm-9" ng-show="!host.isTerminated && host.host.length > 0">
             <pre readonly>ssh [[host.user]]@[[host.host]]</pre>

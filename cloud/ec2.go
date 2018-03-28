@@ -451,7 +451,7 @@ func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (Cloud
 		}
 		return ec2StatusToEvergreenStatus(*info.State.Name), nil
 	} else if isHostSpot(h) {
-		return m.getSpotInstanceStatus(ctx, h.Id)
+		return m.getSpotInstanceStatus(ctx, h)
 	}
 	return StatusUnknown, errors.New("type must be on-demand or spot")
 }
@@ -522,9 +522,7 @@ func (m *ec2Manager) TerminateInstance(ctx context.Context, h *host.Host, user s
 }
 
 func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (string, error) {
-	spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-	})
+	instanceId, err := m.client.GetSpotInstanceId(ctx, h)
 	if err != nil {
 		if ec2err, ok := err.(awserr.Error); ok {
 			if ec2err.Code() == EC2ErrorSpotRequestNotFound {
@@ -539,12 +537,6 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 		}))
 		return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 	}
-	grip.Info(message.Fields{
-		"message":       "canceling spot request",
-		"host":          h.Id,
-		"host_provider": h.Distro.Provider,
-		"distro":        h.Distro.Id,
-	})
 	if _, err = m.client.CancelSpotInstanceRequests(ctx, &ec2.CancelSpotInstanceRequestsInput{
 		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
 	}); err != nil {
@@ -563,10 +555,7 @@ func (m *ec2Manager) cancelSpotRequest(ctx context.Context, h *host.Host) (strin
 		"distro":        h.Distro.Id,
 	})
 
-	if spotDetails.SpotInstanceRequests[0].InstanceId != nil {
-		return *spotDetails.SpotInstanceRequests[0].InstanceId, nil
-	}
-	return "", nil
+	return instanceId, nil
 }
 
 // IsUp returns whether a host is up.
@@ -594,9 +583,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			return errors.Wrap(err, "error creating client")
 		}
 		defer m.client.Close()
-		spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-		})
+		instanceId, err := m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"message":       "error getting spot request info",
@@ -606,13 +593,13 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 			}))
 			return errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
-		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+		if instanceId == "" {
 			return errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
 		tags := makeTags(h)
 		tags["spot"] = "true" // mark this as a spot instance
 		resources := []*string{
-			spotDetails.SpotInstanceRequests[0].InstanceId,
+			&instanceId,
 		}
 		tagSlice := []*ec2.Tag{}
 		for tag := range tags {
@@ -622,7 +609,7 @@ func (m *ec2Manager) OnUp(ctx context.Context, h *host.Host) error {
 		}
 
 		resp, err := m.client.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-			InstanceIds: []*string{spotDetails.SpotInstanceRequests[0].InstanceId},
+			InstanceIds: []*string{&instanceId},
 		})
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -679,20 +666,16 @@ func (m *ec2Manager) GetDNSName(ctx context.Context, h *host.Host) (string, erro
 			return "", errors.Wrap(err, "error getting instance info")
 		}
 	} else {
-		spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-		})
+		instanceId, err := m.client.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		}
-		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+		if instanceId == "" {
 			return "", errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
-		if *spotDetails.SpotInstanceRequests[0].InstanceId != "" {
-			instance, err = m.client.GetInstanceInfo(ctx, *spotDetails.SpotInstanceRequests[0].InstanceId)
-			if err != nil {
-				return "", errors.Wrap(err, "error getting instance info")
-			}
+		instance, err = m.client.GetInstanceInfo(ctx, instanceId)
+		if err != nil {
+			return "", errors.Wrap(err, "error getting instance info")
 		}
 	}
 	return *instance.PublicDnsName, nil
@@ -730,12 +713,10 @@ func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
 	return d.GenerateName()
 }
 
-func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, id string) (CloudStatus, error) {
-	spotDetails, err := m.client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(id)},
-	})
+func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
+	spotDetails, err := m.client.DescribeSpotRequestsAndSave(ctx, []*host.Host{h})
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get spot request info for %s", id)
+		err = errors.Wrapf(err, "failed to get spot request info for %s", h.Id)
 		return StatusUnknown, err
 	}
 
@@ -751,7 +732,7 @@ func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, id string) (Clou
 
 	//Spot request is not fulfilled. Either it's failed/closed for some reason,
 	//or still pending evaluation
-	return cloudStatusFromSpotStatus(id, *spotInstance.State), nil
+	return cloudStatusFromSpotStatus(h.Id, *spotInstance.State), nil
 }
 
 func cloudStatusFromSpotStatus(id, state string) CloudStatus {
