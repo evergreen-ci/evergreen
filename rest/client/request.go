@@ -171,7 +171,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			if len(out) > 0 {
+			if data != nil {
 				r.Header.Add(evergreen.ContentLengthHeader, strconv.Itoa(len(out)))
 				r.Body = ioutil.NopCloser(bytes.NewReader(out))
 			}
