@@ -18,7 +18,7 @@ func fetchAllProjectConfigs() cli.Command {
 	return cli.Command{
 		Name:    "all-configs",
 		Aliases: []string{"all-configs"},
-		Flags: cli.Flag{
+		Flags: []cli.Flag{
 			cli.BoolTFlag{
 				Name:  includeDisabledFlagName,
 				Usage: "include disabled projects",
