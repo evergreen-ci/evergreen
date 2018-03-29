@@ -215,24 +215,26 @@ func (j *eventNotificationJob) jiraComment(n *notification.Notification) error {
 }
 
 func (j *eventNotificationJob) jiraIssue(n *notification.Notification) error {
+	project, ok := n.Subscriber.Target.(*string)
+	if !ok {
+		return fmt.Errorf("jira-issue subscriber was invalid (expected string)")
+	}
+
+	c, err := n.Composer()
+	if err != nil {
+		return errors.Wrap(err, "jira-issue error building message")
+	}
+	issue := c.Raw().(message.JiraIssue)
+	issue.Project = *project
+
 	jiraOpts, err := jiraOptions(j.settings.Jira)
 	if err != nil {
 		return errors.Wrap(err, "error building jira settings")
 	}
 
-	_, ok := n.Subscriber.Target.(string)
-	if !ok {
-		return fmt.Errorf("jira-issue subscriber was invalid (expected string)")
-	}
-
 	sender, err := send.MakeJiraLogger(jiraOpts)
 	if err != nil {
-		return errors.Wrap(err, "jira-comment sender error")
-	}
-
-	c, err := n.Composer()
-	if err != nil {
-		return errors.Wrap(err, "jira-comment error building message")
+		return errors.Wrap(err, "jira-issue sender error")
 	}
 
 	j.send(sender, c, n)
@@ -332,6 +334,11 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 		return fmt.Errorf("slack subscriber was invalid (expected string)")
 	}
 
+	c, err := n.Composer()
+	if err != nil {
+		return errors.Wrap(err, "slack error building message")
+	}
+
 	opts := send.SlackOptions{
 		Channel:       *target,
 		Fields:        true,
@@ -347,11 +354,6 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 	})
 	if err != nil {
 		return errors.Wrap(err, "slack sender error")
-	}
-
-	c, err := n.Composer()
-	if err != nil {
-		return errors.Wrap(err, "slack error building message")
 	}
 
 	j.send(sender, c, n)

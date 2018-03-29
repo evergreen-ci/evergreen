@@ -32,6 +32,7 @@ type eventNotificationSuite struct {
 	email       notification.Notification
 	slack       notification.Notification
 	jiraComment notification.Notification
+	jiraIssue   notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -89,7 +90,20 @@ func (s *eventNotificationSuite) SetupTest() {
 		Payload: fmt.Sprintf("eventNotificationSuite jira comment message created at %s", t.String()),
 	}
 
-	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack, s.jiraComment))
+	s.jiraIssue = notification.Notification{
+		ID: bson.NewObjectId(),
+		Subscriber: event.Subscriber{
+			Type:   event.JIRAIssueSubscriberType,
+			Target: "SERVER",
+		},
+		Payload: message.JiraIssue{
+			Summary:     "Tell the evergreen team that they're awesome",
+			Description: "The evergreen team is awesome. Inform them of it",
+			Reporter:    "elliot.horowitz",
+		},
+	}
+
+	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack, s.jiraComment, s.jiraIssue))
 }
 
 type mockWebhookHandler struct {
@@ -341,10 +355,9 @@ func (s *eventNotificationSuite) TestSlack() {
 
 	job := newEventNotificationJob(s.slack.ID)
 	job.Run()
-	s.NoError(job.Error())
 
+	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.slack.ID, ""))
-	s.Nil(job.Error())
 }
 
 func (s *eventNotificationSuite) TestJIRAComment() {
@@ -359,8 +372,44 @@ func (s *eventNotificationSuite) TestJIRAComment() {
 
 	job := newEventNotificationJob(s.jiraComment.ID)
 	job.Run()
-	s.NoError(job.Error())
 
+	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.jiraComment.ID, ""))
-	s.Nil(job.Error())
+}
+
+func (s *eventNotificationSuite) TestJIRAIssue() {
+	s.T().Skip("This test actually creates an issue. Don't run it unless necessary")
+
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(s.T(), config, "TestJIRAIssue")
+	s.Require().NotEmpty(config.Jira.Username)
+	s.Require().NotEmpty(config.Jira.Password)
+	s.Require().NotEmpty(config.Jira.Host)
+	s.Require().NoError(config.Jira.Set())
+
+	job := newEventNotificationJob(s.jiraComment.ID)
+	job.Run()
+
+	s.NoError(job.Error())
+	s.NotZero(s.notificationHasError(s.jiraComment.ID, ""))
+}
+
+func (s *eventNotificationSuite) TestJIRAWithExpectedFail() {
+	c := evergreen.JiraConfig{}
+	s.Require().NoError(c.Get())
+	s.Require().Empty(c.Host)
+	s.Require().Empty(c.Username)
+	s.Require().Empty(c.Password)
+
+	job := newEventNotificationJob(s.jiraIssue.ID)
+	job.Run()
+
+	// Unconfigured jira sender should return this:
+	s.EqualError(job.Error(), "jira-issue sender error: no username specified; no password specified")
+	s.NotZero(s.notificationHasError(s.jiraIssue.ID, "^jira-issue sender error: no username specified; no password specified$"))
+
+	job = newEventNotificationJob(s.jiraComment.ID)
+	job.Run()
+	s.EqualError(job.Error(), "jira-comment sender error: no username specified; no password specified")
+	s.NotZero(s.notificationHasError(s.jiraComment.ID, "^jira-comment sender error: no username specified; no password specified$"))
 }
