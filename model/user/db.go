@@ -23,7 +23,6 @@ var (
 	SettingsKey     = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey       = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	PubKeysKey      = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
-	githubUserKey   = bsonutil.MustHaveTag(DBUser{}, "GithubUser")
 )
 
 var (
@@ -38,13 +37,14 @@ var (
 )
 
 var (
-	SettingsTZKey = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
+	SettingsTZKey             = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
+	userSettingsGithubUserKey = bsonutil.MustHaveTag(UserSettings{}, "GithubUser")
 )
 
 func FindByGithubUID(uid int) (*DBUser, error) {
 	u := DBUser{}
 	err := db.FindOneQ(Collection, db.Query(bson.M{
-		bsonutil.GetDottedKeyName(githubUserKey, githubUserUID): uid,
+		bsonutil.GetDottedKeyName(SettingsKey, userSettingsGithubUserKey, githubUserUID): uid,
 	}), &u)
 	if err == mgo.ErrNotFound {
 		return nil, nil

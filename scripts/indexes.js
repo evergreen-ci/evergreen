@@ -124,4 +124,4 @@ db.github_hooks.ensureIndex({ "owner" : 1, "repo" : 1 }, { "unique": true })
 db.subscriptions.ensureIndex({ "type": 1, "trigger" : 1, "selectors": 1})
 
 //======users======//
-db.users.ensureIndex({ "github_user.uid": 1 })
+db.users.ensureIndex({ "settings.github_user.uid": 1 }, {unique: true})

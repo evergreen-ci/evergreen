@@ -31,9 +31,11 @@ func (s *UserTestSuite) SetupTest() {
 		&DBUser{
 			Id:     "Test1",
 			APIKey: "12345",
-			GithubUser: GithubUser{
-				UID:         1234,
-				LastKnownAs: "octocat",
+			Settings: UserSettings{
+				GithubUser: GithubUser{
+					UID:         1234,
+					LastKnownAs: "octocat",
+				},
 			},
 		},
 		&DBUser{

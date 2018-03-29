@@ -1,12 +1,15 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -95,11 +98,13 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Data     user.UserSettings
-		Config   confFile
-		Binaries []evergreen.ClientBinary
+		Data       user.UserSettings
+		Config     confFile
+		Binaries   []evergreen.ClientBinary
+		GithubUser string
+		GithubUID  int
 		ViewData
-	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, uis.GetCommonViewData(w, r, true, true)},
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, currentUser.Settings.GithubUser.LastKnownAs, currentUser.Settings.GithubUser.UID, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }
 
@@ -111,6 +116,28 @@ func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) 
 		err = errors.Wrap(err, "JSON is invalid")
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
+	}
+
+	if currentUser.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
+		token, err := uis.Settings.GetGithubOauthToken()
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrap(err, "Error fetching user from Github"))
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		ghUser, err := thirdparty.GetGithubUser(ctx, token, userSettings.GithubUser.LastKnownAs)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrap(err, "Error fetching user from Github"))
+			return
+		}
+
+		userSettings.GithubUser.LastKnownAs = *ghUser.Login
+		userSettings.GithubUser.UID = *ghUser.ID
 	}
 
 	if err := model.SaveUserSettings(currentUser.Username(), userSettings); err != nil {

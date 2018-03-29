@@ -21,12 +21,11 @@ type DBUser struct {
 	CreatedAt    time.Time    `bson:"created_at"`
 	Settings     UserSettings `bson:"settings"`
 	APIKey       string       `bson:"apikey"`
-	GithubUser   GithubUser   `bson:"github_user,omitempty"`
 }
 
 type GithubUser struct {
-	UID         int    `bson:"uid,omitempty"`
-	LastKnownAs string `bson:"last_known_as,omitempty"`
+	UID         int    `bson:"uid,omitempty" json:"uid,omitempty"`
+	LastKnownAs string `bson:"last_known_as,omitempty" json:"last_known_as,omitempty"`
 }
 
 type PubKey struct {
@@ -36,8 +35,9 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone     string `json:"timezone" bson:"timezone"`
-	NewWaterfall bool   `json:"new_waterfall" bson:"new_waterfall"`
+	Timezone     string     `json:"timezone" bson:"timezone"`
+	NewWaterfall bool       `json:"new_waterfall" bson:"new_waterfall"`
+	GithubUser   GithubUser `json:"github_user" bson:"github_user,omitempty"`
 }
 
 func (u *DBUser) Username() string {
