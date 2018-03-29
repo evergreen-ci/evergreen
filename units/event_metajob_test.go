@@ -261,7 +261,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	bodyC := make(chan string, 1)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	go smtpServer(ctx, ln, bodyC)
 
@@ -286,14 +286,10 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Empty(out[0].Error)
 }
 
-type eventNotificationSuite struct {
-	suite.Suite
-
-	webhook notification.Notification
-	email   notification.Notification
-}
-
 func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error {
+	d, _ := ctx.Deadline()
+	ctx, cancel := context.WithDeadline(ctx, d)
+	defer cancel()
 	defer ln.Close()
 
 	conn, err := ln.Accept()

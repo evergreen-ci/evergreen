@@ -25,6 +25,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+type eventNotificationSuite struct {
+	suite.Suite
+
+	webhook notification.Notification
+	email   notification.Notification
+}
+
 func TestEventNotificationJob(t *testing.T) {
 	suite.Run(t, &eventNotificationSuite{})
 }
@@ -202,6 +209,51 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	s.NoError(ln.Close())
 }
 
+func (s *eventNotificationSuite) TestEmail() {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	s.Require().NoError(err)
+	defer ln.Close()
+
+	addr := strings.Split(ln.Addr().String(), ":")
+	s.Require().Len(addr, 2)
+
+	port, err := strconv.Atoi(addr[1])
+	s.Require().NoError(err)
+
+	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
+	job.settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	job.settings.Notify = evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			From:     "evergreen@example.com",
+			Server:   "127.0.0.1",
+			Port:     port,
+			Username: "much",
+			Password: "security",
+		},
+	}
+	body := make(chan string, 1)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	go smtpServer(ctx, ln, body)
+
+	job.Run()
+
+	bodyText := <-body
+
+	s.NotEmpty(bodyText)
+
+	email := parseEmailBody(bodyText)
+	s.Equal("<o@hai.hai>", email["To"])
+	s.Equal("o hai", email["Subject"])
+	s.Equal("i'm a notification", string(email["body"]))
+
+	s.NoError(job.Error())
+	s.NotZero(s.notificationHasError(s.email.ID, ""))
+	s.Nil(job.Error())
+}
+
 func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 	job := newEventNotificationJob(s.webhook.ID)
 
@@ -231,7 +283,31 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 	s.Error(job.Error())
 }
 
-func (s *eventNotificationSuite) TestEmail() {
+func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
+	var err error
+	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
+	job.settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	job.settings.Notify = evergreen.NotifyConfig{
+		SMTP: &evergreen.SMTPConfig{
+			From:     "evergreen@example.com",
+			Server:   "127.0.0.1",
+			Port:     12345,
+			Username: "much",
+			Password: "security",
+		},
+	}
+
+	job.Run()
+	s.Require().Error(job.Error())
+
+	errMsg := job.Error().Error()
+	pattern := "email settings are invalid: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
+	s.True(regexp.MatchString(pattern, errMsg))
+	s.NotZero(s.notificationHasError(s.email.ID, pattern))
+}
+
+func (s *eventNotificationSuite) TestSlack() {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	s.Require().NoError(err)
 	defer ln.Close()
@@ -256,7 +332,7 @@ func (s *eventNotificationSuite) TestEmail() {
 	}
 	body := make(chan string, 1)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	go smtpServer(ctx, ln, body)
 
@@ -274,28 +350,4 @@ func (s *eventNotificationSuite) TestEmail() {
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.email.ID, ""))
 	s.Nil(job.Error())
-}
-
-func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
-	var err error
-	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
-	job.settings, err = evergreen.GetConfig()
-	s.NoError(err)
-	job.settings.Notify = evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
-			From:     "evergreen@example.com",
-			Server:   "127.0.0.1",
-			Port:     12345,
-			Username: "much",
-			Password: "security",
-		},
-	}
-
-	job.Run()
-	s.Require().Error(job.Error())
-
-	errMsg := job.Error().Error()
-	pattern := "email settings are invalid: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
-	s.True(regexp.MatchString(pattern, errMsg))
-	s.NotZero(s.notificationHasError(s.email.ID, pattern))
 }
