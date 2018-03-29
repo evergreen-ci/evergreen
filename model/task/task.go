@@ -1295,3 +1295,33 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 
 	return time.Duration(runtimes[0].ExpectedDuration), nil
 }
+
+// TaskStatusCount holds counts for task statuses
+type TaskStatusCount struct {
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
+}
+
+func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
+	switch status {
+	case evergreen.TaskSucceeded:
+		tsc.Succeeded++
+	case evergreen.TaskFailed, evergreen.TaskSetupFailed:
+		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
+			tsc.TimedOut++
+		} else {
+			tsc.Failed++
+		}
+	case evergreen.TaskStarted, evergreen.TaskDispatched:
+		tsc.Started++
+	case evergreen.TaskUndispatched:
+		tsc.Undispatched++
+	case evergreen.TaskInactive:
+		tsc.Inactive++
+	}
+}

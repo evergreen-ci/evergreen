@@ -47,7 +47,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     return opts
   }
 
-  var versionsQ = ApiV1.getWaterfallVersionsRows(projectId)
+  var versionsQ = ApiV2.getRecentVersions(projectId)
   var whenQueryRevisions = versionsQ.then(function(res) {
     vm.versions = _.map(
       _.where(
@@ -56,7 +56,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       function(d) { return {revision: d.revisions[0]} } // Transform
     )
 
-    vm.revisionSelect.options = _.map(vm.versions, function(d) {
+    vm.revisionSelect.options = _.map(vm.versions.versions, function(d) {
       return d.revision
     })
 

@@ -12,6 +12,7 @@ type APIVersion struct {
 	StartTime  APITime   `json:"start_time"`
 	FinishTime APITime   `json:"finish_time"`
 	Revision   APIString `json:"revision"`
+	Order      int       `json:"order"`
 
 	Author        APIString     `json:"author"`
 	AuthorEmail   APIString     `json:"author_email"`
@@ -20,6 +21,10 @@ type APIVersion struct {
 	Repo          APIString     `json:"repo"`
 	Branch        APIString     `json:"branch"`
 	BuildVariants []buildDetail `json:"build_variants_status"`
+
+	Errors   []APIString `json:"errors"`
+	Warnings []APIString `json:"warnings"`
+	Ignored  bool        `json:"ignored"`
 }
 
 type buildDetail struct {
@@ -45,6 +50,7 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	apiVersion.Status = APIString(v.Status)
 	apiVersion.Repo = APIString(v.Repo)
 	apiVersion.Branch = APIString(v.Branch)
+	apiVersion.Order = v.RevisionOrderNumber
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {
