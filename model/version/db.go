@@ -127,6 +127,20 @@ func ByProjectId(projectId string) db.Q {
 		})
 }
 
+// ByProjectIdActivated finds all activated non-patch versions within a project.
+func ByProjectIdActivated(projectId string) db.Q {
+	return db.Query(
+		bson.M{
+			IdentifierKey: projectId,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			BuildVariantsKey: bson.M{
+				"$elemMatch": bson.M{
+					BuildStatusActivatedKey: true,
+				},
+			},
+		}).Sort([]string{"-" + RevisionOrderNumberKey})
+}
+
 // ByProjectId finds all versions within a project, ordered by most recently created to oldest.
 // The requester controls if it should search patch or non-patch versions.
 func ByMostRecentForRequester(projectId, requester string) db.Q {
