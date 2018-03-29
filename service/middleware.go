@@ -46,12 +46,6 @@ type (
 	}
 )
 
-type (
-	// custom types used to attach specific values to request contexts, to prevent collisions.
-	reqTaskKey           int
-	reqProjectContextKey int
-)
-
 const (
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
