@@ -327,13 +327,13 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 
 func (j *eventNotificationJob) slackMessage(n *notification.Notification) error {
 	// TODO slack rate limiting
-	target, ok := n.Subscriber.Target.(string)
+	target, ok := n.Subscriber.Target.(*string)
 	if !ok {
 		return fmt.Errorf("slack subscriber was invalid (expected string)")
 	}
 
 	opts := send.SlackOptions{
-		Channel:       target,
+		Channel:       *target,
 		Fields:        true,
 		AllFields:     true,
 		BasicMetadata: false,

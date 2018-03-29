@@ -30,6 +30,7 @@ type eventNotificationSuite struct {
 
 	webhook notification.Notification
 	email   notification.Notification
+	slack   notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -65,7 +66,20 @@ func (s *eventNotificationSuite) SetupTest() {
 		},
 	}
 
-	s.NoError(notification.InsertMany(s.webhook, s.email))
+	location, err := time.LoadLocation("America/New_York")
+	s.Require().NoError(err)
+
+	t := time.Now().In(location)
+	s.slack = notification.Notification{
+		ID: bson.NewObjectId(),
+		Subscriber: event.Subscriber{
+			Type:   event.SlackSubscriberType,
+			Target: "#evg-test-channel",
+		},
+		Payload: fmt.Sprintf("eventNotificationSuite slack message created at %s", t.String()),
+	}
+
+	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack))
 }
 
 type mockWebhookHandler struct {
@@ -308,46 +322,19 @@ func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
 }
 
 func (s *eventNotificationSuite) TestSlack() {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	s.Require().NoError(err)
-	defer ln.Close()
+	s.T().Skip("This test sends a message. Don't run it unless necessary")
 
-	addr := strings.Split(ln.Addr().String(), ":")
-	s.Require().Len(addr, 2)
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(s.T(), config, "TestSlack")
+	s.Require().NotEmpty(config.Slack.Token)
+	s.Require().NoError(config.Slack.Set())
 
-	port, err := strconv.Atoi(addr[1])
-	s.Require().NoError(err)
-
-	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
-	job.settings, err = evergreen.GetConfig()
-	s.NoError(err)
-	job.settings.Notify = evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
-			From:     "evergreen@example.com",
-			Server:   "127.0.0.1",
-			Port:     port,
-			Username: "much",
-			Password: "security",
-		},
-	}
-	body := make(chan string, 1)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	go smtpServer(ctx, ln, body)
-
+	job := newEventNotificationJob(s.slack.ID)
 	job.Run()
-
-	bodyText := <-body
-
-	s.NotEmpty(bodyText)
-
-	email := parseEmailBody(bodyText)
-	s.Equal("<o@hai.hai>", email["To"])
-	s.Equal("o hai", email["Subject"])
-	s.Equal("i'm a notification", string(email["body"]))
-
 	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.email.ID, ""))
+
+	time.Sleep(5 * time.Second)
+
+	s.NotZero(s.notificationHasError(s.slack.ID, ""))
 	s.Nil(job.Error())
 }
