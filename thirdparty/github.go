@@ -461,11 +461,11 @@ func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string
 	return
 }
 
-// GetGithubUser fetches a github user associated with an oauth token, and
+// GetGithubTokenUser fetches a github user associated with an oauth token, and
 // if requiredOrg is specified, checks that it belongs to that org.
 // Returns user object, if it was a member of the specified org (or false if not specified),
 // and error
-func GetGithubUser(ctx context.Context, token string, requiredOrg string) (*GithubLoginUser, bool, error) {
+func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (*GithubLoginUser, bool, error) {
 	httpClient, err := getGithubClient(fmt.Sprintf("token %s", token))
 	if err != nil {
 		return nil, false, errors.Wrap(err, "can't fetch data from github")
@@ -540,4 +540,25 @@ func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) 
 	}
 
 	return int64(limits.Core.Remaining), nil
+}
+
+// GetGithubUser fetches the github user with the given login name
+func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.User, error) {
+	httpClient, err := getGithubClient(oauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	user, _, err := client.Users.Get(ctx, loginName)
+	if err != nil {
+		return nil, err
+	}
+
+	if user == nil || user.ID == nil || user.Login == nil {
+		return nil, errors.New("empty data received from github")
+	}
+
+	return user, nil
 }
