@@ -26,6 +26,9 @@ type Host struct {
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
 
+	// secondary (external) identifier for the host
+	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+
 	// physical location of host
 	Project string `bson:"project" json:"project"`
 	Zone    string `bson:"zone" json:"zone"`
@@ -633,4 +636,11 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 	}
 
 	return errors.WithStack(h.SetDecommissioned(evergreen.User, logs))
+}
+
+func (h *Host) SetExtId() error {
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
+	)
 }

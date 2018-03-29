@@ -211,14 +211,16 @@ func groupWorker(ctx context.Context, wg *sync.WaitGroup, name string, work <-ch
 				Start: time.Now(),
 			}
 			unit.j.Run()
-			ti.End = time.Now()
-
 			unit.j.UpdateTimeInfo(ti)
 			unit.q.Complete(ctx, unit.j)
+			ti.End = time.Now()
+			unit.j.UpdateTimeInfo(ti)
 			r := message.Fields{
 				"job_type":      unit.j.Type().Name,
 				"job":           unit.j.ID(),
 				"duration_secs": ti.Duration().Seconds(),
+				"pool":          "group",
+				"queue_type":    fmt.Sprintf("%T", unit.q),
 			}
 			if err := unit.j.Error(); err != nil {
 				r["error"] = err.Error()

@@ -46,6 +46,7 @@ func NewTasksRestartJob(opts model.RestartTaskOptions) amboy.Job {
 	job := makeTaskRestartJob()
 	job.Opts = opts
 	job.SetID(fmt.Sprintf("restart-tasks-%d-%d", opts.StartTime.Unix(), opts.EndTime.Unix()))
+	job.SetPriority(1)
 	return job
 }
 

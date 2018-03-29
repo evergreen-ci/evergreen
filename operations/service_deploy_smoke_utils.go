@@ -187,11 +187,43 @@ OUTER:
 				return err
 			}
 			page := string(body)
+
+			// Validate that task contains task completed message
 			if strings.Contains(page, "Task completed - SUCCESS") {
 				grip.Infof("Found task completed message in log:\n%s", page)
 			} else {
 				grip.Errorf("did not find task completed message in log:\n%s", page)
 				return errors.New("did not find task completed message in log")
+			}
+
+			// Validate that setup_group only runs in first task
+			if strings.Contains(page, "first") {
+				if !strings.Contains(page, "setup_group") {
+					return errors.New("did not find setup_group in logs for first task")
+				}
+			} else {
+				if strings.Contains(page, "setup_group") {
+					return errors.New("setup_group should only run in first task")
+				}
+			}
+
+			// Validate that setup_task and teardown_task run for all tasks
+			if !strings.Contains(page, "setup_task") {
+				return errors.New("did not find setup_task in logs")
+			}
+			if !strings.Contains(page, "teardown_task") {
+				return errors.New("did not find teardown_task in logs")
+			}
+
+			// Validate that teardown_group only runs in last task
+			if strings.Contains(page, "fourth") {
+				if !strings.Contains(page, "teardown_group") {
+					return errors.New("did not find teardown_group in logs for last (fourth) task")
+				}
+			} else {
+				if strings.Contains(page, "teardown_group") {
+					return errors.New("teardown_group should only run in last (fourth) task")
+				}
 			}
 		}
 		grip.Info("Successfully checked tasks")

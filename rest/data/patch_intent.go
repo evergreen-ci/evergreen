@@ -23,7 +23,9 @@ func (p *DBPatchIntentConnector) AddPatchIntent(intent patch.Intent, queue amboy
 		}
 	}
 
-	if err := queue.Put(units.NewPatchIntentProcessor(bson.NewObjectId(), intent)); err != nil {
+	job := units.NewPatchIntentProcessor(bson.NewObjectId(), intent)
+	job.SetPriority(1)
+	if err := queue.Put(job); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":    "github hook",
 			"message":   "Github pull request not queued for processing",
