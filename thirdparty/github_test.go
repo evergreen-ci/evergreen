@@ -129,12 +129,20 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	hash, err := GetPullRequestMergeBase(s.ctx, s.token, "evergreen-ci", "evergreen", 666)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
+
+	hash, err = GetPullRequestMergeBase(s.ctx, s.token, "evergreen-ci", "evergreeny", 666)
+	s.Error(err)
+	s.Empty(hash)
 }
 
 func (s *githubSuite) TestGithubUserInOrganization() {
 	isMember, err := GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "evrg-bot-webhook")
 	s.NoError(err)
 	s.True(isMember)
+
+	isMember, err = GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "ocotocat")
+	s.NoError(err)
+	s.False(isMember)
 }
 
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
