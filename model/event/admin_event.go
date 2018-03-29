@@ -180,6 +180,10 @@ func RevertConfig(guid string, user string) error {
 	if current == nil {
 		return fmt.Errorf("unable to find section %s", data.Section)
 	}
+	err = current.Get()
+	if err != nil {
+		return errors.Wrapf(err, "problem reading section %s", current.SectionId())
+	}
 	err = data.Changes.Before.Set()
 	if err != nil {
 		return errors.Wrap(err, "problem updating settings")
