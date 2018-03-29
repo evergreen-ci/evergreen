@@ -21,6 +21,12 @@ type DBUser struct {
 	CreatedAt    time.Time    `bson:"created_at"`
 	Settings     UserSettings `bson:"settings"`
 	APIKey       string       `bson:"apikey"`
+	GithubUser   GithubUser   `bson:"github_user,omitempty"`
+}
+
+type GithubUser struct {
+	UID         int    `bson:"uid,omitempty"`
+	LastKnownAs string `bson:"last_known_as,omitempty"`
 }
 
 type PubKey struct {

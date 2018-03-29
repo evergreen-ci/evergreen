@@ -3,6 +3,7 @@ package user
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -22,6 +23,7 @@ var (
 	SettingsKey     = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey       = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	PubKeysKey      = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
+	githubUserKey   = bsonutil.MustHaveTag(DBUser{}, "GithubUser")
 )
 
 var (
@@ -31,8 +33,28 @@ var (
 )
 
 var (
+	githubUserUID         = bsonutil.MustHaveTag(GithubUser{}, "UID")
+	githubUserLastKnownAs = bsonutil.MustHaveTag(GithubUser{}, "LastKnownAs")
+)
+
+var (
 	SettingsTZKey = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
 )
+
+func FindByGithubUID(uid int) (*DBUser, error) {
+	u := DBUser{}
+	err := db.FindOneQ(Collection, db.Query(bson.M{
+		bsonutil.GetDottedKeyName(githubUserKey, githubUserUID): uid,
+	}), &u)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch user by github uid")
+	}
+
+	return &u, nil
+}
 
 func ById(userId string) db.Q {
 	return db.Query(bson.M{IdKey: userId})
