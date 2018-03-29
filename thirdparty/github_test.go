@@ -10,6 +10,7 @@ import (
 	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -126,11 +127,19 @@ func (s *githubSuite) TestGetCommitEvent() {
 }
 
 func (s *githubSuite) TestGetPullRequestMergeBase() {
-	hash, err := GetPullRequestMergeBase(s.ctx, s.token, "evergreen-ci", "evergreen", 666)
+	data := patch.GithubPatch{
+		BaseOwner: "evergreen-ci",
+		BaseRepo:  "evergreen",
+		HeadOwner: "evergreen-ci",
+		HeadRepo:  "somebodyoutthere",
+		PRNumber:  666,
+	}
+	hash, err := GetPullRequestMergeBase(s.ctx, s.token, data)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
 
-	hash, err = GetPullRequestMergeBase(s.ctx, s.token, "evergreen-ci", "evergreeny", 666)
+	data.BaseRepo = "conifer"
+	hash, err = GetPullRequestMergeBase(s.ctx, s.token, data)
 	s.Error(err)
 	s.Empty(hash)
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/rehttp"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -573,7 +574,7 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 // GetPullRequestMergeBase returns the merge base hash for the given PR.
 // This function will retry up to 5 times, regardless of error response (unless
 // error is the result of hitting an api limit)
-func GetPullRequestMergeBase(ctx context.Context, token, owner, repo string, prNumber int) (string, error) {
+func GetPullRequestMergeBase(ctx context.Context, token string, data patch.GithubPatch) (string, error) {
 	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
 	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 
@@ -584,7 +585,7 @@ func GetPullRequestMergeBase(ctx context.Context, token, owner, repo string, prN
 
 	client := github.NewClient(httpClient)
 
-	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
+	commits, _, err := client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
 	if err != nil {
 		return "", err
 	}
@@ -595,7 +596,7 @@ func GetPullRequestMergeBase(ctx context.Context, token, owner, repo string, prN
 		return "", errors.New("hash is missing from pull request commit list")
 	}
 
-	commit, _, err := client.Repositories.GetCommit(ctx, owner, repo, *commits[0].SHA)
+	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
 	if err != nil {
 		return "", err
 	}
