@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
@@ -99,6 +100,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Error retreiving newest version %v")
 
 			So(resultVersion, ShouldResemble, newestVersion)
+			So(resultVersion.AuthorID, ShouldEqual, "")
 		})
 
 		Convey("On storing several repo revisions, we expect a version to be created "+
@@ -121,6 +123,29 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
 			So(versionTwo.Revision, ShouldEqual, revisionTwo.Revision)
+			So(versionOne.AuthorID, ShouldEqual, "")
+			So(versionTwo.AuthorID, ShouldEqual, "")
+		})
+		Convey("if an evergreen user can be associated with the commit, record it", func() {
+			revisionOne := *createTestRevision("firstRevision", time.Now())
+			revisions := []model.Revision{revisionOne}
+			revisions[0].AuthorGithubUID = 1234
+
+			u := user.DBUser{
+				Id: "testUser",
+				Settings: user.UserSettings{
+					GithubUser: user.GithubUser{
+						UID:         1234,
+						LastKnownAs: "somebody",
+					},
+				},
+			}
+			So(u.Insert(), ShouldBeNil)
+
+			_, err := repoTracker.StoreRevisions(ctx, revisions)
+			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
+			So(err, ShouldBeNil)
+			So(versionOne.AuthorID, ShouldEqual, "testUser")
 		})
 
 		Reset(func() {
