@@ -129,7 +129,6 @@ func (s *githubSuite) TestGetPullRequestMergeBase() {
 	hash, err := GetPullRequestMergeBase(s.ctx, s.token, "evergreen-ci", "evergreen", 666)
 	s.NoError(err)
 	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
-
 }
 
 func (s *githubSuite) TestGithubUserInOrganization() {
