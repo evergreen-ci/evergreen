@@ -52,7 +52,7 @@ func NewCollectTaskStartDataJob(t *task.Task, h host.Host) amboy.Job {
 	j.task = t
 	j.host = &h
 	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskStartDataJobName, j.TaskID, j.HostID, job.GetNumber()))
-	j.SetPriority(-1)
+	j.SetPriority(-2)
 	return j
 }
 

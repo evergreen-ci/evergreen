@@ -54,7 +54,7 @@ func NewCollectHostIdleDataJob(h host.Host, startTime, finishTime time.Time) amb
 	j.StartTime = startTime
 	j.FinishTime = finishTime
 	j.SetID(fmt.Sprintf("%s.%s.%d", collectHostIdleDataJobName, j.HostID, job.GetNumber()))
-	j.SetPriority(-1)
+	j.SetPriority(-2)
 	return j
 }
 
