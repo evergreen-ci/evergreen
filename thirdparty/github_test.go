@@ -125,6 +125,19 @@ func (s *githubSuite) TestGetCommitEvent() {
 	})
 }
 
+func (s *githubSuite) TestGetPullRequestMergeBase() {
+	hash, err := GetPullRequestMergeBase(s.ctx, s.token, "evergreen-ci", "evergreen", 666)
+	s.NoError(err)
+	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
+
+}
+
+func (s *githubSuite) TestGithubUserInOrganization() {
+	isMember, err := GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "evrg-bot-webhook")
+	s.NoError(err)
+	s.True(isMember)
+}
+
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	assert := assert.New(t)
 	header := http.Header{}

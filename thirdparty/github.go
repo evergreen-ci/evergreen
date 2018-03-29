@@ -31,6 +31,68 @@ const (
 	GithubAPIStatusGood  = "good"
 )
 
+func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
+	httpClient, err := getGithubClient(token)
+	if err != nil {
+		return false, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	// doesn't count against API limits
+	limits, _, err := client.RateLimits(ctx)
+	if err != nil {
+		return false, err
+	}
+	if limits == nil || limits.Core == nil {
+		return false, errors.New("rate limits response was empty")
+	}
+	if limits.Core.Remaining < 3 {
+		return false, errors.New("github rate limit would be exceeded")
+	}
+
+	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
+	return isMember, err
+}
+
+func GetPullRequestMergeBase(ctx context.Context, token, owner, repo string, prNumber int) (string, error) {
+	httpClient, err := getGithubClient(token)
+	if err != nil {
+		return "", errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	commits, _, err := client.PullRequests.ListCommits(ctx, owner, repo, prNumber, nil)
+	if err != nil {
+		return "", err
+	}
+	if len(commits) == 0 {
+		return "", errors.New("No commits received from github")
+	}
+	if commits[0].SHA == nil {
+		return "", errors.New("hash is missing from pull request commit list")
+	}
+
+	commit, _, err := client.Repositories.GetCommit(ctx, owner, repo, *commits[0].SHA)
+	if err != nil {
+		return "", err
+	}
+	if commit == nil {
+		return "", errors.New("couldn't find commit")
+	}
+	if len(commit.Parents) == 0 {
+		return "", errors.New("can't find pull request branch point")
+	}
+	if commit.Parents[0].SHA == nil {
+		return "", errors.New("parent hash is missing")
+	}
+
+	return *commit.Parents[0].SHA, nil
+}
+
 func githubShouldRetry(attempt rehttp.Attempt) bool {
 	if attempt.Response == nil {
 		return true
