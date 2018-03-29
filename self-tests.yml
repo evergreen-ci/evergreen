@@ -738,7 +738,7 @@ task_groups:
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
-    teardown_task:
+    teardown_group:
       - func: attach-test-results
 
 buildvariants:
