@@ -44,6 +44,7 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 			}
 			if _, ok := bvs[bv.Name]; ok {
 				bvs[bv.Name].Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
+				bvs[bv.Name].DisplayTasks = append(bvs[bv.Name].DisplayTasks, bv.DisplayTasks...)
 			}
 			bvs[bv.Name] = &p.BuildVariants[i]
 		}
@@ -158,10 +159,16 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject projectMaps, v *v
 			for _, t := range bv.Tasks {
 				newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, TVPair{bv.Name, t.Name})
 			}
+			for _, dt := range bv.DisplayTasks {
+				newTVPairsForExistingVariants.DisplayTasks = append(newTVPairsForExistingVariants.DisplayTasks, TVPair{bv.Name, dt.Name})
+			}
 		} else {
 			// If the buildvariant does not exist, create it.
 			for _, t := range bv.Tasks {
 				newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, TVPair{bv.Name, t.Name})
+			}
+			for _, dt := range bv.DisplayTasks {
+				newTVPairsForNewVariants.DisplayTasks = append(newTVPairsForNewVariants.DisplayTasks, TVPair{bv.Name, dt.Name})
 			}
 		}
 	}
@@ -191,6 +198,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProj
 			for i, intermediateProjectBV := range intermediateProject.BuildVariants {
 				if intermediateProjectBV.Name == bv.Name {
 					intermediateProject.BuildVariants[i].Tasks = append(intermediateProject.BuildVariants[i].Tasks, bv.Tasks...)
+					intermediateProject.BuildVariants[i].DisplayTasks = append(intermediateProject.BuildVariants[i].DisplayTasks, bv.DisplayTasks...)
 				}
 			}
 		} else {
@@ -249,8 +257,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disabled || len(bv.Tags) > 0 || bv.Push ||
-		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 ||
-		len(bv.DisplayTasks) > 0 {
+		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}
 	return false
