@@ -28,9 +28,10 @@ import (
 type eventNotificationSuite struct {
 	suite.Suite
 
-	webhook notification.Notification
-	email   notification.Notification
-	slack   notification.Notification
+	webhook     notification.Notification
+	email       notification.Notification
+	slack       notification.Notification
+	jiraComment notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -79,7 +80,16 @@ func (s *eventNotificationSuite) SetupTest() {
 		Payload: fmt.Sprintf("eventNotificationSuite slack message created at %s", t.String()),
 	}
 
-	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack))
+	s.jiraComment = notification.Notification{
+		ID: bson.NewObjectId(),
+		Subscriber: event.Subscriber{
+			Type:   event.JIRACommentSubscriberType,
+			Target: "EVG-2863",
+		},
+		Payload: fmt.Sprintf("eventNotificationSuite jira comment message created at %s", t.String()),
+	}
+
+	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack, s.jiraComment))
 }
 
 type mockWebhookHandler struct {
@@ -333,8 +343,24 @@ func (s *eventNotificationSuite) TestSlack() {
 	job.Run()
 	s.NoError(job.Error())
 
-	time.Sleep(5 * time.Second)
-
 	s.NotZero(s.notificationHasError(s.slack.ID, ""))
+	s.Nil(job.Error())
+}
+
+func (s *eventNotificationSuite) TestJIRAComment() {
+	s.T().Skip("This test actually posts a message. Don't run it unless necessary")
+
+	config := testutil.TestConfig()
+	testutil.ConfigureIntegrationTest(s.T(), config, "TestJIRAComment")
+	s.Require().NotEmpty(config.Jira.Username)
+	s.Require().NotEmpty(config.Jira.Password)
+	s.Require().NotEmpty(config.Jira.Host)
+	s.Require().NoError(config.Jira.Set())
+
+	job := newEventNotificationJob(s.jiraComment.ID)
+	job.Run()
+	s.NoError(job.Error())
+
+	s.NotZero(s.notificationHasError(s.jiraComment.ID, ""))
 	s.Nil(job.Error())
 }

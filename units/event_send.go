@@ -194,12 +194,12 @@ func (j *eventNotificationJob) jiraComment(n *notification.Notification) error {
 		return errors.Wrap(err, "error building jira settings")
 	}
 
-	jiraIssue, ok := n.Subscriber.Target.(string)
+	jiraIssue, ok := n.Subscriber.Target.(*string)
 	if !ok {
 		return fmt.Errorf("jira-comment subscriber was invalid (expected string)")
 	}
 
-	sender, err := send.MakeJiraCommentLogger(jiraIssue, jiraOpts)
+	sender, err := send.MakeJiraCommentLogger(*jiraIssue, jiraOpts)
 	if err != nil {
 		return errors.Wrap(err, "jira-comment sender error")
 	}
