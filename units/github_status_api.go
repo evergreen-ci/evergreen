@@ -87,6 +87,7 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	j.SetPriority(1)
 	return j
 }
 
