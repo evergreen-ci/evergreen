@@ -57,7 +57,9 @@ func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, 
 }
 
 func GetPullRequestMergeBase(ctx context.Context, token, owner, repo string, prNumber int) (string, error) {
-	httpClient, err := getGithubClient(token)
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+
 	if err != nil {
 		return "", errors.Wrap(err, "can't fetch data from github")
 	}

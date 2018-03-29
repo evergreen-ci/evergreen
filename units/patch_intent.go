@@ -476,9 +476,9 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 
 	}
 
-	hash, err := GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber)
+	hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	patchDoc.Githash = hash
