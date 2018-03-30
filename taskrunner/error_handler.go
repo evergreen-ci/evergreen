@@ -106,13 +106,14 @@ func processErrorItem(rec hostRecord, errors errorRecord) string {
 
 	if rec.provider == evergreen.ProviderNameStatic {
 		env := evergreen.GetEnvironment()
-		queue := env.LocalQueue()
+		queue := env.RemoteQueue()
 
 		lines = append(lines, "Action: Disabled Host")
 		err := errors.host.DisablePoisonedHost(errorsString)
 
 		job := units.NewDecoHostNotifyJob(env, errors.host, err,
 			"host encountered consecutive set up failures")
+
 		grip.Critical(queue.Put(job))
 	}
 
