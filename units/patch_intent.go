@@ -80,8 +80,9 @@ func makePatchIntentProcessor() *patchIntentProcessor {
 	return j
 }
 
-func (j *patchIntentProcessor) Run() {
-	ctx, cancel := context.WithCancel(context.Background())
+func (j *patchIntentProcessor) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 	defer j.MarkComplete()
 
@@ -108,7 +109,7 @@ func (j *patchIntentProcessor) Run() {
 		j.AddError(err)
 		if j.IntentType == patch.GithubIntentType && strings.HasPrefix(err.Error(), errInvalidPatchedConfig) {
 			update := NewGithubStatusUpdateJobForBadConfig(j.intent.ID())
-			update.Run()
+			update.Run(ctx)
 			j.AddError(update.Error())
 		}
 		return
@@ -122,7 +123,7 @@ func (j *patchIntentProcessor) Run() {
 		} else {
 			update = NewGithubStatusUpdateJobForPatchWithVersion(patchDoc.Version)
 		}
-		update.Run()
+		update.Run(ctx)
 		j.AddError(update.Error())
 		grip.ErrorWhen(err != nil, message.WrapError(err, message.Fields{
 			"message":            "Failed to queue status update",

@@ -68,7 +68,7 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	return j
 }
 
-func (j *collectTaskEndDataJob) Run() {
+func (j *collectTaskEndDataJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	var err error
@@ -93,7 +93,8 @@ func (j *collectTaskEndDataJob) Run() {
 	settings := j.env.Settings()
 
 	var cost float64
-	ctx, cancel := context.WithCancel(context.Background())
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
 	manager, err := cloud.GetCloudManager(ctx, j.host.Provider, settings)

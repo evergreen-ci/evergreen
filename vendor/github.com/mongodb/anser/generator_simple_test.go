@@ -1,6 +1,7 @@
 package anser
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 func TestSimpleMigrationGenerator(t *testing.T) {
 	const jobTypeName = "simple-migration-generator"
 
+	ctx := context.Background()
 	assert := assert.New(t)
 	env := mock.NewEnvironment()
 	mh := &MigrationHelperMock{Environment: env}
@@ -40,7 +42,7 @@ func TestSimpleMigrationGenerator(t *testing.T) {
 	// check that the run method returns an error if it can't get a dependency error
 	env.NetworkError = errors.New("injected network error")
 	job.MigrationHelper = mh
-	job.Run()
+	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
@@ -53,7 +55,7 @@ func TestSimpleMigrationGenerator(t *testing.T) {
 	job = factory().(*simpleMigrationGenerator)
 	env.SessionError = errors.New("injected session error")
 	job.MigrationHelper = mh
-	job.Run()
+	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
@@ -68,7 +70,7 @@ func TestSimpleMigrationGenerator(t *testing.T) {
 	job.MigrationHelper = mh
 	env.Session = mock.NewSession()
 	env.Session.DB("foo").C("bar").(*mock.Collection).QueryError = errors.New("query error")
-	job.Run()
+	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()

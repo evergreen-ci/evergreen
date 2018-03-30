@@ -3,6 +3,7 @@ package registry
 // This file has a mock implementation of a job. Used in other tests.
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -26,7 +27,7 @@ type JobTest struct {
 	Stat       amboy.JobStatusInfo `bson:"status" json:"status" yaml:"status"`
 	TimingInfo amboy.JobTimeInfo   `bson:"time_info" json:"time_info" yaml:"time_info"`
 
-	dep dependency.Manager `bson:"dependency" json:"dependency" yaml:"dependency"`
+	dep dependency.Manager
 }
 
 func NewTestJob(content string) *JobTest {
@@ -56,7 +57,7 @@ func (j *JobTest) ID() string {
 	return j.Name
 }
 
-func (j *JobTest) Run() {
+func (j *JobTest) Run(_ context.Context) {
 	j.Stat.Completed = true
 }
 

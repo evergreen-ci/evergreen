@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -50,7 +51,7 @@ func makeTaskStatsCollector() *taskStatsCollector {
 	return j
 }
 
-func (j *taskStatsCollector) Run() {
+func (j *taskStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	tasks, err := task.GetRecentTasks(taskStatsCollectorInterval)

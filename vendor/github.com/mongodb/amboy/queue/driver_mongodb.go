@@ -394,12 +394,28 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 				},
 			},
 		}
+
+		if d.respectWaitUntil {
+			qd = bson.M{
+				"$and": []bson.M{
+					qd,
+					{"$or": []bson.M{
+						{"time_info.wait_until": bson.M{"$lte": time.Now()}},
+						{"time_info.wait_until": bson.M{"$exists": false}}},
+					},
+				},
+			}
+		}
 	} else {
 		qd = bson.M{"status.completed": false, "status.in_prog": false}
-	}
 
-	if d.respectWaitUntil {
-		qd["time_info.wait_until"] = bson.M{"$lte": time.Now()}
+		if d.respectWaitUntil {
+			qd["$or"] = []bson.M{
+				{"time_info.wait_until": bson.M{"$lte": time.Now()}},
+				{"time_info.wait_until": bson.M{"$exists": false}},
+			}
+		}
+
 	}
 
 	query := jobs.Find(qd).Batch(4)

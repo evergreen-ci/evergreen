@@ -24,7 +24,7 @@ type Job interface {
 
 	// The primary execution method for the job. Should toggle the
 	// completed state for the job.
-	Run()
+	Run(context.Context)
 
 	// Returns a pointer to a JobType object that Queue
 	// implementations can use to de-serialize tasks.
@@ -91,9 +91,10 @@ type JobStatusInfo struct {
 // data to delay execution of a job when WaitUntil refers to a time
 // in the future.
 type JobTimeInfo struct {
-	Start     time.Time `bson:"start" json:"start,omitempty" yaml:"start,omitempty"`
-	End       time.Time `bson:"end" json:"end,omitempty" yaml:"end,omitempty"`
-	WaitUntil time.Time `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
+	Start     time.Time     `bson:"start" json:"start,omitempty" yaml:"start,omitempty"`
+	End       time.Time     `bson:"end" json:"end,omitempty" yaml:"end,omitempty"`
+	WaitUntil time.Time     `bson:"wait_until" json:"wait_until,omitempty" yaml:"wait_until,omitempty"`
+	MaxTime   time.Duration `bson:"max_time" json:"max_time,omitempty" yaml:"max_time,omitempty"`
 }
 
 // Duration is a convenience function to return a duration for a job.

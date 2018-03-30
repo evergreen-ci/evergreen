@@ -2,11 +2,13 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -104,6 +106,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	startAt := time.Now()
 	id := j.ID()
 	q.mutex.Lock()
 	delete(q.blocked, id)
@@ -128,6 +131,16 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			if err := q.driver.Save(j); err != nil {
 				grip.Warningf("problem persisting job '%s', %+v", j.ID(), err)
 				timer.Reset(retryInterval)
+				if time.Since(startAt) > time.Minute+lockTimeout {
+					grip.Alert(message.WrapError(err, message.Fields{
+						"job_id":      j.ID(),
+						"job_type":    j.Type().Name,
+						"driver_type": fmt.Sprintf("%T", q.Driver),
+						"driver_id":   q.driver.ID(),
+					}))
+					return
+				}
+
 				continue
 			}
 
@@ -160,7 +173,7 @@ func (q *remoteBase) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	return q.driver.JobStats(ctx)
 }
 
-// Stats returns a amboy.QueueStats object that reflects the progress
+// Stats returns a amboy. QueueStats object that reflects the progress
 // jobs in the queue.
 func (q *remoteBase) Stats() amboy.QueueStats {
 	output := q.driver.Stats()

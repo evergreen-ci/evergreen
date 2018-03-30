@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -37,7 +38,7 @@ func NewMultiSendMessageJob(m message.Composer, s []send.Sender) amboy.Job {
 	return j
 }
 
-func (j *multiSendMessageJob) Run() {
+func (j *multiSendMessageJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if j.message == nil {

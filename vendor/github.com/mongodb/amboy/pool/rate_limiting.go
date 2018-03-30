@@ -126,8 +126,10 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 					Start: time.Now(),
 				}
 				job.UpdateTimeInfo(ti)
-				job.Run()
+
+				runJob(ctx, job)
 				p.queue.Complete(ctx, job)
+
 				ti.End = time.Now()
 				job.UpdateTimeInfo(ti)
 

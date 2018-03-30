@@ -50,11 +50,7 @@ func (j *rawJob) UnmarshalYAML(um func(interface{}) error) error {
 	j.job = job
 
 	j.Body, err = convertTo(amboy.YAML, job)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 func (j *rawJob) MarshalYAML() (interface{}, error) {
 	if j.job != nil {

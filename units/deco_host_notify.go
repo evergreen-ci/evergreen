@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -62,7 +63,7 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 	return j
 }
 
-func (j *decoHostNotifyJob) Run() {
+func (j *decoHostNotifyJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	hostUptime := time.Since(j.Host.CreationTime)

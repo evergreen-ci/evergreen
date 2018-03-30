@@ -54,7 +54,7 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	s.NoError(evergreen.SetServiceFlags(flags))
 
 	job := NewRepotrackerJob("1", "mci")
-	job.Run()
+	job.Run(context.Background())
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "repotracker is disabled")

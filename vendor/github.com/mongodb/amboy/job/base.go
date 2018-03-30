@@ -205,4 +205,8 @@ func (b *Base) UpdateTimeInfo(i amboy.JobTimeInfo) {
 	if !i.WaitUntil.IsZero() {
 		b.TaskTimeInfo.WaitUntil = i.WaitUntil
 	}
+
+	if i.MaxTime == 0 {
+		b.TaskTimeInfo.MaxTime = i.MaxTime
+	}
 }

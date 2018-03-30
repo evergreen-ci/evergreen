@@ -154,7 +154,7 @@ type jobThatPanics struct {
 	job.Base
 }
 
-func (j *jobThatPanics) Run() {
+func (j *jobThatPanics) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	panic("panic err")
