@@ -105,6 +105,10 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 	}
 
 	if lastRevision == "" {
+		numRevisions := numNewRepoRevisionsToFetch
+		if numRevisions <= 0 {
+			numRevisions = DefaultNumNewRepoRevisionsToFetch
+		}
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
 		grip.Debug(message.Fields{
@@ -113,7 +117,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 			"message": "no last recorded revision, using most recent revisions",
 			"number":  numNewRepoRevisionsToFetch,
 		})
-		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
+		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
 	} else {
 		grip.Debug(message.Fields{
 			"message":  "found last recorded revision",
