@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/hostinit"
-	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/scheduler"
@@ -145,7 +144,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		eventProcessingInterval = 5 * time.Minute
 	)
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), eventProcessingInterval, time.Now(), opts, units.NewEventMetaJobQueueOperation(event.AllLogCollection))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), eventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), backgroundStatsInterval, time.Now(), opts, units.PopulateHostMonitoring(env))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 2*time.Minute, time.Now(), opts, units.PopulateActivationJobs(4))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs(30))

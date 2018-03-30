@@ -186,3 +186,11 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 		return catcher.Resolve()
 	}
 }
+
+func EventMetaJobQueueOperation() amboy.QueueOperation {
+	return func(q amboy.Queue) error {
+		err := q.Put(NewEventMetaJob(q))
+
+		return errors.Wrap(err, "failed to queue event-metajob")
+	}
+}

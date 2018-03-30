@@ -85,14 +85,6 @@ func NewEventMetaJob(q amboy.Queue) amboy.Job {
 	return j
 }
 
-func NewEventMetaJobQueueOperation() amboy.QueueOperation {
-	return func(q amboy.Queue) error {
-		err := q.Put(NewEventMetaJob(q))
-
-		return errors.Wrap(err, "failed to queue event-metajob")
-	}
-}
-
 func (j *eventMetaJob) dispatchLoop() error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
