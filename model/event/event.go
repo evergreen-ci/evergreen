@@ -70,6 +70,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	}
 
 	if len(temp.ResourceType) == 0 {
+		//TODO: EVG-3061 delete this line through until return errors.New("expected ...
 		// Try and fetch r_type in the data subdoc
 		rawD := bson.RawD{}
 		if err := temp.Data.Unmarshal(&rawD); err != nil {
