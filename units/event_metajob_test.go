@@ -286,7 +286,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Empty(out[0].Error)
 }
 
-func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error {
+func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) {
 	d, _ := ctx.Deadline()
 	ctx, cancel := context.WithDeadline(ctx, d)
 	defer cancel()
@@ -295,7 +295,8 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error
 	conn, err := ln.Accept()
 	if err != nil {
 		grip.Error(err)
-		return err
+		bodyOut <- "Err: " + err.Error()
+		return
 	}
 	defer conn.Close()
 
@@ -304,20 +305,22 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error
 	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP imsorrysmtp\r\n"))
 	if err != nil {
 		grip.Error(err)
-		return err
+		bodyOut <- "Err: " + err.Error()
+		return
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 
 		default:
 		}
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		grip.Error(err)
 		if err != nil {
-			return err
+			bodyOut <- "Err: " + err.Error()
+			return
 		}
 		grip.Infof("C: %s", message)
 
@@ -333,7 +336,8 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error
 			_, err = conn.Write([]byte(out + "\r\n"))
 			grip.Error(err)
 			if err != nil {
-				return err
+				bodyOut <- "Err: " + err.Error()
+				return
 			}
 
 			input := ""
@@ -342,7 +346,8 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error
 				_, err = conn.Read(bytes)
 				grip.Error(err)
 				if err != nil {
-					return err
+					bodyOut <- "Err: " + err.Error()
+					return
 				}
 				input += string(bytes)
 			}
@@ -363,7 +368,8 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) error
 			_, err = conn.Write([]byte(out + "\r\n"))
 			grip.Error(err)
 			if out == "221 Bye" || err != nil {
-				return err
+				bodyOut <- "Err: " + err.Error()
+				return
 			}
 		}
 	}

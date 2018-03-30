@@ -316,6 +316,7 @@ func (s *eventNotificationSuite) TestEmail() {
 	bodyText := <-body
 
 	s.NotEmpty(bodyText)
+	s.Require().False(strings.HasPrefix("Err: ", bodyText))
 
 	email := parseEmailBody(bodyText)
 	s.Equal("<o@hai.hai>", email["To"])
