@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -153,13 +152,6 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 		}
 		uis.RedirectToLogin(w, r)
 	}
-}
-
-// canEditPatch verifies that a user has permission to edit the given patch.
-// A user has permission if they are a superuser, or if they are the author of the patch.
-func (uis *UIServer) canEditPatch(currentUser *user.DBUser, currentPatch *patch.Patch) bool {
-	return currentUser.Id == currentPatch.Author || uis.isSuperUser(currentUser) ||
-		currentPatch.Author == evergreen.GithubPatchUser
 }
 
 // isSuperUser verifies that a given user has super user permissions.

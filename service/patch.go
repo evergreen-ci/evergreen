@@ -84,7 +84,8 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Tasks    []interface{}
 		CanEdit  bool
 		ViewData
-	}{versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch), uis.GetCommonViewData(w, r, true, true)}, "base",
+	}{versionAsUI, variantMappings, tasksList, currentUser != nil,
+		uis.GetCommonViewData(w, r, true, true)}, "base",
 		"patch_version.html", "base_angular.html", "menu.html")
 }
 
@@ -95,7 +96,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	curUser := GetUser(r)
-	if !uis.canEditPatch(curUser, projCtx.Patch) {
+	if curUser == nil {
 		http.Error(w, "Not authorized to schedule patch", http.StatusUnauthorized)
 		return
 	}

@@ -39,10 +39,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var canEditPatch bool
 	currentUser := GetUser(r)
 	if projCtx.Patch != nil {
-		canEditPatch = uis.canEditPatch(currentUser, projCtx.Patch)
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
 		var baseBuilds []build.Build
@@ -139,7 +137,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		CanEdit       bool
 		JiraHost      string
 		ViewData
-	}{&versionAsUI, pluginContent, canEditPatch,
+	}{&versionAsUI, pluginContent, currentUser != nil,
 		uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
