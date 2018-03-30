@@ -156,6 +156,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           $scope.refreshTrackedProjects(data.AllProjects);
           $scope.loadProject(data.ProjectId);
           $scope.newProject = {};
+          $scope.settingsFormData.setup_github_hook = true;
+          $scope.settingsFormData.tracks_push_events = true;
         },
         function(resp){
           console.log("error creating project: " + resp.status);
