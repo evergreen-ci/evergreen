@@ -115,7 +115,7 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	}
 	s.NoError(flags.Set())
 
-	job := NewEventMetaJob(event.AllLogCollection)
+	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue())
 	job.Run()
 	s.NoError(job.Error())
 
@@ -141,7 +141,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 
 	startingStats := evergreen.GetEnvironment().RemoteQueue().Stats()
 
-	job := NewEventMetaJob(event.AllLogCollection).(*eventMetaJob)
+	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue()).(*eventMetaJob)
 	job.flags = &flags
 	s.NoError(job.dispatch(s.n))
 	s.NoError(job.Error())
@@ -265,7 +265,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	defer cancel()
 	go smtpServer(ctx, ln, bodyC)
 
-	job := NewEventMetaJob(event.AllLogCollection)
+	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue())
 	job.Run()
 	s.NoError(job.Error())
 

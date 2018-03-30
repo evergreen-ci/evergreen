@@ -55,11 +55,9 @@ func notificationIsEnabled(flags *evergreen.ServiceFlags, n *notification.Notifi
 
 type eventMetaJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
-	env      evergreen.Environment
+	q        amboy.Queue
 	events   []event.EventLogEntry
 	flags    *evergreen.ServiceFlags
-
-	Collection string `bson:"collection" json:"collection" yaml:"collection"`
 }
 
 func makeEventMetaJob() *eventMetaJob {
@@ -72,14 +70,14 @@ func makeEventMetaJob() *eventMetaJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	j.SetPriority(50)
 
 	return j
 }
 
-func NewEventMetaJob(collection string) amboy.Job {
+func NewEventMetaJob(q amboy.Queue) amboy.Job {
 	j := makeEventMetaJob()
-	j.env = evergreen.GetEnvironment()
-	j.Collection = collection
+	j.q = q
 
 	// TODO: not safe
 	j.SetID(fmt.Sprintf("%s:%s:%d", eventMetaJobName, time.Now().String(), job.GetNumber()))
@@ -87,24 +85,19 @@ func NewEventMetaJob(collection string) amboy.Job {
 	return j
 }
 
-func NewEventMetaJobQueueOperation(collection string) amboy.QueueOperation {
-	return func(queue amboy.Queue) error {
-		err := queue.Put(NewEventMetaJob(collection))
+func NewEventMetaJobQueueOperation() amboy.QueueOperation {
+	return func(q amboy.Queue) error {
+		err := q.Put(NewEventMetaJob(q))
 
 		return errors.Wrap(err, "failed to queue event-metajob")
 	}
-}
-
-func (j *eventMetaJob) fetchEvents() (err error) {
-	j.events, err = event.Find(j.Collection, db.Query(event.UnprocessedEvents()))
-	return err
 }
 
 func (j *eventMetaJob) dispatchLoop() error {
 	// TODO: if this is a perf problem, it could be multithreaded. For now,
 	// we just log time
 	startTime := time.Now()
-	logger := event.NewDBEventLogger(j.Collection)
+	logger := event.NewDBEventLogger(event.AllLogCollection)
 	catcher := grip.NewSimpleCatcher()
 	for i := range j.events {
 		var notifications []notification.Notification
@@ -120,6 +113,7 @@ func (j *eventMetaJob) dispatchLoop() error {
 			"event_type": j.events[i].Type(),
 		}))
 
+		// TODO: buffered writes after EVG-3062
 		if err = notification.InsertMany(notifications...); err != nil {
 			catcher.Add(err)
 			continue
@@ -149,7 +143,7 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 	catcher := grip.NewSimpleCatcher()
 	for i := range notifications {
 		if notificationIsEnabled(j.flags, &notifications[i]) {
-			catcher.Add(j.env.RemoteQueue().Put(newEventNotificationJob(notifications[i].ID)))
+			catcher.Add(j.q.Put(newEventNotificationJob(notifications[i].ID)))
 
 		} else {
 			catcher.Add(notifications[i].MarkError(errors.New("sender disabled")))
@@ -162,7 +156,11 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 func (j *eventMetaJob) Run() {
 	defer j.MarkComplete()
 
-	if j.env == nil || j.env.RemoteQueue() == nil || !j.env.RemoteQueue().Started() {
+	if j.q == nil {
+		env := evergreen.GetEnvironment()
+		j.q = env.RemoteQueue()
+	}
+	if j.q == nil || !j.q.Started() {
 		j.AddError(errors.New("evergreen environment not setup correctly"))
 		return
 	}
@@ -179,14 +177,16 @@ func (j *eventMetaJob) Run() {
 			"message": "events processing is disabled, all events will be marked processed",
 		})
 
-		j.AddError(event.MarkAllEventsProcessed(j.Collection))
+		j.AddError(event.MarkAllEventsProcessed(event.AllLogCollection))
 		return
 	}
 
-	j.AddError(j.fetchEvents())
-	if j.HasErrors() {
+	j.events, err = event.Find(event.AllLogCollection, db.Query(event.UnprocessedEvents()))
+	if err != nil {
+		j.AddError(err)
 		return
 	}
+
 	if len(j.events) == 0 {
 		grip.Info(message.Fields{
 			"job_id":  j.ID(),
