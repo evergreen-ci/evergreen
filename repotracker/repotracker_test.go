@@ -129,7 +129,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 		Convey("if an evergreen user can be associated with the commit, record it", func() {
 			revisionOne := *createTestRevision("firstRevision", time.Now())
 			revisions := []model.Revision{revisionOne}
-			revisions[0].AuthorGithubLogin = "somebodywithanewname"
 			revisions[0].AuthorGithubUID = 1234
 
 			u := user.DBUser{
@@ -148,10 +147,10 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
-			u2, err := user.Find(user.ById("testUser"))
+			u2, err := user.FindOne(user.ById("testUser"))
 			So(err, ShouldBeNil)
 			So(u2, ShouldNotBeNil)
-			So(u2.Settings.GithubUser.LastKnownAs, ShouldBeEqual, "somebody")
+			So(u2.Settings.GithubUser.LastKnownAs, ShouldEqual, "somebody")
 		})
 
 		Reset(func() {
