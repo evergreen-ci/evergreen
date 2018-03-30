@@ -145,6 +145,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			_, err := repoTracker.StoreRevisions(ctx, revisions)
 			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
 			So(err, ShouldBeNil)
+
 			So(versionOne.AuthorID, ShouldEqual, "testUser")
 
 			u2, err := user.FindOne(user.ById("testUser"))
