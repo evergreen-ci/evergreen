@@ -118,7 +118,10 @@ func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if currentUser.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
+	if len(userSettings.GithubUser.LastKnownAs) == 0 {
+		userSettings.GithubUser = user.GithubUser{}
+
+	} else if currentUser.Settings.GithubUser.LastKnownAs != userSettings.GithubUser.LastKnownAs {
 		token, err := uis.Settings.GetGithubOauthToken()
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
@@ -138,6 +141,9 @@ func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) 
 
 		userSettings.GithubUser.LastKnownAs = *ghUser.Login
 		userSettings.GithubUser.UID = *ghUser.ID
+
+	} else {
+		userSettings.GithubUser.UID = currentUser.Settings.GithubUser.UID
 	}
 
 	if err := model.SaveUserSettings(currentUser.Username(), userSettings); err != nil {
