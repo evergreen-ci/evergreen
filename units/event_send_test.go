@@ -99,7 +99,7 @@ func (s *eventNotificationSuite) SetupTest() {
 		Payload: message.JiraIssue{
 			Summary:     "Tell the evergreen team that they're awesome",
 			Description: "The evergreen team is awesome. Inform them of it",
-			Reporter:    "elliot.horowitz",
+			Reporter:    "eliot.horowitz",
 		},
 	}
 
@@ -209,6 +209,42 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 }
 
+func httpServer(ln net.Listener, handler *mockWebhookHandler) {
+	err := http.Serve(ln, handler)
+	grip.Error(err)
+	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+		panic(err)
+	}
+}
+
+func (s *eventNotificationSuite) TestEvergreenWebhook() {
+	job := newEventNotificationJob(s.webhook.ID)
+
+	handler := &mockWebhookHandler{
+		secret: []byte("memes"),
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	defer ln.Close()
+	s.NoError(err)
+
+	s.NoError(db.UpdateId(notification.NotificationsCollection, s.webhook.ID, bson.M{
+		"$set": bson.M{
+			"subscriber.target.url": "http://" + ln.Addr().String(),
+		},
+	}))
+
+	s.NotPanics(func() {
+		go httpServer(ln, handler)
+	})
+
+	job.Run()
+
+	s.NoError(job.Error())
+	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
+	s.Nil(job.Error())
+}
+
 func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
 	job := newEventNotificationJob(s.webhook.ID)
 	job.Run()
@@ -220,31 +256,30 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
 	s.NotZero(s.notificationHasError(s.webhook.ID, pattern))
 }
 
-func (s *eventNotificationSuite) TestEvergreenWebhook() {
+func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 	job := newEventNotificationJob(s.webhook.ID)
 
 	handler := &mockWebhookHandler{
-		secret: []byte("memes"),
+		secret: []byte("somethingelse"),
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	s.NoError(err)
+	s.Require().NoError(err)
+	defer ln.Close()
 	s.NoError(db.UpdateId(notification.NotificationsCollection, s.webhook.ID, bson.M{
 		"$set": bson.M{
 			"subscriber.target.url": "http://" + ln.Addr().String(),
 		},
 	}))
 
-	go func() {
-		err := http.Serve(ln, handler)
-		grip.Info(err)
-	}()
+	s.NotPanics(func() {
+		go httpServer(ln, handler)
+	})
 
 	job.Run()
-	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
-	s.Nil(job.Error())
 
-	s.NoError(ln.Close())
+	s.EqualError(job.Error(), "evergreen-webhook response status was 400")
+	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook response status was 400"))
+	s.Error(job.Error())
 }
 
 func (s *eventNotificationSuite) TestEmail() {
@@ -290,35 +325,6 @@ func (s *eventNotificationSuite) TestEmail() {
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.email.ID, ""))
 	s.Nil(job.Error())
-}
-
-func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
-	job := newEventNotificationJob(s.webhook.ID)
-
-	handler := &mockWebhookHandler{
-		secret: []byte("somethingelse"),
-	}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	s.Require().NoError(err)
-	defer ln.Close()
-	s.NoError(db.UpdateId(notification.NotificationsCollection, s.webhook.ID, bson.M{
-		"$set": bson.M{
-			"subscriber.target.url": "http://" + ln.Addr().String(),
-		},
-	}))
-
-	go func() {
-		err := http.Serve(ln, handler)
-		if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
-			s.T().Errorf("unexpected error: %+v", err)
-		}
-	}()
-
-	job.Run()
-
-	s.EqualError(job.Error(), "evergreen-webhook response status was 400")
-	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook response status was 400"))
-	s.Error(job.Error())
 }
 
 func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
