@@ -26,6 +26,9 @@ type Host struct {
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
 
+	// secondary (external) identifier for the host
+	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+
 	// physical location of host
 	Project string `bson:"project" json:"project"`
 	Zone    string `bson:"zone" json:"zone"`
@@ -199,8 +202,8 @@ func (h *Host) SetUnprovisioned() error {
 	)
 }
 
-func (h *Host) SetQuarantined(user string) error {
-	return h.SetStatus(evergreen.HostQuarantined, user, "")
+func (h *Host) SetQuarantined(user string, logs string) error {
+	return h.SetStatus(evergreen.HostQuarantined, user, logs)
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -617,7 +620,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 
 func (h *Host) DisablePoisonedHost(logs string) error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(evergreen.User); err != nil {
+		if err := h.SetQuarantined(evergreen.User, logs); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -633,4 +636,11 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 	}
 
 	return errors.WithStack(h.SetDecommissioned(evergreen.User, logs))
+}
+
+func (h *Host) SetExtId() error {
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
+	)
 }

@@ -778,9 +778,13 @@ func testHistoryV2Results(params *TestHistoryParameters) ([]task.Task, error) {
 		return nil, err
 	}
 	tasks = append(tasks, oldTasks...)
+	taskIds := []string{}
+	for _, t := range tasks {
+		taskIds = append(taskIds, t.Id)
+	}
 
 	// to join the test results, merge test results for all the tasks
-	testQuery := db.Query(formTestsQuery(params, tasks))
+	testQuery := db.Query(formTestsQuery(params, taskIds))
 	out, err := task.MergeTestResultsBulk(tasks, &testQuery)
 	if err != nil {
 		return nil, errors.Wrap(err, "error merging test results")
@@ -827,16 +831,11 @@ func formQueryFromTasks(params *TestHistoryParameters) (bson.M, error) {
 	return query, nil
 }
 
-func formTestsQuery(params *TestHistoryParameters, tasks []task.Task) bson.M {
-	andClauses := []bson.M{}
-	for _, t := range tasks {
-		andClauses = append(andClauses, bson.M{
-			testresult.TaskIDKey:    t.Id,
-			testresult.ExecutionKey: t.Execution,
-		})
-	}
+func formTestsQuery(params *TestHistoryParameters, taskIds []string) bson.M {
 	query := bson.M{
-		"$or": andClauses,
+		testresult.TaskIDKey: bson.M{
+			"$in": taskIds,
+		},
 	}
 	if len(params.TestNames) > 0 {
 		query[testresult.TestFileKey] = bson.M{

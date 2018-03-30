@@ -12,7 +12,6 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"gopkg.in/mgo.v2"
@@ -87,6 +86,13 @@ func OpenNewMongoDBDriver(ctx context.Context, name string, opts MongoDBOptions,
 	return d, nil
 }
 
+func (d *mongoDB) ID() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	return d.instanceID
+}
+
 // Open creates a connection to mongoDB, and returns an error if
 // there's a problem connecting.
 func (d *mongoDB) Open(ctx context.Context) error {
@@ -103,7 +109,7 @@ func (d *mongoDB) Open(ctx context.Context) error {
 }
 
 func (d *mongoDB) start(ctx context.Context, session *mgo.Session) error {
-	d.LockManager = NewLockManager(ctx, d.name, d)
+	d.LockManager = NewLockManager(ctx, d)
 
 	dCtx, cancel := context.WithCancel(ctx)
 	d.canceler = cancel
@@ -192,7 +198,7 @@ func (d *mongoDB) Get(name string) (amboy.Job, error) {
 		return nil, errors.Wrapf(err, "GET problem fetching '%s'", name)
 	}
 
-	output, err := registry.ConvertToJob(j, amboy.BSON)
+	output, err := j.Resolve(amboy.BSON)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"GET problem converting '%s' to job object", name)
@@ -306,7 +312,7 @@ func (d *mongoDB) Jobs() <-chan amboy.Job {
 		defer results.Close()
 		j := &registry.JobInterchange{}
 		for results.Next(j) {
-			job, err := registry.ConvertToJob(j, amboy.BSON)
+			job, err := j.Resolve(amboy.BSON)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
@@ -368,7 +374,12 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 
 	j := &registry.JobInterchange{}
 
-	var qd bson.M
+	var (
+		qd     bson.M
+		err    error
+		misses int64
+		job    amboy.Job
+	)
 
 	if d.useNewQuery {
 		qd = bson.M{
@@ -391,65 +402,67 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 		qd["time_info.wait_until"] = bson.M{"$lte": time.Now()}
 	}
 
-	query := jobs.Find(qd)
+	query := jobs.Find(qd).Batch(4)
 
 	if d.priority {
 		query = query.Sort("-priority")
 	}
 
+	iter := query.Iter()
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	var misses int64
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-timer.C:
-			if err := query.One(j); err != nil {
+			if !iter.Next(j) {
 				misses++
-
-				if err == mgo.ErrNotFound {
-					grip.DebugWhen(sometimes.Percent(10), message.Fields{
+				if err = iter.Close(); err != nil {
+					grip.Warning(message.WrapError(err, message.Fields{
 						"id":        d.instanceID,
+						"service":   "amboy.queue.mongodb",
+						"message":   "problem closing iterator",
+						"operation": "retrieving next job",
 						"misses":    misses,
-						"operation": "next job",
 						"new_query": d.useNewQuery,
-						"outcome":   "no documents found",
-					})
-					timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
-					continue
+					}))
+					return nil
 				}
 
-				grip.Warning(message.WrapError(err, message.Fields{
-					"id":        d.instanceID,
-					"service":   "amboy.queue.mongodb",
-					"message":   "problem retreiving jobs from MongoDB",
-					"operation": "next job",
-					"misses":    misses,
-					"new_query": d.useNewQuery,
-				}))
-
-				return nil
-			}
-
-			if j == nil {
 				timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+				iter = query.Iter()
 				continue
 			}
 
-			job, err := registry.ConvertToJob(j, amboy.BSON)
+			job, err = j.Resolve(amboy.BSON)
 			if err != nil {
 				grip.Warning(message.WrapError(err, message.Fields{
 					"id":        d.instanceID,
 					"service":   "amboy.queue.mongodb",
-					"operation": "next job",
+					"operation": "converting next job",
 					"message":   "problem converting job object from mongodb",
 					"misses":    misses,
 					"new_query": d.useNewQuery,
 				}))
-				timer.Reset(time.Duration(misses * rand.Int63n(int64(time.Second))))
+
+				// try for the next thing in the iterator if we can
+				timer.Reset(time.Nanosecond)
 				continue
+			}
+
+			if err = iter.Close(); err != nil {
+				grip.Warning(message.WrapError(err, message.Fields{
+					"id":        d.instanceID,
+					"service":   "amboy.queue.mongodb",
+					"message":   "problem closing iterator",
+					"operation": "returning next job",
+					"misses":    misses,
+					"new_query": d.useNewQuery,
+					"job_id":    job.ID(),
+				}))
+				return nil
 			}
 
 			return job
@@ -486,7 +499,7 @@ func (d *mongoDB) Stats() amboy.QueueStats {
 		"message":    "problem counting pending jobs",
 	}))
 
-	numLocked, err := jobs.Find(bson.M{"status.in_prog": true}).Count()
+	numLocked, err := jobs.Find(bson.M{"status.completed": false, "status.in_prog": true}).Count()
 
 	grip.Warning(message.WrapError(err, message.Fields{
 		"id":         d.instanceID,

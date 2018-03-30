@@ -179,6 +179,13 @@ vendor-clean:
 	rm -rf vendor/gopkg.in/mgo.v2/internal/json/testdata
 	rm -rf vendor/gopkg.in/mgo.v2/.git/
 	rm -rf vendor/gopkg.in/mgo.v2/txn/
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/vendor/gopkg.in/yaml.v2
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/vendor/github.com/davecgh/
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/data/
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/vendor/github.com/pmezard/
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/vendor/github.com/google/go-cmp/
+	rm -rf vendor/github.com/mongodb/mongo-go-driver/vendor/github.com/kr/
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -rf
 #   define dependencies for buildscripts
 phony += vendor-deps vendor-clean

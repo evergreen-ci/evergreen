@@ -61,7 +61,9 @@ func PopulateCatchupJobs(part int) amboy.QueueOperation {
 			}
 
 			if mostRecentVersion.CreateTime.Before(time.Now().Add(-2 * time.Hour)) {
-				catcher.Add(queue.Put(NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Identifier)))
+				j := NewRepotrackerJob(fmt.Sprintf("catchup-%s", ts), proj.Identifier)
+				j.SetPriority(-1)
+				catcher.Add(queue.Put(j))
 			}
 		}
 
@@ -98,7 +100,9 @@ func PopulateRepotrackerPollingJobs(part int) amboy.QueueOperation {
 				continue
 			}
 
-			catcher.Add(queue.Put(NewRepotrackerJob(fmt.Sprintf("polling-%s", ts), proj.Identifier)))
+			j := NewRepotrackerJob(fmt.Sprintf("polling-%s", ts), proj.Identifier)
+			j.SetPriority(-1)
+			catcher.Add(queue.Put(j))
 		}
 
 		return catcher.Resolve()

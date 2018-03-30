@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/auth"
@@ -13,7 +14,9 @@ type MockUserManager struct{}
 
 var MockUser = user.DBUser{Id: "testuser"}
 
-func (MockUserManager) GetUserByToken(_ string) (auth.User, error)  { return &MockUser, nil }
+func (MockUserManager) GetUserByToken(_ context.Context, _ string) (auth.User, error) {
+	return &MockUser, nil
+}
 func (MockUserManager) CreateUserToken(_, _ string) (string, error) { return MockUser.Username(), nil }
 func (MockUserManager) GetLoginHandler(_ string) func(http.ResponseWriter, *http.Request) {
 	return nil

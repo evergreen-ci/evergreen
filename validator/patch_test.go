@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -160,19 +161,22 @@ func TestProjectRef(t *testing.T) {
 }
 
 func TestGetPatchedProject(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestConfigurePatch")
 	Convey("With calling GetPatchedProject with a config and remote configuration path",
 		t, func() {
 			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
 				configPatch := resetPatchSetup(t, configFilePath)
-				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
 				configPatch := resetProjectlessPatchSetup(t)
-				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
@@ -185,7 +189,7 @@ func TestGetPatchedProject(t *testing.T) {
 				configPatch.Patches[0].PatchSet.Patch = ""
 				configPatch.Patches[0].PatchSet.PatchFileId = patchFileID.Hex()
 
-				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
@@ -200,16 +204,19 @@ func TestGetPatchedProject(t *testing.T) {
 func TestFinalizePatch(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalizePatch")
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("With FinalizePatch on a project and commit event generated from GetPatchedProject path",
 		t, func() {
 			configPatch := resetPatchSetup(t, configFilePath)
 			Convey("a patched config should drive version creation", func() {
-				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
+				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				// ensure the relevant builds/tasks were created
@@ -226,12 +233,12 @@ func TestFinalizePatch(t *testing.T) {
 				"drive version creation", func() {
 				patchedConfigFile := "fakeInPatchSoNotPatched"
 				configPatch := resetPatchSetup(t, patchedConfigFile)
-				project, err := GetPatchedProject(configPatch, patchTestConfig.Credentials["github"])
+				project, err := GetPatchedProject(ctx, configPatch, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				yamlBytes, err := yaml.Marshal(project)
 				So(err, ShouldBeNil)
 				configPatch.PatchedConfig = string(yamlBytes)
-				version, err := model.FinalizePatch(configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
+				version, err := model.FinalizePatch(ctx, configPatch, evergreen.PatchVersionRequester, patchTestConfig.Credentials["github"])
 				So(err, ShouldBeNil)
 				So(version, ShouldNotBeNil)
 				So(err, ShouldBeNil)

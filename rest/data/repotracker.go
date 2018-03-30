@@ -76,7 +76,10 @@ func (c *RepoTrackerConnector) TriggerRepotracker(q amboy.Queue, msgID string, e
 			continue
 		}
 
-		if err := q.Put(units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier)); err != nil {
+		job := units.NewRepotrackerJob(fmt.Sprintf("github-push-%s", msgID), refs[i].Identifier)
+		job.SetPriority(1)
+
+		if err := q.Put(job); err != nil {
 			catcher.Add(errors.Errorf("failed to add repotracker job to queue for project: '%s'", refs[i].Identifier))
 			failed = append(failed, refs[i].Identifier)
 

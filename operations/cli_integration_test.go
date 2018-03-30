@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -51,6 +52,7 @@ var emptyPatch = ``
 
 func init() {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	reporting.QuietMode()
 }
 
 type cliTestHarness struct {

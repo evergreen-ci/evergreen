@@ -13,6 +13,7 @@ package pool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -117,22 +118,27 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 			case <-ctx.Done():
 				return
 			case job := <-jobs:
+				if job == nil {
+					continue
+				}
+
 				ti := amboy.JobTimeInfo{
 					Start: time.Now(),
 				}
-
+				job.UpdateTimeInfo(ti)
 				job.Run()
+				p.queue.Complete(ctx, job)
 				ti.End = time.Now()
 				job.UpdateTimeInfo(ti)
-
-				p.queue.Complete(ctx, job)
 
 				r := message.Fields{
 					"job":           job.ID(),
 					"job_type":      job.Type().Name,
 					"duration_secs": ti.Duration().Seconds(),
+					"queue_type":    fmt.Sprintf("%T", p.queue),
 					"pool":          "rate limiting",
 				}
+
 				if err := job.Error(); err != nil {
 					r["error"] = err.Error()
 				}

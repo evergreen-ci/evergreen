@@ -58,6 +58,7 @@ type uiTaskData struct {
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
 	DependsOn        []uiDep                 `json:"depends_on"`
+	IngestTime       time.Time               `json:"ingest_time"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -216,6 +217,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Priority:            projCtx.Task.Priority,
 		Aborted:             projCtx.Task.Aborted,
 		DisplayOnly:         projCtx.Task.DisplayOnly,
+		IngestTime:          projCtx.Task.IngestTime,
 		CurrentTime:         time.Now().UnixNano(),
 		BuildVariantDisplay: projCtx.Build.DisplayName,
 		Message:             projCtx.Version.Message,

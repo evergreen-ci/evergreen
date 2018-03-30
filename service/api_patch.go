@@ -45,7 +45,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Finalize    bool     `json:"finalize"`
 		Alias       string   `json:"alias"`
 	}{}
-	if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReaderWithSize(r, patch.SizeLimit), &data); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -172,7 +172,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	}
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, repoOwner, repo, githash)
@@ -229,6 +229,8 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
 
 	p, err := getPatchFromRequest(r)
 	if err != nil {
@@ -273,7 +275,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		patchedProject, err := validator.GetPatchedProject(p, githubOauthToken)
+		patchedProject, err := validator.GetPatchedProject(ctx, p, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -284,7 +286,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			return
 		}
 		p.PatchedConfig = string(projectYamlBytes)
-		_, err = model.FinalizePatch(p, evergreen.PatchVersionRequester, githubOauthToken)
+		_, err = model.FinalizePatch(ctx, p, evergreen.PatchVersionRequester, githubOauthToken)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

@@ -9,6 +9,7 @@ import (
 // Driver describes the interface between a queue and an out of
 // process persistence layer, like a database.
 type Driver interface {
+	ID() string
 	Open(context.Context) error
 	Close()
 

@@ -109,7 +109,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 
 	// Start agent to listen for tasks
 	grip.Info(getHostMessage(hostObj))
-	if err = startAgentOnRemote(settings, &hostObj, sshOptions); err != nil {
+	if err = startAgentOnRemote(ctx, settings, &hostObj, sshOptions); err != nil {
 		// mark the host's provisioning as failed
 		if err = hostObj.SetUnprovisioned(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
@@ -168,7 +168,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(ctx context.Context, hostObj host.H
 }
 
 // Start the agent process on the specified remote host.
-func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
+func startAgentOnRemote(ctx context.Context, settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join("~", "evergreen")
 	if hostObj.Distro.IsWindows() {
@@ -240,7 +240,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		return errors.Wrap(err, "problem configuring command output")
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), sshTimeout)
+	ctx, cancel := context.WithTimeout(ctx, sshTimeout)
 	defer cancel()
 	err = startAgentCmd.Run(ctx)
 

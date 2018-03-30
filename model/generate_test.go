@@ -43,12 +43,24 @@ var (
 						Name: "say-bye",
 					},
 				},
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task_old_variant",
+						ExecutionTasks: []string{"say-bye"},
+					},
+				},
 			},
 			parserBV{
 				Name: "another_variant",
 				Tasks: parserBVTaskUnits{
 					parserBVTaskUnit{
 						Name: "another_task",
+					},
+				},
+				DisplayTasks: []displayTask{
+					displayTask{
+						Name:           "my_display_task_new_variant",
+						ExecutionTasks: []string{"another_task"},
 					},
 				},
 			},
@@ -100,7 +112,7 @@ functions:
                     "script": "echo bye again"
                 }
             }
-        ],
+        ]
     },
     "tasks": [
         {
@@ -129,7 +141,15 @@ functions:
             "run_on": [
                 "ubuntu1604-test"
             ],
-            "name": "first"
+            "name": "first",
+            "display_tasks": [
+                {
+                    "name": "display",
+                    "execution_tasks": [
+                        "test"
+                    ]
+                }
+            ]
         },
         {
             "tasks": [
@@ -143,7 +163,6 @@ functions:
             ],
             "name": "second"
         }
-
     ]
 }
 `
@@ -184,6 +203,9 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Equal("second", g.BuildVariants[1].Name)
 	s.Equal("test", g.BuildVariants[1].Tasks[0].Name)
 	s.Equal("ubuntu1604-build", g.BuildVariants[1].RunOn[0])
+	s.Equal("test", g.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	s.Len(g.BuildVariants[0].DisplayTasks, 1)
+	s.Equal("display", g.BuildVariants[0].DisplayTasks[0].Name)
 }
 
 func (s *GenerateSuite) TestValidateMaxVariants() {
@@ -372,6 +394,8 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 	s.Contains(config, "a_function")
 	s.Contains(config, "new_function")
 	s.Contains(config, "say-bye")
+	s.Contains(config, "my_display_task_new_variant")
+	s.Contains(config, "my_display_task_old_variant")
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
@@ -397,8 +421,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 	s.NoError(g.AddGeneratedProjectToVersion())
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
-	tasks, err := task.Find(db.Query(bson.M{}))
+	tasks := []task.Task{}
+	err = db.FindAllQ(task.Collection, db.Q{}, &tasks)
 	s.NoError(err)
 	s.Len(builds, 2)
-	s.Len(tasks, 3)
+	s.Len(tasks, 5)
 }

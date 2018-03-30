@@ -64,10 +64,13 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j.task = t
 	j.host = h
 	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.HostID, job.GetNumber()))
+	j.SetPriority(-2)
 	return j
 }
 
 func (j *collectTaskEndDataJob) Run() {
+	defer j.MarkComplete()
+
 	var err error
 	if j.task == nil {
 		j.task, err = task.FindOneId(j.TaskID)

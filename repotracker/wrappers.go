@@ -2,7 +2,6 @@ package repotracker
 
 import (
 	"context"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -40,7 +39,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 	return tracker, nil
 }
 
-func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectRef, num int) error {
+func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef, num int) error {
 	if !project.Enabled {
 		return errors.Errorf("project disabled: %s", project.Identifier)
 	}
@@ -55,7 +54,7 @@ func CollectRevisionsForProject(conf *evergreen.Settings, project model.ProjectR
 		return errors.Wrap(err, "problem fetching repotracker")
 	}
 
-	if err = tracker.FetchRevisions(num); err != nil {
+	if err = tracker.FetchRevisions(ctx, num); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"project": project.Identifier,
 			"message": "problem fetching revisions",
@@ -94,10 +93,7 @@ func ActivateBuildsForProject(conf *evergreen.Settings, project model.ProjectRef
 
 // CheckGithubAPIResources returns true when the github API is ready,
 // accessible and with sufficient quota to satisfy our needs
-func CheckGithubAPIResources(githubToken string) bool {
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
-	defer cancel()
-
+func CheckGithubAPIResources(ctx context.Context, githubToken string) bool {
 	status, err := thirdparty.GetGithubAPIStatus(ctx)
 	if err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{

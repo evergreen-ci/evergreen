@@ -21,11 +21,11 @@ mciModule.controller('AdminEventsController', ['$scope','$window', 'mciAdminRest
         event.diff = (diff) ? diff : [];
         for (var j = 0; j < event.diff.length; j++) {
           eventLine = event.diff[j]
-          eventLine.text = getDiffText(eventLine);
+          eventLine.text = $scope.getDiffText(eventLine);
         }
       }
       $scope.Events = $scope.Events.concat(resp.data);
-      $scope.nextTs = getNextTs(resp.headers().link);
+      $scope.nextTs = $scope.getNextTs(resp.headers().link);
     }
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error loading events: " + resp.data.error, "errorHeader");
@@ -43,7 +43,7 @@ mciModule.controller('AdminEventsController', ['$scope','$window', 'mciAdminRest
     mciAdminRestService.revertEvent(guid, { success: successHandler, error: errorHandler });
   }
 
-  getNextTs = function(pageLink) {
+  $scope.getNextTs = function(pageLink) {
     if (!pageLink) {
       return "";
     }
@@ -54,7 +54,7 @@ mciModule.controller('AdminEventsController', ['$scope','$window', 'mciAdminRest
     return getQueryParam("ts", nextLink);
   }
 
-  getDiffText = function(diff) {
+  $scope.getDiffText = function(diff) {
     //see https://github.com/flitbit/diff for the format of the diff object
     var property = "";
     for (var i = 0; i < diff.path.length; i++) {

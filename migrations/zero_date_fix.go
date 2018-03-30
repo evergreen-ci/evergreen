@@ -147,11 +147,11 @@ func makeZeroDateMigration(database, githubToken string) db.MigrationOperation {
 
 func githubFetchRealCreateTime(token, owner, repo, revision string) (*time.Time, error) {
 	ctx := context.Background()
-	httpClient, err := util.GetHttpClientForOauth2(token)
+	httpClient, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
 		return nil, err
 	}
-	defer util.PutHttpClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 

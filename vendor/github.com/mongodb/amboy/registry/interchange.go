@@ -35,7 +35,7 @@ func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 		return nil, err
 	}
 
-	data, err := amboy.ConvertTo(f, j)
+	data, err := convertTo(f, j)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 // JobInterchange object isn't registered or the current version of
 // the job produced by the registry is *not* the same as the version
 // of the Job.
-func ConvertToJob(j *JobInterchange, f amboy.Format) (amboy.Job, error) {
+func (j *JobInterchange) Resolve(f amboy.Format) (amboy.Job, error) {
 	factory, err := GetJobFactory(j.Type)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func ConvertToJob(j *JobInterchange, f amboy.Format) (amboy.Job, error) {
 		return nil, errors.WithStack(err)
 	}
 
-	err = amboy.ConvertFrom(f, j.Job.Body, job)
+	err = convertFrom(f, j.Job.Body, job)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting job body")
 	}
@@ -94,6 +94,9 @@ func ConvertToJob(j *JobInterchange, f amboy.Format) (amboy.Job, error) {
 
 	return job, nil
 }
+
+// Raw returns the serialized version of the job.
+func (j *JobInterchange) Raw() []byte { return j.Job.Body }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +116,7 @@ type DependencyInterchange struct {
 func makeDependencyInterchange(f amboy.Format, d dependency.Manager) (*DependencyInterchange, error) {
 	typeInfo := d.Type()
 
-	data, err := amboy.ConvertTo(f, d)
+	data, err := convertTo(f, d)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +155,7 @@ func convertToDependency(f amboy.Format, d *DependencyInterchange) (dependency.M
 	// interchange object, but want to use the type information
 	// associated with the object that we produced with the
 	// factory.
-	err = amboy.ConvertFrom(f, d.Dependency.Body, dep)
+	err = convertFrom(f, d.Dependency.Body, dep)
 	if err != nil {
 		return nil, errors.Wrap(err, "converting dependency")
 	}

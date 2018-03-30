@@ -87,6 +87,7 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	j.SetPriority(1)
 	return j
 }
 
@@ -160,11 +161,11 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 		return err
 	}
 
-	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
+	httpClient, err := util.GetOAuth2HTTPClient(githubOauthToken)
 	if err != nil {
 		return err
 	}
-	defer util.PutHttpClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	newStatus := github.RepoStatus{

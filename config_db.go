@@ -13,11 +13,10 @@ var (
 
 //nolint: deadcode, megacheck
 var (
-	idKey           = bsonutil.MustHaveTag(Settings{}, "Id")
-	bannerKey       = bsonutil.MustHaveTag(Settings{}, "Banner")
-	bannerThemeKey  = bsonutil.MustHaveTag(Settings{}, "BannerTheme")
-	serviceFlagsKey = bsonutil.MustHaveTag(Settings{}, "ServiceFlags")
-
+	idKey                 = bsonutil.MustHaveTag(Settings{}, "Id")
+	bannerKey             = bsonutil.MustHaveTag(Settings{}, "Banner")
+	bannerThemeKey        = bsonutil.MustHaveTag(Settings{}, "BannerTheme")
+	serviceFlagsKey       = bsonutil.MustHaveTag(Settings{}, "ServiceFlags")
 	configDirKey          = bsonutil.MustHaveTag(Settings{}, "ConfigDir")
 	apiUrlKey             = bsonutil.MustHaveTag(Settings{}, "ApiUrl")
 	clientBinariesDirKey  = bsonutil.MustHaveTag(Settings{}, "ClientBinariesDir")

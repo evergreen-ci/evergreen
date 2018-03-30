@@ -31,10 +31,11 @@ var mciModule = angular.module('MCI', [
   'ui.grid.autoResize',
   'ui.grid.pinning',
   'ui.select',
-], function($interpolateProvider) {
+], function($interpolateProvider, $locationProvider) {
   // Use [[ ]] to delimit AngularJS bindings, because using {{ }} confuses go
   $interpolateProvider.startSymbol('[[');
   $interpolateProvider.endSymbol(']]');
+  $locationProvider.hashPrefix('!')
 }).factory('$now', [function() {
   return {
     now: function() {
@@ -291,7 +292,7 @@ var mciModule = angular.module('MCI', [
       // dispatch_time could be a string or a number. to check when the dispatch_time
       // is a real value, this if-statement accounts for cases where
       // dispatch_time is 0, "0" or even new Date(0) or older.
-      if(+task.dispatch_time == 0 || (typeof task.dispatch_time == "string" && +new Date(task.dispatch_time) <= 0)){
+      if (!task.dispatch_time || task.dispatch_time == 0 || (typeof task.dispatch_time === "string" && +new Date(task.dispatch_time) <= 0)) {
         return "not scheduled"
       }
       return 'aborted';

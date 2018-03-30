@@ -8,8 +8,7 @@ import "os"
 type CreatesFile struct {
 	FileName string   `bson:"file_name" json:"file_name" yaml:"file_name"`
 	T        TypeInfo `bson:"type" json:"type" yaml:"type"`
-
-	*JobEdges
+	JobEdges
 }
 
 // NewCreatesFileInstance builds a new CreatesFile object,
@@ -21,7 +20,7 @@ func NewCreatesFileInstance() *CreatesFile {
 			Name:    Create,
 			Version: 0,
 		},
-		JobEdges: NewJobEdges(),
+		JobEdges: *NewJobEdges(),
 	}
 
 	return c

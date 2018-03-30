@@ -1,4 +1,10 @@
 mciModule
+  // Misk Evergreen constants
+  .constant('EVG', {
+    GIT_HASH_LEN: 40,
+    PATCH_ID_LEN: 24,
+  })
+
   .constant('API_V1', {
     BASE: '/rest/v1',
 
@@ -24,6 +30,11 @@ mciModule
     // TODO ## SCHEDULER API ##
     // WATERFALL API
     WATERFALL_VERSIONS_ROWS: _.template('{base}/waterfall/{project_id}/versions'),
+  })
+
+  .constant('API_V2', {
+    BASE: '/rest/v2',
+    PATCH_BY_ID: _.template('{base}/patches/{patch_id}'),
   })
 
   .constant('API_TASKDATA', {

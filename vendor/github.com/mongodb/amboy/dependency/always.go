@@ -9,7 +9,7 @@ package dependency
 type Always struct {
 	ShouldRebuild bool     `json:"should_rebuild" bson:"should_rebuild" yaml:"should_rebuild"`
 	T             TypeInfo `json:"type" bson:"type" yaml:"type"`
-	*JobEdges
+	JobEdges
 }
 
 // NewAlways creates a DependencyManager object that always
@@ -18,7 +18,7 @@ type Always struct {
 func NewAlways() *Always {
 	return &Always{
 		ShouldRebuild: true,
-		JobEdges:      NewJobEdges(),
+		JobEdges:      *NewJobEdges(),
 		T: TypeInfo{
 			Name:    AlwaysRun,
 			Version: 0,

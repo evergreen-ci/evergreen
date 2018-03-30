@@ -475,7 +475,7 @@ func (s *EC2Suite) TestOnUp() {
 }
 
 func (s *EC2Suite) TestGetDNSName() {
-	dns, err := s.onDemandManager.GetDNSName(context.Background(), &host.Host{})
+	dns, err := s.onDemandManager.GetDNSName(context.Background(), &host.Host{Id: "instance_id"})
 	s.Equal("public_dns_name", dns)
 	s.NoError(err)
 }
@@ -563,4 +563,11 @@ func (s *EC2Suite) TestGetProvider() {
 	provider, err = manager.getProvider(ctx, h, ec2Settings)
 	s.NoError(err)
 	s.Equal(onDemandProvider, provider)
+}
+
+func (s *EC2Suite) TestPersistInstanceId() {
+	h := &host.Host{Id: "instance_id"}
+	_, err := s.onDemandManager.GetDNSName(context.Background(), h)
+	s.NoError(err)
+	s.Equal("instance_id", h.ExternalIdentifier)
 }

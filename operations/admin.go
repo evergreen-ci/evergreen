@@ -26,6 +26,7 @@ func Admin() cli.Command {
 			updateSettings(),
 			listEvents(),
 			revert(),
+			fetchAllProjectConfigs(),
 		},
 	}
 }

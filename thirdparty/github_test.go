@@ -7,8 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/PuerkitoBio/rehttp"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +47,7 @@ func (s *githubSuite) SetupTest() {
 	s.Require().NotNil(s.cancel)
 }
 
-func (s *githubSuite) TeardownTest() {
+func (s *githubSuite) TearDownTest() {
 	s.NoError(s.ctx.Err())
 	s.cancel()
 }
@@ -124,6 +126,34 @@ func (s *githubSuite) TestGetCommitEvent() {
 	})
 }
 
+func (s *githubSuite) TestGetPullRequestMergeBase() {
+	data := patch.GithubPatch{
+		BaseOwner: "evergreen-ci",
+		BaseRepo:  "evergreen",
+		HeadOwner: "evergreen-ci",
+		HeadRepo:  "somebodyoutthere",
+		PRNumber:  666,
+	}
+	hash, err := GetPullRequestMergeBase(s.ctx, s.token, data)
+	s.NoError(err)
+	s.Equal("61d770097ca0515e46d29add8f9b69e9d9272b94", hash)
+
+	data.BaseRepo = "conifer"
+	hash, err = GetPullRequestMergeBase(s.ctx, s.token, data)
+	s.Error(err)
+	s.Empty(hash)
+}
+
+func (s *githubSuite) TestGithubUserInOrganization() {
+	isMember, err := GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "evrg-bot-webhook")
+	s.NoError(err)
+	s.True(isMember)
+
+	isMember, err = GithubUserInOrganization(s.ctx, s.token, "evergreen-ci", "ocotocat")
+	s.NoError(err)
+	s.False(isMember)
+}
+
 func TestVerifyGithubAPILimitHeader(t *testing.T) {
 	assert := assert.New(t)
 	header := http.Header{}
@@ -166,4 +196,33 @@ func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
 	}
 
 	return rem, nil
+}
+
+func TestGithubShouldRetryDoesntPanic(t *testing.T) {
+	assert := assert.New(t)
+	req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
+	assert.NoError(err)
+
+	assert.NotPanics(func() {
+		a := rehttp.Attempt{
+			Index:    0,
+			Request:  req,
+			Response: nil,
+			Error:    errors.New("something bad"),
+		}
+
+		assert.True(githubShouldRetry(a))
+
+		a.Response = &http.Response{
+			Request:    a.Request,
+			Status:     http.StatusText(http.StatusOK),
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"X-Ratelimit-Limit":     []string{"5000"},
+				"X-Ratelimit-Remaining": []string{"4900"},
+			},
+		}
+		a.Error = nil
+		assert.False(githubShouldRetry(a))
+	})
 }

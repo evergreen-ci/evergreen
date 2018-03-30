@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,6 +22,9 @@ import (
 )
 
 func TestMakePatchedConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
 		cwd := testutil.GetDirectoryOfFile()
 
@@ -47,7 +51,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			}
 			projectBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
 			So(err, ShouldBeNil)
-			project, err := MakePatchedConfig(p, remoteConfigPath, string(projectBytes))
+			project, err := MakePatchedConfig(ctx, p, remoteConfigPath, string(projectBytes))
 			So(err, ShouldBeNil)
 			So(project, ShouldNotBeNil)
 			So(len(project.Tasks), ShouldEqual, 2)
@@ -66,7 +70,7 @@ func TestMakePatchedConfig(t *testing.T) {
 				}},
 			}
 
-			project, err := MakePatchedConfig(p, remoteConfigPath, "")
+			project, err := MakePatchedConfig(ctx, p, remoteConfigPath, "")
 			So(err, ShouldBeNil)
 			So(project, ShouldNotBeNil)
 			So(len(project.Tasks), ShouldEqual, 1)

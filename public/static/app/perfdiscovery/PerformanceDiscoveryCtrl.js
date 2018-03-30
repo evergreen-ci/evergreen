@@ -1,10 +1,22 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $window, ApiTaskdata, ApiV1, EvgUiGridUtil,
-  PERF_DISCOVERY, PerfDiscoveryService, uiGridConstants
+  $q, $scope, $window, ApiTaskdata, ApiV1, ApiV2, EVG, EvgUiGridUtil,
+  PERF_DISCOVERY, PerfDiscoveryDataService, PerfDiscoveryStateService,
+  uiGridConstants
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
+  var stateUtil = PerfDiscoveryStateService
   var grid
+  // Load state from the URL
+  var state = stateUtil.readState({
+    // Default sorting
+    sort: {
+      ratio: {
+        priority: 0,
+        direction: uiGridConstants.DESC,
+      }
+    }
+  })
 
   vm.revisionSelect = {
     options: [],
@@ -24,13 +36,19 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var opts = vm.revisionSelect.options
     // 24 is patch id length; 40 is githash length
     // don't allow user type invalid version identifier
-    if (_.contains([24, 40], query.length) && opts.indexOf(query) == -1) {
+    var isValid = _.contains(
+      [EVG.GIT_HASH_LEN, EVG.PATCH_ID_LEN], query.length
+    )
+
+    if (isValid && opts.indexOf(query) == -1) {
       return opts.concat(query)
     }
+
     return opts
   }
 
-  var whenQueryRevisions = ApiV1.getWaterfallVersionsRows(projectId).then(function(res) {
+  var versionsQ = ApiV1.getWaterfallVersionsRows(projectId)
+  var whenQueryRevisions = versionsQ.then(function(res) {
     vm.versions = _.map(
       _.where(
         res.data.versions, {rolled_up: false} // Filter versions with data
@@ -41,7 +59,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     vm.revisionSelect.options = _.map(vm.versions, function(d) {
       return d.revision
     })
-    vm.revisionSelect.selected = _.first(vm.revisionSelect.options)
+
+    // Sets 'compare from' version from the state if available
+    // Sets the first revision from the list otherwise
+    vm.revisionSelect.selected = state.from
+      ? state.from
+      : _.first(vm.revisionSelect.options)
   })
 
   var whenQueryTags = ApiTaskdata.getProjectTags(projectId).then(function(res){
@@ -49,7 +72,13 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     vm.tagSelect.options = _.map(res.data, function(d, i) {
       return {id: d.obj.revision, name: d.name}
     })
-    vm.tagSelect.selected = _.first(vm.tagSelect.options)
+
+    // Sets 'compare to' version from the state if available
+    // Sets the first tag from the list otherwise
+    var found = _.findWhere(vm.tagSelect.options, {name: state.to})
+    vm.tagSelect.selected = found
+      ? found
+      : _.first(vm.tagSelect.options)
   })
 
   $q.all([whenQueryRevisions, whenQueryTags]).then(function() {
@@ -61,14 +90,48 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     var revision = vm.revisionSelect.selected
     var baselineTag = vm.tagSelect.selected.name
 
+    // Update permalink
+    stateUtil.applyState(state, {
+      from: revision,
+      to: baselineTag,
+    })
+
     // Set loading flag to display spinner
     vm.isLoading = true
     // Display no data while loading is in progress
     vm.gridOptions.data = []
 
-    ApiV1.getVersionByRevision(projectId, revision).then(function(res) {
-      var version = res.data
-      PerfDiscoveryService.getData(version, baselineTag).then(function(res) {
+    function isPatchId(revision) {
+      return revision.length == EVG.PATCH_ID_LEN
+    }
+
+    // Depending on is revision patch id or version id
+    // Different steps should be performed
+    // Patch id requires additional step
+    var chain = isPatchId(revision)
+      ? ApiV2.getPatchById(revision).then(
+          function(res) { return res.data.git_hash }, // Adaptor fn
+          function(err) { // Hanle error
+            console.error('Patch not found');
+            return $q.reject()
+          })
+      : $q.resolve(revision)
+
+    chain
+      // Get version by revision
+      .then(function(revision) {
+        return ApiV1.getVersionByRevision(projectId, revision)
+      })
+      // Extract version object
+      .then(function(res) {
+        return res.data
+      })
+      // Load perf data
+      .then(function(version) {
+        return PerfDiscoveryDataService.getData(version, baselineTag)
+      })
+      // Apply perf data
+      .then(function(res) {
         vm.gridOptions.data = res
         // Apply options data to filter drop downs
         gridUtil.applyMultiselectOptions(
@@ -76,8 +139,9 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
           ['build', 'storageEngine', 'task', 'threads'],
           vm.gridOptions
         )
-      }).finally(function() { vm.isLoading = false })
-    })
+      })
+      // Stop spinner
+      .finally(function() { vm.isLoading = false })
   }
 
   // Returns a predefined URL for given `row` and `col`
@@ -91,8 +155,20 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   vm.gridOptions = {
     enableFiltering: true,
+    enableGridMenu: true,
     onRegisterApi: function(gridApi) {
       grid = gridApi.grid;
+      // Using _.once, because this behavior is required on init only
+      gridApi.core.on.rowsRendered($scope, _.once(function() {
+        stateUtil.applyStateToGrid(state, grid)
+        // Set handlers after grid initialized
+        gridApi.core.on.sortChanged(
+          $scope, stateUtil.onSortChanged(state)
+        )
+        gridApi.core.on.filterChanged(
+          $scope, stateUtil.onFilteringChanged(state, grid)
+        )
+      }))
     },
     columnDefs: [
       {
@@ -131,9 +207,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         type: 'number',
         cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD" />',
         enableFiltering: false,
-        sort: {
-          direction: uiGridConstants.DESC,
-        },
         width: 80,
       },
       {
@@ -142,6 +215,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         type: 'number',
         cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
         enableFiltering: false,
+        visible: false,
         width: 80,
       },
       {

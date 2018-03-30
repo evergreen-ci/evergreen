@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -49,7 +50,6 @@ func makeRepotrackerJob() *repotrackerJob {
 func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 	job := makeRepotrackerJob()
 	job.ProjectID = projectID
-
 	job.SetID(fmt.Sprintf("%s:%s:%s", repotrackerJobName, msgID, projectID))
 	return job
 }
@@ -60,6 +60,9 @@ func (j *repotrackerJob) Run() {
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
@@ -97,13 +100,13 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
-	if !repotracker.CheckGithubAPIResources(token) {
+	if !repotracker.CheckGithubAPIResources(ctx, token) {
 		j.AddError(errors.Errorf("skipping repotracker run [%s] for %s because of github limit issues",
 			j.ID(), j.ProjectID))
 		return
 	}
 
-	err = repotracker.CollectRevisionsForProject(settings, *ref,
+	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref,
 		settings.RepoTracker.MaxRepoRevisionsToSearch)
 
 	if err != nil {
