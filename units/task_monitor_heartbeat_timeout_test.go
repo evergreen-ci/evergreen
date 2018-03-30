@@ -1,4 +1,4 @@
-package monitor
+package units
 
 import (
 	"testing"
@@ -11,9 +11,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 func TestCleanupTask(t *testing.T) {
+	reporting.QuietMode()
 
 	testConfig := testutil.TestConfig()
 
@@ -30,12 +32,9 @@ func TestCleanupTask(t *testing.T) {
 		Convey("an error should be thrown if the passed-in projects slice"+
 			" does not contain the task's project", func() {
 
-			wrapper := doomedTaskWrapper{
-				task: task.Task{
-					Project: "proj",
-				},
-			}
-			err := cleanUpTask(wrapper)
+			err := cleanupTimedOutTask(task.Task{
+				Project: "proj",
+			})
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "not found")
 
@@ -150,11 +149,6 @@ func TestCleanupTask(t *testing.T) {
 				}
 				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
 
-				wrapper := doomedTaskWrapper{
-					reason: HeartbeatTimeout,
-					task:   *newTask,
-				}
-
 				h := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
@@ -172,7 +166,7 @@ func TestCleanupTask(t *testing.T) {
 				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
-				So(cleanUpTask(wrapper), ShouldBeNil)
+				So(cleanUpTimedOutTask(*newTask), ShouldBeNil)
 
 				// refresh the host, make sure its running task field has
 				// been reset

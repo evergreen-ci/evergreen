@@ -186,3 +186,26 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 		return catcher.Resolve()
 	}
 }
+
+func PopulateTaskMonitoring() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not detecting task heartbeat timeouts",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		ts := util.RoundPartOfHour(2).Format(tsFormat)
+		j := NewTaskHeartbeatMonitorJob(ts)
+
+		return queue.Put(j)
+	}
+}
