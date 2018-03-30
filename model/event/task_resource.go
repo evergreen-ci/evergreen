@@ -18,7 +18,9 @@ const (
 // capture aggregated system metrics (cpu, memory, network) for the
 // system as a whole.
 type TaskSystemResourceData struct {
-	SystemInfo *message.SystemInfo `bson:"system_info" json:"system_info" yaml:"system_info"`
+	//TODO: EVG-3061 remove the following line
+	ResourceType string              `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	SystemInfo   *message.SystemInfo `bson:"system_info" json:"system_info" yaml:"system_info"`
 }
 
 var (
@@ -135,7 +137,9 @@ func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 // in a type that implements the event.Data interface. ProcessInfo structs
 // represent system resource usage information for a single process (PID).
 type TaskProcessResourceData struct {
-	Processes []*message.ProcessInfo `bson:"processes" json:"processes"`
+	//TODO: EVG-3061 remove the following line
+	ResourceType string                 `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	Processes    []*message.ProcessInfo `bson:"processes" json:"processes"`
 }
 
 var (
