@@ -45,7 +45,7 @@ func getUiTaskCache(build *build.Build) ([]uiTask, error) {
 func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
-	if projCtx.Build == nil {
+	if projCtx.Build == nil || projCtx.Version == nil {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
 	}
