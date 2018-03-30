@@ -58,7 +58,7 @@ func (gum *GithubUserManager) GetUserByToken(ctx context.Context, token string) 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	user, isMember, err := thirdparty.GetGithubUser(ctx, token, gum.AuthorizedOrganization)
+	user, isMember, err := thirdparty.GetGithubTokenUser(ctx, token, gum.AuthorizedOrganization)
 	if err != nil {
 		return nil, err
 	}

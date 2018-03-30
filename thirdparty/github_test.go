@@ -126,6 +126,16 @@ func (s *githubSuite) TestGetCommitEvent() {
 	})
 }
 
+func (s *githubSuite) TestGetGithubUser() {
+	user, err := GetGithubUser(s.ctx, s.token, "octocat")
+	s.NoError(err)
+	s.Require().NotNil(user)
+	s.NotPanics(func() {
+		s.Equal("octocat", *user.Login)
+		s.Equal(583231, *user.ID)
+	})
+}
+
 func (s *githubSuite) TestGetPullRequestMergeBase() {
 	data := patch.GithubPatch{
 		BaseOwner: "evergreen-ci",

@@ -45,6 +45,10 @@ type Version struct {
 	// this field is omitted in the database
 	Errors   []string `bson:"errors,omitempty" json:"errors,omitempty"`
 	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
+
+	// AuthorID is an optional reference to the Evergreen user that authored
+	// this comment, if they can be identified
+	AuthorID string `bson:"author_id,omitempty" json:"author_id,omitempty"`
 }
 
 func (self *Version) UpdateBuildVariants() error {

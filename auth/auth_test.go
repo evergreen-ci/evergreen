@@ -67,4 +67,9 @@ func TestSuperUserValidation(t *testing.T) {
 	assert.True(IsSuperUser(superUsers, su))
 	assert.False(IsSuperUser(superUsers, ru))
 	assert.False(IsSuperUser(superUsers, nil))
+
+	assert.NotPanics(func() {
+		var u User = (*simpleUser)(nil)
+		assert.False(IsSuperUser(superUsers, u))
+	})
 }
