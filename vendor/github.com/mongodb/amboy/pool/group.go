@@ -210,7 +210,9 @@ func groupWorker(ctx context.Context, wg *sync.WaitGroup, name string, work <-ch
 			ti := amboy.JobTimeInfo{
 				Start: time.Now(),
 			}
-			unit.j.Run()
+
+			runJob(ctx, unit.j)
+
 			unit.j.UpdateTimeInfo(ti)
 			unit.q.Complete(ctx, unit.j)
 			ti.End = time.Now()

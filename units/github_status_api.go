@@ -298,10 +298,11 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
 	return nil
 }
 
-func (j *githubStatusUpdateJob) Run() {
-	defer j.MarkComplete()
-	ctx, cancel := context.WithCancel(context.Background())
+func (j *githubStatusUpdateJob) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
+	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {

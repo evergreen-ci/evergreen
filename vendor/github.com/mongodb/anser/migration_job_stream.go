@@ -1,6 +1,8 @@
 package anser
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
@@ -39,7 +41,7 @@ type streamMigrationJob struct {
 	MigrationHelper `bson:"-" json:"-" yaml:"-"`
 }
 
-func (j *streamMigrationJob) Run() {
+func (j *streamMigrationJob) Run(_ context.Context) {
 	grip.Info(message.Fields{
 		"message":   "starting migration",
 		"migration": j.Definition.Migration,

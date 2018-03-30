@@ -1,6 +1,8 @@
 package units
 
 import (
+	"context"
+
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -48,7 +50,7 @@ func makeHostStatsCollector() *hostStatsCollector {
 	return j
 }
 
-func (j *hostStatsCollector) Run() {
+func (j *hostStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	j.AddError(j.statsByDistro())

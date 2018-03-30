@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -51,7 +52,7 @@ func makeLatencyStatsCollector() *latencyStatsCollector {
 	return j
 }
 
-func (j *latencyStatsCollector) Run() {
+func (j *latencyStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	latencies, err := model.AverageTaskLatency(j.Duration)

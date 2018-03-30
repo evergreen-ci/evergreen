@@ -59,7 +59,11 @@ func NewHostMonitorExternalStateJob(env evergreen.Environment, h *host.Host, id 
 	return job
 }
 
-func (j *hostMonitorExternalStateCheckJob) Run() {
+func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags()
@@ -85,8 +89,6 @@ func (j *hostMonitorExternalStateCheckJob) Run() {
 	}
 
 	settings := j.env.Settings()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
 	if err != nil {

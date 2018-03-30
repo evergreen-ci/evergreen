@@ -47,7 +47,7 @@ func (s *AdaptiveOrderItemsSuite) TestAddMethodErrorsForDuplicateJobs() {
 
 func (s *AdaptiveOrderItemsSuite) TestAddMethodStoresCompletedJobs() {
 	j := job.NewShellJob("echo false", "")
-	j.Run()
+	j.Run(context.Background())
 	s.True(j.Status().Completed)
 	s.NoError(s.items.add(j))
 	s.Len(s.items.jobs, 1)

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -61,14 +62,14 @@ func NewShellJobInstance() *ShellJob {
 // the environment, or change the value of the WorkingDir property to
 // set the working directory for this command. Captures output into
 // the Output attribute, and returns the error value of the command.
-func (j *ShellJob) Run() {
+func (j *ShellJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 	grip.Debugf("running %s", j.Command)
 
 	args := strings.Split(j.Command, " ")
 
 	j.mutex.RLock()
-	cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	j.mutex.RUnlock()
 
 	cmd.Dir = j.WorkingDir

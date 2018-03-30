@@ -72,7 +72,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	patchID := bson.NewObjectId()
 	job := units.NewPatchIntentProcessor(patchID, intent)
-	job.Run()
+	job.Run(r.Context())
+
 	if err = job.Error(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error processing patch"))
 		return

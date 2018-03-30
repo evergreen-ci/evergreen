@@ -69,7 +69,7 @@ func NewCollectHostIdleDataJob(h *host.Host, t *task.Task, startTime, finishTime
 	return j
 }
 
-func (j *collectHostIdleDataJob) Run() {
+func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 	///////////////////////////////////
 	//
 	// set up job data, as needed
@@ -97,14 +97,11 @@ func (j *collectHostIdleDataJob) Run() {
 
 	settings := j.env.Settings()
 
-	var cost float64
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	///////////////////////////////////
 	//
 	// collect data
 
+	var cost float64
 	manager, err := cloud.GetCloudManager(ctx, j.host.Provider, settings)
 	if err != nil {
 		j.AddError(err)

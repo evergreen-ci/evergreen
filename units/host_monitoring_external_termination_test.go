@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestHostMonitoringCheckJob(t *testing.T) {
 	j := NewHostMonitorExternalStateJob(env, h, "one")
 	assert.False(j.Status().Completed)
 
-	j.Run()
+	j.Run(context.Background())
 
 	assert.NoError(j.Error())
 	assert.True(j.Status().Completed)

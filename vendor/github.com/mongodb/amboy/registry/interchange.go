@@ -58,7 +58,7 @@ func MakeJobInterchange(j amboy.Job, f amboy.Format) (*JobInterchange, error) {
 	return output, nil
 }
 
-// ConvertToJob reverses the process of ConvertToInterchange and
+// Resolve reverses the process of ConvertToInterchange and
 // converts the interchange format to a Job object using the types in
 // the registry. Returns an error if the job type of the
 // JobInterchange object isn't registered or the current version of
