@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -80,15 +81,17 @@ func (s *eventRTypeMigrationSuite) TestMigration() {
 		id:    "migration-event-rtype-to-root-alllogs",
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	gen, err := makeEventRTypeMigration(allLogCollection)(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
-	gen.Run()
+	gen.Run(ctx)
 	s.Require().NoError(gen.Error())
 
 	i := 0
 	for j := range gen.Jobs() {
 		i++
-		j.Run()
+		j.Run(ctx)
 		s.NoError(j.Error())
 	}
 	s.Equal(2, i)

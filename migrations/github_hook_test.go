@@ -40,6 +40,7 @@ func TestGithubHookMigration(t *testing.T) {
 	defer session.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	s := &githubHookMigrationSuite{
 		env:      &mock.Environment{},
 		session:  session,
@@ -135,11 +136,14 @@ func (s *githubHookMigrationSuite) TestMigration() {
 
 	gen, err := githubHooksToCollectionGenerator(anser.GetEnvironment(), args)
 	s.NoError(err)
-	gen.Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gen.Run(ctx)
 	s.NoError(gen.Error())
 
 	for j := range gen.Jobs() {
-		j.Run()
+		j.Run(ctx)
 		s.NoError(j.Error())
 	}
 

@@ -41,7 +41,7 @@ func (s *repotrackerJobSuite) TestJob() {
 	j := NewRepotrackerJob("1", "mci").(*repotrackerJob)
 	s.Equal("mci", j.ProjectID)
 	s.Equal("repotracker:1:mci", j.ID())
-	j.Run()
+	j.Run(context.Background())
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "can't find project ref for project")
 	s.True(j.Status().Completed)
