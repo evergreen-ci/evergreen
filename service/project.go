@@ -306,6 +306,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				// don't kill it here, sometimes people change
 				// Evergreen to track a personal branch,
 				// one that we have no access to
+				projectRef.TracksPushEvents = false
 
 			} else {
 				hook := model.GithubHook{
