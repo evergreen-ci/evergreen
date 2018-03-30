@@ -12,8 +12,7 @@ type User interface {
 	Username() string
 
 	// IsNil checks if the interface's data is nil. i.e. if the interface
-	// is instantiated with a typed nil, e.g. (*simpleUser)(nil),
-	// this method is used to check that
+	// is instantiated with a typed nil, e.g. (*simpleUser)(nil)
 	IsNil() bool
 }
 

@@ -45,7 +45,6 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
   $scope.github_user = $window.github_user
-  $scope.new_tz = $scope.user_tz || "America/New_York";
   $scope.new_waterfall = $window.new_waterfall;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
@@ -73,7 +72,6 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
             last_known_as: $scope.github_user,
         }
     };
-      console.log(github_user);
     $http.put('/settings/', data).then(
       function(resp) {
         window.location.reload()
