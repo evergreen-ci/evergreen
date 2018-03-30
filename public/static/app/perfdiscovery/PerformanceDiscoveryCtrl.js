@@ -155,6 +155,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
 
   vm.gridOptions = {
     enableFiltering: true,
+    enableGridMenu: true,
     onRegisterApi: function(gridApi) {
       grid = gridApi.grid;
       // Using _.once, because this behavior is required on init only
@@ -214,6 +215,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
         type: 'number',
         cellTemplate: '<perf-discovery-ratio ratio="COL_FIELD"/>',
         enableFiltering: false,
+        visible: false,
         width: 80,
       },
       {
