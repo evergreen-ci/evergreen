@@ -1697,3 +1697,53 @@ func TestValidateGenerateTasks(t *testing.T) {
 	assert.Len(errs, 2)
 
 }
+
+func TestTaskNotInTaskGroupDependsOnTaskInTaskGroup(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.Clear(distro.Collection))
+	d := distro.Distro{Id: "example_distro"}
+	require.NoError(d.Insert())
+	exampleYml := `
+tasks:
+- name: not_in_a_task_group
+  commands:
+  - command: shell.exec
+  depends_on:
+  - name: task_in_a_task_group_1
+- name: task_in_a_task_group_1
+  commands:
+  - command: shell.exec
+- name: task_in_a_task_group_2
+  commands:
+  - command: shell.exec
+task_groups:
+- name: example_task_group
+  max_hosts: 1
+  tasks:
+  - task_in_a_task_group_1
+  - task_in_a_task_group_2
+buildvariants:
+- name: "bv"
+  run_on: "example_distro"
+  tasks:
+  - name: not_in_a_task_group
+  - name: example_task_group
+`
+	proj := model.Project{}
+	err := model.LoadProjectInto([]byte(exampleYml), "example_project", &proj)
+	assert.NotNil(proj)
+	assert.Empty(err)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("example_task_group", tg.Name)
+	assert.Len(tg.Tasks, 2)
+	assert.Equal("not_in_a_task_group", proj.Tasks[0].Name)
+	assert.Equal("task_in_a_task_group_1", proj.Tasks[0].DependsOn[0].Name)
+	syntaxErrs, err := CheckProjectSyntax(&proj)
+	assert.Len(syntaxErrs, 0)
+	assert.NoError(err)
+	semanticErrs := CheckProjectSemantics(&proj)
+	assert.Len(semanticErrs, 0)
+	assert.NoError(err)
+}

@@ -148,8 +148,21 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 	// generate task nodes for every task and variant combination
 	visited := map[model.TVPair]bool{}
 	allNodes := []model.TVPair{}
+
+	taskGroups := map[string]struct{}{}
+	for _, tg := range project.TaskGroups {
+		taskGroups[tg.Name] = struct{}{}
+	}
 	for _, bv := range project.BuildVariants {
+		tasksToAdd := []model.BuildVariantTaskUnit{}
 		for _, t := range bv.Tasks {
+			if _, ok := taskGroups[t.Name]; ok {
+				tasksToAdd = append(tasksToAdd, model.CreateTasksFromGroup(t, project)...)
+			} else {
+				tasksToAdd = append(tasksToAdd, t)
+			}
+		}
+		for _, t := range tasksToAdd {
 			t.Populate(project.GetSpecForTask(t.Name))
 			node := model.TVPair{bv.Name, t.Name}
 
