@@ -9,10 +9,12 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var triggerRegistry map[string][]trigger = map[string][]trigger{}
+var triggerRegistry map[string][]trigger
 
 func init() {
-	triggerRegistry[event.ResourceTypeTest] = []trigger{testTrigger}
+	triggerRegistry = map[string][]trigger{
+		event.ResourceTypeTest: []trigger{testTrigger},
+	}
 }
 
 func getTriggers(resourceType string) []trigger {
