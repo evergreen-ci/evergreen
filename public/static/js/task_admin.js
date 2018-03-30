@@ -40,6 +40,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
 	};
 
     $scope.restart = function() {
+        $scope.isRestarting = true;
         taskRestService.takeActionOnTask(
             $scope.taskId,
             'restart',
@@ -190,7 +191,7 @@ mciModule.directive('adminRestartTask', function() {
       '<div class="col-lg-12">' +
         'Restart current task?' +
         '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
-        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()">Yes</button>' +
+        '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()" ng-disabled="isRestarting">Yes</button>' +
       '</div>' +
     '</div>'
   }

@@ -18,7 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -463,66 +462,36 @@ func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, require
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	httpClient, err := util.GetOAuth2HTTPClient(githubOauthToken)
+	isMember, err := thirdparty.GithubUserInOrganization(ctx, githubOauthToken, requiredOrganization, githubUser)
 	if err != nil {
-		return false, err
-	}
-	defer util.PutHTTPClient(httpClient)
-	client := github.NewClient(httpClient)
-
-	// doesn't count against API limits
-	limits, _, err := client.RateLimits(ctx)
-	if err != nil {
-		return false, err
-	}
-	if limits == nil || limits.Core == nil {
-		return false, errors.New("rate limits response was empty")
-	}
-	if limits.Core.Remaining < 3 {
-		return false, errors.New("github rate limit would be exceeded")
-	}
-
-	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, githubUser)
-	if err != nil {
-		grip.Error(message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":      "Failed to authenticate github PR",
+			"source":       "patch intents",
 			"creator":      githubUser,
 			"required_org": requiredOrganization,
 			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
 			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
 			"pr_number":    patchDoc.GithubPatchData.PRNumber,
-		})
+		}))
 		return false, err
+
 	}
 
-	commits, _, err := client.PullRequests.ListCommits(ctx, patchDoc.GithubPatchData.BaseOwner,
-		patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.PRNumber, nil)
+	hash, err := thirdparty.GetPullRequestMergeBase(ctx, githubOauthToken, patchDoc.GithubPatchData)
 	if err != nil {
+		grip.Error(message.WrapError(err, message.Fields{
+			"message":      "Failed to authenticate github PR",
+			"source":       "patch intents",
+			"creator":      githubUser,
+			"required_org": requiredOrganization,
+			"base_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo),
+			"head_repo":    fmt.Sprintf("%s/%s", patchDoc.GithubPatchData.HeadOwner, patchDoc.GithubPatchData.HeadRepo),
+			"pr_number":    patchDoc.GithubPatchData.PRNumber,
+		}))
 		return isMember, err
 	}
-	if len(commits) == 0 {
-		return isMember, errors.New("No commits received from github")
-	}
-	if commits[0].SHA == nil {
-		return isMember, errors.New("hash is missing from pull request commit list")
-	}
 
-	commit, _, err := client.Repositories.GetCommit(ctx,
-		patchDoc.GithubPatchData.BaseOwner, patchDoc.GithubPatchData.BaseRepo, *commits[0].SHA)
-	if err != nil {
-		return isMember, err
-	}
-	if commit == nil {
-		return isMember, errors.New("couldn't find commit")
-	}
-	if len(commit.Parents) == 0 {
-		return isMember, errors.New("can't find pull request branch point")
-	}
-	if commit.Parents[0].SHA == nil {
-		return isMember, errors.New("parent hash is missing")
-	}
-
-	patchDoc.Githash = *commit.Parents[0].SHA
+	patchDoc.Githash = hash
 
 	return isMember, nil
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/rehttp"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -561,4 +562,74 @@ func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.U
 	}
 
 	return user, nil
+}
+
+// GithubUserInOrganization returns true if the given github user is in the
+// given organization. The user with the attached token must have
+// visibility into organization membership, including private members
+func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
+	httpClient, err := getGithubClient(token)
+	if err != nil {
+		return false, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	// doesn't count against API limits
+	limits, _, err := client.RateLimits(ctx)
+	if err != nil {
+		return false, err
+	}
+	if limits == nil || limits.Core == nil {
+		return false, errors.New("rate limits response was empty")
+	}
+	if limits.Core.Remaining < 3 {
+		return false, errors.New("github rate limit would be exceeded")
+	}
+
+	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
+	return isMember, err
+}
+
+// GetPullRequestMergeBase returns the merge base hash for the given PR.
+// This function will retry up to 5 times, regardless of error response (unless
+// error is the result of hitting an api limit)
+func GetPullRequestMergeBase(ctx context.Context, token string, data patch.GithubPatch) (string, error) {
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+
+	if err != nil {
+		return "", errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	commits, _, err := client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	if err != nil {
+		return "", err
+	}
+	if len(commits) == 0 {
+		return "", errors.New("No commits received from github")
+	}
+	if commits[0].SHA == nil {
+		return "", errors.New("hash is missing from pull request commit list")
+	}
+
+	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
+	if err != nil {
+		return "", err
+	}
+	if commit == nil {
+		return "", errors.New("couldn't find commit")
+	}
+	if len(commit.Parents) == 0 {
+		return "", errors.New("can't find pull request branch point")
+	}
+	if commit.Parents[0].SHA == nil {
+		return "", errors.New("parent hash is missing")
+	}
+
+	return *commit.Parents[0].SHA, nil
 }
