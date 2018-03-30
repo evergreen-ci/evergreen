@@ -6,7 +6,8 @@ directives.eventlogs.directive('taskevent', function() {
   return {
     scope:{
       userTz:"=tz",
-      eventLogObj:"=event"
+      eventLogObj:"=event",
+      jira:"=jira"
     },
     restrict : 'E',
     templateUrl : '/static/partials/taskevent.html',

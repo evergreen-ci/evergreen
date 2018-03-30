@@ -13,6 +13,7 @@
 {{end}}
 <script type="text/javascript">
   var userTz = {{GetTimezone $.User}}
+  var jiraHost = {{.JiraHost}}
   {{if .User}}
     var have_user = true
     var taskHost = {{.Host}}
@@ -448,7 +449,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length"><span class="severity-ERROR">You are not authorized to view these logs.</span></pre>
         {{end}}
         <pre ng-show="(currentLogs == allLogs || currentLogs == taskLogs) && !logs.length">No logs found.</pre>
-        <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz"></taskevent></div>
+        <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz" jira="jiraHost"></taskevent></div>
       </div>
     </div>
   </div>

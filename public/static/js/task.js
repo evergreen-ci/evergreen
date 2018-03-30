@@ -561,6 +561,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       $scope.taskLogs = 'T';
       $scope.allLogs = 'ALL';
       $scope.userTz = $window.userTz;
+      $scope.jiraHost = $window.jiraHost;
 
       var logSpec = $location.path().split('/');
       $scope.currentLogs = logSpec[2] || $scope.taskLogs;
