@@ -197,14 +197,14 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 		if flags.MonitorDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "monitor is disabled",
-				"impact":  "not detecting task heartbeat timeouts",
+				"impact":  "not detecting task heartbeat/dispatching timeouts",
 				"mode":    "degraded",
 			})
 			return nil
 		}
 
 		ts := util.RoundPartOfHour(2).Format(tsFormat)
-		j := NewTaskHeartbeatMonitorJob(ts)
+		j := NewTaskExecutionMonitorJob(ts)
 
 		return queue.Put(j)
 	}

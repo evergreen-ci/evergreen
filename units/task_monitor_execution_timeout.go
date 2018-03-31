@@ -22,24 +22,24 @@ import (
 
 const (
 	heartbeatTimeoutThreshold   = 7 * time.Minute
-	taskHeartbeatTimeoutJobName = "task-timeout-heartbeat"
+	taskExecutionTimeoutJobName = "task-execution-timeout"
 )
 
 func init() {
-	registry.AddJobType(taskHeartbeatTimeoutJobName, func() amboy.Job {
-		return makeTaskMonitorTimedoutHeartbeats()
+	registry.AddJobType(taskExecutionTimeoutJobName, func() amboy.Job {
+		return makeTaskExecutionTimeoutMonitorJob()
 	})
 }
 
-type taskHeartbeatTimeoutJob struct {
+type taskExecutionTimeoutJob struct {
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-func makeTaskMonitorTimedoutHeartbeats() *taskHeartbeatTimeoutJob {
-	j := &taskHeartbeatTimeoutJob{
+func makeTaskExecutionTimeoutMonitorJob() *taskExecutionTimeoutJob {
+	j := &taskExecutionTimeoutJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    taskHeartbeatTimeoutJobName,
+				Name:    taskExecutionTimeoutJobName,
 				Version: 0,
 			},
 		},
@@ -49,13 +49,13 @@ func makeTaskMonitorTimedoutHeartbeats() *taskHeartbeatTimeoutJob {
 	return j
 }
 
-func NewTaskHeartbeatMonitorJob(id string) amboy.Job {
-	j := makeTaskMonitorTimedoutHeartbeats()
-	j.SetID(fmt.Sprintf("%s.%s", taskHeartbeatTimeoutJobName, id))
+func NewTaskExecutionMonitorJob(id string) amboy.Job {
+	j := makeTaskExecutionTimeoutMonitorJob()
+	j.SetID(fmt.Sprintf("%s.%s", taskExecutionTimeoutJobName, id))
 	return j
 }
 
-func (j *taskHeartbeatTimeoutJob) Run(ctx context.Context) {
+func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags()
@@ -73,11 +73,9 @@ func (j *taskHeartbeatTimeoutJob) Run(ctx context.Context) {
 		return
 	}
 
-	threshold := time.Now().Add(-heartbeatTimeoutThreshold)
-
-	tasks, err := task.Find(task.ByRunningLastHeartbeat(threshold))
+	tasks, err := task.Find(task.ByStaleRunningTask(heartbeatTimeoutThreshold))
 	if err != nil {
-		j.AddError(errors.Wrap(err, "error finding tasks with timed-out heartbeats"))
+		j.AddError(errors.Wrap(err, "error finding tasks with timed-out or stale heartbeats"))
 		return
 	}
 
@@ -109,7 +107,7 @@ func (j *taskHeartbeatTimeoutJob) Run(ctx context.Context) {
 
 // function to clean up a single task
 func cleanUpTimedOutTask(t task.Task) error {
-	// get the host for the task
+	// get tlhe host for the task
 	host, err := host.FindOne(host.ById(t.HostId))
 	if err != nil {
 		return errors.Wrapf(err, "error finding host %s for task %s",
