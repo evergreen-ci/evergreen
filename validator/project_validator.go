@@ -490,16 +490,16 @@ func checkRunOnOnlyOneDistro(project *model.Project) []ValidationError {
 
 	if len(offendingBVs) > 0 {
 		errs = append(errs, ValidationError{
-			Level: Warning,
-			Message: fmt.Sprintf("deprecated: multiple run-on distros for a single build variant. [%s]",
+			Level: Error,
+			Message: fmt.Sprintf("multiple run-on distros for a single build variant. [%s]",
 				strings.Join(offendingBVs, ", ")),
 		})
 	}
 
 	if len(offendingTasks) > 0 {
 		errs = append(errs, ValidationError{
-			Level: Warning,
-			Message: fmt.Sprintf("deprecated: multiple distros specified for a single build variant task. [%s]",
+			Level: Error,
+			Message: fmt.Sprintf("multiple distros specified for a single build variant task. [%s]",
 				strings.Join(offendingTasks, ", ")),
 		})
 	}
