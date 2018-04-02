@@ -53,7 +53,7 @@ func newHostIdleJob() *collectHostIdleDataJob {
 	return j
 }
 
-func newHostIdleJobForTermination(env evergreen.Evergreen, settings *evergreen.Settings, manager cloud.CloudManager,
+func newHostIdleJobForTermination(env evergreen.Environment, settings *evergreen.Settings, manager cloud.CloudManager,
 	h *host.Host, startTime, finishTime time.Time) amboy.Job {
 
 	j := NewCollectHostIdleDataJob(h, nil, startTime, finishTime).(*collectHostIdleDataJob)

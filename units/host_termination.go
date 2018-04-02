@@ -74,10 +74,11 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if !util.StringSliceContains(evergreen.UphostStatus, j.host.Status) {
 		// if host isn't in a running state we shouldn't try to terminate it.
 		grip.Debug(message.Fields{
-			"job":     j.ID(),
-			"host":    j.HostID,
-			"status":  j.host.Status,
-			"message": "host not running, termination job is a noop",
+			"job":      j.ID(),
+			"host":     j.HostID,
+			"job_type": j.Type().Name,
+			"status":   j.host.Status,
+			"message":  "host not running, termination job is a noop",
 		})
 		return
 	}
@@ -90,9 +91,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	// clear the running task of the host in case one has been assigned.
 	if j.host.RunningTask != "" {
 		grip.Warning(message.Fields{
-			"runner":   "monitor",
 			"message":  "Host has running task; clearing before terminating",
 			"job":      j.ID(),
+			"job_type": j.Type().Name,
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
@@ -100,7 +101,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		err := j.host.ClearRunningTask(j.host.RunningTask, time.Now())
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
-				"runner":   "monitor",
+				"job_type": j.Type().Name,
 				"message":  "Error clearing running task for host",
 				"provider": j.host.Distro.Provider,
 				"host":     j.host.Id,
@@ -122,7 +123,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		grip.Critical(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
-			"runner":   "monitor",
+			"job_type": j.Type().Name,
 			"job":      j.ID(),
 			"message":  "problem getting cloud host instance, aborting termination",
 		}))
@@ -131,9 +132,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	if err := runHostTeardown(ctx, j.host, cloudHost); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
-			"runner":  "monitor",
-			"message": "Error running teardown script",
-			"host":    j.host.Id,
+			"job_type": j.Type().Name,
+			"message":  "Error running teardown script",
+			"host":     j.host.Id,
 		}))
 
 		subj := fmt.Sprintf("%v Error running teardown for host %v",
@@ -141,22 +142,22 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 		grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
 			message.Fields{
-				"message": "problem sending email",
-				"host":    j.host.Id,
-				"subject": subj,
-				"error":   err.Error(),
-				"job":     j.ID(),
-				"runner":  "monitor",
+				"message":  "problem sending email",
+				"host":     j.host.Id,
+				"subject":  subj,
+				"error":    err.Error(),
+				"job_type": j.Type().Name,
+				"job":      j.ID(),
 			}))
 	}
 
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {
 		j.AddError(err)
 		grip.Critical(message.WrapError(err, message.Fields{
-			"message": "problem terminating host",
-			"host":    j.host.Id,
-			"job":     j.ID(),
-			"runner":  "monitor",
+			"message":  "problem terminating host",
+			"host":     j.host.Id,
+			"job":      j.ID(),
+			"job_type": j.Type().Name,
 		}))
 		return
 	}
