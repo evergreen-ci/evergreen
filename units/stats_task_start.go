@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -47,7 +48,7 @@ func newTaskStartJob() *collectTaskStartDataJob {
 	return j
 }
 
-func (j *collectTaskStartDataJob) Run() {
+func (j *collectTaskStartDataJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 	var err error
 	if j.task == nil {
