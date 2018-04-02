@@ -132,7 +132,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	cloudStatus, err := cloudHost.GetInstanceStatus()
+	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
 		j.AddError(err)
 		grip.Critical(message.WrapError(err, message.Fields{
