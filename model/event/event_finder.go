@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -70,6 +71,33 @@ func CountProcessEvents(taskID string) (int, error) {
 	}
 
 	return db.CountQ(TaskLogCollection, db.Query(filter))
+}
+
+func FindLastProcessedEvent() (*EventLogEntry, error) {
+	q := db.Query(bson.M{
+		processedAtKey: bson.M{
+			"$exists": true,
+		},
+	}).Sort([]string{"-" + processedAtKey}).Limit(1)
+
+	e := EventLogEntry{}
+	if err := db.FindOneQ(AllLogCollection, q, &e); err != nil {
+		return nil, errors.Wrap(err, "failed to fetch most recent commit")
+	}
+
+	return &e, nil
+}
+
+func CountUnprocessedEvents() (int, error) {
+	q := db.Query(UnprocessedEvents())
+	q.Limit(100000)
+
+	n, err := db.CountQ(AllLogCollection, q)
+	if err != nil {
+		return 0, errosr.Wrap(err, "failed to fetch number of unprocessed events")
+	}
+
+	return n, nil
 }
 
 // === Queries ===

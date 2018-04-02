@@ -409,3 +409,99 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		s.False(processed)
 	})
 }
+
+func (s *eventSuite) TestFindLastProcessedEvent() {
+	events := []EventLogEntry{
+		{
+			ID:          bson.NewObjectId(),
+			Timestamp:   time.Now().Add(-2 * time.Hour),
+			ResourceId:  "macos.example.com",
+			EventType:   "HOST_TASK_FINISHED",
+			ProcessedAt: time.Now().Add(-time.Hour),
+			Data: &HostEventData{
+				ResourceType: "HOST",
+				TaskId:       "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus:   "success",
+			},
+		},
+		{
+			ID:          bson.NewObjectId(),
+			Timestamp:   time.Now().Add(-1 * time.Hour),
+			ResourceId:  "macos.example.com2",
+			EventType:   "HOST_TASK_FINISHED",
+			ProcessedAt: time.Now().Add(-30 * time.Minute),
+			Data: &HostEventData{
+				ResourceType: "HOST",
+				TaskId:       "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus:   "success",
+			},
+		},
+		{
+			ID:         bson.NewObjectId(),
+			Timestamp:  time.Now().Add(-1 * time.Hour),
+			ResourceId: "macos.example.com3",
+			EventType:  "HOST_TASK_FINISHED",
+			Data: &HostEventData{
+				ResourceType: "HOST",
+				TaskId:       "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus:   "success",
+			},
+		},
+	}
+	logger := NewDBEventLogger(AllLogCollection)
+	for i := range events {
+		s.NoError(logger.LogEvent(&events[i]))
+	}
+
+	e, err := FindLastProcessedEvent()
+	s.NoError(err)
+	s.Require().NotNil(e)
+	s.Equal("macos.example.com2", e.ResourceId)
+}
+
+func (s *eventSuite) TestCountUnprocessedEvents() {
+	events := []EventLogEntry{
+		{
+			ID:         bson.NewObjectId(),
+			Timestamp:  time.Now().Add(-2 * time.Hour),
+			ResourceId: "macos.example.com",
+			EventType:  "HOST_TASK_FINISHED",
+			Data: HostEventData{
+				ResourceType: "HOST",
+				TaskId:       "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus:   "success",
+			},
+		},
+		{
+			ID:          bson.NewObjectId(),
+			Timestamp:   time.Now().Add(-1 * time.Hour),
+			ResourceId:  "macos.example.com2",
+			EventType:   "HOST_TASK_FINISHED",
+			ProcessedAt: time.Now().Add(-30 * time.Minute),
+			Data: HostEventData{
+				ResourceType: "HOST",
+				TaskId:       "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus:   "success",
+			},
+		},
+		{
+			ID:         bson.NewObjectId(),
+			Timestamp:  time.Now().Add(-1 * time.Hour),
+			ResourceId: "macos.example.com3",
+			EventType:  "HOST_TASK_FINISHED",
+			Data: HostEventData{
+				ResourceType: "HOST",
+				TaskId:       "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
+				TaskStatus:   "success",
+			},
+		},
+	}
+	logger := NewDBEventLogger(AllLogCollection)
+	for i := range events {
+		s.NoError(logger.LogEvent(&events[i]))
+	}
+
+	n, err := CountUnprocessedEvents()
+	s.NoError(err)
+	s.Equal(2, n)
+}
