@@ -273,8 +273,9 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 	cpf.Lock()
 	defer cpf.Unlock()
 	instanceID := h.Id
+	var err error
 	if isHostSpot(h) {
-		instanceID, err := client.GetSpotInstanceId(ctx, h)
+		instanceID, err = client.GetSpotInstanceId(ctx, h)
 		if err != nil {
 			return 0, errors.Wrap(err, "error getting spot instance ID")
 		}
