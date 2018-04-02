@@ -34,6 +34,9 @@ func (gh *notificationsStatusHandler) ParseAndValidate(_ context.Context, _ *htt
 
 func (gh *notificationsStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	stats, err := sc.GetNotificationsStats(ctx, nil)
+	if err != nil {
+		return ResponseData{}, err
+	}
 
-	return ResponseData{Result: []model.Model{stats}}, err
+	return ResponseData{Result: []model.Model{stats}}, nil
 }
