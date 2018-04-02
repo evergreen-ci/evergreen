@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -71,7 +72,10 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 
 	e := EventLogEntry{}
 	if err := db.FindOneQ(AllLogCollection, q, &e); err != nil {
-		return nil, errors.Wrap(err, "failed to fetch most recent commit")
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "failed to fetch most recently processed event")
 	}
 
 	return &e, nil
