@@ -475,7 +475,8 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUn
 	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
-		ts, errs := evaluateBVTasks(tse, nil, vse, tasks)
+		pbv := parserBV{Tasks: tasks}
+		ts, errs := evaluateBVTasks(tse, nil, vse, pbv)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -1060,4 +1061,57 @@ buildvariants:
 	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
 	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
 	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestBVDependenciesOverrideTaskDependencies(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+tasks:
+- name: task_1
+- name: task_2
+- name: task_3
+- name: task_4
+- name: task_5
+buildvariants:
+- name: bv_1
+  depends_on:
+    - name: task_3
+  tasks:
+  - name: task_1
+    depends_on:
+      - name: task_4
+  - name: task_2
+- name: bv_2
+  tasks:
+    - name: task_3
+- name: bv_3
+  requires:
+    - name: task_3
+  tasks:
+    - name: task_4
+    - name: task_5
+`
+	proj, errs := projectFromYAML([]byte(yml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.BuildVariants, 3)
+
+	assert.Equal("bv_1", proj.BuildVariants[0].Name)
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].Tasks[0].Name)
+	assert.Equal("task_2", proj.BuildVariants[0].Tasks[1].Name)
+	assert.Equal("task_4", proj.BuildVariants[0].Tasks[0].DependsOn[0].Name)
+	assert.Equal("task_3", proj.BuildVariants[0].Tasks[1].DependsOn[0].Name)
+
+	assert.Equal("bv_2", proj.BuildVariants[1].Name)
+	assert.Len(proj.BuildVariants[1].Tasks, 1)
+	assert.Equal("task_3", proj.BuildVariants[1].Tasks[0].Name)
+	assert.Len(proj.BuildVariants[1].Tasks[0].DependsOn, 0)
+
+	assert.Equal("bv_3", proj.BuildVariants[2].Name)
+	assert.Len(proj.BuildVariants[2].Tasks, 2)
+	assert.Equal("task_4", proj.BuildVariants[2].Tasks[0].Name)
+	assert.Equal("task_5", proj.BuildVariants[2].Tasks[1].Name)
+	assert.Equal("task_3", proj.BuildVariants[2].Tasks[0].Requires[0].Name)
+	assert.Equal("task_3", proj.BuildVariants[2].Tasks[1].Requires[0].Name)
 }
