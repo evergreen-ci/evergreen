@@ -42,7 +42,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			eventData, ok := event.Data.(*DistroEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeDistro)
+			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
 			So(eventData.UserId, ShouldEqual, userId)
 			So(eventData.Data, ShouldBeNil)
 
@@ -52,7 +52,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*DistroEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeDistro)
+			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
 			So(eventData.UserId, ShouldEqual, userId)
 			So(eventData.Data.(string), ShouldEqual, "update")
 
@@ -62,7 +62,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*DistroEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeDistro)
+			So(event.ResourceType, ShouldEqual, ResourceTypeDistro)
 			So(eventData.UserId, ShouldEqual, userId)
 			So(eventData.Data, ShouldBeNil)
 		})

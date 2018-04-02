@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -21,21 +23,10 @@ type EventLogEntry struct {
 	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
 	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
 
-	Timestamp  time.Time `bson:"ts" json:"timestamp"`
-	ResourceId string    `bson:"r_id" json:"resource_id"`
-	EventType  string    `bson:"e_type" json:"event_type"`
-	Data       Data      `bson:"data" json:"data"`
-}
-
-// Type returns the resource type (i.e. event data type). It will reflect into
-// the Data interface if required.
-func (e *EventLogEntry) Type() string {
-	if len(e.ResourceType) == 0 {
-		_, rtype := findResourceTypeIn(e.Data)
-		return rtype
-	}
-
-	return e.ResourceType
+	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
+	ResourceId string      `bson:"r_id" json:"resource_id"`
+	EventType  string      `bson:"e_type" json:"event_type"`
+	Data       interface{} `bson:"data" json:"data"`
 }
 
 // Processed is whether or not this event has been processed. An event
@@ -72,18 +63,14 @@ var (
 
 const resourceTypeKey = "r_type"
 
-type Data interface {
-	IsValid() bool
-}
-
 func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	temp := unmarshalEventLogEntry{}
 	if err := raw.Unmarshal(&temp); err != nil {
 		return errors.Wrap(err, "can't unmarshal event container type")
 	}
 
-	e.ResourceType = temp.ResourceType
-	if len(e.ResourceType) == 0 {
+	if len(temp.ResourceType) == 0 {
+		//TODO: EVG-3061 delete this line through until return errors.New("expected ...
 		// Try and fetch r_type in the data subdoc
 		rawD := bson.RawD{}
 		if err := temp.Data.Unmarshal(&rawD); err != nil {
@@ -92,20 +79,30 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 
 		for i := range rawD {
 			if rawD[i].Name == resourceTypeKey {
-				if err := rawD[i].Value.Unmarshal(&e.ResourceType); err != nil {
+				if err := rawD[i].Value.Unmarshal(&temp.ResourceType); err != nil {
 					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
 				}
 				break
 			}
 		}
+
+		if temp.ResourceType != EventTaskSystemInfo &&
+			temp.ResourceType != EventTaskProcessInfo {
+			grip.Alert(message.Fields{
+				"message":  "unmigrated event was found",
+				"event_id": temp.ID.String(),
+				"r_type":   temp.ResourceType,
+			})
+		}
 	}
-	if len(e.ResourceType) == 0 {
+
+	if len(temp.ResourceType) == 0 {
 		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
 
-	e.Data = NewEventFromType(e.ResourceType)
+	e.Data = NewEventFromType(temp.ResourceType)
 	if e.Data == nil {
-		return errors.Errorf("unknown resource type '%s'", e.ResourceType)
+		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
 	}
 	if err := temp.Data.Unmarshal(e.Data); err != nil {
 		return errors.Wrap(err, "failed to unmarshal data")
@@ -116,6 +113,7 @@ func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
 	e.ResourceId = temp.ResourceId
 	e.EventType = temp.EventType
 	e.ProcessedAt = temp.ProcessedAt
+	e.ResourceType = temp.ResourceType
 
 	return nil
 }
