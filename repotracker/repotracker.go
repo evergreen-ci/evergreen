@@ -75,7 +75,7 @@ func (p projectConfigError) Error() string {
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
-func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRevisionsToFetch int) error {
+func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
@@ -105,7 +105,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 	}
 
 	if lastRevision == "" {
-		numRevisions := numNewRepoRevisionsToFetch
+		numRevisions := settings.RepoTracker.NumNewRepoRevisionsToFetch
 		if numRevisions <= 0 {
 			numRevisions = DefaultNumNewRepoRevisionsToFetch
 		}
@@ -115,7 +115,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context, numNewRepoRe
 			"runner":  RunnerName,
 			"project": projectRef,
 			"message": "no last recorded revision, using most recent revisions",
-			"number":  numNewRepoRevisionsToFetch,
+			"number":  numRevisions,
 		})
 		revisions, err = repoTracker.GetRecentRevisions(numRevisions)
 	} else {
