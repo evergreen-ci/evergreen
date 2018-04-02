@@ -3,10 +3,12 @@ package notification
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -335,4 +337,30 @@ func (s *notificationSuite) TestGithubPayload() {
 
 	_, ok := c.Raw().(message.Fields)
 	s.True(ok)
+}
+
+func (s *notificationSuite) TestCollectUnsentNotificationStats() {
+	types := []string{event.GithubPullRequestSubscriberType, event.EmailSubscriberType,
+		event.SlackSubscriberType, event.EvergreenWebhookSubscriberType,
+		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType}
+
+	n := []Notification{}
+	for i, type_ := range types {
+		n = append(n, s.n)
+		n[i].ID = bson.NewObjectId()
+		n[i].Subscriber.Type = type_
+		s.NoError(db.Insert(NotificationsCollection, n[i]))
+	}
+
+	s.n.ID = bson.NewObjectId()
+	s.n.SentAt = time.Now()
+	s.NoError(db.Insert(NotificationsCollection, s.n))
+
+	stats, err := CollectUnsentNotificationStats()
+	s.NoError(err)
+	pp.Println(stats)
+
+	for k, _ := range stats {
+		s.Equal(1, stats[k])
+	}
 }

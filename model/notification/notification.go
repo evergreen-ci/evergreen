@@ -253,3 +253,43 @@ func Find(id bson.ObjectId) (*Notification, error) {
 
 	return &notification, err
 }
+
+type NotificationStats = map[string]int
+
+func CollectUnsentNotificationStats() (NotificationStats, error) {
+	const subscriberTypeKey = "type"
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				sentAtKey: bson.M{
+					"$exists": false,
+				},
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + bsonutil.GetDottedKeyName(subscriberKey, subscriberTypeKey),
+				"n": bson.M{
+					"$sum": 1,
+				},
+			},
+		},
+	}
+
+	stats := []struct {
+		Key   string `bson:"_id"`
+		Count int    `bson:"n"`
+	}{}
+
+	if err := db.Aggregate(NotificationsCollection, pipeline, &stats); err != nil {
+		return nil, errors.Wrap(err, "failed to count unsent notifications")
+	}
+
+	nStats := NotificationStats{}
+
+	for _, data := range stats {
+		nStats[data.Key] = data.Count
+	}
+
+	return nStats, nil
+}
