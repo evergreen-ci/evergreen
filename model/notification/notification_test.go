@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/k0kubun/pp"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
@@ -358,7 +357,6 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 
 	stats, err := CollectUnsentNotificationStats()
 	s.NoError(err)
-	pp.Println(stats)
 
 	for k, _ := range stats {
 		s.Equal(1, stats[k])
