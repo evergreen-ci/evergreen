@@ -117,10 +117,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	if !j.host.Provisioned {
-		return
-	}
-
 	// convert the host to a cloud host
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
 	if err != nil {
@@ -133,6 +129,31 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"job":      j.ID(),
 			"message":  "problem getting cloud host instance, aborting termination",
 		}))
+		return
+	}
+
+	cloudStatus, err := cloudHost.GetInstanceStatus()
+	if err != nil {
+		j.AddError(err)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "problem getting cloud host instance status",
+		}))
+	}
+
+	if cloudStatus == cloud.StatusTerminated {
+		j.AddError(errors.New("host is already terminated"))
+		grip.Error(message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "attempted to terminated an already terminated host",
+		})
+
 		return
 	}
 
