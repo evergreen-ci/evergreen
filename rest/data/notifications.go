@@ -9,8 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type NotificationConnector struct {
-}
+type NotificationConnector struct{}
 
 func (c *NotificationConnector) GetNotificationsStats(ctx context.Context, _ amboy.Queue) (*restModel.APINotificationStats, error) {
 	stats := restModel.APINotificationStats{}
@@ -30,8 +29,7 @@ func (c *NotificationConnector) GetNotificationsStats(ctx context.Context, _ amb
 	return &stats, nil
 }
 
-type MockNotificationConnector struct {
-}
+type MockNotificationConnector struct{}
 
 func (c *MockNotificationConnector) GetNotificationsStats(_ context.Context, _ amboy.Queue) (*restModel.APINotificationStats, error) {
 	return nil, errors.New("not implemented")

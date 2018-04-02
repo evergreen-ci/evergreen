@@ -94,7 +94,7 @@ func CountUnprocessedEvents() (int, error) {
 
 	n, err := db.CountQ(AllLogCollection, q)
 	if err != nil {
-		return 0, errosr.Wrap(err, "failed to fetch number of unprocessed events")
+		return 0, errors.Wrap(err, "failed to fetch number of unprocessed events")
 	}
 
 	return n, nil

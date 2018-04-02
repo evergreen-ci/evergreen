@@ -57,6 +57,7 @@ func GetHandler(r *mux.Router, sc data.Connector, queue amboy.Queue, githubSecre
 		"/projects/{project_id}/patches":                       getPatchesByProjectManager,
 		"/projects/{project_id}/revisions/{commit_hash}/tasks": getTasksByProjectAndCommitRouteManager,
 		"/status/cli_version":                                  getCLIVersionRouteManager,
+		"/status/notifications":                                getNotificationsStatusRouteManager,
 		"/status/hosts/distros":                                getHostStatsByDistroManager,
 		"/status/recent_tasks":                                 getRecentTasksRouteManager,
 		"/tasks/{task_id}":                                     getTaskRouteManager,
