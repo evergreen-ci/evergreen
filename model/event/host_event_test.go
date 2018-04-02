@@ -56,7 +56,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok := event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
 			So(eventData.NewStatus, ShouldBeBlank)
 			So(eventData.Logs, ShouldBeBlank)
@@ -70,7 +69,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldEqual, evergreen.HostRunning)
 			So(eventData.NewStatus, ShouldEqual, evergreen.HostTerminated)
 			So(eventData.Logs, ShouldEqual, "myLogs")
@@ -84,7 +82,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
 			So(eventData.NewStatus, ShouldBeBlank)
 			So(eventData.Logs, ShouldBeBlank)
@@ -98,7 +95,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
 			So(eventData.NewStatus, ShouldBeBlank)
 			So(eventData.Logs, ShouldBeBlank)
@@ -112,7 +108,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
 			So(eventData.NewStatus, ShouldBeBlank)
 			So(eventData.Logs, ShouldBeBlank)
@@ -126,7 +121,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
 			So(eventData.NewStatus, ShouldBeBlank)
 			So(eventData.Logs, ShouldBeBlank)
@@ -140,7 +134,6 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventData, ok = event.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
-			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
 			So(eventData.NewStatus, ShouldBeBlank)
 			So(eventData.Logs, ShouldBeBlank)
@@ -156,6 +149,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(eventsForHost), ShouldBeGreaterThan, 0)
 			for _, event = range eventsForHost {
+				So(event.ResourceType, ShouldEqual, ResourceTypeHost)
 				eventData = event.Data.(*HostEventData)
 				if eventData.TaskId != "" {
 					So(eventData.Execution, ShouldEqual, "0")
