@@ -166,9 +166,6 @@ func TestCleanupTask(t *testing.T) {
 				So(h.RunningTask, ShouldEqual, "")
 
 			})
-
 		})
-
 	})
-
 }

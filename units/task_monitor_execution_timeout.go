@@ -66,9 +66,10 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 
 	if flags.MonitorDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
-			"message": "monitor is disabled",
-			"impact":  "skipping task heartbeat cleanup job",
-			"mode":    "degraded",
+			"message":   "monitor is disabled",
+			"operation": j.Type().Name,
+			"impact":    "skipping task heartbeat cleanup job",
+			"mode":      "degraded",
 		})
 		return
 	}
@@ -82,7 +83,6 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 	for _, task := range tasks {
 		msg := message.Fields{
 			"operation": j.Type().Name,
-			"runner":    "monitor",
 			"id":        j.ID(),
 			"task":      task.Id,
 			"host":      task.HostId,
@@ -99,7 +99,6 @@ func (j *taskExecutionTimeoutJob) Run(ctx context.Context) {
 
 	grip.Info(message.Fields{
 		"operation": j.Type().Name,
-		"runner":    "monitor",
 		"id":        j.ID(),
 		"num_tasks": len(tasks),
 	})
@@ -117,9 +116,9 @@ func cleanUpTimedOutTask(t task.Task) error {
 	// if there's no relevant host, something went wrong
 	if host == nil {
 		grip.Error(message.Fields{
-			"runner":  "monitor",
-			"message": "no entry found for host",
-			"host":    t.HostId,
+			"message":   "no entry found for host",
+			"operation": j.Type().Name,
+			"host":      t.HostId,
 		})
 		return errors.WithStack(t.MarkUnscheduled())
 	}
