@@ -14,12 +14,19 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const hostTerminationJobName = "host-termination-job"
+
+func init() {
+	registry.AddJobType(hostTerminationJobName, func() amboy.Job {
+		return makeHostTerminationJob()
+	})
+}
 
 type hostTerminationJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
