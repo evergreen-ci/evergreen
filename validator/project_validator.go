@@ -70,6 +70,18 @@ func (vr ValidationError) Error() string {
 	return vr.Message
 }
 
+func ValidationErrorsToString(ves []ValidationError) string {
+	var s strings.Builder
+	if len(ves) == 0 {
+		return s.String()
+	}
+	for _, ve := range ves {
+		s.WriteString(ve.Error())
+		s.WriteString("\n")
+	}
+	return s.String()
+}
+
 // create a slice of all valid distro names
 func getDistroIds() ([]string, error) {
 	// create a slice of all known distros
@@ -817,7 +829,7 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 	for _, tg := range p.TaskGroups {
 		if tg.MaxHosts > (len(tg.Tasks) / 2) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has max number of hosts greater than half the number of tasks", tg.Name),
+				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than half the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
 			})
 		}
