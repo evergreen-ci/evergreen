@@ -54,6 +54,55 @@ func (s *notificationSuite) SetupTest() {
 	for i := range events {
 		s.NoError(db.Insert(event.AllLogCollection, events[i]))
 	}
+
+	n := []notification.Notification{
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.EmailSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.SlackSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.JIRAIssueSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.JIRACommentSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.GithubPullRequestSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.EvergreenWebhookSubscriberType,
+			},
+		},
+		{
+			ID: bson.NewObjectId(),
+			Subscriber: event.Subscriber{
+				Type: event.EvergreenWebhookSubscriberType,
+			},
+			SentAt: time.Now(),
+		},
+	}
+	for i := range n {
+		s.NoError(db.Insert(notification.NotificationsCollection, n[i]))
+	}
 }
 
 func (s *notificationSuite) TestStatsCollector() {
@@ -68,4 +117,11 @@ func (s *notificationSuite) TestStatsCollector() {
 
 	s.Equal(s.expectedTime, stats.LastProcessedAt)
 	s.Equal(2, stats.NumUnprocessedEvents)
+	s.NotEmpty(stats.PendingNotificationsByType)
+	s.Equal(1, stats.PendingNotificationsByType[event.EmailSubscriberType])
+	s.Equal(1, stats.PendingNotificationsByType[event.EvergreenWebhookSubscriberType])
+	s.Equal(1, stats.PendingNotificationsByType[event.JIRACommentSubscriberType])
+	s.Equal(1, stats.PendingNotificationsByType[event.JIRAIssueSubscriberType])
+	s.Equal(1, stats.PendingNotificationsByType[event.SlackSubscriberType])
+	s.Equal(1, stats.PendingNotificationsByType[event.GithubPullRequestSubscriberType])
 }
