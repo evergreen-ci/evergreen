@@ -45,7 +45,7 @@ func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro
 				break
 			}
 
-			catcher.Add(errors.WithStack(queue.Put(units.NewHostTerminationJob(h))))
+			catcher.Add(errors.WithStack(queue.Put(units.NewHostTerminationJob(env, h))))
 		}
 	}
 
