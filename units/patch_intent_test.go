@@ -225,6 +225,17 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
 
+	user := user.DBUser{
+		Id: "testuser",
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID:         1234,
+				LastKnownAs: "somebody",
+			},
+		},
+	}
+	s.NoError(user.Insert())
+
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
 	s.NotNil(intent)
@@ -241,6 +252,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
 	s.Equal(s.user, patchDoc.Author)
+
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
 	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepo)
@@ -252,6 +264,29 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+}
+
+func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
+	user := user.DBUser{
+		Id: "testuser",
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID:         1234,
+				LastKnownAs: "somebody",
+			},
+		},
+	}
+	s.NoError(user.Insert())
+
+	u, err := findEvergreenUserForPR(1234)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal("testuser", u.Id)
+
+	u, err = findEvergreenUserForPR(123)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
 func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID bson.ObjectId) {

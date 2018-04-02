@@ -80,6 +80,7 @@ func (s *GithubSuite) TestNewGithubIntent() {
 	s.Equal(s.pr, githubIntent.PRNumber)
 	s.Equal(s.user, githubIntent.User)
 	s.Equal(s.hash, githubIntent.HeadHash)
+	s.Equal(1234, githubIntent.UID)
 	s.Zero(githubIntent.ProcessedAt)
 	s.False(intent.IsProcessed())
 	s.Equal(GithubIntentType, intent.GetType())
@@ -236,4 +237,5 @@ func (s *GithubSuite) TestNewPatch() {
 	s.Equal("evergreen", patchDoc.GithubPatchData.HeadRepo)
 	s.Equal("67da19930b1b18d346477e99a8e18094a672f48a", patchDoc.GithubPatchData.HeadHash)
 	s.Equal("octocat", patchDoc.GithubPatchData.Author)
+	s.Equal(1234, patchDoc.GithubPatchData.AuthorUID)
 }
