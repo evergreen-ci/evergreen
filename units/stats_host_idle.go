@@ -33,9 +33,11 @@ type collectHostIdleDataJob struct {
 	*job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
 
 	// internal cache
-	host *host.Host
-	task *task.Task
-	env  evergreen.Environment
+	host     *host.Host
+	task     *task.Task
+	settings *evergreen.Settings
+	manager  cloud.CloudManager
+	env      evergreen.Environment
 }
 
 func newHostIdleJob() *collectHostIdleDataJob {
@@ -48,6 +50,17 @@ func newHostIdleJob() *collectHostIdleDataJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	return j
+}
+
+func newHostIdleJobForTermination(env evergreen.Environment, settings *evergreen.Settings, manager cloud.CloudManager,
+	h *host.Host, startTime, finishTime time.Time) amboy.Job {
+
+	j := NewCollectHostIdleDataJob(h, nil, startTime, finishTime).(*collectHostIdleDataJob)
+	j.env = env
+	j.settings = settings
+	j.manager = manager
+
 	return j
 }
 
@@ -95,26 +108,31 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	settings := j.env.Settings()
+	if j.settings == nil {
+		j.settings = j.env.Settings()
+	}
 
 	///////////////////////////////////
 	//
 	// collect data
 
 	var cost float64
-	manager, err := cloud.GetCloudManager(ctx, j.host.Provider, settings)
-	if err != nil {
-		j.AddError(err)
-		grip.Error(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.HostID))
-	} else {
-		if calc, ok := manager.(cloud.CloudCostCalculator); ok {
-			cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
-			if err != nil {
-				j.AddError(err)
-			}
-			if err = j.host.IncCost(cost); err != nil {
-				j.AddError(err)
-			}
+	if j.manager == nil {
+		j.manager, err = cloud.GetCloudManager(ctx, j.host.Provider, j.settings)
+
+		if err != nil {
+			j.AddError(err)
+			grip.Warning(message.WrapErrorf(err, "Error loading provider for host %s cost calculation", j.HostID))
+		}
+	}
+
+	if calc, ok := j.manager.(cloud.CloudCostCalculator); ok {
+		cost, err = calc.CostForDuration(ctx, j.host, j.StartTime, j.FinishTime)
+		if err != nil {
+			j.AddError(err)
+		}
+		if err = j.host.IncCost(cost); err != nil {
+			j.AddError(err)
 		}
 	}
 

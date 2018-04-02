@@ -1,4 +1,4 @@
-package monitor
+package units
 
 import (
 	"context"
@@ -32,8 +32,10 @@ func TestTerminateHosts(t *testing.T) {
 		Provider: evergreen.ProviderNameEc2OnDemand,
 	}
 	assert.NoError(h.Insert())
+	j := NewHostTerminationJob(env, *h)
+	j.Run(ctx)
 
-	assert.NoError(terminateHost(ctx, env, h, testConfig))
+	assert.NoError(j.Error())
 	dbHost, err := host.FindOne(host.ById(h.Id))
 	assert.NoError(err)
 	assert.NotNil(dbHost)
