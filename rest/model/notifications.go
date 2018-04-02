@@ -7,9 +7,8 @@ import (
 )
 
 type APINotificationStats struct {
-	LastProcessed        time.Time      `json:"last_processed_at"`
-	NumUnprocessedEvents uint           `json:"unprocessed_events"`
-	ByType               map[string]int `json:"by_type"`
+	LastProcessedAt      time.Time `json:"last_processed_at"`
+	NumUnprocessedEvents int       `json:"unprocessed_events"`
 }
 
 func (n *APINotificationStats) BuildFromService(_ interface{}) error {

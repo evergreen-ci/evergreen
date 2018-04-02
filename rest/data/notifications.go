@@ -18,7 +18,7 @@ func (c *NotificationConnector) GetNotificationsStats(ctx context.Context, _ amb
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch most recently processed event")
 	}
-	stats.LastProcessed = e.ProcessedAt
+	stats.LastProcessedAt = e.ProcessedAt
 
 	n, err := event.CountUnprocessedEvents()
 	if err != nil {
