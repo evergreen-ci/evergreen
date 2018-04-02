@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strconv"
@@ -71,7 +72,7 @@ func (vr ValidationError) Error() string {
 }
 
 func ValidationErrorsToString(ves []ValidationError) string {
-	var s strings.Builder
+	var s bytes.Buffer
 	if len(ves) == 0 {
 		return s.String()
 	}
