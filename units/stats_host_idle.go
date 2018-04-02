@@ -118,7 +118,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 
 	var cost float64
 	if j.manager == nil {
-		j.manager, err = cloud.GetCloudManager(ctx, j.host.Provider, settings)
+		j.manager, err = cloud.GetCloudManager(ctx, j.host.Provider, j.settings)
 
 		if err != nil {
 			j.AddError(err)
