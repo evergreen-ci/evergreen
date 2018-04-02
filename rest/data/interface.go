@@ -191,5 +191,5 @@ type Connector interface {
 	GenerateTasks(string, []json.RawMessage) error
 
 	// Notifications
-	GetNotificationsStats(context.Context, amboy.Queue) (*restModel.APINotificationStats, error)
+	GetNotificationsStats() (*restModel.APINotificationStats, error)
 }

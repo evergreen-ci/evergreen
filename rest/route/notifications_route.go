@@ -33,7 +33,7 @@ func (gh *notificationsStatusHandler) ParseAndValidate(_ context.Context, _ *htt
 }
 
 func (gh *notificationsStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	stats, err := sc.GetNotificationsStats(ctx, nil)
+	stats, err := sc.GetNotificationsStats()
 	if err != nil {
 		return ResponseData{}, err
 	}

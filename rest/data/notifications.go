@@ -1,17 +1,15 @@
 package data
 
 import (
-	"context"
-
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/notification"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
 type NotificationConnector struct{}
 
-func (c *NotificationConnector) GetNotificationsStats(ctx context.Context, _ amboy.Queue) (*restModel.APINotificationStats, error) {
+func (c *NotificationConnector) GetNotificationsStats() (*restModel.APINotificationStats, error) {
 	stats := restModel.APINotificationStats{}
 
 	e, err := event.FindLastProcessedEvent()
@@ -26,11 +24,17 @@ func (c *NotificationConnector) GetNotificationsStats(ctx context.Context, _ amb
 	}
 	stats.NumUnprocessedEvents = n
 
+	nStats, err := notification.CollectUnsentNotificationStats()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to collect notification stats")
+	}
+	stats.PendingNotificationsByType = nStats
+
 	return &stats, nil
 }
 
 type MockNotificationConnector struct{}
 
-func (c *MockNotificationConnector) GetNotificationsStats(_ context.Context, _ amboy.Queue) (*restModel.APINotificationStats, error) {
+func (c *MockNotificationConnector) GetNotificationsStats() (*restModel.APINotificationStats, error) {
 	return nil, errors.New("not implemented")
 }
