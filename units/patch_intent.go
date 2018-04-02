@@ -449,7 +449,7 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 	}
 	patchDoc.Author = j.user.Id
 
-	return isMember, errors.Wrap(err, "failed to create github pull request user")
+	return isMember, nil
 }
 
 func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
@@ -475,7 +475,7 @@ func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
 			APIKey:   util.RandomString(),
 		}
 		if err = u.Insert(); err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to create github pull request user")
 		}
 	}
 
