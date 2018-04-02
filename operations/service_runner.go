@@ -179,6 +179,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		catcher.Add(queue.Put(units.NewHostStatsCollector(fmt.Sprintf("host-stats-%d", ts))))
 		catcher.Add(queue.Put(units.NewTaskStatsCollector(fmt.Sprintf("task-stats-%d", ts))))
 		catcher.Add(queue.Put(units.NewLatencyStatsCollector(fmt.Sprintf("latency-stats-%d", ts), time.Minute)))
+		catcher.Add(queue.Put(units.NewNotificationStatsCollector(fmt.Sprintf("notification-stats-%d", ts))))
 
 		return catcher.Resolve()
 	})
