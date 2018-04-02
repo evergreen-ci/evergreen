@@ -105,7 +105,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
-		if err := j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
+		if err = j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
 				"message":  "Error clearing running task for host",
