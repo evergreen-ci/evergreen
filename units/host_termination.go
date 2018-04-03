@@ -71,6 +71,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+		if j.host == nil {
+			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+		}
 	}
 
 	if j.env == nil {
@@ -123,7 +126,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if err != nil {
 		err = errors.Wrapf(err, "error getting cloud host for %s", j.HostID)
 		j.AddError(err)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,

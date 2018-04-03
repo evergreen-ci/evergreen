@@ -35,6 +35,11 @@ func (c *NotifyConfig) ValidateAndDefault() error {
 	notifyConfig := c.SMTP
 
 	if notifyConfig == nil {
+		c.SMTP = &SMTPConfig{
+			Port:   25,
+			Server: "localhost",
+		}
+
 		return nil
 	}
 

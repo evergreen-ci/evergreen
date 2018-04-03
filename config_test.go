@@ -464,7 +464,10 @@ func (s *AdminSuite) TestConfigDefaults() {
 	s.NoError(config.Validate())
 
 	// spot check the defaults
-	s.Nil(config.Notify.SMTP)
+	s.NotNil(config.Notify.SMTP)
+	s.Equal(config.Notify.SMTP.Server, "localhost")
+	s.Equal(config.Notify.SMTP.Port, 25)
+
 	s.Equal("legacy", config.Scheduler.TaskFinder)
 	s.Equal(defaultLogBufferingDuration, config.LoggerConfig.Buffer.DurationSeconds)
 	s.Equal("info", config.LoggerConfig.DefaultLevel)

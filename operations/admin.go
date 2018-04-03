@@ -162,9 +162,7 @@ func setServiceFlagValues(args []string, target bool, flags *model.APIServiceFla
 			flags.HostinitDisabled = target
 		case "monitor":
 			flags.MonitorDisabled = target
-		case "notify", "notifications", "notification":
-			flags.NotificationsDisabled = target
-		case "alerts", "alert":
+		case "alerts", "alert", "notify", "notifications", "notification":
 			flags.AlertsDisabled = target
 		case "taskrunner", "new-agents", "agents":
 			flags.TaskrunnerDisabled = target
