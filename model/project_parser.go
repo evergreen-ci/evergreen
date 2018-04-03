@@ -248,18 +248,20 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name         string            `yaml:"name,omitempty"`
-	DisplayName  string            `yaml:"display_name,omitempty"`
-	Expansions   util.Expansions   `yaml:"expansions,omitempty"`
-	Tags         parserStringSlice `yaml:"tags,omitempty,omitempty"`
-	Modules      parserStringSlice `yaml:"modules,omitempty"`
-	Disabled     bool              `yaml:"disabled,omitempty"`
-	Push         bool              `yaml:"push,omitempty"`
-	BatchTime    *int              `yaml:"batchtime,omitempty"`
-	Stepback     *bool             `yaml:"stepback,omitempty"`
-	RunOn        parserStringSlice `yaml:"run_on,omitempty"`
-	Tasks        parserBVTaskUnits `yaml:"tasks,omitempty"`
-	DisplayTasks []displayTask     `yaml:"display_tasks,omitempty"`
+	Name         string             `yaml:"name,omitempty"`
+	DisplayName  string             `yaml:"display_name,omitempty"`
+	Expansions   util.Expansions    `yaml:"expansions,omitempty"`
+	Tags         parserStringSlice  `yaml:"tags,omitempty,omitempty"`
+	Modules      parserStringSlice  `yaml:"modules,omitempty"`
+	Disabled     bool               `yaml:"disabled,omitempty"`
+	Push         bool               `yaml:"push,omitempty"`
+	BatchTime    *int               `yaml:"batchtime,omitempty"`
+	Stepback     *bool              `yaml:"stepback,omitempty"`
+	RunOn        parserStringSlice  `yaml:"run_on,omitempty"`
+	Tasks        parserBVTaskUnits  `yaml:"tasks,omitempty"`
+	DisplayTasks []displayTask      `yaml:"display_tasks,omitempty"`
+	DependsOn    parserDependencies `yaml:"depends_on,omitempty"`
+	Requires     taskSelectors      `yaml:"requires,omitempty"`
 
 	// internal matrix stuff
 	matrixId  string
@@ -560,7 +562,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 			RunOn:       pbv.RunOn,
 			Tags:        pbv.Tags,
 		}
-		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv.Tasks)
+		bv.Tasks, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 		// evaluate any rules passed in during matrix construction
 		for _, r := range pbv.matrixRules {
 			// remove_tasks removes all tasks with matching names
@@ -591,7 +593,8 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 				}
 
 				var added []BuildVariantTaskUnit
-				added, errs = evaluateBVTasks(tse, tgse, vse, r.AddTasks)
+				pbv.Tasks = r.AddTasks
+				added, errs = evaluateBVTasks(tse, tgse, vse, pbv)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -673,11 +676,11 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluato
 // evaluating any selectors referencing tasks, and further evaluating any selectors
 // in the DependsOn or Requires fields of those tasks.
 func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse *variantSelectorEvaluator,
-	pbvts []parserBVTaskUnit) ([]BuildVariantTaskUnit, []error) {
+	pbv parserBV) ([]BuildVariantTaskUnit, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTaskUnit{}
 	taskUnitsByName := map[string]BuildVariantTaskUnit{}
-	for _, pt := range pbvts {
+	for _, pt := range pbv.Tasks {
 		// evaluate each task against both the task and task group selectors
 		// only error if both selectors error because each task should only be found
 		// in one or the other
@@ -711,9 +714,24 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, tgse *tagSelectorEvaluator, vse
 				Stepback:        pt.Stepback,
 				Distros:         pt.Distros,
 			}
-			t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, pt.DependsOn)
+
+			// override task dependencies with buildvariant dependencies if they exist
+			var dependsOn parserDependencies
+			var requires taskSelectors
+			if len(pbv.DependsOn) > 0 {
+				dependsOn = pbv.DependsOn
+			} else {
+				dependsOn = pt.DependsOn
+			}
+			if len(pbv.Requires) > 0 {
+				requires = pbv.Requires
+			} else {
+				requires = pt.Requires
+			}
+
+			t.DependsOn, errs = evaluateDependsOn(tse.tagEval, tgse, vse, dependsOn)
 			evalErrs = append(evalErrs, errs...)
-			t.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, pt.Requires)
+			t.Requires, errs = evaluateRequires(tse.tagEval, tgse, vse, requires)
 			evalErrs = append(evalErrs, errs...)
 			t.IsGroup = isGroup
 
