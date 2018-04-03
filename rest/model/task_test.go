@@ -32,7 +32,7 @@ func TestTaskBuildFromService(t *testing.T) {
 					StartTime:     NewTime(sTime),
 					FinishTime:    NewTime(fTime),
 					Version:       APIString("testVersion"),
-					Branch:        APIString("testProject"),
+					ProjectId:     APIString("testProject"),
 					Revision:      APIString("testRevision"),
 					Priority:      100,
 					Execution:     2,
