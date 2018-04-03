@@ -65,7 +65,7 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case []host.StatsByDistro:
 		for _, entry := range v {
-			d := &apiHostStatsForDistro{
+			d := apiHostStatsForDistro{
 				Distro:   APIString(entry.Distro),
 				Status:   APIString(entry.Status),
 				NumHosts: entry.Count,
@@ -74,7 +74,6 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 			}
 
 			s.Distros = append(s.Distros, d)
-			s.distros[entry.Distro] = d
 		}
 	default:
 		return errors.Errorf("incorrect type when converting host stats by distro (%T)", v)
