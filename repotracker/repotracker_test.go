@@ -42,11 +42,13 @@ func TestFetchRevisions(t *testing.T) {
 		}
 
 		Convey("Fetching commits from the repository should not return any errors", func() {
+			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 10
 			So(repoTracker.FetchRevisions(ctx), ShouldBeNil)
 		})
 
 		Convey("Only get 3 revisions from the given repository if given a "+
 			"limit of 4 commits where only 3 exist", func() {
+			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 4
 			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
 				"Error running repository process %v")
 			numVersions, err := version.Count(version.All)
@@ -56,6 +58,7 @@ func TestFetchRevisions(t *testing.T) {
 
 		Convey("Only get 2 revisions from the given repository if given a "+
 			"limit of 2 commits where 3 exist", func() {
+			testConfig.RepoTracker.NumNewRepoRevisionsToFetch = 2
 			testutil.HandleTestingErr(repoTracker.FetchRevisions(ctx), t,
 				"Error running repository process %v")
 			numVersions, err := version.Count(version.All)
