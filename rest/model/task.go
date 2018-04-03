@@ -23,7 +23,6 @@ type APITask struct {
 	StartTime          APITime          `json:"start_time"`
 	FinishTime         APITime          `json:"finish_time"`
 	Version            APIString        `json:"version_id"`
-	Branch             APIString        `json:"branch"`
 	Revision           APIString        `json:"revision"`
 	Priority           int64            `json:"priority"`
 	Activated          bool             `json:"activated"`
@@ -85,7 +84,6 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			StartTime:     NewTime(v.StartTime),
 			FinishTime:    NewTime(v.FinishTime),
 			Version:       APIString(v.Version),
-			Branch:        APIString(v.Project),
 			Revision:      APIString(v.Revision),
 			Priority:      v.Priority,
 			Activated:     v.Activated,
@@ -136,7 +134,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 func (ad *APITask) ToService() (interface{}, error) {
 	st := &task.Task{
 		Id:                  string(ad.Id),
-		Project:             string(ad.Branch),
+		Project:             string(ad.ProjectId),
 		CreateTime:          time.Time(ad.CreateTime),
 		DispatchTime:        time.Time(ad.DispatchTime),
 		ScheduledTime:       time.Time(ad.ScheduledTime),
