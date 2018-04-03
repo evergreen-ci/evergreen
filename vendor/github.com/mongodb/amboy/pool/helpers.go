@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -67,6 +68,7 @@ func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.
 				"job":           job.ID(),
 				"job_type":      job.Type().Name,
 				"duration_secs": ti.Duration().Seconds(),
+				"queue_type":    fmt.Sprintf("%T", q),
 			}
 			if err := job.Error(); err != nil {
 				r["error"] = err.Error()

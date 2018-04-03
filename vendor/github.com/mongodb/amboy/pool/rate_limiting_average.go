@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -189,6 +190,7 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		"id":            j.ID(),
 		"job_type":      j.Type().Name,
 		"duration_secs": duration.Seconds(),
+		"queue_type":    fmt.Sprintf("%T", q),
 		"interval_secs": interval.Seconds(),
 		"pool":          "rate limiting, moving average",
 	}

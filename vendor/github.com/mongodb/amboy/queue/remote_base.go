@@ -108,10 +108,6 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 
 	startAt := time.Now()
 	id := j.ID()
-	q.mutex.Lock()
-	delete(q.blocked, id)
-	delete(q.dispatched, id)
-	q.mutex.Unlock()
 
 	for {
 		select {
@@ -133,7 +129,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 				timer.Reset(retryInterval)
 				if time.Since(startAt) > time.Minute+lockTimeout {
 					grip.Alert(message.WrapError(err, message.Fields{
-						"job_id":      j.ID(),
+						"job_id":      id,
 						"job_type":    j.Type().Name,
 						"driver_type": fmt.Sprintf("%T", q.Driver),
 						"driver_id":   q.driver.ID(),
@@ -145,6 +141,12 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			}
 
 			grip.CatchWarning(q.driver.Unlock(j))
+
+			q.mutex.Lock()
+			defer q.mutex.Unlock()
+			delete(q.blocked, id)
+			delete(q.dispatched, id)
+
 			return
 		}
 
