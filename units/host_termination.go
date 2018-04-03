@@ -105,7 +105,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
-		if err := j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
+		if err = j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
 				"message":  "Error clearing running task for host",
@@ -115,10 +115,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			}))
 		}
-	}
-
-	if !j.host.Provisioned {
-		return
 	}
 
 	// convert the host to a cloud host
@@ -133,6 +129,31 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"job":      j.ID(),
 			"message":  "problem getting cloud host instance, aborting termination",
 		}))
+		return
+	}
+
+	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
+	if err != nil {
+		j.AddError(err)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "problem getting cloud host instance status",
+		}))
+	}
+
+	if cloudStatus == cloud.StatusTerminated {
+		j.AddError(errors.New("host is already terminated"))
+		grip.Error(message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "attempted to terminated an already terminated host",
+		})
+
 		return
 	}
 
