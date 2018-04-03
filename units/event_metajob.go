@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	eventMetaJobName = "event-metajob"
+	eventMetaJobName        = "event-metajob"
+	EventProcessingInterval = 5 * time.Minute
 )
 
 func init() {
@@ -75,12 +76,11 @@ func makeEventMetaJob() *eventMetaJob {
 	return j
 }
 
-func NewEventMetaJob(q amboy.Queue) amboy.Job {
+func NewEventMetaJob(q amboy.Queue, ts string) amboy.Job {
 	j := makeEventMetaJob()
 	j.q = q
 
-	// TODO: not safe
-	j.SetID(fmt.Sprintf("%s:%s:%d", eventMetaJobName, time.Now().String(), job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s:%s", eventMetaJobName, ts))
 
 	return j
 }
