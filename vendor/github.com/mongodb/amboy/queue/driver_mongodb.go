@@ -220,11 +220,11 @@ func (d *mongoDB) getAtomicQuery(jobName string, stat amboy.JobStatusInfo) bson.
 			bson.M{
 				"status.owner":     d.instanceID,
 				"status.mod_count": stat.ModificationCount,
-				"status.mod_ts":    bson.M{"$lte": timeoutTs},
+				"status.mod_ts":    bson.M{"$gt": timeoutTs},
 			},
 			// modtime is older than the lock timeout,
 			// regardless of what the other data is,
-			bson.M{"status.mod_ts": bson.M{"$gt": timeoutTs}},
+			bson.M{"status.mod_ts": bson.M{"$lte": timeoutTs}},
 		},
 	}
 }

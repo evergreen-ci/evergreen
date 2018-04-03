@@ -123,6 +123,9 @@ endif
 ifneq (,$(RUN_CASE))
 testArgs += -testify.m='$(RUN_CASE)'
 endif
+ifneq (,$(RUN_COUNT))
+testArgs += -test.count='$(RUN_COUNT)'
+endif
 #    to avoid vendoring the coverage tool, install it as needed
 coverDeps := $(if $(DISABLE_COVERAGE),,golang.org/x/tools/cmd/cover)
 coverDeps := $(addprefix $(gopath)/src/,$(coverDeps))
