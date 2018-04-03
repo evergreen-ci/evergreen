@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 )
 
 var sampleBaseProject = `
-function:
+functions:
   get-project:
     command: shell.exec
     params:
@@ -27,6 +28,12 @@ function:
        shell: bash
        script: |
          echo "set-up-credentials function"
+  run-make:
+    command: shell.exec
+    params:
+       shell: bash
+       script: |
+         echo "fun-make function"
 
 tasks:
   - name: generate-lint
@@ -118,6 +125,16 @@ var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
       ],
       "name": "lint-rest-route"
     }
+  ],
+  "task_groups": [
+      {
+          "name": "my_task_group",
+          "max_hosts": 1,
+          "tasks": [
+            "lint-command",
+            "lint-rest-route",
+          ]
+      },
   ]
 }
 `)}
@@ -141,8 +158,8 @@ func TestParseProjects(t *testing.T) {
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection))
-	defer require.NoError(db.ClearCollections(version.Collection, task.Collection))
+	require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
+	defer require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
 	randomVersion := version.Version{
 		Id:         "random_version",
 		Identifier: "mci",
@@ -168,6 +185,17 @@ func TestGenerateTasks(t *testing.T) {
 		BuildId:     "sample_build_id",
 		Project:     "mci",
 		DisplayName: "sample_task",
+	}
+	sampleDistros := []distro.Distro{
+		distro.Distro{
+			Id: "ubuntu1604-test",
+		},
+		distro.Distro{
+			Id: "archlinux-test",
+		},
+	}
+	for _, d := range sampleDistros {
+		require.NoError(d.Insert())
 	}
 	require.NoError(sampleTask.Insert())
 	gc := GenerateConnector{}
@@ -213,4 +241,6 @@ func TestGenerateTasks(t *testing.T) {
 	assert.Len(p.Tasks, 4)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 4)
+	assert.Len(p.TaskGroups, 1)
+	assert.Len(p.TaskGroups[0].Tasks, 2)
 }

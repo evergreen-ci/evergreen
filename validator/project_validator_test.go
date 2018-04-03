@@ -1623,7 +1623,7 @@ buildvariants:
 	assert.NoError(err)
 	validationErrs = checkTaskGroups(&proj)
 	assert.Len(validationErrs, 1)
-	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts greater than half the number of tasks")
+	assert.Contains(validationErrs[0].Message, "task group example_task_group has max number of hosts 2 greater than half the number of tasks 3")
 	assert.Equal(validationErrs[0].Level, Warning)
 
 }
