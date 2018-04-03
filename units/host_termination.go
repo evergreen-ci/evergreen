@@ -71,6 +71,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+		if j.host == nil {
+			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+		}
 	}
 
 	if j.env == nil {
