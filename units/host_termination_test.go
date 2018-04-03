@@ -1,10 +1,11 @@
-package monitor
+package units
 
 import (
 	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -25,15 +26,25 @@ func TestTerminateHosts(t *testing.T) {
 	assert.NoError(env.Configure(ctx, "", nil))
 	assert.NoError(env.Local.Start(ctx))
 
+	hostID := "i-12345"
+	mcp := cloud.GetMockProvider()
+	mcp.Set(hostID, cloud.MockInstance{
+		IsUp:   true,
+		Status: cloud.StatusRunning,
+	})
+
 	// test that trying to terminate a host that does not exist is handled gracecfully
 	h := &host.Host{
-		Id:       "i-12345",
-		Status:   evergreen.HostRunning,
-		Provider: evergreen.ProviderNameEc2OnDemand,
+		Id:          hostID,
+		Status:      evergreen.HostRunning,
+		Provider:    evergreen.ProviderNameMock,
+		Provisioned: true,
 	}
 	assert.NoError(h.Insert())
+	j := NewHostTerminationJob(env, *h)
+	j.Run(ctx)
 
-	assert.NoError(terminateHost(ctx, env, h, testConfig))
+	assert.NoError(j.Error())
 	dbHost, err := host.FindOne(host.ById(h.Id))
 	assert.NoError(err)
 	assert.NotNil(dbHost)

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mongodb/amboy"
@@ -40,7 +41,7 @@ func (s *MsgJobSuite) TestIsNotSerializable() {
 func (s *MsgJobSuite) TestWithNilOpts() {
 	job := s.constructor(nil, nil)
 	s.NoError(job.Error())
-	job.Run()
+	job.Run(context.Background())
 	s.Error(job.Error())
 }
 
@@ -50,7 +51,7 @@ func (s *MsgJobSuite) TestWithNilMessage() {
 	job := s.constructor(nil, sender)
 
 	s.NoError(job.Error())
-	job.Run()
+	job.Run(context.Background())
 	s.Error(job.Error())
 }
 
@@ -58,7 +59,7 @@ func (s *MsgJobSuite) TestWithNilSender() {
 	job := s.constructor(message.NewString("foo"), nil)
 
 	s.NoError(job.Error())
-	job.Run()
+	job.Run(context.Background())
 	s.Error(job.Error())
 }
 
@@ -69,7 +70,7 @@ func (s *MsgJobSuite) TestMessgeSends() {
 
 	s.False(sender.HasMessage())
 	s.NoError(job.Error())
-	job.Run()
+	job.Run(context.Background())
 	s.NoError(job.Error())
 	s.True(sender.HasMessage())
 }

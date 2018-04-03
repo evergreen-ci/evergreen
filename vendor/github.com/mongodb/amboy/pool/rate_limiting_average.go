@@ -176,7 +176,8 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		Start: start,
 	}
 	j.UpdateTimeInfo(ti)
-	j.Run()
+
+	runJob(ctx, j)
 
 	p.queue.Complete(ctx, j)
 	ti.End = time.Now()

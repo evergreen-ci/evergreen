@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -555,6 +556,11 @@ func (repoTracker *RepoTracker) GetProjectConfig(ctx context.Context, revision s
 // NewVersionFromRevision populates a new Version with metadata from a model.Revision.
 // Does not populate its config or store anything in the database.
 func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version.Version, error) {
+	u, err := user.FindByGithubUID(rev.AuthorGithubUID)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message": fmt.Sprintf("failed to fetch everg user with Github UID %d", rev.AuthorGithubUID),
+	}))
+
 	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
 	if err != nil {
 		return nil, err
@@ -575,6 +581,9 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 		Revision:            rev.Revision,
 		Status:              evergreen.VersionCreated,
 		RevisionOrderNumber: number,
+	}
+	if u != nil {
+		v.AuthorID = u.Id
 	}
 	return v, nil
 }

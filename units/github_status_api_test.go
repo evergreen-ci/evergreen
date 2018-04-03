@@ -98,7 +98,7 @@ func (s *githubStatusUpdateSuite) TestRunInDegradedMode() {
 	s.NoError(evergreen.SetServiceFlags(flags))
 
 	job := NewGithubStatusUpdateJobForBuild(s.buildDoc.Id)
-	job.Run()
+	job.Run(context.Background())
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "github status updates are disabled, not updating status")
@@ -275,7 +275,7 @@ func (s *githubStatusUpdateSuite) TestWithGithub() {
 	job, ok := NewGithubStatusUpdateJobForPatchWithVersion(s.patchDoc.Version).(*githubStatusUpdateJob)
 	s.Require().NotNil(job)
 	s.Require().True(ok)
-	job.Run()
+	job.Run(context.Background())
 	s.NoError(job.Error())
 
 	githubOauthToken, err := evergreen.GetEnvironment().Settings().GetGithubOauthToken()

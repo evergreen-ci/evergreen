@@ -89,13 +89,12 @@ func (opts Options) Application(env anser.Environment, evgEnv evergreen.Environm
 		// migrationTestResultsOldTasks: oldTestResultsGenerator,
 		// migrationTestResultstasks: testResultsGenerator,
 
-		migrationProjectAliasesToCollection:    projectAliasesToCollectionGenerator,
-		migrationGithubHooksToCollection:       githubHooksToCollectionGenerator,
-		migrationZeroDateFix:                   zeroDateFixGenerator(githubToken),
-		migrationAdminEventRestructure:         adminEventRestructureGenerator,
-		migrationEventRtypeRestructureAllLogs:  makeEventRTypeMigration(event.AllLogCollection),
-		migrationEventRtypeRestructureTaskLogs: makeEventRTypeMigration(event.TaskLogCollection),
-		migrationSetDefaultBranch:              setDefaultBranchMigrationGenerator,
+		migrationProjectAliasesToCollection:   projectAliasesToCollectionGenerator,
+		migrationGithubHooksToCollection:      githubHooksToCollectionGenerator,
+		migrationZeroDateFix:                  zeroDateFixGenerator(githubToken),
+		migrationAdminEventRestructure:        adminEventRestructureGenerator,
+		migrationEventRtypeRestructureAllLogs: makeEventRTypeMigration(event.AllLogCollection),
+		migrationSetDefaultBranch:             setDefaultBranchMigrationGenerator,
 	}
 	catcher := grip.NewBasicCatcher()
 

@@ -1,7 +1,7 @@
 package units
 
 import (
-	"fmt"
+	"context"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +14,9 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
+
+// TODO: remove this file once all of the existing jobs in queues that
+// depend on it are completed.
 
 const collectTaskStartDataJobName = "collect-task-start-data"
 
@@ -45,18 +48,7 @@ func newTaskStartJob() *collectTaskStartDataJob {
 	return j
 }
 
-func NewCollectTaskStartDataJob(t *task.Task, h host.Host) amboy.Job {
-	j := newTaskStartJob()
-	j.TaskID = t.Id
-	j.HostID = h.Id
-	j.task = t
-	j.host = &h
-	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskStartDataJobName, j.TaskID, j.HostID, job.GetNumber()))
-	j.SetPriority(-2)
-	return j
-}
-
-func (j *collectTaskStartDataJob) Run() {
+func (j *collectTaskStartDataJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 	var err error
 	if j.task == nil {

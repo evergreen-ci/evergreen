@@ -2,8 +2,10 @@ package data
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -18,7 +20,22 @@ func (gc *GenerateConnector) GenerateTasks(taskID string, jsonBytes []json.RawMe
 	}
 	g := model.MergeGeneratedProjects(projects)
 	g.TaskID = taskID
-	return g.AddGeneratedProjectToVersion()
+	p, v, t, pm, err := g.NewVersion()
+	if err != nil {
+		return errors.Wrap(err, "error generating new version")
+	}
+	syntaxErrs, err := validator.CheckProjectSyntax(p)
+	if err != nil {
+		return errors.Wrap(err, "error checking project syntax")
+	}
+	if len(syntaxErrs) > 0 {
+		return errors.New(fmt.Sprintf("project syntax is invalid: %s", validator.ValidationErrorsToString(syntaxErrs)))
+	}
+	semanticErrs := validator.CheckProjectSemantics(p)
+	if len(semanticErrs) > 0 {
+		return errors.New(fmt.Sprintf("project semantics is invalid: %s", validator.ValidationErrorsToString(semanticErrs)))
+	}
+	return g.Save(p, v, t, pm)
 }
 
 func ParseProjects(jsonBytes []json.RawMessage) ([]model.GeneratedProject, error) {

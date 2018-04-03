@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"context"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -48,15 +49,18 @@ func (s *setDefaultBranchMigrationSuite) TestMigration() {
 		id:    "migration-" + migrationSetDefaultBranch,
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	gen, err := setDefaultBranchMigrationGenerator(anser.GetEnvironment(), args)
 	s.Require().NoError(err)
-	gen.Run()
+	gen.Run(ctx)
 	s.Require().NoError(gen.Error())
 
 	i := 0
 	for j := range gen.Jobs() {
 		i++
-		j.Run()
+		j.Run(ctx)
 		s.NoError(j.Error())
 	}
 	s.Equal(1, i)

@@ -69,6 +69,9 @@ func (s *QueueStats) SetPriority(l level.Priority) error {
 	return errors.Errorf("%s (%d) is not a valid level", l, l)
 }
 
+// Annotate is part of the grip/message.Composer interface and allows
+// the logging infrastructure to inject content and context into log
+// messages.
 func (s *QueueStats) Annotate(key string, value interface{}) error {
 	if s.Context == nil {
 		s.Context = message.Fields{

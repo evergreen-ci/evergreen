@@ -89,5 +89,5 @@ func TestRecentHostStatusFinder(t *testing.T) {
 	for i := range data {
 		assert.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	assert.True(AllRecentHostEventsMatchStatus("test", 3, "one"))
+	assert.True(AllRecentHostEventsMatchStatus("test", 2, "one"))
 }

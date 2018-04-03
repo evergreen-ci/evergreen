@@ -202,8 +202,8 @@ func (h *Host) SetUnprovisioned() error {
 	)
 }
 
-func (h *Host) SetQuarantined(user string) error {
-	return h.SetStatus(evergreen.HostQuarantined, user, "")
+func (h *Host) SetQuarantined(user string, logs string) error {
+	return h.SetStatus(evergreen.HostQuarantined, user, logs)
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -620,7 +620,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 
 func (h *Host) DisablePoisonedHost(logs string) error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(evergreen.User); err != nil {
+		if err := h.SetQuarantined(evergreen.User, logs); err != nil {
 			return errors.WithStack(err)
 		}
 

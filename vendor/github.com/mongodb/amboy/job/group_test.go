@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -62,7 +63,7 @@ func (s *JobGroupSuite) TestAllJobsAreCompleteAfterRunningGroup() {
 	}
 	s.Len(s.job.Jobs, len(names))
 
-	s.job.Run()
+	s.job.Run(context.Background())
 	s.True(s.job.Status().Completed)
 	s.NoError(s.job.Error())
 
@@ -88,7 +89,7 @@ func (s *JobGroupSuite) TestJobResultsPersistAfterGroupRuns() {
 	s.NoError(s.job.Add(fail))
 	s.Len(s.job.Jobs, 2)
 
-	s.job.Run()
+	s.job.Run(context.Background())
 	s.True(s.job.Status().Completed)
 	s.Error(s.job.Error())
 

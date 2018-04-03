@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 )
 
 var sampleBaseProject = `
-function:
+functions:
   get-project:
     command: shell.exec
     params:
@@ -27,6 +28,12 @@ function:
        shell: bash
        script: |
          echo "set-up-credentials function"
+  run-make:
+    command: shell.exec
+    params:
+       shell: bash
+       script: |
+         echo "fun-make function"
 
 tasks:
   - name: generate-lint
@@ -71,6 +78,15 @@ var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
         {
           "name": "lint-rest-route"
         }
+      ],
+      "display_tasks": [
+          {
+              "name": "my_display_task",
+              "execution_tasks": [
+                  "lint-command",
+                  "lint-rest-route"
+              ]
+          }
       ]
     }
   ],
@@ -109,6 +125,16 @@ var sampleGeneratedProject = []json.RawMessage{json.RawMessage(`
       ],
       "name": "lint-rest-route"
     }
+  ],
+  "task_groups": [
+      {
+          "name": "my_task_group",
+          "max_hosts": 1,
+          "tasks": [
+            "lint-command",
+            "lint-rest-route",
+          ]
+      },
   ]
 }
 `)}
@@ -120,6 +146,10 @@ func TestParseProjects(t *testing.T) {
 	assert.Len(parsed, 1)
 	assert.Len(parsed[0].BuildVariants, 1)
 	assert.Equal(parsed[0].BuildVariants[0].Name, "race-detector")
+	assert.Equal("my_display_task", parsed[0].BuildVariants[0].DisplayTasks[0].Name)
+	assert.Equal("lint-command", parsed[0].BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("lint-rest-route", parsed[0].BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+	assert.Len(parsed[0].BuildVariants[0].DisplayTasks, 1)
 	assert.Len(parsed[0].Tasks, 2)
 	assert.Equal(parsed[0].Tasks[0].Name, "lint-command")
 	assert.Equal(parsed[0].Tasks[1].Name, "lint-rest-route")
@@ -128,8 +158,8 @@ func TestParseProjects(t *testing.T) {
 func TestGenerateTasks(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection))
-	defer require.NoError(db.ClearCollections(version.Collection, task.Collection))
+	require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
+	defer require.NoError(db.ClearCollections(version.Collection, build.Collection, task.Collection, distro.Collection))
 	randomVersion := version.Version{
 		Id:         "random_version",
 		Identifier: "mci",
@@ -156,21 +186,37 @@ func TestGenerateTasks(t *testing.T) {
 		Project:     "mci",
 		DisplayName: "sample_task",
 	}
+	sampleDistros := []distro.Distro{
+		distro.Distro{
+			Id: "ubuntu1604-test",
+		},
+		distro.Distro{
+			Id: "archlinux-test",
+		},
+	}
+	for _, d := range sampleDistros {
+		require.NoError(d.Insert())
+	}
 	require.NoError(sampleTask.Insert())
 	gc := GenerateConnector{}
 	assert.NoError(gc.GenerateTasks("sample_task", sampleGeneratedProject))
-	tasks, err := task.Find(task.ByBuildId("sample_build_id"))
+	tasks := []task.Task{}
+	err := db.FindAllQ(task.Collection, task.ByBuildId("sample_build_id"), &tasks)
 	assert.NoError(err)
-	assert.Len(tasks, 3)
+	assert.Len(tasks, 4)
 	all_tasks := map[string]bool{
 		"sample_task":     false,
 		"lint-command":    false,
 		"lint-rest-route": false,
+		"my_display_task": false,
 	}
 	for _, t := range tasks {
 		assert.Equal("sample_version", t.Version)
 		assert.Equal("mci", t.Project)
 		all_tasks[t.DisplayName] = true
+		if t.Version == "my_display_task" {
+			assert.Len(t.ExecutionTasks, 1)
+		}
 	}
 	for _, v := range all_tasks {
 		assert.True(v)
@@ -195,4 +241,6 @@ func TestGenerateTasks(t *testing.T) {
 	assert.Len(p.Tasks, 4)
 	assert.Len(p.BuildVariants[0].Tasks, 1)
 	assert.Len(p.BuildVariants[1].Tasks, 4)
+	assert.Len(p.TaskGroups, 1)
+	assert.Len(p.TaskGroups[0].Tasks, 2)
 }

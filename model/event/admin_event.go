@@ -20,11 +20,10 @@ const (
 
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
-	GUID         string           `bson:"guid" json:"guid"`
-	ResourceType string           `bson:"r_type,omitempty" json:"resource_type,omitempty"`
-	User         string           `bson:"user" json:"user"`
-	Section      string           `bson:"section" json:"section"`
-	Changes      ConfigDataChange `bson:"changes" json:"changes"`
+	GUID    string           `bson:"guid" json:"guid"`
+	User    string           `bson:"user" json:"user"`
+	Section string           `bson:"section" json:"section"`
+	Changes ConfigDataChange `bson:"changes" json:"changes"`
 }
 
 type ConfigDataChange struct {
@@ -38,20 +37,10 @@ type rawConfigDataChange struct {
 }
 
 type rawAdminEventData struct {
-	GUID         string              `bson:"guid"`
-	ResourceType string              `bson:"r_type,omitempty"`
-	User         string              `bson:"user"`
-	Section      string              `bson:"section"`
-	Changes      rawConfigDataChange `bson:"changes"`
-}
-
-// IsValid checks if a given event is an event on an admin resource
-func (evt AdminEventData) IsValid() bool {
-	return evt.ResourceType == ResourceTypeAdmin
-}
-
-func (evt rawAdminEventData) IsValid() bool {
-	return evt.ResourceType == ResourceTypeAdmin
+	GUID    string              `bson:"guid"`
+	User    string              `bson:"user"`
+	Section string              `bson:"section"`
+	Changes rawConfigDataChange `bson:"changes"`
 }
 
 func LogAdminEvent(section string, before, after evergreen.ConfigSection, user string) error {
@@ -65,16 +54,16 @@ func LogAdminEvent(section string, before, after evergreen.ConfigSection, user s
 		return nil
 	}
 	eventData := AdminEventData{
-		ResourceType: ResourceTypeAdmin,
-		User:         user,
-		Section:      section,
-		Changes:      ConfigDataChange{Before: before, After: after},
-		GUID:         util.RandomString(),
+		User:    user,
+		Section: section,
+		Changes: ConfigDataChange{Before: before, After: after},
+		GUID:    util.RandomString(),
 	}
 	event := EventLogEntry{
-		Timestamp: time.Now(),
-		EventType: EventTypeValueChanged,
-		Data:      eventData,
+		Timestamp:    time.Now(),
+		EventType:    EventTypeValueChanged,
+		Data:         eventData,
+		ResourceType: ResourceTypeAdmin,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
@@ -119,10 +108,11 @@ func FindAdmin(query db.Q) ([]EventLogEntry, error) {
 			continue
 		}
 		events = append(events, EventLogEntry{
-			Timestamp:  event.Timestamp,
-			ResourceId: event.ResourceId,
-			EventType:  event.EventType,
-			Data:       eventData,
+			ResourceType: ResourceTypeAdmin,
+			Timestamp:    event.Timestamp,
+			ResourceId:   event.ResourceId,
+			EventType:    event.EventType,
+			Data:         eventData,
 		})
 	}
 	if catcher.HasErrors() {
@@ -134,10 +124,9 @@ func FindAdmin(query db.Q) ([]EventLogEntry, error) {
 
 func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	out := AdminEventData{
-		ResourceType: in.ResourceType,
-		Section:      in.Section,
-		User:         in.User,
-		GUID:         in.GUID,
+		Section: in.Section,
+		User:    in.User,
+		GUID:    in.GUID,
 	}
 
 	// get the correct implementation of the interface from the registry
@@ -179,6 +168,10 @@ func RevertConfig(guid string, user string) error {
 	current := evergreen.ConfigRegistry.GetSection(data.Section)
 	if current == nil {
 		return fmt.Errorf("unable to find section %s", data.Section)
+	}
+	err = current.Get()
+	if err != nil {
+		return errors.Wrapf(err, "problem reading section %s", current.SectionId())
 	}
 	err = data.Changes.Before.Set()
 	if err != nil {

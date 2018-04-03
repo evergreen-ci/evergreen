@@ -1,6 +1,7 @@
 package anser
 
 import (
+	"context"
 	"testing"
 
 	"github.com/mongodb/amboy/registry"
@@ -14,6 +15,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 	assert := assert.New(t)
 	env := mock.NewEnvironment()
 	mh := &MigrationHelperMock{Environment: env}
+	ctx := context.Background()
 
 	const jobTypeName = "simple-migration"
 
@@ -39,7 +41,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 	// run a test where we can't get a db session
 	job.MigrationHelper = mh
 	env.SessionError = errors.New("no session, sorry")
-	job.Run()
+	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()
@@ -51,7 +53,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 	job = factory().(*simpleMigrationJob)
 	env.SessionError = nil
 	job.MigrationHelper = mh
-	job.Run()
+	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	assert.False(job.HasErrors())
 
@@ -62,7 +64,7 @@ func TestSimpleMigrationJob(t *testing.T) {
 	env.Session = mock.NewSession()
 	env.Session.DB("foo").C("bar").(*mock.Collection).FailWrites = true
 	job.MigrationHelper = mh
-	job.Run()
+	job.Run(ctx)
 	assert.True(job.Status().Completed)
 	if assert.True(job.HasErrors()) {
 		err = job.Error()

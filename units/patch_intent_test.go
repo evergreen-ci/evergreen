@@ -352,7 +352,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
-	j.Run()
+	j.Run(context.Background())
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "github pr testing is disabled, not processing pull request")
 
@@ -383,7 +383,7 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
-	j.Run()
+	j.Run(context.Background())
 	s.Error(j.Error())
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))

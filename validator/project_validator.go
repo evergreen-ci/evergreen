@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"strconv"
@@ -68,6 +69,18 @@ var projectSemanticValidators = []projectValidator{
 
 func (vr ValidationError) Error() string {
 	return vr.Message
+}
+
+func ValidationErrorsToString(ves []ValidationError) string {
+	var s bytes.Buffer
+	if len(ves) == 0 {
+		return s.String()
+	}
+	for _, ve := range ves {
+		s.WriteString(ve.Error())
+		s.WriteString("\n")
+	}
+	return s.String()
 }
 
 // create a slice of all valid distro names
@@ -148,8 +161,21 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 	// generate task nodes for every task and variant combination
 	visited := map[model.TVPair]bool{}
 	allNodes := []model.TVPair{}
+
+	taskGroups := map[string]struct{}{}
+	for _, tg := range project.TaskGroups {
+		taskGroups[tg.Name] = struct{}{}
+	}
 	for _, bv := range project.BuildVariants {
+		tasksToAdd := []model.BuildVariantTaskUnit{}
 		for _, t := range bv.Tasks {
+			if _, ok := taskGroups[t.Name]; ok {
+				tasksToAdd = append(tasksToAdd, model.CreateTasksFromGroup(t, project)...)
+			} else {
+				tasksToAdd = append(tasksToAdd, t)
+			}
+		}
+		for _, t := range tasksToAdd {
 			t.Populate(project.GetSpecForTask(t.Name))
 			node := model.TVPair{bv.Name, t.Name}
 
@@ -477,16 +503,16 @@ func checkRunOnOnlyOneDistro(project *model.Project) []ValidationError {
 
 	if len(offendingBVs) > 0 {
 		errs = append(errs, ValidationError{
-			Level: Warning,
-			Message: fmt.Sprintf("deprecated: multiple run-on distros for a single build variant. [%s]",
+			Level: Error,
+			Message: fmt.Sprintf("multiple run-on distros for a single build variant. [%s]",
 				strings.Join(offendingBVs, ", ")),
 		})
 	}
 
 	if len(offendingTasks) > 0 {
 		errs = append(errs, ValidationError{
-			Level: Warning,
-			Message: fmt.Sprintf("deprecated: multiple distros specified for a single build variant task. [%s]",
+			Level: Error,
+			Message: fmt.Sprintf("multiple distros specified for a single build variant task. [%s]",
 				strings.Join(offendingTasks, ", ")),
 		})
 	}
@@ -804,7 +830,7 @@ func checkTaskGroups(p *model.Project) []ValidationError {
 	for _, tg := range p.TaskGroups {
 		if tg.MaxHosts > (len(tg.Tasks) / 2) {
 			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task group %s has max number of hosts greater than half the number of tasks", tg.Name),
+				Message: fmt.Sprintf("task group %s has max number of hosts %d greater than half the number of tasks %d", tg.Name, tg.MaxHosts, len(tg.Tasks)),
 				Level:   Warning,
 			})
 		}

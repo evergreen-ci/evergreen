@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"errors"
 
 	"github.com/evergreen-ci/evergreen"
@@ -76,7 +77,7 @@ func makeAmboyStatsCollector() *amboyStatsCollector {
 	return j
 }
 
-func (j *amboyStatsCollector) Run() {
+func (j *amboyStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {

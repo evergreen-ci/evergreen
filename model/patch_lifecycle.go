@@ -258,6 +258,7 @@ func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, github
 		Requester:           requester,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
+		AuthorID:            p.Author,
 	}
 
 	tasks := TaskVariantPairs{}

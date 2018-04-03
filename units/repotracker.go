@@ -54,15 +54,15 @@ func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 	return job
 }
 
-func (j *repotrackerJob) Run() {
+func (j *repotrackerJob) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 	defer j.MarkComplete()
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	flags, err := evergreen.GetServiceFlags()
 	if err != nil {

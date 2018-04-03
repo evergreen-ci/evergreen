@@ -81,13 +81,16 @@ func (s *projectAliasMigration) TestMigration() {
 		id:    "migration-project-aliases-to-collection",
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	gen, err := projectAliasesToCollectionGenerator(anser.GetEnvironment(), args)
 	s.NoError(err)
-	gen.Run()
+	gen.Run(ctx)
 	s.NoError(gen.Error())
 
 	for j := range gen.Jobs() {
-		j.Run()
+		j.Run(ctx)
 		s.NoError(j.Error())
 	}
 

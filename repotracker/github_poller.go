@@ -39,13 +39,19 @@ func isLastRevision(revision string, repoCommit *github.RepositoryCommit) bool {
 // githubCommitToRevision converts a GithubCommit struct to a
 // model.Revision struct
 func githubCommitToRevision(repoCommit *github.RepositoryCommit) model.Revision {
-	return model.Revision{
+	r := model.Revision{
 		Author:          *repoCommit.Commit.Author.Name,
 		AuthorEmail:     *repoCommit.Commit.Author.Email,
 		RevisionMessage: *repoCommit.Commit.Message,
 		Revision:        *repoCommit.SHA,
 		CreateTime:      *repoCommit.Commit.Committer.Date,
 	}
+
+	if repoCommit.Author != nil && repoCommit.Author.ID != nil {
+		r.AuthorGithubUID = *repoCommit.Author.ID
+	}
+
+	return r
 }
 
 // GetRemoteConfig fetches the contents of a remote github repository's

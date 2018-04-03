@@ -195,3 +195,26 @@ func EventMetaJobQueueOperation() amboy.QueueOperation {
 		return errors.Wrap(err, "failed to queue event-metajob")
 	}
 }
+
+func PopulateTaskMonitoring() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not detecting task heartbeat/dispatching timeouts",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		ts := util.RoundPartOfHour(2).Format(tsFormat)
+		j := NewTaskExecutionMonitorJob(ts)
+
+		return queue.Put(j)
+	}
+}

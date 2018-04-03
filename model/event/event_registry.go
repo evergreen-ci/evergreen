@@ -1,6 +1,6 @@
 package event
 
-type eventFactory func() Data
+type eventFactory func() interface{}
 
 var eventRegistry map[string]eventFactory
 
@@ -17,7 +17,7 @@ func init() {
 	}
 }
 
-func NewEventFromType(resourceType string) Data {
+func NewEventFromType(resourceType string) interface{} {
 	f, ok := eventRegistry[resourceType]
 	if !ok {
 		return nil
@@ -26,46 +26,37 @@ func NewEventFromType(resourceType string) Data {
 	return f()
 }
 
-func taskEventFactory() Data {
-	return &TaskEventData{
-		ResourceType: ResourceTypeTask,
-	}
+func taskEventFactory() interface{} {
+	return &TaskEventData{}
 }
 
-func hostEventFactory() Data {
-	return &HostEventData{
-		ResourceType: ResourceTypeHost,
-	}
+func hostEventFactory() interface{} {
+	return &HostEventData{}
 }
 
-func distroEventFactory() Data {
-	return &DistroEventData{
-		ResourceType: ResourceTypeDistro,
-	}
+func distroEventFactory() interface{} {
+	return &DistroEventData{}
 }
 
-func schedulerEventFactory() Data {
-	return &SchedulerEventData{
-		ResourceType: ResourceTypeScheduler,
-	}
+func schedulerEventFactory() interface{} {
+	return &SchedulerEventData{}
 }
 
-func taskSystemResourceEventFactory() Data {
-	return &TaskSystemResourceData{
-		ResourceType: EventTaskSystemInfo,
-	}
+func taskSystemResourceEventFactory() interface{} {
+	return &TaskSystemResourceData{}
 }
 
-func taskProcessResourceEventFactory() Data {
-	return &TaskProcessResourceData{
-		ResourceType: EventTaskProcessInfo,
-	}
+func taskProcessResourceEventFactory() interface{} {
+	return &TaskProcessResourceData{}
 }
 
-func adminEventFactory() Data {
-	return &rawAdminEventData{
-		ResourceType: ResourceTypeAdmin,
-	}
+func adminEventFactory() interface{} {
+	return &rawAdminEventData{}
+}
+
+func isSubscribable(eventType string) bool {
+	// TODO
+	return false
 }
 
 func testEventFactory() Data {

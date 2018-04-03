@@ -3,6 +3,7 @@ package event
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,50 +39,8 @@ func (s *eventSuite) TestMarshallAndUnarshallingStructsHaveSameTags() {
 	}
 }
 
-func (s *eventSuite) TestTerribleUnmarshallerWithOldResourceType() {
-	logger := NewDBEventLogger(AllLogCollection)
-	for k, v := range eventRegistry {
-		event := EventLogEntry{
-			ResourceId: "TEST1",
-			EventType:  "TEST2",
-			Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-			Data:       v(),
-		}
-		found, rTypeTag := findResourceTypeIn(event.Data)
-		s.True(found)
-		s.Equal(k, rTypeTag)
-		if e, ok := event.Data.(*rawAdminEventData); ok {
-			// sad violin is sad. bson.Raw cannot be empty, so
-			// we set the Kind to 0x0A, which is a BSON null
-			e.Changes.Before = bson.Raw{
-				Kind: 0x0A,
-			}
-			e.Changes.After = bson.Raw{
-				Kind: 0x0A,
-			}
-		}
-
-		s.Equal("TEST1", event.ResourceId)
-		s.Equal("TEST2", event.EventType)
-		s.NoError(logger.LogEvent(&event))
-		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
-		s.NoError(err)
-		s.Require().Len(fetchedEvents, 1)
-		s.True(fetchedEvents[0].Data.IsValid())
-		s.IsType(v(), fetchedEvents[0].Data)
-		s.NotNil(fetchedEvents[0].Data)
-		s.NoError(db.ClearCollections(AllLogCollection))
-	}
-}
-
 // resource_type in data should be copied to root document
-const expectedJSON1 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
-
-// resource_type in root document
-const expectedJSON2 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
-
-// resource_type in both
-const expectedJSON3 = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"resource_type":"HOST","task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
+const expectedJSON = `{"resource_type":"HOST","processed_at":"2017-06-20T18:07:24.991Z","timestamp":"2017-06-20T18:07:24.991Z","resource_id":"macos.example.com","event_type":"HOST_TASK_FINISHED","data":{"task_id":"mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44","task_status":"success","successful":false,"duration":0}}`
 
 func (s *eventSuite) checkRealData(e *EventLogEntry, loc *time.Location) {
 	s.NotPanics(func() {
@@ -103,43 +62,8 @@ func (s *eventSuite) TestWithRealData() {
 	s.NoError(err)
 	s.Equal("2017-06-20T18:07:24.991Z", date.Format(time.RFC3339Nano))
 
-	// unmarshaller works with r_type in the embedded document set
-	data := bson.M{
-		idKey:          bson.ObjectIdHex("5949645c9acd9604fdd202d7"),
-		TimestampKey:   date,
-		ResourceIdKey:  "macos.example.com",
-		TypeKey:        "HOST_TASK_FINISHED",
-		processedAtKey: date,
-		DataKey: bson.M{
-			ResourceTypeKey:   "HOST",
-			"t_id":            "mci_osx_dist_165359be9d1ca311e964ebc4a50e66da42998e65_17_06_20_16_14_44",
-			hostDataStatusKey: "success",
-		},
-	}
-	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err := Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d7")}))
-	s.NoError(err)
-	s.Len(entries, 1)
-	s.NotPanics(func() {
-		s.checkRealData(&entries[0], loc)
-		// Verify that JSON unmarshals as expected
-		entries[0].Timestamp = entries[0].Timestamp.In(loc)
-		entries[0].ProcessedAt = entries[0].ProcessedAt.In(loc)
-		s.Equal("HOST", entries[0].ResourceType)
-		s.IsType(&HostEventData{}, entries[0].Data)
-
-		found, tag := findResourceTypeIn(entries[0].Data)
-		s.True(found)
-		s.Equal("HOST", tag)
-
-		var bytes []byte
-		bytes, err = json.Marshal(entries[0])
-		s.NoError(err)
-		s.Equal(expectedJSON1, string(bytes))
-	})
-
 	// unmarshaller works with r_type in the root document set
-	data = bson.M{
+	data := bson.M{
 		idKey:           bson.ObjectIdHex("5949645c9acd9604fdd202d8"),
 		TimestampKey:    date,
 		ResourceIdKey:   "macos.example.com",
@@ -152,7 +76,7 @@ func (s *eventSuite) TestWithRealData() {
 		},
 	}
 	s.NoError(db.Insert(AllLogCollection, data))
-	entries, err = Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
+	entries, err := Find(AllLogCollection, db.Query(bson.M{idKey: bson.ObjectIdHex("5949645c9acd9604fdd202d8")}))
 	s.NoError(err)
 	s.Len(entries, 1)
 	s.NotPanics(func() {
@@ -163,13 +87,13 @@ func (s *eventSuite) TestWithRealData() {
 		s.IsType(&HostEventData{}, entries[0].Data)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
-		s.True(found)
+		s.False(found)
 		s.Empty(tag)
 
 		var bytes []byte
 		bytes, err = json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON2, string(bytes))
+		s.Equal(expectedJSON, string(bytes))
 	})
 
 	// unmarshaller works with both r_type fields set
@@ -198,13 +122,13 @@ func (s *eventSuite) TestWithRealData() {
 		s.Equal("HOST", entries[0].ResourceType)
 
 		found, tag := findResourceTypeIn(entries[0].Data)
-		s.True(found)
-		s.Equal("HOST", tag)
+		s.False(found)
+		s.Empty(tag)
 
 		var bytes []byte
 		bytes, err := json.Marshal(entries[0])
 		s.NoError(err)
-		s.Equal(expectedJSON3, string(bytes))
+		s.Equal(expectedJSON, string(bytes))
 	})
 }
 
@@ -219,6 +143,7 @@ func (s *eventSuite) TestEventWithNilData() {
 	s.Errorf(logger.LogEvent(&event), "event log entry cannot have nil Data")
 
 	s.NotPanics(func() {
+		// But reading this back should not panic, if it somehow got into the db
 		s.NoError(db.Insert(AllLogCollection, event))
 		fetchedEvents, err := Find(AllLogCollection, db.Query(bson.M{}))
 		s.Error(err)
@@ -233,8 +158,16 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 		found, rTypeTag := findResourceTypeIn(event)
 
 		t := reflect.TypeOf(event)
-		s.True(found, `'%s' does not have a bson:"r_type,omitempty" tag`, t.String())
-		s.Equal(k, rTypeTag, "'%s''s r_type does not match the registry key", t.String())
+		if k == EventTaskSystemInfo || k == EventTaskProcessInfo {
+			// these two event types have not been migrated (TTL index
+			// will phase them out over time)
+			s.True(found, `'%s' doesn't have a bson:"r_type,omitempty" tag, but should`, t.String())
+			s.Empty(rTypeTag)
+
+		} else {
+			s.False(found, `'%s' has a bson:"r_type,omitempty" tag, but should not`, t.String())
+			s.Empty(rTypeTag)
+		}
 
 		// ensure all fields have bson and json tags
 		elem := t.Elem()
@@ -246,8 +179,15 @@ func (s *eventSuite) TestEventRegistryItemsAreSane() {
 
 			if _, ok := event.(*rawAdminEventData); !ok {
 				s.NotEmpty(jsonTag, "struct %s: field '%s' must have json tag", t.Name(), f.Name)
-				if bsonTag == resourceTypeKey {
-					s.Equal("resource_type", jsonTag)
+
+				if strings.HasPrefix(jsonTag, "resource_type") &&
+					(k == EventTaskSystemInfo || k == EventTaskProcessInfo) {
+					s.Equal("resource_type,omitempty", jsonTag, `'%s' doesn't have a json:"resource_type,omitempty" tag, but should`, t.String())
+					s.NotEqual("resource_type", jsonTag, `'%s' doesn't have a json:"resource_type" tag, but should not`, t.String())
+
+				} else {
+					s.NotEqual("resource_type", jsonTag, `'%s' has a json:"resource_type" tag, but should not`, t.String())
+					s.NotEqual("resource_type,omitempty", jsonTag, `'%s' has a json:"resource_type,omitempty" tag, but should not`, t.String())
 				}
 			}
 		}
@@ -317,10 +257,11 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	event := EventLogEntry{
-		ResourceId: "TEST1",
-		EventType:  "TEST2",
-		Timestamp:  time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
-		Data:       NewEventFromType(ResourceTypeHost),
+		ResourceType: ResourceTypeHost,
+		ResourceId:   "TEST1",
+		EventType:    "TEST2",
+		Timestamp:    time.Now().Round(time.Millisecond).Truncate(time.Millisecond),
+		Data:         NewEventFromType(ResourceTypeHost),
 	}
 	processed, ptime := event.Processed()
 	s.False(processed)
@@ -331,6 +272,12 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
 
 	s.NoError(logger.LogEvent(&event))
+
+	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
+		"$unset": bson.M{
+			"processed_at": 1,
+		},
+	}))
 
 	var fetchedEvent EventLogEntry
 	err := db.FindOneQ(AllLogCollection, db.Q{}, &fetchedEvent)
@@ -347,53 +294,38 @@ func (s *eventSuite) TestMarkProcessed() {
 	s.True(ptime.After(startTime))
 }
 
-func (s *eventSuite) TestQueryWithBothRTypes() {
+func (s *eventSuite) TestFindUnprocessedEvents() {
+	const migrationTimeString = "2015-10-21T16:29:00-07:00"
+	loc, _ := time.LoadLocation("UTC")
+	migrationTime, err := time.ParseInLocation(time.RFC3339, migrationTimeString, loc)
+	s.NoError(err)
+	notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
+	s.NoError(err)
+
 	data := []bson.M{
 		{
-			resourceTypeKey: "test",
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  notSubscribableTime,
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  migrationTime,
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
 		},
 		{
-			DataKey: bson.M{
-				resourceTypeKey: "test",
-			},
+			processedAtKey:  time.Time{},
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
 		},
 		{
-			resourceTypeKey: "test",
-			DataKey: bson.M{
-				resourceTypeKey: "somethingelse",
-			},
-		},
-	}
-
-	for i := range data {
-		s.NoError(db.Insert(AllLogCollection, data[i]))
-	}
-
-	out := []bson.M{}
-	s.NoError(db.FindAllQ(AllLogCollection, db.Query(eitherResourceTypeKeyIs("test")), &out))
-
-	s.Len(out, 3)
-}
-
-func (s *eventSuite) TestFindUnprocessedEvents() {
-	data := []bson.M{
-		{
-			DataKey: bson.M{
-				resourceTypeKey: ResourceTypeHost,
-			},
-		},
-		{
-			processedAtKey: time.Time{},
-			DataKey: bson.M{
-				resourceTypeKey: ResourceTypeHost,
-			},
-		},
-		{
-			processedAtKey: time.Now(),
-			DataKey: bson.M{
-				resourceTypeKey: ResourceTypeHost,
-			},
+			processedAtKey:  time.Now(),
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
 		},
 	}
 	for i := range data {
@@ -408,6 +340,71 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		s.Zero(ptime)
 		s.False(processed)
 	})
+}
+
+//TODO: EVG-3061 remove this test
+func (s *eventSuite) TestTaskEventLogLegacyEvents() {
+	events := []bson.M{
+		// new style
+		{
+			"r_type": EventTaskSystemInfo,
+			"r_id":   "new",
+			"data":   bson.M{},
+		},
+		// hybrid style
+		{
+			"r_type": EventTaskSystemInfo,
+			"r_id":   "hybrid",
+			"data":   bson.M{},
+		},
+		// old style
+		{
+			"r_id": "old",
+			"data": bson.M{
+				"r_type": EventTaskSystemInfo,
+			},
+		},
+
+		// new style
+		{
+			"r_type": EventTaskProcessInfo,
+			"r_id":   "new",
+			"data":   bson.M{},
+		},
+		// hybrid style
+		{
+			"r_type": EventTaskProcessInfo,
+			"r_id":   "hybrid",
+			"data":   bson.M{},
+		},
+		// old style
+		{
+			"r_id": "old",
+			"data": bson.M{
+				"r_type": EventTaskProcessInfo,
+			},
+		},
+
+		// old style, but not a task event
+		{
+			"r_id": "old",
+			"data": bson.M{
+				"r_type": ResourceTypeHost,
+			},
+		},
+	}
+
+	for i := range events {
+		s.NoError(db.Insert(TaskLogCollection, events[i]))
+	}
+
+	out := []EventLogEntry{}
+	s.NoError(db.FindAllQ(TaskLogCollection, db.Q{}, &out))
+	s.Len(out, 7)
+
+	for i := range out {
+		s.NotEmpty(out[i].ResourceType)
+	}
 }
 
 func (s *eventSuite) TestMarkAllEventsProcessed() {

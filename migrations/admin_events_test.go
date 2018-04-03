@@ -108,11 +108,11 @@ func (s *adminEventSuite) TestMigration() {
 
 	gen, err := adminEventRestructureGenerator(anser.GetEnvironment(), args)
 	s.NoError(err)
-	gen.Run()
+	gen.Run(context.Background())
 	s.NoError(gen.Error())
 
 	for j := range gen.Jobs() {
-		j.Run()
+		j.Run(context.Background())
 		s.NoError(j.Error())
 	}
 
