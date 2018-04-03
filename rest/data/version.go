@@ -96,10 +96,11 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 	// the final array of versions to return
 	finalVersions := []restModel.APIVersions{}
 
-	// keep track of the build variants we see
-	bvSet := map[string]bool{}
-
+	// list of builds that are in the search results, analogous to a row in the waterfall
 	buildList := map[string]restModel.BuildList{}
+
+	// buildvariant names that have at least 1 active version
+	buildVariants := []string{}
 
 	// build variant mappings - used so we can store the display name as
 	// the build variant field of a build
@@ -149,7 +150,11 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 			// add any represented build variants to the set and initialize rows
 			for _, b := range buildsInVersion {
-				bvSet[b.BuildVariant] = true
+				displayName := buildVariantMappings[b.BuildVariant]
+				if displayName == "" {
+					displayName = b.BuildVariant + " (removed)"
+				}
+				buildVariants = append(buildVariants, displayName)
 
 				buildVariant := buildVariantMappings[b.BuildVariant]
 
@@ -176,7 +181,7 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 				// add the version data into the last rolled-up version
 				newVersion := restModel.APIVersion{}
-				err := newVersion.BuildFromService(&versionFromDB)
+				err = newVersion.BuildFromService(&versionFromDB)
 				if err != nil {
 					return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
 				}
@@ -200,7 +205,7 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 			// if the version can not be rolled up, create a fully fledged
 			// version for it
 			activeVersion := restModel.APIVersion{}
-			err := activeVersion.BuildFromService(&versionFromDB)
+			err = activeVersion.BuildFromService(&versionFromDB)
 			if err != nil {
 				return nil, errors.Wrapf(err, "error converting version %s from DB model", versionFromDB.Id)
 			}
@@ -228,34 +233,14 @@ func (vc *DBVersionConnector) GetVersionsAndVariants(skip, numVersionElements in
 
 		}
 
-		failedAndStartedTasks, err := task.Find(task.ByIds(failedAndStartedTaskIds))
-		if err != nil {
-			return nil, errors.Wrap(err, "error fetching failed tasks")
-
+		if err = addFailedAndStartedTests(buildList, failedAndStartedTaskIds); err != nil {
+			return nil, err
 		}
-
-		for i := range failedAndStartedTasks {
-			if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
-				return nil, errors.Wrap(err, "error merging test results")
-			}
-		}
-
-		addFailedAndStartedTests(buildList, failedAndStartedTasks)
 	}
 
 	// if the last version was rolled-up, add it
 	if lastRolledUpVersion != nil {
 		finalVersions = append(finalVersions, *lastRolledUpVersion)
-	}
-
-	// create the list of display names for the build variants represented
-	buildVariants := []string{}
-	for name := range bvSet {
-		displayName := buildVariantMappings[name]
-		if displayName == "" {
-			displayName = name + " (removed)"
-		}
-		buildVariants = append(buildVariants, displayName)
 	}
 
 	return &restModel.VersionVariantData{
@@ -280,7 +265,19 @@ func anyActiveTasks(builds []build.Build) bool {
 }
 
 // addFailedAndStartedTests adds all of the failed tests associated with a task
-func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStartedTasks []task.Task) {
+func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStartedTaskIds []string) error {
+	failedAndStartedTasks, err := task.Find(task.ByIds(failedAndStartedTaskIds))
+	if err != nil {
+		return errors.Wrap(err, "error fetching failed tasks")
+
+	}
+
+	for i := range failedAndStartedTasks {
+		if err := failedAndStartedTasks[i].MergeNewTestResults(); err != nil {
+			return errors.Wrap(err, "error merging test results")
+		}
+	}
+
 	failedTestsByTaskId := map[string][]string{}
 	for _, t := range failedAndStartedTasks {
 		failedTests := []string{}
@@ -303,6 +300,8 @@ func addFailedAndStartedTests(rows map[string]restModel.BuildList, failedAndStar
 			}
 		}
 	}
+
+	return nil
 }
 
 // MockVersionConnector stores a cached set of tasks that are queried against by the

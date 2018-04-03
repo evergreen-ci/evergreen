@@ -1099,7 +1099,7 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 	return pairs, displayTaskPairs, err
 }
 
-// Helper function to fetch a group of versions and their associated builds.
+// FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
 func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int) ([]version.Version, map[string][]build.Build, error) {
