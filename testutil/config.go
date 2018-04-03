@@ -146,7 +146,6 @@ func MockConfig() *evergreen.Settings {
 			TaskDispatchDisabled:         true,
 			HostinitDisabled:             true,
 			MonitorDisabled:              true,
-			NotificationsDisabled:        true,
 			AlertsDisabled:               true,
 			TaskrunnerDisabled:           true,
 			RepotrackerDisabled:          true,

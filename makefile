@@ -27,7 +27,7 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 
 clientSource := main/evergreen.go
 
-distArtifacts :=  ./public ./service/templates ./alerts/templates ./notify/templates
+distArtifacts :=  ./public ./service/templates ./alerts/templates
 distContents := $(clientBinaries) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
