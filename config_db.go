@@ -53,7 +53,6 @@ var (
 	taskDispatchKey                 = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
 	hostinitKey                     = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
 	monitorKey                      = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
-	notificationsKey                = bsonutil.MustHaveTag(ServiceFlags{}, "NotificationsDisabled")
 	alertsKey                       = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
 	taskrunnerKey                   = bsonutil.MustHaveTag(ServiceFlags{}, "TaskrunnerDisabled")
 	repotrackerKey                  = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")

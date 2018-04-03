@@ -167,7 +167,6 @@ func (s *AdminSuite) TestServiceFlags() {
 		TaskDispatchDisabled:         true,
 		HostinitDisabled:             true,
 		MonitorDisabled:              true,
-		NotificationsDisabled:        true,
 		AlertsDisabled:               true,
 		TaskrunnerDisabled:           true,
 		RepotrackerDisabled:          true,

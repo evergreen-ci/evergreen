@@ -197,7 +197,6 @@ type processRunner interface {
 
 var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
-	&notify.Runner{},
 	&monitor.Runner{},
 
 	&scheduler.Runner{},
@@ -224,7 +223,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 
 	infrequentRunners := []string{
 		alerts.RunnerName,
-		notify.RunnerName,
 	}
 
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
