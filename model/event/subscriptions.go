@@ -24,11 +24,11 @@ var (
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 
-	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(GroupedSubscribers{}, "Type")
-	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(GroupedSubscribers{}, "Subscribers")
+	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(groupedSubscribers{}, "Type")
+	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(groupedSubscribers{}, "Subscribers")
 
-	subscriberWithRegexKey               = bsonutil.MustHaveTag(SubscriberWithRegex{}, "Subscriber")
-	subscriberWithRegexRegexSelectorsKey = bsonutil.MustHaveTag(SubscriberWithRegex{}, "RegexSelectors")
+	subscriberWithRegexKey               = bsonutil.MustHaveTag(subscriberWithRegex{}, "Subscriber")
+	subscriberWithRegexRegexSelectorsKey = bsonutil.MustHaveTag(subscriberWithRegex{}, "RegexSelectors")
 )
 
 type Subscription struct {
@@ -45,18 +45,21 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-type GroupedSubscribers struct {
+type groupedSubscribers struct {
 	Type        string                `bson:"_id"`
-	Subscribers []SubscriberWithRegex `bson:"subscribers"`
+	Subscribers []subscriberWithRegex `bson:"subscribers"`
 }
 
-type SubscriberWithRegex struct {
+type subscriberWithRegex struct {
 	Subscriber     Subscriber `bson:"subscriber"`
 	RegexSelectors []Selector `bson:"regex_selectors"`
 }
 
 // FindSubscribers finds all subscriptions that match the given information
-func FindSubscribers(subscriptionType, triggerType string, selectors []Selector) ([]GroupedSubscribers, error) {
+func FindSubscribers(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscriber, error) {
+	if len(selectors) == 0 {
+		return nil, nil
+	}
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{
@@ -91,29 +94,29 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 		},
 	}
 
-	out := []GroupedSubscribers{}
-	if err := db.Aggregate(SubscriptionsCollection, pipeline, &out); err != nil {
+	gs := []groupedSubscribers{}
+	if err := db.Aggregate(SubscriptionsCollection, pipeline, &gs); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 
-	for i := range out {
-		subscribers := make([]SubscriberWithRegex, 0, len(out[i].Subscribers))
-		for j := range out[i].Subscribers {
-			sub := &out[i].Subscribers[j]
+	out := map[string][]Subscriber{}
+	for i := range gs {
+		subscribers := []Subscriber{}
+		for j := range gs[i].Subscribers {
+			sub := &gs[i].Subscribers[j]
 			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub) {
 				continue
 			}
 
-			subscribers = append(subscribers, *sub)
+			subscribers = append(subscribers, sub.Subscriber)
 		}
-
-		out[i].Subscribers = subscribers
+		out[gs[i].Type] = subscribers
 	}
 
 	return out, nil
 }
 
-func regexSelectorsMatch(selectors []Selector, s *SubscriberWithRegex) bool {
+func regexSelectorsMatch(selectors []Selector, s *subscriberWithRegex) bool {
 	for i := range s.RegexSelectors {
 		selector := findSelector(selectors, s.RegexSelectors[i].Type)
 		if selector == nil {

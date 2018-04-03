@@ -42,7 +42,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
-				Type:   "email",
+				Type:   EmailSubscriberType,
 				Target: &t1,
 			},
 		},
@@ -58,7 +58,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
-				Type:   "email",
+				Type:   EmailSubscriberType,
 				Target: &t2,
 			},
 		},
@@ -77,9 +77,13 @@ func (s *subscriptionsSuite) SetupTest() {
 					Type: "data2",
 					Data: "else$",
 				},
+				{
+					Type: "data2",
+					Data: "^something",
+				},
 			},
 			Subscriber: Subscriber{
-				Type:   "email",
+				Type:   EmailSubscriberType,
 				Target: &t3,
 			},
 		},
@@ -95,7 +99,7 @@ func (s *subscriptionsSuite) SetupTest() {
 			},
 			RegexSelectors: []Selector{},
 			Subscriber: Subscriber{
-				Type:   "email",
+				Type:   EmailSubscriberType,
 				Target: &t4,
 			},
 		},
@@ -130,10 +134,10 @@ func (s *subscriptionsSuite) TestRemove() {
 }
 
 func (s *subscriptionsSuite) TestFind() {
-	// Empty selectors should select nothing
+	// Empty selectors should select nothing (because technically, they match everything)
 	subs, err := FindSubscribers("type2", "trigger2", nil)
 	s.NoError(err)
-	s.Empty(subs)
+	s.Nil(subs)
 
 	subs, err = FindSubscribers("type2", "trigger2", []Selector{
 		{
@@ -144,12 +148,12 @@ func (s *subscriptionsSuite) TestFind() {
 	s.NoError(err)
 	s.Len(subs, 1)
 	s.NotPanics(func() {
-		s.Len(subs[0].Subscribers, 1)
-		s.Equal("email", subs[0].Subscribers[0].Subscriber.Type)
-		s.Equal("someone4@example.com", *subs[0].Subscribers[0].Subscriber.Target.(*string))
+		s.Len(subs[EmailSubscriberType], 1)
+		s.Equal(EmailSubscriberType, subs[EmailSubscriberType][0].Type)
+		s.Equal("someone4@example.com", *subs[EmailSubscriberType][0].Target.(*string))
 	})
 
-	// regex selector
+	// this query hits a subscriber with a regex selector
 	subs, err = FindSubscribers("type1", "trigger1", []Selector{
 		{
 			Type: "data1",
@@ -163,7 +167,7 @@ func (s *subscriptionsSuite) TestFind() {
 	s.NoError(err)
 	s.Len(subs, 1)
 	s.NotPanics(func() {
-		s.Len(subs[0].Subscribers, 3)
+		s.Len(subs[EmailSubscriberType], 3)
 	})
 }
 
@@ -195,7 +199,7 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 		},
 	}
 
-	a := SubscriberWithRegex{
+	a := subscriberWithRegex{
 		RegexSelectors: []Selector{
 			{
 				Type: "type",

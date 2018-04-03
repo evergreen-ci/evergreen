@@ -20,10 +20,6 @@ func registryAdd(eventResourceType string, t ...trigger) {
 	triggerRegistry[eventResourceType] = append(triggers, t...)
 }
 
-func init() {
-	registryAdd(event.ResourceTypeTest, testTrigger)
-}
-
 func getTriggers(resourceType string) []trigger {
 	triggerRegistryM.RLock()
 	defer triggerRegistryM.RUnlock()
@@ -36,8 +32,12 @@ func getTriggers(resourceType string) []trigger {
 	return triggers
 }
 
+// TODO delete this and test event after the first real event is implemented
+func init() {
+	registryAdd(event.ResourceTypeTest, testTrigger)
+}
 func testTrigger(e *event.EventLogEntry) ([]Notification, error) {
-	subs, err := event.FindSubscribers("test", "test", []event.Selector{
+	groupedSubs, err := event.FindSubscribers("test", "test", []event.Selector{
 		{
 			Type: "test",
 			Data: "awesomeness",
@@ -51,11 +51,11 @@ func testTrigger(e *event.EventLogEntry) ([]Notification, error) {
 		return nil, err
 	}
 
-	n := make([]Notification, 0, len(subs))
+	n := []Notification{}
 
 	catcher := grip.NewSimpleCatcher()
-	for i := range subs {
-		if subs[i].Type != event.EmailSubscriberType {
+	for subGroup, _ := range groupedSubs {
+		if subGroup != event.EmailSubscriberType {
 			catcher.Add(errors.New("trigger only supports email subscriptions"))
 			continue
 		}
@@ -65,13 +65,14 @@ func testTrigger(e *event.EventLogEntry) ([]Notification, error) {
 			Body:    fmt.Sprintf("event says '%s'", e.Data.(*event.TestEvent).Message),
 		}
 
-		for j := range subs[i].Subscribers {
-			sub := &subs[i].Subscribers[j].Subscriber
-			n = append(n, Notification{
-				ID:         makeNotificationID(e, "test", sub),
-				Subscriber: *sub,
-				Payload:    payload,
-			})
+		for j := range groupedSubs[subGroup] {
+			sub := &groupedSubs[subGroup][j]
+			notification, err := New(e, "test", sub, payload)
+			if err != nil {
+				catcher.Add(err)
+				continue
+			}
+			n = append(n, *notification)
 		}
 	}
 

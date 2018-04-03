@@ -36,7 +36,7 @@ func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *
 }
 
 // New returns a new Notification, with a correctly initialised ID
-func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber) (*Notification, error) {
+func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber, payload interface{}) (*Notification, error) {
 	if e == nil {
 		return nil, errors.New("cannot create notification from nil event")
 	}
@@ -46,10 +46,14 @@ func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber) (
 	if subscriber == nil {
 		return nil, errors.New("cannot create notification from nil subscriber")
 	}
+	if payload == nil {
+		return nil, errors.New("cannot create notification with nil payload")
+	}
 
 	return &Notification{
 		ID:         makeNotificationID(e, trigger, subscriber),
 		Subscriber: *subscriber,
+		Payload:    payload,
 	}, nil
 }
 
