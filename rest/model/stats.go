@@ -56,6 +56,7 @@ type apiHostStatsForDistro struct {
 	Status   APIString `json:"status"`
 	NumHosts int       `json:"num_hosts"`
 	NumTasks int       `json:"running_tasks"`
+	MaxHosts int       `json:"max_hosts"`
 }
 
 // BuildFromService takes the slice of stats returned by GetHostStatsByDistro and embeds
@@ -64,14 +65,16 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case []host.StatsByDistro:
 		for _, entry := range v {
-			d := apiHostStatsForDistro{
+			d := &apiHostStatsForDistro{
 				Distro:   APIString(entry.Distro),
 				Status:   APIString(entry.Status),
 				NumHosts: entry.Count,
 				NumTasks: entry.NumTasks,
+				MaxHosts: entry.MaxHosts,
 			}
 
 			s.Distros = append(s.Distros, d)
+			s.distros[entry.Distro] = d
 		}
 	default:
 		return errors.Errorf("incorrect type when converting host stats by distro (%T)", v)
