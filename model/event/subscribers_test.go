@@ -1,6 +1,7 @@
 package event
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -44,9 +45,12 @@ func TestSubscribers(t *testing.T) {
 			Target: &targetTicket,
 		},
 	}
-
+	expected := []string{"github_pull_request-evergreen-ci-evergreen-9001-sadasdkjsad",
+		"evergreen-webhook-https://example.com", "email-hi@example.com",
+		"jira-issue-BF", "jira-comment-BF-1234"}
 	for i := range subs {
 		assert.NoError(db.Insert(SubscriptionsCollection, subs[i]))
+		assert.Equal(expected[i], subs[i].String())
 	}
 
 	fetchedSubs := []Subscriber{}
@@ -68,4 +72,34 @@ func TestSubscribers(t *testing.T) {
 
 	assert.EqualError(err, "unknown subscriber type: 'something completely different'")
 	assert.Empty(fetchedSubs)
+}
+
+func TestSubscribersStringerWithMissingAttributes(t *testing.T) {
+	assert := assert.New(t)
+
+	subs := []Subscriber{
+		{
+			Type: GithubPullRequestSubscriberType,
+		},
+		{
+			Type: EvergreenWebhookSubscriberType,
+		},
+		{
+			Type: EmailSubscriberType,
+		},
+		{
+			Type: JIRAIssueSubscriberType,
+		},
+		{
+			Type: JIRACommentSubscriberType,
+		},
+	}
+
+	for i := range subs {
+		assert.True(strings.HasSuffix(subs[i].String(), "NIL_SUBSCRIBER"))
+	}
+
+	webhookSub := WebhookSubscriber{}
+
+	assert.True(strings.HasSuffix(webhookSub.String(), "NIL_URL"))
 }

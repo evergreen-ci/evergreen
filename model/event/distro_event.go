@@ -6,6 +6,10 @@ import (
 	"github.com/mongodb/grip"
 )
 
+func init() {
+	registryAdd(ResourceTypeDistro, distroEventFactory)
+}
+
 const (
 	// resource type
 	ResourceTypeDistro = "DISTRO"

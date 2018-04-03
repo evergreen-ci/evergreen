@@ -34,7 +34,7 @@ func (l *DBEventLogger) LogEvent(event *EventLogEntry) error {
 	if !event.ID.Valid() {
 		event.ID = bson.NewObjectId()
 	}
-	if !isSubscribable(event.ResourceType) {
+	if !isSubscribable(event.ResourceType, event.EventType) {
 		loc, _ := time.LoadLocation("UTC")
 		notSubscribableTime, err := time.ParseInLocation(time.RFC3339, notSubscribableTimeString, loc)
 		if err != nil {

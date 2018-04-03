@@ -59,45 +59,43 @@ func (s *eventMetaJobSuite) SetupTest() {
 	}
 
 	logger := event.NewDBEventLogger(event.AllLogCollection)
-	logger2 := event.NewDBEventLogger(event.TaskLogCollection)
 	for i := range events {
 		s.NoError(logger.LogEvent(&events[i]))
-		s.NoError(logger2.LogEvent(&events[i]))
 	}
 
 	s.n = []notification.Notification{
 		{
-			ID: bson.NewObjectId(),
+			ID: "1",
 			Subscriber: event.Subscriber{
 				Type: event.GithubPullRequestSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "2",
 			Subscriber: event.Subscriber{
 				Type: event.JIRAIssueSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "3",
 			Subscriber: event.Subscriber{
 				Type: event.JIRACommentSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "4",
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "5",
 			Subscriber: event.Subscriber{
 				Type: event.EmailSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "6",
 			Subscriber: event.Subscriber{
 				Type: event.SlackSubscriberType,
 			},
@@ -118,9 +116,6 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	out := []event.EventLogEntry{}
 	s.NoError(db.FindAllQ(event.AllLogCollection, db.Query(event.UnprocessedEvents()), &out))
 	s.Empty(out)
-
-	s.NoError(db.FindAllQ(event.TaskLogCollection, db.Query(event.UnprocessedEvents()), &out))
-	s.Len(out, 1)
 }
 
 func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
@@ -200,14 +195,14 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	}
 	s.Require().NoError(notifyConfig.Set())
 
-	s.Require().True(evergreen.GetEnvironment().RemoteQueue().Started())
+	s.Require().True(evergreen.GetEnvironment().LocalQueue().Started())
 	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, notification.Collection, event.SubscriptionsCollection))
 
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTest,
+		EventType:    "test",
 		Data: &event.TestEvent{
-			ResourceType: event.ResourceTypeTest,
-			Message:      "i'm an event driven notification",
+			Message: "i'm an event driven notification",
 		},
 	}
 
@@ -265,7 +260,12 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
-	bodyText := <-bodyC
+	bodyText := ""
+	select {
+	case bodyText = <-bodyC:
+	case <-time.After(10 * time.Second):
+	}
+	s.Require().NotEmpty(bodyText)
 
 	body := parseEmailBody(bodyText)
 	s.Equal(`"evergreen" <evergreen@example.com>`, body["From"])

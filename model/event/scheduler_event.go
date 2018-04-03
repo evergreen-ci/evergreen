@@ -6,6 +6,10 @@ import (
 	"github.com/mongodb/grip"
 )
 
+func init() {
+	registryAdd(ResourceTypeScheduler, schedulerEventFactory)
+}
+
 const (
 	// resource type
 	ResourceTypeScheduler = "SCHEDULER"

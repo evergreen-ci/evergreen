@@ -2,22 +2,32 @@ package notification
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
-var triggerRegistry map[string][]trigger
+var triggerRegistry map[string][]trigger = map[string][]trigger{}
+var triggerRegistryM = sync.RWMutex{}
+
+func registryAdd(eventResourceType string, t ...trigger) {
+	triggerRegistryM.Lock()
+	defer triggerRegistryM.Unlock()
+
+	triggers, _ := triggerRegistry[eventResourceType]
+	triggerRegistry[eventResourceType] = append(triggers, t...)
+}
 
 func init() {
-	triggerRegistry = map[string][]trigger{
-		event.ResourceTypeTest: []trigger{testTrigger},
-	}
+	registryAdd(event.ResourceTypeTest, testTrigger)
 }
 
 func getTriggers(resourceType string) []trigger {
+	triggerRegistryM.RLock()
+	defer triggerRegistryM.RUnlock()
+
 	triggers, ok := triggerRegistry[resourceType]
 	if !ok {
 		return nil
@@ -56,9 +66,10 @@ func testTrigger(e *event.EventLogEntry) ([]Notification, error) {
 		}
 
 		for j := range subs[i].Subscribers {
+			sub := &subs[i].Subscribers[j].Subscriber
 			n = append(n, Notification{
-				ID:         bson.NewObjectId(),
-				Subscriber: subs[i].Subscribers[j].Subscriber,
+				ID:         makeNotificationID(e, "test", sub),
+				Subscriber: *sub,
 				Payload:    payload,
 			})
 		}

@@ -26,7 +26,6 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -45,7 +44,7 @@ type eventNotificationJob struct {
 	job.Base `bson:"job_base" json:"job_base" yaml:"job_base"`
 	settings *evergreen.Settings
 
-	NotificationID bson.ObjectId `bson:"notification_id" json:"notification_id" yaml:"notification_id"`
+	NotificationID string `bson:"notification_id" json:"notification_id" yaml:"notification_id"`
 }
 
 func makeEventNotificationJob() *eventNotificationJob {
@@ -62,11 +61,11 @@ func makeEventNotificationJob() *eventNotificationJob {
 	return j
 }
 
-func newEventNotificationJob(id bson.ObjectId) amboy.Job {
+func newEventNotificationJob(id string) amboy.Job {
 	j := makeEventNotificationJob()
 	j.NotificationID = id
 
-	j.SetID(fmt.Sprintf("%s:%s", eventNotificationJobName, id.Hex()))
+	j.SetID(fmt.Sprintf("%s:%s", eventNotificationJobName, id))
 	return j
 }
 
@@ -84,7 +83,7 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 		return
 	}
 
-	if !j.NotificationID.Valid() {
+	if len(j.NotificationID) == 0 {
 		j.AddError(errors.New("notification ID is not valid"))
 		return
 	}
@@ -103,7 +102,7 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 	n, err := notification.Find(j.NotificationID)
 	j.AddError(err)
 	if err == nil && n == nil {
-		j.AddError(errors.Errorf("can't find notification with ID: '%s", j.NotificationID.Hex()))
+		j.AddError(errors.Errorf("can't find notification with ID: '%s", j.NotificationID))
 	}
 	if j.HasErrors() {
 		return
@@ -301,7 +300,7 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	req.Header.Del(evergreenHMACHeader)
 	req.Header.Add(evergreenHMACHeader, hash)
 	req.Header.Del(evergreenNotificationIDHeader)
-	req.Header.Add(evergreenNotificationIDHeader, j.NotificationID.Hex())
+	req.Header.Add(evergreenNotificationIDHeader, j.NotificationID)
 
 	ctx, cancel := context.WithTimeout(req.Context(), evergreenWebhookTimeout)
 	defer cancel()
@@ -408,7 +407,7 @@ func (j *eventNotificationJob) send(s send.Sender, c message.Composer, n *notifi
 	err := s.SetErrorHandler(getSendErrorHandler(n))
 	grip.Error(message.WrapError(err, message.Fields{
 		"message":         "failed to set error handler",
-		"notification_id": n.ID.Hex(),
+		"notification_id": n.ID,
 	}))
 	s.Send(c)
 }
@@ -422,7 +421,7 @@ func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
 		err = n.MarkError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"job":             eventMetaJobName,
-			"notification_id": n.ID.Hex(),
+			"notification_id": n.ID,
 			"source":          "events-processing",
 			"message":         "failed to add error to notification",
 			"composer":        c.String(),

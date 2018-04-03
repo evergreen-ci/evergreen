@@ -6,6 +6,10 @@ import (
 	"github.com/mongodb/grip"
 )
 
+func init() {
+	registryAdd(ResourceTypeTask, taskEventFactory)
+}
+
 const (
 	// resource type
 	ResourceTypeTask = "TASK"

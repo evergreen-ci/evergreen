@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -26,8 +27,34 @@ var (
 	errorKey      = bsonutil.MustHaveTag(Notification{}, "Error")
 )
 
+// makeNotificationID creates a string representing the notification generated
+// from the given event, with the given trigger, for the given subscriber.
+// This function will produce an ID that will collide to prevent duplicate
+// notifications from being inserted
+func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string {
+	return fmt.Sprintf("%s-%s-%s", event.ID.Hex(), trigger, subscriber.String())
+}
+
+// New returns a new Notification, with a correctly initialised ID
+func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber) (*Notification, error) {
+	if e == nil {
+		return nil, errors.New("cannot create notification from nil event")
+	}
+	if len(trigger) == 0 {
+		return nil, errors.New("cannot create notification from nil trigger")
+	}
+	if subscriber == nil {
+		return nil, errors.New("cannot create notification from nil subscriber")
+	}
+
+	return &Notification{
+		ID:         makeNotificationID(e, trigger, subscriber),
+		Subscriber: *subscriber,
+	}, nil
+}
+
 type Notification struct {
-	ID         bson.ObjectId    `bson:"_id"`
+	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    interface{}      `bson:"payload"`
 
@@ -36,7 +63,7 @@ type Notification struct {
 }
 
 type unmarshalNotification struct {
-	ID         bson.ObjectId    `bson:"_id"`
+	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    bson.Raw         `bson:"payload"`
 
@@ -89,7 +116,7 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 }
 
 func (n *Notification) MarkSent() error {
-	if !n.ID.Valid() {
+	if len(n.ID) == 0 {
 		return errors.New("notification has no ID")
 	}
 
@@ -112,7 +139,7 @@ func (n *Notification) MarkError(sendErr error) error {
 	if sendErr == nil {
 		return nil
 	}
-	if !n.ID.Valid() {
+	if len(n.ID) == 0 {
 		return errors.New("notification has no ID")
 	}
 	if n.SentAt.IsZero() {
@@ -237,13 +264,13 @@ func InsertMany(items ...Notification) error {
 	return db.InsertMany(Collection, interfaces...)
 }
 
-func ByID(id bson.ObjectId) db.Q {
+func ByID(id string) db.Q {
 	return db.Query(bson.M{
 		idKey: id,
 	})
 }
 
-func Find(id bson.ObjectId) (*Notification, error) {
+func Find(id string) (*Notification, error) {
 	notification := Notification{}
 	err := db.FindOneQ(Collection, ByID(id), &notification)
 

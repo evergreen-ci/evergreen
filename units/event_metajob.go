@@ -151,7 +151,7 @@ func (j *eventMetaJob) Run(_ context.Context) {
 
 	if j.q == nil {
 		env := evergreen.GetEnvironment()
-		j.q = env.RemoteQueue()
+		j.q = env.LocalQueue()
 	}
 	if j.q == nil || !j.q.Started() {
 		j.AddError(errors.New("evergreen environment not setup correctly"))

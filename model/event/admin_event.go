@@ -13,6 +13,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func init() {
+	registryAdd(ResourceTypeAdmin, adminEventFactory)
+}
+
 const (
 	ResourceTypeAdmin     = "ADMIN"
 	EventTypeValueChanged = "CONFIG_VALUE_CHANGED"

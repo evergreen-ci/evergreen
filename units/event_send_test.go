@@ -44,12 +44,13 @@ func TestEventNotificationJob(t *testing.T) {
 
 func (s *eventNotificationSuite) SetupSuite() {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 func (s *eventNotificationSuite) SetupTest() {
 	s.NoError(db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
 	s.webhook = notification.Notification{
-		ID: bson.NewObjectId(),
+		ID: "webhook",
 		Subscriber: event.Subscriber{
 			Type: event.EvergreenWebhookSubscriberType,
 			Target: event.WebhookSubscriber{
@@ -60,7 +61,7 @@ func (s *eventNotificationSuite) SetupTest() {
 		Payload: "o hai",
 	}
 	s.email = notification.Notification{
-		ID: bson.NewObjectId(),
+		ID: "email",
 		Subscriber: event.Subscriber{
 			Type:   event.EmailSubscriberType,
 			Target: "o@hai.hai",
@@ -76,7 +77,7 @@ func (s *eventNotificationSuite) SetupTest() {
 
 	t := time.Now().In(location)
 	s.slack = notification.Notification{
-		ID: bson.NewObjectId(),
+		ID: "slack",
 		Subscriber: event.Subscriber{
 			Type:   event.SlackSubscriberType,
 			Target: "#evg-test-channel",
@@ -85,7 +86,7 @@ func (s *eventNotificationSuite) SetupTest() {
 	}
 
 	s.jiraComment = notification.Notification{
-		ID: bson.NewObjectId(),
+		ID: "jira-comment",
 		Subscriber: event.Subscriber{
 			Type:   event.JIRACommentSubscriberType,
 			Target: "EVG-2863",
@@ -94,7 +95,7 @@ func (s *eventNotificationSuite) SetupTest() {
 	}
 
 	s.jiraIssue = notification.Notification{
-		ID: bson.NewObjectId(),
+		ID: "jira-issue",
 		Subscriber: event.Subscriber{
 			Type:   event.JIRAIssueSubscriberType,
 			Target: "SERVER",
@@ -171,7 +172,7 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	})
 }
 
-func (s *eventNotificationSuite) notificationHasError(id bson.ObjectId, pattern string) time.Time {
+func (s *eventNotificationSuite) notificationHasError(id string, pattern string) time.Time {
 	n, err := notification.Find(id)
 	s.Require().NoError(err)
 	s.Require().NotNil(n)
