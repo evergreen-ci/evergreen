@@ -44,7 +44,7 @@ func (s *eventMetaJobSuite) SetupTest() {
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.NotificationsCollection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, evergreen.ConfigCollection, notification.Collection, event.SubscriptionsCollection))
 
 	events := []event.EventLogEntry{
 		{
@@ -147,7 +147,7 @@ func (s *eventMetaJobSuite) TestSenderDegradedModeDoesntDispatchJobs() {
 	s.NoError(job.Error())
 
 	out := []notification.Notification{}
-	s.NoError(db.FindAllQ(notification.NotificationsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
 	s.Len(out, 6)
 	for i := range out {
 		s.Equal("sender disabled", out[i].Error)
@@ -205,7 +205,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Require().NoError(notifyConfig.Set())
 
 	s.Require().True(evergreen.GetEnvironment().RemoteQueue().Started())
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, notification.NotificationsCollection, event.SubscriptionsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, notification.Collection, event.SubscriptionsCollection))
 
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTest,
@@ -279,7 +279,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	time.Sleep(5 * time.Second)
 	out := []notification.Notification{}
-	s.NoError(db.FindAllQ(notification.NotificationsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(notification.Collection, db.Q{}, &out))
 	s.Require().Len(out, 1)
 
 	s.NotZero(out[0].SentAt)

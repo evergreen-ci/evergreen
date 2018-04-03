@@ -14,16 +14,16 @@ import (
 )
 
 const (
-	NotificationsCollection = "notifications"
+	Collection = "notifications"
 )
 
 //nolint: deadcode, megacheck
 var (
 	idKey         = bsonutil.MustHaveTag(Notification{}, "ID")
 	subscriberKey = bsonutil.MustHaveTag(Notification{}, "Subscriber")
+	payloadKey    = bsonutil.MustHaveTag(Notification{}, "Payload")
 	sentAtKey     = bsonutil.MustHaveTag(Notification{}, "SentAt")
 	errorKey      = bsonutil.MustHaveTag(Notification{}, "Error")
-	payloadKey    = bsonutil.MustHaveTag(Notification{}, "Payload")
 )
 
 type Notification struct {
@@ -101,7 +101,7 @@ func (n *Notification) MarkSent() error {
 		},
 	}
 
-	if err := db.UpdateId(NotificationsCollection, n.ID, update); err != nil {
+	if err := db.UpdateId(Collection, n.ID, update); err != nil {
 		return errors.Wrap(err, "failed to update notification")
 	}
 
@@ -129,7 +129,7 @@ func (n *Notification) MarkError(sendErr error) error {
 	}
 	n.Error = errMsg
 
-	if err := db.UpdateId(NotificationsCollection, n.ID, update); err != nil {
+	if err := db.UpdateId(Collection, n.ID, update); err != nil {
 		n.Error = ""
 		return errors.Wrap(err, "failed to add error to notification")
 	}
@@ -234,7 +234,7 @@ func InsertMany(items ...Notification) error {
 		interfaces[i] = &items[i]
 	}
 
-	return db.InsertMany(NotificationsCollection, interfaces...)
+	return db.InsertMany(Collection, interfaces...)
 }
 
 func ByID(id bson.ObjectId) db.Q {
@@ -245,7 +245,7 @@ func ByID(id bson.ObjectId) db.Q {
 
 func Find(id bson.ObjectId) (*Notification, error) {
 	notification := Notification{}
-	err := db.FindOneQ(NotificationsCollection, ByID(id), &notification)
+	err := db.FindOneQ(Collection, ByID(id), &notification)
 
 	if err == mgo.ErrNotFound {
 		return nil, nil

@@ -27,7 +27,7 @@ func (s *notificationSuite) SetupSuite() {
 }
 
 func (s *notificationSuite) SetupTest() {
-	s.NoError(db.Clear(NotificationsCollection))
+	s.NoError(db.Clear(Collection))
 	s.n = Notification{
 		Subscriber: event.Subscriber{
 			Type: event.GithubPullRequestSubscriberType,
@@ -96,13 +96,18 @@ func (s *notificationSuite) TestMarkError() {
 	s.Require().NotNil(n)
 	s.Equal("test", n.Error)
 	s.NotZero(n.SentAt)
+}
+
+func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
+	s.n.ID = bson.NewObjectId()
+	s.NoError(InsertMany(s.n))
 
 	// nil error should have no side effect
 	s.NoError(s.n.MarkError(nil))
-	n, err = Find(s.n.ID)
+	n, err := Find(s.n.ID)
 	s.NoError(err)
-	s.NotEmpty(n.Error)
-	s.NotZero(n.SentAt)
+	s.Empty(n.Error)
+	s.Zero(n.SentAt)
 }
 
 func (s *notificationSuite) TestInsertMany() {
@@ -137,7 +142,7 @@ func (s *notificationSuite) TestInsertMany() {
 	}
 
 	out := []Notification{}
-	s.NoError(db.FindAllQ(NotificationsCollection, db.Q{}, &out))
+	s.NoError(db.FindAllQ(Collection, db.Q{}, &out))
 	s.Len(out, 3)
 
 	for _, n := range out {

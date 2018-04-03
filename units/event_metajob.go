@@ -71,7 +71,7 @@ func makeEventMetaJob() *eventMetaJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetPriority(50)
+	j.SetPriority(1)
 
 	return j
 }

@@ -44,7 +44,7 @@ func (s *eventNotificationSuite) SetupSuite() {
 }
 
 func (s *eventNotificationSuite) SetupTest() {
-	s.NoError(db.ClearCollections(notification.NotificationsCollection, evergreen.ConfigCollection))
+	s.NoError(db.ClearCollections(notification.Collection, evergreen.ConfigCollection))
 	s.webhook = notification.Notification{
 		ID: bson.NewObjectId(),
 		Subscriber: event.Subscriber{
@@ -228,7 +228,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 	defer ln.Close()
 	s.NoError(err)
 
-	s.NoError(db.UpdateId(notification.NotificationsCollection, s.webhook.ID, bson.M{
+	s.NoError(db.UpdateId(notification.Collection, s.webhook.ID, bson.M{
 		"$set": bson.M{
 			"subscriber.target.url": "http://" + ln.Addr().String(),
 		},
@@ -265,7 +265,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	s.Require().NoError(err)
 	defer ln.Close()
-	s.NoError(db.UpdateId(notification.NotificationsCollection, s.webhook.ID, bson.M{
+	s.NoError(db.UpdateId(notification.Collection, s.webhook.ID, bson.M{
 		"$set": bson.M{
 			"subscriber.target.url": "http://" + ln.Addr().String(),
 		},

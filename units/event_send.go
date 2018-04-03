@@ -165,10 +165,8 @@ func (j *eventNotificationJob) Run() {
 	}
 
 	j.AddError(n.MarkSent())
-	if sendError != nil {
-		j.AddError(sendError)
-		j.AddError(n.MarkError(sendError))
-	}
+	j.AddError(sendError)
+	j.AddError(n.MarkError(sendError))
 }
 
 func jiraOptions(c evergreen.JiraConfig) (*send.JiraOptions, error) {
