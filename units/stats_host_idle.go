@@ -28,6 +28,7 @@ func init() {
 
 type collectHostIdleDataJob struct {
 	HostID     string    `bson:"host_id" json:"host_id" yaml:"host_id"`
+	TaskID     string    `bson:"task_id" json:"task_id" yaml:"task_id"`
 	StartTime  time.Time `bson:"start_time" json:"start_time" yaml:"start_time"`
 	FinishTime time.Time `bson:"finish_time" json:"finish_time" yaml:"finish_time"`
 	*job.Base  `bson:"metadata" json:"metadata" yaml:"metadata"`
@@ -77,7 +78,7 @@ func NewCollectHostIdleDataJob(h *host.Host, t *task.Task, startTime, finishTime
 
 	j.StartTime = startTime
 	j.FinishTime = finishTime
-	j.SetID(fmt.Sprintf("%s.%s.%d", collectHostIdleDataJobName, j.HostID, job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectHostIdleDataJobName, j.HostID, finishTime.Format(tsFormat), job.GetNumber()))
 	j.SetPriority(-2)
 	return j
 }

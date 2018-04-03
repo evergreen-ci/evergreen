@@ -14,12 +14,19 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
 const hostTerminationJobName = "host-termination-job"
+
+func init() {
+	registry.AddJobType(hostTerminationJobName, func() amboy.Job {
+		return makeHostTerminationJob()
+	})
+}
 
 type hostTerminationJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
@@ -49,7 +56,8 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(2)
-	j.SetID(fmt.Sprintf("%s.%s", hostTerminationJobName, j.HostID))
+	ts := util.RoundPartOfHour(3).Format(tsFormat)
+	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
 
 	return j
 }
@@ -98,8 +106,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
-		err := j.host.ClearRunningTask(j.host.RunningTask, time.Now())
-		if err != nil {
+		if err = j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
 				"message":  "Error clearing running task for host",
@@ -109,10 +116,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 				"task":     j.host.RunningTask,
 			}))
 		}
-	}
-
-	if !j.host.Provisioned {
-		return
 	}
 
 	// convert the host to a cloud host
@@ -127,6 +130,31 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"job":      j.ID(),
 			"message":  "problem getting cloud host instance, aborting termination",
 		}))
+		return
+	}
+
+	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
+	if err != nil {
+		j.AddError(err)
+		grip.Critical(message.WrapError(err, message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "problem getting cloud host instance status",
+		}))
+	}
+
+	if cloudStatus == cloud.StatusTerminated {
+		j.AddError(errors.New("host is already terminated"))
+		grip.Error(message.Fields{
+			"host":     j.host.Id,
+			"provider": j.host.Distro.Provider,
+			"job_type": j.Type().Name,
+			"job":      j.ID(),
+			"message":  "attempted to terminated an already terminated host",
+		})
+
 		return
 	}
 
