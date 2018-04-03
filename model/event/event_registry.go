@@ -59,8 +59,6 @@ func isSubscribable(eventType string) bool {
 	return false
 }
 
-func testEventFactory() Data {
-	return &TestEvent{
-		ResourceType: ResourceTypeTest,
-	}
+func testEventFactory() interface{} {
+	return &TestEvent{}
 }

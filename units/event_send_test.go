@@ -28,6 +28,9 @@ import (
 type eventNotificationSuite struct {
 	suite.Suite
 
+	ctx    context.Context
+	cancel func()
+
 	webhook     notification.Notification
 	email       notification.Notification
 	slack       notification.Notification
@@ -197,13 +200,13 @@ func (s *eventNotificationSuite) TestDegradedMode() {
 	s.NoError(flags.Set())
 
 	job := newEventNotificationJob(s.webhook.ID)
-	job.Run()
+	job.Run(s.ctx)
 	s.EqualError(job.Error(), "sender is disabled, not sending notification")
 
 	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
 
 	job = newEventNotificationJob(s.email.ID)
-	job.Run()
+	job.Run(s.ctx)
 	s.EqualError(job.Error(), "sender is disabled, not sending notification")
 
 	s.NotZero(s.notificationHasError(s.webhook.ID, "sender is disabled, not sending notification"))
@@ -238,7 +241,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 		go httpServer(ln, handler)
 	})
 
-	job.Run()
+	job.Run(s.ctx)
 
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.webhook.ID, ""))
@@ -247,7 +250,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhook() {
 
 func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
 	job := newEventNotificationJob(s.webhook.ID)
-	job.Run()
+	job.Run(s.ctx)
 	s.Require().NotNil(job.Error())
 	errMsg := job.Error().Error()
 
@@ -275,7 +278,7 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
 		go httpServer(ln, handler)
 	})
 
-	job.Run()
+	job.Run(s.ctx)
 
 	s.EqualError(job.Error(), "evergreen-webhook response status was 400")
 	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook response status was 400"))
@@ -311,7 +314,7 @@ func (s *eventNotificationSuite) TestEmail() {
 	defer cancel()
 	go smtpServer(ctx, ln, body)
 
-	job.Run()
+	job.Run(s.ctx)
 
 	bodyText := <-body
 
@@ -343,7 +346,7 @@ func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
 		},
 	}
 
-	job.Run()
+	job.Run(s.ctx)
 	s.Require().Error(job.Error())
 
 	errMsg := job.Error().Error()
@@ -361,7 +364,7 @@ func (s *eventNotificationSuite) TestSlack() {
 	s.Require().NoError(config.Slack.Set())
 
 	job := newEventNotificationJob(s.slack.ID)
-	job.Run()
+	job.Run(s.ctx)
 
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.slack.ID, ""))
@@ -378,7 +381,7 @@ func (s *eventNotificationSuite) TestJIRAComment() {
 	s.Require().NoError(config.Jira.Set())
 
 	job := newEventNotificationJob(s.jiraComment.ID)
-	job.Run()
+	job.Run(s.ctx)
 
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.jiraComment.ID, ""))
@@ -395,7 +398,7 @@ func (s *eventNotificationSuite) TestJIRAIssue() {
 	s.Require().NoError(config.Jira.Set())
 
 	job := newEventNotificationJob(s.jiraComment.ID)
-	job.Run()
+	job.Run(s.ctx)
 
 	s.NoError(job.Error())
 	s.NotZero(s.notificationHasError(s.jiraComment.ID, ""))
@@ -409,14 +412,14 @@ func (s *eventNotificationSuite) TestJIRAWithExpectedFail() {
 	s.Require().Empty(c.Password)
 
 	job := newEventNotificationJob(s.jiraIssue.ID)
-	job.Run()
+	job.Run(s.ctx)
 
 	// Unconfigured jira sender should return this:
 	s.EqualError(job.Error(), "jira-issue sender error: no username specified; no password specified")
 	s.NotZero(s.notificationHasError(s.jiraIssue.ID, "^jira-issue sender error: no username specified; no password specified$"))
 
 	job = newEventNotificationJob(s.jiraComment.ID)
-	job.Run()
+	job.Run(s.ctx)
 	s.EqualError(job.Error(), "jira-comment sender error: no username specified; no password specified")
 	s.NotZero(s.notificationHasError(s.jiraComment.ID, "^jira-comment sender error: no username specified; no password specified$"))
 }

@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -102,7 +103,7 @@ func (j *eventMetaJob) dispatchLoop() error {
 			"source":     "events-processing",
 			"message":    "errors processing triggers for event",
 			"event_id":   j.events[i].ID.Hex(),
-			"event_type": j.events[i].Type(),
+			"event_type": j.events[i].ResourceType,
 		}))
 
 		// TODO: buffered writes after EVG-3062
@@ -145,7 +146,7 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 	return catcher.Resolve()
 }
 
-func (j *eventMetaJob) Run() {
+func (j *eventMetaJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if j.q == nil {

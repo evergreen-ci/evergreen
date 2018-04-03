@@ -26,6 +26,7 @@ type eventMetaJobSuite struct {
 	suite.Suite
 	cancel func()
 	n      []notification.Notification
+	ctx    context.Context
 }
 
 func TestEventMetaJob(t *testing.T) {
@@ -38,9 +39,8 @@ func (s *eventMetaJobSuite) TearDownTest() {
 
 func (s *eventMetaJobSuite) SetupTest() {
 	evergreen.ResetEnvironment()
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
-	s.Require().NoError(evergreen.GetEnvironment().Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.Require().NoError(evergreen.GetEnvironment().Configure(s.ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 
@@ -49,16 +49,12 @@ func (s *eventMetaJobSuite) SetupTest() {
 	events := []event.EventLogEntry{
 		{
 			ResourceType: event.ResourceTypeHost,
-			Data: &event.HostEventData{
-				ResourceType: event.ResourceTypeHost,
-			},
+			Data:         &event.HostEventData{},
 		},
 		{
 			ProcessedAt:  time.Now(),
 			ResourceType: event.ResourceTypeHost,
-			Data: &event.HostEventData{
-				ResourceType: event.ResourceTypeHost,
-			},
+			Data:         &event.HostEventData{},
 		},
 	}
 
@@ -116,7 +112,7 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	s.NoError(flags.Set())
 
 	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1")
-	job.Run()
+	job.Run(s.ctx)
 	s.NoError(job.Error())
 
 	out := []event.EventLogEntry{}
@@ -266,7 +262,7 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	go smtpServer(ctx, ln, bodyC)
 
 	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1")
-	job.Run()
+	job.Run(s.ctx)
 	s.NoError(job.Error())
 
 	bodyText := <-bodyC

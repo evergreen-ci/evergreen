@@ -16,9 +16,9 @@ type trigger func(*event.EventLogEntry) ([]Notification, error)
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(event *event.EventLogEntry) ([]Notification, error) {
-	triggers := getTriggers(event.Type())
+	triggers := getTriggers(event.ResourceType)
 	if len(triggers) == 0 {
-		return nil, errors.Errorf("no triggers for event type: '%s'", event.Type())
+		return nil, errors.Errorf("no triggers for event type: '%s'", event.ResourceType)
 	}
 
 	notifications := []Notification{}

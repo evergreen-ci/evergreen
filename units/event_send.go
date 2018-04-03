@@ -70,7 +70,7 @@ func newEventNotificationJob(id bson.ObjectId) amboy.Job {
 	return j
 }
 
-func (j *eventNotificationJob) Run() {
+func (j *eventNotificationJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	flags, err := evergreen.GetServiceFlags()
