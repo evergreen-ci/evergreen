@@ -235,6 +235,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 		},
 	}
 	s.NoError(user.Insert())
+	s.user = user.Id
 
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
@@ -251,7 +252,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
-	s.Equal(s.user, patchDoc.Author)
+	s.Equal(user.Id, patchDoc.Author)
 
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
