@@ -56,7 +56,8 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(2)
-	j.SetID(fmt.Sprintf("%s.%s", hostTerminationJobName, j.HostID))
+	ts := util.RoundPartOfHour(3).Format(tsFormat)
+	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
 
 	return j
 }
