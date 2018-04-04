@@ -36,15 +36,16 @@ func makeEventSetProcesedTimeMigration(collection string, left, right time.Time)
 			},
 		}
 
+		timeRange := bson.M{}
 		if !left.IsZero() {
-			q[timeKey] = bson.M{"$gte": left}
+			timeRange["$gte"] = left
 		}
 		if !right.IsZero() {
-			if _, ok := q[timeKey]; !ok {
-				q[timeKey] = bson.M{}
-			}
+			timeRange["$lte"] = right
+		}
 
-			q[timeKey].(bson.M)["$lte"] = right
+		if len(timeRange) != 0 {
+			q[timeKey] = timeRange
 		}
 
 		opts := model.GeneratorOptions{
