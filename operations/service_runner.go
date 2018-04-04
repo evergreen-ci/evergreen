@@ -166,7 +166,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		if flags.BackgroundStatsDisabled {
 			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 				"message": "background stats collection disabled",
-				"impact":  "host, task, latency, and amboy stats disabled",
+				"impact":  "host, task, latency, amboy, and notification stats disabled",
 				"mode":    "degraded",
 			})
 			return nil

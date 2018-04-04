@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/suite"
@@ -130,4 +131,31 @@ func (s *notificationsStatsCollectorSuite) TestStatsCollector() {
 	s.Contains(data, "evergreen-webhook:1")
 	s.Contains(data, "github_pull_request:1")
 	s.Contains(data, "jira-comment:1")
+}
+
+func (s *notificationsStatsCollectorSuite) TestStatsCollectorWithCancelledContext() {
+	sender := send.MakeInternalLogger()
+	startTime := time.Now().Round(time.Millisecond).Truncate(0)
+
+	job := makeNotificationsStatsCollector()
+	job.logger = logging.MakeGrip(sender)
+	job.UpdateTimeInfo(amboy.JobTimeInfo{
+		Start: startTime,
+	})
+
+	// expires almost immediately
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(100*time.Millisecond))
+	defer cancel()
+	_ = <-ctx.Done()
+
+	job.Run(ctx)
+	s.Error(job.Error(), context.Canceled.Error())
+
+	msg, ok := sender.GetMessageSafe()
+	s.Require().True(ok)
+	data := msg.Message.String()
+	s.Contains(data, "context deadline exceeded")
+
+	_, ok = sender.GetMessageSafe()
+	s.False(ok)
 }

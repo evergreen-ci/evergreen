@@ -42,7 +42,11 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 		logger: logging.MakeGrip(grip.GetSender()),
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s:%s:%d", notificationsStatsCollectorJobName, time.Now().String(), job.GetNumber()))
+	j.SetID(fmt.Sprintf("%s:%s:%d", notificationsStatsCollectorJobName, time.Now().Truncate(0).String(), job.GetNumber()))
+	j.SetPriority(-1)
+	j.UpdateTimeInfo(amboy.JobTimeInfo{
+		MaxTime: time.Minute,
+	})
 
 	return j
 }
@@ -54,40 +58,55 @@ func NewNotificationStatsCollector(id string) amboy.Job {
 	return job
 }
 
-func (j *notificationsStatsCollector) Run(_ context.Context) {
+func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
+
+	msg := message.Fields{
+		"start_time": j.TimeInfo().Start.String(),
+	}
 
 	e, err := event.FindLastProcessedEvent()
 	j.AddError(errors.Wrap(err, "failed to fetch most recently processed event"))
 	if j.HasErrors() {
 		return
 	}
-
-	nUnprocessed, err := event.CountUnprocessedEvents()
-	j.AddError(errors.Wrap(err, "failed to count unprocessed events"))
-	if j.HasErrors() {
-		return
-	}
-
-	stats, err := notification.CollectUnsentNotificationStats()
-	j.AddError(errors.Wrap(err, "failed to collect notification stats"))
-	if j.HasErrors() {
-		return
-	}
-
-	pendingByType := message.Fields{}
-
-	for k, v := range stats {
-		pendingByType[k] = v
-	}
-
-	data := message.Fields{
-		"unprocessed_events":            nUnprocessed,
-		"pending_notifications_by_type": pendingByType,
-	}
 	if e != nil {
-		data["last_processed_at"] = e.ProcessedAt
+		msg["last_processed_at"] = e.ProcessedAt
 	}
 
-	j.logger.Info(data)
+	if ctx.Err() == nil {
+		nUnprocessed, err := event.CountUnprocessedEvents()
+		j.AddError(errors.Wrap(err, "failed to count unprocessed events"))
+		if j.HasErrors() {
+			return
+		}
+		msg["unprocessed_events"] = nUnprocessed
+	}
+
+	if ctx.Err() == nil {
+		stats, err := notification.CollectUnsentNotificationStats()
+		j.AddError(errors.Wrap(err, "failed to collect notification stats"))
+		if j.HasErrors() {
+			return
+		}
+
+		pendingByType := message.Fields{}
+		for k, v := range stats {
+			pendingByType[k] = v
+		}
+		msg["pending_notifications_by_type"] = pendingByType
+	}
+
+	j.AddError(ctx.Err())
+	if ctx.Err() == nil {
+		j.logger.Info(msg)
+
+	} else {
+		j.logger.Warning(message.WrapError(ctx.Err(), message.Fields{
+			"start_time": j.TimeInfo().Start.String(),
+			"message":    "job context cancelled",
+			"job":        notificationsStatsCollectorJobName,
+			"job_id":     j.ID(),
+		}))
+	}
 }
