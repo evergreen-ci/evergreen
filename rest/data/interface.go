@@ -191,5 +191,5 @@ type Connector interface {
 	GenerateTasks(string, []json.RawMessage) error
 
 	// Notifications
-	GetNotificationsStats() (*restModel.APINotificationStats, error)
+	GetNotificationsStats() (*restModel.APIEventStats, error)
 }

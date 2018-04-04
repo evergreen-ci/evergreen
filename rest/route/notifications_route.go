@@ -13,7 +13,7 @@ func getNotificationsStatusRouteManager(route string, version int) *RouteManager
 		Route: route,
 		Methods: []MethodHandler{
 			{
-				Authenticator:  &NoAuthAuthenticator{},
+				Authenticator:  &RequireUserAuthenticator{},
 				RequestHandler: &notificationsStatusHandler{},
 				MethodType:     http.MethodGet,
 			},

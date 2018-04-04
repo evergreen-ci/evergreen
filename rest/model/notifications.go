@@ -7,17 +7,53 @@ import (
 	"github.com/pkg/errors"
 )
 
-type APINotificationStats struct {
-	LastProcessedAt            time.Time                      `json:"last_processed_at"`
-	NumUnprocessedEvents       int                            `json:"unprocessed_events"`
-	PendingNotificationsByType notification.NotificationStats `json:"pending_notifications_by_type,omitempty"`
+type APIEventStats struct {
+	LastProcessedAt            time.Time            `json:"last_processed_at"`
+	NumUnprocessedEvents       int                  `json:"unprocessed_events"`
+	PendingNotificationsByType apiNotificationStats `json:"pending_notifications_by_type"`
 }
 
-func (n *APINotificationStats) BuildFromService(_ interface{}) error {
-	return errors.New("(*NotificationsStats) BuildFromService not implemented")
+func (n *APIEventStats) BuildFromService(h interface{}) error {
+	stats, ok := h.(*notification.NotificationStats)
+	if !ok {
+		return errors.New("can't convert unknown type to APIEventStats")
+	}
 
+	return n.PendingNotificationsByType.BuildFromService(stats)
 }
 
-func (n *APINotificationStats) ToService() (interface{}, error) {
-	return nil, errors.New("(*NotificationsStats) ToService not implemented")
+func (n *APIEventStats) ToService() (interface{}, error) {
+	return nil, errors.New("(*APIEventStats) ToService not implemented")
+}
+
+type apiNotificationStats struct {
+	GithubPullRequest int `json:"github_pull_request"`
+	JIRAIssue         int `json:"jira_issue"`
+	JIRAComment       int `json:"jira_comment"`
+	EvergreenWebhook  int `json:"evergreen_webhook"`
+	Email             int `json:"email"`
+	Slack             int `json:"slack"`
+}
+
+func (n *apiNotificationStats) BuildFromService(h interface{}) error {
+	data, ok := h.(*notification.NotificationStats)
+	if !ok {
+		return errors.New("can't convert unknown type to apiNotificationStats")
+	}
+	if data == nil {
+		return errors.New("can't convert nil to apiNotificationStats")
+	}
+
+	n.GithubPullRequest = data.GithubPullRequest
+	n.JIRAIssue = data.JIRAIssue
+	n.JIRAComment = data.JIRAComment
+	n.EvergreenWebhook = data.EvergreenWebhook
+	n.Email = data.Email
+	n.Slack = data.Slack
+
+	return nil
+}
+
+func (n *apiNotificationStats) ToService() (interface{}, error) {
+	return nil, errors.New("(*apiNotificationsStats) ToService not implemented")
 }

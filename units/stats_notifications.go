@@ -90,11 +90,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 			return
 		}
 
-		pendingByType := message.Fields{}
-		for k, v := range stats {
-			pendingByType[k] = v
-		}
-		msg["pending_notifications_by_type"] = pendingByType
+		msg["pending_notifications_by_type"] = stats
 	}
 
 	j.AddError(ctx.Err())
