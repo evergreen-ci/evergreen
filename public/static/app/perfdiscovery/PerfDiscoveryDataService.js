@@ -104,7 +104,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // This function is used to make possible to type arbitrary
   // version revision into version drop down
   function getVersionOptions(items, query) {
-    console.log(items, query)
     var found = findVersionItem(items, query)
 
     return found
@@ -207,8 +206,8 @@ mciModule.factory('PerfDiscoveryDataService', function(
       .map(function(item, id) {
         var baseline = results.baseline[id]
         var appendix = {
-          ratio: baseline && ratio(item.speed, baseline.speed),
-          baseSpeed: baseline && baseline.speed,
+          ratio: ratio(item.speed, baseline.speed),
+          baseSpeed: baseline.speed,
         }
 
         var trendData = _.chain(results.history)
@@ -324,7 +323,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
       tasks: tasksPromise,
       baselineTasks: baselineTasks
     }).then(function(promise) {
-      console.log(promise.baselineTasks)
       return $q.all(_.map(promise.tasks, function(task) {
         return ApiTaskdata.getTaskById(task.taskId, 'perf')
           .then(respData, function() { return null })
@@ -366,23 +364,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
   /**************
    * PUBLIC API *
    **************/
-
-  function getGitHashForItem(item) {
-    switch (item.kind) {
-      case PD.KIND_VERSION:
-        return $q.resolve(item.id)
-      case PD.KIND_TAG:
-        return
-      case PD.KIND_PATCH:
-        return ApiV2.getPatchById(item.id).then(
-          function(res) { return res.data.git_hash }, // Adaptor fn
-          function(err) { // Hanle error
-            console.error('Patch not found');
-            return $q.reject()
-          }
-        )
-    }
-  }
 
   function getData(version, baselineTag) {
     return getRows(

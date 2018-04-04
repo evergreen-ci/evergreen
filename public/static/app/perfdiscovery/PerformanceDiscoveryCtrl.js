@@ -49,10 +49,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       vm.toSelect.selected = toFound
         ? toFound
         : _.findWhere(items, {kind: PD.KIND_TAG})
-
-      console.log(items)
-      // Load grid data once revisions and tags loaded
-      //vm.updateData()
     })
 
   // Handles changes in selectFrom/To drop downs
@@ -81,19 +77,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     // Display no data while loading is in progress
     vm.gridOptions.data = []
 
-    // Depending on is revision patch id or version id
-    // Different steps should be performed
-    // Patch id requires additional step
-    //var chain = fromVersion == PD.KIND_VERSION
-    //  ? ApiV2.getPatchById(fromVersion.id)
-    //  : $q.resolve(fromVersion.id)
-
-    //chain
-    //  // Get version by revision
-    //  .then(function(revision) {
-    //    return ApiV1.getVersionByRevision(projectId, revision)
-    //  })
-    console.log('UPDATE', fromVersion.id, toVersion.id)
     $q.all({
       fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
       toVersionObj: dataUtil.getCompItemVersion(toVersion),
