@@ -21,9 +21,6 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	Convey("When flagging decommissioned hosts", t, func() {
 
 		Convey("only hosts in the database who are marked decommissioned"+
@@ -36,37 +33,42 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			// insert hosts with different statuses
 
 			host1 := &host.Host{
-				Id:     "h1",
-				Status: evergreen.HostRunning,
+				Provider: evergreen.ProviderNameEc2Auto,
+				Id:       "h1",
+				Status:   evergreen.HostRunning,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
-				Id:     "h2",
-				Status: evergreen.HostTerminated,
+				Provider: evergreen.ProviderNameEc2Auto,
+				Id:       "h2",
+				Status:   evergreen.HostTerminated,
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			host3 := &host.Host{
-				Id:     "h3",
-				Status: evergreen.HostDecommissioned,
+				Provider: evergreen.ProviderNameEc2Auto,
+				Id:       "h3",
+				Status:   evergreen.HostDecommissioned,
 			}
 			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 			host4 := &host.Host{
-				Id:     "h4",
-				Status: evergreen.HostDecommissioned,
+				Provider: evergreen.ProviderNameEc2Auto,
+				Id:       "h4",
+				Status:   evergreen.HostDecommissioned,
 			}
 			testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 			host5 := &host.Host{
-				Id:     "h5",
-				Status: evergreen.HostQuarantined,
+				Provider: evergreen.ProviderNameEc2Auto,
+				Id:       "h5",
+				Status:   evergreen.HostQuarantined,
 			}
 			testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
 			// flag the decommissioned hosts - there should be 2 of them
-			decommissioned, err := flagDecommissionedHosts(ctx, nil, testConfig)
+			decommissioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(decommissioned), ShouldEqual, 2)
 			var ids []string
@@ -113,7 +115,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// finding idle hosts should not return the host
-			idle, err := flagIdleHosts(ctx, nil, nil)
+			idle, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 0)
 
@@ -450,9 +452,6 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
 		// reset the db
@@ -465,11 +464,12 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
+				Provider:     evergreen.ProviderNameEc2Auto,
 				CreationTime: time.Now().Add(-time.Minute * 10),
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
+			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 0)
 
@@ -479,13 +479,14 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
+				Provider:     evergreen.ProviderNameEc2Auto,
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-time.Minute * 60),
 				Status:       evergreen.HostTerminated,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
+			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 0)
 
@@ -496,12 +497,13 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
+				Provider:     evergreen.ProviderNameEc2Auto,
 				CreationTime: time.Now().Add(-time.Minute * 60),
 				Provisioned:  true,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
+			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 0)
 
@@ -517,7 +519,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagUnprovisionedHosts(ctx, nil, nil)
+			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 1)
 			So(unprovisioned[0].Id, ShouldEqual, "h1")
@@ -532,9 +534,6 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
@@ -563,7 +562,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 			}
 			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-			unprovisioned, err := flagProvisioningFailedHosts(ctx, nil, nil)
+			unprovisioned, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(unprovisioned), ShouldEqual, 1)
 			So(unprovisioned[0].Id, ShouldEqual, "h3")
@@ -579,9 +578,6 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
 		// reset the db
@@ -595,10 +591,11 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Id:        "h1",
 				Status:    evergreen.HostRunning,
 				StartedBy: evergreen.User,
+				Provider:  evergreen.ProviderNameEc2Auto,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			expired, err := flagExpiredHosts(ctx, nil, nil)
+			expired, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 0)
 
@@ -608,18 +605,20 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			" out", func() {
 
 			host1 := &host.Host{
-				Id:     "h1",
-				Status: evergreen.HostQuarantined,
+				Id:       "h1",
+				Provider: evergreen.ProviderNameEc2Auto,
+				Status:   evergreen.HostQuarantined,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
-				Id:     "h2",
-				Status: evergreen.HostTerminated,
+				Id:       "h2",
+				Provider: evergreen.ProviderNameEc2Auto,
+				Status:   evergreen.HostTerminated,
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			expired, err := flagExpiredHosts(ctx, nil, nil)
+			expired, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 0)
 
@@ -632,6 +631,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:             "h1",
 				Status:         evergreen.HostRunning,
+				Provider:       evergreen.ProviderNameEc2Auto,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -640,11 +640,12 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			host2 := &host.Host{
 				Id:             "h2",
 				Status:         evergreen.HostRunning,
+				Provider:       evergreen.ProviderNameEc2Auto,
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			expired, err := flagExpiredHosts(ctx, nil, nil)
+			expired, err := host.FindHostsToTerminate()
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 1)
 			So(expired[0].Id, ShouldEqual, "h2")

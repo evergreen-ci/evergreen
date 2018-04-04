@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -651,4 +652,73 @@ func (h *Host) SetExtId() error {
 		bson.M{IdKey: h.Id},
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
+}
+
+func FindHostsToTerminate() ([]Host, error) {
+	const (
+		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
+		provisioningCutoff = 25 * time.Minute
+
+		// unreachableCutoff is the threshold to wait for an unreachable host to become marked
+		// as reachable again before giving up and terminating it.
+		unreachableCutoff = 5 * time.Minute
+	)
+
+	now := time.Now()
+	distroKey := bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey)
+
+	query := bson.M{
+		distroKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		"$or": []bson.M{
+			{ // host.ByExpiredSince(time.Now())
+				StartedByKey: bson.M{"$ne": evergreen.User},
+				StatusKey: bson.M{
+					"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
+				},
+				ExpirationTimeKey: bson.M{"$lte": now},
+			},
+			{ // host.IsProvisioningFailure
+				StatusKey: evergreen.HostProvisionFailed,
+			},
+			{ // host.ByUnprovisonedSince
+				ProvisionedKey: false,
+				CreateTimeKey:  bson.M{"$lte": now.Add(-provisioningCutoff)},
+				StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+				StartedByKey:   evergreen.User,
+			},
+			{ // host.IsDecomissioned
+				RunningTaskKey: bson.M{"$exists": false},
+				StatusKey:      evergreen.HostDecommissioned,
+			},
+			{ // unreachable
+				StatusKey: evergreen.HostUnreachable,
+				"$or": []bson.M{
+					{LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)}},
+					{
+						NeedsNewAgentKey:         false,
+						LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
+					},
+				},
+			},
+		},
+	}
+
+	hosts := []Host{}
+	err := db.FindAll(Collection,
+		query,
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		hosts)
+
+	if db.ResultsNotFound(err) {
+		return []Host{}, nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "database error")
+	}
+
+	return hosts, nil
 }

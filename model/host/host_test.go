@@ -418,39 +418,6 @@ func TestHostSetExpirationTime(t *testing.T) {
 	})
 }
 
-func TestFindRunningSpawnedHosts(t *testing.T) {
-	testConfig := testutil.TestConfig()
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
-	testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
-		" clearing '%v' collection", Collection)
-
-	Convey("With calling FindRunningSpawnedHosts...", t, func() {
-		Convey("if there are no spawned hosts, nothing should be returned",
-			func() {
-				spawnedHosts, err := Find(IsRunningAndSpawned)
-				So(err, ShouldBeNil)
-				// make sure we only returned no document
-				So(len(spawnedHosts), ShouldEqual, 0)
-
-			})
-
-		Convey("if there are spawned hosts, they should be returned", func() {
-			host := &Host{}
-			host.Id = "spawned-1"
-			host.Status = "running"
-			host.StartedBy = "user1"
-			testutil.HandleTestingErr(host.Insert(), t, "error from "+
-				"FindRunningSpawnedHosts")
-			spawnedHosts, err := Find(IsRunningAndSpawned)
-			testutil.HandleTestingErr(err, t, "error from "+
-				"FindRunningSpawnedHosts: %v", err)
-			// make sure we only returned no document
-			So(len(spawnedHosts), ShouldEqual, 1)
-
-		})
-	})
-}
 func TestSetExpirationNotification(t *testing.T) {
 
 	Convey("With a host", t, func() {
