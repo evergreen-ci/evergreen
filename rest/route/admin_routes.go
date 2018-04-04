@@ -15,12 +15,63 @@ import (
 	"github.com/pkg/errors"
 )
 
-// this manages the /admin route, which allows getting/setting the admin settings
+// this route is to preserve backwards compatibility with old versions of the CLI
+func getLegacyAdminSettingsManager(route string, version int) *RouteManager {
+	agh := &legacyAdminGetHandler{}
+	adminGet := MethodHandler{
+		Authenticator:  &NoAuthAuthenticator{},
+		RequestHandler: agh.Handler(),
+		MethodType:     http.MethodGet,
+	}
+
+	adminRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{adminGet},
+		Version: version,
+	}
+	return &adminRoute
+}
+
+type legacyAdminGetHandler struct{}
+
+func (h *legacyAdminGetHandler) Handler() RequestHandler {
+	return &legacyAdminGetHandler{}
+}
+
+func (h *legacyAdminGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *legacyAdminGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	settings, err := sc.GetEvergreenSettings()
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	settingsModel := model.NewConfigModel()
+	err = settingsModel.BuildFromService(settings)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+	modelCopy := model.NewConfigModel()
+	modelCopy.Banner = settingsModel.Banner
+	modelCopy.BannerTheme = settingsModel.BannerTheme
+	return ResponseData{
+		Result: []model.Model{modelCopy},
+	}, nil
+}
+
+// this manages the /admin/settings route, which allows getting/setting the admin settings
 func getAdminSettingsManager(route string, version int) *RouteManager {
 	agh := &adminGetHandler{}
 	adminGet := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
+		Authenticator:     &SuperUserAuthenticator{},
 		RequestHandler:    agh.Handler(),
 		MethodType:        http.MethodGet,
 	}
@@ -60,7 +111,7 @@ func (h *adminGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 		return ResponseData{}, err
 	}
 	settingsModel := model.NewConfigModel()
-	err = settingsModel.BuildFromServiceAndScrub(settings)
+	err = settingsModel.BuildFromService(settings)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
@@ -127,9 +178,17 @@ func getBannerRouteManager(route string, version int) *RouteManager {
 		MethodType:        http.MethodPost,
 	}
 
+	bgh := &bannerGetHandler{}
+	bannerGet := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    bgh.Handler(),
+		MethodType:        http.MethodGet,
+	}
+
 	bannerRoute := RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{bannerPost},
+		Methods: []MethodHandler{bannerPost, bannerGet},
 		Version: version,
 	}
 	return &bannerRoute
@@ -172,6 +231,29 @@ func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	}
 	return ResponseData{
 		Result: []model.Model{&h.model},
+	}, nil
+}
+
+type bannerGetHandler struct{}
+
+func (h *bannerGetHandler) Handler() RequestHandler {
+	return &bannerGetHandler{}
+}
+
+func (h *bannerGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	return nil
+}
+
+func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	banner, theme, err := sc.GetBanner()
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{
+		Result: []model.Model{&model.APIBanner{Text: model.APIString(banner), Theme: model.APIString(theme)}},
 	}, nil
 }
 
@@ -270,10 +352,9 @@ func (h *restartHandler) ParseAndValidate(ctx context.Context, r *http.Request) 
 	if err := util.ReadJSONInto(r.Body, h); err != nil {
 		return err
 	}
-	defer r.Body.Close()
 	if h.EndTime.Before(h.StartTime) {
 		return rest.APIError{
-			StatusCode: 400,
+			StatusCode: http.StatusBadRequest,
 			Message:    "End time cannot be before start time",
 		}
 	}
@@ -307,4 +388,129 @@ func (h *restartHandler) Execute(ctx context.Context, sc data.Connector) (Respon
 	return ResponseData{
 		Result: []model.Model{restartModel},
 	}, nil
+}
+
+func getRevertRouteManager(route string, version int) *RouteManager {
+	rh := revertHandler{}
+	handler := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &SuperUserAuthenticator{},
+		RequestHandler:    rh.Handler(),
+		MethodType:        http.MethodPost,
+	}
+
+	return &RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{handler},
+		Version: version,
+	}
+}
+
+type revertHandler struct {
+	GUID string `json:"guid"`
+}
+
+func (h *revertHandler) Handler() RequestHandler {
+	return &revertHandler{}
+}
+
+func (h *revertHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	if err := util.ReadJSONInto(r.Body, h); err != nil {
+		return err
+	}
+	if h.GUID == "" {
+		return rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "GUID to revert to must be specified",
+		}
+	}
+	return nil
+}
+
+func (h *revertHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	u := MustHaveUser(ctx)
+	err := sc.RevertConfigTo(h.GUID, u.Username())
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Error reverting")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{}, nil
+}
+
+func getAdminEventRouteManager(route string, version int) *RouteManager {
+	aeg := &adminEventsGet{}
+	getHandler := MethodHandler{
+		Authenticator:  &SuperUserAuthenticator{},
+		RequestHandler: aeg.Handler(),
+		MethodType:     http.MethodGet,
+	}
+	return &RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{getHandler},
+		Version: version,
+	}
+}
+
+type adminEventsGet struct {
+	*PaginationExecutor
+}
+
+func (h *adminEventsGet) Handler() RequestHandler {
+	paginator := &PaginationExecutor{
+		KeyQueryParam:   "ts",
+		LimitQueryParam: "limit",
+		Paginator:       adminEventPaginator,
+	}
+	return &adminEventsGet{paginator}
+}
+
+func adminEventPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
+	var ts time.Time
+	var err error
+	if key == "" {
+		ts = time.Now()
+	} else {
+		ts, err = time.Parse(time.RFC3339, key)
+		if err != nil {
+			return []model.Model{}, nil, errors.Wrapf(err, "unable to parse '%s' in RFC-3339 format")
+		}
+	}
+	if limit == 0 {
+		limit = 10
+	}
+
+	events, err := sc.GetAdminEventLog(ts, limit)
+	if err != nil {
+		return []model.Model{}, nil, err
+	}
+	nextPage := makeNextEventsPage(events, limit)
+	pageResults := &PageResult{
+		Next: nextPage,
+	}
+
+	lastIndex := len(events)
+	if nextPage != nil {
+		lastIndex = limit
+	}
+	events = events[:lastIndex]
+	results := make([]model.Model, len(events))
+	for i := range events {
+		results[i] = model.Model(&events[i])
+	}
+
+	return results, pageResults, nil
+}
+
+func makeNextEventsPage(events []model.APIAdminEvent, limit int) *Page {
+	var nextPage *Page
+	if len(events) == limit {
+		nextPage = &Page{
+			Relation: "next",
+			Key:      events[limit-1].Timestamp.Format(time.RFC3339),
+			Limit:    limit,
+		}
+	}
+	return nextPage
 }

@@ -23,7 +23,11 @@ mciModule.factory('EvgUiGridUtil', function() {
 
     // Apply options data to column options
     _.each(fields, function(d) {
-      colAccessor(d).filter.options = _.unique(_.pluck(data, d))
+      colAccessor(d).filter.options = _.chain(data)
+        .pluck(d)
+        .unique()
+        .sortBy()
+        .value()
     })
   }
 
@@ -49,7 +53,8 @@ mciModule.factory('EvgUiGridUtil', function() {
       filter: {
         noTerm: true,
         condition: multiselectConditionFn,
-        options: []
+        options: [],
+        mode: 'multi',
       }
     }, colDef)
   }

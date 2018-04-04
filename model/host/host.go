@@ -26,6 +26,9 @@ type Host struct {
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
 
+	// secondary (external) identifier for the host
+	ExternalIdentifier string `bson:"ext_identifier" json:"ext_identifier"`
+
 	// physical location of host
 	Project string `bson:"project" json:"project"`
 	Zone    string `bson:"zone" json:"zone"`
@@ -57,6 +60,7 @@ type Host struct {
 	CreationTime    time.Time `bson:"creation_time" json:"creation_time"`
 	StartTime       time.Time `bson:"start_time" json:"start_time"`
 	TerminationTime time.Time `bson:"termination_time" json:"termination_time"`
+	TaskCount       int       `bson:"task_count" json:"task_count"`
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
 	LastTaskCompleted     string    `bson:"last_task" json:"last_task"`
@@ -119,7 +123,7 @@ func (h *Host) IdleTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
-func (h *Host) SetStatus(status, user string) error {
+func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+
 			" %v because it is already terminated", h.Id, status)
@@ -127,7 +131,7 @@ func (h *Host) SetStatus(status, user string) error {
 		return errors.New(msg)
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, user)
+	event.LogHostStatusChanged(h.Id, h.Status, status, user, logs)
 
 	h.Status = status
 	return UpdateOne(
@@ -172,16 +176,16 @@ func (h *Host) SetStarting() error {
 	)
 }
 
-func (h *Host) SetDecommissioned(user string) error {
-	return h.SetStatus(evergreen.HostDecommissioned, user)
+func (h *Host) SetDecommissioned(user string, logs string) error {
+	return h.SetStatus(evergreen.HostDecommissioned, user, logs)
 }
 
 func (h *Host) SetRunning(user string) error {
-	return h.SetStatus(evergreen.HostRunning, user)
+	return h.SetStatus(evergreen.HostRunning, user, "")
 }
 
 func (h *Host) SetTerminated(user string) error {
-	return h.SetStatus(evergreen.HostTerminated, user)
+	return h.SetStatus(evergreen.HostTerminated, user, "")
 }
 
 func (h *Host) SetUnprovisioned() error {
@@ -198,8 +202,8 @@ func (h *Host) SetUnprovisioned() error {
 	)
 }
 
-func (h *Host) SetQuarantined(user string) error {
-	return h.SetStatus(evergreen.HostQuarantined, user)
+func (h *Host) SetQuarantined(user string, logs string) error {
+	return h.SetStatus(evergreen.HostQuarantined, user, logs)
 }
 
 // CreateSecret generates a host secret and updates the host both locally
@@ -489,27 +493,18 @@ func (h *Host) SetTaskPid(pid string) error {
 	)
 }
 
-// UpdateReachability sets a host as either running or unreachable,
-// and updates the timestamp of the host's last reachability check.
-// If the host is being set to unreachable, the "unreachable since" field
-// is also set to the current time if it is unset.
-func (h *Host) UpdateReachability(reachable bool) error {
-	status := evergreen.HostRunning
-	if !reachable {
-		status = evergreen.HostUnreachable
-	}
-
-	if status == h.Status {
+func (h *Host) MarkReachable() error {
+	if h.Status == evergreen.HostRunning {
 		return nil
 	}
 
-	event.LogHostStatusChanged(h.Id, h.Status, status, evergreen.User)
+	event.LogHostStatusChanged(h.Id, h.Status, evergreen.HostRunning, evergreen.User, "")
 
-	h.Status = status
+	h.Status = evergreen.HostRunning
 
 	return UpdateOne(
 		bson.M{IdKey: h.Id},
-		bson.M{"$set": bson.M{StatusKey: status}})
+		bson.M{"$set": bson.M{StatusKey: evergreen.HostRunning}})
 }
 
 func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
@@ -623,13 +618,13 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	return host, nil
 }
 
-func (h *Host) DisablePoisonedHost() error {
+func (h *Host) DisablePoisonedHost(logs string) error {
 	if h.Provider == evergreen.ProviderNameStatic {
-		if err := h.SetQuarantined(evergreen.User); err != nil {
+		if err := h.SetQuarantined(evergreen.User, logs); err != nil {
 			return errors.WithStack(err)
 		}
 
-		grip.Critical(message.Fields{
+		grip.Error(message.Fields{
 			"host":     h.Id,
 			"provider": h.Provider,
 			"distro":   h.Distro.Id,
@@ -640,5 +635,12 @@ func (h *Host) DisablePoisonedHost() error {
 		return nil
 	}
 
-	return errors.WithStack(h.SetDecommissioned(evergreen.User))
+	return errors.WithStack(h.SetDecommissioned(evergreen.User, logs))
+}
+
+func (h *Host) SetExtId() error {
+	return UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
+	)
 }

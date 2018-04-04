@@ -18,6 +18,8 @@ type StatsByDistro struct {
 	Count int `bson:"count" json:"count"`
 	// Number of tasks running on hosts in the above group (should only be nonzero for running hosts)
 	NumTasks int `bson:"num_tasks_running" json:"num_tasks_running"`
+	// MaxHosts reports the pool size of the distro.
+	MaxHosts int `bson:"max_hosts" json:"max_hosts"`
 }
 
 type ProviderStats []StatsByProvider
@@ -100,6 +102,9 @@ func statsByDistroPipeline() []bson.M {
 				"count": bson.M{
 					"$sum": 1,
 				},
+				"max_hosts": bson.M{
+					"$max": "$" + DistroKey + "." + distro.PoolSizeKey,
+				},
 				"tasks": bson.M{
 					"$addToSet": "$" + RunningTaskKey,
 				},
@@ -109,6 +114,7 @@ func statsByDistroPipeline() []bson.M {
 			"$project": bson.M{
 				"distro":            "$_id.distro",
 				"status":            "$_id.status",
+				"max_hosts":         1,
 				"count":             1,
 				"num_tasks_running": bson.M{"$size": "$tasks"},
 				"_id":               0,

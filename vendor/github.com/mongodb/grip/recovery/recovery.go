@@ -33,7 +33,7 @@ func LogStackTraceAndExit(opDetails ...string) {
 		m := message.Fields{
 			message.FieldsMsgName: "hit panic; exiting",
 			"panic":               panicString(p),
-			"stack":               message.NewStack(1, "").Raw(),
+			"stack":               message.NewStack(2, "").Raw().(message.StackTrace).Frames,
 		}
 
 		if len(opDetails) > 0 {
@@ -67,7 +67,7 @@ func LogStackTraceAndContinue(opDetails ...string) {
 		m := message.Fields{
 			message.FieldsMsgName: "hit panic; recovering",
 			"panic":               panicString(p),
-			"stack":               message.NewStack(1, "").Raw(),
+			"stack":               message.NewStack(2, "").Raw().(message.StackTrace).Frames,
 		}
 
 		if len(opDetails) > 0 {
@@ -103,7 +103,7 @@ func HandlePanicWithError(p interface{}, err error, opDetails ...string) error {
 
 		m := message.Fields{
 			message.FieldsMsgName: "hit panic; adding error",
-			"stack":               message.NewStack(2, "").Raw(),
+			"stack":               message.NewStack(2, "").Raw().(message.StackTrace).Frames,
 			"panic":               perr.Error(),
 		}
 

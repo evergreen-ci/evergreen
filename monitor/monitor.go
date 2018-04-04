@@ -15,12 +15,6 @@ import (
 )
 
 var (
-	// the functions the task monitor will run through to find tasks needing
-	// to be cleaned up
-	defaultTaskFlaggingFuncs = []taskFlaggingFunc{
-		flagTimedOutHeartbeats,
-	}
-
 	// the functions the host monitor will run through to find hosts needing
 	// to be terminated
 	defaultHostFlaggingFuncs = []hostFlagger{
@@ -33,11 +27,6 @@ var (
 		{flagExpiredHosts, "expired"},
 	}
 
-	// the functions the host monitor will run through to do simpler checks
-	defaultHostMonitoringFuncs = []hostMonitoringFunc{
-		monitorReachability,
-	}
-
 	// the functions the notifier will use to build notifications that need
 	// to be sent
 	defaultNotificationBuilders = []notificationBuilder{
@@ -48,34 +37,15 @@ var (
 
 // run all monitoring functions
 func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
-
 	// load in all of the distros
 	distros, err := distro.Find(db.Q{})
 	if err != nil {
 		return errors.Wrap(err, "error finding distros")
 	}
 
-	// initialize the task monitor
-	taskMonitor := &TaskMonitor{
-		flaggingFuncs: defaultTaskFlaggingFuncs,
-	}
-
-	// clean up any necessary tasks
-	for _, err := range taskMonitor.CleanupTasks(ctx) {
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":  RunnerName,
-			"message": "Error cleaning up tasks",
-		}))
-	}
-
-	if ctx.Err() != nil {
-		return errors.New("monitor canceled")
-	}
-
 	// initialize the host monitor
 	hostMonitor := &HostMonitor{
-		flaggingFuncs:   defaultHostFlaggingFuncs,
-		monitoringFuncs: defaultHostMonitoringFuncs,
+		flaggingFuncs: defaultHostFlaggingFuncs,
 	}
 
 	// clean up any necessary hosts
@@ -83,17 +53,6 @@ func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 	grip.Error(message.WrapError(err, message.Fields{
 		"runner":  RunnerName,
 		"message": "Error cleaning up hosts",
-	}))
-
-	if ctx.Err() != nil {
-		return errors.New("monitor canceled")
-	}
-
-	// run monitoring checks
-	err = hostMonitor.RunMonitoringChecks(ctx, settings)
-	grip.Error(message.WrapError(err, message.Fields{
-		"runner":  RunnerName,
-		"message": "Error running host monitor checks",
 	}))
 
 	if ctx.Err() != nil {

@@ -1,4 +1,10 @@
 mciModule
+  // Misk Evergreen constants
+  .constant('EVG', {
+    GIT_HASH_LEN: 40,
+    PATCH_ID_LEN: 24,
+  })
+
   .constant('API_V1', {
     BASE: '/rest/v1',
 
@@ -12,7 +18,8 @@ mciModule
 
     // TODO ## PATCHES API ##
 
-    // TODO ## VERSIONS API ##
+    // ## VERSIONS API ##
+    VERSIONS_BY_ID: _.template('{base}/versions/{version_id}'),
 
     // ## BUILDS API ##
     BUILDS_DETAIL: _.template('{base}/builds/{build_id}'),
@@ -21,12 +28,27 @@ mciModule
     // TODO ## TASKS API ##
 
     // TODO ## SCHEDULER API ##
+    // WATERFALL API
+    WATERFALL_VERSIONS_ROWS: _.template('{base}/waterfall/{project_id}/versions'),
   })
+
+  .constant('API_V2', {
+    BASE: '/rest/v2',
+    PATCH_BY_ID: _.template('{base}/patches/{patch_id}'),
+  })
+
   .constant('API_TASKDATA', {
     BASE: '/plugin/json',
     TASK_BY_ID: _.template('{base}/task/{task_id}/{name}/'),
-    TASK_COMMIT: _.template('{base}/commit/{project_id}/{revision}/{variant}/{task_name}/{name}'),
+    TASK_BY_TAG: _.template('{base}/tag/{project_id}/{tag}/{variant}/{task_name}/{name}'),
+    TASK_BY_COMMIT: _.template('{base}/commit/{project_id}/{revision}/{variant}/{task_name}/{name}'),
     TASK_HISTORY: _.template('{base}/history/{task_id}/{name}'),
 
     PROJECT_TAGS: _.template('{base}/tags/'),
+  })
+
+  // Multi Page App User Interface routes
+  .constant('MPA_UI', {
+    BUILD_BY_ID: _.template('/build/{build_id}'),
+    TASK_BY_ID: _.template('/task/{task_id}'),
   })

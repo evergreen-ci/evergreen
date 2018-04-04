@@ -329,14 +329,14 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
     var service = {};
 
     service.getSettings = function(callbacks) {
-      baseSvc.getResource(resource, [], {}, callbacks);
+      baseSvc.getResource(resource + "/settings", [], {}, callbacks);
     }
 
     service.saveSettings = function(settings, callbacks) {
       var config = {
           data: settings
       };
-      baseSvc.postResource(resource, [], config, callbacks);
+      baseSvc.postResource(resource + "/settings", [], config, callbacks);
     }
 
     service.restartTasks = function(from, to, isDryRun, restartRed, restartPurple, callbacks) {
@@ -349,6 +349,25 @@ mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(
         only_purple: restartPurple
       };
       baseSvc.postResource(resource + "/restart", [], config, callbacks);
+    }
+
+    service.getEvents = function(timestamp, limit, callbacks) {
+      if (!limit || limit === 0) {
+        limit = 15;
+      }
+      var url = resource + "/events" + "?limit=" + limit;
+      if (timestamp && timestamp !== "") {
+        url += "&ts=" + timestamp;
+      }
+      baseSvc.getResource(url, [], {}, callbacks);
+    }
+
+    service.revertEvent = function(guid, callbacks) {
+      var config = {};
+      config.data = {
+        guid: guid,
+      };
+      baseSvc.postResource(resource + "/revert", [], config, callbacks);
     }
 
     return service;

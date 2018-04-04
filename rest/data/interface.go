@@ -147,6 +147,7 @@ type Connector interface {
 
 	// GetEvergreenSettings/SetEvergreenSettings retrieves/sets the system-wide settings document
 	GetEvergreenSettings() (*evergreen.Settings, error)
+	GetBanner() (string, string, error)
 	SetEvergreenSettings(*restModel.APIAdminSettings, *evergreen.Settings, *user.DBUser, bool) (*evergreen.Settings, error)
 	// SetAdminBanner sets set the banner in the system-wide settings document
 	SetAdminBanner(string, *user.DBUser) error
@@ -155,6 +156,8 @@ type Connector interface {
 	// SetAdminBanner sets set the service flags in the system-wide settings document
 	SetServiceFlags(evergreen.ServiceFlags, *user.DBUser) error
 	RestartFailedTasks(amboy.Queue, model.RestartTaskOptions) (*restModel.RestartTasksResponse, error)
+	RevertConfigTo(string, string) error
+	GetAdminEventLog(time.Time, int) ([]restModel.APIAdminEvent, error)
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 

@@ -14,6 +14,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestFindProject(t *testing.T) {
@@ -965,4 +966,77 @@ func (s *projectSuite) TestBuildProjectTVPairsWithExecutionTask() {
 	s.Contains(patchDoc.Tasks, "wow_task")
 	s.Contains(patchDoc.Tasks, "a_task_1")
 	s.Require().Len(patchDoc.VariantsTasks, 2)
+}
+
+func (s *projectSuite) TestNewPatchTaskIdTable() {
+	p := &Project{
+		Identifier: "project_identifier",
+		Tasks: []ProjectTask{
+			ProjectTask{
+				Name: "task1",
+			},
+			ProjectTask{
+				Name: "task2",
+			},
+			ProjectTask{
+				Name: "task3",
+			},
+		},
+		BuildVariants: []BuildVariant{
+			BuildVariant{
+				Name:  "test",
+				Tasks: []BuildVariantTaskUnit{{Name: "group_1"}},
+			},
+		},
+		TaskGroups: []TaskGroup{
+			TaskGroup{
+				Name: "group_1",
+				Tasks: []string{
+					"task1",
+					"task2",
+				},
+			},
+		},
+	}
+	v := &version.Version{
+		Revision: "revision",
+	}
+	pairs := TaskVariantPairs{
+		ExecTasks: TVPairSet{
+			TVPair{
+				Variant:  "test",
+				TaskName: "group_1",
+			},
+		},
+	}
+
+	config := NewPatchTaskIdTable(p, v, pairs)
+	s.Len(config.DisplayTasks, 0)
+	s.Len(config.ExecutionTasks, 2)
+	s.Equal("project_identifier_test_task1_revision_01_01_01_00_00_00",
+		config.ExecutionTasks[TVPair{
+			Variant:  "test",
+			TaskName: "task1",
+		}])
+	s.Equal("project_identifier_test_task2_revision_01_01_01_00_00_00",
+		config.ExecutionTasks[TVPair{
+			Variant:  "test",
+			TaskName: "task2",
+		}])
+}
+
+// TestRoundTripIntermediateProjectWithDependsOn ensures that inlining works correctly in depends_on.
+func (s *projectSuite) TestRoundTripIntermediateProjectWithDependsOn() {
+	projYml := `
+tasks:
+- name: test
+  depends_on:
+    - name: dist-test
+`
+	intermediate, errs := createIntermediateProject([]byte(projYml))
+	s.Len(errs, 0)
+	marshaled, err := yaml.Marshal(intermediate)
+	s.NoError(err)
+	unmarshaled := parserProject{}
+	s.NoError(yaml.Unmarshal(marshaled, &unmarshaled))
 }

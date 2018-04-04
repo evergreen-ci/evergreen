@@ -33,7 +33,6 @@ func insertTaskForTesting(taskId, versionId, projectName string, testResult test
 		DispatchTime:        time.Now().Add(-14 * time.Minute),
 		StartTime:           time.Now().Add(-10 * time.Minute),
 		FinishTime:          time.Now().Add(-5 * time.Second),
-		PushTime:            time.Now().Add(-1 * time.Millisecond),
 		Version:             versionId,
 		Project:             projectName,
 		Revision:            fmt.Sprintf("%x", rand.Int()),
@@ -169,11 +168,6 @@ func TestGetTaskInfo(t *testing.T) {
 			err = json.Unmarshal(*rawJSONBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
 			So(finishTime, ShouldHappenWithin, TimePrecision, testTask.FinishTime)
-
-			var pushTime time.Time
-			err = json.Unmarshal(*rawJSONBody["push_time"], &pushTime)
-			So(err, ShouldBeNil)
-			So(pushTime, ShouldHappenWithin, TimePrecision, testTask.PushTime)
 
 			So(jsonBody["version"], ShouldEqual, testTask.Version)
 			So(jsonBody["project"], ShouldEqual, testTask.Project)

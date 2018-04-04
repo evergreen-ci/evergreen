@@ -46,7 +46,7 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	j.env = nil
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(j.Status().Completed)
-	s.NotPanics(func() { j.Run() })
+	s.NotPanics(func() { j.Run(context.Background()) })
 	s.True(j.Status().Completed)
 	s.True(j.HasErrors())
 
@@ -59,7 +59,7 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 
-	j.Run()
+	j.Run(context.Background())
 	s.False(s.sender.HasMessage())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
@@ -76,7 +76,7 @@ func (s *StatUnitsSuite) TestAmboyStatsCollector() {
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 
-	j.Run()
+	j.Run(context.Background())
 	s.True(s.sender.HasMessage())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
@@ -105,7 +105,7 @@ func (s *StatUnitsSuite) TestHostStatsCollector() {
 	s.True(ok)
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
-	j.Run()
+	j.Run(context.Background())
 	s.False(j.HasErrors())
 	s.True(s.sender.HasMessage())
 
@@ -131,7 +131,7 @@ func (s *StatUnitsSuite) TestTaskStatsCollector() {
 	j.logger = logging.MakeGrip(s.sender)
 	s.False(s.sender.HasMessage())
 	s.False(j.Status().Completed)
-	j.Run()
+	j.Run(context.Background())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
 	s.True(s.sender.HasMessage())
@@ -159,7 +159,7 @@ func (s *StatUnitsSuite) TestSysInfoCollector() {
 
 	s.False(s.sender.HasMessage())
 	s.False(j.Status().Completed)
-	j.Run()
+	j.Run(context.Background())
 	s.True(j.Status().Completed)
 	s.False(j.HasErrors())
 	s.True(s.sender.HasMessage())

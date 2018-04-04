@@ -22,12 +22,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var testConfig = testutil.TestConfig()
-
-func init() {
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-}
-
 type PatchIntentUnitsSuite struct {
 	sender *send.InternalSender
 	env    *mock.Environment
@@ -50,6 +44,11 @@ type PatchIntentUnitsSuite struct {
 
 func TestPatchIntentUnitsSuite(t *testing.T) {
 	suite.Run(t, new(PatchIntentUnitsSuite))
+}
+
+func (s *PatchIntentUnitsSuite) SetupSuite() {
+	testConfig := testutil.TestConfig()
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 }
 
 func (s *PatchIntentUnitsSuite) SetupTest() {
@@ -137,6 +136,9 @@ func (s *PatchIntentUnitsSuite) TearDownTest() {
 }
 
 func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchIntentProcessor {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	githubOauthToken, err := s.env.Settings().GetGithubOauthToken()
 	s.Require().NoError(err)
 
@@ -144,7 +146,7 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	s.Require().NoError(j.finishPatch(patchDoc, githubOauthToken))
+	s.Require().NoError(j.finishPatch(ctx, patchDoc, githubOauthToken))
 	s.Require().NoError(j.Error())
 	s.Require().False(j.HasErrors())
 
@@ -152,6 +154,9 @@ func (s *PatchIntentUnitsSuite) makeJobAndPatch(intent patch.Intent) *patchInten
 }
 
 func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	resp, err := http.Get(s.diffURL)
 	s.Require().NoError(err)
 	defer resp.Body.Close()
@@ -170,7 +175,7 @@ func (s *PatchIntentUnitsSuite) TestCantFinalizePatchWithNoTasksAndVariants() {
 	j.env = s.env
 
 	patchDoc := intent.NewPatch()
-	err = j.finishPatch(patchDoc, githubOauthToken)
+	err = j.finishPatch(ctx, patchDoc, githubOauthToken)
 	s.Require().Error(err)
 	s.Equal("patch has no build variants or tasks", err.Error())
 }
@@ -220,6 +225,18 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
 
+	user := user.DBUser{
+		Id: "testuser",
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID:         1234,
+				LastKnownAs: "somebody",
+			},
+		},
+	}
+	s.NoError(user.Insert())
+	s.user = user.Id
+
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
 	s.NotNil(intent)
@@ -235,7 +252,8 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
-	s.Equal(s.user, patchDoc.Author)
+	s.Equal(user.Id, patchDoc.Author)
+
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
 	s.Equal(repo[1], patchDoc.GithubPatchData.BaseRepo)
@@ -247,6 +265,29 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.verifyVersionDoc(patchDoc, evergreen.GithubPRRequester)
 
 	s.gridFSFileExists(patchDoc.Patches[0].PatchSet.PatchFileId)
+}
+
+func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
+	user := user.DBUser{
+		Id: "testuser",
+		Settings: user.UserSettings{
+			GithubUser: user.GithubUser{
+				UID:         1234,
+				LastKnownAs: "somebody",
+			},
+		},
+	}
+	s.NoError(user.Insert())
+
+	u, err := findEvergreenUserForPR(1234)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal("testuser", u.Id)
+
+	u, err = findEvergreenUserForPR(123)
+	s.NoError(err)
+	s.Require().NotNil(u)
+	s.Equal(evergreen.GithubPatchUser, u.Id)
 }
 
 func (s *PatchIntentUnitsSuite) verifyPatchDoc(patchDoc *patch.Patch, expectedPatchID bson.ObjectId) {
@@ -347,7 +388,7 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	j.env = s.env
 	s.True(ok)
 	s.NotNil(j)
-	j.Run()
+	j.Run(context.Background())
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "github pr testing is disabled, not processing pull request")
 
@@ -360,6 +401,39 @@ func (s *PatchIntentUnitsSuite) TestRunInDegradedModeWithGithubIntent() {
 	s.Len(unprocessedIntents, 1)
 
 	s.Equal(intent.ID(), unprocessedIntents[0].ID())
+}
+
+func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersions() {
+	flags := evergreen.ServiceFlags{
+		GithubStatusAPIDisabled: true,
+	}
+	s.Require().NoError(evergreen.SetServiceFlags(flags))
+
+	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "octocat", ""))
+	s.NoError(err)
+	s.NotNil(intent)
+	s.NoError(intent.Insert())
+
+	patchID := bson.NewObjectId()
+	j, ok := NewPatchIntentProcessor(patchID, intent).(*patchIntentProcessor)
+	j.env = s.env
+	s.True(ok)
+	s.NotNil(j)
+	j.Run(context.Background())
+	s.Error(j.Error())
+
+	patchDoc, err := patch.FindOne(patch.ById(patchID))
+	s.NoError(err)
+	s.NotNil(patchDoc)
+	s.Empty(patchDoc.Version)
+
+	versionDoc, err := version.FindOne(version.ById(patchID.Hex()))
+	s.NoError(err)
+	s.Nil(versionDoc)
+
+	unprocessedIntents, err := patch.FindUnprocessedGithubIntents()
+	s.NoError(err)
+	s.Empty(unprocessedIntents)
 }
 
 func (s *PatchIntentUnitsSuite) TestBuildPatchURL() {

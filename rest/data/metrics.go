@@ -18,7 +18,7 @@ func (mc *DBMetricsConnector) FindTaskSystemMetrics(taskId string, ts time.Time,
 	}
 
 	for _, e := range events {
-		w, ok := e.Data.Data.(*event.TaskSystemResourceData)
+		w, ok := e.Data.(*event.TaskSystemResourceData)
 		if !ok {
 			return nil, errors.Errorf("system resource event for task %s is malformed (of type %T)",
 				taskId, e.Data)
@@ -38,7 +38,7 @@ func (mc *DBMetricsConnector) FindTaskProcessMetrics(taskId string, ts time.Time
 	}
 
 	for _, e := range events {
-		w, ok := e.Data.Data.(*event.TaskProcessResourceData)
+		w, ok := e.Data.(*event.TaskProcessResourceData)
 		if !ok {
 			return nil, errors.Errorf("process resource event for task %s is malformed (of type %T)",
 				taskId, e.Data)

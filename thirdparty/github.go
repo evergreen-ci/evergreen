@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/PuerkitoBio/rehttp"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/grip"
@@ -20,10 +22,8 @@ import (
 )
 
 const (
-	GithubBase          = "https://github.com"
 	NumGithubRetries    = 5
-	GithubSleepTimeSecs = 1
-	GithubAPIBase       = "https://api.github.com"
+	GithubSleepTimeSecs = 1 * time.Second
 	GithubStatusBase    = "https://status.github.com"
 	GithubAccessURL     = "https://github.com/login/oauth/access_token"
 
@@ -32,62 +32,94 @@ const (
 	GithubAPIStatusGood  = "good"
 )
 
-type GithubUser struct {
-	Active       bool   `json:"active"`
-	DispName     string `json:"display-name"`
-	EmailAddress string `json:"email"`
-	FirstName    string `json:"first-name"`
-	LastName     string `json:"last-name"`
-	Name         string `json:"name"`
+func githubShouldRetry(attempt rehttp.Attempt) bool {
+	if attempt.Response == nil {
+		return true
+	}
+
+	limit := parseGithubRateLimit(attempt.Response.Header)
+	if limit.Remaining == 0 {
+		return false
+	}
+
+	url := attempt.Request.URL.String()
+	if attempt.Response.StatusCode == http.StatusUnauthorized {
+		grip.Error(errors.Errorf("Calling github %s on %s failed: got 'unauthorized' response", attempt.Request.Method, url))
+	}
+	if attempt.Response.StatusCode != http.StatusOK {
+		grip.Error(errors.Errorf("Calling github %s on %s got a bad response code: %v", attempt.Request.Method, url, attempt.Response.StatusCode))
+	}
+	if attempt.Error != nil {
+		grip.Errorf("failed trying to call github %s on %s: %+v",
+			attempt.Request.Method, url, attempt.Error)
+		return true
+	}
+	rateMessage, _ := getGithubRateLimit(attempt.Response.Header)
+	grip.Debugf("Github API response: %s. %s", attempt.Response.Status, rateMessage)
+
+	return false
+}
+
+func getGithubClient(token string) (*http.Client, error) {
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), rehttp.RetryTemporaryErr(), githubShouldRetry)
+	return util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
 }
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
-func GetGithubCommits(oauthToken, commitsURL string) (
-	githubCommits []github.RepositoryCommit, header http.Header, err error) {
-	resp, err := tryGithubGet(oauthToken, commitsURL)
+func GetGithubCommits(ctx context.Context, oauthToken, owner, repo, ref string, commitPage int) ([]*github.RepositoryCommit, int, error) {
+	httpClient, err := getGithubClient(oauthToken)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	commits, resp, err := client.Repositories.ListCommits(ctx, owner, repo,
+		&github.CommitsListOptions{
+			SHA: ref,
+			ListOptions: github.ListOptions{
+				Page: commitPage,
+			},
+		})
 	if resp != nil {
 		defer resp.Body.Close()
 	}
+	if err != nil {
+		errMsg := fmt.Sprintf("error querying for commits in '%s/%s' ref %s : %v", owner, repo, ref, err)
+		grip.Error(errMsg)
+		return nil, 0, APIResponseError{errMsg}
+	}
 	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url '%v'", commitsURL)
+		errMsg := fmt.Sprintf("nil response from url '%s/%s' ref %s", owner, repo, ref)
 		grip.Error(errMsg)
-		return nil, nil, APIResponseError{errMsg}
+		return nil, 0, APIResponseError{errMsg}
 	}
-	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", commitsURL, err)
-		grip.Error(errMsg)
-		return nil, nil, APIResponseError{errMsg}
-	}
-
-	header = resp.Header
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, ResponseReadError{err.Error()}
-	}
-
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, 0, ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
-			return nil, nil, APIRequestError{Message: string(respBody)}
+			return nil, 0, APIRequestError{Message: string(respBody)}
 		}
-		return nil, nil, requestError
+		return nil, 0, requestError
 	}
 
-	if err = json.Unmarshal(respBody, &githubCommits); err != nil {
-		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
-	}
-	return
+	return commits, resp.NextPage, nil
 }
 
-func GetGithubAPIStatus() (string, error) {
-	resp, err := githubRequest(http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), "", nil)
+func GetGithubAPIStatus(ctx context.Context) (string, error) {
+	resp, err := githubRequest(ctx, http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), "", nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return "", errors.Wrap(err, "github request failed")
 	}
-	defer resp.Body.Close()
 
 	gitStatus := struct {
 		Status      string    `json:"status"`
@@ -103,37 +135,44 @@ func GetGithubAPIStatus() (string, error) {
 
 // GetGithubFile returns a struct that contains the contents of files within
 // a repository as Base64 encoded content.
-func GetGithubFile(oauthToken, fileURL string) (githubFile *GithubFile, err error) {
-	resp, err := tryGithubGet(oauthToken, fileURL)
-	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url '%v'", fileURL)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
-	}
-	defer resp.Body.Close()
-
+func GetGithubFile(ctx context.Context, oauthToken, owner, repo, path, hash string) (*github.RepositoryContent, error) {
+	httpClient, err := getGithubClient(oauthToken)
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", fileURL, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
+		return nil, errors.Wrap(err, "can't fetch data from github")
 	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
 
-	if resp.StatusCode != http.StatusOK {
-		grip.Errorf("Github API response: ‘%s’", resp.Status)
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, FileNotFoundError{fileURL}
+	var opt *github.RepositoryContentGetOptions
+	if len(hash) != 0 {
+		opt = &github.RepositoryContentGetOptions{
+			Ref: hash,
 		}
-		return nil, errors.Errorf("github API returned status '%v'", resp.Status)
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	file, _, resp, err := client.Repositories.GetContents(ctx, owner, repo, path, opt)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, FileNotFoundError{filepath: path}
+	}
 	if err != nil {
-		return nil, ResponseReadError{err.Error()}
+		errMsg := fmt.Sprintf("error querying '%s/%s' for '%s': %v", owner, repo, path, err)
+		grip.Error(errMsg)
+		return nil, APIResponseError{errMsg}
 	}
-
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
+	if resp == nil {
+		errMsg := fmt.Sprintf("nil response from github for '%s/%s' for '%s'", owner, repo, path)
+		grip.Error(errMsg)
+		return nil, APIResponseError{errMsg}
+	}
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ResponseReadError{err.Error()}
+		}
+
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return nil, APIRequestError{Message: string(respBody)}
@@ -141,135 +180,134 @@ func GetGithubFile(oauthToken, fileURL string) (githubFile *GithubFile, err erro
 		return nil, requestError
 	}
 
-	if err = json.Unmarshal(respBody, &githubFile); err != nil {
-		return nil, APIUnmarshalError{string(respBody), err.Error()}
+	if file == nil || file.Content == nil {
+		return nil, APIRequestError{Message: "file is nil"}
 	}
-	return
+
+	return file, nil
 }
 
-func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
-	url := fmt.Sprintf("%v/repos/%v/%v/compare/%v:%v...%v:%v",
-		GithubAPIBase,
-		repoOwner,
-		repo,
-		repoOwner,
-		baseRevision,
-		repoOwner,
-		currentCommitHash)
+func GetGithubMergeBaseRevision(ctx context.Context, oauthToken, repoOwner, repo, baseRevision, currentCommitHash string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
-	resp, err := tryGithubGet(oauthToken, url)
+	httpClient, err := getGithubClient(oauthToken)
+	if err != nil {
+		return "", errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	compare, resp, err := client.Repositories.CompareCommits(ctx,
+		repoOwner, repo, baseRevision, currentCommitHash)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		errMsg := fmt.Sprintf("error getting merge base commit response for url, %v: %v", url, err)
+		errMsg := fmt.Sprintf("error getting merge base commit response for '%s/%s'@%s..%s: %v", repoOwner, repo, baseRevision, currentCommitHash, err)
 		grip.Error(errMsg)
 		return "", APIResponseError{errMsg}
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", ResponseReadError{err.Error()}
-	}
+
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return "", APIRequestError{Message: string(respBody)}
 		}
 		return "", requestError
 	}
-	compareResponse := &GitHubCompareResponse{}
-	if err = json.Unmarshal(respBody, compareResponse); err != nil {
-		return "", APIUnmarshalError{string(respBody), err.Error()}
+
+	if compare == nil || compare.MergeBaseCommit == nil || compare.MergeBaseCommit.SHA == nil {
+		return "", APIRequestError{Message: "missing data from github compare response"}
 	}
-	return compareResponse.MergeBaseCommit.SHA, nil
+
+	return *compare.MergeBaseCommit.SHA, nil
 }
 
-func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent, error) {
-	repoID := fmt.Sprintf("%s/%s", repoOwner, repo)
-	commitURL := fmt.Sprintf("%s/repos/%s/commits/%s",
-		GithubAPIBase, repoID, githash)
+func GetCommitEvent(ctx context.Context, oauthToken, repoOwner, repo, githash string) (*github.RepositoryCommit, error) {
+	httpClient, err := getGithubClient(oauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
 
 	grip.Info(message.Fields{
 		"message": "requesting commit from github",
 		"commit":  githash,
-		"repo":    repoID,
-		"url":     commitURL,
+		"repo":    repoOwner + "/" + repo,
 	})
 
-	resp, err := tryGithubGet(oauthToken, commitURL)
+	commit, resp, err := client.Repositories.GetCommit(ctx, repoOwner, repo, githash)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		err = errors.Wrapf(err, "problem querying repo %s for %s", repoID, githash)
-		grip.Error(message.Fields{
+		err = errors.Wrapf(err, "problem querying repo %s/%s for %s", repoOwner, repo, githash)
+		grip.Error(message.WrapError(errors.Cause(err), message.Fields{
 			"commit":  githash,
-			"repo":    repoID,
-			"url":     commitURL,
-			"error":   errors.Cause(err),
+			"repo":    repoOwner + "/" + repo,
 			"message": "problem querying repo",
-		})
+		}))
 		return nil, APIResponseError{err.Error()}
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, ResponseReadError{err.Error()}
-	}
 	grip.Debug(message.Fields{
 		"operation": "github api query",
-		"size":      len(respBody),
+		"size":      resp.ContentLength,
 		"status":    resp.Status,
 		"commit":    githash,
-		"repo":      repoID,
-		"url":       commitURL,
+		"repo":      repoOwner + "/" + repo,
 	})
 
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return nil, APIRequestError{Message: string(respBody)}
 		}
 		return nil, requestError
 	}
-
-	commitEvent := &CommitEvent{}
-	if err = json.Unmarshal(respBody, commitEvent); err != nil {
-		return nil, APIUnmarshalError{string(respBody), err.Error()}
+	if commit == nil {
+		return nil, errors.New("commit not found in github")
 	}
-	return commitEvent, nil
+
+	return commit, nil
 }
 
 // GetBranchEvent gets the head of the a given branch via an API call to GitHub
-func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
-	error) {
-	branchURL := fmt.Sprintf("%v/repos/%v/%v/branches/%v",
-		GithubAPIBase,
-		repoOwner,
-		repo,
-		branch,
-	)
+func GetBranchEvent(ctx context.Context, oauthToken, repoOwner, repo, branch string) (*github.Branch, error) {
+	httpClient, err := getGithubClient(oauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
 
-	grip.Debugln("requesting github commit from url:", branchURL)
+	grip.Debugf("requesting github commit for '%s/%s': branch: %s\n", repoOwner, repo, branch)
 
-	resp, err := tryGithubGet(oauthToken, branchURL)
+	branchEvent, resp, err := client.Repositories.GetBranch(ctx, repoOwner, repo, branch)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
-
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", branchURL, err)
+		errMsg := fmt.Sprintf("error querying  '%s/%s': branch: '%s': %v", repoOwner, repo, branch, err)
 		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, ResponseReadError{err.Error()}
-	}
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
 	if resp.StatusCode != http.StatusOK {
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, ResponseReadError{err.Error()}
+		}
 		requestError := APIRequestError{}
 		if err = json.Unmarshal(respBody, &requestError); err != nil {
 			return nil, APIRequestError{Message: string(respBody)}
@@ -277,19 +315,16 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 		return nil, requestError
 	}
 
-	branchEvent := &BranchEvent{}
-	if err = json.Unmarshal(respBody, branchEvent); err != nil {
-		return nil, APIUnmarshalError{string(respBody), err.Error()}
-	}
 	return branchEvent, nil
 }
 
 // githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth
-func githubRequest(method string, url string, oauthToken string, data interface{}) (*http.Response, error) {
+func githubRequest(ctx context.Context, method string, url string, oauthToken string, data interface{}) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 
 	// if there is data, add it to the body of the request
 	if data != nil {
@@ -310,52 +345,17 @@ func githubRequest(method string, url string, oauthToken string, data interface{
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	return client.Do(req)
 }
 
-func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
-	grip.Debugf("Attempting GitHub API call at '%s'", url)
-	retryFail, err := util.Retry(
-		func() (bool, error) {
-			resp, err = githubRequest("GET", url, oauthToken, nil)
-			if err != nil {
-				grip.Errorf("failed trying to call github GET on %s: %+v", url, err)
-				return true, err
-			}
-			if resp.StatusCode == http.StatusUnauthorized {
-				err = errors.Errorf("Calling github GET on %v failed: got 'unauthorized' response", url)
-				grip.Error(err)
-				return false, err
-			}
-			if resp.StatusCode != http.StatusOK {
-				err = errors.Errorf("Calling github GET on %v got a bad response code: %v", url, resp.StatusCode)
-			}
-			// read the results
-			rateMessage, _ := getGithubRateLimit(resp.Header)
-			grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
-
-			return false, nil
-		}, NumGithubRetries, GithubSleepTimeSecs*time.Second)
-
-	if err != nil {
-		// couldn't get it
-		if retryFail {
-			grip.Errorf("Github GET on %v used up all retries.", err)
-		}
-		return nil, errors.WithStack(err)
-	}
-
-	return
-}
-
 // tryGithubPost posts the data to the Github api endpoint with the url given
-func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
+func tryGithubPost(ctx context.Context, url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
 	grip.Errorf("Attempting GitHub API POST at ‘%s’", url)
 	retryFail, err := util.Retry(func() (bool, error) {
-		resp, err = githubRequest("POST", url, oauthToken, data)
+		resp, err = githubRequest(ctx, http.MethodPost, url, oauthToken, data)
 		if err != nil {
 			grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
 			return true, err
@@ -388,94 +388,59 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 	return
 }
 
-// GetGithubFileURL returns a URL that locates a github file given the owner,
-// repo,remote path and revision
-func GetGithubFileURL(owner, repo, remotePath, revision string) string {
-	return fmt.Sprintf("https://api.github.com/repos/%v/%v/contents/%v?ref=%v",
-		owner,
-		repo,
-		remotePath,
-		revision,
-	)
-}
+func parseGithubRateLimit(h http.Header) github.Rate {
+	limitStr := h.Get("X-Ratelimit-Limit")
+	remStr := h.Get("X-Ratelimit-Remaining")
 
-// NextPageLink returns the link to the next page for a given header's 'Link'
-// key based on http://developer.github.com/v3/#pagination
-// For full details see http://tools.ietf.org/html/rfc5988
-func NextGithubPageLink(header http.Header) string {
-	hlink, ok := header[evergreen.RoutePaginatorNextPageHeaderKey]
-	if !ok {
-		return ""
-	}
+	lim, _ := strconv.Atoi(limitStr)
+	rem, _ := strconv.Atoi(remStr)
 
-	for _, s := range hlink {
-		ix := strings.Index(s, `; rel="next"`)
-		if ix > -1 {
-			t := s[:ix]
-			op := strings.Index(t, "<")
-			po := strings.Index(t, ">")
-			u := t[op+1 : po]
-			return u
-		}
+	return github.Rate{
+		Limit:     lim,
+		Remaining: rem,
 	}
-	return ""
 }
 
 // getGithubRateLimit interprets the limit headers, and produces an increasingly
 // alarmed message (for the caller to log) as we get closer and closer
 func getGithubRateLimit(header http.Header) (message string, loglevel level.Priority) {
-	h := (map[string][]string)(header)
-	limStr, okLim := h["X-Ratelimit-Limit"]
-	remStr, okRem := h["X-Ratelimit-Remaining"]
-
-	// ensure that we were able to read the rate limit header
-	if !okLim || !okRem || len(limStr) == 0 || len(remStr) == 0 {
+	limit := parseGithubRateLimit(header)
+	if limit.Limit == 0 {
 		loglevel = level.Warning
 		message = "Could not get rate limit data"
 		return
 	}
 
-	// parse the rate limits
-	lim, limErr := strconv.ParseInt(limStr[0], 10, 0) // parse in decimal to int
-	rem, remErr := strconv.ParseInt(remStr[0], 10, 0)
-
-	// ensure we successfully parsed the rate limits
-	if limErr != nil || remErr != nil {
-		loglevel = level.Warning
-		message = fmt.Sprintf("Could not parse rate limit data: limit=%q, rate=%t",
-			limStr, okLim)
-		return
-	}
-
 	// We're in good shape
-	if rem > int64(0.1*float32(lim)) {
+	if limit.Remaining > int(0.1*float32(limit.Limit)) {
 		loglevel = level.Info
-		message = fmt.Sprintf("Rate limit: %v/%v", rem, lim)
+		message = fmt.Sprintf("Rate limit: %v/%v", limit.Remaining, limit.Limit)
 		return
 	}
 
 	// we're running short
-	if rem > 20 {
+	if limit.Remaining < 20 {
 		loglevel = level.Warning
-		message = fmt.Sprintf("Rate limit significantly low: %v/%v", rem, lim)
+		message = fmt.Sprintf("Rate limit significantly low: %v/%v", limit.Remaining, limit.Limit)
 		return
 	}
 
 	// we're in trouble
 	loglevel = level.Error
-	message = fmt.Sprintf("Throttling required - rate limit almost exhausted: %v/%v", rem, lim)
+	message = fmt.Sprintf("Throttling required - rate limit almost exhausted: %v/%v", limit.Remaining, limit.Limit)
 	return
 }
 
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
 // And returns the response which contains the accessToken associated with the user.
-func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *GithubAuthResponse, err error) {
+func GithubAuthenticate(ctx context.Context, code, clientId, clientSecret string) (githubResponse *GithubAuthResponse, err error) {
+	// Functionality not supported by go-github
 	authParameters := GithubAuthParameters{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 		Code:         code,
 	}
-	resp, err := tryGithubPost(GithubAccessURL, "", authParameters)
+	resp, err := tryGithubPost(ctx, GithubAccessURL, "", authParameters)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -497,82 +462,174 @@ func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *Gi
 	return
 }
 
-// GetGithubUser does a GET from GitHub for the user, email, and organizations information and
-// returns the GithubLoginUser and its associated GithubOrganizations after authentication
-func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizations []GithubOrganization, err error) {
-	userUrl := fmt.Sprintf("%v/user", GithubAPIBase)
-	orgUrl := fmt.Sprintf("%v/user/orgs", GithubAPIBase)
-	t := fmt.Sprintf("token %v", token)
-	// get the user
-	resp, err := tryGithubGet(t, userUrl)
+// GetGithubTokenUser fetches a github user associated with an oauth token, and
+// if requiredOrg is specified, checks that it belongs to that org.
+// Returns user object, if it was a member of the specified org (or false if not specified),
+// and error
+func GetGithubTokenUser(ctx context.Context, token string, requiredOrg string) (*GithubLoginUser, bool, error) {
+	httpClient, err := getGithubClient(fmt.Sprintf("token %s", token))
+	if err != nil {
+		return nil, false, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	user, resp, err := client.Users.Get(ctx, "")
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, nil, errors.WithStack(err)
+		return nil, false, errors.WithStack(err)
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, ResponseReadError{err.Error()}
-	}
-
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
-	if err = json.Unmarshal(respBody, &githubUser); err != nil {
-		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
+	if resp.StatusCode != http.StatusOK {
+		var respBody []byte
+		respBody, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, false, ResponseReadError{err.Error()}
+		}
+		return nil, false, APIResponseError{string(respBody)}
 	}
 
-	// get the user's organizations
-	resp, err = tryGithubGet(t, orgUrl)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "Could not get user from token")
-	}
-	respBody, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, ResponseReadError{err.Error()}
+	var isMember bool
+	if len(requiredOrg) > 0 {
+		isMember, _, err = client.Organizations.IsMember(ctx, requiredOrg, *user.Login)
+		if err != nil {
+			return nil, false, errors.Wrapf(err, "Could check if user was org member")
+		}
 	}
 
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
-
-	if err = json.Unmarshal(respBody, &githubOrganizations); err != nil {
-		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
-	}
-	return
-}
-
-// verifyGithubAPILimitHeader parses a Github API header to find the number of requests remaining
-func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
-	h := (map[string][]string)(header)
-	limStr, okLim := h["X-Ratelimit-Limit"]
-	remStr, okRem := h["X-Ratelimit-Remaining"]
-
-	if !okLim || !okRem || len(limStr) == 0 || len(remStr) == 0 {
-		return 0, errors.New("Could not get rate limit data")
+	if user.Login == nil || user.ID == nil || user.Company == nil ||
+		user.Email == nil || user.OrganizationsURL == nil {
+		return nil, false, errors.New("Github user is missing required data")
 	}
 
-	rem, err := strconv.ParseInt(remStr[0], 10, 0)
-	if err != nil {
-		return 0, errors.Errorf("Could not parse rate limit data: limit=%q, rate=%t", limStr, okLim)
-	}
-
-	return rem, nil
+	return &GithubLoginUser{
+		Login:            *user.Login,
+		Id:               *user.ID,
+		Company:          *user.Company,
+		EmailAddress:     *user.Email,
+		OrganizationsURL: *user.OrganizationsURL,
+	}, isMember, err
 }
 
 // CheckGithubAPILimit queries Github for the number of API requests remaining
-func CheckGithubAPILimit(token string) (int64, error) {
-	url := fmt.Sprintf("%v/rate_limit", GithubAPIBase)
-	resp, err := githubRequest("GET", url, token, nil)
+func CheckGithubAPILimit(ctx context.Context, oauthToken string) (int64, error) {
+	httpClient, err := getGithubClient(oauthToken)
 	if err != nil {
-		grip.Errorf("github GET rate limit failed on %s: %+v", url, err)
+		return 0, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	limits, resp, err := client.RateLimits(ctx)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		grip.Errorf("github GET rate limit failed: %+v", err)
 		return 0, err
 	}
-	rem, err := verifyGithubAPILimitHeader(resp.Header)
-	if err != nil {
-		grip.Errorf("Error getting rate limit: %s", err)
-		return 0, err
+
+	rateMessage, _ := getGithubRateLimit(resp.Header)
+	grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
+
+	if limits.Core == nil {
+		return 0, errors.New("nil github limits")
 	}
-	return rem, nil
+	if limits.Core.Remaining < 0 {
+		return int64(0), nil
+	}
+
+	return int64(limits.Core.Remaining), nil
+}
+
+// GetGithubUser fetches the github user with the given login name
+func GetGithubUser(ctx context.Context, oauthToken, loginName string) (*github.User, error) {
+	httpClient, err := getGithubClient(oauthToken)
+	if err != nil {
+		return nil, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+	client := github.NewClient(httpClient)
+
+	user, _, err := client.Users.Get(ctx, loginName)
+	if err != nil {
+		return nil, err
+	}
+
+	if user == nil || user.ID == nil || user.Login == nil {
+		return nil, errors.New("empty data received from github")
+	}
+
+	return user, nil
+}
+
+// GithubUserInOrganization returns true if the given github user is in the
+// given organization. The user with the attached token must have
+// visibility into organization membership, including private members
+func GithubUserInOrganization(ctx context.Context, token, requiredOrganization, username string) (bool, error) {
+	httpClient, err := getGithubClient(token)
+	if err != nil {
+		return false, errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	// doesn't count against API limits
+	limits, _, err := client.RateLimits(ctx)
+	if err != nil {
+		return false, err
+	}
+	if limits == nil || limits.Core == nil {
+		return false, errors.New("rate limits response was empty")
+	}
+	if limits.Core.Remaining < 3 {
+		return false, errors.New("github rate limit would be exceeded")
+	}
+
+	isMember, _, err := client.Organizations.IsMember(context.Background(), requiredOrganization, username)
+	return isMember, err
+}
+
+// GetPullRequestMergeBase returns the merge base hash for the given PR.
+// This function will retry up to 5 times, regardless of error response (unless
+// error is the result of hitting an api limit)
+func GetPullRequestMergeBase(ctx context.Context, token string, data patch.GithubPatch) (string, error) {
+	all := rehttp.RetryAll(rehttp.RetryMaxRetries(NumGithubRetries-1), githubShouldRetry)
+	httpClient, err := util.GetRetryableOauth2HTTPClient(token, all, util.RehttpDelay(GithubSleepTimeSecs, NumGithubRetries))
+
+	if err != nil {
+		return "", errors.Wrap(err, "can't fetch data from github")
+	}
+	defer util.PutHTTPClient(httpClient)
+
+	client := github.NewClient(httpClient)
+
+	commits, _, err := client.PullRequests.ListCommits(ctx, data.BaseOwner, data.BaseRepo, data.PRNumber, nil)
+	if err != nil {
+		return "", err
+	}
+	if len(commits) == 0 {
+		return "", errors.New("No commits received from github")
+	}
+	if commits[0].SHA == nil {
+		return "", errors.New("hash is missing from pull request commit list")
+	}
+
+	commit, _, err := client.Repositories.GetCommit(ctx, data.BaseOwner, data.BaseRepo, *commits[0].SHA)
+	if err != nil {
+		return "", err
+	}
+	if commit == nil {
+		return "", errors.New("couldn't find commit")
+	}
+	if len(commit.Parents) == 0 {
+		return "", errors.New("can't find pull request branch point")
+	}
+	if commit.Parents[0].SHA == nil {
+		return "", errors.New("parent hash is missing")
+	}
+
+	return *commit.Parents[0].SHA, nil
 }

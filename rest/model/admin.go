@@ -3,9 +3,9 @@ package model
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
@@ -117,87 +117,41 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	return nil
 }
 
-func (as *APIAdminSettings) BuildFromServiceAndScrub(h interface{}) error {
-	if err := as.BuildFromService(h); err != nil {
-		return err
-	}
-	return scrubSecureFields(as)
-}
-
-func scrubSecureFields(input Model) error {
-	if input == nil {
-		return errors.New("API settings model is nil")
-	}
-	catcher := grip.NewSimpleCatcher()
-	reflectInput := reflect.Indirect(reflect.ValueOf(input))
-	for i := 0; i < reflectInput.NumField(); i++ {
-		// get the field name + value
-		field := reflectInput.Type().Field(i)
-		propName := field.Name
-		propVal := reflect.ValueOf(input).Elem().FieldByName(propName)
-		if !propVal.CanSet() {
-			continue
-		}
-
-		// if this is a secure field, swap the value with asterisks. All secure types must be string
-		secure := field.Tag.Get("secure")
-		if secure != "" {
-			if propVal.Kind() != reflect.String {
-				catcher.Add(fmt.Errorf("secure field %s is not a string", propName))
-				continue
-			}
-			if propVal.String() == "" {
-				continue
-			}
-			propVal.SetString("***")
-		}
-
-		// if this is a struct, recursively scrub its secure fields
-		if reflect.Indirect(propVal).Kind() == reflect.Struct {
-			propInterface := propVal.Interface()
-			section, ok := propInterface.(Model)
-			if !ok {
-				catcher.Add(fmt.Errorf("unable to convert config section %s", propName))
-				continue
-			}
-			catcher.Add(scrubSecureFields(section))
-		} else if propVal.Kind() == reflect.Slice {
-			// if this is a slice, scrub each of its elements
-			for j := 0; j < propVal.Len(); j++ {
-				elem := propVal.Index(j)
-				if reflect.Indirect(elem).Kind() == reflect.Struct {
-					elemInterface := elem.Interface()
-					section, ok := elemInterface.(Model)
-					if !ok {
-						catcher.Add(fmt.Errorf("unable to convert config section %+v", elem))
-						continue
-					}
-					catcher.Add(scrubSecureFields(section))
-				}
-			}
-		}
-	}
-
-	return catcher.Resolve()
-}
-
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
 	settings := evergreen.Settings{
-		ApiUrl:             *as.ApiUrl,
-		Banner:             *as.Banner,
-		BannerTheme:        evergreen.BannerTheme(*as.BannerTheme),
-		ClientBinariesDir:  *as.ClientBinariesDir,
-		ConfigDir:          *as.ConfigDir,
-		Credentials:        map[string]string{},
-		Expansions:         map[string]string{},
-		GithubPRCreatorOrg: *as.GithubPRCreatorOrg,
-		IsNonProd:          *as.IsNonProd,
-		Keys:               map[string]string{},
-		LogPath:            *as.LogPath,
-		Plugins:            evergreen.PluginConfig{},
-		PprofPort:          *as.PprofPort,
-		SuperUsers:         as.SuperUsers,
+		Credentials: map[string]string{},
+		Expansions:  map[string]string{},
+		Keys:        map[string]string{},
+		Plugins:     evergreen.PluginConfig{},
+		SuperUsers:  as.SuperUsers,
+	}
+	if as.ApiUrl != nil {
+		settings.ApiUrl = *as.ApiUrl
+	}
+	if as.Banner != nil {
+		settings.Banner = *as.Banner
+	}
+	if as.BannerTheme != nil {
+		settings.BannerTheme = evergreen.BannerTheme(*as.BannerTheme)
+	}
+	if as.ClientBinariesDir != nil {
+		settings.ClientBinariesDir = *as.ClientBinariesDir
+	}
+	if as.ConfigDir != nil {
+		settings.ConfigDir = *as.ConfigDir
+	}
+	if as.GithubPRCreatorOrg != nil {
+		settings.GithubPRCreatorOrg = *as.GithubPRCreatorOrg
+	}
+	if as.IsNonProd != nil {
+		settings.IsNonProd = *as.IsNonProd
+	}
+	if as.LogPath != nil {
+		settings.LogPath = *as.LogPath
+	}
+	if as.PprofPort != nil {
+		settings.PprofPort = *as.PprofPort
 	}
 	apiModelReflect := reflect.ValueOf(*as)
 	dbModelReflect := reflect.ValueOf(&settings).Elem()
@@ -278,7 +232,7 @@ type APISMTPConfig struct {
 	Port       int         `json:"port"`
 	UseSSL     bool        `json:"use_ssl"`
 	Username   APIString   `json:"username"`
-	Password   APIString   `json:"password" secure:"true"`
+	Password   APIString   `json:"password"`
 	From       APIString   `json:"from"`
 	AdminEmail []APIString `json:"admin_email"`
 }
@@ -356,7 +310,7 @@ func (a *APIAmboyConfig) ToService() (interface{}, error) {
 
 type APIapiConfig struct {
 	HttpListenAddr      APIString `json:"http_listen_addr"`
-	GithubWebhookSecret APIString `json:"github_webhook_secret" secure:"true"`
+	GithubWebhookSecret APIString `json:"github_webhook_secret"`
 }
 
 func (a *APIapiConfig) BuildFromService(h interface{}) error {
@@ -444,7 +398,7 @@ func (a *APIAuthConfig) ToService() (interface{}, error) {
 
 type APICrowdConfig struct {
 	Username APIString `json:"username"`
-	Password APIString `json:"password" secure:"true"`
+	Password APIString `json:"password"`
 	Urlroot  APIString `json:"url_root"`
 }
 
@@ -516,7 +470,7 @@ func (a *APINaiveAuthConfig) ToService() (interface{}, error) {
 type APIAuthUser struct {
 	Username    APIString `json:"username"`
 	DisplayName APIString `json:"display_name"`
-	Password    APIString `json:"password" secure:"true"`
+	Password    APIString `json:"password"`
 	Email       APIString `json:"email"`
 }
 
@@ -550,7 +504,7 @@ func (a *APIAuthUser) ToService() (interface{}, error) {
 
 type APIGithubAuthConfig struct {
 	ClientId     APIString   `json:"client_id"`
-	ClientSecret APIString   `json:"client_secret" secure:"true"`
+	ClientSecret APIString   `json:"client_secret"`
 	Users        []APIString `json:"users"`
 	Organization APIString   `json:"organization"`
 }
@@ -617,7 +571,7 @@ func (a *APIHostInitConfig) ToService() (interface{}, error) {
 type APIJiraConfig struct {
 	Host           APIString `json:"host"`
 	Username       APIString `json:"username"`
-	Password       APIString `json:"password" secure:"true"`
+	Password       APIString `json:"password"`
 	DefaultProject APIString `json:"default_project"`
 }
 
@@ -825,7 +779,7 @@ func (a *APICloudProviders) ToService() (interface{}, error) {
 }
 
 type APIAWSConfig struct {
-	Secret APIString `json:"aws_secret" secure:"true"`
+	Secret APIString `json:"aws_secret"`
 	Id     APIString `json:"aws_id"`
 }
 
@@ -869,7 +823,7 @@ func (a *APIDockerConfig) ToService() (interface{}, error) {
 
 type APIGCEConfig struct {
 	ClientEmail  APIString `json:"client_email"`
-	PrivateKey   APIString `json:"private_key" secure:"true"`
+	PrivateKey   APIString `json:"private_key"`
 	PrivateKeyID APIString `json:"private_key_id"`
 	TokenURI     APIString `json:"token_uri"`
 }
@@ -900,7 +854,7 @@ type APIOpenStackConfig struct {
 	IdentityEndpoint APIString `json:"identity_endpoint"`
 
 	Username   APIString `json:"username"`
-	Password   APIString `json:"password" secure:"true"`
+	Password   APIString `json:"password"`
 	DomainName APIString `json:"domain_name"`
 
 	ProjectName APIString `json:"project_name"`
@@ -940,7 +894,7 @@ func (a *APIOpenStackConfig) ToService() (interface{}, error) {
 type APIVSphereConfig struct {
 	Host     APIString `json:"host"`
 	Username APIString `json:"username"`
-	Password APIString `json:"password" secure:"true"`
+	Password APIString `json:"password"`
 }
 
 func (a *APIVSphereConfig) BuildFromService(h interface{}) error {
@@ -1017,7 +971,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled         bool `json:"task_dispatch_disabled"`
 	HostinitDisabled             bool `json:"hostinit_disabled"`
 	MonitorDisabled              bool `json:"monitor_disabled"`
-	NotificationsDisabled        bool `json:"notifications_disabled"`
 	AlertsDisabled               bool `json:"alerts_disabled"`
 	TaskrunnerDisabled           bool `json:"taskrunner_disabled"`
 	RepotrackerDisabled          bool `json:"repotracker_disabled"`
@@ -1026,11 +979,12 @@ type APIServiceFlags struct {
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
 	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
+	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
 }
 
 type APISlackConfig struct {
 	Options *APISlackOptions `json:"options"`
-	Token   APIString        `json:"token" secure:"true"`
+	Token   APIString        `json:"token"`
 	Level   APIString        `json:"level"`
 }
 
@@ -1091,6 +1045,9 @@ func (a *APISlackOptions) BuildFromService(h interface{}) error {
 }
 
 func (a *APISlackOptions) ToService() (interface{}, error) {
+	if a == nil {
+		return send.SlackOptions{}, nil
+	}
 	return send.SlackOptions{
 		Channel:       string(a.Channel),
 		Hostname:      string(a.Hostname),
@@ -1132,11 +1089,11 @@ type APIUIConfig struct {
 	Url            APIString `json:"url"`
 	HelpUrl        APIString `json:"help_url"`
 	HttpListenAddr APIString `json:"http_listen_addr"`
-	Secret         APIString `json:"secret" secure:"true"`
+	Secret         APIString `json:"secret"`
 	DefaultProject APIString `json:"default_project"`
 	CacheTemplates bool      `json:"cache_templates"`
 	SecureCookies  bool      `json:"secure_cookies"`
-	CsrfKey        APIString `json:"csrf_key" secure:"true"`
+	CsrfKey        APIString `json:"csrf_key"`
 }
 
 func (a *APIUIConfig) BuildFromService(h interface{}) error {
@@ -1189,7 +1146,7 @@ func (ab *APIBanner) BuildFromService(h interface{}) error {
 
 // ToService is not yet implemented
 func (ab *APIBanner) ToService() (interface{}, error) {
-	return nil, errors.New("ToService not implemented for banner")
+	return ab, nil
 }
 
 // BuildFromService builds a model from the service layer
@@ -1199,7 +1156,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostinitDisabled = v.HostinitDisabled
 		as.MonitorDisabled = v.MonitorDisabled
-		as.NotificationsDisabled = v.NotificationsDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.TaskrunnerDisabled = v.TaskrunnerDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
@@ -1208,6 +1164,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.RepotrackerPushEventDisabled = v.RepotrackerPushEventDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
+		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 	default:
 		return errors.Errorf("%T is not a supported service flags type", h)
 	}
@@ -1220,7 +1177,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskDispatchDisabled:         as.TaskDispatchDisabled,
 		HostinitDisabled:             as.HostinitDisabled,
 		MonitorDisabled:              as.MonitorDisabled,
-		NotificationsDisabled:        as.NotificationsDisabled,
 		AlertsDisabled:               as.AlertsDisabled,
 		TaskrunnerDisabled:           as.TaskrunnerDisabled,
 		RepotrackerDisabled:          as.RepotrackerDisabled,
@@ -1229,6 +1185,7 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		RepotrackerPushEventDisabled: as.RepotrackerPushEventDisabled,
 		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
 		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
+		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 	}, nil
 }
 
@@ -1247,4 +1204,43 @@ func (rtr *RestartTasksResponse) BuildFromService(h interface{}) error {
 // ToService is not implemented for /admin/restart
 func (rtr *RestartTasksResponse) ToService() (interface{}, error) {
 	return nil, errors.New("ToService not implemented for RestartTasksResponse")
+}
+
+func AdminDbToRestModel(in evergreen.ConfigSection) (Model, error) {
+	id := in.SectionId()
+	var out Model
+	if id == evergreen.ConfigDocID {
+		out = &APIAdminSettings{}
+		err := out.BuildFromService(reflect.ValueOf(in).Interface())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		structVal := reflect.ValueOf(*NewConfigModel())
+		for i := 0; i < structVal.NumField(); i++ {
+			// this assumes that the json tag is the same as the section ID
+			tag := strings.Split(structVal.Type().Field(i).Tag.Get("json"), ",")[0]
+			if tag != id {
+				continue
+			}
+
+			propName := structVal.Type().Field(i).Name
+			propVal := structVal.FieldByName(propName)
+			propInterface := propVal.Interface()
+			apiModel, ok := propInterface.(Model)
+			if !ok {
+				return nil, fmt.Errorf("unable to convert section %s to a Model interface", id)
+			}
+			out = apiModel
+		}
+		if out == nil {
+			return nil, fmt.Errorf("section %s is not defined in the APIAdminSettings struct", id)
+		}
+		err := out.BuildFromService(reflect.Indirect(reflect.ValueOf(in)).Interface())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
 }

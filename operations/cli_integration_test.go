@@ -21,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -51,6 +52,7 @@ var emptyPatch = ``
 
 func init() {
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
+	reporting.QuietMode()
 }
 
 type cliTestHarness struct {
@@ -93,7 +95,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(projectRef.Insert(), ShouldBeNil)
 
 	// create a settings file for the command line client
-	settings := model.CLISettings{
+	settings := ClientSettings{
 		APIServerHost: testServer.URL + "/api",
 		UIServerHost:  "http://dev-evg.mongodb.com",
 		APIKey:        "testapikey",
@@ -136,7 +138,7 @@ func TestCLIFetchSource(t *testing.T) {
 			finalize:    false,
 		}
 
-		client, err := NewClientSetttings(testSetup.settingsFilePath)
+		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
 		ac, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
@@ -226,7 +228,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		}).Upsert()
 		So(err, ShouldBeNil)
 
-		client, err := NewClientSetttings(testSetup.settingsFilePath)
+		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
 		_, rc, err := client.getLegacyClients()
 		So(err, ShouldBeNil)
@@ -327,7 +329,7 @@ func TestCLIFunctions(t *testing.T) {
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
 
-		client, err := NewClientSetttings(testSetup.settingsFilePath)
+		client, err := NewClientSettings(testSetup.settingsFilePath)
 		So(err, ShouldBeNil)
 		ac, _, err := client.getLegacyClients()
 		So(err, ShouldBeNil)

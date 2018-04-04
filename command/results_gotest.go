@@ -170,7 +170,7 @@ func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 				outputFile, err)
 			continue
 		}
-		defer fileReader.Close()
+		defer fileReader.Close() //nolint: evg
 
 		// parse the output logs
 		parser := &goTestParser{Suite: suiteName}

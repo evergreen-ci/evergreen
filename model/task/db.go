@@ -26,7 +26,6 @@ var (
 	SecretKey              = bsonutil.MustHaveTag(Task{}, "Secret")
 	CreateTimeKey          = bsonutil.MustHaveTag(Task{}, "CreateTime")
 	DispatchTimeKey        = bsonutil.MustHaveTag(Task{}, "DispatchTime")
-	PushTimeKey            = bsonutil.MustHaveTag(Task{}, "PushTime")
 	ScheduledTimeKey       = bsonutil.MustHaveTag(Task{}, "ScheduledTime")
 	StartTimeKey           = bsonutil.MustHaveTag(Task{}, "StartTime")
 	FinishTimeKey          = bsonutil.MustHaveTag(Task{}, "FinishTime")
@@ -170,12 +169,21 @@ func ByIdsBuildAndStatus(taskIds []string, buildId string, statuses []string) db
 	})
 }
 
-// ByRunningLastHeartbeat creates a query that finds any running tasks whose last heartbeat
-// was at least the specified threshold ago
-func ByRunningLastHeartbeat(threshold time.Time) db.Q {
+// ByStaleRunningTask creates a query that finds any running tasks
+// whose last heartbeat was at least the specified threshold ago, or
+// that has been dispatched but hasn't started in twice that long.
+func ByStaleRunningTask(staleness time.Duration) db.Q {
 	return db.Query(bson.M{
-		StatusKey:        SelectorTaskInProgress,
-		LastHeartbeatKey: bson.M{"$lte": threshold},
+		"$or": []bson.M{
+			{
+				StatusKey:        SelectorTaskInProgress,
+				LastHeartbeatKey: bson.M{"$lte": time.Now().Add(-staleness)},
+			},
+			{
+				StatusKey:       evergreen.TaskDispatched,
+				DispatchTimeKey: bson.M{"$lte": time.Now().Add(-2 * staleness)},
+			},
+		},
 	})
 }
 

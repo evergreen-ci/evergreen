@@ -11,12 +11,9 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/recovery"
 )
 
 // NewLocalWorkers is a constructor for pool of worker processes that
@@ -62,87 +59,6 @@ func (r *localWorkers) SetQueue(q amboy.Queue) error {
 // localWorkers this means that workers are running.
 func (r *localWorkers) Started() bool {
 	return r.started
-}
-
-func startWorkerServer(ctx context.Context, q amboy.Queue, wg *sync.WaitGroup) <-chan amboy.Job {
-	output := make(chan amboy.Job)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				job := q.Next(ctx)
-				if job == nil {
-					continue
-				}
-
-				if job.Status().Completed {
-					grip.Debugf("job '%s' was dispatched from the queue but was completed",
-						job.ID())
-					continue
-				}
-
-				output <- job
-			}
-		}
-	}()
-
-	return output
-}
-
-func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.WaitGroup) {
-	var (
-		err error
-		job amboy.Job
-	)
-
-	wg.Add(1)
-	defer wg.Done()
-	defer func() {
-		// if we hit a panic we want to add an error to the job;
-		err = recovery.HandlePanicWithError(recover(), nil, "worker process encountered error")
-		if err != nil {
-			if job != nil {
-				job.AddError(err)
-				q.Complete(ctx, job)
-			}
-			// start a replacement worker.
-			go worker(ctx, jobs, q, wg)
-		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case job = <-jobs:
-			if job == nil {
-				continue
-			}
-
-			ti := amboy.JobTimeInfo{
-				Start: time.Now(),
-			}
-
-			job.Run()
-			ti.End = time.Now()
-			job.UpdateTimeInfo(ti)
-			q.Complete(ctx, job)
-
-			r := message.Fields{
-				"job":           job.ID(),
-				"job_type":      job.Type().Name,
-				"duration_secs": ti.Duration().Seconds(),
-			}
-			if err := job.Error(); err != nil {
-				r["error"] = err.Error()
-			}
-			grip.Debug(r)
-		}
-	}
 }
 
 // Start initializes all worker process, and returns an error if the

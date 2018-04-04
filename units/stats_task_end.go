@@ -11,11 +11,17 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 )
 
 const collectTaskEndDataJobName = "collect-task-end-data"
+
+func init() {
+	registry.AddJobType(collectTaskEndDataJobName,
+		func() amboy.Job { return newTaskEndJob() })
+}
 
 // collectTaskEndData determines a task's cost based on the host it ran on. Hosts that
 // are unable to calculate their own costs will not set a task's Cost field. Errors
@@ -58,10 +64,13 @@ func NewCollectTaskEndDataJob(t *task.Task, h *host.Host) amboy.Job {
 	j.task = t
 	j.host = h
 	j.SetID(fmt.Sprintf("%s.%s.%s.%d", collectTaskEndDataJobName, j.TaskID, j.HostID, job.GetNumber()))
+	j.SetPriority(-2)
 	return j
 }
 
-func (j *collectTaskEndDataJob) Run() {
+func (j *collectTaskEndDataJob) Run(ctx context.Context) {
+	defer j.MarkComplete()
+
 	var err error
 	if j.task == nil {
 		j.task, err = task.FindOneId(j.TaskID)
@@ -84,7 +93,8 @@ func (j *collectTaskEndDataJob) Run() {
 	settings := j.env.Settings()
 
 	var cost float64
-	ctx, cancel := context.WithCancel(context.Background())
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
 	manager, err := cloud.GetCloudManager(ctx, j.host.Provider, settings)
@@ -108,17 +118,18 @@ func (j *collectTaskEndDataJob) Run() {
 	}
 
 	msg := message.Fields{
-		"stat":         "task-end-stats",
-		"task_id":      j.task.Id,
-		"task":         j.task.DisplayName,
-		"execution":    j.task.Execution,
-		"requester":    j.task.Requester,
-		"activated_by": j.task.ActivatedBy,
-		"project":      j.task.Project,
-		"variant":      j.task.BuildVariant,
-		"distro":       j.host.Distro.Id,
-		"provider":     j.host.Distro.Provider,
-		"host":         j.host.Id,
+		"stat":            "task-end-stats",
+		"task_id":         j.task.Id,
+		"task":            j.task.DisplayName,
+		"execution":       j.task.Execution,
+		"requester":       j.task.Requester,
+		"activated_by":    j.task.ActivatedBy,
+		"project":         j.task.Project,
+		"variant":         j.task.BuildVariant,
+		"distro":          j.host.Distro.Id,
+		"provider":        j.host.Distro.Provider,
+		"host":            j.host.Id,
+		"total_wait_secs": j.task.FinishTime.Sub(j.task.GetTaskCreatedTime()).Seconds(),
 	}
 
 	if cost != 0 {

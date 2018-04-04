@@ -58,6 +58,7 @@ type GithubPatch struct {
 	HeadRepo   string `bson:"head_repo"`
 	HeadHash   string `bson:"head_hash"`
 	Author     string `bson:"author"`
+	AuthorUID  int    `bson:"author_uid"`
 }
 
 // ModulePatch stores request details for a patch
@@ -118,7 +119,7 @@ func (p *Patch) FetchPatchFiles() error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer file.Close() //nolint: evg
 		raw, err := ioutil.ReadAll(file)
 		if err != nil {
 			return err
@@ -322,4 +323,8 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 		},
 	}
 	return UpdateOne(query, update)
+}
+
+func (p *Patch) IsGithubPRPatch() bool {
+	return p.GithubPatchData.PRNumber != 0
 }

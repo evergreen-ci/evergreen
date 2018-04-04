@@ -20,12 +20,15 @@ const (
 	tasksFlagName      = "tasks"
 	largeFlagName      = "large"
 	hostFlagName       = "host"
+	startTimeFlagName  = "time"
+	limitFlagName      = "limit"
 
-	anserDryRunFlagName  = "dry-run"
-	anserLimitFlagName   = "limit"
-	anserTargetFlagName  = "target"
-	anserWorkersFlagName = "workers"
-	anserPeriodFlagName  = "period"
+	anserDryRunFlagName      = "dry-run"
+	anserLimitFlagName       = "limit"
+	anserTargetFlagName      = "target"
+	anserWorkersFlagName     = "workers"
+	anserPeriodFlagName      = "period"
+	anserMigrationIDFlagName = "id"
 
 	dbUrlFlagName      = "url"
 	dbSslFlagName      = "ssl"
@@ -121,6 +124,21 @@ func addHostFlag(flags ...cli.Flag) []cli.Flag {
 
 }
 
+func addStartTimeFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.StringFlag{
+		Name:  joinFlagNames(startTimeFlagName, "t"),
+		Usage: "only search for events before this time (RFC 3339 format)",
+	})
+}
+
+func addLimitFlag(flags ...cli.Flag) []cli.Flag {
+	return append(flags, cli.IntFlag{
+		Name:  joinFlagNames(limitFlagName, "l"),
+		Usage: "return a maximum of this number of results",
+		Value: 10,
+	})
+}
+
 func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags,
 		cli.BoolFlag{
@@ -135,6 +153,10 @@ func addMigrationRuntimeFlags(flags ...cli.Flag) []cli.Flag {
 			Name:  joinFlagNames(anserTargetFlagName, "t"),
 			Usage: "target number of migrations",
 			Value: 60,
+		},
+		cli.StringSliceFlag{
+			Name:  joinFlagNames(anserMigrationIDFlagName, "i"),
+			Usage: "Specify one or more times to limit to a specific (named) subset of migrations",
 		},
 		cli.IntFlag{
 			Name:  joinFlagNames(anserWorkersFlagName, "j"),

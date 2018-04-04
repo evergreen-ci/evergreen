@@ -50,9 +50,9 @@ tasks:
 			p, errs := createIntermediateProject([]byte(simple))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
-			So(p.Tasks[2].DependsOn[0].Name, ShouldEqual, "compile")
+			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "compile")
 			So(p.Tasks[2].DependsOn[0].PatchOptional, ShouldEqual, false)
-			So(p.Tasks[2].DependsOn[1].Name, ShouldEqual, "task0")
+			So(p.Tasks[2].DependsOn[1].TaskSelector.Name, ShouldEqual, "task0")
 			So(p.Tasks[2].DependsOn[1].Status, ShouldEqual, "failed")
 			So(p.Tasks[2].DependsOn[1].PatchOptional, ShouldEqual, true)
 		})
@@ -67,7 +67,7 @@ tasks:
 			p, errs := createIntermediateProject([]byte(single))
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
-			So(p.Tasks[2].DependsOn[0].Name, ShouldEqual, "task0")
+			So(p.Tasks[2].DependsOn[0].TaskSelector.Name, ShouldEqual, "task0")
 		})
 		Convey("a file with a nameless dependency should error", func() {
 			Convey("with a single dep", func() {
@@ -196,7 +196,7 @@ buildvariants:
 			So(len(bv.Modules), ShouldEqual, 2)
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
-			So(bv.Tasks[1].DependsOn[0].taskSelector, ShouldResemble,
+			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble,
 				taskSelector{Name: "t3", Variant: &variantSelector{stringSelector: "v0"}})
 			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
@@ -219,7 +219,7 @@ buildvariants:
 			So(bv.Name, ShouldEqual, "v1")
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
-			So(bv.Tasks[1].DependsOn[0].taskSelector, ShouldResemble, taskSelector{Name: "t3"})
+			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble, taskSelector{Name: "t3"})
 			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 		})
 		Convey("a file with single BVTs should parse", func() {
@@ -309,8 +309,8 @@ func TestTranslateDependsOn(t *testing.T) {
 				{Name: "t1"},
 				{Name: "t2"},
 				{Name: "t3", DependsOn: parserDependencies{
-					{taskSelector: taskSelector{Name: "t1"}},
-					{taskSelector: taskSelector{
+					{TaskSelector: taskSelector{Name: "t1"}},
+					{TaskSelector: taskSelector{
 						Name: "t2", Variant: &variantSelector{stringSelector: "v1"}}}},
 				},
 			}
@@ -330,11 +330,11 @@ func TestTranslateDependsOn(t *testing.T) {
 			pp.Tasks = []parserTask{
 				{Name: "t1", Tags: []string{"a", "b"}},
 				{Name: "t2", Tags: []string{"a", "c"}, DependsOn: parserDependencies{
-					{taskSelector: taskSelector{Name: "*"}}}},
+					{TaskSelector: taskSelector{Name: "*"}}}},
 				{Name: "t3", DependsOn: parserDependencies{
-					{taskSelector: taskSelector{
+					{TaskSelector: taskSelector{
 						Name: ".b", Variant: &variantSelector{stringSelector: ".cool !v2"}}},
-					{taskSelector: taskSelector{
+					{TaskSelector: taskSelector{
 						Name: ".a !.b", Variant: &variantSelector{stringSelector: ".cool"}}}},
 				},
 			}
@@ -358,12 +358,12 @@ func TestTranslateDependsOn(t *testing.T) {
 				{Name: "t1", Tags: []string{"a", "b"}},
 				{Name: "t2", Tags: []string{"a", "c"}},
 				{Name: "t3", DependsOn: parserDependencies{
-					{taskSelector: taskSelector{Name: ".cool"}},
-					{taskSelector: taskSelector{Name: "!!.cool"}},                                                  //[1] illegal selector
-					{taskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{stringSelector: "v1"}}}, //[2] no matching tasks
-					{taskSelector: taskSelector{Name: "t1", Variant: &variantSelector{stringSelector: ".nope"}}},   //[3] no matching variants
-					{taskSelector: taskSelector{Name: "t1"}, Status: "*"},                                          // valid, but:
-					{taskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
+					{TaskSelector: taskSelector{Name: ".cool"}},
+					{TaskSelector: taskSelector{Name: "!!.cool"}},                                                  //[1] illegal selector
+					{TaskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{stringSelector: "v1"}}}, //[2] no matching tasks
+					{TaskSelector: taskSelector{Name: "t1", Variant: &variantSelector{stringSelector: ".nope"}}},   //[3] no matching variants
+					{TaskSelector: taskSelector{Name: "t1"}, Status: "*"},                                          // valid, but:
+					{TaskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
 			}
 			out, errs := translateProject(pp)
@@ -431,7 +431,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 				Tasks: parserBVTaskUnits{
 					{Name: "t1"},
 					{Name: ".z", DependsOn: parserDependencies{
-						{taskSelector: taskSelector{Name: ".b"}}}},
+						{TaskSelector: taskSelector{Name: ".b"}}}},
 					{Name: "* !t1 !t2", Requires: taskSelectors{{Name: "!.a"}}},
 				},
 			}}
@@ -475,7 +475,8 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTaskUn
 	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
-		ts, errs := evaluateBVTasks(tse, nil, vse, tasks)
+		pbv := parserBV{Tasks: tasks}
+		ts, errs := evaluateBVTasks(tse, nil, vse, pbv)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {
@@ -832,8 +833,6 @@ buildvariants:
 	assert.Len(tg.SetupGroup.List(), 1)
 	assert.Len(tg.TeardownTask.List(), 1)
 	assert.Len(tg.TeardownGroup.List(), 1)
-	assert.Nil(tg.Patchable)
-	assert.Nil(tg.Stepback)
 	assert.True(tg.ShareProcs)
 
 	// check that yml with a task group that contains a nonexistent task errors
@@ -891,43 +890,6 @@ buildvariants:
 	for i, t := range proj.TaskGroups[0].Tasks {
 		assert.Equal(strconv.Itoa(i+1), t)
 	}
-	assert.Equal(false, *proj.TaskGroups[0].Patchable)
-	assert.Equal(false, *proj.TaskGroups[0].Stepback)
-
-	// check that dependencies parse correctly
-	dependencyYml := `
-tasks:
-- name: example_task_0
-- name: example_task_1
-- name: example_task_2
-task_groups:
-- name: example_task_group
-  patchable: true
-  stepback: true
-  depends_on:
-  - name: example_task_0
-    variant: bv
-    status: success
-  tasks:
-  - example_task_1
-  - example_task_2
-buildvariants:
-- name: "bv"
-  tasks:
-  - name: example_task_group
-  - name: example_task_0
-`
-	proj, errs = projectFromYAML([]byte(dependencyYml))
-	assert.NotNil(proj)
-	assert.Len(errs, 0)
-	tg = proj.TaskGroups[0]
-	assert.Len(tg.DependsOn, 1)
-	assert.Equal("example_task_0", tg.DependsOn[0].Name)
-	assert.Len(proj.BuildVariants[0].Tasks, 2)
-	assert.True(proj.BuildVariants[0].Tasks[0].IsGroup)
-	assert.False(proj.BuildVariants[0].Tasks[1].IsGroup)
-	assert.Equal(true, *tg.Patchable)
-	assert.Equal(true, *tg.Stepback)
 
 	// check that tags select the correct tasks
 	tagYml := `
@@ -964,4 +926,192 @@ buildvariants:
 		assert.NoError(err)
 		assert.Equal(0, v%2)
 	}
+}
+
+func TestTaskGroupWithDisplayTask(t *testing.T) {
+	assert := assert.New(t)
+
+	validYml := `
+tasks:
+- name: task_1
+- name: task_2
+task_groups:
+- name: task_group_1
+  tasks:
+  - task_1
+  - task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: lint
+      execution_tasks:
+      - task_1
+      - task_2
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestTaskGroupWithDisplayTaskWithDisplayTaskTag(t *testing.T) {
+	assert := assert.New(t)
+	validYml := `
+tasks:
+- name: task_1
+  tags: [ "tag_1" ]
+- name: task_2
+  tags: [ "tag_1" ]
+task_groups:
+- name: task_group_1
+  tasks:
+  - task_1
+  - task_2
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: display_1
+      execution_tasks:
+      - ".tag_1"
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestTaskGroupWithDisplayTaskWithTaskGroupTag(t *testing.T) {
+	assert := assert.New(t)
+	validYml := `
+tasks:
+- name: task_1
+  tags: [ "tag_1" ]
+- name: task_2
+  tags: [ "tag_1" ]
+task_groups:
+- name: task_group_1
+  tasks:
+  - ".tag_1"
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: display_1
+      execution_tasks:
+      - task_1
+      - task_2
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestTaskGroupWithDisplayTaskWithTaskGroupTagAndDisplayTaskTag(t *testing.T) {
+	assert := assert.New(t)
+	validYml := `
+tasks:
+- name: task_1
+  tags: [ "tag_1" ]
+- name: task_2
+  tags: [ "tag_1" ]
+task_groups:
+- name: task_group_1
+  tasks:
+  - ".tag_1"
+buildvariants:
+- name: "bv"
+  tasks:
+  - name: task_group_1
+  display_tasks:
+    - name: display_1
+      execution_tasks:
+      - ".tag_1"
+`
+	proj, errs := projectFromYAML([]byte(validYml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.TaskGroups, 1)
+	tg := proj.TaskGroups[0]
+	assert.Equal("task_group_1", tg.Name)
+	assert.Len(proj.BuildVariants[0].DisplayTasks, 1)
+	assert.Len(proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
+	assert.Equal("task_2", proj.BuildVariants[0].DisplayTasks[0].ExecutionTasks[1])
+}
+
+func TestBVDependenciesOverrideTaskDependencies(t *testing.T) {
+	assert := assert.New(t)
+	yml := `
+tasks:
+- name: task_1
+- name: task_2
+- name: task_3
+- name: task_4
+- name: task_5
+buildvariants:
+- name: bv_1
+  depends_on:
+    - name: task_3
+  tasks:
+  - name: task_1
+    depends_on:
+      - name: task_4
+  - name: task_2
+- name: bv_2
+  tasks:
+    - name: task_3
+- name: bv_3
+  requires:
+    - name: task_3
+  tasks:
+    - name: task_4
+    - name: task_5
+`
+	proj, errs := projectFromYAML([]byte(yml))
+	assert.NotNil(proj)
+	assert.Empty(errs)
+	assert.Len(proj.BuildVariants, 3)
+
+	assert.Equal("bv_1", proj.BuildVariants[0].Name)
+	assert.Len(proj.BuildVariants[0].Tasks, 2)
+	assert.Equal("task_1", proj.BuildVariants[0].Tasks[0].Name)
+	assert.Equal("task_2", proj.BuildVariants[0].Tasks[1].Name)
+	assert.Equal("task_4", proj.BuildVariants[0].Tasks[0].DependsOn[0].Name)
+	assert.Equal("task_3", proj.BuildVariants[0].Tasks[1].DependsOn[0].Name)
+
+	assert.Equal("bv_2", proj.BuildVariants[1].Name)
+	assert.Len(proj.BuildVariants[1].Tasks, 1)
+	assert.Equal("task_3", proj.BuildVariants[1].Tasks[0].Name)
+	assert.Len(proj.BuildVariants[1].Tasks[0].DependsOn, 0)
+
+	assert.Equal("bv_3", proj.BuildVariants[2].Name)
+	assert.Len(proj.BuildVariants[2].Tasks, 2)
+	assert.Equal("task_4", proj.BuildVariants[2].Tasks[0].Name)
+	assert.Equal("task_5", proj.BuildVariants[2].Tasks[1].Name)
+	assert.Equal("task_3", proj.BuildVariants[2].Tasks[0].Requires[0].Name)
+	assert.Equal("task_3", proj.BuildVariants[2].Tasks[1].Requires[0].Name)
 }

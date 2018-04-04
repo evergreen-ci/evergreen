@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 )
 
@@ -9,6 +10,9 @@ type User interface {
 	DisplayName() string
 	Email() string
 	Username() string
+
+	// IsNil checks if the interface's data is nil. i.e. if the interface
+	// is instantiated with a typed nil, e.g. (*simpleUser)(nil)
 	IsNil() bool
 }
 
@@ -21,7 +25,7 @@ type APIUser interface {
 // UserManager sets and gets user tokens for implemented authentication mechanisms,
 // and provides the data that is sent by the api and ui server after authenticating
 type UserManager interface {
-	GetUserByToken(token string) (User, error)
+	GetUserByToken(context.Context, string) (User, error)
 	CreateUserToken(username, password string) (string, error)
 	// GetLoginHandler returns the function that starts the login process for auth mechanisms
 	// that redirect to a thirdparty site for authentication

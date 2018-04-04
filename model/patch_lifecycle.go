@@ -21,7 +21,6 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type TaskVariantPairs struct {
@@ -108,7 +107,7 @@ func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
 // of the current project and returns an unmarshalled version of the project
 // with the patch applied
-func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
+func MakePatchedConfig(ctx context.Context, p *patch.Patch, remoteConfigPath, projectConfig string) (
 	*Project, error) {
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
@@ -141,13 +140,13 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			}
 		}
 
-		defer os.Remove(patchFilePath)
+		defer os.Remove(patchFilePath) //nolint: evg
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not write config file")
 		}
-		defer os.Remove(configFilePath)
+		defer os.Remove(configFilePath) //nolint: evg
 
 		// clean the working directory
 		workingDirectory := filepath.Dir(patchFilePath)
@@ -185,9 +184,9 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		}
 
 		stderr := send.MakeWriterSender(grip.GetSender(), level.Error)
-		defer stderr.Close()
+		defer stderr.Close() //nolint: evg
 		stdout := send.MakeWriterSender(grip.GetSender(), level.Info)
-		defer stdout.Close()
+		defer stdout.Close() //nolint: evg
 		output := subprocess.OutputOptions{Output: stdout, Error: stderr}
 
 		patchCmd := subprocess.NewLocalCommand(
@@ -201,7 +200,6 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			return nil, errors.Wrap(err, "problem configuring command output")
 		}
 
-		ctx := context.TODO()
 		if err = patchCmd.Run(ctx); err != nil {
 			return nil, errors.Errorf("could not run patch command: %v", err)
 		}
@@ -223,10 +221,10 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
+func FinalizePatch(ctx context.Context, p *patch.Patch, requester string, githubOauthToken string) (*version.Version, error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
+	err := LoadProjectInto([]byte(p.PatchedConfig), p.Project, project)
 	if err != nil {
 		return nil, errors.Wrapf(err,
 			"Error marshaling patched project config from repository revision “%v”",
@@ -238,12 +236,12 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		return nil, errors.WithStack(err)
 	}
 
-	gitCommit, err := thirdparty.GetCommitEvent(githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	_, err = thirdparty.GetCommitEvent(ctx, githubOauthToken, projectRef.Owner, projectRef.Repo, p.Githash)
 	if err != nil {
 		return nil, errors.Wrap(err, "Couldn't fetch commit information")
-	}
-	if gitCommit == nil {
-		return nil, errors.New("Couldn't fetch commit information; git commit doesn't exist")
 	}
 
 	patchVersion := &version.Version{
@@ -260,6 +258,7 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		Requester:           requester,
 		Branch:              projectRef.Branch,
 		RevisionOrderNumber: p.PatchNumber,
+		AuthorID:            p.Author,
 	}
 
 	tasks := TaskVariantPairs{}
@@ -293,7 +292,8 @@ func FinalizePatch(p *patch.Patch, requester string, githubOauthToken string) (*
 		for _, dt := range vt.DisplayTasks {
 			displayNames = append(displayNames, dt.Name)
 		}
-		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, vt.Tasks, displayNames)
+		taskNames := tasks.ExecTasks.TaskNames(vt.Variant)
+		buildId, err = CreateBuildFromVersion(project, patchVersion, taskIds, vt.Variant, true, taskNames, displayNames)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

@@ -213,7 +213,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 	info := requestInfo{
 		method:  get,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/banner",
 	}
 
 	resp, err := c.request(ctx, info, nil)
@@ -221,12 +221,12 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 		return "", errors.Wrap(err, "problem getting current banner message")
 	}
 
-	settings := model.APIAdminSettings{}
-	if err = util.ReadJSONInto(resp.Body, &settings); err != nil {
+	banner := model.APIBanner{}
+	if err = util.ReadJSONInto(resp.Body, &banner); err != nil {
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
-	return *settings.Banner, nil
+	return string(banner.Text), nil
 }
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
@@ -319,7 +319,7 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	info := requestInfo{
 		method:  post,
 		version: apiVersion2,
-		path:    "admin",
+		path:    "admin/settings",
 	}
 	resp, err := c.request(ctx, info, &update)
 	if err != nil {
@@ -334,6 +334,48 @@ func (c *communicatorImpl) UpdateSettings(ctx context.Context, update *model.API
 	}
 
 	return newSettings, nil
+}
+
+func (c *communicatorImpl) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+	info := requestInfo{
+		method:  get,
+		version: apiVersion2,
+		path:    fmt.Sprintf("admin/events?ts=%s&limit=%d", ts.Format(time.RFC3339), limit),
+	}
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "error updating settings")
+	}
+	defer resp.Body.Close()
+
+	events := []interface{}{}
+	err = util.ReadJSONInto(resp.Body, &events)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing response")
+	}
+
+	return events, nil
+}
+
+func (c *communicatorImpl) RevertSettings(ctx context.Context, guid string) error {
+	info := requestInfo{
+		method:  post,
+		version: apiVersion2,
+		path:    "admin/revert",
+	}
+	body := struct {
+		GUID string `json:"guid"`
+	}{guid}
+	resp, err := c.request(ctx, info, &body)
+	if err != nil {
+		return errors.Wrap(err, "error reverting settings")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error reverting %s", guid)
+	}
+
+	return nil
 }
 
 func (c *communicatorImpl) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
@@ -488,7 +530,7 @@ func (c *communicatorImpl) GetClientConfig(ctx context.Context) (*evergreen.Clie
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Wrapf(err, "expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
+		return nil, errors.Errorf("expected 200 OK from server, got %s", http.StatusText(resp.StatusCode))
 	}
 	update := &model.APICLIUpdate{}
 	if err = util.ReadJSONInto(resp.Body, update); err != nil {

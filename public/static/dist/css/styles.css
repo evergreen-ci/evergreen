@@ -2270,10 +2270,6 @@ path {
   float: left;
   border-bottom-width: 0;
 }
-.admin-columnLayout {
-  display: inline-table;
-  width: 49%;
-}
 .control {
   width: 100%;
 }
@@ -2305,11 +2301,36 @@ th {
   display: inline-block;
 }
 .link {
-  color: #1F9EC9;
+  color: #1d90b7;
   cursor: pointer;
+  margin-bottom: 2px;
 }
 .justifyRight {
   text-align: right;
+}
+.leftNav {
+  position: fixed !important;
+  top: 90px;
+  width: 250px;
+  height: 86%;
+  background-color: #fafafa;
+  list-style-type: none;
+  overflow-y: scroll;
+}
+label {
+  font-weight: normal;
+}
+#navLinks li {
+  padding-left: 10px;
+}
+md-card-title .md-button {
+  height: 30px;
+  min-width: 30px;
+  top: -16px;
+}
+.md-chip-input-container,
+.md-chip-input-container input {
+  width: 500px;
 }
 .banner-container {
   height: 50px;
@@ -2378,5 +2399,23 @@ th {
 }
 .dismiss:hover {
   cursor: pointer;
+}
+.eventsTable {
+  min-width: 40%;
+}
+.eventsTable thead {
+  background-color: rgba(0, 0, 0, 0.54);
+  color: white;
+}
+.eventsTable td {
+  padding-left: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.eventsTable tbody tr:nth-child(odd) td {
+  background-color: rgba(0, 0, 0, 0.11);
+}
+.eventsTable tbody tr:nth-child(even) td {
+  background-color: rgba(0, 0, 0, 0.22);
 }
 /*# sourceMappingURL=/static/dist/less.map */

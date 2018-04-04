@@ -36,9 +36,6 @@ const (
 
 // implements EventData
 type HostEventData struct {
-	// necessary for IsValid
-	ResourceType string `bson:"r_type" json:"resource_type"`
-
 	AgentRevision string        `bson:"a_rev,omitempty" json:"agent_revision,omitempty"`
 	OldStatus     string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
 	NewStatus     string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
@@ -55,25 +52,20 @@ type HostEventData struct {
 }
 
 var (
-	hostDataResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
-	hostDataStatusKey       = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
+	hostDataStatusKey = bsonutil.MustHaveTag(HostEventData{}, "TaskStatus")
 )
 
-func (self HostEventData) IsValid() bool {
-	return self.ResourceType == ResourceTypeHost
-}
-
 func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
-	eventData.ResourceType = ResourceTypeHost
-	event := Event{
-		Timestamp:  time.Now(),
-		ResourceId: hostId,
-		EventType:  eventType,
-		Data:       DataWrapper{eventData},
+	event := EventLogEntry{
+		Timestamp:    time.Now(),
+		ResourceId:   hostId,
+		EventType:    eventType,
+		Data:         eventData,
+		ResourceType: ResourceTypeHost,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging host event: %+v", err)
 	}
 }
@@ -102,7 +94,7 @@ func LogHostTerminatedExternally(hostId string) {
 	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
 }
 
-func LogHostStatusChanged(hostId, oldStatus, newStatus, user string) {
+func LogHostStatusChanged(hostId, oldStatus, newStatus, user string, logs string) {
 	if oldStatus == newStatus {
 		return
 	}
@@ -110,6 +102,7 @@ func LogHostStatusChanged(hostId, oldStatus, newStatus, user string) {
 		OldStatus: oldStatus,
 		NewStatus: newStatus,
 		User:      user,
+		Logs:      logs,
 	})
 }
 

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -58,10 +59,9 @@ type Mock struct {
 	SysInfo  map[string]*message.SystemInfo
 
 	// data collected by mocked methods
-	logMessages map[string][]apimodels.LogMessage
-	PatchFiles  map[string]string
-	keyVal      map[string]*serviceModel.KeyVal
-
+	logMessages     map[string][]apimodels.LogMessage
+	PatchFiles      map[string]string
+	keyVal          map[string]*serviceModel.KeyVal
 	LastMessageSent time.Time
 
 	mu sync.RWMutex
@@ -356,6 +356,10 @@ func (c *Mock) GetSettings(ctx context.Context) (*evergreen.Settings, error)    
 func (c *Mock) UpdateSettings(ctx context.Context, update *model.APIAdminSettings) (*model.APIAdminSettings, error) {
 	return nil, nil
 }
+func (c *Mock) GetEvents(ctx context.Context, ts time.Time, limit int) ([]interface{}, error) {
+	return nil, nil
+}
+func (c *Mock) RevertSettings(ctx context.Context, guid string) error { return nil }
 
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
@@ -491,7 +495,7 @@ func (c *Mock) GetClientConfig(ctx context.Context) (*evergreen.ClientConfig, er
 }
 
 // GenerateTasks posts new tasks for the `generate.tasks` command.
-func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, json []byte) error {
+func (c *Mock) GenerateTasks(ctx context.Context, td TaskData, jsonBytes []json.RawMessage) error {
 	if td.ID != "mock_id" {
 		return errors.New("mock failed, wrong id")
 	}

@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -219,7 +220,7 @@ func (c *Client) SubmitJob(ctx context.Context, j amboy.Job) (string, error) {
 		return "", err
 	}
 
-	b, err := amboy.ConvertTo(amboy.JSON, ji)
+	b, err := json.Marshal(ji)
 	if err != nil {
 		return "", err
 	}
@@ -270,7 +271,7 @@ func (c *Client) FetchJob(ctx context.Context, name string) (amboy.Job, error) {
 		return nil, err
 	}
 
-	j, err := registry.ConvertToJob(ji, amboy.JSON)
+	j, err := ji.Resolve(amboy.JSON)
 	if err != nil {
 		return nil, err
 	}

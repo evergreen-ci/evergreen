@@ -44,8 +44,10 @@ type dockerClientImpl struct {
 func (c *dockerClientImpl) generateClient(d *distro.Distro) (*docker.Client, error) {
 	// Populate and validate settings
 	settings := &dockerSettings{} // Instantiate global settings
-	if err := mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", d.Id)
+	if d.ProviderSettings != nil {
+		if err := mapstructure.Decode(d.ProviderSettings, settings); err != nil {
+			return nil, errors.Wrapf(err, "Error decoding params for distro '%s'", d.Id)
+		}
 	}
 
 	if err := settings.Validate(); err != nil {
@@ -77,7 +79,7 @@ func (c *dockerClientImpl) Init(apiVersion string) error {
 	c.apiVersion = apiVersion
 
 	// Create HTTP client
-	c.httpClient = util.GetHttpClient()
+	c.httpClient = util.GetHTTPClient()
 	return nil
 }
 

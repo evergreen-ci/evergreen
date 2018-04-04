@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -58,11 +59,11 @@ func NewDecoHostNotifyJob(env evergreen.Environment, h *host.Host, err error, me
 	}
 
 	j.SetID(fmt.Sprintf("%s.%s.%d", decoHostNotifyJobName, h.Id, job.GetNumber()))
-
+	j.SetPriority(-1)
 	return j
 }
 
-func (j *decoHostNotifyJob) Run() {
+func (j *decoHostNotifyJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	hostUptime := time.Since(j.Host.CreationTime)
@@ -88,8 +89,8 @@ func (j *decoHostNotifyJob) Run() {
 	}
 
 	// otherwise, it was a static host and we should create jira tickets for this.
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()

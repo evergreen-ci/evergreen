@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	restModel "github.com/evergreen-ci/evergreen/rest/model"
@@ -47,7 +48,7 @@ func TestAdminRouteSuiteWithMock(t *testing.T) {
 
 func (s *AdminRouteSuite) SetupSuite() {
 	// test getting the route handler
-	const route = "/admin"
+	const route = "/admin/settings"
 	const version = 2
 	routeManager := getAdminSettingsManager(route, version)
 	s.NotNil(routeManager)
@@ -66,7 +67,7 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	jsonBody, err := json.Marshal(testSettings)
 	s.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
-	request, err := http.NewRequest("POST", "/admin", buffer)
+	request, err := http.NewRequest("POST", "/admin/settings", buffer)
 	s.NoError(err)
 	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 
@@ -118,7 +119,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	// test that invalid input errors
 	testSettings.ApiUrl = ""
 	testSettings.Ui.CsrfKey = "12345"
-	testSettings.Notify.SMTP.Port = 0
 	jsonBody, err = json.Marshal(testSettings)
 	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -128,7 +128,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
 	s.Contains(err.Error(), "API hostname must not be empty")
 	s.Contains(err.Error(), "CSRF key must be 32 characters long")
-	s.Contains(err.Error(), "You must specify a SMTP server and port")
 	s.NotNil(resp)
 }
 
@@ -145,7 +144,7 @@ func (s *AdminRouteSuite) TestGetAuthentication() {
 	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
 
 	s.NoError(s.getHandler.Authenticate(superCtx, s.sc))
-	s.NoError(s.getHandler.Authenticate(normalCtx, s.sc))
+	s.Error(s.getHandler.Authenticate(normalCtx, s.sc))
 }
 
 func (s *AdminRouteSuite) TestPostAuthentication() {
@@ -162,6 +161,53 @@ func (s *AdminRouteSuite) TestPostAuthentication() {
 
 	s.NoError(s.postHandler.Authenticate(superCtx, s.sc))
 	s.Error(s.postHandler.Authenticate(normalCtx, s.sc))
+}
+
+func (s *AdminRouteSuite) TestRevertRoute() {
+	const route = "/admin/revert"
+	const version = 2
+
+	routeManager := getRevertRouteManager(route, version)
+	user := &user.DBUser{Id: "userName"}
+	ctx := context.WithValue(context.Background(), evergreen.RequestUser, user)
+	s.NotNil(routeManager)
+	s.Equal(route, routeManager.Route)
+	s.Equal(version, routeManager.Version)
+	handler := routeManager.Methods[0]
+	changes := restModel.APIAdminSettings{
+		SuperUsers: []string{"me"},
+	}
+	before := evergreen.Settings{}
+	_, err := s.sc.SetEvergreenSettings(&changes, &before, user, true)
+	s.NoError(err)
+	dbEvents, err := event.FindAdmin(event.RecentAdminEvents(1))
+	s.NoError(err)
+	eventData := dbEvents[0].Data.(*event.AdminEventData)
+	guid := eventData.GUID
+	s.NotEmpty(guid)
+
+	body := struct {
+		GUID string `json:"guid"`
+	}{guid}
+	jsonBody, err := json.Marshal(&body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/revert", buffer)
+	s.NoError(err)
+	s.NoError(handler.ParseAndValidate(ctx, request))
+	resp, err := handler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+
+	body = struct {
+		GUID string `json:"guid"`
+	}{""}
+	jsonBody, err = json.Marshal(&body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/revert", buffer)
+	s.NoError(err)
+	s.Error(handler.ParseAndValidate(ctx, request))
 }
 
 func TestRestartRoute(t *testing.T) {
@@ -213,4 +259,118 @@ func TestRestartRoute(t *testing.T) {
 	assert.True(ok)
 	assert.True(len(model.TasksRestarted) > 0)
 	assert.Nil(model.TasksErrored)
+}
+
+func TestBannerRoutes(t *testing.T) {
+	assert := assert.New(t)
+
+	ctx := context.WithValue(context.Background(), evergreen.RequestUser, &user.DBUser{Id: "userName"})
+	const route = "/admin/banner"
+	const version = 2
+
+	routeManager := getBannerRouteManager(route, version)
+	assert.NotNil(routeManager)
+	assert.Equal(route, routeManager.Route)
+	assert.Equal(version, routeManager.Version)
+	postHandler := routeManager.Methods[0]
+	getHandler := routeManager.Methods[1]
+	connector := data.MockConnector{}
+
+	// test that invalid theme errors
+	body := struct {
+		Text  string `json:"banner"`
+		Theme string `json:"theme"`
+	}{"foo", "bar"}
+	jsonBody, err := json.Marshal(&body)
+	assert.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/banner", buffer)
+	assert.NoError(err)
+	assert.NoError(postHandler.ParseAndValidate(ctx, request))
+	_, err = postHandler.Execute(ctx, &data.MockConnector{})
+	assert.Error(err)
+
+	// test a valid post request
+	body = struct {
+		Text  string `json:"banner"`
+		Theme string `json:"theme"`
+	}{"foo", "warning"}
+	jsonBody, err = json.Marshal(&body)
+	assert.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest("POST", "/admin/banner", buffer)
+	assert.NoError(err)
+	assert.NoError(postHandler.ParseAndValidate(ctx, request))
+	resp, err := postHandler.Execute(ctx, &connector)
+	assert.NoError(err)
+	assert.NotNil(resp)
+
+	// test getting what we just sets
+	request, err = http.NewRequest("GET", "/admin/banner", nil)
+	assert.NoError(err)
+	assert.NoError(getHandler.ParseAndValidate(ctx, request))
+	resp, err = getHandler.Execute(ctx, &connector)
+	assert.NoError(err)
+	assert.NotNil(resp)
+	modelInterface, err := resp.Result[0].ToService()
+	assert.NoError(err)
+	model := modelInterface.(*restModel.APIBanner)
+	assert.EqualValues("foo", model.Text)
+	assert.EqualValues("warning", model.Theme)
+}
+
+func TestAdminEventRoute(t *testing.T) {
+	assert := assert.New(t)
+	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
+	testutil.HandleTestingErr(db.ClearCollections(evergreen.ConfigCollection, event.AllLogCollection), t,
+		"Error clearing collections")
+
+	// log some changes in the event log with the /admin/settings route
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	routeManager := getAdminSettingsManager("/admin/settings", 2)
+	testSettings := testutil.MockConfig()
+	jsonBody, err := json.Marshal(testSettings)
+	assert.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest("POST", "/admin/settings", buffer)
+	assert.NoError(err)
+	assert.NoError(routeManager.Methods[1].RequestHandler.ParseAndValidate(ctx, request))
+	now := time.Now()
+	resp, err := routeManager.Methods[1].RequestHandler.Execute(ctx, &data.DBConnector{})
+	assert.NoError(err)
+	assert.NotNil(resp)
+
+	// wait a bit before retrieving results because by default the route uses time.Now to search
+	time.Sleep(1 * time.Second)
+
+	// get the changes with the /admin/events route
+	ctx = context.Background()
+	routeManager = getAdminEventRouteManager("/admin/events", 2)
+	request, err = http.NewRequest("GET", "/admin/settings?limit=10", nil)
+	assert.NoError(err)
+	assert.NoError(routeManager.Methods[0].RequestHandler.ParseAndValidate(ctx, request))
+	resp, err = routeManager.Methods[0].RequestHandler.Execute(ctx, &data.DBConnector{})
+	assert.NoError(err)
+	assert.NotNil(resp)
+	count := 0
+	for _, model := range resp.Result {
+		evt, ok := model.(*restModel.APIAdminEvent)
+		assert.True(ok)
+		count++
+		assert.NotEmpty(evt.Guid)
+		assert.NotNil(evt.Before)
+		assert.NotNil(evt.After)
+		assert.Equal("user", evt.User)
+	}
+	assert.Equal(10, count)
+	pagination := resp.Metadata.(*PaginationMetadata)
+	assert.Equal("ts", pagination.KeyQueryParam)
+	assert.Equal("limit", pagination.LimitQueryParam)
+	assert.NotNil(pagination.Pages.Next)
+	assert.Equal("next", pagination.Pages.Next.Relation)
+	assert.Equal(10, pagination.Pages.Next.Limit)
+	ts, err := time.Parse(time.RFC3339, pagination.Pages.Next.Key)
+	assert.NoError(err)
+	assert.InDelta(now.Unix(), ts.Unix(), float64(time.Millisecond.Nanoseconds()))
 }

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/logging"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -20,13 +20,13 @@ func init() {
 
 func TestArchiveExtract(t *testing.T) {
 	Convey("After extracting a tarball", t, func() {
-		testDir := testutil.GetDirectoryOfFile()
+		testDir := getDirectoryOfFile()
 		//Remove the test output dir, in case it was left over from prior test
 		err := os.RemoveAll(filepath.Join(testDir, "testdata", "artifacts_test"))
-		testutil.HandleTestingErr(err, t, "Couldn't remove test dir")
+		require.NoError(t, err, "Couldn't remove test dir")
 
 		f, gz, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts.tar.gz"))
-		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
+		require.NoError(t, err, "Couldn't open test tarball")
 		defer f.Close()
 		defer gz.Close()
 
@@ -46,14 +46,14 @@ func TestArchiveExtract(t *testing.T) {
 
 func TestMakeArchive(t *testing.T) {
 	Convey("Making an archive should not return an error", t, func() {
-		testDir := testutil.GetDirectoryOfFile()
+		testDir := getDirectoryOfFile()
 		logger := logging.NewGrip("test.archive")
 
 		err := os.RemoveAll(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
-		testutil.HandleTestingErr(err, t, "Couldn't delete test tarball")
+		require.NoError(t, err, "Couldn't delete test tarball")
 
 		f, gz, tarWriter, err := TarGzWriter(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
-		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
+		require.NoError(t, err, "Couldn't open test tarball")
 		defer f.Close()
 		defer gz.Close()
 		defer tarWriter.Close()
@@ -66,17 +66,17 @@ func TestMakeArchive(t *testing.T) {
 
 func TestArchiveRoundTrip(t *testing.T) {
 	Convey("After building archive with include/exclude filters", t, func() {
-		testDir := testutil.GetDirectoryOfFile()
+		testDir := getDirectoryOfFile()
 		logger := logging.NewGrip("test.archive")
 
 		err := os.RemoveAll(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
-		testutil.HandleTestingErr(err, t, "Couldn't remove test tarball")
+		require.NoError(t, err, "Couldn't remove test tarball")
 
 		err = os.RemoveAll(filepath.Join(testDir, "testdata", "artifacts_out"))
-		testutil.HandleTestingErr(err, t, "Couldn't remove test tarball")
+		require.NoError(t, err, "Couldn't remove test tarball")
 
 		f, gz, tarWriter, err := TarGzWriter(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
-		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
+		require.NoError(t, err, "Couldn't open test tarball")
 		includes := []string{"dir1/**"}
 		excludes := []string{"*.pdb"}
 		var found int
@@ -88,7 +88,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		So(f.Close(), ShouldBeNil)
 
 		f2, gz2, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
-		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
+		require.NoError(t, err, "Couldn't open test tarball")
 		err = Extract(context.Background(), tarReader, filepath.Join(testDir, "testdata", "artifacts_out"))
 		defer f2.Close()
 		defer gz2.Close()

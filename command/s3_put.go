@@ -71,11 +71,12 @@ type s3put struct {
 	// Optional, when set to true, causes this command to be skipped over without an error when
 	// the path specified in local_file does not exist. Defaults to false, which triggers errors
 	// for missing files.
-	Optional bool `mapstructure:"optional"`
+	Optional util.StringOrBool `mapstructure:"optional" plugin:"expand"`
 
 	// workDir sets the working directory relative to which s3put should look for files to upload.
 	// workDir will be empty if an absolute path is provided to the file.
-	workDir string
+	workDir     string
+	skipMissing bool
 
 	taskdata client.TaskData
 	base
@@ -86,7 +87,15 @@ func (s3pc *s3put) Name() string { return "s3.put" }
 
 // s3put-specific implementation of ParseParams.
 func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, s3pc); err != nil {
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Result:           s3pc,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err := decoder.Decode(params); err != nil {
 		return errors.Wrapf(err, "error decoding %s params", s3pc.Name())
 	}
 
@@ -109,7 +118,7 @@ func (s3pc *s3put) validate() error {
 	if s3pc.LocalFile != "" && s3pc.isMulti() {
 		catcher.Add(errors.New("local_file and local_files_include_filter cannot both be specified"))
 	}
-	if s3pc.Optional && s3pc.isMulti() {
+	if s3pc.skipMissing && s3pc.isMulti() {
 		catcher.Add(errors.New("cannot use optional upload with local_files_include_filter"))
 	}
 	if s3pc.RemoteFile == "" {
@@ -148,7 +157,17 @@ func (s3pc *s3put) expandParams(conf *model.TaskConfig) error {
 		s3pc.workDir = conf.WorkDir
 	}
 
-	return errors.WithStack(util.ExpandValues(s3pc, conf.Expansions))
+	var err error
+	if err = util.ExpandValues(s3pc, conf.Expansions); err != nil {
+		return errors.WithStack(err)
+	}
+
+	s3pc.skipMissing, err = s3pc.Optional.Bool()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
 }
 
 // isMulti returns whether or not this using the multiple file upload
@@ -224,6 +243,7 @@ func (s3pc *s3put) putWithRetry(ctx context.Context, comm client.Communicator, l
 	var (
 		err           error
 		uploadedFiles []string
+		filesList     []string
 	)
 
 	timer := time.NewTimer(0)
@@ -239,7 +259,7 @@ retryLoop:
 		case <-ctx.Done():
 			return errors.New("s3 put operation canceled")
 		case <-timer.C:
-			filesList := []string{s3pc.LocalFile}
+			filesList = []string{s3pc.LocalFile}
 
 			if s3pc.isMulti() {
 				filesList, err = util.BuildFileList(s3pc.workDir, s3pc.LocalFilesIncludeFilter...)
@@ -272,7 +292,7 @@ retryLoop:
 				}
 
 				fpath = filepath.Join(s3pc.workDir, fpath)
-				err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
+				err = thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
 				if err != nil {
 					// retry errors other than "file doesn't exist", which we handle differently based on what
 					// kind of upload it is
@@ -281,7 +301,7 @@ retryLoop:
 							// try the remaining multi uploads in the group, effectively ignoring this
 							// error.
 							continue uploadLoop
-						} else if s3pc.Optional {
+						} else if s3pc.skipMissing {
 							// single optional file uploads should return early.
 							return nil
 						} else {
@@ -303,7 +323,20 @@ retryLoop:
 		}
 	}
 
-	return errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
+	if len(uploadedFiles) == 0 && s3pc.skipMissing {
+		return nil
+	}
+
+	err = errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
+	if err != nil {
+		return err
+	}
+
+	if len(uploadedFiles) != len(filesList) && !s3pc.skipMissing {
+		return errors.Errorf("uploaded %d files of %d requested", len(uploadedFiles), len(filesList))
+	}
+
+	return nil
 }
 
 // attachTaskFiles is responsible for sending the

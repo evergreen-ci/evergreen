@@ -98,7 +98,7 @@ func Fetch() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
@@ -502,7 +502,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.
 				// TODO: progress bars.
-				length, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
+				length, _ := strconv.Atoi(resp.Header.Get(evergreen.ContentLengthHeader))
 				sizeLog := ""
 				if length > 0 {
 					sizeLog = fmt.Sprintf(" (%s)", humanize.Bytes(uint64(length)))

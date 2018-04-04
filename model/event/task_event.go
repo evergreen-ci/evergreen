@@ -27,32 +27,26 @@ const (
 
 // implements Data
 type TaskEventData struct {
-	// necessary for IsValid
-	ResourceType string `bson:"r_type" json:"resource_type"`
-	HostId       string `bson:"h_id,omitempty" json:"host_id,omitempty"`
-	UserId       string `bson:"u_id,omitempty" json:"user_id,omitempty"`
-	Status       string `bson:"s,omitempty" json:"status,omitempty"`
-	JiraIssue    string `bson:"jira,omitempty" json:"jira,omitempty"`
+	HostId    string `bson:"h_id,omitempty" json:"host_id,omitempty"`
+	UserId    string `bson:"u_id,omitempty" json:"user_id,omitempty"`
+	Status    string `bson:"s,omitempty" json:"status,omitempty"`
+	JiraIssue string `bson:"jira,omitempty" json:"jira,omitempty"`
 
 	Timestamp time.Time `bson:"ts,omitempty" json:"timestamp,omitempty"`
 	Priority  int64     `bson:"pri,omitempty" json:"priority,omitempty"`
 }
 
-func (self TaskEventData) IsValid() bool {
-	return self.ResourceType == ResourceTypeTask
-}
-
 func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
-	eventData.ResourceType = ResourceTypeTask
-	event := Event{
-		Timestamp:  time.Now(),
-		ResourceId: taskId,
-		EventType:  eventType,
-		Data:       DataWrapper{eventData},
+	event := EventLogEntry{
+		Timestamp:    time.Now(),
+		ResourceId:   taskId,
+		EventType:    eventType,
+		Data:         eventData,
+		ResourceType: ResourceTypeTask,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging task event: %+v", err)
 	}
 }

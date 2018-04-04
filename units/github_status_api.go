@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
@@ -20,6 +21,7 @@ import (
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -32,6 +34,10 @@ const (
 
 	githubUpdateTypeBuild            = "build"
 	githubUpdateTypePatchWithVersion = "patch-with-version"
+	githubUpdateTypeRequestAuth      = "request-auth"
+	githubUpdateTypeBadConfig        = "bad-config"
+
+	githubStatusAPITimeout = time.Minute
 )
 
 func init() {
@@ -60,7 +66,6 @@ func (status *githubStatus) Valid() bool {
 	switch status.State {
 	case githubStatusError, githubStatusFailure, githubStatusPending, githubStatusSuccess:
 		return true
-
 	}
 
 	return false
@@ -84,6 +89,7 @@ func makeGithubStatusUpdateJob() *githubStatusUpdateJob {
 		},
 	}
 	j.SetDependency(dependency.NewAlways())
+	j.SetPriority(1)
 	return j
 }
 
@@ -98,7 +104,7 @@ func NewGithubStatusUpdateJobForBuild(buildID string) amboy.Job {
 	return job
 }
 
-// NewGithubStatusUpdateForPatchWithVersion creates a job to update github's API
+// NewGithubStatusUpdateJobForPatchWithVersion creates a job to update github's API
 // from a Patch with specified version. Status will be reported as 'evergreen'
 func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	job := makeGithubStatusUpdateJob()
@@ -106,6 +112,27 @@ func NewGithubStatusUpdateJobForPatchWithVersion(version string) amboy.Job {
 	job.UpdateType = githubUpdateTypePatchWithVersion
 
 	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, version, time.Now().String()))
+
+	return job
+}
+
+// NewGithubStatusUpdateJobForExternalPatch prompts on Github for a user to
+// manually authorize this patch
+func NewGithubStatusUpdateJobForExternalPatch(patchID string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.FetchID = patchID
+	job.UpdateType = githubUpdateTypeRequestAuth
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, patchID, time.Now().String()))
+	return job
+}
+
+func NewGithubStatusUpdateJobForBadConfig(intentID string) amboy.Job {
+	job := makeGithubStatusUpdateJob()
+	job.FetchID = intentID
+	job.UpdateType = githubUpdateTypeBadConfig
+
+	job.SetID(fmt.Sprintf("%s:%s-%s-%s", githubStatusUpdateJobName, job.UpdateType, intentID, time.Now().String()))
 
 	return job
 }
@@ -136,11 +163,11 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 		return err
 	}
 
-	httpClient, err := util.GetHttpClientForOauth2(githubOauthToken)
+	httpClient, err := util.GetOAuth2HTTPClient(githubOauthToken)
 	if err != nil {
 		return err
 	}
-	defer util.PutHttpClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 
 	newStatus := github.RepoStatus{
@@ -151,7 +178,7 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 	}
 
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, githubStatusAPITimeout)
 	defer cancel()
 
 	respStatus, resp, err := client.Repositories.CreateStatus(ctx, status.Owner, status.Repo, status.Ref, &newStatus)
@@ -170,9 +197,35 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 	return nil
 }
 
-func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
+func (j *githubStatusUpdateJob) fetch(status *githubStatus) (err error) {
+	var patchDoc *patch.Patch
 	patchVersion := j.FetchID
-	if j.UpdateType == githubUpdateTypeBuild {
+
+	if j.UpdateType == githubUpdateTypeBadConfig {
+		intent, err := patch.FindIntent(j.FetchID, patch.GithubIntentType)
+		if err != nil {
+			return errors.Wrap(err, "can't fetch patch intent")
+		}
+		patchDoc = intent.NewPatch()
+		if patchDoc == nil {
+			return errors.New("patch is missing")
+		}
+
+		projectRef, err := model.FindOneProjectRefByRepoAndBranchWithPRTesting(patchDoc.GithubPatchData.BaseOwner,
+			patchDoc.GithubPatchData.BaseRepo, patchDoc.GithubPatchData.BaseBranch)
+		if err != nil {
+			return errors.Wrap(err, "can't fetch project ref")
+		}
+		if projectRef == nil {
+			return errors.New("can't find project ref")
+		}
+
+		status.URLPath = fmt.Sprintf("/waterfall/%s", projectRef.Identifier)
+		status.Context = "evergreen"
+		status.State = githubStatusFailure
+		status.Description = "project config was invalid"
+
+	} else if j.UpdateType == githubUpdateTypeBuild {
 		b, err := build.FindOne(build.ById(j.FetchID))
 		if err != nil {
 			return err
@@ -198,12 +251,14 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		}
 	}
 
-	patchDoc, err := patch.FindOne(patch.ByVersion(patchVersion))
-	if err != nil {
-		return err
-	}
 	if patchDoc == nil {
-		return errors.New("can't find patch")
+		patchDoc, err = patch.FindOne(patch.ById(bson.ObjectIdHex(patchVersion)))
+		if err != nil {
+			return err
+		}
+		if patchDoc == nil {
+			return errors.New("can't find patch")
+		}
 	}
 
 	if j.UpdateType == githubUpdateTypePatchWithVersion {
@@ -230,6 +285,12 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 		default:
 			return errors.New("unknown patch status")
 		}
+
+	} else if j.UpdateType == githubUpdateTypeRequestAuth {
+		status.URLPath = fmt.Sprintf("/patch/%s", patchVersion)
+		status.Context = "evergreen"
+		status.Description = "patch must be manually authorized"
+		status.State = githubStatusFailure
 	}
 
 	status.Owner = patchDoc.GithubPatchData.BaseOwner
@@ -239,17 +300,18 @@ func (j *githubStatusUpdateJob) fetch(status *githubStatus) error {
 	return nil
 }
 
-func (j *githubStatusUpdateJob) Run() {
-	defer j.MarkComplete()
-	ctx, cancel := context.WithCancel(context.Background())
+func (j *githubStatusUpdateJob) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
+	defer j.MarkComplete()
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.GithubStatusAPIDisabled {
+	if flags.GithubStatusAPIDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     githubStatusUpdateJobName,
 			"message": "github status updates are disabled, not updating status",

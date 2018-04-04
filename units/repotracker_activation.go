@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -47,10 +48,11 @@ func NewVersionActiationJob(project string, id string) amboy.Job {
 	j.Project = project
 
 	j.SetID(fmt.Sprintf("%s.%s.%s", versionActivationCatchupJobName, project, id))
+	j.SetPriority(-1)
 	return j
 }
 
-func (j *versionActivationCatchup) Run() {
+func (j *versionActivationCatchup) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	if j.env == nil {

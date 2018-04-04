@@ -53,6 +53,9 @@ type githubIntent struct {
 	// User is the login username of the Github user that created the pull request
 	User string `bson:"user"`
 
+	// UID is the PR author's Github UID
+	UID int `bson:"author_uid"`
+
 	// HeadHash is the head hash of the diff, i.e. hash of the most recent
 	// commit.
 	HeadHash string `bson:"head_hash"`
@@ -84,6 +87,7 @@ var (
 	headRepoNameKey = bsonutil.MustHaveTag(githubIntent{}, "HeadRepoName")
 	prNumberKey     = bsonutil.MustHaveTag(githubIntent{}, "PRNumber")
 	userKey         = bsonutil.MustHaveTag(githubIntent{}, "User")
+	uidKey          = bsonutil.MustHaveTag(githubIntent{}, "UID")
 	headHashKey     = bsonutil.MustHaveTag(githubIntent{}, "HeadHash")
 	processedKey    = bsonutil.MustHaveTag(githubIntent{}, "Processed")
 	processedAtKey  = bsonutil.MustHaveTag(githubIntent{}, "ProcessedAt")
@@ -118,8 +122,8 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 	if *event.Number == 0 {
 		return nil, errors.New("PR number must not be 0")
 	}
-	if *event.Sender.Login == "" {
-		return nil, errors.New("Github *event.Sender.Login name must not be empty string")
+	if *event.Sender.Login == "" || event.Sender.ID == nil {
+		return nil, errors.New("Github sender missing login name or uid")
 	}
 	if len(*event.PullRequest.Head.SHA) == 0 {
 		return nil, errors.New("Head hash must not be empty")
@@ -133,6 +137,7 @@ func NewGithubIntent(msgDeliveryID string, event *github.PullRequestEvent) (Inte
 		HeadRepoName: *event.PullRequest.Head.Repo.FullName,
 		PRNumber:     *event.Number,
 		User:         *event.Sender.Login,
+		UID:          *event.Sender.ID,
 		HeadHash:     *event.PullRequest.Head.SHA,
 		Title:        *event.PullRequest.Title,
 		IntentType:   GithubIntentType,
@@ -223,6 +228,7 @@ func (g *githubIntent) NewPatch() *Patch {
 			HeadRepo:   headRepo[1],
 			HeadHash:   g.HeadHash,
 			Author:     g.User,
+			AuthorUID:  g.UID,
 		},
 	}
 	return patchDoc

@@ -2,11 +2,13 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -104,11 +106,8 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+	startAt := time.Now()
 	id := j.ID()
-	q.mutex.Lock()
-	delete(q.blocked, id)
-	delete(q.dispatched, id)
-	q.mutex.Unlock()
 
 	for {
 		select {
@@ -116,16 +115,39 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			return
 		case <-timer.C:
 			stat := j.Status()
+			ti := j.TimeInfo()
 			stat.InProgress = false
+			stat.Completed = true
 			j.SetStatus(stat)
+			j.UpdateTimeInfo(amboy.JobTimeInfo{
+				Start: ti.Start,
+				End:   time.Now(),
+			})
 
 			if err := q.driver.Save(j); err != nil {
 				grip.Warningf("problem persisting job '%s', %+v", j.ID(), err)
 				timer.Reset(retryInterval)
+				if time.Since(startAt) > time.Minute+lockTimeout {
+					grip.Error(message.WrapError(err, message.Fields{
+						"job_id":      id,
+						"job_type":    j.Type().Name,
+						"driver_type": fmt.Sprintf("%T", q.Driver),
+						"driver_id":   q.driver.ID(),
+						"message":     "job took too long to mark complete",
+					}))
+					return
+				}
+
 				continue
 			}
 
 			grip.CatchWarning(q.driver.Unlock(j))
+
+			q.mutex.Lock()
+			defer q.mutex.Unlock()
+			delete(q.blocked, id)
+			delete(q.dispatched, id)
+
 			return
 		}
 
@@ -154,7 +176,7 @@ func (q *remoteBase) JobStats(ctx context.Context) <-chan amboy.JobStatusInfo {
 	return q.driver.JobStats(ctx)
 }
 
-// Stats returns a amboy.QueueStats object that reflects the progress
+// Stats returns a amboy. QueueStats object that reflects the progress
 // jobs in the queue.
 func (q *remoteBase) Stats() amboy.QueueStats {
 	output := q.driver.Stats()

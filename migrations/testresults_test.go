@@ -282,11 +282,16 @@ func TestAddExecutionMigration(t *testing.T) {
 	require.NoError(err, "%+v", info)
 
 	// run a noop migration
-	gen, err := addExecutionToTasksGenerator(env, dbName, 0)
+	args := migrationGeneratorFactoryOptions{
+		db:    dbName,
+		limit: 0,
+		id:    "migration-testresults-legacy-no-execution",
+	}
+	gen, err := addExecutionToTasksGenerator(env, args)
 	assert.NoError(err)
 	assert.NotNil(gen)
 
-	gen.Run()
+	gen.Run(ctx)
 	assert.NoError(gen.Error())
 
 	// the noop migration should find nothing to migrate
@@ -310,18 +315,18 @@ func TestAddExecutionMigration(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	gen, err = addExecutionToTasksGenerator(env, dbName, 0)
+	gen, err = addExecutionToTasksGenerator(env, args)
 	assert.NoError(err)
 	assert.NotNil(gen)
 
-	gen.Run()
+	gen.Run(ctx)
 	assert.NoError(gen.Error())
 
 	count = 0
 	for job := range gen.Jobs() {
 		count++
 		// let's run the migrations just to avoid a double loop
-		job.Run()
+		job.Run(ctx)
 		assert.NoError(job.Error())
 	}
 	assert.Equal(10, count)

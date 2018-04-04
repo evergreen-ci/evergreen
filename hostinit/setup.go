@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -58,10 +57,12 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 	catcher := grip.NewBasicCatcher()
 
 	var started int
-	for _, h := range startQueue {
+	for idx := range startQueue {
 		if ctx.Err() != nil {
 			return errors.New("hostinit run canceled")
 		}
+
+		h := &startQueue[idx]
 
 		if h.UserHost {
 			// pass:
@@ -105,7 +106,7 @@ func (init *HostInit) startHosts(ctx context.Context) error {
 			continue
 		}
 
-		_, err = cloudManager.SpawnHost(ctx, &h)
+		_, err = cloudManager.SpawnHost(ctx, h)
 		if err != nil {
 			// we should maybe try and continue-on-error
 			// here, if we get many errors, but the chance
@@ -350,6 +351,11 @@ func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, e
 		return false, errors.Errorf("host %s terminated due to failure before setup", host.Id)
 	}
 
+	// if the host isn't up yet, we can't do anything
+	if hostStatus != cloud.StatusRunning {
+		return false, nil
+	}
+
 	// set the host's dns name, if it is not set
 	if host.Host == "" {
 		var hostDNS string
@@ -370,11 +376,6 @@ func (init *HostInit) IsHostReady(ctx context.Context, host *host.Host) (bool, e
 		if err = host.SetDNSName(hostDNS); err != nil {
 			return false, errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
 		}
-	}
-
-	// if the host isn't up yet, we can't do anything
-	if hostStatus != cloud.StatusRunning {
-		return false, nil
 	}
 
 	return true, nil
@@ -828,11 +829,16 @@ func (init *HostInit) LoadClient(ctx context.Context, target *host.Host) (*LoadC
 	}
 
 	// 4. Write a settings file for the user that owns the host, and scp it to the directory
-	outputStruct := model.CLISettings{
-		User:          owner.Id,
+	outputStruct := struct {
+		APIKey        string `json:"api_key"`
+		APIServerHost string `json:"api_server_host"`
+		UIServerHost  string `json:"ui_server_host"`
+		User          string `json:"user"`
+	}{
 		APIKey:        owner.APIKey,
 		APIServerHost: init.Settings.ApiUrl + "/api",
 		UIServerHost:  init.Settings.Ui.Url,
+		User:          owner.Id,
 	}
 	outputJSON, err := json.Marshal(outputStruct)
 	if err != nil {

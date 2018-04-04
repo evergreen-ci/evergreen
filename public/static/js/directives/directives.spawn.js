@@ -62,47 +62,6 @@ directives.spawn.directive('keyNameUnique', function() {
   };
 });
 
-directives.spawn.directive('userDataValid', function() {
-  return {
-    require: 'ngModel',
-    link: function(scope, elm, attrs, ctrl) {
-      ctrl.$parsers.unshift(function(viewValue) {
-        if (scope.selectedDistro.userDataValidate == 'x-www-form-urlencoded') {
-          var arr = viewValue.split('&');
-          if (arr.length == 0) {
-            ctrl.$setValidity('userDataValid', false);
-            return viewValue;
-          }
-          for(var n = 0; n < arr.length; n++) {
-            var item = arr[n].split("=");
-            if (item.length != 2) {
-                ctrl.$setValidity('userDataValid', false);
-                return viewValue;
-            }
-          }
-        } else if (scope.selectedDistro.userDataValidate == 'json') {
-          try {
-            JSON.parse(viewValue);
-          } catch (e) {
-            ctrl.$setValidity('userDataValid', false);
-            return viewValue;
-          }
-        } else if (scope.selectedDistro.userDataValidate == 'yaml') {
-          try {
-            jsyaml.load(viewValue);
-          } catch (e) {
-            ctrl.$setValidity('userDataValid', false);
-            return viewValue;
-          }
-        }
-        ctrl.$setValidity('userDataValid', true);
-        return viewValue;
-      });
-    }
-  };
-});
-
-
 // XXX: If you are changing the key validation here, you must also update
 // (h *keysPostHandler) validatePublicKey in rest/route/keys_routes.go to
 // match

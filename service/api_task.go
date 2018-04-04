@@ -37,7 +37,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err = util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
-		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrapf(err, "Error reading task start request for %v: %v", t.Id, err))
 		return
 	}
 
@@ -79,9 +79,9 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		idleTimeStartAt = h.StartTime
 	}
 
-	job := units.NewCollectHostIdleDataJob(h, idleTimeStartAt, t.StartTime)
+	job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
 	if err = as.queue.Put(job); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing task start stats"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error queuing host idle stats"))
 		return
 	}
 
@@ -246,7 +246,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if event.AllRecentHostEventsMatchStatus(currentHost.Id, consecutiveSystemFailureThreshold, evergreen.TaskSystemFailed) {
 		msg := "host encountered consecutive system failures"
 		if currentHost.Provider != evergreen.ProviderNameStatic {
-			err := currentHost.DisablePoisonedHost()
+			err := currentHost.DisablePoisonedHost(msg)
 			env := evergreen.GetEnvironment()
 
 			job := units.NewDecoHostNotifyJob(env, currentHost, err, msg)
@@ -295,7 +295,7 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 	for taskQueue.Length() != 0 {
 		queueItem := taskQueue.FindNextTask(spec)
 		if queueItem == nil {
-			return nil, errors.New("no dispatchable task found in the queue")
+			return nil, nil
 		}
 
 		nextTask, err := task.FindOne(task.ById(queueItem.Id))
@@ -435,13 +435,13 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		response.NewAgent = true
 	}
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		err = errors.Wrap(err, "error retrieving admin settings")
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusInternalServerError, err)
 	}
-	if adminSettings.ServiceFlags.TaskDispatchDisabled {
+	if flags.TaskDispatchDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), "task dispatch is disabled, returning no task")
 		as.WriteJSON(w, http.StatusOK, response)
 		return

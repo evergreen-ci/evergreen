@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -96,7 +97,7 @@ type Communicator interface {
 	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)
 
 	// GenerateTasks posts new tasks for the `generate.tasks` command.
-	GenerateTasks(context.Context, TaskData, []byte) error
+	GenerateTasks(context.Context, TaskData, []json.RawMessage) error
 
 	// ---------------------------------------------------------------------
 	// End legacy API methods
@@ -120,6 +121,8 @@ type Communicator interface {
 	RestartRecentTasks(context.Context, time.Time, time.Time) error
 	GetSettings(context.Context) (*evergreen.Settings, error)
 	UpdateSettings(context.Context, *restmodel.APIAdminSettings) (*restmodel.APIAdminSettings, error)
+	GetEvents(context.Context, time.Time, int) ([]interface{}, error)
+	RevertSettings(context.Context, string) error
 
 	// Host methods
 	GetHostsByUser(context.Context, string) ([]*restmodel.APIHost, error)

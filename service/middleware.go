@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -23,7 +22,7 @@ import (
 
 // Key used for storing variables in request context with type safety.
 type (
-	RequestCtxKey int
+	reqCtxKey int
 )
 
 type (
@@ -46,17 +45,12 @@ type (
 	}
 )
 
-type (
-	// custom types used to attach specific values to request contexts, to prevent collisions.
-	reqTaskKey           int
-	reqProjectContextKey int
-)
-
 const (
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
-	RequestTask           reqTaskKey           = 0
-	RequestProjectContext reqProjectContextKey = 0
+	RequestTask reqCtxKey = iota
+	RequestProjectContext
+	requestID
 
 	remoteAddrHeaderName = "X-Cluster-Client-Ip"
 )
@@ -158,12 +152,6 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 		}
 		uis.RedirectToLogin(w, r)
 	}
-}
-
-// canEditPatch verifies that a user has permission to edit the given patch.
-// A user has permission if they are a superuser, or if they are the author of the patch.
-func (uis *UIServer) canEditPatch(currentUser *user.DBUser, currentPatch *patch.Patch) bool {
-	return currentUser.Id == currentPatch.Author || uis.isSuperUser(currentUser)
 }
 
 // isSuperUser verifies that a given user has super user permissions.
@@ -374,7 +362,8 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		}
 
 		if len(token) > 0 {
-			dbUser, err := um.GetUserByToken(token)
+			ctx := r.Context()
+			dbUser, err := um.GetUserByToken(ctx, token)
 			if err != nil {
 				grip.Infof("Error getting user %s: %+v", authDataName, err)
 			} else {
@@ -442,6 +431,8 @@ func NewRecoveryLogger() *RecoveryLogger {
 func (l *RecoveryLogger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
 	reqID := <-l.ids
+
+	r = setRequestID(r, reqID)
 
 	remote := r.Header.Get(remoteAddrHeaderName)
 	if remote == "" {

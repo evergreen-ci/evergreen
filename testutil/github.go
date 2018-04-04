@@ -11,6 +11,7 @@ func NewGithubPREvent(prNumber int, baseRepoName, headRepoName, headHash, user, 
 		},
 		Sender: &github.User{
 			Login: github.String(user),
+			ID:    github.Int(1234),
 		},
 		PullRequest: &github.PullRequest{
 			Title: github.String(title),

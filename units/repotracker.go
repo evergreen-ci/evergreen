@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
@@ -49,24 +50,26 @@ func makeRepotrackerJob() *repotrackerJob {
 func NewRepotrackerJob(msgID, projectID string) amboy.Job {
 	job := makeRepotrackerJob()
 	job.ProjectID = projectID
-
 	job.SetID(fmt.Sprintf("%s:%s:%s", repotrackerJobName, msgID, projectID))
 	return job
 }
 
-func (j *repotrackerJob) Run() {
+func (j *repotrackerJob) Run(ctx context.Context) {
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithCancel(ctx)
+	defer cancel()
 	defer j.MarkComplete()
 
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
-	adminSettings, err := evergreen.GetConfig()
+	flags, err := evergreen.GetServiceFlags()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error retrieving admin settings"))
 		return
 	}
-	if adminSettings.ServiceFlags.RepotrackerDisabled {
+	if flags.RepotrackerDisabled {
 		grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
 			"job":     repotrackerJobName,
 			"id":      j.ID(),
@@ -97,13 +100,13 @@ func (j *repotrackerJob) Run() {
 		return
 	}
 
-	if !repotracker.CheckGithubAPIResources(token) {
+	if !repotracker.CheckGithubAPIResources(ctx, token) {
 		j.AddError(errors.Errorf("skipping repotracker run [%s] for %s because of github limit issues",
 			j.ID(), j.ProjectID))
 		return
 	}
 
-	err = repotracker.CollectRevisionsForProject(settings, *ref,
+	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref,
 		settings.RepoTracker.MaxRepoRevisionsToSearch)
 
 	if err != nil {

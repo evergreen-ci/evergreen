@@ -1,7 +1,6 @@
 mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRestService', 'notificationService', '$mdpTimePicker', function($scope, $window, mciAdminRestService, notificationService) {
   $scope.load = function() {
     $scope.Settings = {};
-    $scope.Events = generateEventText(window.events);
     $scope.getSettings();
     $scope.disableRestart = false;
     $scope.disableSubmit = false;
@@ -13,6 +12,31 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.getSettings = function() {
     var successHandler = function(resp) {
+      if (resp.data.slack && resp.data.slack.options) {
+        var fields = resp.data.slack.options.fields;
+        var fieldsSet = [];
+        for (var field in fields) {
+          fieldsSet.push(field);
+        }
+        resp.data.slack.options.fields = fieldsSet;
+      }
+
+      $scope.tempCredentials = [];
+      _.each(resp.data.credentials, function(val, key) {
+        var obj = {};
+        obj[key] = val;
+        $scope.tempCredentials.push(obj);
+      });
+
+      $scope.tempExpansions = [];
+      _.each(resp.data.expansions, function(val, key) {
+        var obj = {};
+        obj[key] = val;
+        $scope.tempExpansions.push(obj);
+      });
+
+      $scope.tempPlugins = resp.data.plugins ? jsyaml.safeDump(resp.data.plugins) : "";
+
       $scope.Settings = resp.data;
     }
     var errorHandler = function(resp) {
@@ -28,32 +52,52 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     var errorHandler = function(resp) {
       notificationService.pushNotification("Error saving settings: " + resp.data.error, "errorHeader");
     }
-    // temporary workaround until the admin page has components for every part of the config (EVG-2684)
-    settings = {
-      banner: $scope.Settings.banner,
-      banner_theme: $scope.Settings.banner_theme,
-      service_flags: $scope.Settings.service_flags
-    };
-    mciAdminRestService.saveSettings(settings, { success: successHandler, error: errorHandler });
-  }
 
-  generateEventText = function(events) {
-    if (!events) { return; }
-    for (var i = 0; i < events.length; i++) {
-      var event = events[i];
-      switch(event.event_type) {
-        case "BANNER_CHANGED":
-          event.displayText = bannerChangeEventText(event);
-          break;
-        case "THEME_CHANGED":
-          event.displayText = themeChangeEventText(event);
-          break;
-        case "SERVICE_FLAGS_CHANGED":
-          event.displayText = flagChangeEventText(event);
-          break;
+    if ($scope.Settings.slack && $scope.Settings.slack.options) {
+      var fields = $scope.Settings.slack.options.fields;
+      var fieldsSet = {};
+      for (var i = 0; i < fields.length; i++) {
+        fieldsSet[fields[i]] = true;
       }
+      $scope.Settings.slack.options.fields = fieldsSet;
     }
-    return events;
+
+    _.map($scope.tempCredentials, function(elem, index) {
+      if (!$scope.Settings.credentials) {
+        $scope.Settings.credentials = {};
+      }
+      for (var key in elem) {
+        $scope.Settings.credentials[key] = elem[key];
+      }
+    });
+
+    _.map($scope.tempExpansions, function(elem, index) {
+      if (!$scope.Settings.expansions) {
+        $scope.Settings.expansions = {};
+      }
+      for (var key in elem) {
+        $scope.Settings.expansions[key] = elem[key];
+      }
+    });
+
+    try {
+      $scope.Settings.plugins = jsyaml.safeLoad($scope.tempPlugins);
+    } catch(e) {
+      alert("Error parsing plugin yaml: " + e);
+      return;
+    }
+
+    if ($scope.tempPlugins === null || $scope.tempPlugins === undefined || $scope.tempPlugins == "") {
+      $scope.Settings.plugins = {};
+    }
+    if (!$scope.tempCredentials || $scope.tempCredentials.length === 0) {
+      $scope.Settings.credentials = {};
+    }
+    if (!$scope.tempExpansions || $scope.tempExpansions.length === 0) {
+      $scope.Settings.expansions = {};
+    }
+
+    mciAdminRestService.saveSettings($scope.Settings, { success: successHandler, error: errorHandler });
   }
 
   var flagDisplayNames = {
@@ -68,31 +112,8 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
     github_pr_testing_disabled: "github_pr_testing",
     repotracker_push_event_disabled: "repotracker_push_event",
     cli_updates_disabled: "cli_updates",
-    github_status_api_disabled: "github_status_api"
-  }
-
-  bannerChangeEventText = function(event) {
-    var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
-    var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
-    return timestamp(event.timestamp) + event.data.user + " changed banner from " + oldVal + " to " + newVal;
-  }
-
-  themeChangeEventText = function(event) {
-    var oldVal = event.data.old_val ? "'"+event.data.old_val+"'" : "(blank)";
-    var newVal = event.data.new_val ? "'"+event.data.new_val+"'" : "(blank)";
-    return timestamp(event.timestamp) + event.data.user + " changed banner theme from " + oldVal + " to " + newVal;
-  }
-
-  flagChangeEventText = function(event) {
-    var changes = [];
-    for (var flag in flagDisplayNames) {
-      var newVal = event.data.new_flags[flag];
-      var oldVal = event.data.old_flags[flag];
-      if (oldVal !== newVal) {
-        changes.push((newVal?" disabled ":" enabled ") + flagDisplayNames[flag]);
-      }
-    }
-    return timestamp(event.timestamp) + event.data.user + changes.join(", ");
+    github_status_api_disabled: "github_status_api",
+    background_stats_disabled: "background stats"
   }
 
   timestamp = function(ts) {
@@ -153,6 +174,53 @@ mciModule.controller('AdminSettingsController', ['$scope','$window', 'mciAdminRe
 
   $scope.jumpToTask = function(taskId) {
     window.open("/task/" + taskId);
+  }
+
+  $scope.scrollTo = function(section) {
+    var offset = $('#'+section).offset();
+    var scrollto = offset.top - 55; //position of the element - header height(ish)
+    $('html, body').animate({scrollTop:scrollto}, 0);
+  }
+
+  $scope.clearSection = function(section, subsection) {
+    if (!subsection) {
+      $scope.Settings[section] = {};
+    } else {
+      $scope.Settings[section][subsection] = {};
+    }
+  }
+
+  $scope.transformNaiveUser = function(chip) {
+    var user = {};
+    try {
+      var user = JSON.parse(chip);
+    } catch(e) {
+      alert("Unable to parse json: " + e);
+      return null;
+    }
+    if (!user.username || user.username === "") {
+      alert("You must enter a username");
+      return null;
+    }
+
+    return user;
+  }
+
+  $scope.addKVpair = function(chip, property) {
+    var obj = {};
+    pieces = chip.split(":");
+    if (pieces.length !== 2) {
+      alert("Input must be in the format of key:value");
+      return null;
+    }
+    var key = pieces[0];
+    if ($scope.Settings[property][key]) {
+      alert("Duplicate key: " + key);
+      return null;
+    }
+    obj[key] = pieces[1];
+    $scope.Settings[property][key] = pieces[1];
+    return obj;
   }
 
   $scope.load();

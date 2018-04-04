@@ -1,6 +1,8 @@
 package units
 
 import (
+	"context"
+
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
@@ -44,7 +46,7 @@ func makeSysInfoStatsCollector() *sysInfoStatsCollector {
 	return j
 }
 
-func (j *sysInfoStatsCollector) Run() {
+func (j *sysInfoStatsCollector) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	j.logger.Info(message.CollectSystemInfo())

@@ -27,14 +27,13 @@ clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(pla
 
 clientSource := main/evergreen.go
 
-distArtifacts :=  ./public ./service/templates ./alerts/templates ./notify/templates
+distArtifacts :=  ./public ./service/templates ./alerts/templates
 distContents := $(clientBinaries) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
-latestUpstreamHash := $(shell git rev-parse master@{upstream})
 ldFlags := "$(if $(DEBUG_ENABLED),,-w -s )-X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
 karmaFlags := $(if $(KARMA_REPORTER),--reporters $(KARMA_REPORTER),)
 # end evergreen specific configuration
@@ -108,7 +107,7 @@ $(buildDir)/.load-smoke-data:$(buildDir)/load-smoke-data
 smoke-test-task:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --runner --binary ./$< &
 	./$< service deploy start-evergreen --agent --binary ./$< &
-	./$< service deploy test-endpoints --commit $(latestUpstreamHash) --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (killall $<; exit 1)
+	./$< service deploy test-endpoints --check-build --username admin --key abb623665fdbf368a1db980dde6ee0f0 || (killall $<; exit 1)
 	killall $<
 smoke-test-endpoints:$(localClientBinary) load-smoke-data
 	./$< service deploy start-evergreen --web --binary ./$< &
@@ -185,6 +184,8 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 # userfacing targets for basic build and development operations
 build:cli
+build-alltests:$(testBin)
+build-all:build-alltests build
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
@@ -302,13 +303,14 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	go tool cover -html=$< -o $@
 # end test and coverage artifacts
 
-
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/coverage.* $(buildDir)/race.* $(clientBuildDir)
+	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/race.* $(buildDir)/output.* $(clientBuildDir)
+	rm -rf $(gopath)/pkg/
 phony += clean
 # end dependency targets
 
-# configure phony targets
+# configure special (and) phony targets
 .FORCE:
 .PHONY:$(phony) .FORCE
+.DEFAULT_GOAL:build

@@ -20,6 +20,7 @@ import (
 type ClientProjectConf struct {
 	Name     string   `json:"name" yaml:"name,omitempty"`
 	Default  bool     `json:"default" yaml:"default,omitempty"`
+	Alias    string   `json:"alias" yaml:"alias,omitempty"`
 	Variants []string `json:"variants" yaml:"variants,omitempty"`
 	Tasks    []string `json:"tasks" yaml:"tasks,omitempty"`
 }
@@ -62,6 +63,7 @@ func findConfigFilePath(fn string) (string, error) {
 
 // Client represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
+// If you change the JSON tags, you must also change an anonymous struct in hostinit/setup.go
 type ClientSettings struct {
 	APIServerHost string              `json:"api_server_host" yaml:"api_server_host,omitempty"`
 	UIServerHost  string              `json:"ui_server_host" yaml:"ui_server_host,omitempty"`
@@ -71,7 +73,7 @@ type ClientSettings struct {
 	LoadedFrom    string              `json:"-" yaml:"-"`
 }
 
-func NewClientSetttings(fn string) (*ClientSettings, error) {
+func NewClientSettings(fn string) (*ClientSettings, error) {
 	path, err := findConfigFilePath(fn)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could find file %s", fn)
@@ -190,7 +192,13 @@ func (s *ClientSettings) SetDefaultVariants(project string, variants ...string) 
 		}
 	}
 
-	s.Projects = append(s.Projects, ClientProjectConf{project, true, variants, nil})
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:     project,
+		Default:  true,
+		Alias:    "",
+		Variants: variants,
+		Tasks:    nil,
+	})
 }
 
 func (s *ClientSettings) FindDefaultTasks(project string) []string {
@@ -210,7 +218,39 @@ func (s *ClientSettings) SetDefaultTasks(project string, tasks ...string) {
 		}
 	}
 
-	s.Projects = append(s.Projects, ClientProjectConf{project, true, nil, tasks})
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:     project,
+		Default:  true,
+		Alias:    "",
+		Variants: nil,
+		Tasks:    tasks,
+	})
+}
+
+func (s *ClientSettings) FindDefaultAlias(project string) string {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.Alias
+		}
+	}
+	return ""
+}
+
+func (s *ClientSettings) SetDefaultAlias(project string, alias string) {
+	for i, p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].Alias = alias
+			return
+		}
+	}
+
+	s.Projects = append(s.Projects, ClientProjectConf{
+		Name:     project,
+		Default:  true,
+		Alias:    alias,
+		Variants: nil,
+		Tasks:    nil,
+	})
 }
 
 func (s *ClientSettings) SetDefaultProject(name string) {
@@ -225,6 +265,12 @@ func (s *ClientSettings) SetDefaultProject(name string) {
 	}
 
 	if !foundDefault {
-		s.Projects = append(s.Projects, ClientProjectConf{name, true, []string{}, []string{}})
+		s.Projects = append(s.Projects, ClientProjectConf{
+			Name:     name,
+			Default:  true,
+			Alias:    "",
+			Variants: []string{},
+			Tasks:    []string{},
+		})
 	}
 }

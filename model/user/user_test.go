@@ -31,6 +31,12 @@ func (s *UserTestSuite) SetupTest() {
 		&DBUser{
 			Id:     "Test1",
 			APIKey: "12345",
+			Settings: UserSettings{
+				GithubUser: GithubUser{
+					UID:         1234,
+					LastKnownAs: "octocat",
+				},
+			},
 		},
 		&DBUser{
 			Id: "Test2",
@@ -116,4 +122,18 @@ func (s *UserTestSuite) TestDeletePublicKeyThatDoesntExist() {
 	u, err := FindOne(ById(s.users[0].Id))
 	s.NoError(err)
 	s.checkUserNotDestroyed(u, s.users[0])
+}
+
+func (s *UserTestSuite) TestFindByGithubUID() {
+	u, err := FindByGithubUID(1234)
+	s.NoError(err)
+	s.Equal("Test1", u.Id)
+
+	u, err = FindByGithubUID(0)
+	s.NoError(err)
+	s.Nil(u)
+
+	u, err = FindByGithubUID(-1)
+	s.NoError(err)
+	s.Nil(u)
 }

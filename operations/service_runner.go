@@ -24,6 +24,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/recovery"
+	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -48,7 +49,7 @@ func handcrankRunner() cli.Command {
 		Flags: mergeFlagSlices(addDbSettingsFlags(), serviceConfigFlags(cli.StringFlag{
 			Name: joinFlagNames("runner", "r", "n", "name", "single"),
 		})),
-		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
+		Before: mergeBeforeFuncs(setupRunner()),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			name := c.String("runner")
@@ -81,7 +82,7 @@ func startRunnerService() cli.Command {
 		Name:   "runner",
 		Usage:  "run evergreen background worker",
 		Flags:  mergeFlagSlices(addDbSettingsFlags(), serviceConfigFlags()),
-		Before: mergeBeforeFuncs(setupRunner(), requireFileExists(confFlagName)),
+		Before: mergeBeforeFuncs(setupRunner()),
 		Action: func(c *cli.Context) error {
 			confPath := c.String(confFlagName)
 			db := parseDB(c)
@@ -115,7 +116,6 @@ func startRunnerService() cli.Command {
 			go listenForSIGTERM(cancel)
 			waiter := make(chan struct{})
 			startRunners(ctx, settings, waiter)
-			grip.Notice("waiting for runner processes to terminate")
 			<-waiter
 
 			return errors.WithStack(err)
@@ -138,12 +138,40 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		DebugLogging:    false,
 	}
 
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), time.Minute, time.Now(), opts, units.PopulateActivationJobs())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs())
-	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 90*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs())
+	const (
+		backgroundStatsInterval = time.Minute
+		sysStatsInterval        = 15 * time.Second
+	)
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), backgroundStatsInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateHostMonitoring(env),
+		units.PopulateTaskMonitoring()))
+
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 2*time.Minute, time.Now(), opts, units.PopulateActivationJobs(4))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 15*time.Minute, time.Now(), opts, units.PopulateCatchupJobs(30))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs(5))
 
 	// add jobs to a local queue every minute for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), time.Minute, time.Now(), opts, func(queue amboy.Queue) error {
+	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), backgroundStatsInterval, time.Now(), opts, func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			grip.Alert(message.WrapError(err, message.Fields{
+				"message":       "problem fetching service flags",
+				"operation":     "background stats",
+				"interval_secs": backgroundStatsInterval.Seconds(),
+			}))
+			return err
+		}
+
+		if flags.BackgroundStatsDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "background stats collection disabled",
+				"impact":  "host, task, latency, and amboy stats disabled",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
 		catcher := grip.NewBasicCatcher()
 		ts := time.Now().Unix()
 
@@ -155,10 +183,8 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		return catcher.Resolve()
 	})
 
-	// Add jobs to a local queue, every 15 seconds for stats collection and reporting.
-	amboy.IntervalQueueOperation(ctx, env.LocalQueue(), 15*time.Second, time.Now(), opts, func(queue amboy.Queue) error {
-		return queue.Put(units.NewSysInfoStatsCollector(fmt.Sprintf("sys-info-stats-%d", time.Now().Unix())))
-	})
+	// Add jobs to a local queue, system info stats collection and reporting.
+	startSysInfoCollectors(ctx, env, sysStatsInterval, opts)
 }
 
 type processRunner interface {
@@ -171,7 +197,6 @@ type processRunner interface {
 
 var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
-	&notify.Runner{},
 	&monitor.Runner{},
 
 	&scheduler.Runner{},
@@ -198,7 +223,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 
 	infrequentRunners := []string{
 		alerts.RunnerName,
-		notify.RunnerName,
 	}
 
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
@@ -230,6 +254,7 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 		}
 	}
 
+	grip.Notice("waiting for runner processes to terminate")
 	wg.Wait()
 	grip.Infof("Cleanly terminated all %d processes", len(backgroundRunners))
 	close(waiter)
@@ -243,9 +268,15 @@ func listenForSIGTERM(cancel context.CancelFunc) {
 	// notify us when SIGTERM is received
 	signal.Notify(sigChan, syscall.SIGTERM)
 	<-sigChan
-	grip.Infof("Terminating %d processes", len(backgroundRunners))
-	cancel()
+	grip.Notice(message.Fields{
+		"message":     "received SIGTERM, terminating",
+		"signal":      syscall.SIGTERM,
+		"num_runners": len(backgroundRunners),
+		"build":       evergreen.BuildRevision,
+		"process":     grip.Name(),
+	})
 
+	cancel()
 }
 
 // runProcessByName runs a single process given its name and evergreen Settings.

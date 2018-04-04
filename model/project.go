@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
+	yaml "gopkg.in/yaml.v2"
 )
 
 const (
@@ -288,15 +289,6 @@ func (td *TaskUnitDependency) UnmarshalYAML(unmarshal func(interface{}) error) e
 type TaskGroup struct {
 	Name string `yaml:"name" bson:"name"`
 
-	// fields that will be copied to all tasks
-	Priority  int64                 `yaml:"priority,omitempty" bson:"priority"`
-	Patchable *bool                 `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	DependsOn []TaskUnitDependency  `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Requires  []TaskUnitRequirement `yaml:"requires,omitempty" bson:"requires"`
-	// currently unsupported (TODO EVG-578)
-	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
-
 	// data about the task group
 	MaxHosts      int             `yaml:"max_hosts" bson:"max_hosts"`
 	SetupGroup    *YAMLCommandSet `yaml:"setup_group" bson:"setup_group"`
@@ -439,11 +431,7 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 			rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 		}
 		for _, t := range bv.Tasks {
-			if t.IsGroup {
-				tg := p.FindTaskGroup(t.Name)
-				if tg == nil {
-					continue
-				}
+			if tg := p.FindTaskGroup(t.Name); tg != nil {
 				for _, groupTask := range tg.Tasks {
 					taskId := generateId(groupTask, p, &bv, rev, v)
 					execTable[TVPair{bv.Name, groupTask}] = util.CleanName(taskId)
@@ -468,13 +456,33 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdConfig {
 func NewPatchTaskIdTable(proj *Project, v *version.Version, tasks TaskVariantPairs) TaskIdConfig {
 	config := TaskIdConfig{}
 	processedVariants := map[string]bool{}
+
+	// resolve task groups to exec tasks
+	tgMap := map[string]TaskGroup{}
+	for _, tg := range proj.TaskGroups {
+		tgMap[tg.Name] = tg
+	}
+	execTasksWithTaskGroupTasks := TVPairSet{}
+	for _, vt := range tasks.ExecTasks {
+		if _, ok := tgMap[vt.TaskName]; ok {
+			if tg := proj.FindTaskGroup(vt.TaskName); tg != nil {
+				for _, t := range tg.Tasks {
+					execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, TVPair{vt.Variant, t})
+				}
+			}
+		} else {
+			execTasksWithTaskGroupTasks = append(execTasksWithTaskGroupTasks, vt)
+		}
+	}
+	tasks.ExecTasks = execTasksWithTaskGroupTasks
+
 	for _, vt := range tasks.ExecTasks {
 		// don't hit the same variant more than once
 		if _, ok := processedVariants[vt.Variant]; ok {
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks)
+		config.ExecutionTasks = generateIdsForVariant(vt, proj, v, tasks.ExecTasks, config.ExecutionTasks, tgMap)
 	}
 	processedVariants = map[string]bool{}
 	for _, vt := range tasks.DisplayTasks {
@@ -483,12 +491,12 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, tasks TaskVariantPai
 			continue
 		}
 		processedVariants[vt.Variant] = true
-		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks)
+		config.DisplayTasks = generateIdsForVariant(vt, proj, v, tasks.DisplayTasks, config.DisplayTasks, tgMap)
 	}
 	return config
 }
 
-func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks TVPairSet, table TaskIdTable) TaskIdTable {
+func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks TVPairSet, table TaskIdTable, tgMap map[string]TaskGroup) TaskIdTable {
 	if table == nil {
 		table = map[TVPair]string{}
 	}
@@ -497,15 +505,17 @@ func generateIdsForVariant(vt TVPair, proj *Project, v *version.Version, tasks T
 	// so that we don't create Ids for variants that don't exist.
 	projBV := proj.FindBuildVariant(vt.Variant)
 	taskNamesForVariant := tasks.TaskNames(vt.Variant)
-
 	rev := v.Revision
-	if v.Requester == evergreen.PatchVersionRequester {
+	if evergreen.IsPatchRequester(v.Requester) {
 		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
 	}
-	for _, t := range projBV.Tasks {
-		// create Ids for each task that can run on the variant and is requested by the patch.
+	for _, t := range projBV.Tasks { // create Ids for each task that can run on the variant and is requested by the patch.
 		if util.StringSliceContains(taskNamesForVariant, t.Name) {
 			table[TVPair{vt.Variant, t.Name}] = util.CleanName(generateId(t.Name, proj, projBV, rev, v))
+		} else if tg, ok := tgMap[t.Name]; ok {
+			for _, name := range tg.Tasks {
+				table[TVPair{vt.Variant, name}] = util.CleanName(generateId(name, proj, projBV, rev, v))
+			}
 		}
 	}
 	for _, t := range projBV.DisplayTasks {
@@ -690,6 +700,54 @@ func GetTaskGroup(taskGroup string, tc *TaskConfig) (*TaskGroup, error) {
 	return tg, nil
 }
 
+// EarlierInTaskGroup returns true if t1 occurs earlier in the taskGroup, false
+// if t2 occurs earlier. If neither is present in the task group, it returns an
+// error. For efficiency it does not call LoadProjectInto but instead only
+// unmarshals the task group portion of the project's YAML.
+func EarlierInTaskGroup(t1, t2 *task.Task, taskGroup string) (bool, error) {
+	// validate input
+	if taskGroup == "" {
+		return false, errors.New("taskGroup is empty")
+	}
+	if t1.Version != t2.Version || t1.Version == "" || t2.Version == "" {
+		return false, errors.New("versions must match")
+	}
+	if t1.BuildId != t2.BuildId || t1.BuildId == "" || t2.BuildId == "" {
+		return false, errors.New("builds must match")
+	}
+	if t1.TaskGroup != t2.TaskGroup || t1.TaskGroup == "" || t2.TaskGroup == "" {
+		return false, errors.New("task groups must match")
+	}
+
+	// get config
+	v, err := version.FindOneId(t1.Version)
+	if err != nil {
+		return false, errors.Wrap(err, "error finding version")
+	}
+	p := struct {
+		TaskGroups []TaskGroup `yaml:"task_groups"`
+	}{}
+	if err := yaml.Unmarshal([]byte(v.Config), &p); err != nil {
+		return false, errors.Wrap(err, "error unmarshalling task groups")
+	}
+
+	// find earlier task
+	for _, tg := range p.TaskGroups {
+		if tg.Name == taskGroup {
+			for _, t := range tg.Tasks {
+				if t == t1.DisplayName {
+					return true, nil
+				}
+				if t == t2.DisplayName {
+					return false, nil
+				}
+			}
+			return false, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, tg.Name)
+		}
+	}
+	return false, errors.Errorf("did not find task group %s", taskGroup)
+}
+
 func FindProjectFromTask(t *task.Task) (*Project, error) {
 	ref, err := FindOneProjectRef(t.Project)
 	if err != nil {
@@ -771,10 +829,26 @@ func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTaskUnit
 	if bv == nil {
 		return nil
 	}
+
+	tgMap := map[string]TaskGroup{}
+	for _, tg := range p.TaskGroups {
+		tgMap[tg.Name] = tg
+	}
+
 	for _, bvt := range bv.Tasks {
 		if bvt.Name == task {
-			bvt.Populate(*p.FindProjectTask(task))
-			return &bvt
+			if projectTask := p.FindProjectTask(task); projectTask != nil {
+				bvt.Populate(*projectTask)
+				return &bvt
+			}
+		}
+		if tg, ok := tgMap[bvt.Name]; ok {
+			for _, t := range tg.Tasks {
+				if t == task {
+					bvt.Populate(*p.FindProjectTask(task))
+					return &bvt
+				}
+			}
 		}
 	}
 	return nil

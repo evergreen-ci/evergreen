@@ -21,9 +21,9 @@ func UpdateStaticHosts() error {
 		return err
 	}
 	activeStaticHosts := make([]string, 0)
-	settings := &cloud.StaticSettings{}
 
 	for _, d := range distros {
+		settings := &cloud.StaticSettings{}
 		err = mapstructure.Decode(d.ProviderSettings, settings)
 		if err != nil {
 			return errors.Errorf("invalid static settings for '%v'", d.Id)

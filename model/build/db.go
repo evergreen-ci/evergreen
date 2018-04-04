@@ -19,7 +19,6 @@ var (
 	CreateTimeKey          = bsonutil.MustHaveTag(Build{}, "CreateTime")
 	StartTimeKey           = bsonutil.MustHaveTag(Build{}, "StartTime")
 	FinishTimeKey          = bsonutil.MustHaveTag(Build{}, "FinishTime")
-	PushTimeKey            = bsonutil.MustHaveTag(Build{}, "PushTime")
 	VersionKey             = bsonutil.MustHaveTag(Build{}, "Version")
 	ProjectKey             = bsonutil.MustHaveTag(Build{}, "Project")
 	RevisionKey            = bsonutil.MustHaveTag(Build{}, "Revision")

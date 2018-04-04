@@ -36,7 +36,7 @@ func (s *CliHttpTestSuite) TestV2Client() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	settings, err := NewClientSetttings(testFileName)
+	settings, err := NewClientSettings(testFileName)
 	client := settings.GetRestCommunicator(ctx)
 	if s.NoError(err) {
 		s.NotNil(client)

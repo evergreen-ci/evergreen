@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -19,10 +20,10 @@ const (
 
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
-	ResourceType string           `bson:"r_type" json:"resource_type"`
-	User         string           `bson:"user" json:"user"`
-	Section      string           `bson:"section" json:"section"`
-	Changes      ConfigDataChange `bson:"changes" json:"changes"`
+	GUID    string           `bson:"guid" json:"guid"`
+	User    string           `bson:"user" json:"user"`
+	Section string           `bson:"section" json:"section"`
+	Changes ConfigDataChange `bson:"changes" json:"changes"`
 }
 
 type ConfigDataChange struct {
@@ -36,63 +37,82 @@ type rawConfigDataChange struct {
 }
 
 type rawAdminEventData struct {
-	ResourceType string              `bson:"r_type" json:"resource_type"`
-	User         string              `bson:"user" json:"user"`
-	Section      string              `bson:"section" json:"section"`
-	Changes      rawConfigDataChange `bson:"changes" json:"changes"`
-}
-
-// IsValid checks if a given event is an event on an admin resource
-func (evt AdminEventData) IsValid() bool {
-	return evt.ResourceType == ResourceTypeAdmin
-}
-
-func (evt rawAdminEventData) IsValid() bool {
-	return evt.ResourceType == ResourceTypeAdmin
+	GUID    string              `bson:"guid"`
+	User    string              `bson:"user"`
+	Section string              `bson:"section"`
+	Changes rawConfigDataChange `bson:"changes"`
 }
 
 func LogAdminEvent(section string, before, after evergreen.ConfigSection, user string) error {
+	if section == evergreen.ConfigDocID {
+		beforeSettings := before.(*evergreen.Settings)
+		afterSettings := after.(*evergreen.Settings)
+		before = stripInteriorSections(beforeSettings)
+		after = stripInteriorSections(afterSettings)
+	}
 	if reflect.DeepEqual(before, after) {
 		return nil
 	}
 	eventData := AdminEventData{
-		ResourceType: ResourceTypeAdmin,
-		User:         user,
-		Section:      section,
-		Changes:      ConfigDataChange{Before: before, After: after},
+		User:    user,
+		Section: section,
+		Changes: ConfigDataChange{Before: before, After: after},
+		GUID:    util.RandomString(),
 	}
-	event := Event{
-		Timestamp: time.Now(),
-		EventType: EventTypeValueChanged,
-		Data:      DataWrapper{eventData},
+	event := EventLogEntry{
+		Timestamp:    time.Now(),
+		EventType:    EventTypeValueChanged,
+		Data:         eventData,
+		ResourceType: ResourceTypeAdmin,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		return errors.Wrap(err, "Error logging admin event")
 	}
 	return nil
 }
 
-func FindAdmin(query db.Q) ([]Event, error) {
+func stripInteriorSections(config *evergreen.Settings) *evergreen.Settings {
+	copy := &evergreen.Settings{}
+	*copy = *config
+	valConfigPtr := reflect.ValueOf(copy)
+	valConfig := reflect.Indirect(valConfigPtr)
+	for i := 0; i < valConfig.NumField(); i++ {
+		sectionId := valConfig.Type().Field(i).Tag.Get("id")
+		if sectionId == "" {
+			continue
+		}
+
+		propName := valConfig.Type().Field(i).Name
+		propVal := valConfig.FieldByName(propName)
+		propVal.Set(reflect.Zero(propVal.Type()))
+	}
+
+	configInterface := valConfigPtr.Interface()
+	return configInterface.(*evergreen.Settings)
+}
+
+func FindAdmin(query db.Q) ([]EventLogEntry, error) {
 	eventsRaw, err := Find(AllLogCollection, query)
 	if err != nil {
 		return nil, err
 	}
-	events := []Event{}
+	events := []EventLogEntry{}
 	catcher := grip.NewSimpleCatcher()
 	for _, event := range eventsRaw {
-		eventDataRaw := event.Data.Data.(*rawAdminEventData)
+		eventDataRaw := event.Data.(*rawAdminEventData)
 		eventData, err := convertRaw(*eventDataRaw)
 		if err != nil {
 			catcher.Add(err)
 			continue
 		}
-		events = append(events, Event{
-			Timestamp:  event.Timestamp,
-			ResourceId: event.ResourceId,
-			EventType:  event.EventType,
-			Data:       DataWrapper{eventData},
+		events = append(events, EventLogEntry{
+			ResourceType: ResourceTypeAdmin,
+			Timestamp:    event.Timestamp,
+			ResourceId:   event.ResourceId,
+			EventType:    event.EventType,
+			Data:         eventData,
 		})
 	}
 	if catcher.HasErrors() {
@@ -102,79 +122,11 @@ func FindAdmin(query db.Q) ([]Event, error) {
 	return events, nil
 }
 
-func FindAndScrub(query db.Q) ([]Event, error) {
-	events, err := FindAdmin(query)
-	if err != nil {
-		return nil, err
-	}
-	catcher := grip.NewSimpleCatcher()
-	for _, event := range events {
-		eventData := event.Data.Data.(*AdminEventData)
-		catcher.Add(scrubConfig(eventData.Changes.Before.(evergreen.ConfigSection)))
-		catcher.Add(scrubConfig(eventData.Changes.After.(evergreen.ConfigSection)))
-	}
-	if catcher.HasErrors() {
-		return nil, catcher.Resolve()
-	}
-
-	return events, nil
-}
-
-// scrubConfig takes in some struct pointer and scrubs any fields marked as secure
-// the input must have a pointer to a struct value
-func scrubConfig(section interface{}) error {
-	catcher := grip.NewSimpleCatcher()
-	valSection := reflect.Indirect(reflect.ValueOf(section))
-	for i := 0; i < valSection.NumField(); i++ {
-		// get the field name + value
-		field := valSection.Type().Field(i)
-		propName := field.Name
-		var propVal reflect.Value
-		reflectSection := reflect.ValueOf(section)
-		propVal = reflectSection.Elem().FieldByName(propName)
-		if !propVal.CanSet() {
-			continue
-		}
-
-		// if this is a secure field, swap the value with asterisks. All secure types must be string
-		secure := field.Tag.Get("secure")
-		if secure != "" {
-			if propVal.Kind() != reflect.String {
-				catcher.Add(fmt.Errorf("secure field %s is not a string", propName))
-				continue
-			}
-			if propVal.String() == "" {
-				continue
-			}
-			propVal.SetString("***")
-		}
-
-		// if this is a struct, recursively scrub its secure fields
-		if propVal.Kind() == reflect.Struct {
-			catcher.Add(scrubConfig(propVal.Addr().Interface()))
-		} else if reflect.Indirect(propVal).Kind() == reflect.Struct {
-			catcher.Add(scrubConfig(propVal.Interface()))
-		} else if propVal.Kind() == reflect.Slice {
-			// if this is a slice, scrub each of its elements
-			for j := 0; j < propVal.Len(); j++ {
-				elem := propVal.Index(j)
-				if elem.Kind() == reflect.Struct {
-					catcher.Add(scrubConfig(elem.Addr().Interface()))
-				} else if reflect.Indirect(elem).Kind() == reflect.Struct {
-					catcher.Add(scrubConfig(elem.Interface()))
-				}
-			}
-		}
-	}
-
-	return catcher.Resolve()
-}
-
 func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	out := AdminEventData{
-		ResourceType: in.ResourceType,
-		Section:      in.Section,
-		User:         in.User,
+		Section: in.Section,
+		User:    in.User,
+		GUID:    in.GUID,
 	}
 
 	// get the correct implementation of the interface from the registry
@@ -200,4 +152,31 @@ func convertRaw(in rawAdminEventData) (*AdminEventData, error) {
 	out.Changes.After = after
 
 	return &out, nil
+}
+
+// RevertConfig reverts one config section to the before state of the specified GUID in the event log
+func RevertConfig(guid string, user string) error {
+	events, err := FindAdmin(ByGuid(guid))
+	if err != nil {
+		return errors.Wrap(err, "problem finding events")
+	}
+	if len(events) == 0 {
+		return fmt.Errorf("unable to find event with GUID %s", guid)
+	}
+	evt := events[0]
+	data := evt.Data.(*AdminEventData)
+	current := evergreen.ConfigRegistry.GetSection(data.Section)
+	if current == nil {
+		return fmt.Errorf("unable to find section %s", data.Section)
+	}
+	err = current.Get()
+	if err != nil {
+		return errors.Wrapf(err, "problem reading section %s", current.SectionId())
+	}
+	err = data.Changes.Before.Set()
+	if err != nil {
+		return errors.Wrap(err, "problem updating settings")
+	}
+
+	return LogAdminEvent(data.Section, current, data.Changes.Before, user)
 }

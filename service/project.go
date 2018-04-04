@@ -201,6 +201,11 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(responseRef.Branch) == 0 {
+		http.Error(w, fmt.Sprintf("no branch specified %v", err), http.StatusBadRequest)
+		return
+	}
+
 	errs := []string{}
 	for i, pd := range responseRef.ProjectAliases {
 		if strings.TrimSpace(pd.Alias) == "" {
@@ -301,6 +306,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 				// don't kill it here, sometimes people change
 				// Evergreen to track a personal branch,
 				// one that we have no access to
+				projectRef.TracksPushEvents = false
 
 			} else {
 				hook := model.GithubHook{
@@ -341,7 +347,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//modify project vars if necessary
+	// If the variable is private, and if the variable in the submission is
+	// empty, then do not modify it. This variable has been redacted and is
+	// therefore empty in the submission, since the client does not have
+	// access to it, and we should not overwrite it.
+	for k, v := range projectVars.Vars {
+		if _, ok := projectVars.PrivateVars[k]; ok {
+			if val, ok := responseRef.ProjVarsMap[k]; ok && val == "" {
+				responseRef.ProjVarsMap[k] = v
+			}
+		}
+	}
 	projectVars.Vars = responseRef.ProjVarsMap
 	projectVars.PrivateVars = responseRef.PrivateVars
 
@@ -492,11 +508,11 @@ func (uis *UIServer) setupGithubHook(projectRef *model.ProjectRef) (int, error) 
 		return 0, errors.New("Evergreen is not configured for Github Webhooks")
 	}
 
-	httpClient, err := util.GetHttpClientForOauth2(token)
+	httpClient, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
 		return 0, err
 	}
-	defer util.PutHttpClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 	client := github.NewClient(httpClient)
 	newHook := github.Hook{
 		Name:   github.String("web"),

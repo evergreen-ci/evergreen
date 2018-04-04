@@ -1,10 +1,13 @@
 package event
 
 import (
-	"encoding/json"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -15,77 +18,147 @@ const (
 	TaskLogCollection = "task_event_log"
 )
 
-type Event struct {
+type EventLogEntry struct {
+	ID           bson.ObjectId `bson:"_id" json:"-"`
+	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
+
 	Timestamp  time.Time   `bson:"ts" json:"timestamp"`
 	ResourceId string      `bson:"r_id" json:"resource_id"`
 	EventType  string      `bson:"e_type" json:"event_type"`
-	Data       DataWrapper `bson:"data" json:"data"`
+	Data       interface{} `bson:"data" json:"data"`
+}
+
+// Processed is whether or not this event has been processed. An event
+// which has been processed has successfully have notifications intents
+// created and stored, but does not indicate whether or not these
+// notifications have been successfully sent to all recipients
+// If true, the time is the time that this event was marked as
+// processed. If false, time is the zero time
+func (e *EventLogEntry) Processed() (bool, time.Time) {
+	return !e.ProcessedAt.IsZero(), e.ProcessedAt
+}
+
+type unmarshalEventLogEntry struct {
+	ID           bson.ObjectId `bson:"_id" json:"-"`
+	ResourceType string        `bson:"r_type,omitempty" json:"resource_type,omitempty"`
+	ProcessedAt  time.Time     `bson:"processed_at,omitempty" json:"processed_at,omitempty"`
+
+	Timestamp  time.Time `bson:"ts" json:"timestamp"`
+	ResourceId string    `bson:"r_id" json:"resource_id"`
+	EventType  string    `bson:"e_type" json:"event_type"`
+	Data       bson.Raw  `bson:"data" json:"data"`
 }
 
 var (
 	// bson fields for the event struct
-	TimestampKey  = bsonutil.MustHaveTag(Event{}, "Timestamp")
-	ResourceIdKey = bsonutil.MustHaveTag(Event{}, "ResourceId")
-	TypeKey       = bsonutil.MustHaveTag(Event{}, "EventType")
-	DataKey       = bsonutil.MustHaveTag(Event{}, "Data")
-
-	// resource type key.  this doesn't exist a part of the event struct,
-	// but has to be the same for all of the event types
-	ResourceTypeKey = bsonutil.MustHaveTag(HostEventData{}, "ResourceType")
+	idKey           = bsonutil.MustHaveTag(EventLogEntry{}, "ID")
+	TimestampKey    = bsonutil.MustHaveTag(EventLogEntry{}, "Timestamp")
+	ResourceIdKey   = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceId")
+	ResourceTypeKey = bsonutil.MustHaveTag(EventLogEntry{}, "ResourceType")
+	processedAtKey  = bsonutil.MustHaveTag(EventLogEntry{}, "ProcessedAt")
+	TypeKey         = bsonutil.MustHaveTag(EventLogEntry{}, "EventType")
+	DataKey         = bsonutil.MustHaveTag(EventLogEntry{}, "Data")
 )
 
-type DataWrapper struct {
-	Data
-}
+const resourceTypeKey = "r_type"
 
-type Data interface {
-	IsValid() bool
-}
-
-// MarshalJSON returns proper JSON encoding by uncovering the Data interface.
-func (dw DataWrapper) MarshalJSON() ([]byte, error) {
-	switch event := dw.Data.(type) {
-	case *TaskEventData:
-		return json.Marshal(event)
-	case *HostEventData:
-		return json.Marshal(event)
-	case *SchedulerEventData:
-		return json.Marshal(event)
-	case *DistroEventData:
-		return json.Marshal(event)
-	case *TaskSystemResourceData:
-		return json.Marshal(event)
-	case *TaskProcessResourceData:
-		return json.Marshal(event)
-	case *AdminEventData:
-		return json.Marshal(event)
-	default:
-		return nil, errors.Errorf("cannot marshal data of type %T", dw.Data)
+func (e *EventLogEntry) SetBSON(raw bson.Raw) error {
+	temp := unmarshalEventLogEntry{}
+	if err := raw.Unmarshal(&temp); err != nil {
+		return errors.Wrap(err, "can't unmarshal event container type")
 	}
-}
 
-func (dw DataWrapper) GetBSON() (interface{}, error) {
-	return dw.Data, nil
-}
-
-func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
-	impls := []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}, &SchedulerEventData{},
-		&TaskSystemResourceData{}, &TaskProcessResourceData{}, &rawAdminEventData{}}
-
-	for _, impl := range impls {
-		err := raw.Unmarshal(impl)
-		if err != nil {
-			return err
+	if len(temp.ResourceType) == 0 {
+		//TODO: EVG-3061 delete this line through until return errors.New("expected ...
+		// Try and fetch r_type in the data subdoc
+		rawD := bson.RawD{}
+		if err := temp.Data.Unmarshal(&rawD); err != nil {
+			return errors.Wrap(err, "can't unmarshal raw event data")
 		}
-		if impl.(Data).IsValid() {
-			dw.Data = impl.(Data)
-			return nil
+
+		for i := range rawD {
+			if rawD[i].Name == resourceTypeKey {
+				if err := rawD[i].Value.Unmarshal(&temp.ResourceType); err != nil {
+					return errors.Wrap(err, "failed to read resource type (r_type) from event data")
+				}
+				break
+			}
+		}
+
+		if temp.ResourceType != EventTaskSystemInfo &&
+			temp.ResourceType != EventTaskProcessInfo {
+			grip.Alert(message.Fields{
+				"message":  "unmigrated event was found",
+				"event_id": temp.ID.String(),
+				"r_type":   temp.ResourceType,
+			})
 		}
 	}
-	m := bson.M{}
-	err := raw.Unmarshal(m)
-	if err != nil {
-		return err
+
+	if len(temp.ResourceType) == 0 {
+		return errors.New("expected non-empty r_type while unmarshalling event data")
 	}
-	return errors.Errorf("No suitable type for %#v", m)
+
+	e.Data = NewEventFromType(temp.ResourceType)
+	if e.Data == nil {
+		return errors.Errorf("unknown resource type '%s'", temp.ResourceType)
+	}
+	if err := temp.Data.Unmarshal(e.Data); err != nil {
+		return errors.Wrap(err, "failed to unmarshal data")
+	}
+
+	e.ID = temp.ID
+	e.Timestamp = temp.Timestamp
+	e.ResourceId = temp.ResourceId
+	e.EventType = temp.EventType
+	e.ProcessedAt = temp.ProcessedAt
+	e.ResourceType = temp.ResourceType
+
+	return nil
+}
+
+// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
+// If found, this function returns true, and the value of that field
+// If not, this function returns false. If it the struct had "r_type" (without
+// omitempty), it will return that field's value, otherwise it returns an
+// empty string
+func findResourceTypeIn(data interface{}) (bool, string) {
+	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
+
+	if data == nil {
+		return false, ""
+	}
+
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
+		if len(bsonTag) == 0 {
+			continue
+		}
+
+		if fieldType.Type.Kind() != reflect.String {
+			return false, ""
+		}
+
+		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
+			continue
+		}
+
+		structData := v.Field(i).String()
+		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
+	}
+
+	return false, ""
 }

@@ -18,16 +18,20 @@ func deployMigration() cli.Command {
 		Name:    "anser",
 		Aliases: []string{"migrations", "migrate", "migration"},
 		Usage:   "database migration tool",
-		Flags:   mergeFlagSlices(serviceConfigFlags(), addMigrationRuntimeFlags()),
+		Flags:   mergeFlagSlices(serviceConfigFlags(), addMigrationRuntimeFlags(), addDbSettingsFlags()),
+		Before:  addPositionalMigrationIds,
 		Action: func(c *cli.Context) error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			db := parseDB(c)
 			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, c.String(confFlagName), nil)
-
+			err := env.Configure(ctx, c.String(confFlagName), db)
 			grip.CatchEmergencyFatal(errors.Wrap(err, "problem configuring application environment"))
 			settings := env.Settings()
+
+			// avoid working on remote jobs during migrations
+			env.RemoteQueue().Runner().Close()
 
 			opts := migrations.Options{
 				Period:   c.Duration(anserPeriodFlagName),
@@ -35,6 +39,7 @@ func deployMigration() cli.Command {
 				Limit:    c.Int(anserLimitFlagName),
 				DryRun:   c.Bool(anserDryRunFlagName),
 				Workers:  c.Int(anserWorkersFlagName),
+				IDs:      c.StringSlice(anserMigrationIDFlagName),
 				Session:  env.Session(),
 				Database: settings.Database.DB,
 			}
@@ -50,6 +55,7 @@ func deployMigration() cli.Command {
 				return errors.Wrap(err, "problem configuring migration application")
 			}
 
+			grip.Debug("completed migration setup running generator and then migrations")
 			return errors.Wrap(app.Run(ctx), "problem running migration operation")
 		},
 	}
@@ -60,7 +66,7 @@ func deployDataTransforms() cli.Command {
 		Name:    "transform",
 		Aliases: []string{"modify-data"},
 		Usage:   "run database migrations defined in a configuration file",
-		Flags:   mergeFlagSlices(serviceConfigFlags(), addPathFlag(), addMigrationRuntimeFlags()),
+		Flags:   mergeFlagSlices(serviceConfigFlags(), addPathFlag(), addMigrationRuntimeFlags(), addDbSettingsFlags()),
 		Before:  mergeBeforeFuncs(requirePathFlag, requireFileExists(confFlagName)),
 		Action: func(c *cli.Context) error {
 			migrationConfFn := c.String(pathFlagName)
@@ -69,8 +75,9 @@ func deployDataTransforms() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			db := parseDB(c)
 			env := evergreen.GetEnvironment()
-			err := env.Configure(ctx, confPath, nil)
+			err := env.Configure(ctx, confPath, db)
 			if err != nil {
 				return errors.Wrap(err, "problem configuring application environment")
 			}

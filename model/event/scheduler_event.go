@@ -22,29 +22,23 @@ type TaskQueueInfo struct {
 
 // implements EventData
 type SchedulerEventData struct {
-	// necessary for IsValid
-	ResourceType  string        `bson:"r_type" json:"resource_type"`
 	TaskQueueInfo TaskQueueInfo `bson:"tq_info" json:"task_queue_info"`
 	DistroId      string        `bson:"d_id" json:"distro_id"`
-}
-
-func (sed SchedulerEventData) IsValid() bool {
-	return sed.ResourceType == ResourceTypeScheduler
 }
 
 // LogSchedulerEvent takes care of logging the statistics about the scheduler at a given time.
 // The ResourceId is the time that the scheduler runs.
 func LogSchedulerEvent(eventData SchedulerEventData) {
-	eventData.ResourceType = ResourceTypeScheduler
-	event := Event{
-		Timestamp:  time.Now(),
-		ResourceId: eventData.DistroId,
-		EventType:  EventSchedulerRun,
-		Data:       DataWrapper{eventData},
+	event := EventLogEntry{
+		Timestamp:    time.Now(),
+		ResourceId:   eventData.DistroId,
+		EventType:    EventSchedulerRun,
+		Data:         eventData,
+		ResourceType: ResourceTypeScheduler,
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
-	if err := logger.LogEvent(event); err != nil {
+	if err := logger.LogEvent(&event); err != nil {
 		grip.Errorf("Error logging host event: %+v", err)
 	}
 }

@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"sync"
@@ -175,12 +176,13 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 	ti := amboy.JobTimeInfo{
 		Start: start,
 	}
-
-	j.Run()
-	ti.End = time.Now()
 	j.UpdateTimeInfo(ti)
 
+	runJob(ctx, j)
+
 	p.queue.Complete(ctx, j)
+	ti.End = time.Now()
+	j.UpdateTimeInfo(ti)
 	duration := time.Since(start)
 
 	interval := p.getNextTime(duration)
@@ -188,6 +190,7 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 		"id":            j.ID(),
 		"job_type":      j.Type().Name,
 		"duration_secs": duration.Seconds(),
+		"queue_type":    fmt.Sprintf("%T", p.queue),
 		"interval_secs": interval.Seconds(),
 		"pool":          "rate limiting, moving average",
 	}

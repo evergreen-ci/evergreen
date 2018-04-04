@@ -101,6 +101,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	defer timer.Stop()
 
 	tc = &taskContext{}
+	needPostGroup := false
 
 LOOP:
 	for {
@@ -129,8 +130,12 @@ LOOP:
 				if err := a.runTask(tskCtx, tc); err != nil {
 					return errors.WithStack(err)
 				}
+				needPostGroup = true
 				timer.Reset(0)
 				continue LOOP
+			} else if needPostGroup {
+				a.runPostGroupCommands(ctx, tc)
+				needPostGroup = false
 			}
 			jitteredSleep = util.JitterInterval(agentSleepInterval)
 			grip.Debugf("Agent sleeping %s", jitteredSleep)
@@ -338,6 +343,11 @@ func (a *Agent) runPostGroupCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig == nil {
 		return
 	}
+	if err := a.resetLogging(ctx, tc); err != nil {
+		grip.Error(errors.Wrap(err, "error resetting logging"))
+		return
+	}
+	defer tc.logger.Close()
 	taskGroup, err := model.GetTaskGroup(tc.taskGroup, tc.taskConfig)
 	if err != nil {
 		tc.logger.Execution().Error(errors.Wrap(err, "error fetching task group for post-group commands"))

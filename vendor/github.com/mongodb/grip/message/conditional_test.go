@@ -31,4 +31,8 @@ func TestConditionalMessage(t *testing.T) {
 	comp = Whenf(true, "", "foo")
 	assert.False(comp.Loggable(), "%T: %s", comp.(*condComposer).msg, comp.(*condComposer).msg)
 
+	comp = WhenMsg(true, "foo")
+	assert.True(comp.Loggable())
+	comp = WhenMsg(false, "bar")
+	assert.False(comp.Loggable())
 }

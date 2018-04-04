@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/evergreen-ci/crowd"
@@ -24,7 +25,7 @@ func NewCrowdUserManager(conf *evergreen.CrowdConfig) (*CrowdUserManager, error)
 
 // GetUserByToken returns the user for the supplied token, or an
 // error if the user is not found.
-func (c *CrowdUserManager) GetUserByToken(token string) (User, error) {
+func (c *CrowdUserManager) GetUserByToken(_ context.Context, token string) (User, error) {
 	user, err := c.GetUserFromToken(token)
 	if err != nil {
 		return nil, err

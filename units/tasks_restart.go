@@ -1,6 +1,7 @@
 package units
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -46,10 +47,11 @@ func NewTasksRestartJob(opts model.RestartTaskOptions) amboy.Job {
 	job := makeTaskRestartJob()
 	job.Opts = opts
 	job.SetID(fmt.Sprintf("restart-tasks-%d-%d", opts.StartTime.Unix(), opts.EndTime.Unix()))
+	job.SetPriority(1)
 	return job
 }
 
-func (j *restartTasksJob) Run() {
+func (j *restartTasksJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 	results, err := model.RestartFailedTasks(j.Opts)
 	if err != nil {

@@ -38,6 +38,7 @@ func getPatchFlags(flags ...cli.Flag) []cli.Flag {
 func Patch() cli.Command {
 	return cli.Command{
 		Name:    "patch",
+		Before:  setPlainLogger,
 		Aliases: []string{"create-patch", "submit-patch"},
 		Usage:   "submit a new patch to evergreen",
 		Flags:   getPatchFlags(),
@@ -59,7 +60,7 @@ func Patch() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
@@ -124,7 +125,7 @@ func PatchFile() cli.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}

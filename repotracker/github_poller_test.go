@@ -1,6 +1,7 @@
 package repotracker
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -139,6 +140,8 @@ func TestGetRemoteConfig(t *testing.T) {
 	var self GithubRepositoryPoller
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRemoteConfig")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When fetching a specific github revision configuration...",
 		t, func() {
@@ -160,23 +163,23 @@ func TestGetRemoteConfig(t *testing.T) {
 
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
-				projectConfig, err := self.GetRemoteConfig(firstRemoteConfigRef)
+				projectConfig, err := self.GetRemoteConfig(ctx, firstRemoteConfigRef)
 				testutil.HandleTestingErr(err, t, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
 				So(len(projectConfig.Tasks), ShouldEqual, 0)
-				projectConfig, err = self.GetRemoteConfig(secondRemoteConfigRef)
+				projectConfig, err = self.GetRemoteConfig(ctx, secondRemoteConfigRef)
 				testutil.HandleTestingErr(err, t, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
 				So(len(projectConfig.Tasks), ShouldEqual, 1)
 			})
 			Convey("an invalid revision should return an error", func() {
-				_, err := self.GetRemoteConfig("firstRemoteConfRef")
+				_, err := self.GetRemoteConfig(ctx, "firstRemoteConfRef")
 				So(err, ShouldNotBeNil)
 			})
 			Convey("an invalid project configuration should error out", func() {
-				_, err := self.GetRemoteConfig(badRemoteConfigRef)
+				_, err := self.GetRemoteConfig(ctx, badRemoteConfigRef)
 				So(err, ShouldNotBeNil)
 			})
 		})
@@ -227,13 +230,16 @@ func TestGetChangedFiles(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetAllRevisions")
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	Convey("When fetching changed files from evergreen-ci/evergreen ", t, func() {
 		grp.ProjectRef = evgProjectRef
 		grp.OauthToken = testConfig.Credentials[grp.ProjectRef.RepoKind]
 
 		r1 := "b11fcb25624c6a0649dd35b895f5b550d649a128"
 		Convey("the revision "+r1+" should have 8 files", func() {
-			files, err := grp.GetChangedFiles(r1)
+			files, err := grp.GetChangedFiles(ctx, r1)
 			So(err, ShouldBeNil)
 			So(len(files), ShouldEqual, 8)
 			So(files, ShouldContain, "cloud/providers/ec2/ec2.go")
@@ -243,14 +249,14 @@ func TestGetChangedFiles(t *testing.T) {
 
 		r2 := "3c0133dbd4b35418c11df7b6e3a1ae31f966de42"
 		Convey("the revision "+r2+" should have 1 file", func() {
-			files, err := grp.GetChangedFiles(r2)
+			files, err := grp.GetChangedFiles(ctx, r2)
 			So(err, ShouldBeNil)
 			So(len(files), ShouldEqual, 1)
 			So(files, ShouldContain, "ui/rest_project.go")
 		})
 
 		Convey("a revision that does not exist should fail", func() {
-			files, err := grp.GetChangedFiles("00000000000000000000000000")
+			files, err := grp.GetChangedFiles(ctx, "00000000000000000000000000")
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "Not Found")
 			So(files, ShouldBeNil)
@@ -277,21 +283,6 @@ func TestIsLastRevision(t *testing.T) {
 				SHA: github.String(firstRevision),
 			}
 			So(isLastRevision(firstRevision, githubCommit), ShouldBeTrue)
-		})
-	})
-}
-
-func TestGetCommitURL(t *testing.T) {
-	Convey("When calling getCommitURL...", t, func() {
-		Convey("the returned string should use the fields of the project "+
-			"ref correctly", func() {
-			projectRef = &model.ProjectRef{
-				Owner:  "a",
-				Repo:   "b",
-				Branch: "c",
-			}
-			expectedURL := "https://api.github.com/repos/a/b/commits?sha=c"
-			So(getCommitURL(projectRef), ShouldEqual, expectedURL)
 		})
 	})
 }

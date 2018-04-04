@@ -104,9 +104,9 @@ func (s *TaskResourceSuite) TestLoggedSystemEventsWithoutTimestampsGetCurrentTim
 	LogTaskSystemData(s.taskId, sys)
 	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
 	s.NoError(err)
-	s.Len(results, 1)
+	s.Require().Len(results, 1)
 	event := results[0]
-	info := event.Data.Data.(*TaskSystemResourceData).SystemInfo
+	info := event.Data.(*TaskSystemResourceData).SystemInfo
 	s.False(event.Timestamp.IsZero())
 	s.False(info.Base.Time.IsZero())
 	s.Equal(event.Timestamp, info.Base.Time)
@@ -125,9 +125,9 @@ func (s *TaskResourceSuite) TestLoggedProcessEventsWithoutTimestampsGetCurrentTi
 	LogTaskProcessData(s.taskId, []*message.ProcessInfo{info})
 	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
 	s.NoError(err)
-	s.Len(results, 1)
+	s.Require().Len(results, 1)
 	event := results[0]
-	s.Len(event.Data.Data.(*TaskProcessResourceData).Processes, 1)
+	s.Len(event.Data.(*TaskProcessResourceData).Processes, 1)
 
 	s.False(event.Timestamp.IsZero())
 
@@ -145,11 +145,11 @@ func (s *TaskResourceSuite) TestProcessInfosWithTimestampsPersist() {
 	LogTaskProcessData(s.taskId, []*message.ProcessInfo{info})
 	results, err := Find(TaskLogCollection, TaskProcessInfoEvents(s.taskId, time.Now(), 100, -1))
 	s.NoError(err)
-	s.Len(results, 1)
+	s.Require().Len(results, 1)
 	event := results[0]
 	s.WithinDuration(info.Base.Time, event.Timestamp, 10*time.Millisecond)
-	s.Len(event.Data.Data.(*TaskProcessResourceData).Processes, 1)
-	proc := event.Data.Data.(*TaskProcessResourceData).Processes[0]
+	s.Len(event.Data.(*TaskProcessResourceData).Processes, 1)
+	proc := event.Data.(*TaskProcessResourceData).Processes[0]
 	s.Equal(proc.Base.Time, event.Timestamp)
 	s.True(startTime.Before(event.Timestamp))
 }
@@ -164,10 +164,10 @@ func (s *TaskResourceSuite) TestSystemInfosWithTimestampsPersist() {
 	LogTaskSystemData(s.taskId, info)
 	results, err := Find(TaskLogCollection, TaskSystemInfoEvents(s.taskId, time.Now(), 100, -1))
 	s.NoError(err)
-	s.Len(results, 1)
+	s.Require().Len(results, 1)
 	event := results[0]
 	s.WithinDuration(info.Base.Time, event.Timestamp, 10*time.Millisecond)
-	sys := event.Data.Data.(*TaskSystemResourceData).SystemInfo
+	sys := event.Data.(*TaskSystemResourceData).SystemInfo
 	s.Equal(sys.Base.Time, event.Timestamp)
 	s.True(startTime.Before(event.Timestamp))
 }

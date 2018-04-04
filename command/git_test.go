@@ -3,12 +3,14 @@ package command
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -21,6 +23,8 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
 )
@@ -321,4 +325,43 @@ func (s *GitGetProjectSuite) TearDownSuite() {
 	if s.modelData2.TaskConfig != nil {
 		s.NoError(os.RemoveAll(s.modelData2.TaskConfig.WorkDir))
 	}
+}
+
+func (s *GitGetProjectSuite) TestAllowsEmptyPatches() {
+	dir, err := ioutil.TempDir("", "evg-test")
+	s.Require().NoError(err)
+	defer func() {
+		s.NoError(os.RemoveAll(dir))
+	}()
+
+	c := gitFetchProject{
+		Directory: dir,
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "init", dir)
+	s.NotNil(cmd)
+	s.NoError(cmd.Run())
+
+	sender := send.MakeInternalLogger()
+	logger := client.NewSingleChannelLogHarness("", sender)
+
+	p := patch.Patch{
+		Patches: []patch.ModulePatch{
+			{},
+		},
+	}
+	conf := model.TaskConfig{
+		WorkDir: dir,
+	}
+
+	s.NoError(c.applyPatch(ctx, logger, &conf, &p))
+	s.Equal(3, sender.Len())
+
+	msg := sender.GetMessage()
+	s.Require().NotNil(msg)
+	s.Equal(level.Info, msg.Priority)
+	s.Equal("Skipping empty patch file...", msg.Message.String())
 }

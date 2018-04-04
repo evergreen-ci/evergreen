@@ -36,7 +36,7 @@ imports:
   - name: github.com/gorilla/csrf
     version: 8aae08ff9fb9a8fe293deea3d057f37d89744670
   - name: github.com/mitchellh/mapstructure
-    version: 6fb2c832bcac61d01212ab1d172f7a14a8585b07
+    version: 00c29f56e2386353d58c599509e8dc3801b0d716
 
   - name: github.com/smartystreets/assertions
     version: f8459f92181409546d2762c9e9c4bedc23c92d76
@@ -107,14 +107,16 @@ imports:
     version: 6f45313302b9c56850fc17f99e40caebce98c716
 
   - name: github.com/mongodb/grip
-    version: ffba6116c87ed19483c0bba0cb127aa5a9cdc81e
+    version: 60db5ac0d4542a9f622f6eb959707074568044aa
   - name: github.com/mongodb/anser
-    version: b51e0ec8335cdffbcdbf186fb4b2d385611107aa
+    version: 439efd10216bb826c89ef8f5156b5bed6f7c0601
   - name: github.com/mongodb/amboy
-    version: 6ab543863b5fcd8c12fafb773f5532da70f836a2
+    version: 3b410354187d914a8dca37ba4f95ec767b8b836c
   - name: github.com/google/go-github
     version: 8c08f4fba5e05e0fd2821a5f80cf0cf643bd5314
   - name: github.com/google/go-querystring
     version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
   - name: github.com/newrelic/go-agent
     version: f5bce3387232559bcbe6a5f8227c4bf508dac1ba
+  - name: github.com/PuerkitoBio/rehttp
+    version: 11cf6ea5d3e9afda34846e1db511aa218049471c

@@ -15,16 +15,17 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const migrationZeroDateFix = "zero-date-fix"
+
 func zeroDateFixGenerator(githubToken string) migrationGeneratorFactory {
-	return func(env anser.Environment, dbName string, limit int) (anser.Generator, error) {
+	return func(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
 		const (
 			versionCollection = "versions"
 			createTimeKey     = "create_time"
-
-			migrationName = "zero-date-fix"
+			migrationName     = "zero-date-fix"
 		)
 
-		if err := env.RegisterManualMigrationOperation(migrationName, makeZeroDateMigration(dbName, githubToken)); err != nil {
+		if err := env.RegisterManualMigrationOperation(migrationName, makeZeroDateMigration(args.db, githubToken)); err != nil {
 			return nil, err
 		}
 
@@ -40,16 +41,16 @@ func zeroDateFixGenerator(githubToken string) migrationGeneratorFactory {
 
 		opts := model.GeneratorOptions{
 			NS: model.Namespace{
-				DB:         dbName,
+				DB:         args.db,
 				Collection: versionCollection,
 			},
-			Limit: limit,
+			Limit: args.limit,
 			Query: db.Document{
 				createTimeKey: db.Document{
 					"$lte": minTime,
 				},
 			},
-			JobID: "migration-zero-date-fix",
+			JobID: args.id,
 		}
 
 		return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
@@ -146,11 +147,11 @@ func makeZeroDateMigration(database, githubToken string) db.MigrationOperation {
 
 func githubFetchRealCreateTime(token, owner, repo, revision string) (*time.Time, error) {
 	ctx := context.Background()
-	httpClient, err := util.GetHttpClientForOauth2(token)
+	httpClient, err := util.GetOAuth2HTTPClient(token)
 	if err != nil {
 		return nil, err
 	}
-	defer util.PutHttpClientForOauth2(httpClient)
+	defer util.PutHTTPClient(httpClient)
 
 	client := github.NewClient(httpClient)
 

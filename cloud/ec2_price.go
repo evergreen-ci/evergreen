@@ -56,16 +56,14 @@ func (cpf *cachingPriceFetcher) getEC2Cost(ctx context.Context, client AWSClient
 		}
 		return price * dur.Hours(), nil
 	}
-	spotDetails, err := client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-		SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-	})
+	instanceId, err := client.GetSpotInstanceId(ctx, h)
 	if err != nil {
-		return 0, errors.Wrap(err, "error getting spot info")
+		return 0, errors.Wrap(err, "error getting spot instance ID")
 	}
-	if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+	if instanceId == "" {
 		return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 	}
-	instance, err := client.GetInstanceInfo(ctx, *spotDetails.SpotInstanceRequests[0].InstanceId)
+	instance, err := client.GetInstanceInfo(ctx, instanceId)
 	if err != nil {
 		return 0, errors.Wrap(err, "error getting instance info")
 	}
@@ -95,17 +93,9 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
 	grip.Debugln("Loading On Demand pricing from", endpoint)
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
-	resp, err := client.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
-	if err != nil {
-		return errors.Wrapf(err, "fetching %v", endpoint)
-	}
-	grip.Debug("Parsing on-demand pricing")
 	details := struct {
 		Terms    Terms
 		Products map[string]struct {
@@ -121,8 +111,25 @@ func (cpf *cachingPriceFetcher) cacheEc2Prices() error {
 			}
 		}
 	}{}
-	if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
-		return errors.Wrap(err, "parsing response body")
+
+	_, err := util.Retry(func() (bool, error) {
+		resp, err := client.Get(endpoint)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return true, errors.Wrapf(err, "fetching %v", endpoint)
+		}
+		grip.Debug("Parsing on-demand pricing")
+
+		if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
+			return true, errors.Wrap(err, "parsing response body")
+		}
+		return false, nil
+	}, awsClientImplRetries, awsClientImplStartPeriod)
+
+	if err != nil {
+		return errors.WithStack(err)
 	}
 
 	for _, p := range details.Products {
@@ -266,17 +273,15 @@ func (cpf *cachingPriceFetcher) getEBSCost(ctx context.Context, client AWSClient
 	cpf.Lock()
 	defer cpf.Unlock()
 	instanceID := h.Id
+	var err error
 	if isHostSpot(h) {
-		spotDetails, err := client.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
-			SpotInstanceRequestIds: []*string{makeStringPtr(h.Id)},
-		})
+		instanceID, err = client.GetSpotInstanceId(ctx, h)
 		if err != nil {
-			return 0, errors.Wrap(err, "error getting spot info")
+			return 0, errors.Wrap(err, "error getting spot instance ID")
 		}
-		if spotDetails.SpotInstanceRequests[0].InstanceId == nil {
+		if instanceID == "" {
 			return 0, errors.WithStack(errors.New("spot instance does not yet have an instanceId"))
 		}
-		instanceID = *spotDetails.SpotInstanceRequests[0].InstanceId
 	}
 	instance, err := client.GetInstanceInfo(ctx, instanceID)
 	if err != nil {
@@ -333,20 +338,29 @@ func (cpf *cachingPriceFetcher) cacheEBSPrices() error {
 	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
 	grip.Debugln("Loading EBS pricing from", endpoint)
 
-	client := util.GetHttpClient()
-	defer util.PutHttpClient(client)
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
 
-	resp, err := client.Get(endpoint)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	var data []byte
+
+	_, err := util.Retry(func() (bool, error) {
+		resp, err := client.Get(endpoint)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return true, errors.Wrapf(err, "fetching %s", endpoint)
+		}
+		data, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return true, errors.Wrap(err, "reading response body")
+		}
+		return false, nil
+	}, awsClientImplRetries, awsClientImplStartPeriod)
 	if err != nil {
-		return errors.Wrapf(err, "fetching %s", endpoint)
+		return errors.WithStack(err)
 	}
-	data, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return errors.Wrap(err, "reading response body")
-	}
+
 	matches := ebsRegex.FindSubmatch(data)
 	if len(matches) < 2 {
 		return errors.Errorf("could not find price JSON in response from %v", endpoint)

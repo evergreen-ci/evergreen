@@ -52,13 +52,13 @@ type uiTaskData struct {
 	Requester        string                  `json:"r"`
 	ExpectedDuration time.Duration           `json:"expected_duration"`
 	Priority         int64                   `json:"priority"`
-	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
 	TestResults      []uiTestResult          `json:"test_results"`
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
 	DependsOn        []uiDep                 `json:"depends_on"`
+	IngestTime       time.Time               `json:"ingest_time"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -213,11 +213,11 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		DispatchTime:        projCtx.Task.DispatchTime.UnixNano(),
 		FinishTime:          projCtx.Task.FinishTime.UnixNano(),
 		ExpectedDuration:    projCtx.Task.ExpectedDuration,
-		PushTime:            projCtx.Task.PushTime,
 		TimeTaken:           projCtx.Task.TimeTaken,
 		Priority:            projCtx.Task.Priority,
 		Aborted:             projCtx.Task.Aborted,
 		DisplayOnly:         projCtx.Task.DisplayOnly,
+		IngestTime:          projCtx.Task.IngestTime,
 		CurrentTime:         time.Now().UnixNano(),
 		BuildVariantDisplay: projCtx.Build.DisplayName,
 		Message:             projCtx.Version.Message,

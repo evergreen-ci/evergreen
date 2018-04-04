@@ -159,7 +159,7 @@ func TestPanicJobPanics(t *testing.T) {
 	defer cancel()
 
 	for j := range jobsChanWithPanicingJobs(ctx, 8) {
-		assert.Panics(func() { j.Run() })
+		assert.Panics(func() { j.Run(ctx) })
 	}
 
 }

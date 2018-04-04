@@ -41,7 +41,7 @@ func (s *repotrackerJobSuite) TestJob() {
 	j := NewRepotrackerJob("1", "mci").(*repotrackerJob)
 	s.Equal("mci", j.ProjectID)
 	s.Equal("repotracker:1:mci", j.ID())
-	j.Run()
+	j.Run(context.Background())
 	s.Error(j.Error())
 	s.Contains(j.Error().Error(), "can't find project ref for project")
 	s.True(j.Status().Completed)
@@ -54,7 +54,7 @@ func (s *repotrackerJobSuite) TestRunFailsInDegradedMode() {
 	s.NoError(evergreen.SetServiceFlags(flags))
 
 	job := NewRepotrackerJob("1", "mci")
-	job.Run()
+	job.Run(context.Background())
 
 	s.Error(job.Error())
 	s.Contains(job.Error().Error(), "repotracker is disabled")

@@ -2,11 +2,14 @@ package event
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -27,8 +30,7 @@ func TestAdminEventSuite(t *testing.T) {
 }
 
 func (s *AdminEventSuite) SetupTest() {
-	err := db.Clear(AllLogCollection)
-	s.Require().NoError(err)
+	s.Require().NoError(db.ClearCollections(AllLogCollection, evergreen.ConfigCollection))
 }
 
 func (s *AdminEventSuite) TestEventLogging() {
@@ -40,8 +42,9 @@ func (s *AdminEventSuite) TestEventLogging() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
-	s.True(eventData.IsValid())
+	s.Require().Len(dbEvents, 1)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.ServiceFlags)
 	afterVal := eventData.Changes.After.(*evergreen.ServiceFlags)
 	s.Equal(before, *beforeVal)
@@ -60,8 +63,9 @@ func (s *AdminEventSuite) TestEventLogging2() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
-	s.True(eventData.IsValid())
+	s.Require().Len(dbEvents, 1)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.Settings)
 	afterVal := eventData.Changes.After.(*evergreen.Settings)
 	s.Equal(before.ApiUrl, beforeVal.ApiUrl)
@@ -88,14 +92,34 @@ func (s *AdminEventSuite) TestEventLogging3() {
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
 	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
-	s.True(eventData.IsValid())
+	s.Require().Len(dbEvents, 1)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	s.NotEmpty(eventData.GUID)
 	beforeVal := eventData.Changes.Before.(*evergreen.NotifyConfig)
 	afterVal := eventData.Changes.After.(*evergreen.NotifyConfig)
 	s.Equal(before.SMTP.Port, beforeVal.SMTP.Port)
 	s.Equal(before.SMTP.Password, beforeVal.SMTP.Password)
 	s.Equal(after.SMTP.Port, afterVal.SMTP.Port)
 	s.Equal(after.SMTP.Password, afterVal.SMTP.Password)
+}
+
+func (s *AdminEventSuite) TestNoSpuriousLogging() {
+	before := evergreen.Settings{
+		ApiUrl: "api",
+		HostInit: evergreen.HostInitConfig{
+			SSHTimeoutSeconds: 10,
+		},
+	}
+	after := evergreen.Settings{
+		ApiUrl: "api",
+		HostInit: evergreen.HostInitConfig{
+			SSHTimeoutSeconds: 15,
+		},
+	}
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+	dbEvents, err := FindAdmin(RecentAdminEvents(5))
+	s.NoError(err)
+	s.Len(dbEvents, 0)
 }
 
 func (s *AdminEventSuite) TestNoChanges() {
@@ -113,27 +137,97 @@ func (s *AdminEventSuite) TestNoChanges() {
 	s.Len(dbEvents, 0)
 }
 
-func (s *AdminEventSuite) TestEventScrubbing() {
-	before := evergreen.AuthConfig{}
-	after := evergreen.AuthConfig{
-		Naive: &evergreen.NaiveAuthConfig{
-			Users: []*evergreen.AuthUser{&evergreen.AuthUser{Username: "user", Password: "pwd"}},
-		},
-		Crowd: &evergreen.CrowdConfig{
-			Username: "crowd",
-			Password: "crowdpw",
+func (s *AdminEventSuite) TestReverting() {
+	before := evergreen.SchedulerConfig{
+		TaskFinder:  "legacy",
+		MergeToggle: 5,
+	}
+	after := evergreen.SchedulerConfig{
+		TaskFinder:  "alternate",
+		MergeToggle: 10,
+	}
+	s.NoError(after.Set())
+	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
+
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
+	s.NoError(err)
+	s.Require().Len(dbEvents, 1)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	beforeVal := eventData.Changes.Before.(*evergreen.SchedulerConfig)
+	afterVal := eventData.Changes.After.(*evergreen.SchedulerConfig)
+	s.Equal(before, *beforeVal)
+	s.Equal(after, *afterVal)
+	guid := eventData.GUID
+	s.NotEmpty(guid)
+
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(after, settings.Scheduler)
+	s.NoError(RevertConfig(guid, "me"))
+	settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(before, settings.Scheduler)
+
+	// check that reverting a nonexistent guid errors
+	s.Error(RevertConfig("abcd", "me"))
+}
+
+func (s *AdminEventSuite) TestRevertingRoot() {
+	// this verifies that reverting the root document does not revert other sections
+	before := evergreen.Settings{
+		Banner:      "before_banner",
+		Credentials: map[string]string{"k1": "v1"},
+		SuperUsers:  []string{"su1", "su2"},
+		Ui: evergreen.UIConfig{
+			Url: "before_url",
 		},
 	}
+	after := evergreen.Settings{
+		Banner:      "after_banner",
+		Credentials: map[string]string{"k2": "v2"},
+		SuperUsers:  []string{"su3"},
+		Ui: evergreen.UIConfig{
+			Url:            "after_url",
+			CacheTemplates: true,
+		},
+	}
+	s.NoError(evergreen.UpdateConfig(&after))
 	s.NoError(LogAdminEvent(before.SectionId(), &before, &after, s.u.Username()))
-	dbEvents, err := FindAndScrub(RecentAdminEvents(1))
+
+	dbEvents, err := FindAdmin(RecentAdminEvents(1))
 	s.NoError(err)
-	eventData := dbEvents[0].Data.Data.(*AdminEventData)
-	s.True(eventData.IsValid())
-	beforeVal := eventData.Changes.Before.(*evergreen.AuthConfig)
-	afterVal := eventData.Changes.After.(*evergreen.AuthConfig)
-	s.Equal(before, *beforeVal)
-	s.Equal("user", afterVal.Naive.Users[0].Username)
-	s.Equal("***", afterVal.Naive.Users[0].Password)
-	s.Equal("crowd", afterVal.Crowd.Username)
-	s.Equal("***", afterVal.Crowd.Password)
+	s.Require().Len(dbEvents, 1)
+	eventData := dbEvents[0].Data.(*AdminEventData)
+	guid := eventData.GUID
+	s.NotEmpty(guid)
+
+	settings, err := evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(after.Banner, settings.Banner)
+	s.Equal(after.Credentials, settings.Credentials)
+	s.Equal(after.SuperUsers, settings.SuperUsers)
+	s.Equal(after.Ui, settings.Ui)
+	s.NoError(RevertConfig(guid, "me"))
+	settings, err = evergreen.GetConfig()
+	s.NoError(err)
+	s.Equal(before.Banner, settings.Banner)
+	s.Equal(before.Credentials, settings.Credentials)
+	s.Equal(before.SuperUsers, settings.SuperUsers)
+	s.Equal(after.Ui, settings.Ui)
+}
+
+func TestAdminEventsBeforeQuery(t *testing.T) {
+	testutil.HandleTestingErr(db.Clear(AllLogCollection), t, "error clearing collection")
+	assert := assert.New(t)
+	before := &evergreen.ServiceFlags{}
+	after := &evergreen.ServiceFlags{HostinitDisabled: true}
+	assert.NoError(LogAdminEvent("service_flags", before, after, "beforeNow"))
+	time.Sleep(10 * time.Millisecond)
+	now := time.Now()
+	time.Sleep(10 * time.Millisecond)
+	assert.NoError(LogAdminEvent("service_flags", before, after, "afterNow"))
+	events, err := FindAdmin(AdminEventsBefore(now, 5))
+	assert.NoError(err)
+	require.Len(t, events, 1)
+	assert.True(events[0].Timestamp.Before(now))
 }

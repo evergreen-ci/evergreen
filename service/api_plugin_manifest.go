@@ -1,11 +1,14 @@
 package service
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/google/go-github/github"
 	"github.com/pkg/errors"
 )
 
@@ -61,12 +64,15 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 		Branch:      projectRef.Branch,
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
 	// populate modules
-	var gitBranch *thirdparty.BranchEvent
+	var gitBranch *github.Branch
 	modules := make(map[string]*manifest.Module)
 	for _, module := range project.Modules {
 		owner, repo := module.GetRepoOwnerAndName()
-		gitBranch, err = thirdparty.GetBranchEvent(as.Settings.Credentials["github"], owner, repo, module.Branch)
+		gitBranch, err = thirdparty.GetBranchEvent(ctx, as.Settings.Credentials["github"], owner, repo, module.Branch)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError,
 				errors.Wrapf(err, "problem retrieving getting git branch for module %s", module.Name))
@@ -75,10 +81,10 @@ func (as *APIServer) manifestLoadHandler(w http.ResponseWriter, r *http.Request)
 
 		modules[module.Name] = &manifest.Module{
 			Branch:   module.Branch,
-			Revision: gitBranch.Commit.SHA,
+			Revision: *gitBranch.Commit.SHA,
 			Repo:     repo,
 			Owner:    owner,
-			URL:      gitBranch.Commit.Url,
+			URL:      *gitBranch.Commit.URL,
 		}
 	}
 	newManifest.Modules = modules

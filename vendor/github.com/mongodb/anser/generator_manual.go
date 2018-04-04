@@ -1,6 +1,7 @@
 package anser
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -54,7 +55,7 @@ type manualMigrationGenerator struct {
 	mu              sync.Mutex
 }
 
-func (j *manualMigrationGenerator) Run() {
+func (j *manualMigrationGenerator) Run(_ context.Context) {
 	defer j.FinishMigration(j.ID(), &j.Base)
 
 	env := j.Env()

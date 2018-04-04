@@ -602,7 +602,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{RemoveTasks: []string{"brown"}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -618,11 +618,11 @@ func TestRulesEvaluation(t *testing.T) {
 					{AddTasks: []parserBVTaskUnit{{Name: ".primary"}}},
 					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}}},
 					{AddTasks: []parserBVTaskUnit{{Name: "green", DependsOn: []parserDependency{{
-						taskSelector: taskSelector{Name: ".warm"},
+						TaskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -640,11 +640,11 @@ func TestRulesEvaluation(t *testing.T) {
 					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}}},
 					{RemoveTasks: []string{"orange"}},
 					{AddTasks: []parserBVTaskUnit{{Name: "orange", DependsOn: []parserDependency{{
-						taskSelector: taskSelector{Name: ".warm"},
+						TaskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}}
-			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
+			evaluated, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
 			So(errs, ShouldBeNil)
 			v1 := evaluated[0]
 			So(v1.Name, ShouldEqual, "test")
@@ -659,7 +659,7 @@ func TestRulesEvaluation(t *testing.T) {
 				},
 				matrixRules: []ruleAction{
 					{AddTasks: []parserBVTaskUnit{{Name: "orange", DependsOn: []parserDependency{{
-						taskSelector: taskSelector{Name: ".warm"},
+						TaskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}, {
@@ -668,11 +668,11 @@ func TestRulesEvaluation(t *testing.T) {
 				Tasks: parserBVTaskUnits{},
 				matrixRules: []ruleAction{
 					{AddTasks: []parserBVTaskUnit{{Name: ".warm"}, {Name: "orange", DependsOn: []parserDependency{{
-						taskSelector: taskSelector{Name: ".warm"},
+						TaskSelector: taskSelector{Name: ".warm"},
 					}}}}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
+			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
 			So(errs, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 3)
 		})
@@ -689,7 +689,7 @@ func TestRulesEvaluation(t *testing.T) {
 					{RemoveTasks: []string{"rainbow"}},
 				},
 			}}
-			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs)
+			_, errs := evaluateBuildVariants(tse, nil, nil, bvs, taskDefs, nil)
 			So(errs, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 2)
 		})

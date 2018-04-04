@@ -170,7 +170,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 	foundUiEvent := false
 	for _, evt := range events {
 		s.Equal(event.EventTypeValueChanged, evt.EventType)
-		data := evt.Data.Data.(*event.AdminEventData)
+		data := evt.Data.(*event.AdminEventData)
 		s.Equal(u.Id, data.User)
 		switch v := data.Changes.After.(type) {
 		case *evergreen.AlertsConfig:
@@ -279,4 +279,14 @@ func (s *AdminDataSuite) TestRestart() {
 	opts.DryRun = false
 	_, err = s.ctx.RestartFailedTasks(s.env.LocalQueue(), opts)
 	s.NoError(err)
+}
+
+func (s *AdminDataSuite) TestGetBanner() {
+	u := &user.DBUser{Id: "me"}
+	s.NoError(s.ctx.SetAdminBanner("banner text", u))
+	s.NoError(s.ctx.SetBannerTheme(evergreen.Important, u))
+	text, theme, err := s.ctx.GetBanner()
+	s.NoError(err)
+	s.Equal("banner text", text)
+	s.Equal(evergreen.Important, theme)
 }

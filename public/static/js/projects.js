@@ -133,6 +133,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           item = Object.assign({}, $scope.settingsFormData);
           item.setup_github_hook = false;
           item.pr_testing_enabled = false;
+          item.enabled = false;
           $http.post('/project/' + $scope.newProject.identifier, item).then(
             function(resp) {
               $scope.refreshTrackedProjects(data_put.AllProjects);
@@ -155,6 +156,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           $scope.refreshTrackedProjects(data.AllProjects);
           $scope.loadProject(data.ProjectId);
           $scope.newProject = {};
+          $scope.settingsFormData.setup_github_hook = true;
+          $scope.settingsFormData.tracks_push_events = true;
         },
         function(resp){
           console.log("error creating project: " + resp.status);
@@ -207,7 +210,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
           batch_time: parseInt($scope.projectRef.batch_time),
           deactivate_previous: $scope.projectRef.deactivate_previous,
           relative_url: $scope.projectRef.relative_url,
-          branch_name: $scope.projectRef.branch_name,
+          branch_name: $scope.projectRef.branch_name || "master",
           owner_name: $scope.projectRef.owner_name,
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,

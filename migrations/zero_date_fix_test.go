@@ -166,13 +166,21 @@ func (s *fixZeroDateSuite) TestMigration() {
 	s.NoError(err)
 	s.NotEmpty(token)
 
-	gen, err := zeroDateFixGenerator(token)(anser.GetEnvironment(), s.database, 50)
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 50,
+		id:    "migration-zero-date-fix",
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gen, err := zeroDateFixGenerator(token)(anser.GetEnvironment(), args)
 	s.NoError(err)
-	gen.Run()
+	gen.Run(ctx)
 	s.NoError(gen.Error())
 
 	for j := range gen.Jobs() {
-		j.Run()
+		j.Run(ctx)
 		s.NoError(j.Error())
 	}
 

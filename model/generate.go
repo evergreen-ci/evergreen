@@ -21,6 +21,7 @@ type GeneratedProject struct {
 	BuildVariants []parserBV                 `yaml:"buildvariants"`
 	Tasks         []parserTask               `yaml:"tasks"`
 	Functions     map[string]*YAMLCommandSet `yaml:"functions"`
+	TaskGroups    []parserTaskGroup          `yaml:"task_groups"`
 
 	TaskID string
 }
@@ -32,26 +33,28 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 	bvs := map[string]*parserBV{}
 	tasks := map[string]*parserTask{}
 	functions := map[string]*YAMLCommandSet{}
+	taskGroups := map[string]*parserTaskGroup{}
 
 	for _, p := range projects {
-		for _, bv := range p.BuildVariants {
+		for i, bv := range p.BuildVariants {
 			if len(bv.Tasks) == 0 {
 				if _, ok := bvs[bv.Name]; ok {
 					catcher.Add(errors.Errorf("found duplicate buildvariant (%s)", bv.Name))
 				} else {
-					bvs[bv.Name] = &bv
+					bvs[bv.Name] = &p.BuildVariants[i]
 				}
 			}
 			if _, ok := bvs[bv.Name]; ok {
 				bvs[bv.Name].Tasks = append(bvs[bv.Name].Tasks, bv.Tasks...)
+				bvs[bv.Name].DisplayTasks = append(bvs[bv.Name].DisplayTasks, bv.DisplayTasks...)
 			}
-			bvs[bv.Name] = &bv
+			bvs[bv.Name] = &p.BuildVariants[i]
 		}
-		for _, t := range p.Tasks {
+		for i, t := range p.Tasks {
 			if _, ok := tasks[t.Name]; ok {
 				catcher.Add(errors.Errorf("found duplicate task (%s)", t.Name))
 			} else {
-				tasks[t.Name] = &t
+				tasks[t.Name] = &p.Tasks[i]
 			}
 		}
 		for f, val := range p.Functions {
@@ -59,6 +62,13 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 				catcher.Add(errors.Errorf("found duplicate function (%s)", f))
 			}
 			functions[f] = val
+		}
+		for i, tg := range p.TaskGroups {
+			if _, ok := taskGroups[tg.Name]; ok {
+				catcher.Add(errors.Errorf("found duplicate task group (%s)", tg.Name))
+			} else {
+				taskGroups[tg.Name] = &p.TaskGroups[i]
+			}
 		}
 	}
 
@@ -70,6 +80,9 @@ func MergeGeneratedProjects(projects []GeneratedProject) *GeneratedProject {
 		g.Tasks = append(g.Tasks, *tasks[i])
 	}
 	g.Functions = functions
+	for i := range taskGroups {
+		g.TaskGroups = append(g.TaskGroups, *taskGroups[i])
+	}
 	return g
 }
 
@@ -84,21 +97,21 @@ func ParseProjectFromJSON(data []byte) (GeneratedProject, error) {
 	return g, nil
 }
 
-// AddGeneratedProjectToVersion adds the buildvariants, tasks, and functions
+// NewVersion adds the buildvariants, tasks, and functions
 // from a generated project config to a project.
-func (g *GeneratedProject) AddGeneratedProjectToVersion() error {
+func (g *GeneratedProject) NewVersion() (*Project, *version.Version, *task.Task, *projectMaps, error) {
 	// Get task, version, and project.
 	t, err := task.FindOneId(g.TaskID)
 	if err != nil {
-		return errors.Wrapf(err, "error finding task %s", g.TaskID)
+		return nil, nil, nil, nil, errors.Wrapf(err, "error finding task %s", g.TaskID)
 	}
 	v, err := version.FindOneId(t.Version)
 	if err != nil {
-		return errors.Wrapf(err, "error finding version %s", t.Version)
+		return nil, nil, nil, nil, errors.Wrapf(err, "error finding version %s", t.Version)
 	}
 	p := &Project{}
 	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
-		return errors.Wrap(err, "error reading project yaml")
+		return nil, nil, nil, nil, errors.Wrap(err, "error reading project yaml")
 	}
 
 	// Cache project data in maps for quick lookup
@@ -106,24 +119,25 @@ func (g *GeneratedProject) AddGeneratedProjectToVersion() error {
 
 	// Validate generated project against original project.
 	if err := g.validateGeneratedProject(p, cachedProject); err != nil {
-		return errors.Wrap(err, "generated project is invalid")
+		return nil, nil, nil, nil, errors.Wrap(err, "generated project is invalid")
 	}
 
-	// Create and save new config. This is definitely racy.
 	config, err := g.addGeneratedProjectToConfig(v.Config, cachedProject)
 	if err != nil {
-		return errors.Wrap(err, "error creating config from generated config")
+		return nil, nil, nil, nil, errors.Wrap(err, "error creating config from generated config")
 	}
 	v.Config = config
-	if err := version.UpdateOne(version.ById(v.Id), bson.M{"$set": bson.M{version.ConfigKey: config}}); err != nil {
-		return errors.Wrapf(err, "error getting version %s", v.Id)
+	if err := LoadProjectInto([]byte(v.Config), t.Project, p); err != nil {
+		return nil, nil, nil, nil, errors.Wrap(err, "error reading project yaml")
 	}
+	return p, v, t, &cachedProject, nil
+}
 
-	// Save new builds and tasks to the db.
-	if err := LoadProjectInto([]byte(config), t.Project, p); err != nil {
-		return errors.Wrap(err, "error reading project yaml")
+func (g *GeneratedProject) Save(p *Project, v *version.Version, t *task.Task, pm *projectMaps) error {
+	if err := version.UpdateOne(bson.M{version.IdKey: v.Id}, bson.M{"$set": bson.M{version.ConfigKey: v.Config}}); err != nil {
+		return errors.Wrapf(err, "error updating version %s", v.Id)
 	}
-	if err := g.saveNewBuildsAndTasks(cachedProject, v, p); err != nil {
+	if err := g.saveNewBuildsAndTasks(pm, v, p); err != nil {
 		return errors.Wrap(err, "error savings new builds and tasks")
 	}
 
@@ -149,7 +163,7 @@ func cacheProjectData(p *Project) projectMaps {
 }
 
 // saveNewBuildsAndTasks saves new builds and tasks to the db.
-func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject projectMaps, v *version.Version, p *Project) error {
+func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *version.Version, p *Project) error {
 	newTVPairsForExistingVariants := TaskVariantPairs{}
 	newTVPairsForNewVariants := TaskVariantPairs{}
 	for _, bv := range g.BuildVariants {
@@ -158,10 +172,16 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject projectMaps, v *v
 			for _, t := range bv.Tasks {
 				newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, TVPair{bv.Name, t.Name})
 			}
+			for _, dt := range bv.DisplayTasks {
+				newTVPairsForExistingVariants.DisplayTasks = append(newTVPairsForExistingVariants.DisplayTasks, TVPair{bv.Name, dt.Name})
+			}
 		} else {
 			// If the buildvariant does not exist, create it.
 			for _, t := range bv.Tasks {
 				newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, TVPair{bv.Name, t.Name})
+			}
+			for _, dt := range bv.DisplayTasks {
+				newTVPairsForNewVariants.DisplayTasks = append(newTVPairsForNewVariants.DisplayTasks, TVPair{bv.Name, dt.Name})
 			}
 		}
 	}
@@ -181,6 +201,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProj
 	if errs != nil {
 		return "", errors.Wrap(errs[0], "error creating intermediate project")
 	}
+	intermediateProject.TaskGroups = append(intermediateProject.TaskGroups, g.TaskGroups...)
 	intermediateProject.Tasks = append(intermediateProject.Tasks, g.Tasks...)
 	for key, val := range g.Functions {
 		intermediateProject.Functions[key] = val
@@ -191,6 +212,7 @@ func (g *GeneratedProject) addGeneratedProjectToConfig(config string, cachedProj
 			for i, intermediateProjectBV := range intermediateProject.BuildVariants {
 				if intermediateProjectBV.Name == bv.Name {
 					intermediateProject.BuildVariants[i].Tasks = append(intermediateProject.BuildVariants[i].Tasks, bv.Tasks...)
+					intermediateProject.BuildVariants[i].DisplayTasks = append(intermediateProject.BuildVariants[i].DisplayTasks, bv.DisplayTasks...)
 				}
 			}
 		} else {
@@ -249,8 +271,7 @@ func (g *GeneratedProject) validateNoRedefine(cachedProject projectMaps, catcher
 func isNonZeroBV(bv parserBV) bool {
 	if bv.DisplayName != "" || len(bv.Expansions) > 0 || len(bv.Modules) > 0 ||
 		bv.Disabled || len(bv.Tags) > 0 || bv.Push ||
-		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 ||
-		len(bv.DisplayTasks) > 0 {
+		bv.BatchTime != nil || bv.Stepback != nil || len(bv.RunOn) > 0 {
 		return true
 	}
 	return false

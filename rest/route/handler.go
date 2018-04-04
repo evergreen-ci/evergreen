@@ -63,6 +63,9 @@ type RequestHandler interface {
 // as the response. If any of the functions return an error, it handles creating
 // a JSON error and sending it as the response.
 func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFunc {
+	if methodHandler.Authenticator == nil {
+		panic("methodHandler must define an authenticator")
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
 		ctx := getBaseContext(r)

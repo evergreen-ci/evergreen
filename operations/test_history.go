@@ -85,8 +85,8 @@ func TestHistory() cli.Command {
 			requireStringLengthIfSpecified(afterRevFlagName, 40),
 			requireStringValueChoices(requestFlagName, []string{"patch", "commit", "all"}),
 			requireStringValueChoices(formatFlagName, []string{csvFormat, jsonFormat, prettyFormat}),
-			requireStringValueChoices(taskStatusFlagName, []string{"pass", "fail", "silentfail", "skip", "timeout"}),
-			requireStringValueChoices(testStatusFlagName, []string{"pass", "fail", "sysfail", "timeout"}),
+			requireStringSliceValueChoices(taskStatusFlagName, []string{"pass", "fail", "silentfail", "skip", "timeout"}),
+			requireStringSliceValueChoices(testStatusFlagName, []string{"pass", "fail", "sysfail", "timeout"}),
 			func(c *cli.Context) error {
 				if c.String(formatFlagName) != prettyFormat && c.String(pathFlagName) != "" {
 					return errors.New("must specify a filepath for csv and json output")
@@ -156,7 +156,7 @@ func TestHistory() cli.Command {
 			}
 
 			// set up clients
-			conf, err := NewClientSetttings(confPath)
+			conf, err := NewClientSettings(confPath)
 			if err != nil {
 				return errors.Wrap(err, "problem loading configuration")
 			}
