@@ -254,9 +254,16 @@ func Find(id bson.ObjectId) (*Notification, error) {
 	return &notification, err
 }
 
-type NotificationStats = map[string]int
+type NotificationStats struct {
+	GithubPullRequest int `json:"github_pull_request" bson:"github_pull_request" yaml:"github_pull_request"`
+	JIRAIssue         int `json:"jira_issue" bson:"jira_issue" yaml:"jira_issue"`
+	JIRAComment       int `json:"jira_comment" bson:"jira_comment" yaml:"jira_comment"`
+	EvergreenWebhook  int `json:"evergreen_webhook" bson:"evergreen_webhook" yaml:"evergreen_webhook"`
+	Email             int `json:"email" bson:"email" yaml:"email"`
+	Slack             int `json:"slack" bson:"slack" yaml:"slack"`
+}
 
-func CollectUnsentNotificationStats() (NotificationStats, error) {
+func CollectUnsentNotificationStats() (*NotificationStats, error) {
 	const subscriberTypeKey = "type"
 	pipeline := []bson.M{
 		{
@@ -288,8 +295,26 @@ func CollectUnsentNotificationStats() (NotificationStats, error) {
 	nStats := NotificationStats{}
 
 	for _, data := range stats {
-		nStats[data.Key] = data.Count
+		switch data.Key {
+		case event.GithubPullRequestSubscriberType:
+			nStats.GithubPullRequest = data.Count
+
+		case event.JIRAIssueSubscriberType:
+			nStats.JIRAIssue = data.Count
+
+		case event.JIRACommentSubscriberType:
+			nStats.JIRAComment = data.Count
+
+		case event.EvergreenWebhookSubscriberType:
+			nStats.EvergreenWebhook = data.Count
+
+		case event.EmailSubscriberType:
+			nStats.Email = data.Count
+
+		case event.SlackSubscriberType:
+			nStats.Slack = data.Count
+		}
 	}
 
-	return nStats, nil
+	return &nStats, nil
 }

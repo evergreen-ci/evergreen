@@ -2,6 +2,7 @@ package notification
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -344,6 +345,7 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 		event.JIRACommentSubscriberType, event.JIRAIssueSubscriberType}
 
 	n := []Notification{}
+	// add one of every notification, unsent
 	for i, type_ := range types {
 		n = append(n, s.n)
 		n[i].ID = bson.NewObjectId()
@@ -351,14 +353,19 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 		s.NoError(db.Insert(NotificationsCollection, n[i]))
 	}
 
+	// add one more, mark it sent
 	s.n.ID = bson.NewObjectId()
 	s.n.SentAt = time.Now()
 	s.NoError(db.Insert(NotificationsCollection, s.n))
 
 	stats, err := CollectUnsentNotificationStats()
 	s.NoError(err)
+	s.Require().NotNil(stats)
 
-	for k, _ := range stats {
-		s.Equal(1, stats[k])
+	// we should count 1 of each type
+	v := reflect.ValueOf(stats).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		s.Equal(1, int(f.Int()))
 	}
 }
