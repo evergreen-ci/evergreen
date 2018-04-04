@@ -17,6 +17,7 @@ const (
 )
 
 type TaskJSON struct {
+	Id                  string                 `bson:"_id" json:"id"`
 	Name                string                 `bson:"name" json:"name"`
 	TaskName            string                 `bson:"task_name" json:"task_name"`
 	ProjectId           string                 `bson:"project_id" json:"project_id"`
@@ -37,13 +38,15 @@ type TagContainer struct {
 }
 
 type TaskJSONTagMeta struct {
-	Created  time.Time `bson:"created" json:"created"`
-	Revision string    `bson:"revision" json:"revision"`
+	Created   time.Time `bson:"created" json:"created"`
+	Revision  string    `bson:"revision" json:"revision"`
+	VersionId string    `bson:"version_id" json:"version_id"`
 }
 
 var (
-	TaskJSONTagMetaCreatedKey  = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "Created")
-	TaskJSONTagMetaRevisionKey = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "Revision")
+	TaskJSONTagMetaCreatedKey   = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "Created")
+	TaskJSONTagMetaRevisionKey  = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "Revision")
+	TaskJSONTagMetaVersionIdKey = bsonutil.MustHaveTag(TaskJSONTagMeta{}, "VersionId")
 )
 
 type TaskJSONTag struct {
@@ -58,6 +61,7 @@ var (
 
 var (
 	// BSON fields for the TaskJSON struct
+	TaskJSONIdKey                  = bsonutil.MustHaveTag(TaskJSON{}, "Id")
 	TaskJSONNameKey                = bsonutil.MustHaveTag(TaskJSON{}, "Name")
 	TaskJSONTaskNameKey            = bsonutil.MustHaveTag(TaskJSON{}, "TaskName")
 	TaskJSONProjectIdKey           = bsonutil.MustHaveTag(TaskJSON{}, "ProjectId")
@@ -84,8 +88,9 @@ func GetDistinctTagNames(projectId string) ([]TaskJSONTag, error) {
 		{"$group": bson.M{
 			"_id": "$" + TaskJSONTagKey,
 			"obj": bson.M{"$first": bson.M{
-				"created":  "$$ROOT." + TaskJSONCreateTimeKey,
-				"revision": "$$ROOT." + TaskJSONRevisionKey,
+				"created":    "$$ROOT." + TaskJSONCreateTimeKey,
+				"revision":   "$$ROOT." + TaskJSONRevisionKey,
+				"version_id": "$$ROOT." + TaskJSONVersionIdKey,
 			}},
 		}},
 		{"$sort": bson.M{"obj.created": -1}},
@@ -186,6 +191,8 @@ func GetTaskJSONByName(version, buildId, taskName, name string) (TaskJSON, error
 
 // GetTaskJSONCommit gets the task data associated with a particular task by using
 // the commit hash to find the data.
+// FIXME Given set of parameters is not specific enough
+//       it drops all other results which matches condition (due to findOne)
 func GetTaskJSONCommit(projectId, revision, variant, taskName, name string) (TaskJSON, error) {
 	var jsonForTask TaskJSON
 	err := db.FindOneQ(TaskJSONCollection,

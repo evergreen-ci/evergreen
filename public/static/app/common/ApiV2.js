@@ -5,5 +5,9 @@ mciModule.factory('ApiV2', function(ApiUtil, API_V2) {
     getPatchById: function(patchId) {
       return get(API_V2.PATCH_BY_ID, {patch_id: patchId})
     },
+
+    getVersionById: function(versionId) {
+      return get(API_V2.VERSION_BY_ID, {version_id: versionId})
+    },
   }
 })

@@ -1,4 +1,7 @@
-mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, MPA_UI) {
+mciModule.factory('PerfDiscoveryDataService', function(
+  $q, ApiV1, ApiV2, ApiTaskdata, EVG, MPA_UI, PERF_DISCOVERY
+) {
+  var PD = PERF_DISCOVERY
 
   /*********************
    * UTILITY FUNCTIONS *
@@ -64,6 +67,49 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
     return function(item, id) {
       return results.baseline[id] == undefined
     }
+  }
+
+  function isPatchId(revision) {
+    return revision.length == EVG.PATCH_ID_LEN
+  }
+
+  function isGitHash(revision) {
+    return revision.length == EVG.GIT_HASH_LEN
+  }
+
+  function findVersionItem(items, query) {
+    if (query == undefined) return
+
+    var found = _.find(items, function(d) {
+      return query == d.id || query == d.name
+    })
+
+    if (!found) {
+      var item = {
+        id: query,
+        name: query,
+        kind: ( // Poor man's pattern matching
+          isGitHash(query) ? PD.KIND_VERSION :
+          isPatchId(query) ? PD.KIND_PATCH : undefined
+        ),
+      }
+      
+      // If kind is defined
+      if (item.kind) return item
+    }
+
+    return undefined
+  }
+
+  // This function is used to make possible to type arbitrary
+  // version revision into version drop down
+  function getVersionOptions(items, query) {
+    console.log(items, query)
+    var found = findVersionItem(items, query)
+
+    return found
+      ? items.concat(found)
+      : items
   }
 
   /******************
@@ -161,8 +207,8 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
       .map(function(item, id) {
         var baseline = results.baseline[id]
         var appendix = {
-          ratio: ratio(item.speed, baseline.speed),
-          baseSpeed: baseline.speed,
+          ratio: baseline && ratio(item.speed, baseline.speed),
+          baseSpeed: baseline && baseline.speed,
         }
 
         var trendData = _.chain(results.history)
@@ -205,10 +251,13 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
   }
 
   function queryBuildData(version) {
-    return $q.all(_.map(version.builds, function(d) {
-      return ApiV1.getBuildDetail(d).then(
-        respData, function(e) { return {} })
-    }))
+    return $q.all(
+      _.map(version.build_variants_status, function(d) {
+        return ApiV1.getBuildDetail(d.build_id).then(
+          respData, function(e) { return {} }
+        )
+      })
+    )
   }
 
   function tasksOfBuilds(promise) {
@@ -217,31 +266,81 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
     })
   }
 
+  function versionSelectAdaptor(versionsRes) {
+    return _.chain(versionsRes.data.versions)
+      .where({rolled_up: false})
+      .map(function(d) {
+        return {
+          kind: PD.KIND_VERSION,
+          id: d.ids[0],
+          name: d.revisions[0],
+        }
+      })
+      .value()
+  }
+
+  function tagSelectAdaptor(tagsRes) {
+    return _.map(tagsRes.data, function(d) {
+      return {kind: PD.KIND_TAG, id: d.obj.version_id, name: d.name}
+    })
+  }
+
   /******************
    * PROMISE CHAINS *
    ******************/
 
+  function getCompItemVersion(compItem) {
+    return ApiV2.getVersionById(compItem.id)
+      // Extract version object
+      .then(function(res) {
+        return res.data
+      })
+  }
+
+  // Queries list of available options for compare from/to dropdowns
+  // :returns: (Promise of) list of versions/tags
+  // :rtype: Promise([{
+  //    kind: 't(ag)|v(ersion)',
+  //    id: '??????????',
+  //    name: 'display name'
+  // }, ...])
+  function getComparisionOptions(projectId) {
+    return $q.all([
+      ApiV1.getWaterfallVersionsRows(projectId).then(versionSelectAdaptor),
+      ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
+    ]).then(function(data) {
+      return Array.concat.apply(null, data)
+    })
+  }
+
+  function queryHistoryData() {
+  
+  }
+
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasksPromise, baselineTag) {
-    return tasksPromise.then(function(tasks) {
-      return $q.all(_.map(tasks, function(task) {
+  function queryData(tasksPromise, baselineTasks) {
+    return $q.all({
+      tasks: tasksPromise,
+      baselineTasks: baselineTasks
+    }).then(function(promise) {
+      console.log(promise.baselineTasks)
+      return $q.all(_.map(promise.tasks, function(task) {
         return ApiTaskdata.getTaskById(task.taskId, 'perf')
           .then(respData, function() { return null })
           .then(function(data) {
             if (data) {
+              var b = _.findWhere(promise.baselineTasks, {
+                buildName: task.buildName,
+                taskName: task.taskName,
+              })
               return $q.all({
                 ctx: $q.resolve(task),
                 current: data,
                 history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
-                baseline: ApiTaskdata.getTaskByTag({
-                  projectId: data.project_id,
-                  tag: baselineTag,
-                  variant: data.variant,
-                  taskName: task.taskName,
-                  name: 'perf',
-                }).then(respData, function() { null }),
+                baseline: ApiTaskdata.getTaskById(b.taskId, 'perf')
+                  .then(respData, function(e) { return [] }),
               })
             } else {
               return null
@@ -268,11 +367,28 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
    * PUBLIC API *
    **************/
 
+  function getGitHashForItem(item) {
+    switch (item.kind) {
+      case PD.KIND_VERSION:
+        return $q.resolve(item.id)
+      case PD.KIND_TAG:
+        return
+      case PD.KIND_PATCH:
+        return ApiV2.getPatchById(item.id).then(
+          function(res) { return res.data.git_hash }, // Adaptor fn
+          function(err) { // Hanle error
+            console.error('Patch not found');
+            return $q.reject()
+          }
+        )
+    }
+  }
+
   function getData(version, baselineTag) {
     return getRows(
       processData(
         queryData(
-          tasksOfBuilds(queryBuildData(version)), baselineTag
+          tasksOfBuilds(queryBuildData(version)), tasksOfBuilds(queryBuildData(baselineTag))
         )
       )
     )
@@ -281,6 +397,10 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
   return {
     // public api
     getData: getData,
+    getComparisionOptions: getComparisionOptions,
+    findVersionItem: findVersionItem,
+    getVersionOptions: getVersionOptions,
+    getCompItemVersion: getCompItemVersion,
 
     // For teting
     _extractTasks: extractTasks,

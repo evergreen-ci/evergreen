@@ -35,6 +35,7 @@ mciModule
   .constant('API_V2', {
     BASE: '/rest/v2',
     PATCH_BY_ID: _.template('{base}/patches/{patch_id}'),
+    VERSION_BY_ID: _.template('{base}/versions/{version_id}'),
   })
 
   .constant('API_TASKDATA', {
