@@ -106,8 +106,7 @@ func (j *repotrackerJob) Run(ctx context.Context) {
 		return
 	}
 
-	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref,
-		settings.RepoTracker.MaxRepoRevisionsToSearch)
+	err = repotracker.CollectRevisionsForProject(ctx, settings, *ref)
 
 	if err != nil {
 		grip.Info(message.WrapError(err, message.Fields{
