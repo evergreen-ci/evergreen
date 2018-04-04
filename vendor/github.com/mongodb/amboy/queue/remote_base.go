@@ -131,7 +131,7 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
-						"driver_type": fmt.Sprintf("%T", q.Driver),
+						"driver_type": fmt.Sprintf("%T", q.driver),
 						"driver_id":   q.driver.ID(),
 						"message":     "job took too long to mark complete",
 					}))

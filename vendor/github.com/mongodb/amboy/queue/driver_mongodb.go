@@ -290,10 +290,21 @@ func (d *mongoDB) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 	session, jobs := d.getJobsCollection()
 	defer session.Close()
 
-	err := jobs.Update(d.getAtomicQuery(j.ID(), j.Status()),
+	id := j.ID()
+	query := d.getAtomicQuery(id, stat)
+	stat.ModificationCount++
+	stat.ModificationTime = time.Now()
+
+	err := jobs.Update(query,
 		bson.M{"$set": bson.M{"status": stat}})
 
-	return errors.Wrapf(err, "problem updating status document for %s", j.ID())
+	if err != nil {
+		return errors.Wrapf(err, "problem updating status document for %s", id)
+	}
+
+	j.SetStatus(stat)
+
+	return nil
 }
 
 // Jobs returns a channel containing all jobs persisted by this

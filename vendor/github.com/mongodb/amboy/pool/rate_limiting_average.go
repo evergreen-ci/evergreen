@@ -180,6 +180,10 @@ func (p *ewmaRateLimiting) runJob(ctx context.Context, j amboy.Job) time.Duratio
 
 	runJob(ctx, j)
 
+	// belt and suspenders
+	ti.End = time.Now()
+	j.UpdateTimeInfo(ti)
+
 	p.queue.Complete(ctx, j)
 	ti.End = time.Now()
 	j.UpdateTimeInfo(ti)

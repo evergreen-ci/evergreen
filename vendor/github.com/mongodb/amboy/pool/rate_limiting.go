@@ -128,6 +128,11 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 				job.UpdateTimeInfo(ti)
 
 				runJob(ctx, job)
+
+				// belt and suspenders
+				ti.End = time.Now()
+				job.UpdateTimeInfo(ti)
+
 				p.queue.Complete(ctx, job)
 
 				ti.End = time.Now()
