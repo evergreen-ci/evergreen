@@ -182,7 +182,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {
 		j.AddError(err)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"message":  "problem terminating host",
 			"host":     j.host.Id,
 			"job":      j.ID(),
