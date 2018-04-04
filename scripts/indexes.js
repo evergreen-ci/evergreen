@@ -25,6 +25,7 @@ db.event_log.ensureIndex({ "processed_at" : 1 })
 db.event_log.ensureIndex({ "data.guid" : 1}, { sparse: true })
 
 //======hosts======//
+db.hosts.ensureIndex({ "distro.provider" 1, "status": 1 })
 db.hosts.ensureIndex({ "status": 1 })
 db.hosts.ensureIndex({ "started_by" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "running_task" : 1, "status" : 1 })
