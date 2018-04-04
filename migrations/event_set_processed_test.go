@@ -100,3 +100,26 @@ func (s *eventSetProcessedAtSuite) TestMigration() {
 	s.NoError(err)
 	s.True(bttf.Equal(out.ProcessedAt))
 }
+
+func (s *eventSetProcessedAtSuite) TestMigrationPicksUpEverythingWithZeroTime() {
+	args := migrationGeneratorFactoryOptions{
+		db:    s.database,
+		limit: 50,
+		id:    migrationEventSetProcessedTime,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	gen, err := makeEventSetProcesedTimeMigration(allLogCollection, time.Time{}, time.Time{})(anser.GetEnvironment(), args)
+	s.Require().NoError(err)
+	gen.Run(ctx)
+	s.Require().NoError(gen.Error())
+
+	i := 0
+	for j := range gen.Jobs() {
+		i++
+		j.Run(ctx)
+		s.NoError(j.Error())
+	}
+	s.Equal(3, i)
+}
