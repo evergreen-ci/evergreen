@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -665,10 +664,9 @@ func FindHostsToTerminate() ([]Host, error) {
 	)
 
 	now := time.Now()
-	distroKey := bsonutil.GetDottedKeyName(DistroKey, distro.ProviderKey)
 
 	query := bson.M{
-		distroKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
 		"$or": []bson.M{
 			{ // host.ByExpiredSince(time.Now())
 				StartedByKey: bson.M{"$ne": evergreen.User},
@@ -702,15 +700,9 @@ func FindHostsToTerminate() ([]Host, error) {
 			},
 		},
 	}
+	hosts, err := Find(db.Query(query))
 
-	hosts := []Host{}
-	err := db.FindAll(Collection,
-		query,
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-		hosts)
+	fmt.Println(len(hosts), query)
 
 	if db.ResultsNotFound(err) {
 		return []Host{}, nil

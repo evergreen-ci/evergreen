@@ -55,7 +55,7 @@ func flagIdleHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings
 	// go through the hosts, and see if they have idled long enough to
 	// be terminated
 	for _, freeHost := range freeHosts {
-		if !util.StringSliceContains(evergreen.ProviderSpawnable, freeHost.Distro.Provider) {
+		if !util.StringSliceContains(evergreen.ProviderSpawnable, freeHost.Provider) {
 			// only flag excess hosts for spawnable distros
 			continue
 		}

@@ -13,7 +13,16 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
+
+func init() {
+	reporting.QuietMode()
+
+	if !util.StringSliceContains(evergreen.ProviderSpawnable, evergreen.ProviderNameMock) {
+		evergreen.ProviderSpawnable = append(evergreen.ProviderSpawnable, evergreen.ProviderNameMock)
+	}
+}
 
 func TestFlaggingDecommissionedHosts(t *testing.T) {
 
@@ -33,35 +42,35 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			// insert hosts with different statuses
 
 			host1 := &host.Host{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Id:       "h1",
 				Status:   evergreen.HostRunning,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Id:       "h2",
 				Status:   evergreen.HostTerminated,
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			host3 := &host.Host{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Id:       "h3",
 				Status:   evergreen.HostDecommissioned,
 			}
 			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 			host4 := &host.Host{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Id:       "h4",
 				Status:   evergreen.HostDecommissioned,
 			}
 			testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 			host5 := &host.Host{
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Id:       "h5",
 				Status:   evergreen.HostQuarantined,
 			}
@@ -115,7 +124,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// finding idle hosts should not return the host
-			idle, err := host.FindHostsToTerminate()
+			idle, err := flagIdleHosts(ctx, nil, testConfig)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 0)
 
@@ -154,6 +163,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				LastCommunicationTime: time.Now(),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
+				Provisioned:           true,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -165,6 +175,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				LastCommunicationTime: time.Now(),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
+				Provisioned:           true,
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -178,7 +189,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		Convey("hosts not currently running a task with a last communication time greater"+
 			"than 10 mins should be marked as idle", func() {
 			anotherHost := host.Host{
-				Id:                    "h1",
+				Id:                    "h4",
 				Provider:              evergreen.ProviderNameMock,
 				LastCommunicationTime: time.Now().Add(-time.Minute * 20),
 				Status:                evergreen.HostRunning,
@@ -189,7 +200,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			idle, err := flagIdleHosts(ctx, nil, nil)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 1)
-			So(idle[0].Id, ShouldEqual, "h1")
+			So(idle[0].Id, ShouldEqual, "h4")
 		})
 
 	})
@@ -218,10 +229,12 @@ func TestFlaggingExcessHosts(t *testing.T) {
 			distro1 := distro.Distro{
 				Id:       "d1",
 				PoolSize: 2,
+				Provider: evergreen.ProviderNameMock,
 			}
 			distro2 := distro.Distro{
 				Id:       "d2",
 				PoolSize: 1,
+				Provider: evergreen.ProviderNameMock,
 			}
 			distros := []distro.Distro{distro1, distro2}
 
@@ -464,7 +477,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
-				Provider:     evergreen.ProviderNameEc2Auto,
+				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-time.Minute * 10),
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -479,7 +492,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				Provider:     evergreen.ProviderNameEc2Auto,
+				Provider:     evergreen.ProviderNameMock,
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-time.Minute * 60),
 				Status:       evergreen.HostTerminated,
@@ -497,7 +510,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    evergreen.User,
-				Provider:     evergreen.ProviderNameEc2Auto,
+				Provider:     evergreen.ProviderNameMock,
 				CreationTime: time.Now().Add(-time.Minute * 60),
 				Provisioned:  true,
 			}
@@ -588,10 +601,11 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			" out", func() {
 
 			host1 := &host.Host{
-				Id:        "h1",
-				Status:    evergreen.HostRunning,
-				StartedBy: evergreen.User,
-				Provider:  evergreen.ProviderNameEc2Auto,
+				Id:          "h1",
+				Status:      evergreen.HostRunning,
+				StartedBy:   evergreen.User,
+				Provider:    evergreen.ProviderNameMock,
+				Provisioned: true,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -606,14 +620,14 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:       "h1",
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostQuarantined,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:       "h2",
-				Provider: evergreen.ProviderNameEc2Auto,
+				Provider: evergreen.ProviderNameMock,
 				Status:   evergreen.HostTerminated,
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -631,7 +645,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			host1 := &host.Host{
 				Id:             "h1",
 				Status:         evergreen.HostRunning,
-				Provider:       evergreen.ProviderNameEc2Auto,
+				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -640,7 +654,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			host2 := &host.Host{
 				Id:             "h2",
 				Status:         evergreen.HostRunning,
-				Provider:       evergreen.ProviderNameEc2Auto,
+				Provider:       evergreen.ProviderNameMock,
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -649,9 +663,6 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(expired), ShouldEqual, 1)
 			So(expired[0].Id, ShouldEqual, "h2")
-
 		})
-
 	})
-
 }
