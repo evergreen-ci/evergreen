@@ -58,6 +58,7 @@ type GithubPatch struct {
 	HeadRepo   string `bson:"head_repo"`
 	HeadHash   string `bson:"head_hash"`
 	Author     string `bson:"author"`
+	AuthorUID  int    `bson:"author_uid"`
 }
 
 // ModulePatch stores request details for a patch

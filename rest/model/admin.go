@@ -971,7 +971,6 @@ type APIServiceFlags struct {
 	TaskDispatchDisabled         bool `json:"task_dispatch_disabled"`
 	HostinitDisabled             bool `json:"hostinit_disabled"`
 	MonitorDisabled              bool `json:"monitor_disabled"`
-	NotificationsDisabled        bool `json:"notifications_disabled"`
 	AlertsDisabled               bool `json:"alerts_disabled"`
 	TaskrunnerDisabled           bool `json:"taskrunner_disabled"`
 	RepotrackerDisabled          bool `json:"repotracker_disabled"`
@@ -1157,7 +1156,6 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.TaskDispatchDisabled = v.TaskDispatchDisabled
 		as.HostinitDisabled = v.HostinitDisabled
 		as.MonitorDisabled = v.MonitorDisabled
-		as.NotificationsDisabled = v.NotificationsDisabled
 		as.AlertsDisabled = v.AlertsDisabled
 		as.TaskrunnerDisabled = v.TaskrunnerDisabled
 		as.RepotrackerDisabled = v.RepotrackerDisabled
@@ -1179,7 +1177,6 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		TaskDispatchDisabled:         as.TaskDispatchDisabled,
 		HostinitDisabled:             as.HostinitDisabled,
 		MonitorDisabled:              as.MonitorDisabled,
-		NotificationsDisabled:        as.NotificationsDisabled,
 		AlertsDisabled:               as.AlertsDisabled,
 		TaskrunnerDisabled:           as.TaskrunnerDisabled,
 		RepotrackerDisabled:          as.RepotrackerDisabled,

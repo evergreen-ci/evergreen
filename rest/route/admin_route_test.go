@@ -119,7 +119,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	// test that invalid input errors
 	testSettings.ApiUrl = ""
 	testSettings.Ui.CsrfKey = "12345"
-	testSettings.Notify.SMTP.Port = 0
 	jsonBody, err = json.Marshal(testSettings)
 	s.NoError(err)
 	buffer = bytes.NewBuffer(jsonBody)
@@ -129,7 +128,6 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
 	s.Contains(err.Error(), "API hostname must not be empty")
 	s.Contains(err.Error(), "CSRF key must be 32 characters long")
-	s.Contains(err.Error(), "You must specify a SMTP server and port")
 	s.NotNil(resp)
 }
 

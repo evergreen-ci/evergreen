@@ -13,6 +13,7 @@ import (
 
 type MongoDBDriverSuite struct {
 	driver      *mongoDB
+	session     *mgo.Session
 	collections []string
 	uri         string
 	dbName      string
@@ -26,6 +27,10 @@ func TestMongoDBDriverSuite(t *testing.T) {
 func (s *MongoDBDriverSuite) SetupSuite() {
 	s.uri = "mongodb://localhost:27017"
 	s.dbName = "amboy"
+
+	var err error
+	s.session, err = mgo.Dial(s.uri)
+	s.Require().NoError(err)
 }
 
 func (s *MongoDBDriverSuite) SetupTest() {
@@ -33,14 +38,15 @@ func (s *MongoDBDriverSuite) SetupTest() {
 	s.driver = NewMongoDBDriver(name, DefaultMongoDBOptions()).(*mongoDB)
 	s.driver.dbName = s.dbName
 	s.collections = append(s.collections, name+".jobs", name+".locks")
+
+	db := s.session.DB(s.dbName)
+	count, err := db.C(s.collections[0]).Count()
+	s.Require().NoError(err)
+	s.Equal(count, 0)
 }
 
 func (s *MongoDBDriverSuite) TearDownSuite() {
-	session, err := mgo.Dial(s.uri)
-	s.NoError(err)
-	defer session.Close()
-
-	db := session.DB(s.dbName)
+	db := s.session.DB(s.dbName)
 	for _, coll := range s.collections {
 		grip.CatchWarning(db.C(coll).DropCollection())
 	}

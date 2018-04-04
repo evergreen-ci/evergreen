@@ -71,6 +71,9 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			j.AddError(err)
 			return
 		}
+		if j.host == nil {
+			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+		}
 	}
 
 	if j.env == nil {
@@ -78,18 +81,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	}
 
 	settings := j.env.Settings()
-
-	if !util.StringSliceContains(evergreen.UphostStatus, j.host.Status) {
-		// if host isn't in a running state we shouldn't try to terminate it.
-		grip.Debug(message.Fields{
-			"job":      j.ID(),
-			"host":     j.HostID,
-			"job_type": j.Type().Name,
-			"status":   j.host.Status,
-			"message":  "host not running, termination job is a noop",
-		})
-		return
-	}
 
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
 	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
@@ -123,7 +114,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	if err != nil {
 		err = errors.Wrapf(err, "error getting cloud host for %s", j.HostID)
 		j.AddError(err)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,

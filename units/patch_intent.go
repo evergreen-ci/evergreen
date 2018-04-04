@@ -443,20 +443,43 @@ func (j *patchIntentProcessor) buildGithubPatchDoc(ctx context.Context, patchDoc
 		return isMember, errors.Wrap(err, "failed to write patch file to db")
 	}
 
-	j.user, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
+	j.user, err = findEvergreenUserForPR(patchDoc.GithubPatchData.AuthorUID)
 	if err != nil {
-		return isMember, err
+		return isMember, errors.Wrap(err, "failed to fetch user")
 	}
-	if j.user == nil {
-		j.user = &user.DBUser{
+	patchDoc.Author = j.user.Id
+
+	return isMember, nil
+}
+
+func findEvergreenUserForPR(githubUID int) (*user.DBUser, error) {
+	// try and find a user by github uid
+	u, err := user.FindByGithubUID(githubUID)
+	if err != nil {
+		return nil, err
+	}
+	if u != nil {
+		return u, nil
+	}
+
+	// Otherwise, use the github patch user
+	u, err = user.FindOne(user.ById(evergreen.GithubPatchUser))
+	if err != nil {
+		return u, err
+	}
+	// and if that user doesn't exist, make it
+	if u == nil {
+		u = &user.DBUser{
 			Id:       evergreen.GithubPatchUser,
 			DispName: "Github Pull Requests",
 			APIKey:   util.RandomString(),
 		}
-		err = j.user.Insert()
+		if err = u.Insert(); err != nil {
+			return nil, errors.Wrap(err, "failed to create github pull request user")
+		}
 	}
 
-	return isMember, errors.Wrap(err, "failed to create github pull request user")
+	return u, err
 }
 
 func authAndFetchPRMergeBase(ctx context.Context, patchDoc *patch.Patch, requiredOrganization, githubUser, githubOauthToken string) (bool, error) {

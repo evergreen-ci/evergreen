@@ -624,7 +624,7 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 			return errors.WithStack(err)
 		}
 
-		grip.Critical(message.Fields{
+		grip.Error(message.Fields{
 			"host":     h.Id,
 			"provider": h.Provider,
 			"distro":   h.Distro.Id,
