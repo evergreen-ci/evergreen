@@ -113,15 +113,15 @@ func (s *notificationSuite) TestStatsCollector() {
 	s.NoError(err)
 	s.Require().Len(resp.Result, 1)
 
-	stats := resp.Result[0].(*model.APINotificationStats)
+	stats := resp.Result[0].(*model.APIEventStats)
 
 	s.Equal(s.expectedTime, stats.LastProcessedAt)
 	s.Equal(2, stats.NumUnprocessedEvents)
 	s.NotEmpty(stats.PendingNotificationsByType)
-	s.Equal(1, stats.PendingNotificationsByType[event.EmailSubscriberType])
-	s.Equal(1, stats.PendingNotificationsByType[event.EvergreenWebhookSubscriberType])
-	s.Equal(1, stats.PendingNotificationsByType[event.JIRACommentSubscriberType])
-	s.Equal(1, stats.PendingNotificationsByType[event.JIRAIssueSubscriberType])
-	s.Equal(1, stats.PendingNotificationsByType[event.SlackSubscriberType])
-	s.Equal(1, stats.PendingNotificationsByType[event.GithubPullRequestSubscriberType])
+	s.Equal(1, stats.PendingNotificationsByType.Email)
+	s.Equal(1, stats.PendingNotificationsByType.EvergreenWebhook)
+	s.Equal(1, stats.PendingNotificationsByType.JIRAComment)
+	s.Equal(1, stats.PendingNotificationsByType.JIRAIssue)
+	s.Equal(1, stats.PendingNotificationsByType.Slack)
+	s.Equal(1, stats.PendingNotificationsByType.GithubPullRequest)
 }
