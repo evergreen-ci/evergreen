@@ -991,3 +991,20 @@ func TestFindOldTasksByID(t *testing.T) {
 	assert.Equal("task_1", tasks[1].Id)
 	assert.Equal("task", tasks[1].OldTaskId)
 }
+
+func TestTaskStatusCount(t *testing.T) {
+	assert := assert.New(t)
+	counts := TaskStatusCount{}
+	details := apimodels.TaskEndDetail{
+		TimedOut:    true,
+		Description: "heartbeat",
+	}
+	counts.IncrementStatus(evergreen.TaskSetupFailed, details)
+	counts.IncrementStatus(evergreen.TaskFailed, apimodels.TaskEndDetail{})
+	counts.IncrementStatus(evergreen.TaskDispatched, details)
+	counts.IncrementStatus(evergreen.TaskInactive, details)
+	assert.Equal(1, counts.TimedOut)
+	assert.Equal(1, counts.Failed)
+	assert.Equal(1, counts.Started)
+	assert.Equal(1, counts.Inactive)
+}
