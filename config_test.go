@@ -306,27 +306,6 @@ func (s *AdminSuite) TestNewRelicConfig() {
 	s.Equal(config, settings.NewRelic)
 }
 
-func (s *AdminSuite) TestNotifyConfig() {
-	config := NotifyConfig{
-		SMTP: &SMTPConfig{
-			Server:     "server",
-			Port:       2285,
-			UseSSL:     true,
-			Username:   "username",
-			Password:   "password",
-			From:       "from",
-			AdminEmail: []string{"email"},
-		},
-	}
-
-	err := config.Set()
-	s.NoError(err)
-	settings, err := GetConfig()
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(config, settings.Notify)
-}
-
 func (s *AdminSuite) TestProvidersConfig() {
 	config := CloudProviders{
 		AWS: AWSConfig{
@@ -459,10 +438,6 @@ func (s *AdminSuite) TestConfigDefaults() {
 	s.NoError(config.Validate())
 
 	// spot check the defaults
-	s.NotNil(config.Notify.SMTP)
-	s.Equal(config.Notify.SMTP.Server, "localhost")
-	s.Equal(config.Notify.SMTP.Port, 25)
-
 	s.Equal("legacy", config.Scheduler.TaskFinder)
 	s.Equal(defaultLogBufferingDuration, config.LoggerConfig.Buffer.DurationSeconds)
 	s.Equal("info", config.LoggerConfig.DefaultLevel)
