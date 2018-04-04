@@ -20,6 +20,7 @@ var (
 		evergreen.HostRunning,
 		evergreen.HostQuarantined,
 		evergreen.HostDecommissioned,
+		evergreen.HostTerminated,
 	}
 )
 
