@@ -203,6 +203,7 @@ func matchResultWithLog(tr *goTestResult, logs []string) {
 func TestParserOnRealTests(t *testing.T) {
 	// there are some issues with gccgo:
 	testutil.SkipTestUnlessAll(t, "TestParserOnRealTests")
+	testutil.SkipWindows(t, "TestParserOnRealTests")
 
 	Convey("With a parser", t, func() {
 		parser := &goTestParser{}
