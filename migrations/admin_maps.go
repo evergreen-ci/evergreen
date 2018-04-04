@@ -10,14 +10,13 @@ import (
 )
 
 const (
-	adminCollection = "admin"
-	globalDocId     = "global"
+	adminCollection              = "admin"
+	globalDocId                  = "global"
+	migrationAdminMapRestructure = "admin_map_restructure"
 )
 
 func adminMapRestructureGenerator(env anser.Environment, args migrationGeneratorFactoryOptions) (anser.Generator, error) {
-	const migrationName = "admin_map_restructure"
-
-	if err := env.RegisterManualMigrationOperation(migrationName, makeAdminMapMigration(args.db)); err != nil {
+	if err := env.RegisterManualMigrationOperation(migrationAdminMapRestructure, makeAdminMapMigration(args.db)); err != nil {
 		return nil, err
 	}
 
@@ -33,7 +32,7 @@ func adminMapRestructureGenerator(env anser.Environment, args migrationGenerator
 		JobID: args.id,
 	}
 
-	return anser.NewManualMigrationGenerator(env, opts, migrationName), nil
+	return anser.NewManualMigrationGenerator(env, opts, migrationAdminMapRestructure), nil
 }
 
 func makeAdminMapMigration(database string) db.MigrationOperation {
