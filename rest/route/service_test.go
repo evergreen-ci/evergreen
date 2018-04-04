@@ -68,7 +68,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToApiString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -95,7 +95,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToApiString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -122,7 +122,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToApiString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -149,7 +149,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < numHostsInDB; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToApiString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -171,7 +171,7 @@ func TestHostPaginator(t *testing.T) {
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
 					nextModelHost := &model.APIHost{
-						Id: model.APIString(fmt.Sprintf("host%d", i)),
+						Id: model.ToApiString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
 				}
@@ -632,10 +632,10 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						TestFile:  model.ToApiString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToApiString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
@@ -667,10 +667,10 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						TestFile:  model.ToApiString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToApiString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
@@ -702,10 +702,10 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						TestFile:  model.ToApiString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToApiString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
@@ -737,10 +737,10 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						TestFile:  model.ToApiString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToApiString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
@@ -767,10 +767,10 @@ func TestTestPaginator(t *testing.T) {
 						status = "fail"
 					}
 					nextModelTest := &model.APITest{
-						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						TestFile:  model.ToApiString(fmt.Sprintf("test%d", i)),
 						StartTime: model.NewTime(time.Unix(0, 0)),
 						EndTime:   model.NewTime(time.Unix(0, 0)),
-						Status:    model.APIString(status),
+						Status:    model.ToApiString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
 				}
@@ -924,7 +924,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			So(ok, ShouldBeTrue)
 			So(resTask.Priority, ShouldEqual, int64(100))
 			So(resTask.Activated, ShouldBeTrue)
-			So(resTask.ActivatedBy, ShouldEqual, "testUser")
+			So(model.FromApiString(resTask.ActivatedBy), ShouldEqual, "testUser")
 		})
 	})
 }
@@ -1011,7 +1011,7 @@ func TestTaskGetHandler(t *testing.T) {
 				res := model.APITask{}
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
-				So(res.Id, ShouldEqual, "testTaskId")
+				So(model.FromApiString(res.Id), ShouldEqual, "testTaskId")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("a request without a user should then return a 404 error and a task should"+
@@ -1128,7 +1128,11 @@ func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
 	So(err, ShouldResemble, expectedErr)
 	So(len(res), ShouldEqual, len(expectedModels))
 	for ix := range expectedModels {
-		So(res[ix], ShouldResemble, expectedModels[ix])
+		dbModel, err := res[ix].ToService()
+		So(err, ShouldBeNil)
+		expectedModel, err := expectedModels[ix].ToService()
+		So(err, ShouldBeNil)
+		So(dbModel, ShouldResemble, expectedModel)
 	}
 	So(pages, ShouldResemble, expectedPages)
 }

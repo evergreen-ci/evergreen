@@ -34,7 +34,7 @@ func TestAdminBannerRoute(t *testing.T) {
 
 	// test changing the banner with no change in theme
 	body := model.APIBanner{
-		Text: "hello evergreen users!",
+		Text: model.ToApiString("hello evergreen users!"),
 	}
 	jsonBody, err := json.Marshal(&body)
 	assert.NoError(err)
@@ -49,12 +49,12 @@ func TestAdminBannerRoute(t *testing.T) {
 	assert.NotNil(resp)
 	settings, err := sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(string(body.Text), settings.Banner)
+	assert.Equal(model.FromApiString(body.Text), settings.Banner)
 
 	// test changing the theme
 	body = model.APIBanner{
-		Text:  "banner is changing again",
-		Theme: "important",
+		Text:  model.ToApiString("banner is changing again"),
+		Theme: model.ToApiString("important"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)
@@ -69,12 +69,12 @@ func TestAdminBannerRoute(t *testing.T) {
 	assert.NotNil(resp)
 	settings, err = sc.GetEvergreenSettings()
 	assert.NoError(err)
-	assert.Equal(string(body.Theme), string(settings.BannerTheme))
+	assert.Equal(model.FromApiString(body.Theme), string(settings.BannerTheme))
 
 	// test invalid theme enum
 	body = model.APIBanner{
-		Text:  "",
-		Theme: "foo",
+		Text:  model.ToApiString(""),
+		Theme: model.ToApiString("foo"),
 	}
 	jsonBody, err = json.Marshal(&body)
 	assert.NoError(err)

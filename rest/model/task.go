@@ -76,33 +76,33 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case *task.Task:
 		(*at) = APITask{
-			Id:            APIString(v.Id),
+			Id:            ToApiString(v.Id),
 			CreateTime:    NewTime(v.CreateTime),
 			DispatchTime:  NewTime(v.DispatchTime),
 			ScheduledTime: NewTime(v.ScheduledTime),
 			StartTime:     NewTime(v.StartTime),
 			FinishTime:    NewTime(v.FinishTime),
-			Version:       APIString(v.Version),
-			Branch:        APIString(v.Project),
-			Revision:      APIString(v.Revision),
+			Version:       ToApiString(v.Version),
+			Branch:        ToApiString(v.Project),
+			Revision:      ToApiString(v.Revision),
 			Priority:      v.Priority,
 			Activated:     v.Activated,
-			ActivatedBy:   APIString(v.ActivatedBy),
-			BuildId:       APIString(v.BuildId),
-			DistroId:      APIString(v.DistroId),
-			BuildVariant:  APIString(v.BuildVariant),
-			DisplayName:   APIString(v.DisplayName),
-			HostId:        APIString(v.HostId),
+			ActivatedBy:   ToApiString(v.ActivatedBy),
+			BuildId:       ToApiString(v.BuildId),
+			DistroId:      ToApiString(v.DistroId),
+			BuildVariant:  ToApiString(v.BuildVariant),
+			DisplayName:   ToApiString(v.DisplayName),
+			HostId:        ToApiString(v.HostId),
 			Restarts:      v.Restarts,
 			Execution:     v.Execution,
 			Order:         v.RevisionOrderNumber,
 			Details: apiTaskEndDetail{
-				Status:      APIString(v.Details.Status),
-				Type:        APIString(v.Details.Type),
-				Description: APIString(v.Details.Description),
+				Status:      ToApiString(v.Details.Status),
+				Type:        ToApiString(v.Details.Type),
+				Description: ToApiString(v.Details.Description),
 				TimedOut:    v.Details.TimedOut,
 			},
-			Status:           APIString(v.Status),
+			Status:           ToApiString(v.Status),
 			TimeTaken:        NewAPIDuration(v.TimeTaken),
 			ExpectedDuration: NewAPIDuration(v.ExpectedDuration),
 			EstimatedCost:    v.Cost,
@@ -117,10 +117,10 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 	case string:
 		ll := logLinks{
-			AllLogLink:    APIString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "ALL")),
-			TaskLogLink:   APIString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "T")),
-			AgentLogLink:  APIString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "E")),
-			SystemLogLink: APIString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "S")),
+			AllLogLink:    ToApiString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "ALL")),
+			TaskLogLink:   ToApiString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "T")),
+			AgentLogLink:  ToApiString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "E")),
+			SystemLogLink: ToApiString(fmt.Sprintf(LogLinkFormat, v, at.Id, at.Execution, "S")),
 		}
 		at.Logs = ll
 	default:
@@ -133,33 +133,33 @@ func (at *APITask) BuildFromService(t interface{}) error {
 // ToService returns a service layer task using the data from the APITask.
 func (ad *APITask) ToService() (interface{}, error) {
 	st := &task.Task{
-		Id:                  string(ad.Id),
-		Project:             string(ad.Branch),
+		Id:                  FromApiString(ad.Id),
+		Project:             FromApiString(ad.Branch),
 		CreateTime:          time.Time(ad.CreateTime),
 		DispatchTime:        time.Time(ad.DispatchTime),
 		ScheduledTime:       time.Time(ad.ScheduledTime),
 		StartTime:           time.Time(ad.StartTime),
 		FinishTime:          time.Time(ad.FinishTime),
-		Version:             string(ad.Version),
-		Revision:            string(ad.Revision),
+		Version:             FromApiString(ad.Version),
+		Revision:            FromApiString(ad.Revision),
 		Priority:            ad.Priority,
 		Activated:           ad.Activated,
-		ActivatedBy:         string(ad.ActivatedBy),
-		BuildId:             string(ad.BuildId),
-		DistroId:            string(ad.DistroId),
-		BuildVariant:        string(ad.BuildVariant),
-		DisplayName:         string(ad.DisplayName),
-		HostId:              string(ad.HostId),
+		ActivatedBy:         FromApiString(ad.ActivatedBy),
+		BuildId:             FromApiString(ad.BuildId),
+		DistroId:            FromApiString(ad.DistroId),
+		BuildVariant:        FromApiString(ad.BuildVariant),
+		DisplayName:         FromApiString(ad.DisplayName),
+		HostId:              FromApiString(ad.HostId),
 		Restarts:            ad.Restarts,
 		Execution:           ad.Execution,
 		RevisionOrderNumber: ad.Order,
 		Details: apimodels.TaskEndDetail{
-			Status:      string(ad.Details.Status),
-			Type:        string(ad.Details.Type),
-			Description: string(ad.Details.Description),
+			Status:      FromApiString(ad.Details.Status),
+			Type:        FromApiString(ad.Details.Type),
+			Description: FromApiString(ad.Details.Description),
 			TimedOut:    ad.Details.TimedOut,
 		},
-		Status:           string(ad.Status),
+		Status:           FromApiString(ad.Status),
 		TimeTaken:        ad.TimeTaken.ToDuration(),
 		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
 		Cost:             ad.EstimatedCost,
@@ -192,12 +192,12 @@ type APITaskCost struct {
 func (atc *APITaskCost) BuildFromService(t interface{}) error {
 	switch v := t.(type) {
 	case task.Task:
-		atc.Id = APIString(v.Id)
-		atc.DisplayName = APIString(v.DisplayName)
-		atc.DistroId = APIString(v.DistroId)
-		atc.BuildVariant = APIString(v.BuildVariant)
+		atc.Id = ToApiString(v.Id)
+		atc.DisplayName = ToApiString(v.DisplayName)
+		atc.DistroId = ToApiString(v.DistroId)
+		atc.BuildVariant = ToApiString(v.BuildVariant)
 		atc.TimeTaken = NewAPIDuration(v.TimeTaken)
-		atc.Githash = APIString(v.Revision)
+		atc.Githash = ToApiString(v.Revision)
 		atc.EstimatedCost = v.Cost
 	default:
 		return errors.New("Incorrect type when unmarshalling task")

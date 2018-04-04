@@ -104,7 +104,7 @@ func (m *APISystemMetrics) BuildFromService(in interface{}) error {
 	}
 
 	m.NumCPU = source.NumCPU
-	m.CPU.CPU = APIString(source.CPU.CPU)
+	m.CPU.CPU = ToApiString(source.CPU.CPU)
 	m.CPU.User = source.CPU.User
 	m.CPU.System = source.CPU.System
 	m.CPU.Idle = source.CPU.Idle
@@ -135,7 +135,7 @@ func (m *APISystemMetrics) BuildFromService(in interface{}) error {
 	m.VMStat.PageTables = source.VMStat.PageTables
 	m.VMStat.SwapCached = source.VMStat.SwapCached
 
-	m.NetStat.Name = APIString(source.NetStat.Name)
+	m.NetStat.Name = ToApiString(source.NetStat.Name)
 	m.NetStat.BytesSent = source.NetStat.BytesSent
 	m.NetStat.BytesRecv = source.NetStat.BytesRecv
 	m.NetStat.PacketsSent = source.NetStat.PacketsSent
@@ -149,17 +149,17 @@ func (m *APISystemMetrics) BuildFromService(in interface{}) error {
 
 	for _, part := range source.Partitions {
 		m.Partitions = append(m.Partitions, APISystemMetricsPartitions{
-			Device:     APIString(part.Device),
-			Mountpoint: APIString(part.Mountpoint),
-			Fstype:     APIString(part.Fstype),
-			Opts:       APIString(part.Opts),
+			Device:     ToApiString(part.Device),
+			Mountpoint: ToApiString(part.Mountpoint),
+			Fstype:     ToApiString(part.Fstype),
+			Opts:       ToApiString(part.Opts),
 		})
 	}
 
 	for _, usage := range source.Usage {
 		m.Usage = append(m.Usage, APISystemMetricsDiskUsage{
-			Path:              APIString(usage.Path),
-			Fstype:            APIString(usage.Fstype),
+			Path:              ToApiString(usage.Path),
+			Fstype:            ToApiString(usage.Fstype),
 			Total:             usage.Total,
 			Free:              usage.Free,
 			Used:              usage.Used,
@@ -174,7 +174,7 @@ func (m *APISystemMetrics) BuildFromService(in interface{}) error {
 
 	for _, stat := range source.IOStat {
 		m.IOStat = append(m.IOStat, APISystemMetricsIOStat{
-			Name:             APIString(stat.Name),
+			Name:             ToApiString(stat.Name),
 			ReadCount:        stat.ReadCount,
 			MergedReadCount:  stat.MergedReadCount,
 			WriteCount:       stat.WriteCount,
@@ -249,9 +249,9 @@ func (m *APIProcessMetrics) BuildFromService(in interface{}) error {
 			Pid:     proc.Pid,
 			Parent:  proc.Parent,
 			Threads: proc.Threads,
-			Command: APIString(proc.Command),
+			Command: ToApiString(proc.Command),
 			CPU: APICPUMetrics{
-				CPU:       APIString(proc.CPU.CPU),
+				CPU:       ToApiString(proc.CPU.CPU),
 				User:      proc.CPU.User,
 				System:    proc.CPU.System,
 				Idle:      proc.CPU.Idle,
@@ -274,7 +274,7 @@ func (m *APIProcessMetrics) BuildFromService(in interface{}) error {
 
 		for _, net := range proc.NetStat {
 			stat.NetStat = append(stat.NetStat, APINetStatMetrics{
-				Name:        APIString(net.Name),
+				Name:        ToApiString(net.Name),
 				BytesSent:   net.BytesSent,
 				BytesRecv:   net.BytesRecv,
 				PacketsSent: net.PacketsSent,

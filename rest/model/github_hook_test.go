@@ -21,8 +21,8 @@ func TestAPIGithubHook(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(APIGithubHook{
 		HookID: 1,
-		Owner:  APIString("evergreen-ci"),
-		Repo:   APIString("evergreen"),
+		Owner:  ToApiString("evergreen-ci"),
+		Repo:   ToApiString("evergreen"),
 	}, apiHook)
 
 	apiHook = APIGithubHook{}

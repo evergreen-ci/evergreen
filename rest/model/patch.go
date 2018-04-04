@@ -37,42 +37,42 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	if !ok {
 		return errors.New("incorrect type when fetching converting patch type")
 	}
-	apiPatch.Id = APIString(v.Id.Hex())
-	apiPatch.Description = APIString(v.Description)
-	apiPatch.ProjectId = APIString(v.Project)
-	apiPatch.Branch = APIString(v.Project)
-	apiPatch.Githash = APIString(v.Githash)
+	apiPatch.Id = ToApiString(v.Id.Hex())
+	apiPatch.Description = ToApiString(v.Description)
+	apiPatch.ProjectId = ToApiString(v.Project)
+	apiPatch.Branch = ToApiString(v.Project)
+	apiPatch.Githash = ToApiString(v.Githash)
 	apiPatch.PatchNumber = v.PatchNumber
-	apiPatch.Author = APIString(v.Author)
-	apiPatch.Version = APIString(v.Version)
-	apiPatch.Status = APIString(v.Status)
+	apiPatch.Author = ToApiString(v.Author)
+	apiPatch.Version = ToApiString(v.Version)
+	apiPatch.Status = ToApiString(v.Status)
 	apiPatch.CreateTime = NewTime(v.CreateTime)
 	apiPatch.StartTime = NewTime(v.CreateTime)
 	apiPatch.FinishTime = NewTime(v.CreateTime)
 	builds := make([]APIString, 0)
 	for _, b := range v.BuildVariants {
-		builds = append(builds, APIString(b))
+		builds = append(builds, ToApiString(b))
 	}
 	apiPatch.Variants = builds
 	tasks := make([]APIString, 0)
 	for _, t := range v.Tasks {
-		tasks = append(tasks, APIString(t))
+		tasks = append(tasks, ToApiString(t))
 	}
 	apiPatch.Tasks = tasks
 	variantTasks := []variantTask{}
 	for _, vt := range v.VariantsTasks {
 		vtasks := make([]APIString, 0)
 		for _, task := range v.Tasks {
-			vtasks = append(vtasks, APIString(task))
+			vtasks = append(vtasks, ToApiString(task))
 		}
 		variantTasks = append(variantTasks, variantTask{
-			Name:  APIString(vt.Variant),
+			Name:  ToApiString(vt.Variant),
 			Tasks: vtasks,
 		})
 	}
 	apiPatch.VariantsTasks = variantTasks
 	apiPatch.Activated = v.Activated
-	apiPatch.Alias = APIString(v.Alias)
+	apiPatch.Alias = ToApiString(v.Alias)
 	apiPatch.GithubPatchData = githubPatch{}
 	return errors.WithStack(apiPatch.GithubPatchData.BuildFromService(v.GithubPatchData))
 }
@@ -99,12 +99,12 @@ func (g *githubPatch) BuildFromService(h interface{}) error {
 		return errors.New("incorrect type when fetching converting github patch type")
 	}
 	g.PRNumber = v.PRNumber
-	g.BaseOwner = APIString(v.BaseOwner)
-	g.BaseRepo = APIString(v.BaseRepo)
-	g.HeadOwner = APIString(v.HeadOwner)
-	g.HeadRepo = APIString(v.HeadRepo)
-	g.HeadHash = APIString(v.HeadHash)
-	g.Author = APIString(v.Author)
+	g.BaseOwner = ToApiString(v.BaseOwner)
+	g.BaseRepo = ToApiString(v.BaseRepo)
+	g.HeadOwner = ToApiString(v.HeadOwner)
+	g.HeadRepo = ToApiString(v.HeadRepo)
+	g.HeadHash = ToApiString(v.HeadHash)
+	g.Author = ToApiString(v.Author)
 	return nil
 }
 

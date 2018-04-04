@@ -81,8 +81,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NoError(err)
 	s.NotNil(rd)
 	s.Len(rd.Result, 2)
-	s.Equal(model.APIString("projectC"), (rd.Result[0]).(*model.APIProject).Identifier)
-	s.Equal(model.APIString("projectD"), (rd.Result[1]).(*model.APIProject).Identifier)
+	s.Equal(model.ToApiString("projectC"), (rd.Result[0]).(*model.APIProject).Identifier)
+	s.Equal(model.ToApiString("projectD"), (rd.Result[1]).(*model.APIProject).Identifier)
 
 	metadata, ok := rd.Metadata.(*PaginationMetadata)
 	s.True(ok)

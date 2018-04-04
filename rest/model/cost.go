@@ -18,7 +18,7 @@ type APIVersionCost struct {
 func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.VersionCost:
-		apiVersionCost.VersionId = APIString(v.VersionId)
+		apiVersionCost.VersionId = ToApiString(v.VersionId)
 		apiVersionCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiVersionCost.EstimatedCost = v.SumEstimatedCost
 	default:
@@ -47,9 +47,9 @@ type APIDistroCost struct {
 func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.DistroCost:
-		apiDistroCost.DistroId = APIString(v.DistroId)
+		apiDistroCost.DistroId = ToApiString(v.DistroId)
 		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
-		apiDistroCost.Provider = APIString(v.Provider)
+		apiDistroCost.Provider = ToApiString(v.Provider)
 		apiDistroCost.EstimatedCost = v.SumEstimatedCost
 		apiDistroCost.NumTasks = v.NumTasks
 
@@ -63,7 +63,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 			if instanceTypeStr == "" {
 				return errors.Errorf("ec2 missing instance type in provider settings")
 			}
-			apiDistroCost.InstanceType = APIString(instanceTypeStr)
+			apiDistroCost.InstanceType = ToApiString(instanceTypeStr)
 		}
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro cost type")

@@ -72,7 +72,7 @@ func (b *buildGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	if ref != nil {
 		proj = ref.Repo
 	}
-	buildModel.ProjectId = model.APIString(proj)
+	buildModel.ProjectId = model.ToApiString(proj)
 	err = buildModel.BuildFromService(*foundBuild)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {

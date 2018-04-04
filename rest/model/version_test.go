@@ -58,23 +58,23 @@ func TestVersionBuildFromService(t *testing.T) {
 	err := apiVersion.BuildFromService(v)
 	assert.Nil(err)
 	// Each field should be as expected
-	assert.Equal(apiVersion.Id, APIString(versionId))
+	assert.Equal(apiVersion.Id, ToApiString(versionId))
 	assert.Equal(apiVersion.CreateTime, NewTime(time))
 	assert.Equal(apiVersion.StartTime, NewTime(time))
 	assert.Equal(apiVersion.FinishTime, NewTime(time))
-	assert.Equal(apiVersion.Revision, APIString(revision))
-	assert.Equal(apiVersion.Author, APIString(author))
-	assert.Equal(apiVersion.AuthorEmail, APIString(authorEmail))
-	assert.Equal(apiVersion.Message, APIString(msg))
-	assert.Equal(apiVersion.Status, APIString(status))
-	assert.Equal(apiVersion.Repo, APIString(repo))
-	assert.Equal(apiVersion.Branch, APIString(branch))
+	assert.Equal(apiVersion.Revision, ToApiString(revision))
+	assert.Equal(apiVersion.Author, ToApiString(author))
+	assert.Equal(apiVersion.AuthorEmail, ToApiString(authorEmail))
+	assert.Equal(apiVersion.Message, ToApiString(msg))
+	assert.Equal(apiVersion.Status, ToApiString(status))
+	assert.Equal(apiVersion.Repo, ToApiString(repo))
+	assert.Equal(apiVersion.Branch, ToApiString(branch))
 
 	bvs := apiVersion.BuildVariants
-	assert.Equal(bvs[0].BuildVariant, APIString(bv1))
-	assert.Equal(bvs[0].BuildId, APIString(bi1))
-	assert.Equal(bvs[1].BuildVariant, APIString(bv2))
-	assert.Equal(bvs[1].BuildId, APIString(bi2))
+	assert.Equal(bvs[0].BuildVariant, ToApiString(bv1))
+	assert.Equal(bvs[0].BuildId, ToApiString(bi1))
+	assert.Equal(bvs[1].BuildVariant, ToApiString(bv2))
+	assert.Equal(bvs[1].BuildId, ToApiString(bi2))
 }
 
 func TestVersionToService(t *testing.T) {

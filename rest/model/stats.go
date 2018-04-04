@@ -66,8 +66,8 @@ func (s *APIHostStatsByDistro) BuildFromService(h interface{}) error {
 	case []host.StatsByDistro:
 		for _, entry := range v {
 			d := apiHostStatsForDistro{
-				Distro:   APIString(entry.Distro),
-				Status:   APIString(entry.Status),
+				Distro:   ToApiString(entry.Distro),
+				Status:   ToApiString(entry.Status),
 				NumHosts: entry.Count,
 				NumTasks: entry.NumTasks,
 				MaxHosts: entry.MaxHosts,

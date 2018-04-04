@@ -52,7 +52,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	versionCost := res.Result[0]
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.APIString("version1"), h.VersionId)
+	s.Equal(model.ToApiString("version1"), h.VersionId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 }
 
@@ -71,7 +71,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	versionCost := res.Result[0]
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.APIString("version2"), h.VersionId)
+	s.Equal(model.ToApiString("version2"), h.VersionId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 }
 
@@ -176,10 +176,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	distroCost := res.Result[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.APIString("distro1"), h.DistroId)
+	s.Equal(model.ToApiString("distro1"), h.DistroId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
-	s.Equal(model.APIString("ec2-ondemand"), h.Provider)
-	s.Equal(model.APIString("type"), h.InstanceType)
+	s.Equal(model.ToApiString("ec2-ondemand"), h.Provider)
+	s.Equal(model.ToApiString("type"), h.InstanceType)
 }
 
 // TestFindCostByDistroIdMany tests the handler where information is aggregated on
@@ -198,10 +198,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	distroCost := res.Result[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.APIString("distro2"), h.DistroId)
+	s.Equal(model.ToApiString("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
-	s.Equal(model.APIString("gce"), h.Provider)
-	s.Equal(model.APIString(""), h.InstanceType)
+	s.Equal(model.ToApiString("gce"), h.Provider)
+	s.Equal(model.APIString(nil), h.InstanceType)
 }
 
 // TestFindCostByDistroIdNoResult tests that the handler correct returns
@@ -217,10 +217,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	distroCost := res.Result[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.APIString("distro2"), h.DistroId)
+	s.Equal(model.ToApiString("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(0), h.SumTimeTaken)
-	s.Equal(model.APIString(""), h.Provider)
-	s.Equal(model.APIString(""), h.InstanceType)
+	s.Equal(model.ToApiString(""), h.Provider)
+	s.Equal(model.APIString(nil), h.InstanceType)
 }
 
 // TestFindCostByDistroFail tests that the handler correctly returns error when

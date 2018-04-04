@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
+	restModel "github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -377,7 +378,7 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	bv1 := results.Rows["bv1"]
 	s.Equal("bv1", bv1.BuildVariant)
 	resultb11 := bv1.Builds["v1"]
-	s.EqualValues("b11", resultb11.Id)
+	s.EqualValues(restModel.ToApiString("b11"), resultb11.Id)
 	s.Len(resultb11.Tasks, 2)
 	s.Equal(1, resultb11.StatusCounts.Succeeded)
 	s.Equal(1, resultb11.StatusCounts.TimedOut)
@@ -385,17 +386,17 @@ func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
 	bv2 := results.Rows["bv2"]
 	s.Equal("bv2", bv2.BuildVariant)
 	resultb12 := bv2.Builds["v1"]
-	s.EqualValues("b12", resultb12.Id)
+	s.EqualValues(restModel.ToApiString("b12"), resultb12.Id)
 	s.Len(resultb12.Tasks, 2)
 	s.Equal(2, resultb12.StatusCounts.Succeeded)
 
 	inactiveVersions := results.Versions[0]
 	s.True(inactiveVersions.RolledUp)
-	s.EqualValues("v2", inactiveVersions.Versions[0].Id)
-	s.EqualValues("I am v2", inactiveVersions.Versions[0].Message)
+	s.EqualValues(restModel.ToApiString("v2"), inactiveVersions.Versions[0].Id)
+	s.EqualValues(restModel.ToApiString("I am v2"), inactiveVersions.Versions[0].Message)
 
 	activeVersions := results.Versions[1]
 	s.False(activeVersions.RolledUp)
-	s.EqualValues("v1", activeVersions.Versions[0].Id)
-	s.EqualValues("I am v1", activeVersions.Versions[0].Message)
+	s.EqualValues(restModel.ToApiString("v1"), activeVersions.Versions[0].Id)
+	s.EqualValues(restModel.ToApiString("I am v1"), activeVersions.Versions[0].Message)
 }

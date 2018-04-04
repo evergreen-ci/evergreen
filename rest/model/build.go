@@ -50,24 +50,24 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting build type")
 	}
-	apiBuild.Id = APIString(v.Id)
+	apiBuild.Id = ToApiString(v.Id)
 	apiBuild.CreateTime = NewTime(v.CreateTime)
 	apiBuild.StartTime = NewTime(v.StartTime)
 	apiBuild.FinishTime = NewTime(v.FinishTime)
-	apiBuild.Version = APIString(v.Version)
-	apiBuild.Branch = APIString(v.Project)
-	apiBuild.Revision = APIString(v.Revision)
-	apiBuild.BuildVariant = APIString(v.BuildVariant)
-	apiBuild.Status = APIString(v.Status)
+	apiBuild.Version = ToApiString(v.Version)
+	apiBuild.Branch = ToApiString(v.Project)
+	apiBuild.Revision = ToApiString(v.Revision)
+	apiBuild.BuildVariant = ToApiString(v.BuildVariant)
+	apiBuild.Status = ToApiString(v.Status)
 	apiBuild.Activated = v.Activated
-	apiBuild.ActivatedBy = APIString(v.ActivatedBy)
+	apiBuild.ActivatedBy = ToApiString(v.ActivatedBy)
 	apiBuild.ActivatedTime = NewTime(v.ActivatedTime)
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
 	for _, t := range v.Tasks {
 		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
 	}
 	apiBuild.TimeTaken = NewAPIDuration(v.TimeTaken)
-	apiBuild.DisplayName = APIString(v.DisplayName)
+	apiBuild.DisplayName = ToApiString(v.DisplayName)
 	apiBuild.PredictedMakespan = NewAPIDuration(v.PredictedMakespan)
 	apiBuild.ActualMakespan = NewAPIDuration(v.ActualMakespan)
 	var origin string
@@ -76,7 +76,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	} else if evergreen.IsPatchRequester(v.Requester) {
 		origin = patchOrigin
 	}
-	apiBuild.Origin = APIString(origin)
+	apiBuild.Origin = ToApiString(origin)
 	apiBuild.TaskCache = []APITaskCache{}
 	for _, t := range v.Tasks {
 		apiBuild.TaskCache = append(apiBuild.TaskCache, APITaskCache{

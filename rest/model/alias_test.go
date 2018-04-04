@@ -19,7 +19,7 @@ func TestAliasBuildFromService(t *testing.T) {
 	apiAlias := &APIAlias{}
 	err := apiAlias.BuildFromService(d)
 	assert.NoError(t, err)
-	assert.Equal(t, string(apiAlias.Alias), d.Alias)
-	assert.Equal(t, string(apiAlias.Variant), d.Variant)
-	assert.Equal(t, string(apiAlias.Task), d.Task)
+	assert.Equal(t, FromApiString(apiAlias.Alias), d.Alias)
+	assert.Equal(t, FromApiString(apiAlias.Variant), d.Variant)
+	assert.Equal(t, FromApiString(apiAlias.Task), d.Task)
 }

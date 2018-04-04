@@ -32,8 +32,8 @@ type TestLogs struct {
 func (at *APITest) BuildFromService(st interface{}) error {
 	switch v := st.(type) {
 	case *testresult.TestResult:
-		at.Status = APIString(v.Status)
-		at.TestFile = APIString(v.TestFile)
+		at.Status = ToApiString(v.Status)
+		at.TestFile = ToApiString(v.TestFile)
 		at.ExitCode = v.ExitCode
 
 		startTime := util.FromPythonTime(v.StartTime)
@@ -43,13 +43,13 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		at.EndTime = NewTime(endTime)
 
 		at.Logs = TestLogs{
-			URL:     APIString(v.URL),
-			URLRaw:  APIString(v.URLRaw),
-			LogId:   APIString(v.LogID),
+			URL:     ToApiString(v.URL),
+			URLRaw:  ToApiString(v.URLRaw),
+			LogId:   ToApiString(v.LogID),
 			LineNum: v.LineNum,
 		}
 	case string:
-		at.TaskId = APIString(v)
+		at.TaskId = ToApiString(v)
 	default:
 		return fmt.Errorf("Incorrect type when creating APITest")
 	}
@@ -58,11 +58,11 @@ func (at *APITest) BuildFromService(st interface{}) error {
 
 func (at *APITest) ToService() (interface{}, error) {
 	return &testresult.TestResult{
-		Status:    string(at.Status),
-		TestFile:  string(at.TestFile),
-		URL:       string(at.Logs.URL),
-		URLRaw:    string(at.Logs.URLRaw),
-		LogID:     string(at.Logs.LogId),
+		Status:    FromApiString(at.Status),
+		TestFile:  FromApiString(at.TestFile),
+		URL:       FromApiString(at.Logs.URL),
+		URLRaw:    FromApiString(at.Logs.URLRaw),
+		LogID:     FromApiString(at.Logs.LogId),
 		LineNum:   at.Logs.LineNum,
 		ExitCode:  at.ExitCode,
 		StartTime: util.ToPythonTime(time.Time(at.StartTime)),

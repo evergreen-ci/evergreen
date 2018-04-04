@@ -37,14 +37,14 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 		return fmt.Errorf("incorrect type when fetching converting project type")
 	}
 	apiProject.BatchTime = v.BatchTime
-	apiProject.Branch = APIString(v.Branch)
-	apiProject.DisplayName = APIString(v.DisplayName)
+	apiProject.Branch = ToApiString(v.Branch)
+	apiProject.DisplayName = ToApiString(v.DisplayName)
 	apiProject.Enabled = v.Enabled
-	apiProject.Identifier = APIString(v.Identifier)
-	apiProject.Owner = APIString(v.Owner)
+	apiProject.Identifier = ToApiString(v.Identifier)
+	apiProject.Owner = ToApiString(v.Owner)
 	apiProject.Private = v.Private
-	apiProject.RemotePath = APIString(v.RemotePath)
-	apiProject.Repo = APIString(v.Repo)
+	apiProject.RemotePath = ToApiString(v.RemotePath)
+	apiProject.Repo = ToApiString(v.Repo)
 	apiProject.Tracked = v.Tracked
 	apiProject.TracksPushEvents = v.TracksPushEvents
 	apiProject.PRTestingEnabled = v.PRTestingEnabled
@@ -54,7 +54,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 		configArr := []alertConfig{}
 		for _, c := range v {
 			config := alertConfig{
-				Provider: APIString(c.Provider),
+				Provider: ToApiString(c.Provider),
 				Settings: c.GetSettingsMap(),
 			}
 			configArr = append(configArr, config)
@@ -67,7 +67,7 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 
 	admins := []APIString{}
 	for _, a := range v.Admins {
-		admins = append(admins, APIString(a))
+		admins = append(admins, ToApiString(a))
 	}
 	apiProject.Admins = admins
 

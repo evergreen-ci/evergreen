@@ -49,7 +49,7 @@ func (s *HostSuite) TestFindByIdFirst() {
 
 	h, ok := (res.Result[0]).(*model.APIHost)
 	s.True(ok)
-	s.Equal(model.APIString("host1"), h.Id)
+	s.Equal(model.ToApiString("host1"), h.Id)
 }
 
 func (s *HostSuite) TestFindByIdLast() {
@@ -61,7 +61,7 @@ func (s *HostSuite) TestFindByIdLast() {
 
 	h, ok := (res.Result[0]).(*model.APIHost)
 	s.True(ok)
-	s.Equal(model.APIString("host2"), h.Id)
+	s.Equal(model.ToApiString("host2"), h.Id)
 }
 
 func (s *HostSuite) TestFindByIdFail() {
@@ -237,10 +237,14 @@ func (s *hostChangeRDPPasswordHandlerSuite) TestExecuteWithInvalidHost() {
 }
 
 func (s *hostChangeRDPPasswordHandlerSuite) TestParseAndValidateRejectsInvalidPasswords() {
-	invalidPasswords := []model.APIString{"", "weak", "stilltooweak1", "火a111"}
+	invalidPasswords := []model.APIString{
+		model.ToApiString(""),
+		model.ToApiString("weak"),
+		model.ToApiString("stilltooweak1"),
+		model.ToApiString("火a111")}
 	for _, password := range invalidPasswords {
 		mod := model.APISpawnHostModify{
-			HostID: "host1",
+			HostID: model.ToApiString("host1"),
 			RDPPwd: password,
 		}
 		err := s.tryParseAndValidate(mod)
@@ -320,11 +324,16 @@ func (s *hostExtendExpirationHandlerSuite) TestExecuteWithInvalidHost() {
 }
 
 func (s *hostExtendExpirationHandlerSuite) TestParseAndValidateRejectsInvalidExpirations() {
-	invalidExpirations := []model.APIString{"not a number", "0", "9223372036854775807", ""}
+	invalidExpirations := []model.APIString{
+		model.ToApiString("not a number"),
+		model.ToApiString("0"),
+		model.ToApiString("9223372036854775807"),
+		model.ToApiString(""),
+	}
 	for _, extendBy := range invalidExpirations {
 		mod := model.APISpawnHostModify{
-			HostID:   "host1",
-			RDPPwd:   "",
+			HostID:   model.ToApiString("host1"),
+			RDPPwd:   model.ToApiString(""),
 			AddHours: extendBy,
 		}
 
@@ -427,7 +436,7 @@ func makeMockHostRequest(mod model.APISpawnHostModify) (*http.Request, error) {
 	}
 
 	var r *http.Request
-	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", string(mod.HostID)), bytes.NewReader(data))
+	r, err = http.NewRequest("POST", fmt.Sprintf("https://example.com/hosts/%s", model.FromApiString(mod.HostID)), bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}

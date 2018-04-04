@@ -435,7 +435,7 @@ func (h *hostChangeRDPPasswordHandler) ParseAndValidate(ctx context.Context, r *
 		return err
 	}
 
-	h.rdpPassword = string(hostModify.RDPPwd)
+	h.rdpPassword = model.FromApiString(hostModify.RDPPwd)
 	if !spawn.ValidateRDPPassword(h.rdpPassword) {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -512,7 +512,7 @@ func (h *hostExtendExpirationHandler) ParseAndValidate(ctx context.Context, r *h
 		return err
 	}
 
-	addHours, err := strconv.Atoi(string(hostModify.AddHours))
+	addHours, err := strconv.Atoi(model.FromApiString(hostModify.AddHours))
 	if err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,

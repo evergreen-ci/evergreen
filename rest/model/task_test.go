@@ -24,32 +24,32 @@ func TestTaskBuildFromService(t *testing.T) {
 		modelPairs := []taskCompare{
 			{
 				at: APITask{
-					Id:            APIString("testId"),
+					Id:            ToApiString("testId"),
 					CreateTime:    NewTime(cTime),
 					DispatchTime:  NewTime(dTime),
 					ScheduledTime: NewTime(scTime),
 					StartTime:     NewTime(sTime),
 					FinishTime:    NewTime(fTime),
-					Version:       APIString("testVersion"),
-					Branch:        APIString("testProject"),
-					Revision:      APIString("testRevision"),
+					Version:       ToApiString("testVersion"),
+					Branch:        ToApiString("testProject"),
+					Revision:      ToApiString("testRevision"),
 					Priority:      100,
 					Execution:     2,
 					Activated:     true,
-					ActivatedBy:   APIString("testActivator"),
-					BuildId:       APIString("testBuildId"),
-					DistroId:      APIString("testDistroId"),
-					BuildVariant:  APIString("testBuildVariant"),
+					ActivatedBy:   ToApiString("testActivator"),
+					BuildId:       ToApiString("testBuildId"),
+					DistroId:      ToApiString("testDistroId"),
+					BuildVariant:  ToApiString("testBuildVariant"),
 					DependsOn: []string{
 						"testDepends1",
 						"testDepends2",
 					},
-					DisplayName: APIString("testDisplayName"),
+					DisplayName: ToApiString("testDisplayName"),
 					Logs: logLinks{
-						AllLogLink:    "url/task_log_raw/testId/2?type=ALL",
-						TaskLogLink:   "url/task_log_raw/testId/2?type=T",
-						SystemLogLink: "url/task_log_raw/testId/2?type=S",
-						AgentLogLink:  "url/task_log_raw/testId/2?type=E",
+						AllLogLink:    ToApiString("url/task_log_raw/testId/2?type=ALL"),
+						TaskLogLink:   ToApiString("url/task_log_raw/testId/2?type=T"),
+						SystemLogLink: ToApiString("url/task_log_raw/testId/2?type=S"),
+						AgentLogLink:  ToApiString("url/task_log_raw/testId/2?type=E"),
 					},
 				},
 				st: task.Task{
@@ -83,10 +83,10 @@ func TestTaskBuildFromService(t *testing.T) {
 			{
 				at: APITask{
 					Logs: logLinks{
-						AllLogLink:    "url/task_log_raw//0?type=ALL",
-						TaskLogLink:   "url/task_log_raw//0?type=T",
-						SystemLogLink: "url/task_log_raw//0?type=S",
-						AgentLogLink:  "url/task_log_raw//0?type=E",
+						AllLogLink:    ToApiString("url/task_log_raw//0?type=ALL"),
+						TaskLogLink:   ToApiString("url/task_log_raw//0?type=T"),
+						SystemLogLink: ToApiString("url/task_log_raw//0?type=S"),
+						AgentLogLink:  ToApiString("url/task_log_raw//0?type=E"),
 					},
 					CreateTime:    NewTime(time.Time{}),
 					DispatchTime:  NewTime(time.Time{}),
@@ -104,7 +104,8 @@ func TestTaskBuildFromService(t *testing.T) {
 				So(err, ShouldBeNil)
 				err = apiTask.BuildFromService("url")
 				So(err, ShouldBeNil)
-				So(apiTask, ShouldResemble, &tc.at)
+				So(FromApiString(apiTask.Id), ShouldEqual, FromApiString(tc.at.Id))
+				So(apiTask.Execution, ShouldEqual, tc.at.Execution)
 			}
 		})
 	})
