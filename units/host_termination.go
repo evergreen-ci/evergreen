@@ -82,18 +82,6 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	settings := j.env.Settings()
 
-	if !util.StringSliceContains(evergreen.UphostStatus, j.host.Status) {
-		// if host isn't in a running state we shouldn't try to terminate it.
-		grip.Debug(message.Fields{
-			"job":      j.ID(),
-			"host":     j.HostID,
-			"job_type": j.Type().Name,
-			"status":   j.host.Status,
-			"message":  "host not running, termination job is a noop",
-		})
-		return
-	}
-
 	idleTimeStartsAt := j.host.LastTaskCompletedTime
 	if idleTimeStartsAt.IsZero() || idleTimeStartsAt == util.ZeroTime {
 		idleTimeStartsAt = j.host.StartTime
