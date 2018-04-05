@@ -35,6 +35,9 @@ mciModule.directive('microTrendChart', function(PERF_DISCOVERY) { return {
     // This $watch is required due to known bug with ui-grid
     // https://github.com/angular-ui/ui-grid/issues/4869
     $scope.$watch('data', function(data) {
+      // Don't draw anything for invalid data
+      if(_.any(data, _.isNaN)) return
+
       // Aplying log fn to ratios, because ratios are asymmetric
       // And log(y/x) = -log(x/y), so it symmetric around 0
       var samples = _.map(data, Math.log);

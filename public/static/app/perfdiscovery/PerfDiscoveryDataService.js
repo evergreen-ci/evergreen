@@ -77,14 +77,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     return revision.length == EVG.GIT_HASH_LEN
   }
 
-  function findVersionItem(items, query) {
-    if (query == undefined) return
-
-    return _.find(items, function(d) {
-      return query == d.id || query == d.name
-    })
-  }
-
   function getQueryBasedItem(items, query) {
     var found = findVersionItem(items, query)
 
@@ -103,16 +95,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     }
 
     return undefined
-  }
-
-  // This function is used to make possible to type arbitrary
-  // version revision into version drop down
-  function getVersionOptions(items, query) {
-    var additional = getQueryBasedItem(items, query)
-
-    return additional
-      ? items.concat(additional)
-      : items
   }
 
   /******************
@@ -292,30 +274,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
    * PROMISE CHAINS *
    ******************/
 
-  function getCompItemVersion(compItem) {
-    return ApiV2.getVersionById(compItem.id)
-      // Extract version object
-      .then(function(res) {
-        return res.data
-      })
-  }
-
-  // Queries list of available options for compare from/to dropdowns
-  // :returns: (Promise of) list of versions/tags
-  // :rtype: Promise([{
-  //    kind: 't(ag)|v(ersion)',
-  //    id: 'version_id',
-  //    name: 'display name'
-  // }, ...])
-  function getComparisionOptions(projectId) {
-    return $q.all([
-      ApiV2.getRecentVersions(projectId).then(versionSelectAdaptor),
-      ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
-    ]).then(function(data) {
-      return Array.concat.apply(null, data)
-    })
-  }
-
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
   function queryData(tasksPromise, baselineTasks) {
@@ -338,7 +296,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
                 history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
                 baseline: ApiTaskdata.getTaskById(baseline.taskId, 'perf')
-                  .then(respData, function(e) { return [] }),
+                  .then(respData, function(e) { return null }),
               })
             } else {
               return null
@@ -364,6 +322,48 @@ mciModule.factory('PerfDiscoveryDataService', function(
   /**************
    * PUBLIC API *
    **************/
+
+  // Queries list of available options for compare from/to dropdowns
+  // :returns: (Promise of) list of versions/tags
+  // :rtype: Promise([{
+  //    kind: 't(ag)|v(ersion)',
+  //    id: 'version_id',
+  //    name: 'display name'
+  // }, ...])
+  function getComparisionOptions(projectId) {
+    return $q.all([
+      ApiV2.getRecentVersions(projectId).then(versionSelectAdaptor),
+      ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
+    ]).then(function(data) {
+      return Array.concat.apply(null, data)
+    })
+  }
+
+  function findVersionItem(items, query) {
+    if (query == undefined) return
+
+    return _.find(items, function(d) {
+      return query == d.id || query == d.name
+    })
+  }
+
+  // This function is used to make possible to type arbitrary
+  // version revision into version drop down
+  function getVersionOptions(items, query) {
+    var additional = getQueryBasedItem(items, query)
+
+    return additional
+      ? items.concat(additional)
+      : items
+  }
+
+  function getCompItemVersion(compItem) {
+    return ApiV2.getVersionById(compItem.id)
+      // Extract version object
+      .then(function(res) {
+        return res.data
+      })
+  }
 
   function getData(version, baselineTag) {
     return getRows(
