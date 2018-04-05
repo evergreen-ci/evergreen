@@ -982,7 +982,7 @@ func TestTaskGetHandler(t *testing.T) {
 
 		Convey("and task is in the service context", func() {
 			sc.MockTaskConnector.CachedTasks = []task.Task{
-				{Id: "testTaskId"},
+				{Id: "testTaskId", Project: "testProject"},
 			}
 			sc.MockTaskConnector.CachedOldTasks = []task.Task{
 				{Id: "testTaskId_0",
@@ -1012,6 +1012,7 @@ func TestTaskGetHandler(t *testing.T) {
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
 				So(res.Id, ShouldEqual, "testTaskId")
+				So(res.ProjectId, ShouldEqual, "testProject")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("a request without a user should then return a 404 error and a task should"+
