@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -93,6 +94,8 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
 
 	vars := mux.Vars(r)
@@ -131,12 +134,21 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := h.SetStatus(newStatus, u.Id, "")
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
-			return
+		var msg flashMessage
+		if newStatus == evergreen.HostTerminated {
+			if err = queue.Put(units.NewHostTerminationJob(env, *h)); err != nil {
+				http.Error(w, "error starting background job for host termination", http.StatusInternalServerError)
+				return
+			}
+			msg = NewSuccessFlash(fmt.Sprintf("Host %v successfully queued for termination", h.Id))
+		} else {
+			err := h.SetStatus(newStatus, u.Id, "")
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
+				return
+			}
+			msg = NewSuccessFlash(fmt.Sprintf("Host status successfully updated from '%v' to '%v'", currentStatus, h.Status))
 		}
-		msg := NewSuccessFlash(fmt.Sprintf("Host status successfully updated from '%v' to '%v'", currentStatus, h.Status))
 		PushFlash(uis.CookieStore, r, w, msg)
 		uis.WriteJSON(w, http.StatusOK, "Successfully updated host status")
 	default:
