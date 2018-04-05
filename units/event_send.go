@@ -79,24 +79,18 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 	} else if flags == nil {
 		j.AddError(errors.Wrap(err, "fetched no service flags configuration"))
 	}
-	if j.HasErrors() {
-		return
-	}
-
 	if len(j.NotificationID) == 0 {
 		j.AddError(errors.New("notification ID is not valid"))
-		return
 	}
-
 	if j.settings == nil {
 		j.settings, err = evergreen.GetConfig()
 		j.AddError(err)
 		if err == nil && j.settings == nil {
 			j.AddError(errors.New("settings object is nil"))
 		}
-		if j.HasErrors() {
-			return
-		}
+	}
+	if j.HasErrors() {
+		return
 	}
 
 	n, err := notification.Find(j.NotificationID)
@@ -256,16 +250,10 @@ func calculateHMACHash(secret []byte, body []byte) (string, error) {
 }
 
 func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) error {
-	// TODO create a proper composer for evergreen webhooks
 	c, err := n.Composer()
 	if err != nil {
 		return err
 	}
-
-	//raw, ok := c.Raw().(string)
-	//if !ok {
-	//	return errors.New("evergreen-webhook composer was invalid")
-	//}
 
 	hookSubscriber, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
 	if !ok || hookSubscriber == nil {
@@ -292,10 +280,6 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	if err != nil {
 		return errors.Wrap(err, "failed to calculate hash")
 	}
-
-	//for k, v := range raw["headers"].(map[string]string) {
-	//	req.Header.Add(k, v)
-	//}
 
 	req.Header.Del(evergreenHMACHeader)
 	req.Header.Add(evergreenHMACHeader, hash)
