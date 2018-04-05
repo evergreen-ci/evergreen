@@ -110,7 +110,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 				uiT.ExpectedDuration = taskFromDb.ExpectedDuration
 			}
 			uiTasks = append(uiTasks, uiT)
-			buildAsUI.TaskStatusCount.incrementStatus(t.Status, t.StatusDetails)
+			buildAsUI.TaskStatusCount.IncrementStatus(t.Status, t.StatusDetails)
 			if t.Status == evergreen.TaskFailed {
 				failedTaskIds = append(failedTaskIds, t.Id)
 			}

@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -74,48 +76,12 @@ type VersionConnectorSuite struct {
 //   Initialize the ConnectorSuites                                           //
 //----------------------------------------------------------------------------//
 func TestVersionConnectorSuite(t *testing.T) {
-	assert := assert.New(t)
-
 	// Set up
 	s := new(VersionConnectorSuite)
 	s.ctx = &DBConnector{}
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestVersionConnectorSuite")
-	db.SetGlobalSessionProvider(testConfig.SessionFactory())
-
-	// Tear down
-	assert.Nil(db.Clear(task.Collection))
-	assert.Nil(db.Clear(version.Collection))
-	assert.Nil(db.Clear(build.Collection))
 
 	s.isMock = false
-
-	// Insert data for the test paths
-	versions := []*version.Version{
-		{Id: "version1"},
-		{Id: "version2"},
-	}
-
-	tasks := []*task.Task{
-		{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
-		{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
-		{Id: "task3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
-		{Id: "task4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
-		{Id: "task5", Version: "version3", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
-	}
-
-	builds := []*build.Build{
-		{Id: "build1", Tasks: []build.TaskCache{{Id: "task5"}}},
-	}
-
-	for _, item := range versions {
-		assert.NoError(item.Insert())
-	}
-	for _, item := range tasks {
-		assert.NoError(item.Insert())
-	}
-	for _, item := range builds {
-		assert.NoError(item.Insert())
-	}
+	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 
 	// Run the suite
 	suite.Run(t, s)
@@ -137,6 +103,41 @@ func TestMockVersionConnectorSuite(t *testing.T) {
 	}
 	s.isMock = true
 	suite.Run(t, s)
+}
+
+func (s *VersionConnectorSuite) SetupTest() {
+	s.Require().NoError(db.Clear(task.Collection))
+	s.Require().NoError(db.Clear(task.OldCollection))
+	s.Require().NoError(db.Clear(version.Collection))
+	s.Require().NoError(db.Clear(build.Collection))
+
+	// Insert data for the test paths
+	versions := []*version.Version{
+		{Id: "version1"},
+		{Id: "version2"},
+	}
+
+	tasks := []*task.Task{
+		{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
+		{Id: "task3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
+		{Id: "task4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task5", Version: "version3", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+	}
+
+	builds := []*build.Build{
+		{Id: "build1", Tasks: []build.TaskCache{{Id: "task5"}}},
+	}
+
+	for _, item := range versions {
+		s.Require().NoError(item.Insert())
+	}
+	for _, item := range tasks {
+		s.Require().NoError(item.Insert())
+	}
+	for _, item := range builds {
+		s.Require().NoError(item.Insert())
+	}
 }
 
 //----------------------------------------------------------------------------//
@@ -229,4 +230,172 @@ func (s *VersionConnectorSuite) TestRestartVersion() {
 		s.Equal(evergreen.BuildStarted, b1.Status)
 		s.Equal("caller3", b1.ActivatedBy)
 	}
+}
+
+func (s *VersionConnectorSuite) TestGetVersionsAndVariants() {
+	if s.isMock { // mock method not implemented
+		return
+	}
+
+	projRef := model.ProjectRef{
+		Identifier: "proj",
+	}
+	s.NoError(projRef.Insert())
+	proj := model.Project{
+		Identifier: projRef.Identifier,
+		BuildVariants: model.BuildVariants{
+			{
+				Name:        "bv1",
+				DisplayName: "bv1",
+			},
+			{
+				Name:        "bv2",
+				DisplayName: "bv2",
+			},
+		},
+	}
+	v1 := version.Version{
+		Id:                  "v1",
+		Revision:            "abcd1",
+		RevisionOrderNumber: 1,
+		Identifier:          proj.Identifier,
+		Status:              evergreen.VersionFailed,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Message:             "I am v1",
+	}
+	v2 := version.Version{
+		Id:                  "v2",
+		Revision:            "abcd2",
+		RevisionOrderNumber: 2,
+		Identifier:          proj.Identifier,
+		Status:              evergreen.VersionCreated,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Message:             "I am v2",
+	}
+	s.NoError(v2.Insert())
+	s.NoError(v1.Insert())
+	b11 := build.Build{
+		Id:           "b11",
+		Activated:    true,
+		Version:      v1.Id,
+		Project:      proj.Identifier,
+		Revision:     v1.Revision,
+		BuildVariant: "bv1",
+		Tasks: []build.TaskCache{
+			{
+				Id:        "t111",
+				Activated: true,
+				Status:    evergreen.TaskFailed,
+				StatusDetails: apimodels.TaskEndDetail{
+					Status:      evergreen.TaskFailed,
+					Type:        "system",
+					TimedOut:    true,
+					Description: "heartbeat",
+				},
+			},
+			{
+				Id:        "t112",
+				Activated: true,
+				Status:    evergreen.TaskSucceeded,
+				StatusDetails: apimodels.TaskEndDetail{
+					Status: evergreen.TaskSucceeded,
+					Type:   "test",
+				},
+			},
+		},
+	}
+	s.NoError(b11.Insert())
+	b12 := build.Build{
+		Id:           "b12",
+		Activated:    true,
+		Version:      v1.Id,
+		Project:      proj.Identifier,
+		Revision:     v1.Revision,
+		BuildVariant: "bv2",
+		Tasks: []build.TaskCache{
+			{
+				Id:        "t121",
+				Activated: true,
+				Status:    evergreen.TaskSucceeded,
+				StatusDetails: apimodels.TaskEndDetail{
+					Status: evergreen.TaskSucceeded,
+					Type:   "test",
+				},
+			},
+			{
+				Id:        "t122",
+				Activated: true,
+				Status:    evergreen.TaskSucceeded,
+				StatusDetails: apimodels.TaskEndDetail{
+					Status: evergreen.TaskSucceeded,
+					Type:   "test",
+				},
+			},
+		},
+	}
+	s.NoError(b12.Insert())
+	b21 := build.Build{
+		Id:           "b21",
+		Version:      v2.Id,
+		Project:      proj.Identifier,
+		Revision:     v2.Revision,
+		BuildVariant: "bv1",
+		Tasks: []build.TaskCache{
+			{
+				Id:     "t211",
+				Status: evergreen.TaskUnstarted,
+			},
+			{
+				Id:     "t212",
+				Status: evergreen.TaskUnstarted,
+			},
+		},
+	}
+	s.NoError(b21.Insert())
+	b22 := build.Build{
+		Id:           "b22",
+		Version:      v2.Id,
+		Project:      proj.Identifier,
+		Revision:     v2.Revision,
+		BuildVariant: "bv2",
+		Tasks: []build.TaskCache{
+			{
+				Id:     "t212",
+				Status: evergreen.TaskUnstarted,
+			},
+			{
+				Id:     "t212",
+				Status: evergreen.TaskUnstarted,
+			},
+		},
+	}
+	s.NoError(b22.Insert())
+
+	results, err := s.ctx.GetVersionsAndVariants(0, 10, &proj)
+	s.NoError(err)
+
+	bv1 := results.Rows["bv1"]
+	s.Equal("bv1", bv1.BuildVariant)
+	resultb11 := bv1.Builds["v1"]
+	s.EqualValues("b11", resultb11.Id)
+	s.Len(resultb11.Tasks, 2)
+	s.Equal(1, resultb11.StatusCounts.Succeeded)
+	s.Equal(1, resultb11.StatusCounts.TimedOut)
+
+	bv2 := results.Rows["bv2"]
+	s.Equal("bv2", bv2.BuildVariant)
+	resultb12 := bv2.Builds["v1"]
+	s.EqualValues("b12", resultb12.Id)
+	s.Len(resultb12.Tasks, 2)
+	s.Equal(2, resultb12.StatusCounts.Succeeded)
+
+	inactiveVersions := results.Versions[0]
+	s.True(inactiveVersions.RolledUp)
+	s.EqualValues("v2", inactiveVersions.Versions[0].Id)
+	s.EqualValues("I am v2", inactiveVersions.Versions[0].Message)
+
+	activeVersions := results.Versions[1]
+	s.False(activeVersions.RolledUp)
+	s.EqualValues("v1", activeVersions.Versions[0].Id)
+	s.EqualValues("I am v1", activeVersions.Versions[0].Message)
 }

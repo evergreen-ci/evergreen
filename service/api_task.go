@@ -81,7 +81,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	job := units.NewCollectHostIdleDataJob(h, t, idleTimeStartAt, t.StartTime)
 	if err = as.queue.Put(job); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, errors.New("error queuing host idle stats"))
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "error queuing host idle stats"))
 		return
 	}
 

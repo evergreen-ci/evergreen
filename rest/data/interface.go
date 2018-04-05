@@ -72,6 +72,8 @@ type Connector interface {
 	FindProjectVars(string) (*model.ProjectVars, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
+	// GetVersionsAndVariants returns recent versions for a project
+	GetVersionsAndVariants(int, int, *model.Project) (*restModel.VersionVariantData, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId

@@ -214,9 +214,14 @@ func (q *adaptiveLocalOrdering) Next(ctx context.Context) amboy.Job {
 }
 
 func (q *adaptiveLocalOrdering) Complete(ctx context.Context, j amboy.Job) {
+	wait := make(chan struct{})
 	q.operations <- func(ctx context.Context, items *adaptiveOrderItems) {
-		items.completed = append(items.completed, j.ID())
+		id := j.ID()
+		items.completed = append(items.completed, id)
+		items.jobs[id] = j
+		close(wait)
 	}
+	<-wait
 }
 
 func (q *adaptiveLocalOrdering) Runner() amboy.Runner { return q.runner }

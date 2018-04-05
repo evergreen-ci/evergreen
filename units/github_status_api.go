@@ -36,6 +36,8 @@ const (
 	githubUpdateTypePatchWithVersion = "patch-with-version"
 	githubUpdateTypeRequestAuth      = "request-auth"
 	githubUpdateTypeBadConfig        = "bad-config"
+
+	githubStatusAPITimeout = time.Minute
 )
 
 func init() {
@@ -176,7 +178,7 @@ func (j *githubStatusUpdateJob) sendStatusUpdate(ctx context.Context, status *gi
 	}
 
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, githubStatusAPITimeout)
 	defer cancel()
 
 	respStatus, resp, err := client.Repositories.CreateStatus(ctx, status.Owner, status.Repo, status.Ref, &newStatus)

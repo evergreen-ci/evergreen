@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
@@ -87,11 +85,11 @@ type waterfallRow struct {
 
 // waterfallBuild represents one set of tests for a given build variant and version
 type waterfallBuild struct {
-	Id              string          `json:"id"`
-	Active          bool            `json:"active"`
-	Version         string          `json:"version"`
-	Tasks           []waterfallTask `json:"tasks"`
-	TaskStatusCount taskStatusCount `json:"taskStatusCount"`
+	Id              string               `json:"id"`
+	Active          bool                 `json:"active"`
+	Version         string               `json:"version"`
+	Tasks           []waterfallTask      `json:"tasks"`
+	TaskStatusCount task.TaskStatusCount `json:"taskStatusCount"`
 }
 
 // waterfallTask represents one task in the waterfall UI.
@@ -172,9 +170,9 @@ func (wfv waterfallVersions) Swap(i, j int) {
 }
 
 // createWaterfallTasks takes ina  build's task cache returns a list of waterfallTasks.
-func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, taskStatusCount) {
+func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, task.TaskStatusCount) {
 	//initialize and set TaskStatusCount fields to zero
-	statusCount := taskStatusCount{}
+	statusCount := task.TaskStatusCount{}
 	waterfallTasks := []waterfallTask{}
 
 	// add the tasks to the build
@@ -190,7 +188,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, taskStatusC
 		}
 		taskForWaterfall.Status = uiStatus(taskForWaterfall)
 
-		statusCount.incrementStatus(taskForWaterfall.Status, taskForWaterfall.StatusDetails)
+		statusCount.IncrementStatus(taskForWaterfall.Status, taskForWaterfall.StatusDetails)
 
 		waterfallTasks = append(waterfallTasks, taskForWaterfall)
 	}
@@ -224,7 +222,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 		// fetch the versions and associated builds
 		versionsFromDB, buildsByVersion, err :=
-			fetchVersionsAndAssociatedBuilds(project, skip, numVersionElements)
+			model.FetchVersionsAndAssociatedBuilds(project, skip, numVersionElements)
 
 		if err != nil {
 			return versionVariantData{}, errors.Wrap(err,
@@ -397,58 +395,6 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 }
 
-func (restapi restAPI) getVersionsAndVariantsApi(w http.ResponseWriter, r *http.Request) {
-	projectId := mux.Vars(r)["project_id"]
-
-	projectRef, err := model.FindOneProjectRef(projectId)
-	if err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Project '%s' does not exist!", projectId),
-			http.StatusBadRequest)
-		return
-	}
-
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		http.Error(
-			w,
-			fmt.Sprintf("Could not find a project for a projectRef '%s'", projectId),
-			http.StatusInternalServerError)
-		return
-	}
-
-	// GET parameters boilerplate
-	limitVals, ok := r.URL.Query()["limit"]
-
-	limit := 10
-	if ok && len(limitVals) == 1 {
-		val, err := strconv.Atoi(limitVals[0])
-		if err != nil {
-			limit = val
-		}
-	}
-
-	offsetVals, ok := r.URL.Query()["offset"]
-
-	offset := 0
-	if ok && len(offsetVals) == 1 {
-		val, err := strconv.Atoi(offsetVals[0])
-		if err != nil {
-			offset = val
-		}
-	}
-
-	result, err := getVersionsAndVariants(offset, limit, project)
-
-	if err != nil {
-		http.Error(w, "Error during query execution", http.StatusInternalServerError)
-		return
-	}
-
-	restapi.WriteJSON(w, http.StatusOK, result)
-}
-
 // addFailedTests adds all of the failed tests associated with a task to its entry in the waterfallRow.
 // addFailedAndStartedTests adds all of the failed tests associated with a task to its entry in the waterfallRow
 // and adds the estimated duration to started tasks.
@@ -482,51 +428,6 @@ func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndSt
 			}
 		}
 	}
-}
-
-// Helper function to fetch a group of versions and their associated builds.
-// Returns the versions themselves, as well as a map of version id -> the
-// builds that are a part of the version (unsorted).
-func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersions int) ([]version.Version, map[string][]build.Build, error) {
-
-	// fetch the versions from the db
-	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
-		WithFields(
-			version.RevisionKey,
-			version.ErrorsKey,
-			version.WarningsKey,
-			version.IgnoredKey,
-			version.MessageKey,
-			version.AuthorKey,
-			version.RevisionOrderNumberKey,
-			version.CreateTimeKey,
-		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
-
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error fetching versions from database")
-	}
-
-	// create a slice of the version ids (used to fetch the builds)
-	versionIds := make([]string, 0, len(versionsFromDB))
-	for _, v := range versionsFromDB {
-		versionIds = append(versionIds, v.Id)
-	}
-
-	// fetch all of the builds (with only relevant fields)
-	buildsFromDb, err := build.Find(
-		build.ByVersions(versionIds).
-			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey))
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "error fetching builds from database")
-	}
-
-	// group the builds by version
-	buildsByVersion := map[string][]build.Build{}
-	for _, build := range buildsFromDb {
-		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
-	}
-
-	return versionsFromDB, buildsByVersion, nil
 }
 
 // Takes in a slice of tasks, and determines whether any of the tasks in
@@ -575,7 +476,7 @@ func countOnPreviousPage(skip int, numVersionElements int,
 
 		// fetch the versions and builds
 		versionsFromDB, buildsByVersion, err :=
-			fetchVersionsAndAssociatedBuilds(project, stepBack, toFetch)
+			model.FetchVersionsAndAssociatedBuilds(project, stepBack, toFetch)
 
 		if err != nil {
 			return 0, errors.Wrap(err, "error fetching versions and builds")

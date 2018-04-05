@@ -305,7 +305,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // }, ...])
   function getComparisionOptions(projectId) {
     return $q.all([
-      ApiV1.getWaterfallVersionsRows(projectId).then(versionSelectAdaptor),
+      ApiV1.getRecentVersions(projectId).then(versionSelectAdaptor),
       ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
     ]).then(function(data) {
       return Array.concat.apply(null, data)

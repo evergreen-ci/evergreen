@@ -90,10 +90,11 @@ func (l *lockManager) lockPinger(ctx context.Context) {
 					continue
 				}
 
-				// Update the important metadata
 				stat := j.Status()
-				stat.ModificationCount++
-				stat.ModificationTime = time.Now()
+				if !stat.InProgress || stat.Owner != l.name {
+					delete(activeLocks, name)
+					continue
+				}
 
 				if ctx.Err() != nil {
 					return
@@ -155,8 +156,6 @@ func (l *lockManager) Lock(j amboy.Job) error {
 			stat.ModificationTime, stat.Owner, j.ID())
 	}
 
-	stat.ModificationTime = time.Now()
-	stat.ModificationCount++
 	stat.Owner = l.name
 	stat.InProgress = true
 	j.SetStatus(stat)
@@ -180,8 +179,6 @@ func (l *lockManager) Unlock(j amboy.Job) error {
 	}
 
 	stat := j.Status()
-	stat.ModificationCount++
-	stat.ModificationTime = time.Now()
 	stat.InProgress = false
 	stat.Owner = ""
 	j.SetStatus(stat)

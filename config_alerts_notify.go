@@ -32,23 +32,6 @@ func (c *NotifyConfig) Set() error {
 }
 
 func (c *NotifyConfig) ValidateAndDefault() error {
-	notifyConfig := c.SMTP
-
-	if notifyConfig == nil {
-		return nil
-	}
-
-	if notifyConfig.Server == "" || notifyConfig.Port == 0 {
-		return errors.New("You must specify a SMTP server and port")
-	}
-
-	if len(notifyConfig.AdminEmail) == 0 {
-		return errors.New("You must specify at least one admin_email")
-	}
-
-	if notifyConfig.From == "" {
-		return errors.New("You must specify a from address")
-	}
 
 	return nil
 }

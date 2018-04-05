@@ -39,7 +39,7 @@ func getTracker(conf *evergreen.Settings, project model.ProjectRef) (*RepoTracke
 	return tracker, nil
 }
 
-func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef, num int) error {
+func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, project model.ProjectRef) error {
 	if !project.Enabled {
 		return errors.Errorf("project disabled: %s", project.Identifier)
 	}
@@ -54,7 +54,7 @@ func CollectRevisionsForProject(ctx context.Context, conf *evergreen.Settings, p
 		return errors.Wrap(err, "problem fetching repotracker")
 	}
 
-	if err = tracker.FetchRevisions(ctx, num); err != nil {
+	if err = tracker.FetchRevisions(ctx); err != nil {
 		grip.Warning(message.WrapError(err, message.Fields{
 			"project": project.Identifier,
 			"message": "problem fetching revisions",

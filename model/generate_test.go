@@ -70,6 +70,15 @@ var (
 				MultiCommand: []PluginCommandConf{},
 			},
 		},
+		TaskGroups: []parserTaskGroup{
+			parserTaskGroup{
+				Name:     "example_task_group",
+				MaxHosts: 1,
+				Tasks: []string{
+					"another_task",
+				},
+			},
+		},
 	}
 	sampleProjYml = `
 tasks:
@@ -163,6 +172,15 @@ functions:
             ],
             "name": "second"
         }
+    ],
+    "task_groups": [
+        {
+            "name": "my_task_group",
+            "max_hosts": 1,
+            "tasks": [
+              "test",
+            ]
+        }
     ]
 }
 `
@@ -206,6 +224,11 @@ func (s *GenerateSuite) TestParseProjectFromJSON() {
 	s.Equal("test", g.BuildVariants[0].DisplayTasks[0].ExecutionTasks[0])
 	s.Len(g.BuildVariants[0].DisplayTasks, 1)
 	s.Equal("display", g.BuildVariants[0].DisplayTasks[0].Name)
+
+	s.Len(g.TaskGroups, 1)
+	s.Equal("my_task_group", g.TaskGroups[0].Name)
+	s.Equal(1, g.TaskGroups[0].MaxHosts)
+	s.Equal("test", g.TaskGroups[0].Tasks[0])
 }
 
 func (s *GenerateSuite) TestValidateMaxVariants() {
@@ -399,11 +422,11 @@ func (s *GenerateSuite) TestAddGeneratedProjectToConfig() {
 }
 
 func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
-	t := task.Task{
+	genTask := task.Task{
 		Id:      "task_that_called_generate_task",
 		Version: "version_that_called_generate_task",
 	}
-	s.NoError(t.Insert())
+	s.NoError(genTask.Insert())
 	sampleBuild := build.Build{
 		Id:           "sample_build",
 		BuildVariant: "a_variant",
@@ -418,7 +441,9 @@ func (s *GenerateSuite) TestSaveNewBuildsAndTasks() {
 
 	g := sampleGeneratedProject
 	g.TaskID = "task_that_called_generate_task"
-	s.NoError(g.AddGeneratedProjectToVersion())
+	p, v, t, pm, err := g.NewVersion()
+	s.NoError(err)
+	s.NoError(g.Save(p, v, t, pm))
 	builds, err := build.Find(db.Query(bson.M{}))
 	s.NoError(err)
 	tasks := []task.Task{}

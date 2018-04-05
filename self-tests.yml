@@ -234,7 +234,6 @@ functions:
           url: "http://localhost:9090"
 
         notify:
-          logfile: "evg_notify.log"
           smtp:
             from: "mci-notifications+test@mongodb.com"
             server: "localhost"
@@ -432,9 +431,6 @@ tasks:
     name: test-evergreen
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-notify
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-alerts
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -552,9 +548,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-evergreen
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
-    name: race-notify
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-alerts
