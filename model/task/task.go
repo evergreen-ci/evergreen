@@ -47,7 +47,7 @@ type Task struct {
 	FinishTime    time.Time `bson:"finish_time" json:"finish_time"`
 
 	Version           string `bson:"version" json:"version,omitempty"`
-	Project           string `bson:"project_id" json:"project_id,omitempty"`
+	Project           string `bson:"branch" json:"branch,omitempty"`
 	Revision          string `bson:"gitspec" json:"gitspec"`
 	Priority          int64  `bson:"priority" json:"priority"`
 	TaskGroup         string `bson:"task_group" json:"task_group"`
