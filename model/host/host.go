@@ -652,3 +652,65 @@ func (h *Host) SetExtId() error {
 		bson.M{"$set": bson.M{ExtIdKey: h.ExternalIdentifier}},
 	)
 }
+
+func FindHostsToTerminate() ([]Host, error) {
+	const (
+		// provisioningCutoff is the threshold to consider as too long for a host to take provisioning
+		provisioningCutoff = 25 * time.Minute
+
+		// unreachableCutoff is the threshold to wait for an unreachable host to become marked
+		// as reachable again before giving up and terminating it.
+		unreachableCutoff = 5 * time.Minute
+	)
+
+	now := time.Now()
+
+	query := bson.M{
+		ProviderKey: bson.M{"$in": evergreen.ProviderSpawnable},
+		"$or": []bson.M{
+			{ // host.ByExpiredSince(time.Now())
+				StartedByKey: bson.M{"$ne": evergreen.User},
+				StatusKey: bson.M{
+					"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
+				},
+				ExpirationTimeKey: bson.M{"$lte": now},
+			},
+			{ // host.IsProvisioningFailure
+				StatusKey: evergreen.HostProvisionFailed,
+			},
+			{ // host.ByUnprovisonedSince
+				ProvisionedKey: false,
+				CreateTimeKey:  bson.M{"$lte": now.Add(-provisioningCutoff)},
+				StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+				StartedByKey:   evergreen.User,
+			},
+			{ // host.IsDecomissioned
+				RunningTaskKey: bson.M{"$exists": false},
+				StatusKey:      evergreen.HostDecommissioned,
+			},
+			{ // unreachable
+				StatusKey: evergreen.HostUnreachable,
+				"$or": []bson.M{
+					{LastCommunicationTimeKey: bson.M{"$lt": now.Add(-unreachableCutoff)}},
+					{
+						NeedsNewAgentKey:         false,
+						LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
+					},
+				},
+			},
+		},
+	}
+	hosts, err := Find(db.Query(query))
+
+	fmt.Println(len(hosts), query)
+
+	if db.ResultsNotFound(err) {
+		return []Host{}, nil
+	}
+
+	if err != nil {
+		return nil, errors.Wrap(err, "database error")
+	}
+
+	return hosts, nil
+}

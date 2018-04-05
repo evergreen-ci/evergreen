@@ -18,13 +18,8 @@ var (
 	// the functions the host monitor will run through to find hosts needing
 	// to be terminated
 	defaultHostFlaggingFuncs = []hostFlagger{
-		{flagDecommissionedHosts, "decommissioned"},
-		{flagUnreachableHosts, "unreachable"},
 		{flagIdleHosts, "idle"},
 		{flagExcessHosts, "excess"},
-		{flagUnprovisionedHosts, "provision_timeout"},
-		{flagProvisioningFailedHosts, "provision_failed"},
-		{flagExpiredHosts, "expired"},
 	}
 
 	// the functions the notifier will use to build notifications that need
