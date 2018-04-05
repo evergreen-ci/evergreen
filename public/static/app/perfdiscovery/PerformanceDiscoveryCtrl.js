@@ -61,22 +61,12 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     item && vm.updateData()
   })
 
-  vm.updateData = function() {
+  var oldFromVersion, oldToVersion
+
+  function loadCompOptions(fromVersion, toVersion) {
     // Set loading flag to display spinner
     vm.isLoading = true
-
-    var fromVersion = vm.fromSelect.selected
-    var toVersion = vm.toSelect.selected
-
-    // Update permalink
-    stateUtil.applyState(state, {
-      from: fromVersion.id,
-      to: toVersion.id,
-    })
-
-    // Display no data while loading is in progress
-    vm.gridOptions.data = []
-
+  
     $q.all({
       fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
       toVersionObj: dataUtil.getCompItemVersion(toVersion),
@@ -99,6 +89,30 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       })
       // Stop spinner
       .finally(function() { vm.isLoading = false })
+  }
+
+  vm.updateData = function() {
+    var fromVersion = vm.fromSelect.selected
+    var toVersion = vm.toSelect.selected
+
+    // If nothing has changed, exit the function
+    if (fromVersion == oldFromVersion && toVersion == oldToVersion) {
+      return
+    }
+
+    oldFromVersion = fromVersion
+    oldToVersion = toVersion
+
+    // Update permalink
+    stateUtil.applyState(state, {
+      from: fromVersion.id,
+      to: toVersion.id,
+    })
+
+    // Display no data while loading is in progress
+    vm.gridOptions.data = []
+
+    loadCompOptions(fromVersion, toVersion)
   }
 
   // Returns a predefined URL for given `row` and `col`

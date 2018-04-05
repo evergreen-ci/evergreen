@@ -1,4 +1,6 @@
-mciModule.directive('versionDropdown', function(PerfDiscoveryDataService) { return {
+mciModule.directive('versionDropdown', function(
+  PerfDiscoveryDataService
+) { return {
   restrict: 'E',
   scope: {
     model: '=',
@@ -6,6 +8,7 @@ mciModule.directive('versionDropdown', function(PerfDiscoveryDataService) { retu
   bindToController: true,
   controllerAs: 'vdvm',
   templateUrl: 'perf-discovery-version-dropdown',
+
   controller: function() {
     // Version Dropdown View Model
     var vdvm = this

@@ -80,9 +80,13 @@ mciModule.factory('PerfDiscoveryDataService', function(
   function findVersionItem(items, query) {
     if (query == undefined) return
 
-    var found = _.find(items, function(d) {
+    return _.find(items, function(d) {
       return query == d.id || query == d.name
     })
+  }
+
+  function getQueryBasedItem(items, query) {
+    var found = findVersionItem(items, query)
 
     if (!found) {
       var item = {
@@ -93,7 +97,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
           isPatchId(query) ? PD.KIND_PATCH : undefined
         ),
       }
-      
+
       // If kind is defined
       if (item.kind) return item
     }
@@ -104,10 +108,10 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // This function is used to make possible to type arbitrary
   // version revision into version drop down
   function getVersionOptions(items, query) {
-    var found = findVersionItem(items, query)
+    var additional = getQueryBasedItem(items, query)
 
-    return found
-      ? items.concat(found)
+    return additional
+      ? items.concat(additional)
       : items
   }
 
@@ -300,7 +304,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // :returns: (Promise of) list of versions/tags
   // :rtype: Promise([{
   //    kind: 't(ag)|v(ersion)',
-  //    id: '??????????',
+  //    id: 'version_id',
   //    name: 'display name'
   // }, ...])
   function getComparisionOptions(projectId) {
@@ -310,10 +314,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     ]).then(function(data) {
       return Array.concat.apply(null, data)
     })
-  }
-
-  function queryHistoryData() {
-  
   }
 
   // Makes series of HTTP calls and loads curent, baseline and history data
@@ -369,7 +369,8 @@ mciModule.factory('PerfDiscoveryDataService', function(
     return getRows(
       processData(
         queryData(
-          tasksOfBuilds(queryBuildData(version)), tasksOfBuilds(queryBuildData(baselineTag))
+          tasksOfBuilds(queryBuildData(version)),
+          tasksOfBuilds(queryBuildData(baselineTag))
         )
       )
     )
@@ -389,5 +390,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
     _processItem: processItem,
     _onProcessData: onProcessData,
     _onGetRows: onGetRows,
+    _versionSelectAdaptor: versionSelectAdaptor,
+    _tagSelectAdaptor: tagSelectAdaptor,
   }
 })

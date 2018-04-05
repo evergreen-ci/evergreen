@@ -1,11 +1,12 @@
 describe('PerfDiscoveryDataServiceTest', function() {
   beforeEach(module('MCI'));
 
-  var service, $httpBackend
+  var service, $httpBackend, PD
 
   beforeEach(inject(function($injector) {
     service = $injector.get('PerfDiscoveryDataService')
     $httpBackend = $injector.get('$httpBackend')
+    PD = $injector.get('PERF_DISCOVERY')
   }))
 
   it('should extract tasks from version', function() {
@@ -243,5 +244,105 @@ describe('PerfDiscoveryDataServiceTest', function() {
       avgRatio: 1.125,
     }])
 
+  })
+
+  it('Extracts versions from the response', function() {
+    var resp = {
+      data: {
+        versions: [{
+          rolled_up: true,
+        }, {
+          rolled_up: false,
+          versions: [{
+            version_id: 'v_id',
+            revision: 'v_rev',
+          }]
+        }]
+      }
+    }
+
+    expect(
+      service._versionSelectAdaptor(resp)
+    ).toEqual([{
+      kind: PD.KIND_VERSION,
+      id: 'v_id',
+      name: 'v_rev',
+    }])
+  })
+
+  it('Extracts versions from the response', function() {
+    var resp = {
+      data: [{
+        name: 't_name',
+        obj: { version_id: 'v_id' },
+      }]
+    }
+
+    expect(
+      service._tagSelectAdaptor(resp)
+    ).toEqual([{
+      kind: PD.KIND_TAG,
+      id: 'v_id',
+      name: 't_name',
+    }])
+  })
+
+  it('Finds tag/version in items', function() {
+    var item1 = {id: 'id1', name: 'name1'}
+    var item2 = {id: 'id2', name: 'name2'}
+    var items = [item1, item2]
+
+    expect(
+      service.findVersionItem(items, 'id1')
+    ).toBe(item1)
+
+    expect(
+      service.findVersionItem(items, 'id2')
+    ).toBe(item2)
+
+    expect(
+      service.findVersionItem(items, 'id3')
+    ).toBeUndefined()
+
+    expect(
+      service.findVersionItem(items, 'name2')
+    ).toBe(item2)
+  })
+
+  it('Adds query based item to comp items', function() {
+    var LEN24_A = '1234567890123456789012_A'
+    var LEN24_B = '1234567890123456789012_B'
+    var LEN40 = '1234567890123456789012345678901234567890'
+    var item1 = {id: LEN24_A, name: 'name1'}
+    var item2 = {id: 'id2', name: 'name2'}
+    var items = [item1, item2]
+
+    expect(
+      service.getVersionOptions(items, 'noitem')
+    ).toBe(items)
+
+    expect(
+      service.getVersionOptions(items, 'id1')
+    ).toBe(items)
+
+    expect(
+      service.getVersionOptions(items, LEN24_A)
+    ).toBe(items)
+
+    expect(
+      service.getVersionOptions(items, LEN24_B)
+    ).toEqual(items.concat({
+      kind: PD.KIND_PATCH,
+      id: LEN24_B,
+      name: LEN24_B,
+    }))
+
+    expect(
+      service.getVersionOptions(items, LEN40)
+    ).toEqual(items.concat({
+      kind: PD.KIND_VERSION,
+      id: LEN40,
+      name: LEN40,
+    }))
   })
 })

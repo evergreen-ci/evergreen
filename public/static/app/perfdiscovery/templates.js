@@ -5,8 +5,12 @@ mciModule.run(function($templateCache) {
       '<ui-select-match>' +
         '<span ng-bind="$select.selected.name"></span>' +
       '</ui-select-match>' +
-      '<ui-select-choices repeat="item in vdvm.options | filter : $select.search" refresh="vdvm.onRefresh($select.search)" refresh-delay="250">' +
-        '<span ng-bind="item.name"></span>' +
+      '<ui-select-choices ' +
+        'repeat="item in vdvm.options | filter : $select.search" ' +
+        'refresh="vdvm.onRefresh($select.search)" ' +
+        'refresh-delay="250"' +
+      '>' +
+          '<span ng-bind="item.name"></span>' +
       '</ui-select-choices>' +
     '</ui-select>'
   )
