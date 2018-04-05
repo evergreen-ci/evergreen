@@ -1046,7 +1046,7 @@ func TaskHistoryPickaxe(params PickaxeParams) ([]task.Task, error) {
 			"$gte": params.OldestOrder,
 			"$lte": params.NewestOrder,
 		},
-		"project_id": params.Project.Identifier,
+		"branch": params.Project.Identifier,
 	}
 	// If there are build variants in the filter, use them instead
 	if len(params.BuildVariants) > 0 {
