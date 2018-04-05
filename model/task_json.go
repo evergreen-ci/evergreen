@@ -17,7 +17,6 @@ const (
 )
 
 type TaskJSON struct {
-	Id                  string                 `bson:"_id" json:"id"`
 	Name                string                 `bson:"name" json:"name"`
 	TaskName            string                 `bson:"task_name" json:"task_name"`
 	ProjectId           string                 `bson:"project_id" json:"project_id"`
@@ -61,7 +60,6 @@ var (
 
 var (
 	// BSON fields for the TaskJSON struct
-	TaskJSONIdKey                  = bsonutil.MustHaveTag(TaskJSON{}, "Id")
 	TaskJSONNameKey                = bsonutil.MustHaveTag(TaskJSON{}, "Name")
 	TaskJSONTaskNameKey            = bsonutil.MustHaveTag(TaskJSON{}, "TaskName")
 	TaskJSONProjectIdKey           = bsonutil.MustHaveTag(TaskJSON{}, "ProjectId")

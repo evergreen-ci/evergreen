@@ -271,8 +271,8 @@ mciModule.factory('PerfDiscoveryDataService', function(
       .map(function(d) {
         return {
           kind: PD.KIND_VERSION,
-          id: d.ids[0],
-          name: d.revisions[0],
+          id: d.versions[0].version_id,
+          name: d.versions[0].revision,
         }
       })
       .value()
@@ -305,7 +305,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // }, ...])
   function getComparisionOptions(projectId) {
     return $q.all([
-      ApiV1.getRecentVersions(projectId).then(versionSelectAdaptor),
+      ApiV2.getRecentVersions(projectId).then(versionSelectAdaptor),
       ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
     ]).then(function(data) {
       return Array.concat.apply(null, data)
