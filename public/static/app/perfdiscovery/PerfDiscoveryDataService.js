@@ -328,7 +328,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
           .then(respData, function() { return null })
           .then(function(data) {
             if (data) {
-              var b = _.findWhere(promise.baselineTasks, {
+              var baseline = _.findWhere(promise.baselineTasks, {
                 buildName: task.buildName,
                 taskName: task.taskName,
               })
@@ -337,7 +337,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
                 current: data,
                 history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
-                baseline: ApiTaskdata.getTaskById(b.taskId, 'perf')
+                baseline: ApiTaskdata.getTaskById(baseline.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
               })
             } else {
