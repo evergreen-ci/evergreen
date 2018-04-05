@@ -490,7 +490,7 @@ func TestSetExpirationNotification(t *testing.T) {
 	})
 }
 
-func TestHostClearRunningTask(t *testing.T) {
+func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
@@ -505,7 +505,6 @@ func TestHostClearRunningTask(t *testing.T) {
 			RunningTask: "taskId",
 			StartedBy:   evergreen.User,
 			Status:      evergreen.HostRunning,
-			Pid:         "12345",
 		}
 
 		So(host.Insert(), ShouldBeNil)
@@ -524,15 +523,15 @@ func TestHostClearRunningTask(t *testing.T) {
 			" and task dispatch time fields from both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.ClearRunningTask("prevTask", time.Now()), ShouldBeNil)
+			So(host.ClearRunningAndSetLastTask(&task.Task{Id: "prevTask"}), ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "")
-			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
+			So(host.LastTask, ShouldEqual, "prevTask")
 
 			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 
 			So(host.RunningTask, ShouldEqual, "")
-			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
+			So(host.LastTask, ShouldEqual, "prevTask")
 
 			Convey("the count of idle hosts should go up", func() {
 				count, err := Count(IsIdle)
@@ -557,9 +556,6 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			" clearing '%v' collection", Collection)
 		oldTaskId := "oldId"
 		newTaskId := "newId"
-		newTask := task.Task{
-			Id: newTaskId,
-		}
 		h := Host{
 			Id:          "test",
 			RunningTask: oldTaskId,
@@ -567,18 +563,17 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		}
 		So(h.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			_, err := h.UpdateRunningTask(oldTaskId, &newTask, time.Now())
+			_, err := h.UpdateRunningTask(&task.Task{Id: newTaskId})
 			So(err, ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
-			So(found.LastTaskCompleted, ShouldEqual, oldTaskId)
 			runningTaskHosts, err := Find(IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should error out", func() {
-			_, err := h.UpdateRunningTask(newTaskId, &task.Task{}, time.Now())
+			_, err := h.UpdateRunningTask(&task.Task{})
 			So(err, ShouldNotBeNil)
 		})
 	})

@@ -257,16 +257,22 @@ func (d *mongoDB) Put(j amboy.Job) error {
 // Save takes a job object and updates that job in the persistence
 // layer. Replaces or updates an existing job with the same ID.
 func (d *mongoDB) Save(j amboy.Job) error {
+	name := j.ID()
+	session, jobs := d.getJobsCollection()
+	defer session.Close()
+
+	stat := j.Status()
+	query := d.getAtomicQuery(name, stat)
+	stat.ModificationCount++
+	stat.ModificationTime = time.Now()
+	j.SetStatus(stat)
+
 	job, err := registry.MakeJobInterchange(j, amboy.BSON)
 	if err != nil {
 		return errors.Wrap(err, "problem converting job to interchange format")
 	}
 
-	name := j.ID()
-	session, jobs := d.getJobsCollection()
-	defer session.Close()
-
-	info, err := jobs.Upsert(d.getAtomicQuery(j.ID(), j.Status()), job)
+	info, err := jobs.Upsert(query, job)
 	if err != nil {
 		return errors.Wrapf(err, "problem updating %s: %+v", name, info)
 	}
@@ -295,8 +301,7 @@ func (d *mongoDB) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error {
 	stat.ModificationCount++
 	stat.ModificationTime = time.Now()
 
-	err := jobs.Update(query,
-		bson.M{"$set": bson.M{"status": stat}})
+	err := jobs.Update(query, bson.M{"$set": bson.M{"status": stat}})
 
 	if err != nil {
 		return errors.Wrapf(err, "problem updating status document for %s", id)
@@ -395,13 +400,14 @@ func (d *mongoDB) Next(ctx context.Context) amboy.Job {
 	if d.useNewQuery {
 		qd = bson.M{
 			"$or": []bson.M{
-				bson.M{
+				{
 					"status.completed": false,
 					"status.in_prog":   false,
 				},
-				bson.M{
-					"status.mod_ts":  bson.M{"$lte": time.Now().Add(-lockTimeout)},
-					"status.in_prog": true,
+				{
+					"status.completed": false,
+					"status.mod_ts":    bson.M{"$lte": time.Now().Add(-lockTimeout)},
+					"status.in_prog":   true,
 				},
 			},
 		}
