@@ -290,6 +290,9 @@ mciModule.factory('PerfDiscoveryDataService', function(
                 buildName: task.buildName,
                 taskName: task.taskName,
               })
+              // Skip items with no baseline results
+              if (!baseline) return null
+
               return $q.all({
                 ctx: $q.resolve(task),
                 current: data,
@@ -335,7 +338,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
       ApiV2.getRecentVersions(projectId).then(versionSelectAdaptor),
       ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
     ]).then(function(data) {
-      return Array.concat.apply(null, data)
+      return Array.prototype.concat.apply([], data)
     })
   }
 
