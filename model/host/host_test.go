@@ -490,7 +490,7 @@ func TestSetExpirationNotification(t *testing.T) {
 	})
 }
 
-func TestHostClearRunningTask(t *testing.T) {
+func TestHostClearRunningAndSetLastTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
@@ -505,7 +505,6 @@ func TestHostClearRunningTask(t *testing.T) {
 			RunningTask: "taskId",
 			StartedBy:   evergreen.User,
 			Status:      evergreen.HostRunning,
-			Pid:         "12345",
 		}
 
 		So(host.Insert(), ShouldBeNil)
@@ -524,15 +523,15 @@ func TestHostClearRunningTask(t *testing.T) {
 			" and task dispatch time fields from both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.ClearRunningTask("prevTask", time.Now()), ShouldBeNil)
+			So(host.ClearRunningAndSetLastTask("prevTask", time.Now()), ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "")
-			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
+			So(host.LastTask, ShouldEqual, "prevTask")
 
 			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 
 			So(host.RunningTask, ShouldEqual, "")
-			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
+			So(host.LastTask, ShouldEqual, "prevTask")
 
 			Convey("the count of idle hosts should go up", func() {
 				count, err := Count(IsIdle)
@@ -572,7 +571,7 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
-			So(found.LastTaskCompleted, ShouldEqual, oldTaskId)
+			So(found.LastTask, ShouldEqual, oldTaskId)
 			runningTaskHosts, err := Find(IsRunningTask)
 			So(err, ShouldBeNil)
 			So(len(runningTaskHosts), ShouldEqual, 1)

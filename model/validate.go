@@ -93,7 +93,7 @@ func badHostTaskRelationship(h *host.Host, t *task.Task) bool {
 	if t.Id == h.RunningTask {
 		return false
 	}
-	if t.Id == h.LastTaskCompleted && h.RunningTask == "" {
+	if t.Id == h.LastTask && h.RunningTask == "" {
 		return false
 	}
 	return true
