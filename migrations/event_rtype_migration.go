@@ -18,7 +18,7 @@ const (
 
 const migrationTime = "2015-10-21T16:29:00-07:00"
 
-func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode,megacheck
+func makeEventRTypeMigration(collection string) migrationGeneratorFactory { //nolint: deadcode, megacheck
 	loc, _ := time.LoadLocation("UTC")
 	bttf, err := time.ParseInLocation(time.RFC3339, migrationTime, loc)
 	if err != nil {

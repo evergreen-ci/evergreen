@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
@@ -138,6 +139,8 @@ func (d *driverInternal) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error
 	name := j.ID()
 
 	if job, ok := d.jobs.m[name]; ok {
+		stat.ModificationTime = time.Now()
+		stat.ModificationCount++
 		job.SetStatus(stat)
 		d.jobs.m[name] = job
 		return nil

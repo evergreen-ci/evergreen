@@ -1,4 +1,7 @@
-mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, MPA_UI) {
+mciModule.factory('PerfDiscoveryDataService', function(
+  $q, ApiV1, ApiV2, ApiTaskdata, EVG, MPA_UI, PERF_DISCOVERY
+) {
+  var PD = PERF_DISCOVERY
 
   /*********************
    * UTILITY FUNCTIONS *
@@ -64,6 +67,34 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
     return function(item, id) {
       return results.baseline[id] == undefined
     }
+  }
+
+  function isPatchId(revision) {
+    return revision.length == EVG.PATCH_ID_LEN
+  }
+
+  function isGitHash(revision) {
+    return revision.length == EVG.GIT_HASH_LEN
+  }
+
+  function getQueryBasedItem(items, query) {
+    var found = findVersionItem(items, query)
+
+    if (!found) {
+      var item = {
+        id: query,
+        name: query,
+        kind: ( // Poor man's pattern matching
+          isGitHash(query) ? PD.KIND_VERSION :
+          isPatchId(query) ? PD.KIND_PATCH : undefined
+        ),
+      }
+
+      // If kind is defined
+      if (item.kind) return item
+    }
+
+    return undefined
   }
 
   /******************
@@ -205,15 +236,37 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
   }
 
   function queryBuildData(version) {
-    return $q.all(_.map(version.builds, function(d) {
-      return ApiV1.getBuildDetail(d).then(
-        respData, function(e) { return {} })
-    }))
+    return $q.all(
+      _.map(version.build_variants_status, function(d) {
+        return ApiV1.getBuildDetail(d.build_id).then(
+          respData, function(e) { return {} }
+        )
+      })
+    )
   }
 
   function tasksOfBuilds(promise) {
     return promise.then(function(builds) {
       return extractTasks({builds: builds})
+    })
+  }
+
+  function versionSelectAdaptor(versionsRes) {
+    return _.chain(versionsRes.data.versions)
+      .where({rolled_up: false})
+      .map(function(d) {
+        return {
+          kind: PD.KIND_VERSION,
+          id: d.versions[0].version_id,
+          name: d.versions[0].revision,
+        }
+      })
+      .value()
+  }
+
+  function tagSelectAdaptor(tagsRes) {
+    return _.map(tagsRes.data, function(d) {
+      return {kind: PD.KIND_TAG, id: d.obj.version_id, name: d.name}
     })
   }
 
@@ -223,25 +276,27 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
 
   // Makes series of HTTP calls and loads curent, baseline and history data
   // :rtype: $q.promise
-  function queryData(tasksPromise, baselineTag) {
-    return tasksPromise.then(function(tasks) {
-      return $q.all(_.map(tasks, function(task) {
+  function queryData(tasksPromise, baselineTasks) {
+    return $q.all({
+      tasks: tasksPromise,
+      baselineTasks: baselineTasks
+    }).then(function(promise) {
+      return $q.all(_.map(promise.tasks, function(task) {
         return ApiTaskdata.getTaskById(task.taskId, 'perf')
           .then(respData, function() { return null })
           .then(function(data) {
             if (data) {
+              var baseline = _.findWhere(promise.baselineTasks, {
+                buildName: task.buildName,
+                taskName: task.taskName,
+              })
               return $q.all({
                 ctx: $q.resolve(task),
                 current: data,
                 history: ApiTaskdata.getTaskHistory(task.taskId, 'perf')
                   .then(respData, function(e) { return [] }),
-                baseline: ApiTaskdata.getTaskByTag({
-                  projectId: data.project_id,
-                  tag: baselineTag,
-                  variant: data.variant,
-                  taskName: task.taskName,
-                  name: 'perf',
-                }).then(respData, function() { null }),
+                baseline: ApiTaskdata.getTaskById(baseline.taskId, 'perf')
+                  .then(respData, function(e) { return null }),
               })
             } else {
               return null
@@ -268,11 +323,54 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
    * PUBLIC API *
    **************/
 
+  // Queries list of available options for compare from/to dropdowns
+  // :returns: (Promise of) list of versions/tags
+  // :rtype: Promise([{
+  //    kind: 't(ag)|v(ersion)',
+  //    id: 'version_id',
+  //    name: 'display name'
+  // }, ...])
+  function getComparisionOptions(projectId) {
+    return $q.all([
+      ApiV2.getRecentVersions(projectId).then(versionSelectAdaptor),
+      ApiTaskdata.getProjectTags(projectId).then(tagSelectAdaptor)
+    ]).then(function(data) {
+      return Array.concat.apply(null, data)
+    })
+  }
+
+  function findVersionItem(items, query) {
+    if (query == undefined) return
+
+    return _.find(items, function(d) {
+      return query == d.id || query == d.name
+    })
+  }
+
+  // This function is used to make possible to type arbitrary
+  // version revision into version drop down
+  function getVersionOptions(items, query) {
+    var additional = getQueryBasedItem(items, query)
+
+    return additional
+      ? items.concat(additional)
+      : items
+  }
+
+  function getCompItemVersion(compItem) {
+    return ApiV2.getVersionById(compItem.id)
+      // Extract version object
+      .then(function(res) {
+        return res.data
+      })
+  }
+
   function getData(version, baselineTag) {
     return getRows(
       processData(
         queryData(
-          tasksOfBuilds(queryBuildData(version)), baselineTag
+          tasksOfBuilds(queryBuildData(version)),
+          tasksOfBuilds(queryBuildData(baselineTag))
         )
       )
     )
@@ -281,6 +379,10 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
   return {
     // public api
     getData: getData,
+    getComparisionOptions: getComparisionOptions,
+    findVersionItem: findVersionItem,
+    getVersionOptions: getVersionOptions,
+    getCompItemVersion: getCompItemVersion,
 
     // For teting
     _extractTasks: extractTasks,
@@ -288,5 +390,7 @@ mciModule.factory('PerfDiscoveryDataService', function($q, ApiV1, ApiTaskdata, M
     _processItem: processItem,
     _onProcessData: onProcessData,
     _onGetRows: onGetRows,
+    _versionSelectAdaptor: versionSelectAdaptor,
+    _tagSelectAdaptor: tagSelectAdaptor,
   }
 })

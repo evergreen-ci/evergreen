@@ -28,13 +28,13 @@ mciModule
     // TODO ## TASKS API ##
 
     // TODO ## SCHEDULER API ##
-    // WATERFALL API
-    WATERFALL_VERSIONS_ROWS: _.template('{base}/waterfall/{project_id}/versions'),
   })
 
   .constant('API_V2', {
     BASE: '/rest/v2',
     PATCH_BY_ID: _.template('{base}/patches/{patch_id}'),
+    VERSION_BY_ID: _.template('{base}/versions/{version_id}'),
+    RECENT_VERSIONS: _.template('{base}/projects/{project_id}/recent_versions'),
   })
 
   .constant('API_TASKDATA', {

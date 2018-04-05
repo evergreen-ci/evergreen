@@ -147,7 +147,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			host1 := host.Host{
 				Id:                    "h2",
 				Provider:              evergreen.ProviderNameMock,
-				LastTaskCompleted:     "t1",
+				LastTask:              "t1",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
 				LastCommunicationTime: time.Now(),
 				Status:                evergreen.HostRunning,
@@ -158,7 +158,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			host2 := host.Host{
 				Id:                    "h3",
 				Provider:              evergreen.ProviderNameMock,
-				LastTaskCompleted:     "t2",
+				LastTask:              "t2",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 2),
 				LastCommunicationTime: time.Now(),
 				Status:                evergreen.HostRunning,

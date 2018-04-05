@@ -61,6 +61,15 @@ func SkipTestUnlessAll(t *testing.T, testName string) {
 	}
 }
 
+// SkipWindows
+func SkipWindows(t *testing.T, testName string) {
+	// Note: in the future we could/should be able to eliminate
+	// the testName arg by using runtime.Caller(1)
+	if runtime.GOOS == "windows" {
+		t.Skip(fmt.Sprintf("skipping test '%s' on windows", testName))
+	}
+}
+
 func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testName string) {
 

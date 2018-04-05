@@ -43,6 +43,8 @@ func NewRemoteUnordered(size int) Remote {
 // undispatched, unlocked job is available. This operation takes a job
 // lock.
 func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
+	var err error
+
 	start := time.Now()
 	count := 0
 	for {
@@ -51,15 +53,18 @@ func (q *remoteUnordered) Next(ctx context.Context) amboy.Job {
 		case <-ctx.Done():
 			return nil
 		case job := <-q.channel:
-			err := q.driver.Lock(job)
+			job, err = q.driver.Get(job.ID())
 			if err != nil {
+				grip.CatchNotice(q.driver.Unlock(job))
 				grip.Warning(err)
 				continue
 			}
 
-			job, err = q.driver.Get(job.ID())
-			if err != nil {
-				grip.CatchNotice(q.driver.Unlock(job))
+			if !isDispatchable(job.Status()) {
+				continue
+			}
+
+			if err := q.driver.Lock(job); err != nil {
 				grip.Warning(err)
 				continue
 			}

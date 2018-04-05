@@ -46,11 +46,15 @@ type Host struct {
 	RunningTaskVersion      string `bson:"running_task_version,omitempty" json:"running_task_version,omitempty"`
 	RunningTaskProject      string `bson:"running_task_project,omitempty" json:"running_task_project,omitempty"`
 
+	// the task the most recently finished running on the host
+	LastTask         string `bson:"last_task" json:"last_task"`
+	LastGroup        string `bson:"last_group,omitempty" json:"last_group,omitempty"`
+	LastBuildVariant string `bson:"last_bv,omitempty" json:"last_bv,omitempty"`
+	LastVersion      string `bson:"last_version,omitempty" json:"last_version,omitempty"`
+	LastProject      string `bson:"last_project,omitempty" json:"last_project,omitempty"`
+
 	// the full task struct that is running on the host (only populated by certain aggregations)
 	RunningTaskFull *task.Task `bson:"task_full,omitempty" json:"task_full,omitempty"`
-
-	// the pid of the task that is currently running on the host
-	Pid string `bson:"pid" json:"pid"`
 
 	// duplicate of the DispatchTime field in the above task
 	TaskDispatchTime time.Time `bson:"task_dispatch_time" json:"task_dispatch_time"`
@@ -63,7 +67,6 @@ type Host struct {
 	TaskCount       int       `bson:"task_count" json:"task_count"`
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
-	LastTaskCompleted     string    `bson:"last_task" json:"last_task"`
 	LastCommunicationTime time.Time `bson:"last_communication" json:"last_communication"`
 
 	Status    string `bson:"status" json:"status"`
@@ -114,7 +117,7 @@ func (h *Host) IdleTime() time.Duration {
 
 	// if the host has run a task before, then the idle time is just the time
 	// passed since the last task finished
-	if h.LastTaskCompleted != "" {
+	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
 	}
 
@@ -307,18 +310,21 @@ func (h *Host) MarkAsProvisioned() error {
 	)
 }
 
-// ClearRunningTask unsets the running task key on the host and updates the last task
-// completed fields.
-func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) error {
+// ClearRunningAndSetLastTask unsets the running task on the host and updates the last task fields.
+func (h *Host) ClearRunningAndSetLastTask(t *task.Task) error {
 	err := UpdateOne(
 		bson.M{
-			IdKey:          host.Id,
-			RunningTaskKey: host.RunningTask,
+			IdKey:          h.Id,
+			RunningTaskKey: h.RunningTask,
 		},
 		bson.M{
 			"$set": bson.M{
-				LTCKey:     prevTaskId,
-				LTCTimeKey: finishTime,
+				LTCTimeKey:    time.Now(),
+				LTCTaskKey:    t.Id,
+				LTCGroupKey:   t.TaskGroup,
+				LTCBVKey:      t.BuildVariant,
+				LTCVersionKey: t.Version,
+				LTCProjectKey: t.Project,
 			},
 			"$unset": bson.M{
 				RunningTaskKey:             1,
@@ -333,19 +339,26 @@ func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) erro
 		return err
 	}
 
-	event.LogHostRunningTaskCleared(host.Id, prevTaskId)
-	host.RunningTask = ""
-	host.LastTaskCompleted = prevTaskId
-	host.LastTaskCompletedTime = finishTime
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	h.RunningTask = ""
+	h.RunningTaskGroup = ""
+	h.RunningTaskBuildVariant = ""
+	h.RunningTaskVersion = ""
+	h.RunningTaskProject = ""
+	h.LastTask = t.Id
+	h.LastGroup = t.TaskGroup
+	h.LastBuildVariant = t.BuildVariant
+	h.LastVersion = t.Version
+	h.LastProject = t.Version
 
 	return nil
 }
 
-// UnsetRunningTask unsets the running task fields. It does NOT set last task completed fields.
-func (host *Host) UnsetRunningTask() error {
-	return UpdateOne(
+// ClearRunningTask unsets the running task on the host.
+func (h *Host) ClearRunningTask() error {
+	err := UpdateOne(
 		bson.M{
-			IdKey: host.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$unset": bson.M{
@@ -356,46 +369,55 @@ func (host *Host) UnsetRunningTask() error {
 				RunningTaskProjectKey:      1,
 			},
 		})
+
+	if err != nil {
+		return err
+	}
+
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	h.RunningTask = ""
+	h.RunningTaskGroup = ""
+	h.RunningTaskBuildVariant = ""
+	h.RunningTaskVersion = ""
+	h.RunningTaskProject = ""
+
+	return nil
 }
 
-// UpdateRunningTask takes two id strings - an old task and a new one - finds
-// the host running the task with Id, 'prevTaskId' and updates its running task
-// to 'newTaskId'; also setting the completion time of 'prevTaskId'
-// Returns true for success and error if it exists
-func (host *Host) UpdateRunningTask(prevTaskId string, newTask *task.Task,
-	finishTime time.Time) (bool, error) {
-
-	// we should never be calling update running task with an empty new task id.
-	if newTask.Id == "" {
-		return false, fmt.Errorf("cannot set a running task id to be an empty string")
+// UpdateRunningTask updates the running task in the host document, returns
+// - true, nil on success
+// - false, nil on duplicate key error, task is already assigned to another host
+// - false, error on all other errors
+func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
+	if t == nil {
+		return false, errors.New("received nil task, cannot update")
+	}
+	if t.Id == "" {
+		return false, errors.New("task has empty task ID, cannot update")
 	}
 
 	selector := bson.M{
-		IdKey: host.Id,
+		IdKey: h.Id,
 	}
 
 	update := bson.M{
 		"$set": bson.M{
-			RunningTaskKey:             newTask.Id,
-			RunningTaskGroupKey:        newTask.TaskGroup,
-			RunningTaskBuildVariantKey: newTask.BuildVariant,
-			RunningTaskVersionKey:      newTask.Version,
-			RunningTaskProjectKey:      newTask.Project,
-			LTCKey:                     prevTaskId,
-			LTCTimeKey:                 finishTime,
-			PidKey:                     "",
+			RunningTaskKey:             t.Id,
+			RunningTaskGroupKey:        t.TaskGroup,
+			RunningTaskBuildVariantKey: t.BuildVariant,
+			RunningTaskVersionKey:      t.Version,
+			RunningTaskProjectKey:      t.Project,
 		},
 	}
 
 	err := UpdateOne(selector, update)
 	if err != nil {
-		// if its a duplicate key error, don't log the error.
 		if mgo.IsDup(err) {
 			return false, nil
 		}
-		return false, err
+		return false, errors.Wrapf(err, "error updating running task %s for host %s", t.Id, h.Id)
 	}
-	event.LogHostRunningTaskSet(host.Id, newTask.Id)
+	event.LogHostRunningTaskSet(h.Id, t.Id)
 
 	return true, nil
 }
@@ -474,20 +496,6 @@ func (h *Host) SetExpirationNotification(thresholdKey string) error {
 		bson.M{
 			"$set": bson.M{
 				NotificationsKey: h.Notifications,
-			},
-		},
-	)
-}
-
-func (h *Host) SetTaskPid(pid string) error {
-	event.LogHostTaskPidSet(h.Id, pid)
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				PidKey: pid,
 			},
 		},
 	)
@@ -624,7 +632,7 @@ func (h *Host) DisablePoisonedHost(logs string) error {
 			return errors.WithStack(err)
 		}
 
-		grip.Critical(message.Fields{
+		grip.Error(message.Fields{
 			"host":     h.Id,
 			"provider": h.Provider,
 			"distro":   h.Distro.Id,

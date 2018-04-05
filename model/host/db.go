@@ -35,13 +35,16 @@ var (
 	RunningTaskBuildVariantKey = bsonutil.MustHaveTag(Host{}, "RunningTaskBuildVariant")
 	RunningTaskVersionKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskVersion")
 	RunningTaskProjectKey      = bsonutil.MustHaveTag(Host{}, "RunningTaskProject")
-	PidKey                     = bsonutil.MustHaveTag(Host{}, "Pid")
 	TaskDispatchTimeKey        = bsonutil.MustHaveTag(Host{}, "TaskDispatchTime")
 	CreateTimeKey              = bsonutil.MustHaveTag(Host{}, "CreationTime")
 	ExpirationTimeKey          = bsonutil.MustHaveTag(Host{}, "ExpirationTime")
 	TerminationTimeKey         = bsonutil.MustHaveTag(Host{}, "TerminationTime")
 	LTCTimeKey                 = bsonutil.MustHaveTag(Host{}, "LastTaskCompletedTime")
-	LTCKey                     = bsonutil.MustHaveTag(Host{}, "LastTaskCompleted")
+	LTCTaskKey                 = bsonutil.MustHaveTag(Host{}, "LastTask")
+	LTCGroupKey                = bsonutil.MustHaveTag(Host{}, "LastGroup")
+	LTCBVKey                   = bsonutil.MustHaveTag(Host{}, "LastBuildVariant")
+	LTCVersionKey              = bsonutil.MustHaveTag(Host{}, "LastVersion")
+	LTCProjectKey              = bsonutil.MustHaveTag(Host{}, "LastProject")
 	StatusKey                  = bsonutil.MustHaveTag(Host{}, "Status")
 	AgentRevisionKey           = bsonutil.MustHaveTag(Host{}, "AgentRevision")
 	NeedsNewAgentKey           = bsonutil.MustHaveTag(Host{}, "NeedsNewAgent")
@@ -98,28 +101,6 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	)
 }
 
-// IsAvailableAndFree is a query that returns all running
-// Evergreen hosts without an assigned task.
-var IsAvailableAndFree = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostRunning,
-		StartedByKey:   evergreen.User,
-	},
-).Sort([]string{"-" + LTCTimeKey})
-
-// ByAvailableForDistro returns all running Evergreen hosts with
-// no running task of a certain distro Id.
-func ByAvailableForDistro(d string) db.Q {
-	distroIdKey := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
-	return db.Query(bson.M{
-		distroIdKey:    d,
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostRunning,
-		StartedByKey:   evergreen.User,
-	}).Sort([]string{"-" + LTCTimeKey})
-}
-
 // IsFree is a query that returns all running
 // Evergreen hosts without an assigned task.
 var IsFree = db.Query(
@@ -145,14 +126,27 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 // ByTaskSpec returns a query that finds all running hosts that are running a
 // task with the given group, buildvariant, project, and version.
 func NumHostsByTaskSpec(group, bv, project, version string) (int, error) {
-	q := db.Query(bson.M{
-		StatusKey:                  evergreen.HostRunning,
-		RunningTaskKey:             bson.M{"$exists": "true"},
-		RunningTaskGroupKey:        group,
-		RunningTaskBuildVariantKey: bv,
-		RunningTaskProjectKey:      project,
-		RunningTaskVersionKey:      version,
-	})
+	q := db.Query(
+		bson.M{
+			StatusKey: evergreen.HostRunning,
+			"$or": []bson.M{
+				{
+					RunningTaskKey:             bson.M{"$exists": "true"},
+					RunningTaskGroupKey:        group,
+					RunningTaskBuildVariantKey: bv,
+					RunningTaskProjectKey:      project,
+					RunningTaskVersionKey:      version,
+				},
+				{
+					LTCTaskKey:    bson.M{"$exists": "true"},
+					LTCGroupKey:   group,
+					LTCBVKey:      bv,
+					LTCProjectKey: project,
+					LTCVersionKey: version,
+				},
+			},
+		},
+	)
 	hosts, err := Find(q)
 	if err != nil {
 		return 0, errors.Wrap(err, "error querying database for hosts")
@@ -187,7 +181,7 @@ func NeedsProvisioning() db.Q {
 func ByUnproductiveSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		RunningTaskKey: bson.M{"$exists": false},
-		LTCKey:         "",
+		LTCTaskKey:     "",
 		CreateTimeKey:  bson.M{"$lte": threshold},
 		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
 		StartedByKey:   evergreen.User,

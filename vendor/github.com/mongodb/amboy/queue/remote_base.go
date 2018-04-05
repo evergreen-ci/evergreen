@@ -71,16 +71,7 @@ func (q *remoteBase) jobServer(ctx context.Context) {
 				continue
 			}
 
-			stat := job.Status()
-
-			// don't return completed jobs for any reason
-			if stat.Completed {
-				continue
-			}
-
-			// don't return an inprogress job if the mod
-			// time is less than the lock timeout
-			if stat.InProgress && time.Since(stat.ModificationTime) < lockTimeout {
+			if !isDispatchable(job.Status()) {
 				continue
 			}
 
@@ -115,10 +106,11 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 			return
 		case <-timer.C:
 			stat := j.Status()
-			ti := j.TimeInfo()
 			stat.InProgress = false
 			stat.Completed = true
 			j.SetStatus(stat)
+
+			ti := j.TimeInfo()
 			j.UpdateTimeInfo(amboy.JobTimeInfo{
 				Start: ti.Start,
 				End:   time.Now(),
@@ -128,11 +120,12 @@ func (q *remoteBase) Complete(ctx context.Context, j amboy.Job) {
 				grip.Warningf("problem persisting job '%s', %+v", j.ID(), err)
 				timer.Reset(retryInterval)
 				if time.Since(startAt) > time.Minute+lockTimeout {
-					grip.Alert(message.WrapError(err, message.Fields{
+					grip.Error(message.WrapError(err, message.Fields{
 						"job_id":      id,
 						"job_type":    j.Type().Name,
-						"driver_type": fmt.Sprintf("%T", q.Driver),
+						"driver_type": fmt.Sprintf("%T", q.driver),
 						"driver_id":   q.driver.ID(),
+						"message":     "job took too long to mark complete",
 					}))
 					return
 				}
@@ -282,5 +275,20 @@ func (q *remoteBase) canDispatch(j amboy.Job) bool {
 	}
 
 	q.dispatched[id] = struct{}{}
+	return true
+}
+
+func isDispatchable(stat amboy.JobStatusInfo) bool {
+	// don't return completed jobs for any reason
+	if stat.Completed {
+		return false
+	}
+
+	// don't return an inprogress job if the mod
+	// time is less than the lock timeout
+	if stat.InProgress && time.Since(stat.ModificationTime) < lockTimeout {
+		return false
+	}
+
 	return true
 }

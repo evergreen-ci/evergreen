@@ -128,6 +128,11 @@ func (p *simpleRateLimited) worker(ctx context.Context, jobs <-chan amboy.Job) {
 				job.UpdateTimeInfo(ti)
 
 				runJob(ctx, job)
+
+				// belt and suspenders
+				ti.End = time.Now()
+				job.UpdateTimeInfo(ti)
+
 				p.queue.Complete(ctx, job)
 
 				ti.End = time.Now()
@@ -165,5 +170,13 @@ func (p *simpleRateLimited) Close() {
 	if p.canceler != nil {
 		p.canceler()
 	}
+
+	// because of the timer+2 contexts in the worker
+	// implementation, we can end up returning earlier and because
+	// pools are restartable, end up calling wait more than once,
+	// which doesn't affect behavior but does cause this to panic in
+	// tests
+	defer func() { recover() }()
+
 	p.wg.Wait()
 }

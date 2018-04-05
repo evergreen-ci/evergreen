@@ -1098,3 +1098,48 @@ func (p *Project) BuildProjectTVPairsWithAlias(alias string) ([]TVPair, []TVPair
 
 	return pairs, displayTaskPairs, err
 }
+
+// FetchVersionsAndAssociatedBuilds is a helper function to fetch a group of versions and their associated builds.
+// Returns the versions themselves, as well as a map of version id -> the
+// builds that are a part of the version (unsorted).
+func FetchVersionsAndAssociatedBuilds(project *Project, skip int, numVersions int) ([]version.Version, map[string][]build.Build, error) {
+
+	// fetch the versions from the db
+	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
+		WithFields(
+			version.RevisionKey,
+			version.ErrorsKey,
+			version.WarningsKey,
+			version.IgnoredKey,
+			version.MessageKey,
+			version.AuthorKey,
+			version.RevisionOrderNumberKey,
+			version.CreateTimeKey,
+		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
+
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error fetching versions from database")
+	}
+
+	// create a slice of the version ids (used to fetch the builds)
+	versionIds := make([]string, 0, len(versionsFromDB))
+	for _, v := range versionsFromDB {
+		versionIds = append(versionIds, v.Id)
+	}
+
+	// fetch all of the builds (with only relevant fields)
+	buildsFromDb, err := build.Find(
+		build.ByVersions(versionIds).
+			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey))
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "error fetching builds from database")
+	}
+
+	// group the builds by version
+	buildsByVersion := map[string][]build.Build{}
+	for _, build := range buildsFromDb {
+		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
+	}
+
+	return versionsFromDB, buildsByVersion, nil
+}

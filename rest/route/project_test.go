@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"net/http"
 	"testing"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -132,4 +134,25 @@ func executeProjectRequest(key string, limit int, sc *data.MockConnector) (Respo
 	pe.limit = limit
 
 	return pe.Execute(context.TODO(), sc)
+}
+
+func (s *ProjectGetSuite) TestGetRecentVersions() {
+	routeManager := getRecentVersionsManager("/projects/projectA/recent_versions", 2)
+	getVersions := routeManager.Methods[0]
+	ctx := context.Background()
+
+	// valid request with defaults
+	request, err := http.NewRequest("GET", "/projects/projectA/recent_versions", bytes.NewReader(nil))
+	s.NoError(err)
+	s.NoError(getVersions.ParseAndValidate(ctx, request))
+
+	// invalid limit
+	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
+	s.NoError(err)
+	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid limit")
+
+	// invalid offset
+	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
+	s.NoError(err)
+	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid offset")
 }

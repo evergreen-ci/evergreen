@@ -194,7 +194,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// clear the running task on the host now that the task has finished
-	if err = currentHost.ClearRunningTask(t.Id, time.Now()); err != nil {
+	if err = currentHost.ClearRunningAndSetLastTask(t); err != nil {
 		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
 		grip.Errorf(message.Error())
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
@@ -280,8 +280,8 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 	}
 
 	var spec model.TaskSpec
-	if currentHost.LastTaskCompleted != "" {
-		t, err := task.FindOneId(currentHost.LastTaskCompleted)
+	if currentHost.LastTask != "" {
+		t, err := task.FindOneId(currentHost.LastTask)
 		if err != nil {
 			return nil, errors.Wrap(err, "error finding last task")
 		}
@@ -347,7 +347,7 @@ func assignNextAvailableTask(taskQueue model.TaskQueueAccessor, currentHost *hos
 			continue
 		}
 
-		ok, err := currentHost.UpdateRunningTask(currentHost.LastTaskCompleted, nextTask, time.Now())
+		ok, err := currentHost.UpdateRunningTask(nextTask)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -417,7 +417,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 				as.WriteJSON(w, http.StatusInternalServerError, err)
 				return
 			}
-			if err := h.UnsetRunningTask(); err != nil {
+			if err := h.ClearRunningTask(); err != nil {
 				grip.Error(message.WrapError(err, message.Fields{
 					"host":      h.Id,
 					"operation": "next_task",
@@ -477,7 +477,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		}
 		// the task is not activated so the host's running task should be unset
 		// so it can retrieve a new task.
-		if err = h.ClearRunningTask(h.LastTaskCompleted, time.Now()); err != nil {
+		if err = h.ClearRunningTask(); err != nil {
 			err = errors.WithStack(err)
 			grip.Error(err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)
