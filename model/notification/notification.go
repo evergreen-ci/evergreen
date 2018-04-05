@@ -1,11 +1,13 @@
 package notification
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -313,6 +315,11 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 
 		case event.SlackSubscriberType:
 			nStats.Slack = data.Count
+
+		default:
+			grip.Error(message.Fields{
+				"message": fmt.Sprintf("unknown subscriber %s", data.Key),
+			})
 		}
 	}
 
