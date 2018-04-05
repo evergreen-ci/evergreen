@@ -170,5 +170,13 @@ func (p *simpleRateLimited) Close() {
 	if p.canceler != nil {
 		p.canceler()
 	}
+
+	// because of the timer+2 contexts in the worker
+	// implementation, we can end up returning earlier and because
+	// pools are restartable, end up calling wait more than once,
+	// which doesn't affect behavior but does cause this to panic in
+	// tests
+	defer func() { recover() }()
+
 	p.wg.Wait()
 }
