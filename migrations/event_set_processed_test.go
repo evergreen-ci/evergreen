@@ -64,8 +64,6 @@ func (s *eventSetProcessedAtSuite) SetupTest() {
 }
 
 func (s *eventSetProcessedAtSuite) TestMigration() {
-	const processedAtKey = "processed_at"
-
 	args := migrationGeneratorFactoryOptions{
 		db:    s.database,
 		limit: 50,
