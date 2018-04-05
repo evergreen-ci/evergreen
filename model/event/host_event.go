@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	registryAdd(ResourceTypeHost, hostEventFactory)
+	registry.AddType(ResourceTypeHost, hostEventFactory)
 }
 
 const (

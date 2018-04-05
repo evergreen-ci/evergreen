@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	registryAdd(ResourceTypeAdmin, adminEventFactory)
+	registry.AddType(ResourceTypeAdmin, adminEventFactory)
 }
 
 const (

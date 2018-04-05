@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	registryAdd(ResourceTypeScheduler, schedulerEventFactory)
+	registry.AddType(ResourceTypeScheduler, schedulerEventFactory)
 }
 
 const (

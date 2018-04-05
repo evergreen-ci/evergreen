@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	registryAdd(ResourceTypeTask, taskEventFactory)
+	registry.AddType(ResourceTypeTask, taskEventFactory)
 }
 
 const (

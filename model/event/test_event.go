@@ -1,8 +1,8 @@
 package event
 
 func init() {
-	registryAdd(ResourceTypeTest, testEventFactory)
-	allowSubscriptions(ResourceTypeTest, "test")
+	registry.AddType(ResourceTypeTest, testEventFactory)
+	registry.AllowSubscription(ResourceTypeTest, "test")
 }
 
 const ResourceTypeTest = "TEST"

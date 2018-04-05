@@ -7,70 +7,77 @@ import (
 
 type eventFactory func() interface{}
 
-var eventRegistry map[string]eventFactory = map[string]eventFactory{}
-var eventRegistryM = sync.RWMutex{}
+var registry eventRegistry = eventRegistry{
+	types:          map[string]eventFactory{},
+	isSubscribable: map[EventLogEntry]bool{},
+}
 
-var eventSubscribabilityRegistry map[EventLogEntry]bool = map[EventLogEntry]bool{}
-var eventSubscribabilityRegistryM = sync.RWMutex{}
+type eventRegistry struct {
+	lock sync.RWMutex
 
-// registryAdd adds an event data factory to the registry with the given resource
-// type. registryAdd will panic if you attempt to add a resourceType more than once
-func registryAdd(resourceType string, f eventFactory) {
-	eventRegistryM.Lock()
-	defer eventRegistryM.Unlock()
+	types          map[string]eventFactory
+	isSubscribable map[EventLogEntry]bool
+}
 
-	_, ok := eventRegistry[resourceType]
+// AddType adds an event data factory to the registry with the given resource
+// type. AddType will panic if you attempt to add the same resourceType more
+// than once
+func (r *eventRegistry) AddType(resourceType string, f eventFactory) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	_, ok := r.types[resourceType]
 	if ok {
 		panic(fmt.Sprintf("attempted to register event '%s' more than once", resourceType))
 	}
 
-	eventRegistry[resourceType] = f
+	r.types[resourceType] = f
 }
 
-// allowSubscriptions marks a combination of resource type and Event Type as
+// AllowSubscription a combination of resource type and Event Type as
 // subscribable. Events marked subscribable will be saved with an empty
 // processed_at time, so they can be picked up by the event driven notifications
 // amboy jobs. Events not explicitly marked, will have their processed_at times
 // set to notSubscribableTimeString
-// allowSubscriptions will panic if you try to mark a pair
+// AllowSubscription will panic if you try to mark a pair
 // (resourceType, eventType) as subscribable more than once.
-func allowSubscriptions(resourceType, eventType string) {
-	eventSubscribabilityRegistryM.Lock()
-	defer eventSubscribabilityRegistryM.Unlock()
+func (r *eventRegistry) AllowSubscription(resourceType, eventType string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
 	e := EventLogEntry{
 		ResourceType: resourceType,
 		EventType:    eventType,
 	}
-	_, ok := eventSubscribabilityRegistry[e]
+	_, ok := r.isSubscribable[e]
 	if ok {
 		panic(fmt.Sprintf("attempted to enable subscribability for event '%s/%s' more than once", resourceType, eventType))
 	}
 
-	eventSubscribabilityRegistry[e] = true
+	r.isSubscribable[e] = true
 }
 
-// isSubscribable looks to see if a (resourceType, eventType) pair is allowed
+// IsSubscribable looks to see if a (resourceType, eventType) pair is allowed
 // to be subscribed to
-func isSubscribable(resourceType, eventType string) bool {
-	eventSubscribabilityRegistryM.RLock()
-	defer eventSubscribabilityRegistryM.RUnlock()
+func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
 
 	e := EventLogEntry{
 		ResourceType: resourceType,
 		EventType:    eventType,
 	}
 
-	allowSubs, _ := eventSubscribabilityRegistry[e]
+	allowSubs, _ := r.isSubscribable[e]
 
 	return allowSubs
 }
 
 func NewEventFromType(resourceType string) interface{} {
-	eventRegistryM.RLock()
-	defer eventRegistryM.RUnlock()
+	registry.lock.RLock()
+	defer registry.lock.RUnlock()
 
-	f, ok := eventRegistry[resourceType]
+	f, ok := registry.types[resourceType]
 	if !ok {
 		return nil
 	}

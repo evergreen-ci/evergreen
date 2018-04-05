@@ -9,8 +9,8 @@ import (
 )
 
 func init() {
-	registryAdd(EventTaskSystemInfo, taskSystemResourceEventFactory)
-	registryAdd(EventTaskProcessInfo, taskProcessResourceEventFactory)
+	registry.AddType(EventTaskSystemInfo, taskSystemResourceEventFactory)
+	registry.AddType(EventTaskProcessInfo, taskProcessResourceEventFactory)
 }
 
 const (
