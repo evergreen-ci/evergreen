@@ -9,13 +9,14 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+//nolint: deadcode, megacheck
 const (
 	migrationEventSetProcessedTime = "event-set-processed-time"
+	unsubscribableTime             = "2015-10-21T16:29:01-07:00"
 )
 
-const unsubscribableTime = "2015-10-21T16:29:01-07:00"
-
-func makeEventSetProcesedTimeMigration(collection string, left, right time.Time) migrationGeneratorFactory { //nolint: deadcode
+// Recommended minimum left for future migrations (RFC3339 format): "2018-04-05T16:55:00-04:00"
+func makeEventSetProcesedTimeMigration(collection string, left, right time.Time) migrationGeneratorFactory { //nolint: deadcode, megacheck
 	loc, _ := time.LoadLocation("UTC")
 	bttf, err := time.ParseInLocation(time.RFC3339, unsubscribableTime, loc)
 	if err != nil {
