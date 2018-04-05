@@ -443,3 +443,48 @@ func (s *eventSuite) TestMarkAllEventsProcessed() {
 		}
 	}
 }
+
+// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
+// If found, this function returns true, and the value of that field
+// If not, this function returns false. If it the struct had "r_type" (without
+// omitempty), it will return that field's value, otherwise it returns an
+// empty string
+func findResourceTypeIn(data interface{}) (bool, string) {
+	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
+
+	if data == nil {
+		return false, ""
+	}
+
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
+		if len(bsonTag) == 0 {
+			continue
+		}
+
+		if fieldType.Type.Kind() != reflect.String {
+			return false, ""
+		}
+
+		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
+			continue
+		}
+
+		structData := v.Field(i).String()
+		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
+	}
+
+	return false, ""
+}

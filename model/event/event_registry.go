@@ -68,7 +68,7 @@ func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
 		EventType:    eventType,
 	}
 
-	allowSubs, _ := r.isSubscribable[e]
+	allowSubs := r.isSubscribable[e]
 
 	return allowSubs
 }
