@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	evgdb "github.com/evergreen-ci/evergreen/db"
@@ -17,12 +16,7 @@ import (
 )
 
 type adminMapSuite struct {
-	env      *mock.Environment
-	session  db.Session
-	database string
-	now      time.Time
-	cancel   func()
-	suite.Suite
+	migrationSuite
 }
 
 func TestAdminMapMigration(t *testing.T) {
@@ -36,12 +30,11 @@ func TestAdminMapMigration(t *testing.T) {
 	defer session.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	s := &adminMapSuite{
-		env:      &mock.Environment{},
-		session:  session,
-		database: database.Name,
-		cancel:   cancel,
-	}
+	s := &adminMapSuite{}
+	s.env = &mock.Environment{}
+	s.session = session
+	s.database = database.Name
+	s.cancel = cancel
 
 	require.NoError(s.env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	require.NoError(s.env.LocalQueue().Start(ctx))
@@ -55,7 +48,6 @@ func TestAdminMapMigration(t *testing.T) {
 
 func (s *adminMapSuite) SetupTest() {
 	s.NoError(evgdb.ClearCollections(adminCollection))
-	s.now = time.Now().Round(time.Millisecond).Truncate(time.Millisecond)
 
 	data := db.Document{
 		"_id": globalDocId,
