@@ -317,6 +317,15 @@ functions:
       params:
         files:
           - "gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml"
+  remove-test-results:
+    - command: shell.exec
+      type: system
+      params:
+        shell: bash
+        script: |
+          set -o xtrace
+          rm gopath/src/github.com/evergreen-ci/evergreen/bin/output.*
+          rm gopath/src/github.com/evergreen-ci/evergreen/bin/jstests/*.xml
 
 #######################################
 #                Tasks                #
@@ -731,8 +740,9 @@ task_groups:
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: set-up-credentials
-    teardown_group:
+    teardown_task:
       - func: attach-test-results
+      - func: remove-test-results
 
 buildvariants:
   - name: ubuntu1604

@@ -50,6 +50,7 @@ func (s *MongoDBDriverSuite) TearDownSuite() {
 	for _, coll := range s.collections {
 		grip.CatchWarning(db.C(coll).DropCollection())
 	}
+	s.session.Close()
 }
 
 func (s *MongoDBDriverSuite) TearDownTest() {

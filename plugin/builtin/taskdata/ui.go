@@ -10,6 +10,8 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
+// FIXME Returns random object that matches conditions
+//       Given set of parameters is not specific enough
 func uiGetCommit(w http.ResponseWriter, r *http.Request) {
 	projectId := mux.Vars(r)["project_id"]
 	revision := mux.Vars(r)["revision"]

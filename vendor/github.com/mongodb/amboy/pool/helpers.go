@@ -60,10 +60,16 @@ func worker(ctx context.Context, jobs <-chan amboy.Job, q amboy.Queue, wg *sync.
 
 			runJob(ctx, job)
 
-			q.Complete(ctx, job)
-
+			// we want the final end time to include
+			// marking complete, but setting it twice is
+			// necessary for some queues
 			ti.End = time.Now()
 			job.UpdateTimeInfo(ti)
+
+			q.Complete(ctx, job)
+			ti.End = time.Now()
+			job.UpdateTimeInfo(ti)
+
 			r := message.Fields{
 				"job":           job.ID(),
 				"job_type":      job.Type().Name,

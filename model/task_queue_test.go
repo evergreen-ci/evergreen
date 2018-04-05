@@ -221,3 +221,63 @@ func TestFindNextTaskEmptySpec(t *testing.T) {
 	assert.NotNil(next)
 	assert.Equal("first_item", next.Id)
 }
+
+func TestFindNextTaskWithLastTask(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(host.Collection, task.Collection))
+	defer db.ClearCollections(host.Collection, task.Collection)
+
+	hosts := []host.Host{}
+	for i := 0; i < 10; i++ {
+		hosts = append(hosts, host.Host{
+			Id:               fmt.Sprintf("host_%d", i),
+			Status:           "running",
+			LastTask:         fmt.Sprintf("task_id_%d", i),
+			LastGroup:        "task_group",
+			LastBuildVariant: "build_variant",
+			LastVersion:      "task_version",
+			LastProject:      "task_project",
+		})
+	}
+	for _, h := range hosts {
+		require.NoError(h.Insert())
+	}
+	tasks := []task.Task{}
+	for i := 0; i < 10; i++ {
+		tasks = append(tasks, task.Task{
+			Id:           fmt.Sprintf("task_%d", i),
+			TaskGroup:    "task_group",
+			BuildVariant: "build_variant",
+			Version:      "task_version",
+			Project:      "task_project",
+		})
+	}
+	queueTask := task.Task{
+		Id:           "first_item",
+		TaskGroup:    "task_group",
+		BuildVariant: "build_variant",
+		Version:      "task_version",
+		Project:      "task_project",
+	}
+	require.NoError(queueTask.Insert())
+	for _, t := range tasks {
+		require.NoError(t.Insert())
+	}
+
+	queue := TaskQueue{
+		Queue: []TaskQueueItem{
+			TaskQueueItem{
+				Id:            "first_item",
+				Group:         "task_group",
+				BuildVariant:  "build_variant",
+				Version:       "task_version",
+				Project:       "task_project",
+				GroupMaxHosts: 1,
+			},
+		},
+	}
+	next := queue.FindNextTask(TaskSpec{})
+	assert.Nil(next)
+}
