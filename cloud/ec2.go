@@ -427,11 +427,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
-// CanSpawn indicates if a host can be spawned.
-func (m *ec2Manager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
 // GetInstanceStatus returns the current status of an EC2 instance.
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	if err := m.client.Create(m.credentials); err != nil {

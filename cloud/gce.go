@@ -163,11 +163,6 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
-// CanSpawn always returns true.
-func (m *gceManager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *gceManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	instance, err := m.client.GetInstance(host)

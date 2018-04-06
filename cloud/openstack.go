@@ -138,14 +138,6 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	return h, nil
 }
 
-// CanSpawn always returns true for now.
-//
-// The OpenStack provider is not always able to spawn new instances if, for example, it has
-// exceeded its number of instances, VCPUs, or RAM. Unfortunately, there is no way to know.
-func (m *openStackManager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *openStackManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	server, err := m.client.GetInstance(host.Id)

@@ -418,12 +418,6 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
-func (s *EC2Suite) TestCanSpawn() {
-	can, err := s.onDemandManager.CanSpawn()
-	s.True(can)
-	s.NoError(err)
-}
-
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
