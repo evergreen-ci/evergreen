@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"time"
 
 	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
@@ -91,6 +92,9 @@ func (p *priorityDriver) SaveStatus(j amboy.Job, stat amboy.JobStatusInfo) error
 	if err != nil {
 		return errors.Wrap(err, "problem saving status")
 	}
+
+	stat.ModificationTime = time.Now()
+	stat.ModificationCount++
 
 	job.SetStatus(stat)
 	if err := p.Save(job); err != nil {

@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -198,31 +197,4 @@ func matchResultWithLog(tr *goTestResult, logs []string) {
 	So(startLine, ShouldContainSubstring, tr.Name)
 	So(endLine, ShouldContainSubstring, tr.Name)
 	So(endLine, ShouldContainSubstring, tr.Status)
-}
-
-func TestParserOnRealTests(t *testing.T) {
-	// there are some issues with gccgo:
-	testutil.SkipTestUnlessAll(t, "TestParserOnRealTests")
-
-	Convey("With a parser", t, func() {
-		parser := &goTestParser{}
-		Convey("and some real test output", func() {
-			cmd := exec.Command("go", "test", "-v", "./.")
-			stdout, err := cmd.StdoutPipe()
-			testutil.HandleTestingErr(err, t, "error getting stdout pipe %v")
-			testutil.HandleTestingErr(cmd.Start(), t, "couldn't run tests %v")
-			err = parser.Parse(stdout)
-			testutil.HandleTestingErr(cmd.Wait(), t, "error waiting on test %v")
-
-			Convey("the parser should run successfully", func() {
-				So(err, ShouldBeNil)
-
-				Convey("and all results should line up with the logs", func() {
-					for _, result := range parser.Results() {
-						matchResultWithLog(result, parser.Logs())
-					}
-				})
-			})
-		})
-	})
 }

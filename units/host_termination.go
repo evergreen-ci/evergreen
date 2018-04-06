@@ -56,7 +56,7 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
 	j.HostID = h.Id
 	j.env = env
 	j.SetPriority(2)
-	ts := util.RoundPartOfHour(3).Format(tsFormat)
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
 	j.SetID(fmt.Sprintf("%s.%s.%s", hostTerminationJobName, j.HostID, ts))
 
 	return j
@@ -64,6 +64,7 @@ func NewHostTerminationJob(env evergreen.Environment, h host.Host) amboy.Job {
 
 func (j *hostTerminationJob) Run(ctx context.Context) {
 	var err error
+	defer j.MarkComplete()
 
 	if j.host == nil {
 		j.host, err = host.FindOneId(j.HostID)
@@ -74,6 +75,19 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		if j.host == nil {
 			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
 		}
+	}
+
+	if !j.host.IsEphemeral() {
+		grip.Notice(message.Fields{
+			"job":      j.ID(),
+			"host":     j.HostID,
+			"job_type": j.Type().Name,
+			"status":   j.host.Status,
+			"provider": j.host.Distro.Provider,
+			"message":  "host termination for a non-spawnable distro",
+			"cause":    "programmer error",
+		})
+		return
 	}
 
 	if j.env == nil {
@@ -97,7 +111,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 			"provider": j.host.Distro.Provider,
 			"task":     j.host.RunningTask,
 		})
-		if err = j.host.ClearRunningTask(j.host.RunningTask, time.Now()); err != nil {
+		if err = j.host.ClearRunningTask(); err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
 				"message":  "Error clearing running task for host",

@@ -17,12 +17,14 @@ import (
 // the cases in this file attempt to test the behavior of the remote tasks.
 
 func TestSmokeRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
+	mockJobCounters.Reset()
+
 	assert := assert.New(t)
 	opts := DefaultMongoDBOptions()
 	name := uuid.NewV4().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	d := NewMongoDBDriver(name, opts)
-	q := NewRemoteUnordered(3).(*remoteUnordered)
+	q := NewRemoteUnordered(4).(*remoteUnordered)
 
 	defer cleanupMongoDB(name, opts)
 	defer cancel()
@@ -30,55 +32,61 @@ func TestSmokeRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
 	assert.NoError(d.Open(ctx))
 	assert.NoError(q.SetDriver(d))
 	assert.NoError(q.Start(ctx))
-	atStart := mockJobCounters.Count()
-	for i := 0; i < 40; i++ {
+	const single = 40
+
+	for i := 0; i < single; i++ {
 		j := newMockJob()
 		jobID := fmt.Sprintf("%d.%s.%d", i, name, job.GetNumber())
 		j.SetID(jobID)
 		assert.NoError(q.Put(j))
 	}
 
-	amboy.WaitCtxInterval(ctx, q, time.Second)
-
-	grip.Notice(q.Stats())
-	assert.Equal(atStart+40, mockJobCounters.Count())
+	amboy.WaitCtxInterval(ctx, q, 10*time.Millisecond)
+	assert.Equal(single, mockJobCounters.Count())
 }
 
-func TestSmokeMultipleRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
-	assert := assert.New(t)
+func TestSmokeRemoteMultipleQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.T) {
+	// case two
+
+	mockJobCounters.Reset()
+
+	assert := assert.New(t) // nolint
 	opts := DefaultMongoDBOptions()
 	name := uuid.NewV4().String()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	d := NewMongoDBDriver(name, opts)
-	q := NewRemoteUnordered(3).(*remoteUnordered)
-
-	d2 := NewMongoDBDriver(name, opts)
-	q2 := NewRemoteUnordered(3).(*remoteUnordered)
 
 	defer cleanupMongoDB(name, opts)
 	defer cancel()
 
+	d := NewMongoDBDriver(name, opts)
+	q := NewRemoteUnordered(4).(*remoteUnordered)
 	assert.NoError(d.Open(ctx))
 	assert.NoError(q.SetDriver(d))
 	assert.NoError(q.Start(ctx))
+
+	d2 := NewMongoDBDriver(name, opts)
+	q2 := NewRemoteUnordered(4).(*remoteUnordered)
 
 	assert.NoError(d2.Open(ctx))
 	assert.NoError(q2.SetDriver(d2))
 	assert.NoError(q2.Start(ctx))
 
-	atStart := mockJobCounters.Count()
-	wg := &sync.WaitGroup{}
+	const (
+		inside  = 25
+		outside = 10
+	)
 
-	for i := 0; i < 50; i++ {
+	wg := &sync.WaitGroup{}
+	for i := 0; i < outside; i++ {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			for ii := 0; ii < 20; ii++ {
+			for ii := 0; ii < inside; ii++ {
 				j := newMockJob()
-				jobID := fmt.Sprintf("%d.%s.%d", i, name, job.GetNumber())
+				jobID := fmt.Sprintf("%d", job.GetNumber())
 				j.SetID(jobID)
-				assert.NoError(q.Put(j))
+				assert.NoError(q2.Put(j))
 			}
+			wg.Done()
 		}()
 	}
 	grip.Notice("waiting to add all jobs")
@@ -88,6 +96,7 @@ func TestSmokeMultipleRemoteQueueRunsJobsOnlyOnceWithMultipleWorkers(t *testing.
 	amboy.WaitCtxInterval(ctx, q, 100*time.Millisecond)
 	amboy.WaitCtxInterval(ctx, q2, 100*time.Millisecond)
 
-	grip.Notice(q.Stats())
-	assert.Equal(atStart+50*20, mockJobCounters.Count())
+	grip.Alertln("one", q.Stats())
+	grip.Alertln("two", q2.Stats())
+	assert.Equal(inside*outside, mockJobCounters.Count())
 }

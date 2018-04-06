@@ -10,8 +10,16 @@ import (
 	"github.com/evergreen-ci/evergreen/mock"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	if !util.StringSliceContains(evergreen.ProviderSpawnable, evergreen.ProviderNameMock) {
+		evergreen.ProviderSpawnable = append(evergreen.ProviderSpawnable, evergreen.ProviderNameMock)
+	}
+
+}
 
 func TestTerminateHosts(t *testing.T) {
 	testConfig := testutil.TestConfig()

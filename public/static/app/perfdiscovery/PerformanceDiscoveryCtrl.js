@@ -6,6 +6,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   var vm = this;
   var gridUtil = EvgUiGridUtil
   var stateUtil = PerfDiscoveryStateService
+  var dataUtil = PerfDiscoveryDataService
+  var PD = PERF_DISCOVERY
   var grid
   // Load state from the URL
   var state = stateUtil.readState({
@@ -18,117 +20,80 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     }
   })
 
-  vm.revisionSelect = {
+  vm.fromSelect = {
     options: [],
     selected: null,
   }
 
-  vm.tagSelect = {
+  vm.toSelect = {
     options: [],
     selected: null,
   }
 
   var projectId = $window.project
 
-  // This function is used to make possible to type arbitrary
-  // version revision into version drop down
-  vm.getVersionOptions = function(query) {
-    var opts = vm.revisionSelect.options
-    // 24 is patch id length; 40 is githash length
-    // don't allow user type invalid version identifier
-    var isValid = _.contains(
-      [EVG.GIT_HASH_LEN, EVG.PATCH_ID_LEN], query.length
-    )
-
-    if (isValid && opts.indexOf(query) == -1) {
-      return opts.concat(query)
+  // For each argument of `arguments`
+  // if arguemnt is a function and return value is truthy
+  // or argument is truthy non-function return the value
+  // If none arguments are truthy returns undefined
+  function cascade() {
+    var args = Array.prototype.slice.call(arguments)
+    for (var i = 0; i < args.length; i++) {
+      var ref = args[i]
+      var value = _.isFunction(ref) ? ref() : ref
+      if (value) return value
     }
-
-    return opts
   }
 
-  var versionsQ = ApiV2.getRecentVersions(projectId)
-  var whenQueryRevisions = versionsQ.then(function(res) {
-    vm.versions = _.map(
-      _.where(
-        res.data.versions, {rolled_up: false} // Filter versions with data
-      ),
-      function(d) { return {revision: d.revisions[0]} } // Transform
-    )
+  dataUtil.getComparisionOptions(projectId)
+    .then(function(items) {
+      vm.fromSelect.options = items
 
-    vm.revisionSelect.options = _.map(vm.versions.versions, function(d) {
-      return d.revision
+      // Sets 'compare from' version from the state if available
+      // Sets the first revision from the list otherwise
+      vm.fromSelect.selected = cascade(
+        _.bind(dataUtil.findVersionItem, null, items, state.from),
+        _.bind(dataUtil.getQueryBasedItem, null, state.from),
+        _.bind(_.findWhere, null, items, {kind: PD.KIND_VERSION}),
+        _.bind(_.first, null, items)
+      )
+
+      vm.toSelect.options = items
+      // Sets 'compare to' version from the state if available
+      // Sets the first tag from the list otherwise
+      vm.toSelect.selected = cascade(
+        _.bind(dataUtil.findVersionItem, null, items, state.to),
+        _.bind(dataUtil.getQueryBasedItem, null, state.to),
+        _.bind(_.findWhere, null, items, {kind: PD.KIND_TAG}),
+        _.bind(_.first, null, items)
+      )
     })
 
-    // Sets 'compare from' version from the state if available
-    // Sets the first revision from the list otherwise
-    vm.revisionSelect.selected = state.from
-      ? state.from
-      : _.first(vm.revisionSelect.options)
+  // Handles changes in selectFrom/To drop downs
+  // Ignores `null` on start up
+  $scope.$watch('$ctrl.fromSelect.selected', function(item) {
+    item && vm.updateData()
   })
 
-  var whenQueryTags = ApiTaskdata.getProjectTags(projectId).then(function(res){
-    vm.tags = res.data
-    vm.tagSelect.options = _.map(res.data, function(d, i) {
-      return {id: d.obj.revision, name: d.name}
-    })
-
-    // Sets 'compare to' version from the state if available
-    // Sets the first tag from the list otherwise
-    var found = _.findWhere(vm.tagSelect.options, {name: state.to})
-    vm.tagSelect.selected = found
-      ? found
-      : _.first(vm.tagSelect.options)
+  $scope.$watch('$ctrl.toSelect.selected', function(item) {
+    item && vm.updateData()
   })
 
-  $q.all([whenQueryRevisions, whenQueryTags]).then(function() {
-    // Load grid data once revisions and tags loaded
-    vm.updateData()
-  })
+  var oldFromVersion, oldToVersion
 
-  vm.updateData = function() {
-    var revision = vm.revisionSelect.selected
-    var baselineTag = vm.tagSelect.selected.name
-
-    // Update permalink
-    stateUtil.applyState(state, {
-      from: revision,
-      to: baselineTag,
-    })
-
+  function loadCompOptions(fromVersion, toVersion) {
     // Set loading flag to display spinner
     vm.isLoading = true
-    // Display no data while loading is in progress
-    vm.gridOptions.data = []
-
-    function isPatchId(revision) {
-      return revision.length == EVG.PATCH_ID_LEN
-    }
-
-    // Depending on is revision patch id or version id
-    // Different steps should be performed
-    // Patch id requires additional step
-    var chain = isPatchId(revision)
-      ? ApiV2.getPatchById(revision).then(
-          function(res) { return res.data.git_hash }, // Adaptor fn
-          function(err) { // Hanle error
-            console.error('Patch not found');
-            return $q.reject()
-          })
-      : $q.resolve(revision)
-
-    chain
-      // Get version by revision
-      .then(function(revision) {
-        return ApiV1.getVersionByRevision(projectId, revision)
-      })
-      // Extract version object
-      .then(function(res) {
-        return res.data
-      })
+  
+    $q.all({
+      fromVersionObj: dataUtil.getCompItemVersion(fromVersion),
+      toVersionObj: dataUtil.getCompItemVersion(toVersion),
+    })
       // Load perf data
-      .then(function(version) {
-        return PerfDiscoveryDataService.getData(version, baselineTag)
+      .then(function(promise) {
+        return dataUtil.getData(
+          promise.fromVersionObj, promise.toVersionObj
+        )
       })
       // Apply perf data
       .then(function(res) {
@@ -142,6 +107,30 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       })
       // Stop spinner
       .finally(function() { vm.isLoading = false })
+  }
+
+  vm.updateData = function() {
+    var fromVersion = vm.fromSelect.selected
+    var toVersion = vm.toSelect.selected
+
+    // If nothing has changed, exit the function
+    if (fromVersion == oldFromVersion && toVersion == oldToVersion) {
+      return
+    }
+
+    oldFromVersion = fromVersion
+    oldToVersion = toVersion
+
+    // Update permalink
+    stateUtil.applyState(state, {
+      from: fromVersion.id,
+      to: toVersion.id,
+    })
+
+    // Display no data while loading is in progress
+    vm.gridOptions.data = []
+
+    loadCompOptions(fromVersion, toVersion)
   }
 
   // Returns a predefined URL for given `row` and `col`

@@ -274,7 +274,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	// figure out how many new hosts we need
-	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData, s.Settings)
+	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData)
 	if err != nil {
 		return errors.Wrap(err, "Error determining how many new hosts are needed")
 	}

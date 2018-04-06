@@ -129,11 +129,6 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	return h, nil
 }
 
-// CanSpawn always returns true.
-func (m *vsphereManager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *vsphereManager) GetInstanceStatus(ctx context.Context, host *host.Host) (CloudStatus, error) {
 	state, err := m.client.GetPowerState(ctx, host)

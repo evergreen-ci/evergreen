@@ -1,4 +1,20 @@
 mciModule.run(function($templateCache) {
+  $templateCache.put('perf-discovery-version-dropdown',
+    '<ui-select ng-model="vdvm.model.selected" ' +
+               'title="Select version or tag">' +
+      '<ui-select-match>' +
+        '<span ng-bind="$select.selected.name"></span>' +
+      '</ui-select-match>' +
+      '<ui-select-choices ' +
+        'repeat="item in vdvm.options | filter : $select.search" ' +
+        'refresh="vdvm.onRefresh($select.search)" ' +
+        'refresh-delay="250"' +
+      '>' +
+          '<span ng-bind="item.name"></span>' +
+      '</ui-select-choices>' +
+    '</ui-select>'
+  )
+
   $templateCache.put('perf-discovery-link',
     '<div class="ui-grid-cell-contents">' +
       '<a href="{{grid.appScope.$ctrl.getCellUrl(row, col)}}"' +

@@ -191,12 +191,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 	return h.Host, nil
 }
 
-//CanSpawn returns if a given cloud provider supports spawning a new host
-//dynamically. Always returns true for Docker.
-func (m *dockerManager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
 //TerminateInstance destroys a container.
 func (m *dockerManager) TerminateInstance(ctx context.Context, h *host.Host, user string) error {
 	if h.Status == evergreen.HostTerminated {

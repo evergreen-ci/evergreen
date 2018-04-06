@@ -16,13 +16,13 @@ const (
 // APITask is the model to be returned by the API whenever tasks are fetched.
 type APITask struct {
 	Id                 APIString        `json:"task_id"`
+	ProjectId          APIString        `json:"project_id"`
 	CreateTime         APITime          `json:"create_time"`
 	DispatchTime       APITime          `json:"dispatch_time"`
 	ScheduledTime      APITime          `json:"scheduled_time"`
 	StartTime          APITime          `json:"start_time"`
 	FinishTime         APITime          `json:"finish_time"`
 	Version            APIString        `json:"version_id"`
-	Branch             APIString        `json:"branch"`
 	Revision           APIString        `json:"revision"`
 	Priority           int64            `json:"priority"`
 	Activated          bool             `json:"activated"`
@@ -77,13 +77,13 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	case *task.Task:
 		(*at) = APITask{
 			Id:            ToAPIString(v.Id),
+			ProjectId:     ToAPIString(v.Project),
 			CreateTime:    NewTime(v.CreateTime),
 			DispatchTime:  NewTime(v.DispatchTime),
 			ScheduledTime: NewTime(v.ScheduledTime),
 			StartTime:     NewTime(v.StartTime),
 			FinishTime:    NewTime(v.FinishTime),
 			Version:       ToAPIString(v.Version),
-			Branch:        ToAPIString(v.Project),
 			Revision:      ToAPIString(v.Revision),
 			Priority:      v.Priority,
 			Activated:     v.Activated,
@@ -134,7 +134,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 func (ad *APITask) ToService() (interface{}, error) {
 	st := &task.Task{
 		Id:                  FromAPIString(ad.Id),
-		Project:             FromAPIString(ad.Branch),
+		Project:             FromAPIString(ad.ProjectId),
 		CreateTime:          time.Time(ad.CreateTime),
 		DispatchTime:        time.Time(ad.DispatchTime),
 		ScheduledTime:       time.Time(ad.ScheduledTime),
