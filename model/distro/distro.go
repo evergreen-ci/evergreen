@@ -45,7 +45,14 @@ func init() {
 
 // GenerateName generates a unique instance name for a distro.
 func (d *Distro) GenerateName() string {
-	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
+	switch d.Provider {
+	case evergreen.ProviderNameStatic:
+		return "static"
+	case evergreen.ProviderNameDocker:
+		return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+	default:
+		return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
+	}
 }
 
 func (d *Distro) IsWindows() bool {

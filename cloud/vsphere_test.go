@@ -145,14 +145,14 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	err = hostA.Insert()
 	s.NoError(err)
 
-	hostB := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -174,7 +174,7 @@ func (s *VSphereSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	err := myHost.Insert()
 	s.NoError(err)
 	myHost, err = s.manager.SpawnHost(ctx, myHost)
@@ -235,14 +235,14 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	dProviderName := distro.Distro{Provider: "ec2"}
-	host := NewIntent(dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	host := NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	s.NotNil(host)
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
 
 	dSettingsNone := distro.Distro{Provider: "vsphere"}
-	host = NewIntent(dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	host = NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -251,7 +251,7 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 		Provider:         "vsphere",
 		ProviderSettings: &map[string]interface{}{"template": ""},
 	}
-	host = NewIntent(dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host = NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
@@ -263,12 +263,12 @@ func (s *VSphereSuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -282,13 +282,13 @@ func (s *VSphereSuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
-	host = NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host = NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	_, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 }

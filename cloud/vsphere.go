@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -51,11 +50,6 @@ func (opts *vsphereSettings) Validate() error {
 	}
 
 	return nil
-}
-
-//GetInstanceName returns a name to be used for an instance
-func (*vsphereManager) GetInstanceName(d distro.Distro) string {
-	return d.GenerateName()
 }
 
 // GetSettings returns an empty vsphereSettings struct

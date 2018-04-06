@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -53,9 +52,6 @@ type CloudManager interface {
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(*host.Host) time.Duration
-
-	// GetInstanceName returns the name that should be used for an instance of this provider
-	GetInstanceName(distro.Distro) string
 }
 
 // CloudCostCalculator is an interface for cloud managers that can estimate an

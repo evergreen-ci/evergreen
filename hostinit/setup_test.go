@@ -246,7 +246,7 @@ func spawnMockHost(ctx context.Context) (*host.Host, error) {
 		Key:  "ssh-rsa 1234567890abcdef",
 	})
 
-	newHost := cloud.NewIntent(mockDistro, cloudManager.GetInstanceName(mockDistro), evergreen.ProviderNameMock, hostOptions)
+	newHost := cloud.NewIntent(mockDistro, mockDistro.GenerateName(), evergreen.ProviderNameMock, hostOptions)
 	newHost, err = cloudManager.SpawnHost(ctx, newHost)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error spawning instance")
