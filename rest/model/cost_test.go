@@ -41,10 +41,10 @@ func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess1() {
 	apiDC := &APIDistroCost{}
 	err := apiDC.BuildFromService(s.dc)
 	s.NoError(err)
-	s.Equal(apiDC.DistroId, ToApiString(s.distroId))
+	s.Equal(apiDC.DistroId, ToAPIString(s.distroId))
 	s.Equal(apiDC.SumTimeTaken, NewAPIDuration(s.sumTimeTaken))
-	s.Equal(apiDC.Provider, ToApiString(evergreen.ProviderNameEc2OnDemand))
-	s.Equal(apiDC.InstanceType, ToApiString("value"))
+	s.Equal(apiDC.Provider, ToAPIString(evergreen.ProviderNameEc2OnDemand))
+	s.Equal(apiDC.InstanceType, ToAPIString("value"))
 }
 
 func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess2() {
@@ -57,10 +57,10 @@ func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess2() {
 	apiDC := &APIDistroCost{}
 	err := apiDC.BuildFromService(s.dc)
 	s.NoError(err)
-	s.Equal(apiDC.DistroId, ToApiString(s.distroId))
+	s.Equal(apiDC.DistroId, ToAPIString(s.distroId))
 	s.Equal(apiDC.SumTimeTaken, NewAPIDuration(s.sumTimeTaken))
-	s.Equal(apiDC.Provider, ToApiString(evergreen.ProviderNameEc2Spot))
-	s.Equal(apiDC.InstanceType, ToApiString("value"))
+	s.Equal(apiDC.Provider, ToAPIString(evergreen.ProviderNameEc2Spot))
+	s.Equal(apiDC.InstanceType, ToAPIString("value"))
 }
 
 func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess3() {
@@ -73,9 +73,9 @@ func (s *DistroCostSuite) TestDistroCostBuildFromServiceSuccess3() {
 	apiDC := &APIDistroCost{}
 	err := apiDC.BuildFromService(s.dc)
 	s.NoError(err)
-	s.Equal(apiDC.DistroId, ToApiString(s.distroId))
+	s.Equal(apiDC.DistroId, ToAPIString(s.distroId))
 	s.Equal(apiDC.SumTimeTaken, NewAPIDuration(s.sumTimeTaken))
-	s.Equal(apiDC.Provider, ToApiString(evergreen.ProviderNameGce))
+	s.Equal(apiDC.Provider, ToAPIString(evergreen.ProviderNameGce))
 	s.Equal(apiDC.InstanceType, APIString(nil))
 }
 

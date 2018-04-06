@@ -14,5 +14,5 @@ func TestDistroBuildFromService(t *testing.T) {
 	apiDistro := &APIDistro{}
 	err := apiDistro.BuildFromService(d)
 	assert.Nil(t, err)
-	assert.Equal(t, FromApiString(apiDistro.Name), d.Id)
+	assert.Equal(t, FromAPIString(apiDistro.Name), d.Id)
 }

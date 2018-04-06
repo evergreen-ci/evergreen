@@ -217,13 +217,13 @@ func (h *bannerPostHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 
 func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	if err := sc.SetAdminBanner(model.FromApiString(h.Banner), u); err != nil {
+	if err := sc.SetAdminBanner(model.FromAPIString(h.Banner), u); err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err
 	}
-	if err := sc.SetBannerTheme(model.FromApiString(h.Theme), u); err != nil {
+	if err := sc.SetBannerTheme(model.FromAPIString(h.Theme), u); err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
@@ -253,7 +253,7 @@ func (h *bannerGetHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 	return ResponseData{
-		Result: []model.Model{&model.APIBanner{Text: model.ToApiString(banner), Theme: model.ToApiString(theme)}},
+		Result: []model.Model{&model.APIBanner{Text: model.ToAPIString(banner), Theme: model.ToAPIString(theme)}},
 	}, nil
 }
 

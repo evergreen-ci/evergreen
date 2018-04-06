@@ -29,8 +29,8 @@ func (a *APIGithubHook) BuildFromService(h interface{}) error {
 	}
 
 	a.HookID = v.HookID
-	a.Owner = ToApiString(v.Owner)
-	a.Repo = ToApiString(v.Repo)
+	a.Owner = ToAPIString(v.Owner)
+	a.Repo = ToAPIString(v.Repo)
 	return nil
 }
 

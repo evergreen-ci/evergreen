@@ -89,7 +89,7 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 			Message:    fmt.Sprintf("failed to unmarshal public key: %s", err),
 		}
 	}
-	h.keyName = model.FromApiString(key.Name)
+	h.keyName = model.FromAPIString(key.Name)
 	if err := validateKeyName(h.keyName); err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,
@@ -97,7 +97,7 @@ func (h *keysPostHandler) ParseAndValidate(ctx context.Context, r *http.Request)
 		}
 	}
 
-	h.keyValue = model.FromApiString(key.Key)
+	h.keyValue = model.FromAPIString(key.Key)
 	if err := validateKeyValue(h.keyValue); err != nil {
 		return &rest.APIError{
 			StatusCode: http.StatusBadRequest,

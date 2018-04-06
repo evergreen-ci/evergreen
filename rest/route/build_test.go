@@ -54,8 +54,8 @@ func (s *BuildByIdSuite) TestFindByIdProjFound() {
 
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToApiString("build1"), b.Id)
-	s.Equal(model.ToApiString("project"), b.ProjectId)
+	s.Equal(model.ToAPIString("build1"), b.Id)
+	s.Equal(model.ToAPIString("project"), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
@@ -68,8 +68,8 @@ func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
 
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToApiString("build2"), b.Id)
-	s.Equal(model.ToApiString(""), b.ProjectId)
+	s.Equal(model.ToAPIString("build2"), b.Id)
+	s.Equal(model.ToAPIString(""), b.ProjectId)
 }
 
 func (s *BuildByIdSuite) TestFindByIdFail() {
@@ -123,7 +123,7 @@ func (s *BuildChangeStatusSuite) TestSetActivation() {
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
 	s.True(b.Activated)
-	s.Equal(model.ToApiString("user1"), b.ActivatedBy)
+	s.Equal(model.ToAPIString("user1"), b.ActivatedBy)
 }
 
 func (s *BuildChangeStatusSuite) TestSetActivationFail() {
@@ -232,7 +232,7 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["build2"])
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToApiString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
@@ -241,7 +241,7 @@ func (s *BuildAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted["build2"])
 	b, ok = (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToApiString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 }
 
 func (s *BuildAbortSuite) TestAbortFail() {
@@ -295,14 +295,14 @@ func (s *BuildRestartSuite) TestRestart() {
 	s.NotNil(res)
 	b, ok := (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToApiString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
 	b, ok = (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
-	s.Equal(model.ToApiString("build1"), b.Id)
+	s.Equal(model.ToAPIString("build1"), b.Id)
 }
 
 func (s *BuildRestartSuite) TestRestartFail() {

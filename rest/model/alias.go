@@ -16,9 +16,9 @@ type APIAlias struct {
 func (apiAlias *APIAlias) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case model.ProjectAlias:
-		apiAlias.Alias = ToApiString(v.Alias)
-		apiAlias.Variant = ToApiString(v.Variant)
-		apiAlias.Task = ToApiString(v.Task)
+		apiAlias.Alias = ToAPIString(v.Alias)
+		apiAlias.Variant = ToAPIString(v.Variant)
+		apiAlias.Task = ToAPIString(v.Task)
 	default:
 		return errors.Errorf("incorrect type when fetching converting alias type")
 	}

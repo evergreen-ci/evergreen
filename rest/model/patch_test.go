@@ -58,32 +58,32 @@ func TestAPIPatch(t *testing.T) {
 	err := a.BuildFromService(p)
 	assert.NoError(err)
 
-	assert.Equal(p.Id.Hex(), FromApiString(a.Id))
-	assert.Equal(p.Description, FromApiString(a.Description))
-	assert.Equal(p.Project, FromApiString(a.ProjectId))
-	assert.Equal(p.Project, FromApiString(a.Branch))
-	assert.Equal(p.Githash, FromApiString(a.Githash))
+	assert.Equal(p.Id.Hex(), FromAPIString(a.Id))
+	assert.Equal(p.Description, FromAPIString(a.Description))
+	assert.Equal(p.Project, FromAPIString(a.ProjectId))
+	assert.Equal(p.Project, FromAPIString(a.Branch))
+	assert.Equal(p.Githash, FromAPIString(a.Githash))
 	assert.Equal(p.PatchNumber, a.PatchNumber)
-	assert.Equal(p.Author, FromApiString(a.Author))
-	assert.Equal(p.Version, FromApiString(a.Version))
-	assert.Equal(p.Status, FromApiString(a.Status))
+	assert.Equal(p.Author, FromAPIString(a.Author))
+	assert.Equal(p.Version, FromAPIString(a.Version))
+	assert.Equal(p.Status, FromAPIString(a.Status))
 	assert.Zero(time.Time(a.CreateTime).Sub(p.CreateTime))
 	assert.Equal(-time.Hour, time.Time(a.StartTime).Sub(p.StartTime))
 	assert.Equal(-2*time.Hour, time.Time(a.FinishTime).Sub(p.FinishTime))
 	for i, variant := range a.Variants {
-		assert.Equal(p.BuildVariants[i], FromApiString(variant))
+		assert.Equal(p.BuildVariants[i], FromAPIString(variant))
 	}
 	for i, task := range a.Tasks {
-		assert.Equal(p.Tasks[i], FromApiString(task))
+		assert.Equal(p.Tasks[i], FromAPIString(task))
 	}
 	for i, vt := range a.VariantsTasks {
-		assert.Equal(p.VariantsTasks[i].Variant, FromApiString(vt.Name))
+		assert.Equal(p.VariantsTasks[i].Variant, FromAPIString(vt.Name))
 
 		for i2, task := range vt.Tasks {
 			assert.Equal(a.Tasks[i2], task)
 		}
 	}
-	assert.Equal("__github", FromApiString(a.Alias))
+	assert.Equal("__github", FromAPIString(a.Alias))
 	assert.NotZero(a.GithubPatchData)
 }
 
@@ -102,10 +102,10 @@ func TestGithubPatch(t *testing.T) {
 	err := a.BuildFromService(p)
 	assert.NoError(err)
 	assert.Equal(123, a.PRNumber)
-	assert.Equal("evergreen-ci", FromApiString(a.BaseOwner))
-	assert.Equal("evergreen", FromApiString(a.BaseRepo))
-	assert.Equal("octocat", FromApiString(a.HeadOwner))
-	assert.Equal("evergreen", FromApiString(a.HeadRepo))
-	assert.Equal("hash", FromApiString(a.HeadHash))
-	assert.Equal("octocat", FromApiString(a.Author))
+	assert.Equal("evergreen-ci", FromAPIString(a.BaseOwner))
+	assert.Equal("evergreen", FromAPIString(a.BaseRepo))
+	assert.Equal("octocat", FromAPIString(a.HeadOwner))
+	assert.Equal("evergreen", FromAPIString(a.HeadRepo))
+	assert.Equal("hash", FromAPIString(a.HeadHash))
+	assert.Equal("octocat", FromAPIString(a.Author))
 }

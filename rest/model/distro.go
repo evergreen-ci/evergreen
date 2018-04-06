@@ -16,7 +16,7 @@ type APIDistro struct {
 func (apiDistro *APIDistro) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case distro.Distro:
-		apiDistro.Name = ToApiString(v.Id)
+		apiDistro.Name = ToAPIString(v.Id)
 		apiDistro.UserSpawnAllowed = v.SpawnAllowed
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro type")

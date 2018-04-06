@@ -315,8 +315,8 @@ func TestBannerRoutes(t *testing.T) {
 	modelInterface, err := resp.Result[0].ToService()
 	assert.NoError(err)
 	model := modelInterface.(*restModel.APIBanner)
-	assert.EqualValues(restModel.ToApiString("foo"), model.Text)
-	assert.EqualValues(restModel.ToApiString("warning"), model.Theme)
+	assert.EqualValues(restModel.ToAPIString("foo"), model.Text)
+	assert.EqualValues(restModel.ToAPIString("warning"), model.Theme)
 }
 
 func TestAdminEventRoute(t *testing.T) {

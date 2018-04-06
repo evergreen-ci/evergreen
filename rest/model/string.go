@@ -2,11 +2,11 @@ package model
 
 type APIString *string
 
-func ToApiString(in string) APIString {
+func ToAPIString(in string) APIString {
 	return APIString(&in)
 }
 
-func FromApiString(in APIString) string {
+func FromAPIString(in APIString) string {
 	if in == nil {
 		return ""
 	}

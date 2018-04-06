@@ -14,8 +14,8 @@ type APIPubKey struct {
 func (apiPubKey *APIPubKey) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case user.PubKey:
-		apiPubKey.Name = ToApiString(v.Name)
-		apiPubKey.Key = ToApiString(v.Key)
+		apiPubKey.Name = ToAPIString(v.Name)
+		apiPubKey.Key = ToAPIString(v.Key)
 	default:
 		return errors.Errorf("incorrect type when fetching converting pubkey type")
 	}

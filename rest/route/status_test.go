@@ -162,7 +162,7 @@ func (s *StatusSuite) TestExecuteVerbose() {
 	s.Len(resp.Result, 5)
 	for i, result := range resp.Result {
 		t := result.(*model.APITask)
-		s.Equal(model.ToApiString(fmt.Sprintf("task%d", i+1)), t.Id)
+		s.Equal(model.ToAPIString(fmt.Sprintf("task%d", i+1)), t.Id)
 	}
 }
 
@@ -176,7 +176,7 @@ func (s *StatusSuite) TaskTaskType() {
 	s.NotNil(resp)
 	s.Len(resp.Result, 1)
 	found := resp.Result[0].(*model.APITask)
-	s.Equal(model.ToApiString("task1"), found.Id)
+	s.Equal(model.ToAPIString("task1"), found.Id)
 
 	s.h.taskType = evergreen.TaskStarted
 	resp, err = s.h.Execute(context.Background(), s.sc)
@@ -184,7 +184,7 @@ func (s *StatusSuite) TaskTaskType() {
 	s.NotNil(resp)
 	s.Len(resp.Result, 1)
 	found = resp.Result[0].(*model.APITask)
-	s.Equal(model.ToApiString("task2"), found.Id)
+	s.Equal(model.ToAPIString("task2"), found.Id)
 
 	s.h.taskType = evergreen.TaskSucceeded
 	resp, err = s.h.Execute(context.Background(), s.sc)
@@ -192,9 +192,9 @@ func (s *StatusSuite) TaskTaskType() {
 	s.NotNil(resp)
 	s.Len(resp.Result, 2)
 	found = resp.Result[0].(*model.APITask)
-	s.Equal(model.ToApiString("task3"), found.Id)
+	s.Equal(model.ToAPIString("task3"), found.Id)
 	found = resp.Result[1].(*model.APITask)
-	s.Equal(model.ToApiString("task4"), found.Id)
+	s.Equal(model.ToAPIString("task4"), found.Id)
 
 	s.h.taskType = evergreen.TaskSystemTimedOut
 	resp, err = s.h.Execute(context.Background(), s.sc)
@@ -202,5 +202,5 @@ func (s *StatusSuite) TaskTaskType() {
 	s.NotNil(resp)
 	s.Len(resp.Result, 1)
 	found = resp.Result[0].(*model.APITask)
-	s.Equal(model.ToApiString("task5"), found.Id)
+	s.Equal(model.ToAPIString("task5"), found.Id)
 }

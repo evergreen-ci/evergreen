@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	HostPasswordUpdate         = restModel.ToApiString("updateRDPPassword")
-	HostExpirationExtension    = restModel.ToApiString("extendHostExpiration")
-	HostTerminate              = restModel.ToApiString("terminate")
+	HostPasswordUpdate         = restModel.ToAPIString("updateRDPPassword")
+	HostExpirationExtension    = restModel.ToAPIString("extendHostExpiration")
+	HostTerminate              = restModel.ToAPIString("terminate")
 	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
@@ -144,7 +144,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	hostId := restModel.FromApiString(updateParams.HostID)
+	hostId := restModel.FromAPIString(updateParams.HostID)
 	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
@@ -181,7 +181,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostPasswordUpdate:
-		pwd := restModel.FromApiString(updateParams.RDPPwd)
+		pwd := restModel.FromAPIString(updateParams.RDPPwd)
 		if !h.Distro.IsWindows() {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
@@ -199,7 +199,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
-		addtHours, err := strconv.Atoi(restModel.FromApiString(updateParams.AddHours))
+		addtHours, err := strconv.Atoi(restModel.FromAPIString(updateParams.AddHours))
 		if err != nil {
 			http.Error(w, "bad hours param", http.StatusBadRequest)
 			return

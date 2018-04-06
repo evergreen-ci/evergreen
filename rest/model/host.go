@@ -59,11 +59,11 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 
 func getTaskInfo(t *task.Task) taskInfo {
 	return taskInfo{
-		Id:           ToApiString(t.Id),
-		Name:         ToApiString(t.DisplayName),
+		Id:           ToAPIString(t.Id),
+		Name:         ToAPIString(t.DisplayName),
 		DispatchTime: NewTime(t.DispatchTime),
-		VersionId:    ToApiString(t.Version),
-		BuildId:      ToApiString(t.BuildId),
+		VersionId:    ToAPIString(t.Version),
+		BuildId:      ToAPIString(t.BuildId),
 	}
 }
 
@@ -78,18 +78,18 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 	default:
 		return fmt.Errorf("incorrect type when fetching converting host type")
 	}
-	apiHost.Id = ToApiString(v.Id)
-	apiHost.HostURL = ToApiString(v.Host)
+	apiHost.Id = ToAPIString(v.Id)
+	apiHost.HostURL = ToAPIString(v.Host)
 	apiHost.Provisioned = v.Provisioned
-	apiHost.StartedBy = ToApiString(v.StartedBy)
-	apiHost.Type = ToApiString(v.InstanceType)
-	apiHost.User = ToApiString(v.User)
-	apiHost.Status = ToApiString(v.Status)
+	apiHost.StartedBy = ToAPIString(v.StartedBy)
+	apiHost.Type = ToAPIString(v.InstanceType)
+	apiHost.User = ToAPIString(v.User)
+	apiHost.Status = ToAPIString(v.Status)
 	apiHost.UserHost = v.UserHost
 
 	di := DistroInfo{
-		Id:       ToApiString(v.Distro.Id),
-		Provider: ToApiString(v.Distro.Provider),
+		Id:       ToAPIString(v.Distro.Id),
+		Provider: ToAPIString(v.Distro.Provider),
 	}
 	apiHost.Distro = di
 	return nil
@@ -98,12 +98,12 @@ func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
 // ToService returns a service layer host using the data from the APIHost.
 func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
-		Id:           FromApiString(apiHost.Id),
+		Id:           FromAPIString(apiHost.Id),
 		Provisioned:  apiHost.Provisioned,
-		StartedBy:    FromApiString(apiHost.StartedBy),
-		InstanceType: FromApiString(apiHost.Type),
-		User:         FromApiString(apiHost.User),
-		Status:       FromApiString(apiHost.Status),
+		StartedBy:    FromAPIString(apiHost.StartedBy),
+		InstanceType: FromAPIString(apiHost.Type),
+		User:         FromAPIString(apiHost.User),
+		Status:       FromAPIString(apiHost.Status),
 	}
 	return interface{}(h), nil
 }

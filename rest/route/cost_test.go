@@ -52,7 +52,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	versionCost := res.Result[0]
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.ToApiString("version1"), h.VersionId)
+	s.Equal(model.ToAPIString("version1"), h.VersionId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 }
 
@@ -71,7 +71,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	versionCost := res.Result[0]
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
-	s.Equal(model.ToApiString("version2"), h.VersionId)
+	s.Equal(model.ToAPIString("version2"), h.VersionId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 }
 
@@ -176,10 +176,10 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	distroCost := res.Result[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToApiString("distro1"), h.DistroId)
+	s.Equal(model.ToAPIString("distro1"), h.DistroId)
 	s.Equal(model.APIDuration(1), h.SumTimeTaken)
-	s.Equal(model.ToApiString("ec2-ondemand"), h.Provider)
-	s.Equal(model.ToApiString("type"), h.InstanceType)
+	s.Equal(model.ToAPIString("ec2-ondemand"), h.Provider)
+	s.Equal(model.ToAPIString("type"), h.InstanceType)
 }
 
 // TestFindCostByDistroIdMany tests the handler where information is aggregated on
@@ -198,9 +198,9 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	distroCost := res.Result[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToApiString("distro2"), h.DistroId)
+	s.Equal(model.ToAPIString("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(2), h.SumTimeTaken)
-	s.Equal(model.ToApiString("gce"), h.Provider)
+	s.Equal(model.ToAPIString("gce"), h.Provider)
 	s.Equal(model.APIString(nil), h.InstanceType)
 }
 
@@ -217,9 +217,9 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	distroCost := res.Result[0]
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
-	s.Equal(model.ToApiString("distro2"), h.DistroId)
+	s.Equal(model.ToAPIString("distro2"), h.DistroId)
 	s.Equal(model.APIDuration(0), h.SumTimeTaken)
-	s.Equal(model.ToApiString(""), h.Provider)
+	s.Equal(model.ToAPIString(""), h.Provider)
 	s.Equal(model.APIString(nil), h.InstanceType)
 }
 
