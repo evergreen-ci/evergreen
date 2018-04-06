@@ -103,6 +103,7 @@ mciModule.controller('PerfController', function PerfController(
   }
 
   // needed to do Math.abs in the template code.
+  $scope.user = $window.user
   $scope.Math = $window.Math;
   $scope.conf = $window.plugins["perf"];
   $scope.task = $window.task_data;
