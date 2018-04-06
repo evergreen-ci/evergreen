@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -55,7 +54,7 @@ func flagIdleHosts(ctx context.Context, d []distro.Distro, s *evergreen.Settings
 	// go through the hosts, and see if they have idled long enough to
 	// be terminated
 	for _, freeHost := range freeHosts {
-		if !util.StringSliceContains(evergreen.ProviderSpawnable, freeHost.Provider) {
+		if !freeHost.IsEphemeral() {
 			// only flag excess hosts for spawnable distros
 			continue
 		}
@@ -108,8 +107,7 @@ func flagExcessHosts(ctx context.Context, distros []distro.Distro, s *evergreen.
 
 	// figure out the excess hosts for each distro
 	for _, d := range distros {
-		if !util.StringSliceContains(evergreen.ProviderSpawnable, d.Provider) {
-			// only flag excess hosts for spawnable distros
+		if !d.IsEphemeral() {
 			continue
 		}
 

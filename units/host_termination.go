@@ -77,7 +77,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 	}
 
-	if !util.StringSliceContains(evergreen.ProviderSpawnable, j.host.Provider) {
+	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
 			"host":     j.HostID,

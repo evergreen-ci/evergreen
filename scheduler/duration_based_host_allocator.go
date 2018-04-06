@@ -93,15 +93,14 @@ type DurationBasedHostAllocator struct{}
 
 // helper type to sort distros by the number of static hosts they have
 type sortableDistroByNumStaticHost struct {
-	distros  []distro.Distro
-	settings *evergreen.Settings
+	distros []distro.Distro
 }
 
 // NewHostsNeeded decides if new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
 // consideration. Returns a map of distro to number of hosts to spawn.
 func (self *DurationBasedHostAllocator) NewHostsNeeded(ctx context.Context,
-	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (newHostsNeeded map[string]int, err error) {
+	hostAllocatorData HostAllocatorData) (newHostsNeeded map[string]int, err error) {
 
 	queueDistros := make([]distro.Distro, 0,
 		len(hostAllocatorData.taskQueueItems))
@@ -127,7 +126,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 	// hosts and other without, we want to spin up new machines for the latter
 	// only if the former is unable to satisfy the turnaround requirement - as
 	// determined by MaxDurationPerDistroHost
-	distros := sortDistrosByNumStaticHosts(queueDistros, settings)
+	distros := sortDistrosByNumStaticHosts(queueDistros)
 
 	// for all distros, this maintains a mapping of distro name -> the number
 	// of new hosts needed for that distro
@@ -146,7 +145,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 	for _, d := range distros {
 		newHostsNeeded[d.Id], err = self.
 			numNewHostsForDistro(ctx, &hostAllocatorData, d, tasksAccountedFor,
-				distroScheduleData, settings)
+				distroScheduleData)
 		if err != nil {
 			grip.Error(message.WrapError(err, message.Fields{
 				"runner":  RunnerName,
@@ -435,7 +434,7 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 func (self *DurationBasedHostAllocator) numNewHostsForDistro(ctx context.Context,
 	hostAllocatorData *HostAllocatorData, distro distro.Distro,
 	tasksAccountedFor map[string]bool,
-	distroScheduleData map[string]DistroScheduleData, settings *evergreen.Settings) (numNewHosts int,
+	distroScheduleData map[string]DistroScheduleData) (numNewHosts int,
 	err error) {
 
 	projectTaskDurations := hostAllocatorData.projectTaskDurations
@@ -497,30 +496,6 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(ctx context.Context
 	}
 	distroScheduleData[distro.Id] = distroData
 
-	cloudManager, err := cloud.GetCloudManager(ctx, distro.Provider, settings)
-	if err != nil {
-		err = errors.Wrapf(err, "Couldn't get cloud manager for %s (%s)",
-			distro.Provider, distro.Id)
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":   RunnerName,
-			"distro":   distro.Id,
-			"provider": distro.Provider,
-		}))
-		return 0, err
-	}
-
-	can, err := cloudManager.CanSpawn()
-	if err != nil {
-		err = errors.Wrapf(err, "Problem checking if '%v' provider can spawn hosts",
-			distro.Provider)
-		grip.Error(message.WrapError(err, message.Fields{
-			"runner":   RunnerName,
-			"distro":   distro.Id,
-			"provider": distro.Provider,
-		}))
-		return 0, nil
-	}
-
 	underWaterAlert := message.Fields{
 		"provider":  distro.Provider,
 		"distro":    distro.Id,
@@ -530,7 +505,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(ctx context.Context
 		"num_hosts": existingDistroHosts,
 	}
 
-	if !can {
+	if !distro.IsEphemeral() {
 		underWaterAlert["action"] = []string{
 			"reduce workload;",
 			"add additional hosts to pool;",
@@ -583,8 +558,8 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(ctx context.Context
 
 // sortDistrosByNumStaticHosts returns a sorted slice of distros where the
 // distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []distro.Distro, settings *evergreen.Settings) []distro.Distro {
-	sortableDistroObj := &sortableDistroByNumStaticHost{distros, settings}
+func sortDistrosByNumStaticHosts(distros []distro.Distro) []distro.Distro {
+	sortableDistroObj := &sortableDistroByNumStaticHost{distros}
 	sort.Sort(sortableDistroObj)
 	return sortableDistroObj.distros
 }
