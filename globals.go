@@ -143,6 +143,20 @@ const (
 	ProviderNameEc2Legacy = "ec2"
 )
 
+var (
+	// Providers where hosts can be created and terminated automatically.
+	ProviderSpawnable = []string{
+		ProviderNameDocker,
+		ProviderNameEc2Legacy,
+		ProviderNameEc2OnDemand,
+		ProviderNameEc2Spot,
+		ProviderNameEc2Auto,
+		ProviderNameGce,
+		ProviderNameOpenstack,
+		ProviderNameVsphere,
+	}
+)
+
 const (
 	DefaultServiceConfigurationFileName = "/etc/mci_settings.yml"
 	DefaultDatabaseUrl                  = "localhost:27017"

@@ -218,3 +218,31 @@ func PopulateTaskMonitoring() amboy.QueueOperation {
 		return queue.Put(j)
 	}
 }
+
+func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not submitting termination flags for dead/killable hosts",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		hosts, err := host.FindHostsToTerminate()
+		catcher.Add(err)
+
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+		}
+
+		return catcher.Resolve()
+	}
+}

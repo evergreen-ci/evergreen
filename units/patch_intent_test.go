@@ -424,8 +424,9 @@ func (s *PatchIntentUnitsSuite) TestGithubPRTestFromUnknownUserDoesntCreateVersi
 
 	patchDoc, err := patch.FindOne(patch.ById(patchID))
 	s.NoError(err)
-	s.NotNil(patchDoc)
-	s.Empty(patchDoc.Version)
+	if s.NotNil(patchDoc) {
+		s.Empty(patchDoc.Version)
+	}
 
 	versionDoc, err := version.FindOne(version.ById(patchID.Hex()))
 	s.NoError(err)

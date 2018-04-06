@@ -78,10 +78,6 @@ func ByUserWithRunningStatus(user string) db.Q {
 		})
 }
 
-// IsRunning is a query that returns all hosts that are running
-// (i.e. status != terminated).
-var IsRunning = db.Query(bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}})
-
 // IsLive is a query that returns all working hosts started by Evergreen
 var IsLive = db.Query(
 	bson.M{
@@ -159,11 +155,6 @@ var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
 )
 
-// IsStarting is a query that returns all Evergreen hosts that are starting.
-var IsStarting = db.Query(
-	bson.M{StatusKey: evergreen.HostStarting},
-)
-
 // NeedsProvisioning returns a query used by the hostinit process to
 // determine hosts that have been started, but need additional provisioning.
 //
@@ -174,18 +165,6 @@ func NeedsProvisioning() db.Q {
 		evergreen.HostStarting,
 		evergreen.HostInitializing,
 	}}})
-}
-
-// ByUnproductiveSince produces a query that returns all hosts that
-// are not doing work and were created before the given time.
-func ByUnproductiveSince(threshold time.Time) db.Q {
-	return db.Query(bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		LTCTaskKey:     "",
-		CreateTimeKey:  bson.M{"$lte": threshold},
-		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:   evergreen.User,
-	})
 }
 
 // IsRunningAndSpawned is a query that returns all running hosts
@@ -202,14 +181,6 @@ var IsRunningTask = db.Query(
 	bson.M{
 		RunningTaskKey: bson.M{"$exists": true},
 	},
-)
-
-// IsDecommissioned is a query that returns all hosts without a
-// running task that are marked for decommissioning.
-var IsDecommissioned = db.Query(
-	bson.M{
-		RunningTaskKey: bson.M{"$exists": false},
-		StatusKey:      evergreen.HostDecommissioned},
 )
 
 // IsTerminated is a query that returns all hosts that are terminated
@@ -337,38 +308,6 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 		ExpirationTimeKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
 	})
 }
-
-// ByUnreachableBefore produces a query that returns a list of all
-// hosts that are still unreachable, and have been in that state since before the
-// given time threshold.
-func ByUnreachableBefore(threshold time.Time) db.Q {
-	return db.Query(bson.M{
-		StatusKey: evergreen.HostUnreachable,
-		"$or": []bson.M{
-			{LastCommunicationTimeKey: bson.M{"$lt": threshold}},
-			{
-				NeedsNewAgentKey:         false,
-				LastCommunicationTimeKey: bson.M{"$gt": time.Unix(0, 0)},
-			},
-		},
-	})
-}
-
-// ByExpiredSicne produces a query that returns any user-spawned hosts
-// that will expired after the given time.
-func ByExpiredSince(time time.Time) db.Q {
-	return db.Query(bson.M{
-		StartedByKey: bson.M{"$ne": evergreen.User},
-		StatusKey: bson.M{
-			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
-		},
-		ExpirationTimeKey: bson.M{"$lte": time},
-	})
-}
-
-// IsProvisioningFailure is a query that returns all hosts that
-// failed to provision.
-var IsProvisioningFailure = db.Query(bson.D{{Name: StatusKey, Value: evergreen.HostProvisionFailed}})
 
 // NeedsNewAgent returns hosts that are running and need a new agent, have no Last Commmunication Time,
 // or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
