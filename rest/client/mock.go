@@ -308,15 +308,15 @@ func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHos
 // CreateSpawnHost will return a mock host that would have been intended
 func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.APIHost, error) {
 	mockHost := &model.APIHost{
-		Id:      model.APIString("mock_host_id"),
-		HostURL: model.APIString("mock_url"),
+		Id:      model.ToAPIString("mock_host_id"),
+		HostURL: model.ToAPIString("mock_url"),
 		Distro: model.DistroInfo{
-			Id:       model.APIString(distroID),
-			Provider: evergreen.ProviderNameMock,
+			Id:       model.ToAPIString(distroID),
+			Provider: model.ToAPIString(evergreen.ProviderNameMock),
 		},
-		Type:        model.APIString("mock_type"),
-		Status:      model.APIString(evergreen.HostUninitialized),
-		StartedBy:   model.APIString("mock_user"),
+		Type:        model.ToAPIString("mock_type"),
+		Status:      model.ToAPIString(evergreen.HostUninitialized),
+		StartedBy:   model.ToAPIString("mock_user"),
 		UserHost:    true,
 		Provisioned: false,
 	}
@@ -445,11 +445,11 @@ func (c *Mock) GetSystemInfoLength() int {
 func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 	mockDistros := []model.APIDistro{
 		{
-			Name:             model.APIString("archlinux-build"),
+			Name:             model.ToAPIString("archlinux-build"),
 			UserSpawnAllowed: true,
 		},
 		{
-			Name:             model.APIString("baas-linux"),
+			Name:             model.ToAPIString("baas-linux"),
 			UserSpawnAllowed: false,
 		},
 	}
@@ -459,12 +459,12 @@ func (c *Mock) GetDistrosList(ctx context.Context) ([]model.APIDistro, error) {
 func (c *Mock) GetCurrentUsersKeys(ctx context.Context) ([]model.APIPubKey, error) {
 	return []model.APIPubKey{
 		{
-			Name: "key0",
-			Key:  "ssh-fake 12345",
+			Name: model.ToAPIString("key0"),
+			Key:  model.ToAPIString("ssh-fake 12345"),
 		},
 		{
-			Name: "key1",
-			Key:  "ssh-fake 67890",
+			Name: model.ToAPIString("key1"),
+			Key:  model.ToAPIString("ssh-fake 67890"),
 		},
 	}, nil
 }

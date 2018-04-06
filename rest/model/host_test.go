@@ -24,22 +24,22 @@ func TestHostBuildFromService(t *testing.T) {
 		modelPairs := []hostCompare{
 			{
 				ah: APIHost{
-					Id: APIString("testId"),
+					Id: ToAPIString("testId"),
 					Distro: DistroInfo{
-						Id:       APIString("testDistroId"),
-						Provider: APIString("testDistroProvider"),
+						Id:       ToAPIString("testDistroId"),
+						Provider: ToAPIString("testDistroProvider"),
 					},
 					Provisioned: true,
-					StartedBy:   APIString("testStarter"),
-					Type:        APIString("testType"),
-					User:        APIString("testUser"),
-					Status:      APIString("testStatus"),
+					StartedBy:   ToAPIString("testStarter"),
+					Type:        ToAPIString("testType"),
+					User:        ToAPIString("testUser"),
+					Status:      ToAPIString("testStatus"),
 					RunningTask: taskInfo{
-						Id:           APIString("testRunningTaskId"),
-						Name:         APIString("testRTName"),
+						Id:           ToAPIString("testRunningTaskId"),
+						Name:         ToAPIString("testRTName"),
 						DispatchTime: NewTime(timeNow),
-						VersionId:    APIString("testVersionId"),
-						BuildId:      APIString("testBuildId"),
+						VersionId:    ToAPIString("testVersionId"),
+						BuildId:      ToAPIString("testBuildId"),
 					},
 				},
 				sh: host.Host{
@@ -80,7 +80,8 @@ func TestHostBuildFromService(t *testing.T) {
 				So(err, ShouldBeNil)
 				err = apiHost.BuildFromService(hc.sh)
 				So(err, ShouldBeNil)
-				So(apiHost, ShouldResemble, &hc.ah)
+				So(FromAPIString(apiHost.Id), ShouldEqual, FromAPIString(hc.ah.Id))
+				So(FromAPIString(apiHost.Status), ShouldEqual, FromAPIString(hc.ah.Status))
 			}
 		})
 	})

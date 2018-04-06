@@ -39,24 +39,24 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 		return errors.Errorf("incorrect type when fetching converting version type")
 	}
 
-	apiVersion.Id = APIString(v.Id)
+	apiVersion.Id = ToAPIString(v.Id)
 	apiVersion.CreateTime = NewTime(v.CreateTime)
 	apiVersion.StartTime = NewTime(v.StartTime)
 	apiVersion.FinishTime = NewTime(v.FinishTime)
-	apiVersion.Revision = APIString(v.Revision)
-	apiVersion.Author = APIString(v.Author)
-	apiVersion.AuthorEmail = APIString(v.AuthorEmail)
-	apiVersion.Message = APIString(v.Message)
-	apiVersion.Status = APIString(v.Status)
-	apiVersion.Repo = APIString(v.Repo)
-	apiVersion.Branch = APIString(v.Branch)
+	apiVersion.Revision = ToAPIString(v.Revision)
+	apiVersion.Author = ToAPIString(v.Author)
+	apiVersion.AuthorEmail = ToAPIString(v.AuthorEmail)
+	apiVersion.Message = ToAPIString(v.Message)
+	apiVersion.Status = ToAPIString(v.Status)
+	apiVersion.Repo = ToAPIString(v.Repo)
+	apiVersion.Branch = ToAPIString(v.Branch)
 	apiVersion.Order = v.RevisionOrderNumber
 
 	var bd buildDetail
 	for _, t := range v.BuildVariants {
 		bd = buildDetail{
-			BuildVariant: APIString(t.BuildVariant),
-			BuildId:      APIString(t.BuildId),
+			BuildVariant: ToAPIString(t.BuildVariant),
+			BuildId:      ToAPIString(t.BuildId),
 		}
 		apiVersion.BuildVariants = append(apiVersion.BuildVariants, bd)
 	}

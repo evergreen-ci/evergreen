@@ -114,7 +114,7 @@ func (c *communicatorImpl) ChangeSpawnHostPassword(ctx context.Context, hostID, 
 		version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
-		RDPPwd: model.APIString(rdpPassword),
+		RDPPwd: model.ToAPIString(rdpPassword),
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
@@ -139,7 +139,7 @@ func (c *communicatorImpl) ExtendSpawnHostExpiration(ctx context.Context, hostID
 		version: apiVersion2,
 	}
 	body := model.APISpawnHostModify{
-		AddHours: model.APIString(fmt.Sprintf("%d", addHours)),
+		AddHours: model.ToAPIString(fmt.Sprintf("%d", addHours)),
 	}
 	resp, err := c.request(ctx, info, body)
 	if err != nil {
@@ -226,7 +226,7 @@ func (c *communicatorImpl) GetBannerMessage(ctx context.Context) (string, error)
 		return "", errors.Wrap(err, "problem parsing response from server")
 	}
 
-	return string(banner.Text), nil
+	return model.FromAPIString(banner.Text), nil
 }
 
 func (c *communicatorImpl) SetServiceFlags(ctx context.Context, f *model.APIServiceFlags) error {
@@ -440,8 +440,8 @@ func (c *communicatorImpl) AddPublicKey(ctx context.Context, keyName, keyValue s
 	}
 
 	key := model.APIPubKey{
-		Name: model.APIString(keyName),
-		Key:  model.APIString(keyValue),
+		Name: model.ToAPIString(keyName),
+		Key:  model.ToAPIString(keyValue),
 	}
 
 	resp, err := c.request(ctx, info, key)
