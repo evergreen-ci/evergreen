@@ -612,7 +612,7 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 				UserHost: false,
 			}
 
-			intentHost := cloud.NewIntent(*d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
+			intentHost := cloud.NewIntent(d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
 			if err := intentHost.Insert(); err != nil {
 				err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
 

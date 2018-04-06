@@ -169,7 +169,7 @@ func (_ *mockManager) Validate() error {
 	return nil
 }
 
-func (*mockManager) GetInstanceName(d *distro.Distro) string {
+func (*mockManager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 

@@ -36,7 +36,7 @@ func UpdateStaticHosts() error {
 		return catcher.Resolve()
 	}
 
-	return host.MarkInactiveStaticHosts(activeStaticHosts)
+	return host.MarkInactiveStaticHosts(activeHosts)
 }
 
 func UpdateStaticDistro(name string) error {
@@ -53,12 +53,14 @@ func UpdateStaticDistro(name string) error {
 	return host.MarkInactiveStaticHosts(hosts)
 }
 
-func doStatcHostUpdate(d *distro.Distro) ([]string, error) {
+func doStatcHostUpdate(d distro.Distro) ([]string, error) {
 	settings := &cloud.StaticSettings{}
-	err = mapstructure.Decode(d.ProviderSettings, settings)
+	err := mapstructure.Decode(d.ProviderSettings, settings)
 	if err != nil {
 		return nil, errors.Errorf("invalid static settings for '%v'", d.Id)
 	}
+
+	staticHosts := []string{}
 	for _, h := range settings.Hosts {
 		hostInfo, err := util.ParseSSHInfo(h.Name)
 		if err != nil {
@@ -83,9 +85,10 @@ func doStatcHostUpdate(d *distro.Distro) ([]string, error) {
 		// upsert the host
 		_, err = staticHost.Upsert()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		activeStaticHosts = append(activeStaticHosts, h.Name)
+		staticHosts = append(staticHosts, h.Name)
 	}
 
+	return staticHosts, nil
 }

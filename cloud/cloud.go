@@ -55,7 +55,7 @@ type CloudManager interface {
 	TimeTilNextPayment(*host.Host) time.Duration
 
 	// GetInstanceName returns the name that should be used for an instance of this provider
-	GetInstanceName(*distro.Distro) string
+	GetInstanceName(distro.Distro) string
 }
 
 // CloudCostCalculator is an interface for cloud managers that can estimate an

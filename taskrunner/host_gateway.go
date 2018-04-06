@@ -88,7 +88,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(ctx context.Context, settings *ev
 	if err != nil {
 		return errors.Wrapf(err, "error finding distro %s", hostObj.Distro.Id)
 	}
-	hostObj.Distro = *d
+	hostObj.Distro = d
 
 	// prep the remote host
 	grip.Info(message.Fields{"runner": RunnerName,

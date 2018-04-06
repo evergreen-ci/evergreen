@@ -704,7 +704,7 @@ func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 }
 
 // GetInstanceName returns the name of an instance.
-func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
+func (m *ec2Manager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 

@@ -642,7 +642,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			}))
 			return errors.Wrapf(err, "error finding distro %s", h.Distro.Id)
 		}
-		h.Distro = *d
+		h.Distro = d
 
 		grip.Infof("Running setup script for spawn host %s", h.Id)
 		// run the setup script with the agent
