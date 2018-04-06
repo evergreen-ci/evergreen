@@ -89,17 +89,21 @@ mciModule.factory('PerfDiscoveryDataService', function(
   // comparison item. It could be version short/long id, githash
   // Should not be used for tags (all tags are available on ui)
   function getQueryBasedItem(query) {
+    var GITHASH = 'h'
+    var ID_SHORT = 's'
+    var ID_LONG = 'l'
+
     if (query == undefined) return
 
     var idKind = (
-      isGitHash(query) ? 'githash' :
-      isShortItemId(query) ? 'short' :
-      isLongVersionId(query) ? 'long' : undefined
+      isGitHash(query) ? GITHASH :
+      isShortItemId(query) ? ID_SHORT :
+      isLongVersionId(query) ? ID_LONG : undefined
     )
 
     var uniformId = (
-      idKind == 'githash' ? githashToVersionId(query) :
-      _.contains(['short', 'long'], idKind) ? query : undefined
+      idKind == GITHASH ? githashToVersionId(query) :
+      _.contains([ID_SHORT, ID_LONG], idKind) ? query : undefined
     )
 
     // There are not enough information to differentiate
