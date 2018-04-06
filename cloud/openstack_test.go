@@ -16,7 +16,7 @@ type OpenStackSuite struct {
 	client   openStackClient
 	keyname  string
 	manager  *openStackManager
-	distro   *distro.Distro
+	distro   distro.Distro
 	hostOpts HostOptions
 	suite.Suite
 }
@@ -37,7 +37,7 @@ func (s *OpenStackSuite) SetupTest() {
 		client: s.client,
 	}
 
-	s.distro = &distro.Distro{
+	s.distro = distro.Distro{
 		Id:       "host",
 		Provider: "openstack",
 		ProviderSettings: &map[string]interface{}{
@@ -158,14 +158,14 @@ func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -187,7 +187,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -248,24 +248,24 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	dProviderName := &distro.Distro{Provider: "ec2"}
-	host := NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	dProviderName := distro.Distro{Provider: "ec2"}
+	host := NewIntent(dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
 	s.NotNil(host)
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
 
-	dSettingsNone := &distro.Distro{Provider: "openstack"}
-	host = NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	dSettingsNone := distro.Distro{Provider: "openstack"}
+	host = NewIntent(dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
 	s.Nil(host)
 
-	dSettingsInvalid := &distro.Distro{
+	dSettingsInvalid := distro.Distro{
 		Provider:         "openstack",
 		ProviderSettings: &map[string]interface{}{"image_name": ""},
 	}
-	host = NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host = NewIntent(dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
 	s.NotNil(host)
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)
@@ -278,7 +278,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
@@ -286,7 +286,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 	_, err = hostOne.Upsert()
 	s.NoError(err)
 
-	hostTwo := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo := NewIntent(s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
@@ -295,7 +295,7 @@ func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 }
 
 func (s *OpenStackSuite) TestSpawnAPICall() {
-	dist := &distro.Distro{
+	dist := distro.Distro{
 		Id:       "id",
 		Provider: "openstack",
 		ProviderSettings: &map[string]interface{}{
@@ -313,7 +313,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	host := NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
+	host := NewIntent(dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
 	host, err := s.manager.SpawnHost(ctx, host)
 	s.NoError(err)
 	s.NotNil(host)
@@ -321,7 +321,7 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	s.NoError(err)
 
 	mock.failCreate = true
-	host = NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
+	host = NewIntent(dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
 
 	host, err = s.manager.SpawnHost(ctx, host)
 	s.Error(err)

@@ -133,7 +133,7 @@ func CreateHost(so Options) (*host.Host, error) {
 		UserHost:           true,
 	}
 
-	intentHost := cloud.NewIntent(*d, d.GenerateName(), d.Provider, hostOptions)
+	intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 	if intentHost == nil { // theoretically this should not happen
 		return nil, errors.New("unable to intent host: NewIntent did not return a host")
 	}

@@ -55,7 +55,7 @@ func (staticMgr *staticManager) GetDNSName(ctx context.Context, host *host.Host)
 	return host.Id, nil
 }
 
-func (*staticManager) GetInstanceName(d *distro.Distro) string {
+func (*staticManager) GetInstanceName(d distro.Distro) string {
 	return "static"
 }
 

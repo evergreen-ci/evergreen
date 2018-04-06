@@ -88,7 +88,7 @@ func (*dockerManager) GetSettings() ProviderSettings {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*dockerManager) GetInstanceName(_ *distro.Distro) string {
+func (*dockerManager) GetInstanceName(_ distro.Distro) string {
 	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
@@ -122,7 +122,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, &h.Distro, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
 		grip.Error(err)
 		return nil, err

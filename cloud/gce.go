@@ -77,7 +77,7 @@ func (m *gceManager) GetSettings() ProviderSettings {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*gceManager) GetInstanceName(d *distro.Distro) string {
+func (*gceManager) GetInstanceName(d distro.Distro) string {
 	return generateName(d)
 }
 

@@ -517,7 +517,7 @@ func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
 }
 
 func (s *EC2Suite) TestGetInstanceName() {
-	id := s.onDemandManager.GetInstanceName(&distro.Distro{Id: "foo"})
+	id := s.onDemandManager.GetInstanceName(distro.Distro{Id: "foo"})
 	s.True(strings.HasPrefix(id, "evg-foo-"))
 }
 

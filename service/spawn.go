@@ -28,7 +28,7 @@ var (
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 
-	var spawnDistro *distro.Distro
+	var spawnDistro distro.Distro
 	var spawnTask *task.Task
 	var err error
 	if len(r.FormValue("distro_id")) > 0 {
@@ -49,7 +49,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Distro          *distro.Distro
+		Distro          distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int
 		ViewData

@@ -58,7 +58,7 @@ func (m *openStackManager) GetSettings() ProviderSettings {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*openStackManager) GetInstanceName(d *distro.Distro) string {
+func (*openStackManager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 

@@ -54,7 +54,7 @@ func (opts *vsphereSettings) Validate() error {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*vsphereManager) GetInstanceName(d *distro.Distro) string {
+func (*vsphereManager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 
