@@ -79,12 +79,12 @@ func ByUserWithRunningStatus(user string) db.Q {
 }
 
 // IsLive is a query that returns all working hosts started by Evergreen
-var IsLive = db.Query(
-	bson.M{
+func IsLive() bson.M {
+	return bson.M{
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
-	},
-)
+	}
+}
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts
 // for the given user id.
@@ -325,13 +325,19 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-func RemoveAllStaleInitializing() error {
-	return db.RemoveAll(Collection,
-		bson.M{
-			StatusKey:     evergreen.HostUninitialized,
-			UserHostKey:   false,
-			CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		})
+func RemoveStaleInitializing(distroID string) error {
+	query := bson.M{
+		StatusKey:     evergreen.HostUninitialized,
+		UserHostKey:   false,
+		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+	}
+
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	return db.RemoveAll(Collection, query)
 }
 
 // === DB Logic ===

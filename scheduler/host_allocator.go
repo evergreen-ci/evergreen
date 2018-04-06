@@ -10,9 +10,9 @@ import (
 
 // HostAllocator is responsible for determining how many new hosts should be spun up.
 // Parameters:
+//  taskQueueItems: a map of distro name -> task queue items for that distro (a TaskQueue object)
 //  distros: a map of distro name -> information on that distro (a model.Distro object)
 //  existingDistroHosts: a map of distro name -> currently running hosts on that distro
-//  taskQueueItems: a map of distro name -> task queue items for that distro (a TaskQueue object)
 //  projectTaskDurations: the expected duration of tasks by project and variant
 //  taskRunDistros: a map of task id -> distros the task is allowed to run on
 // Returns a map of distro name -> how many hosts need to be spun up for that distro.
@@ -27,4 +27,19 @@ type HostAllocatorData struct {
 	taskRunDistros       map[string][]string
 	distros              map[string]distro.Distro
 	projectTaskDurations model.ProjectTaskDurations
+}
+
+func NewHostAllocatorSingleDistro(d distro.Distro, queue []model.TaskQueueItem, hosts []host.Host, dur model.ProjectTaskDurations) HostAllocatorData {
+	return HostAllocatorData{
+		projectTaskDurations: dur,
+		taskQueueItems: map[string][]model.TaskQueueItem{
+			d.Id: queue,
+		},
+		existingDistroHosts: map[string][]host.Host{
+			d.Id: hosts,
+		},
+		distros: map[string]distro.Distro{
+			d.Id: d,
+		},
+	}
 }

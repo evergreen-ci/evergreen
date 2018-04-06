@@ -12,6 +12,21 @@ import (
 
 type TaskFinder func(string) ([]task.Task, error)
 
+func GetTaskFinder(name string) TaskFinder {
+	switch name {
+	case "parallel":
+		return ParallelTaskFinder
+	case "legacy":
+		return LegacyFindRunnableTasks
+	case "pipeline":
+		return RunnableTasksPipeline
+	case "alternate":
+		return AlternateTaskFinder
+	default:
+		return LegacyFindRunnableTasks
+	}
+}
+
 func RunnableTasksPipeline(distroID string) ([]task.Task, error) {
 	return task.FindRunnable(distroID)
 }
