@@ -21,6 +21,15 @@ type SchedulerRuntimeConfig struct {
 }
 
 func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
+	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
+	if err != nil {
+		return errors.Wrap(err, "problem finding distro")
+	}
+
+	if err := model.UpdateStaticDistro(d); err != nil {
+		return errors.Wrap("problem updating static hosts")
+	}
+
 	finder := GetTaskFinder(conf.TaskFinder)
 	runnableTasks, err := finder(conf.DistroID)
 	if err != nil {
@@ -56,11 +65,6 @@ func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
 	distroHostsMap, err := findUsableHosts(conf.DistroID)
 	if err != nil {
 		return errors.Wrap(err, "with host query")
-	}
-
-	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
-	if err != nil {
-		return errors.Wrap(err, "problem finding distro")
 	}
 
 	hs := &hostScheduler{
