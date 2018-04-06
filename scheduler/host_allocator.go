@@ -28,18 +28,3 @@ type HostAllocatorData struct {
 	distros              map[string]distro.Distro
 	projectTaskDurations model.ProjectTaskDurations
 }
-
-func NewHostAllocatorSingleDistro(d distro.Distro, queue []model.TaskQueueItem, hosts []host.Host, dur model.ProjectTaskDurations) HostAllocatorData {
-	return HostAllocatorData{
-		projectTaskDurations: dur,
-		taskQueueItems: map[string][]model.TaskQueueItem{
-			d.Id: queue,
-		},
-		existingDistroHosts: map[string][]host.Host{
-			d.Id: hosts,
-		},
-		distros: map[string]distro.Distro{
-			d.Id: d,
-		},
-	}
-}
