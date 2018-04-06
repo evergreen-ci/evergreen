@@ -1,13 +1,23 @@
 describe('PerfDiscoveryDataServiceTest', function() {
   beforeEach(module('MCI'));
 
-  var service, $httpBackend, PD
+  var githash = '1234567890123456789012345678901234567890'
+  var project = 'proj'
 
-  beforeEach(inject(function($injector) {
-    service = $injector.get('PerfDiscoveryDataService')
-    $httpBackend = $injector.get('$httpBackend')
-    PD = $injector.get('PERF_DISCOVERY')
-  }))
+  var service, $httpBackend, $window, PD
+
+  beforeEach(function() {
+    module(function($provide) {
+      $window = {project: project}
+      $provide.value('$window', $window)
+    })
+
+    inject(function($injector) {
+      service = $injector.get('PerfDiscoveryDataService')
+      $httpBackend = $injector.get('$httpBackend')
+      PD = $injector.get('PERF_DISCOVERY')
+    })
+  })
 
   it('should extract tasks from version', function() {
     var version = {
@@ -290,7 +300,8 @@ describe('PerfDiscoveryDataServiceTest', function() {
   it('Finds tag/version in items', function() {
     var item1 = {id: 'id1', name: 'name1'}
     var item2 = {id: 'id2', name: 'name2'}
-    var items = [item1, item2]
+    var item3 = {id: 'sys-perf_githash', name: 'name2'}
+    var items = [item1, item2, item3]
 
     expect(
       service.findVersionItem(items, 'id1')
@@ -307,12 +318,15 @@ describe('PerfDiscoveryDataServiceTest', function() {
     expect(
       service.findVersionItem(items, 'name2')
     ).toBe(item2)
+
+    expect(
+      service.findVersionItem(items, 'githash')
+    ).toBe(item3)
   })
 
   it('Adds query based item to comp items', function() {
     var LEN24_A = '1234567890123456789012_A'
     var LEN24_B = '1234567890123456789012_B'
-    var LEN40 = '1234567890123456789012345678901234567890'
     var item1 = {id: LEN24_A, name: 'name1'}
     var item2 = {id: 'id2', name: 'name2'}
     var items = [item1, item2]
@@ -332,17 +346,42 @@ describe('PerfDiscoveryDataServiceTest', function() {
     expect(
       service.getVersionOptions(items, LEN24_B)
     ).toEqual(items.concat({
-      kind: PD.KIND_PATCH,
+      kind: PD.KIND_VERSION,
       id: LEN24_B,
       name: LEN24_B,
     }))
 
     expect(
-      service.getVersionOptions(items, LEN40)
+      service.getVersionOptions(items, githash)
     ).toEqual(items.concat({
       kind: PD.KIND_VERSION,
-      id: LEN40,
-      name: LEN40,
+      id: project + '_' + githash,
+      name: githash,
     }))
+  })
+
+  it('attempts to build a comp item from query string', function() {
+    var LEN24 = '123456789012345678901234'
+    var versionIdLong = project + '_' + githash
+
+    expect(
+      service.getQueryBasedItem('tag name')
+    ).toBeUndefined()
+
+    expect(
+      service.getQueryBasedItem(LEN24)
+    ).toEqual({kind: PD.KIND_VERSION, id: LEN24, name: LEN24})
+
+    expect(
+      service.getQueryBasedItem(versionIdLong)
+    ).toEqual({
+      kind: PD.KIND_VERSION, id: versionIdLong, name: versionIdLong
+    })
+
+    expect(
+      service.getQueryBasedItem(githash)
+    ).toEqual({
+      kind: PD.KIND_VERSION, id: versionIdLong, name: githash
+    })
   })
 })
