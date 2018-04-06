@@ -3,9 +3,6 @@ package units
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -233,22 +230,6 @@ func (j *eventNotificationJob) jiraIssue(n *notification.Notification) error {
 	return nil
 }
 
-// calculatHMACHash calculates a sha256 HMAC has of the body with the given
-// secret. The body must NOT be modified after calculating this hash
-func calculateHMACHash(secret []byte, body []byte) (string, error) {
-	// from genMAC in github.com/google/go-github/github/messages.go
-	mac := hmac.New(sha256.New, secret)
-	n, err := mac.Write(body)
-	if n != len(body) {
-		return "", errors.Errorf("Body length expected to be %d, but was %d", len(body), n)
-	}
-	if err != nil {
-		return "", err
-	}
-
-	return "sha256=" + hex.EncodeToString(mac.Sum(nil)), nil
-}
-
 func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) error {
 	c, err := n.Composer()
 	if err != nil {
@@ -276,7 +257,7 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 		return errors.Wrap(err, "failed to create http request")
 	}
 
-	hash, err := calculateHMACHash(hookSubscriber.Secret, payload)
+	hash, err := util.CalculateHMACHash(hookSubscriber.Secret, payload)
 	if err != nil {
 		return errors.Wrap(err, "failed to calculate hash")
 	}

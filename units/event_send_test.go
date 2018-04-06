@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -152,7 +153,7 @@ func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		m.error(err, w)
 		return
 	}
-	hash, err := calculateHMACHash(m.secret, body)
+	hash, err := util.CalculateHMACHash(m.secret, body)
 	if err != nil {
 		m.error(err, w)
 		return
