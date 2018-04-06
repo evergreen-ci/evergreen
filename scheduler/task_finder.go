@@ -10,17 +10,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TaskFinder func() ([]task.Task, error)
+type TaskFinder func(string) ([]task.Task, error)
 
-func RunnableTasksPipeline() ([]task.Task, error) {
-	return task.FindRunnable()
+func RunnableTasksPipeline(distroID string) ([]task.Task, error) {
+	return task.FindRunnable(distroID)
 }
 
 // The old Task finderDBTaskFinder, with the dependency check implemented in Go,
 // instead of using $graphLookup
-func LegacyFindRunnableTasks() ([]task.Task, error) {
+func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.FindSchedulable()
+	undispatchedTasks, err := task.FindSchedulable(distroID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +78,8 @@ func LegacyFindRunnableTasks() ([]task.Task, error) {
 	return runnableTasks, nil
 }
 
-func AlternateTaskFinder() ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable()
+func AlternateTaskFinder(distroID string) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindSchedulable(distroID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,8 +158,8 @@ func AlternateTaskFinder() ([]task.Task, error) {
 	return runnabletasks, nil
 }
 
-func ParallelTaskFinder() ([]task.Task, error) {
-	undispatchedTasks, err := task.FindSchedulable()
+func ParallelTaskFinder(distroID string) ([]task.Task, error) {
+	undispatchedTasks, err := task.FindSchedulable(distroID)
 	if err != nil {
 		return nil, err
 	}

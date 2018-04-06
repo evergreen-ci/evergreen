@@ -105,7 +105,7 @@ func (s *TaskFinderSuite) insertTasks() {
 
 func (s *TaskFinderSuite) TestNoRunnableTasksReturnsEmptySlice() {
 	// XXX: collection is deliberately empty
-	runnableTasks, err := s.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks("")
 	s.NoError(err)
 	s.Empty(runnableTasks)
 }
@@ -116,7 +116,7 @@ func (s *TaskFinderSuite) TestInactiveTasksNeverReturned() {
 	s.insertTasks()
 
 	// finding the runnable tasks should return two tasks
-	runnableTasks, err := s.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks("")
 	s.NoError(err)
 	s.Len(runnableTasks, 2)
 }
@@ -138,7 +138,7 @@ func (s *TaskFinderSuite) TestTasksWithUnsatisfiedDependenciesNeverReturned() {
 
 	// finding the runnable tasks should return two tasks (the one with
 	// no dependencies and the one with successfully met dependencies
-	runnableTasks, err := s.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks("")
 	s.NoError(err)
 	s.Len(runnableTasks, 2)
 }
@@ -192,28 +192,28 @@ func (s *TaskFinderComparisonSuite) SetupTest() {
 
 	grip.Info("start new")
 	s2start := time.Now()
-	s.newRunnableTasks, err = RunnableTasksPipeline()
+	s.newRunnableTasks, err = RunnableTasksPipeline("")
 	s2dur := time.Since(s2start)
 	s.NoError(err)
 	grip.Info("end db")
 
 	grip.Info("start legacy")
 	s1start := time.Now()
-	s.oldRunnableTasks, err = LegacyFindRunnableTasks()
+	s.oldRunnableTasks, err = LegacyFindRunnableTasks("")
 	s1dur := time.Since(s1start)
 	s.NoError(err)
 	grip.Info("end legacy")
 
 	grip.Info("start alternate")
 	s3start := time.Now()
-	s.altRunnableTasks, err = AlternateTaskFinder()
+	s.altRunnableTasks, err = AlternateTaskFinder("")
 	s3dur := time.Since(s3start)
 	s.NoError(err)
 	grip.Info("end alt")
 
 	grip.Info("start parallel")
 	s4start := time.Now()
-	s.pllRunnableTasks, err = ParallelTaskFinder()
+	s.pllRunnableTasks, err = ParallelTaskFinder("")
 	s4dur := time.Since(s4start)
 	s.NoError(err)
 	grip.Info("end parallel")

@@ -63,7 +63,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	startAt := time.Now()
-	runnableTasks, err := s.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks("")
 	if err != nil {
 		return errors.Wrap(err, "Error finding runnable tasks")
 	}
