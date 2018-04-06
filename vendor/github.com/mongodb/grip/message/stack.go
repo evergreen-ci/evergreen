@@ -55,7 +55,7 @@ type StackTrace struct {
 	Frames  stackFrames `bson:"frames" json:"frames" yaml:"frames"`
 }
 
-func (s StackTrace) String() string { return stackFrames(s.Frames).String() }
+func (s StackTrace) String() string { return s.Frames.String() }
 
 ////////////////////////////////////////////////////////////////////////
 //

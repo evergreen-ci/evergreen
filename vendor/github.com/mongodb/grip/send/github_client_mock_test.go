@@ -30,3 +30,12 @@ func (g *githubClientMock) CreateComment(_ context.Context, _ string, _ string, 
 	g.numSent++
 	return nil, nil, nil
 }
+
+func (g *githubClientMock) CreateStatus(_ context.Context, _, _, _ string, _ *github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
+	if g.failSend {
+		return nil, nil, errors.New("failed to create status")
+	}
+
+	g.numSent++
+	return nil, nil, nil
+}
