@@ -43,7 +43,7 @@ tasks:
 
 // mock implementations, for testing purposes
 
-func MockFindRunnableTasks() ([]task.Task, error) {
+func MockFindRunnableTasks(_ string) ([]task.Task, error) {
 	return nil, errors.New("MockFindRunnableTasks not implemented")
 }
 
