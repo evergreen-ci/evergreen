@@ -52,7 +52,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	if underwaterPruningEnabled {
-		num, err := task.UnscheduleStaleUnderwaterTasks()
+		num, err := task.UnscheduleStaleUnderwaterTasks("")
 		if err != nil {
 			return errors.WithStack(err)
 		}

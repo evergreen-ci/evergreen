@@ -480,10 +480,14 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 // Removes tasks older than the unscheduable threshold (e.g. two
 // weeks) from the scheduler queue.
-func UnscheduleStaleUnderwaterTasks() (int, error) {
+func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0
 	query[ActivatedByKey] = ""
+
+	if distroID != "" {
+		query[DistroIdKey] = distroID
+	}
 
 	query["$and"] = []bson.M{
 		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},

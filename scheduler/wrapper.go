@@ -21,13 +21,14 @@ type SchedulerRuntimeConfig struct {
 }
 
 func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
+	startAt := time.Now()
 	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
 		return errors.Wrap(err, "problem finding distro")
 	}
 
-	if err := model.UpdateStaticDistro(d); err != nil {
-		return errors.Wrap("problem updating static hosts")
+	if err = model.UpdateStaticDistro(distroSpec); err != nil {
+		return errors.Wrap(err, "problem updating static hosts")
 	}
 
 	finder := GetTaskFinder(conf.TaskFinder)
@@ -79,7 +80,7 @@ func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
 		},
 		existingDistroHosts: distroHostsMap,
 		distros: map[string]distro.Distro{
-			conf.DistroID: *distroSpec,
+			conf.DistroID: distroSpec,
 		},
 	}
 
@@ -101,14 +102,15 @@ func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
 
 	makespan := res.schedulerEvent.ExpectedDuration / time.Duration(len(distroHostsMap)+len(hostsSpawned))
 	grip.Info(message.Fields{
-		"message":            "hosts spawned",
-		"runner":             RunnerName,
-		"distro":             conf.DistroID,
-		"new_hosts":          hostList,
-		"num_hosts":          len(hostList),
-		"queue":              res.schedulerEvent,
-		"total_runtime":      res.schedulerEvent.ExpectedDuration.String(),
-		"predicted_makespan": makespan.String(),
+		"message":                "hosts spawned",
+		"runner":                 RunnerName,
+		"distro":                 conf.DistroID,
+		"new_hosts":              hostList,
+		"num_hosts":              len(hostList),
+		"queue":                  res.schedulerEvent,
+		"total_runtime":          res.schedulerEvent.ExpectedDuration.String(),
+		"predicted_makespan":     makespan.String(),
+		"scheduler_runtime_secs": time.Since(startAt).Seconds(),
 	})
 
 	return nil
