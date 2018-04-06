@@ -110,6 +110,7 @@ func (s *notificationsStatsCollectorSuite) TestStatsCollector() {
 	sender := send.MakeInternalLogger()
 
 	job := makeNotificationsStatsCollector()
+	job.SetID("TestStatsCollector")
 	job.logger = logging.MakeGrip(sender)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -129,6 +130,7 @@ func (s *notificationsStatsCollectorSuite) TestStatsCollectorWithCancelledContex
 	startTime := time.Now().Round(time.Millisecond).Truncate(0)
 
 	job := makeNotificationsStatsCollector()
+	job.SetID("TestStatsCollectorWithCancelledContext")
 	job.logger = logging.MakeGrip(sender)
 	job.UpdateTimeInfo(amboy.JobTimeInfo{
 		Start: startTime,

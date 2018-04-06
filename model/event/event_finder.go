@@ -68,7 +68,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 		processedAtKey: bson.M{
 			"$exists": true,
 		},
-	}).Sort([]string{"-" + processedAtKey}).Limit(1)
+	}).Sort([]string{"-" + processedAtKey})
 
 	e := EventLogEntry{}
 	if err := db.FindOneQ(AllLogCollection, q, &e); err != nil {

@@ -2,7 +2,6 @@ package units
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -42,7 +41,6 @@ func makeNotificationsStatsCollector() *notificationsStatsCollector {
 		logger: logging.MakeGrip(grip.GetSender()),
 	}
 	j.SetDependency(dependency.NewAlways())
-	j.SetID(fmt.Sprintf("%s:%s:%d", notificationsStatsCollectorJobName, time.Now().Truncate(0).String(), job.GetNumber()))
 	j.SetPriority(-1)
 	j.UpdateTimeInfo(amboy.JobTimeInfo{
 		MaxTime: time.Minute,
@@ -59,7 +57,7 @@ func NewNotificationStatsCollector(id string) amboy.Job {
 }
 
 func (j *notificationsStatsCollector) Run(ctx context.Context) {
-	defer j.MarkComplete()
+    defer j.MarkComplete()
 
 	msg := message.Fields{
 		"start_time": j.TimeInfo().Start.String(),
