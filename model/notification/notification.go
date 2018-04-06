@@ -121,18 +121,17 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return c, nil
 
 	case event.GithubPullRequestSubscriberType:
-		// TODO make real composer for this
 		payload, ok := n.Payload.(*GithubStatusAPIPayload)
 		if !ok || payload == nil {
 			return nil, errors.New("github-pull-request payload is invalid")
 		}
 
-		return message.ConvertToComposer(level.Notice, message.Fields{
-			"url":         payload.URL,
-			"context":     payload.Context,
-			"status":      payload.Status,
-			"description": payload.Description,
-		}), nil
+		c := message.NewGithubStatus(level.Notice, payload.Context, payload.State, payload.URL, payload.Description)
+		if !c.Loggable() {
+			return nil, errors.New("github-pull-request payload is invalid")
+		}
+
+		return c, nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)

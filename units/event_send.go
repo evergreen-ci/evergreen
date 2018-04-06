@@ -108,7 +108,7 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 			return
 		}
 
-		sendError = errors.New("unimplemented")
+		sendError = j.githubStatus(n)
 
 	case event.SlackSubscriberType:
 		if err = checkFlag(flags.SlackNotificationsDisabled); err != nil {
@@ -159,6 +159,36 @@ func (j *eventNotificationJob) Run(_ context.Context) {
 	j.AddError(n.MarkError(sendError))
 }
 
+func (j *eventNotificationJob) githubStatus(n *notification.Notification) error {
+	token, err := j.settings.GetGithubOauthToken()
+	if err != nil {
+		return errors.New("github-pull-request no auth token")
+	}
+
+	subscriber, ok := n.Subscriber.Target.(*event.GithubPullRequestSubscriber)
+	if !ok {
+		return errors.New("github-pull-request payload is invalid")
+	}
+
+	c, err := n.Composer()
+	if err != nil {
+		return errors.Wrap(err, "github-pull-request error building message")
+	}
+
+	sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		Token:   token,
+		Account: subscriber.Owner,
+		Repo:    subscriber.Repo,
+	}, subscriber.Ref)
+	if err != nil {
+		return errors.New("github-pull-request error building sender")
+	}
+
+	j.send(sender, c, n)
+
+	return nil
+}
+
 func jiraOptions(c evergreen.JiraConfig) (*send.JiraOptions, error) {
 	url, err := url.Parse(c.Host)
 	if err != nil {
@@ -179,7 +209,7 @@ func jiraOptions(c evergreen.JiraConfig) (*send.JiraOptions, error) {
 func (j *eventNotificationJob) jiraComment(n *notification.Notification) error {
 	jiraOpts, err := jiraOptions(j.settings.Jira)
 	if err != nil {
-		return errors.Wrap(err, "error building jira settings")
+		return errors.Wrap(err, "jira-comment error building jira settings")
 	}
 
 	jiraIssue, ok := n.Subscriber.Target.(*string)
@@ -203,21 +233,14 @@ func (j *eventNotificationJob) jiraComment(n *notification.Notification) error {
 }
 
 func (j *eventNotificationJob) jiraIssue(n *notification.Notification) error {
-	project, ok := n.Subscriber.Target.(*string)
-	if !ok {
-		return fmt.Errorf("jira-issue subscriber was invalid (expected string)")
-	}
-
 	c, err := n.Composer()
 	if err != nil {
 		return errors.Wrap(err, "jira-issue error building message")
 	}
-	issue := c.Raw().(message.JiraIssue)
-	issue.Project = *project
 
 	jiraOpts, err := jiraOptions(j.settings.Jira)
 	if err != nil {
-		return errors.Wrap(err, "error building jira settings")
+		return errors.Wrap(err, "jira-issue error building jira settings")
 	}
 
 	sender, err := send.MakeJiraLogger(jiraOpts)
@@ -290,7 +313,7 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 }
 
 func (j *eventNotificationJob) slackMessage(n *notification.Notification) error {
-	// TODO slack rate limiting
+	// TODO EVG-3086 slack rate limiting
 	target, ok := n.Subscriber.Target.(*string)
 	if !ok {
 		return fmt.Errorf("slack subscriber was invalid (expected string)")
@@ -324,7 +347,7 @@ func (j *eventNotificationJob) slackMessage(n *notification.Notification) error 
 }
 
 func (j *eventNotificationJob) email(n *notification.Notification) error {
-	// TODO modify grip to allow for email headers to be specified
+	// TODO after MAKE-383 expand this to send custom evergreen headers
 	smtpConf := j.settings.Notify.SMTP
 	if smtpConf == nil {
 		return fmt.Errorf("email smtp settings are empty")

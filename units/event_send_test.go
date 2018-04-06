@@ -32,11 +32,12 @@ type eventNotificationSuite struct {
 	ctx    context.Context
 	cancel func()
 
-	webhook     notification.Notification
-	email       notification.Notification
-	slack       notification.Notification
-	jiraComment notification.Notification
-	jiraIssue   notification.Notification
+	webhook      notification.Notification
+	email        notification.Notification
+	slack        notification.Notification
+	jiraComment  notification.Notification
+	jiraIssue    notification.Notification
+	githubStatus notification.Notification
 }
 
 func TestEventNotificationJob(t *testing.T) {
@@ -108,7 +109,25 @@ func (s *eventNotificationSuite) SetupTest() {
 		},
 	}
 
-	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack, s.jiraComment, s.jiraIssue))
+	s.githubStatus = notification.Notification{
+		ID: "github-status",
+		Subscriber: event.Subscriber{
+			Type: event.GithubPullRequestSubscriberType,
+			Target: event.GithubPullRequestSubscriber{
+				Owner:    "evergreen-ci",
+				Repo:     "evergreen",
+				PRNumber: 1234,
+				Ref:      "master",
+			},
+		},
+		Payload: notification.GithubStatusAPIPayload{
+			Context: "evergreen",
+			URL:     "https://example.com",
+			State:   message.GithubStateFailure,
+		},
+	}
+
+	s.NoError(notification.InsertMany(s.webhook, s.email, s.slack, s.jiraComment, s.jiraIssue, s.githubStatus))
 }
 
 type mockWebhookHandler struct {
@@ -184,7 +203,7 @@ func (s *eventNotificationSuite) notificationHasError(id string, pattern string)
 	} else {
 		match, err := regexp.MatchString(pattern, n.Error)
 		s.NoError(err)
-		s.True(match)
+		s.True(match, "error doesn't match regex")
 	}
 
 	return n.SentAt
