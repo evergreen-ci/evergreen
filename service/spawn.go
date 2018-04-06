@@ -162,6 +162,10 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if updateParams.Action == nil {
+		http.Error(w, "no action specified", http.StatusBadRequest)
+		return
+	}
 	// determine what action needs to be taken
 	switch *updateParams.Action {
 	case HostTerminate:
