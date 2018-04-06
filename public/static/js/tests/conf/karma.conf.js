@@ -26,7 +26,6 @@ module.exports = function(config) {
       'thirdparty/select.min.js',
       'js/mci_module.js',
       'js/**/*.js',
-      'js/*.js',
       'plugins/*/js/*.js',
       'app/!(waterfall)/*.js',
     ],
