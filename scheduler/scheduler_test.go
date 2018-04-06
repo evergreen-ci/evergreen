@@ -132,7 +132,6 @@ func TestSpawnHosts(t *testing.T) {
 		distroIds := []string{"d1", "d2", "d3"}
 
 		hs := &hostScheduler{
-			Settings:      schedulerTestConf,
 			HostAllocator: &MockHostAllocator{},
 		}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -14,13 +13,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-type SchedulerRuntimeConfig struct {
-	DistroID    string
-	TaskFinder  string
-	evgSettings *evergreen.Settings
+type Configuration struct {
+	DistroID   string
+	TaskFinder string
 }
 
-func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
+func PlanDistro(ctx context.Context, conf Configuration) error {
 	startAt := time.Now()
 	distroSpec, err := distro.FindOne(distro.ById(conf.DistroID))
 	if err != nil {
@@ -73,7 +71,6 @@ func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
 	}
 
 	hs := &hostScheduler{
-		Settings:      conf.evgSettings,
 		HostAllocator: &DurationBasedHostAllocator{},
 	}
 

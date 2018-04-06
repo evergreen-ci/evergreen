@@ -255,7 +255,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 
 	// figure out how many new hosts we need
 	hs := &hostScheduler{
-		Settings:      s.Settings,
 		HostAllocator: s.HostAllocator,
 	}
 
@@ -558,7 +557,6 @@ func (s *Scheduler) getDistrosForBuildVariant(task task.Task, bv model.BuildVari
 
 type hostScheduler struct {
 	HostAllocator
-	*evergreen.Settings
 }
 
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
