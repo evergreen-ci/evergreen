@@ -1012,7 +1012,7 @@ func TestTaskGetHandler(t *testing.T) {
 				err = json.Unmarshal(rr.Body.Bytes(), &res)
 				So(err, ShouldBeNil)
 				So(model.FromAPIString(res.Id), ShouldEqual, "testTaskId")
-        So(model.FromAPIString(res.ProjectId, ShouldEqual), "testProject")
+				So(model.FromAPIString(res.ProjectId), ShouldEqual, "testProject")
 				So(len(res.PreviousExecutions), ShouldEqual, 0)
 			})
 			Convey("a request without a user should then return a 404 error and a task should"+
