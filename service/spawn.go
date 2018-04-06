@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	HostPasswordUpdate         = restModel.ToAPIString("updateRDPPassword")
-	HostExpirationExtension    = restModel.ToAPIString("extendHostExpiration")
-	HostTerminate              = restModel.ToAPIString("terminate")
+	HostPasswordUpdate         = "updateRDPPassword"
+	HostExpirationExtension    = "extendHostExpiration"
+	HostTerminate              = "terminate"
 	MaxExpirationDurationHours = 24 * 7 // 7 days
 )
 
@@ -162,8 +162,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if updateParams.Action == nil {
+		http.Error(w, "no action specified", http.StatusBadRequest)
+		return
+	}
 	// determine what action needs to be taken
-	switch updateParams.Action {
+	switch *updateParams.Action {
 	case HostTerminate:
 		if h.Status == evergreen.HostTerminated {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
