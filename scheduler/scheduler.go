@@ -47,24 +47,16 @@ type versionBuildVariant struct {
 // the per-distro queues.  Then determines the number of new hosts to spin up
 // for each distro, and spins them up.
 func (s *Scheduler) Schedule(ctx context.Context) error {
+	startAt := time.Now()
+
 	if err := model.UpdateStaticHosts(); err != nil {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 
-	if underwaterPruningEnabled {
-		num, err := task.UnscheduleStaleUnderwaterTasks("")
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		grip.InfoWhen(num > 0, message.Fields{
-			"message": "unscheduled stale tasks",
-			"runner":  RunnerName,
-			"count":   num,
-		})
+	if err := underwaterUnschedule(""); err != nil {
+		return errors.Wrap(err, "problem unscheduled underwater tasks")
 	}
 
-	startAt := time.Now()
 	runnableTasks, err := s.FindRunnableTasks("")
 	if err != nil {
 		return errors.Wrap(err, "Error finding runnable tasks")
@@ -642,8 +634,7 @@ func (s *hostScheduler) spawnHosts(ctx context.Context, newHostsNeeded map[strin
 				return nil, err
 			}
 
-			hostsSpawnedPerDistro[distroId] =
-				append(hostsSpawnedPerDistro[distroId], *intentHost)
+			hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], *intentHost)
 
 		}
 		// if none were spawned successfully
@@ -693,4 +684,21 @@ func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 	}
 
 	return hostsByDistro, nil
+}
+
+func underwaterUnschedule(distroID string) error {
+	if underwaterPruningEnabled {
+		num, err := task.UnscheduleStaleUnderwaterTasks(distroID)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		grip.InfoWhen(num > 0, message.Fields{
+			"message": "unscheduled stale tasks",
+			"runner":  RunnerName,
+			"count":   num,
+		})
+	}
+
+	return nil
 }

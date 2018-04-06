@@ -31,6 +31,10 @@ func ScheduleDistro(ctx context.Context, conf SchedulerRuntimeConfig) error {
 		return errors.Wrap(err, "problem updating static hosts")
 	}
 
+	if err = underwaterUnschedule(conf.DistroID); err != nil {
+		return errors.Wrap(err, "problem unscheduling underwater tasks")
+	}
+
 	finder := GetTaskFinder(conf.TaskFinder)
 	runnableTasks, err := finder(conf.DistroID)
 	if err != nil {
