@@ -120,6 +120,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	distroSchedulerResultChan := make(chan distroSchedulerResult)
 
 	ds := &distroSchedueler{
+		Settings:           s.Settings,
 		TaskPrioritizer:    s.TaskPrioritizer,
 		TaskQueuePersister: s.TaskQueuePersister,
 	}
