@@ -32,5 +32,15 @@ func TestModifyHostStatus(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEqual, DecommissionStaticHostError)
 		})
+
+		Convey("should not allow users to change the status to something undefined", func() {
+			user3 := user.DBUser{Id: "user3"}
+			h3 := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
+			opts3 := uiParams{Action: "updateStatus", Status: "undefined"}
+
+			_, err := modifyHostStatus(&h3, &opts3, &user3)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, fmt.Sprintf(InvalidStatusError, "undefined"))
+		})
 	})
 }
