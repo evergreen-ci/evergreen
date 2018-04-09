@@ -84,12 +84,17 @@ func (s *githubLogger) Send(m message.Composer) {
 
 type githubClient interface {
 	Init(context.Context, string)
+	// Issues
 	Create(context.Context, string, string, *github.IssueRequest) (*github.Issue, *github.Response, error)
 	CreateComment(context.Context, string, string, int, *github.IssueComment) (*github.IssueComment, *github.Response, error)
+
+	// Status API
+	CreateStatus(ctx context.Context, owner, repo, ref string, status *github.RepoStatus) (*github.RepoStatus, *github.Response, error)
 }
 
 type githubClientImpl struct {
 	*github.IssuesService
+	repos *github.RepositoriesService
 }
 
 func (c *githubClientImpl) Init(ctx context.Context, token string) {
@@ -100,4 +105,9 @@ func (c *githubClientImpl) Init(ctx context.Context, token string) {
 	client := github.NewClient(tc)
 
 	c.IssuesService = client.Issues
+	c.repos = client.Repositories
+}
+
+func (c *githubClientImpl) CreateStatus(ctx context.Context, owner, repo, ref string, status *github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
+	return c.repos.CreateStatus(ctx, owner, repo, ref, status)
 }

@@ -108,7 +108,7 @@ func (g *GroupComposer) Priority() level.Priority {
 }
 
 // SetPriority sets the priority of all constituent Composers *only*
-// if the existing level is unset, and does not propogate an error,
+// if the existing level is unset, and does not propagate an error,
 // but will *not* unset the level of the compser and will return an error
 // in this case.
 func (g *GroupComposer) SetPriority(l level.Priority) error {
@@ -135,7 +135,7 @@ func (g *GroupComposer) Messages() []Composer {
 }
 
 // Annotate calls the Annotate method of every non-nil component
-// Composer *but does not propogate
+// Composer *but does not propagate
 func (g *GroupComposer) Annotate(k string, v interface{}) error {
 	for _, m := range g.messages {
 		if m == nil {

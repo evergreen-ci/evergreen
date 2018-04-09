@@ -151,8 +151,8 @@ func (s *eventSuite) TestEventWithNilData() {
 	})
 }
 
-func (s *eventSuite) TestEventRegistryItemsAreSane() {
-	for k, _ := range eventRegistry {
+func (s *eventSuite) TestGlobalEventRegistryItemsAreSane() {
+	for k, _ := range registry.types {
 		event := NewEventFromType(k)
 		s.NotNil(event)
 		found, rTypeTag := findResourceTypeIn(event)
@@ -405,4 +405,86 @@ func (s *eventSuite) TestTaskEventLogLegacyEvents() {
 	for i := range out {
 		s.NotEmpty(out[i].ResourceType)
 	}
+}
+
+func (s *eventSuite) TestMarkAllEventsProcessed() {
+	data := []bson.M{
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+		{
+			idKey:           bson.ObjectIdHex("507f191e810c19729de860ea"),
+			processedAtKey:  time.Time{}.Add(time.Second),
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+		},
+	}
+	for i := range data {
+		s.NoError(db.Insert(AllLogCollection, data[i]))
+	}
+
+	s.NoError(MarkAllEventsProcessed(AllLogCollection))
+
+	events, err := Find(AllLogCollection, db.Q{})
+	s.NoError(err)
+	s.Len(events, 3)
+
+	for i := range events {
+		processed, ptime := events[i].Processed()
+		s.NotZero(ptime)
+		s.True(processed)
+		if events[i].ID.Hex() == "507f191e810c19729de860ea" {
+			s.True(events[i].ProcessedAt.Equal(time.Time{}.Add(time.Second)))
+		}
+	}
+}
+
+// findResourceTypeIn attempts to locate a bson tag with "r_type,omitempty" in it.
+// If found, this function returns true, and the value of that field
+// If not, this function returns false. If it the struct had "r_type" (without
+// omitempty), it will return that field's value, otherwise it returns an
+// empty string
+func findResourceTypeIn(data interface{}) (bool, string) {
+	const resourceTypeKeyWithOmitEmpty = resourceTypeKey + ",omitempty"
+
+	if data == nil {
+		return false, ""
+	}
+
+	v := reflect.ValueOf(data)
+	t := reflect.TypeOf(data)
+
+	if t.Kind() == reflect.Ptr {
+		v = v.Elem()
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return false, ""
+	}
+
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := t.Field(i)
+		bsonTag := fieldType.Tag.Get("bson")
+		if len(bsonTag) == 0 {
+			continue
+		}
+
+		if fieldType.Type.Kind() != reflect.String {
+			return false, ""
+		}
+
+		if bsonTag != resourceTypeKey && !strings.HasPrefix(bsonTag, resourceTypeKey+",") {
+			continue
+		}
+
+		structData := v.Field(i).String()
+		return bsonTag == resourceTypeKeyWithOmitEmpty, structData
+	}
+
+	return false, ""
 }

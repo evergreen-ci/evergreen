@@ -978,8 +978,15 @@ type APIServiceFlags struct {
 	GithubPRTestingDisabled      bool `json:"github_pr_testing_disabled"`
 	RepotrackerPushEventDisabled bool `json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `json:"cli_updates_disabled"`
-	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
 	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
+
+	// Notifications Flags
+	EventProcessingDisabled      bool `json:"event_processing_disabled"`
+	JIRANotificationsDisabled    bool `json:"jira_notifications_disabled"`
+	SlackNotificationsDisabled   bool `json:"slack_notifications_disabled"`
+	EmailNotificationsDisabled   bool `json:"email_notifications_disabled"`
+	WebhookNotificationsDisabled bool `json:"webhook_notifications_disabled"`
+	GithubStatusAPIDisabled      bool `json:"github_status_api_disabled"`
 }
 
 type APISlackConfig struct {
@@ -1163,6 +1170,11 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.GithubPRTestingDisabled = v.GithubPRTestingDisabled
 		as.RepotrackerPushEventDisabled = v.RepotrackerPushEventDisabled
 		as.CLIUpdatesDisabled = v.CLIUpdatesDisabled
+		as.EventProcessingDisabled = v.EventProcessingDisabled
+		as.JIRANotificationsDisabled = v.JIRANotificationsDisabled
+		as.SlackNotificationsDisabled = v.SlackNotificationsDisabled
+		as.EmailNotificationsDisabled = v.EmailNotificationsDisabled
+		as.WebhookNotificationsDisabled = v.WebhookNotificationsDisabled
 		as.GithubStatusAPIDisabled = v.GithubStatusAPIDisabled
 		as.BackgroundStatsDisabled = v.BackgroundStatsDisabled
 	default:
@@ -1184,6 +1196,11 @@ func (as *APIServiceFlags) ToService() (interface{}, error) {
 		GithubPRTestingDisabled:      as.GithubPRTestingDisabled,
 		RepotrackerPushEventDisabled: as.RepotrackerPushEventDisabled,
 		CLIUpdatesDisabled:           as.CLIUpdatesDisabled,
+		EventProcessingDisabled:      as.EventProcessingDisabled,
+		JIRANotificationsDisabled:    as.JIRANotificationsDisabled,
+		SlackNotificationsDisabled:   as.SlackNotificationsDisabled,
+		EmailNotificationsDisabled:   as.EmailNotificationsDisabled,
+		WebhookNotificationsDisabled: as.WebhookNotificationsDisabled,
 		GithubStatusAPIDisabled:      as.GithubStatusAPIDisabled,
 		BackgroundStatsDisabled:      as.BackgroundStatsDisabled,
 	}, nil

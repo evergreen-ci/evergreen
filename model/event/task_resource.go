@@ -8,6 +8,11 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+func init() {
+	registry.AddType(EventTaskSystemInfo, taskSystemResourceEventFactory)
+	registry.AddType(EventTaskProcessInfo, taskProcessResourceEventFactory)
+}
+
 const (
 	EventTaskSystemInfo  = "TASK_SYSTEM_INFO"
 	EventTaskProcessInfo = "TASK_PROCESS_INFO"

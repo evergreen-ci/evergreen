@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -155,10 +154,6 @@ func TestDataCollecterComposerConstructors(t *testing.T) {
 func TestStackMessages(t *testing.T) {
 	const testMsg = "hello"
 	var stackMsg = "message/composer_test"
-
-	if runtime.GOOS == "windows" {
-		stackMsg = strings.Replace(stackMsg, "/", "\\", 1)
-	}
 
 	assert := assert.New(t) // nolint
 	// map objects to output (prefix)

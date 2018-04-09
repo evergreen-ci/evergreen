@@ -1,6 +1,7 @@
 package model
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModelConversion(t *testing.T) {
@@ -150,4 +152,42 @@ func TestEventConversion(t *testing.T) {
 	after := apiEvent.After.(*APIAdminSettings)
 	assert.EqualValues("", *before.Banner)
 	assert.EqualValues("banner", *after.Banner)
+}
+
+func TestAPIServiceFlagsModelInterface(t *testing.T) {
+	assert := assert.New(t)
+
+	flags := evergreen.ServiceFlags{}
+	assert.NotPanics(func() {
+		v := reflect.ValueOf(&flags).Elem()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			if f.Kind() == reflect.Bool {
+				f.SetBool(true)
+				assert.True(f.Bool())
+			}
+		}
+	}, "error setting all fields to true")
+
+	apiFlags := APIServiceFlags{}
+	assert.NoError(apiFlags.BuildFromService(flags))
+	allStructFieldsTrue(t, &apiFlags)
+
+	newFlagsI, err := apiFlags.ToService()
+	assert.NoError(err)
+	newFlags, ok := newFlagsI.(evergreen.ServiceFlags)
+	require.True(t, ok)
+	allStructFieldsTrue(t, &newFlags)
+}
+
+func allStructFieldsTrue(t *testing.T, s interface{}) {
+	elem := reflect.ValueOf(s).Elem()
+	for i := 0; i < elem.NumField(); i++ {
+		f := elem.Field(i)
+		if f.Kind() == reflect.Bool {
+			if !f.Bool() {
+				t.Errorf("all fields should be true, but '%s' was false", reflect.TypeOf(s).Elem().Field(i).Name)
+			}
+		}
+	}
 }
