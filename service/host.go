@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -26,7 +25,15 @@ var (
 )
 
 const (
-	IncludeSpawnedHosts = "includeSpawnedHosts"
+	IncludeSpawnedHosts            = "includeSpawnedHosts"
+	InvalidStatusError             = "'%v' is not a valid status"
+	DecommissionStaticHostError    = "Cannot decommission static hosts"
+	HostTerminationQueueingError   = "Error starting background job for host termination"
+	HostUpdateError                = "Error updating host"
+	HostTerminationQueueingSuccess = "Host %v successfully queued for termination"
+	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
+	HostStatusWriteConfirm         = "Successfully updated host status"
+	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
 type uiParams struct {
@@ -94,8 +101,6 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
-	env := evergreen.GetEnvironment()
-	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
 
 	vars := mux.Vars(r)
@@ -119,41 +124,38 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// determine what action needs to be taken
-	switch opts.Action {
-	case "updateStatus":
-		currentStatus := h.Status
-		newStatus := opts.Status
-		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
-			http.Error(w, fmt.Sprintf("'%v' is not a valid status", newStatus), http.StatusBadRequest)
+	currentStatus := h.Status
+	modifyResult, err := modifyHostStatus(h, opts, u)
+
+	if err != nil {
+		switch err.Error() {
+		case fmt.Sprintf(UnrecognizedAction, opts.Action):
+			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf(UnrecognizedAction, opts.Action))
+			return
+		case fmt.Sprintf(InvalidStatusError, opts.Status):
+			http.Error(w, fmt.Sprintf(InvalidStatusError, opts.Status), http.StatusBadRequest)
+			return
+		case DecommissionStaticHostError:
+			http.Error(w, DecommissionStaticHostError, http.StatusBadRequest)
+			return
+		case HostTerminationQueueingError:
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New(HostTerminationQueueingError))
+			return
+		default:
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-
-		if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
-			http.Error(w, "cannot decommission static hosts", http.StatusBadRequest)
-			return
-		}
-
-		var msg flashMessage
-		if newStatus == evergreen.HostTerminated {
-			if err = queue.Put(units.NewHostTerminationJob(env, *h)); err != nil {
-				http.Error(w, "error starting background job for host termination", http.StatusInternalServerError)
-				return
-			}
-			msg = NewSuccessFlash(fmt.Sprintf("Host %v successfully queued for termination", h.Id))
-		} else {
-			err := h.SetStatus(newStatus, u.Id, "")
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
-				return
-			}
-			msg = NewSuccessFlash(fmt.Sprintf("Host status successfully updated from '%v' to '%v'", currentStatus, h.Status))
-		}
-		PushFlash(uis.CookieStore, r, w, msg)
-		uis.WriteJSON(w, http.StatusOK, "Successfully updated host status")
-	default:
-		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Unrecognized action: %v", opts.Action))
 	}
+
+	var msg flashMessage
+	switch modifyResult {
+	case fmt.Sprintf(HostTerminationQueueingSuccess, h.Id):
+		msg = NewSuccessFlash(fmt.Sprintf(HostTerminationQueueingSuccess, h.Id))
+	case fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status):
+		msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
+	}
+	PushFlash(uis.CookieStore, r, w, msg)
+	uis.WriteJSON(w, http.StatusOK, HostStatusWriteConfirm)
 }
 
 func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
