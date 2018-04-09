@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/google/go-github/github"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 )
@@ -338,15 +337,4 @@ func (s *notificationSuite) TestGithubPayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Require().True(c.Loggable())
-
-	raw := c.Raw()
-	s.NotNil(raw)
-	status, ok := raw.(*github.RepoStatus)
-	s.True(ok)
-	s.Require().NotNil(status)
-
-	s.Equal("evergreen", *status.Context)
-	s.Equal("https://example.com", *status.URL)
-	s.Equal("hi", *status.Description)
-	s.Equal(string(message.GithubStateFailure), *status.State)
 }
