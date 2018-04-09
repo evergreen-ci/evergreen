@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 )
 
 var triggerRegistry map[string][]trigger = map[string][]trigger{}
@@ -36,8 +34,10 @@ func getTriggers(resourceType string) []trigger {
 func init() {
 	registryAdd(event.ResourceTypeTest, testTrigger)
 }
-func testTrigger(e *event.EventLogEntry) ([]Notification, error) {
-	groupedSubs, err := event.FindSubscribers("test", "test", []event.Selector{
+
+func testTrigger(e *event.EventLogEntry) (notificationGenerator, error) {
+	data := e.Data.(*event.TestEvent)
+	selectors := []event.Selector{
 		{
 			Type: "test",
 			Data: "awesomeness",
@@ -46,35 +46,13 @@ func testTrigger(e *event.EventLogEntry) ([]Notification, error) {
 			Type: "test2",
 			Data: "notawesomeness",
 		},
-	})
-	if err != nil {
-		return nil, err
 	}
-
-	n := []Notification{}
-
-	catcher := grip.NewSimpleCatcher()
-	for subGroup, _ := range groupedSubs {
-		if subGroup != event.EmailSubscriberType {
-			catcher.Add(errors.New("trigger only supports email subscriptions"))
-			continue
-		}
-
-		payload := &EmailPayload{
+	return notificationGenerator{
+		triggerName: "test",
+		selectors:   selectors,
+		email: &EmailPayload{
 			Subject: "Hi",
-			Body:    fmt.Sprintf("event says '%s'", e.Data.(*event.TestEvent).Message),
-		}
-
-		for j := range groupedSubs[subGroup] {
-			sub := &groupedSubs[subGroup][j]
-			notification, err := New(e, "test", sub, payload)
-			if err != nil {
-				catcher.Add(err)
-				continue
-			}
-			n = append(n, *notification)
-		}
-	}
-
-	return n, nil
+			Body:    fmt.Sprintf("event says '%s'", data.Message),
+		},
+	}, nil
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type trigger func(*event.EventLogEntry) ([]Notification, error)
+type trigger func(*event.EventLogEntry) (notificationGenerator, error)
 
 // NotificationsFromEvent takes an event, processes all of its triggers, and returns
 // a slice of notifications, and an error object representing all errors
@@ -24,8 +24,16 @@ func NotificationsFromEvent(event *event.EventLogEntry) ([]Notification, error) 
 	notifications := []Notification{}
 	catcher := grip.NewSimpleCatcher()
 	for _, f := range triggers {
-		notes, err := f(event)
-		catcher.Add(err)
+		gen, err := f(event)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
+		notes, err := gen.generate(event)
+		if err != nil {
+			catcher.Add(err)
+			continue
+		}
 		if len(notes) > 0 {
 			notifications = append(notifications, notes...)
 		}
