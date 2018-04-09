@@ -20,38 +20,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
     ].join('-')
   }
 
-  // TODO remove the line and related code once `storageEngine` will be added
-  // to the API (see EVG-2744)
-  var seRe = new RegExp('[_ -](wt|wiredtiger|mmapv1|inmemory)$', 'i')
-
-  // Takes build and task names
-  // Extrcts storage engine from build/tasks name
-  // :returns: dict of {storageEngine, task, build}
-  // returned task and build names could be different
-  function extractStorageEngine(build, task) {
-    var storageEngine,
-        attrs = {
-          build: build,
-          task: task,
-        }
-
-    if (build == undefined) return {}
-
-    _.any(attrs, function(v, k) {
-      var match = v.match(seRe)
-      if (match) {
-        storageEngine = match[1]
-        attrs[k] = attrs[k].slice(0, match.index)
-        return true
-      }
-    })
-
-    // Set default
-    if(!storageEngine) storageEngine = '(none)'
-
-    return _.extend({storageEngine: storageEngine}, attrs)
-  }
-
   // Calculates ratio for given test result `speed` and `baseSpeed` reference
   function ratio(speed, baseSpeed) {
     var ratio = speed / baseSpeed
@@ -127,9 +95,9 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
   // :param item: test result data item
   // :param receiver: dict which will receive processed results
-  // :param ctx: dict of {build, task, storageEngine} see `extractTasks`
+  // :param ctx: dict of {build, task, etc} see `extractTasks`
   // returns: could be ignored
-  function processItem(item, receiver, ctx) {
+  function processItem(item, receiver, ctx, storageEngine) {
     var parts = item.name.split('-')
     // At some point we renamed the tests to remove -wiredTiger and -MMAPv1 suffixs.
     // Normalize old names to match the new ones
@@ -140,16 +108,15 @@ mciModule.factory('PerfDiscoveryDataService', function(
     return _.chain(item.results)
       .omit(_.isString)
       .each(function(speed, threads) {
-        var extracted = extractStorageEngine(ctx.buildName, ctx.taskName)
         var data = {
-          build: extracted.build,
-          task: extracted.task,
+          build: ctx.buildName,
+          task: ctx.taskName,
           taskURL: MPA_UI.TASK_BY_ID({task_id: ctx.taskId}),
           buildURL: MPA_UI.BUILD_BY_ID({build_id: ctx.buildId}),
           test: item.name,
           threads: +threads,
           speed: speed.ops_per_sec,
-          storageEngine: extracted.storageEngine,
+          storageEngine: storageEngine || '(none)',
         }
         receiver[slug(data)] =  data
       })
@@ -175,14 +142,16 @@ mciModule.factory('PerfDiscoveryDataService', function(
       // Process current (revision) data
       if (d.current) {
         _.each(d.current.data.results, function(result) {
-          processItem(result, now, d.ctx)
+          var storageEngine = d.current.data.storageEngine
+          processItem(result, now, d.ctx, storageEngine)
         })
       }
 
       // Process baseline data
       if (d.baseline) {
         _.each(d.baseline.data.results, function(result) {
-          processItem(result, baseline, d.ctx)
+          var storageEngine = d.current.data.storageEngine
+          processItem(result, baseline, d.ctx, storageEngine)
         })
       }
 
@@ -194,7 +163,8 @@ mciModule.factory('PerfDiscoveryDataService', function(
           history[order] = {}
         }
         _.each(histItems.data.results, function(result) {
-          processItem(result, history[order], d.ctx)
+          var storageEngine = d.current.data.storageEngine
+          processItem(result, history[order], d.ctx, storageEngine)
         })
       })
     })
@@ -420,7 +390,6 @@ mciModule.factory('PerfDiscoveryDataService', function(
 
     // For teting
     _extractTasks: extractTasks,
-    _extractStorageEngine: extractStorageEngine,
     _processItem: processItem,
     _onProcessData: onProcessData,
     _onGetRows: onGetRows,
