@@ -270,7 +270,7 @@ func (j *eventNotificationJob) evergreenWebhook(n *notification.Notification) er
 	}
 
 	if !strings.HasPrefix(u.Host, "127.0.0.1:") {
-		u.Scheme = "http"
+		u.Scheme = "https"
 	}
 
 	payload := []byte(c.String())
