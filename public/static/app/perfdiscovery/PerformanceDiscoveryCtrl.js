@@ -160,12 +160,6 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       }))
     },
     columnDefs: [
-      {
-        name: 'Link',
-        field: 'link',
-        enableFiltering: false,
-        width: 60,
-      },
       gridUtil.multiselectColDefMixin({
         name: 'Build',
         field: 'build',
