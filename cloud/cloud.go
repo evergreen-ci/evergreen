@@ -28,12 +28,6 @@ type CloudManager interface {
 	// provider's API.
 	SpawnHost(context.Context, *host.Host) (*host.Host, error)
 
-	// CanSpawn indicates if this provider is capable of creating new instances
-	// with SpawnInstance(). If this provider doesn't support spawning new
-	// hosts, this will return false (and calls to SpawnInstance will
-	// return errors)
-	CanSpawn() (bool, error)
-
 	// get the status of an instance
 	GetInstanceStatus(context.Context, *host.Host) (CloudStatus, error)
 
@@ -61,7 +55,7 @@ type CloudManager interface {
 	TimeTilNextPayment(*host.Host) time.Duration
 
 	// GetInstanceName returns the name that should be used for an instance of this provider
-	GetInstanceName(*distro.Distro) string
+	GetInstanceName(distro.Distro) string
 }
 
 // CloudCostCalculator is an interface for cloud managers that can estimate an

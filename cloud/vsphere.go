@@ -54,7 +54,7 @@ func (opts *vsphereSettings) Validate() error {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*vsphereManager) GetInstanceName(d *distro.Distro) string {
+func (*vsphereManager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 
@@ -127,11 +127,6 @@ func (m *vsphereManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Hos
 	event.LogHostStarted(h.Id)
 
 	return h, nil
-}
-
-// CanSpawn always returns true.
-func (m *vsphereManager) CanSpawn() (bool, error) {
-	return true, nil
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,

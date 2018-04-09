@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 type Distro struct {
@@ -51,6 +52,10 @@ func (d *Distro) IsWindows() bool {
 	// XXX: if this is-windows check is updated, make sure to also update
 	// public/static/js/spawned_hosts.js as well
 	return strings.Contains(d.Arch, "windows")
+}
+
+func (d *Distro) IsEphemeral() bool {
+	return util.StringSliceContains(evergreen.ProviderSpawnable, d.Provider)
 }
 
 func (d *Distro) BinaryName() string {

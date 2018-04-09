@@ -74,10 +74,11 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		}
 		if j.host == nil {
 			j.AddError(fmt.Errorf("could not find host %s for job %s", j.HostID, j.TaskID))
+			return
 		}
 	}
 
-	if !util.StringSliceContains(evergreen.ProviderSpawnable, j.host.Provider) {
+	if !j.host.IsEphemeral() {
 		grip.Notice(message.Fields{
 			"job":      j.ID(),
 			"host":     j.HostID,
@@ -141,7 +142,7 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
 		j.AddError(err)
-		grip.Critical(message.WrapError(err, message.Fields{
+		grip.Error(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
 			"provider": j.host.Distro.Provider,
 			"job_type": j.Type().Name,

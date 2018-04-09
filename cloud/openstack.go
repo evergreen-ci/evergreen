@@ -58,7 +58,7 @@ func (m *openStackManager) GetSettings() ProviderSettings {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*openStackManager) GetInstanceName(d *distro.Distro) string {
+func (*openStackManager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 
@@ -136,14 +136,6 @@ func (m *openStackManager) SpawnHost(ctx context.Context, h *host.Host) (*host.H
 	event.LogHostStarted(h.Id)
 
 	return h, nil
-}
-
-// CanSpawn always returns true for now.
-//
-// The OpenStack provider is not always able to spawn new instances if, for example, it has
-// exceeded its number of instances, VCPUs, or RAM. Unfortunately, there is no way to know.
-func (m *openStackManager) CanSpawn() (bool, error) {
-	return true, nil
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,

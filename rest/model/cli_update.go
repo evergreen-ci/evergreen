@@ -40,13 +40,13 @@ func (a *APIClientConfig) BuildFromService(h interface{}) error {
 	for i := range a.ClientBinaries {
 		catcher.Add(a.ClientBinaries[i].BuildFromService(c.ClientBinaries[i]))
 	}
-	a.LatestRevision = APIString(c.LatestRevision)
+	a.LatestRevision = ToAPIString(c.LatestRevision)
 	return catcher.Resolve()
 }
 
 func (a *APIClientConfig) ToService() (interface{}, error) {
 	c := evergreen.ClientConfig{}
-	c.LatestRevision = string(a.LatestRevision)
+	c.LatestRevision = FromAPIString(a.LatestRevision)
 	c.ClientBinaries = make([]evergreen.ClientBinary, len(a.ClientBinaries))
 
 	catcher := grip.NewBasicCatcher()
@@ -73,16 +73,16 @@ func (a *APIClientBinary) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting client binary")
 	}
-	a.Arch = APIString(b.Arch)
-	a.OS = APIString(b.OS)
-	a.URL = APIString(b.URL)
+	a.Arch = ToAPIString(b.Arch)
+	a.OS = ToAPIString(b.OS)
+	a.URL = ToAPIString(b.URL)
 	return nil
 }
 
 func (a *APIClientBinary) ToService() (interface{}, error) {
 	b := evergreen.ClientBinary{}
-	b.Arch = string(a.Arch)
-	b.OS = string(a.OS)
-	b.URL = string(a.URL)
+	b.Arch = FromAPIString(a.Arch)
+	b.OS = FromAPIString(a.OS)
+	b.URL = FromAPIString(a.URL)
 	return b, nil
 }

@@ -63,7 +63,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	startAt := time.Now()
-	runnableTasks, err := s.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks("")
 	if err != nil {
 		return errors.Wrap(err, "Error finding runnable tasks")
 	}
@@ -274,7 +274,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	// figure out how many new hosts we need
-	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData, s.Settings)
+	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData)
 	if err != nil {
 		return errors.Wrap(err, "Error determining how many new hosts are needed")
 	}
@@ -612,7 +612,7 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 				UserHost: false,
 			}
 
-			intentHost := cloud.NewIntent(*d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
+			intentHost := cloud.NewIntent(d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
 			if err := intentHost.Insert(); err != nil {
 				err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
 

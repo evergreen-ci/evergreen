@@ -4,10 +4,10 @@
 </style>
 
 <!-- ReactJS libs -->
-<script type="text/javascript" src="/static/js/react.min.js"></script>
-<script type="text/javascript" src="/static/js/react-dom.min.js"></script>
-<script type="text/javascript" src="/static/js/browser.min.js"></script>
-<script type="text/javascript" src="/static/js/react-bootstrap.min.js"></script>
+<script type="text/javascript" src="/static/thirdparty/react.min.js"></script>
+<script type="text/javascript" src="/static/thirdparty/react-dom.min.js"></script>
+<script type="text/javascript" src="/static/thirdparty/browser.min.js"></script>
+<script type="text/javascript" src="/static/thirdparty/react-bootstrap.min.js"></script>
 
 <script type="text/javascript">
   window.version = {{ .Version }};
@@ -17,7 +17,7 @@
   window.hasBanner = {{ne .Banner ""}}
 </script>
 <script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
-<script type="text/javascript" src="{{Static "js" "tasks_grid.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="/static/app/waterfall/tasks_grid.js?hash={{ StaticsMD5 }}"></script>
 {{if .User}}
   <script type="text/javascript" src="{{Static "js" "version_admin.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}

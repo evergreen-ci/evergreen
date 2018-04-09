@@ -32,9 +32,9 @@ const Collection = "distro"
 var All = db.Query(nil).Sort([]string{IdKey})
 
 // FindOne gets one Distro for the given query.
-func FindOne(query db.Q) (*Distro, error) {
-	d := &Distro{}
-	return d, db.FindOneQ(Collection, query, d)
+func FindOne(query db.Q) (Distro, error) {
+	d := Distro{}
+	return d, db.FindOneQ(Collection, query, &d)
 }
 
 // Find gets every Distro matching the given query.

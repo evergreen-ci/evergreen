@@ -115,7 +115,7 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 		}
 
 		// now set the vars field
-		vars, err := sc.FindProjectVars(string(projectModel.Identifier))
+		vars, err := sc.FindProjectVars(model.FromAPIString(projectModel.Identifier))
 		if err != nil {
 			return []model.Model{}, nil, &rest.APIError{
 				Message:    "problem fetching project vars",

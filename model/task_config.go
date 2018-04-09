@@ -27,7 +27,7 @@ type TaskConfig struct {
 func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef, patchDoc *patch.Patch) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
-		return nil, errors.Errorf("project for task with branch %v is empty", t.Project)
+		return nil, errors.Errorf("project for task with project_id %v is empty", t.Project)
 	}
 
 	// check on if the project ref is empty

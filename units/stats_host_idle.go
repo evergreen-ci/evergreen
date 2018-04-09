@@ -137,7 +137,7 @@ func (j *collectHostIdleDataJob) Run(ctx context.Context) {
 		}
 	}
 
-	if j.host.Provider != evergreen.ProviderNameStatic {
+	if j.TaskID != "" && j.host.Provider != evergreen.ProviderNameStatic {
 		if err = j.host.IncTaskCount(); err != nil {
 			j.AddError(err)
 		}

@@ -126,6 +126,10 @@ func (h *Host) IdleTime() time.Duration {
 	return time.Since(h.CreationTime)
 }
 
+func (h *Host) IsEphemeral() bool {
+	return util.StringSliceContains(evergreen.ProviderSpawnable, h.Provider)
+}
+
 func (h *Host) SetStatus(status, user string, logs string) error {
 	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+

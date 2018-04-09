@@ -1161,15 +1161,28 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	return out, nil
 }
 
-func FindSchedulable() ([]Task, error) {
-	return Find(db.Query(scheduleableTasksQuery()))
+func FindSchedulable(distroID string) ([]Task, error) {
+	query := scheduleableTasksQuery()
+
+	if distroID == "" {
+		return Find(db.Query(query))
+	}
+
+	query[DistroIdKey] = distroID
+	return Find(db.Query(query))
 }
 
-func FindRunnable() ([]Task, error) {
+func FindRunnable(distroID string) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
+	match := scheduleableTasksQuery()
+	if distroID != "" {
+		match[DistroIdKey] = distroID
+
+	}
+
 	matchActivatedUndispatchedTasks := bson.M{
-		"$match": scheduleableTasksQuery(),
+		"$match": match,
 	}
 
 	graphLookupTaskDeps := bson.M{

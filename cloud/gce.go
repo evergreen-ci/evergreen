@@ -77,7 +77,7 @@ func (m *gceManager) GetSettings() ProviderSettings {
 }
 
 //GetInstanceName returns a name to be used for an instance
-func (*gceManager) GetInstanceName(d *distro.Distro) string {
+func (*gceManager) GetInstanceName(d distro.Distro) string {
 	return generateName(d)
 }
 
@@ -161,11 +161,6 @@ func (m *gceManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	event.LogHostStarted(h.Id)
 	grip.Debug(message.Fields{"message": "new gce host", "instance": h.Id, "object": h})
 	return h, nil
-}
-
-// CanSpawn always returns true.
-func (m *gceManager) CanSpawn() (bool, error) {
-	return true, nil
 }
 
 // GetInstanceStatus gets the current operational status of the provisioned host,

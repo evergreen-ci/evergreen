@@ -1,5 +1,5 @@
 mciModule.factory('PerfDiscoveryDataService', function(
-  $q, ApiV1, ApiV2, ApiTaskdata, EVG, MPA_UI, PERF_DISCOVERY
+  $q, $window, ApiV1, ApiV2, ApiTaskdata, EVG, MPA_UI, PERF_DISCOVERY
 ) {
   var PD = PERF_DISCOVERY
 
@@ -69,32 +69,56 @@ mciModule.factory('PerfDiscoveryDataService', function(
     }
   }
 
-  function isPatchId(revision) {
-    return revision.length == EVG.PATCH_ID_LEN
+  function isShortItemId(id) {
+    return id.length == EVG.PATCH_ID_LEN
   }
 
-  function isGitHash(revision) {
-    return revision.length == EVG.GIT_HASH_LEN
+  function isLongVersionId(id) {
+    return id.indexOf('_') > 0 && id.length > EVG.PATCH_ID_LEN
   }
 
-  function getQueryBasedItem(items, query) {
-    var found = findVersionItem(items, query)
+  function isGitHash(id) {
+    return id.length == EVG.GIT_HASH_LEN
+  }
 
-    if (!found) {
-      var item = {
-        id: query,
+  function githashToVersionId(githash) {
+    return $window.project + '_' + githash
+  }
+
+  // For given `query` attempts to construct valid selctable
+  // comparison item. It could be version short/long id, githash
+  // Should not be used for tags (all tags are available on ui)
+  function getQueryBasedItem(query) {
+    var GITHASH = 'h'
+    var ID_SHORT = 's'
+    var ID_LONG = 'l'
+
+    if (query == undefined) return
+
+    var idKind = (
+      isGitHash(query) ? GITHASH :
+      isShortItemId(query) ? ID_SHORT :
+      isLongVersionId(query) ? ID_LONG : undefined
+    )
+
+    var uniformId = (
+      idKind == GITHASH ? githashToVersionId(query) :
+      _.contains([ID_SHORT, ID_LONG], idKind) ? query : undefined
+    )
+
+    // There are not enough information to differentiate
+    // version id from patch id
+    var kind = PD.KIND_VERSION
+
+    if (uniformId) {
+      return {
+        id: uniformId,
         name: query,
-        kind: ( // Poor man's pattern matching
-          isGitHash(query) ? PD.KIND_VERSION :
-          isPatchId(query) ? PD.KIND_PATCH : undefined
-        ),
+        kind: kind,
       }
-
-      // If kind is defined
-      if (item.kind) return item
+    } else {
+      return undefined
     }
-
-    return undefined
   }
 
   /******************
@@ -346,18 +370,24 @@ mciModule.factory('PerfDiscoveryDataService', function(
     if (query == undefined) return
 
     return _.find(items, function(d) {
-      return query == d.id || query == d.name
+      // Checks if query is inside or equal an id
+      // Useful for long verion ids and revisions
+      // e.g. $GITHASH will match sys-perf_$GITHASH
+      return d.id.indexOf(query) > -1 || query == d.name
     })
   }
 
   // This function is used to make possible to type arbitrary
   // version revision into version drop down
   function getVersionOptions(items, query) {
-    var additional = getQueryBasedItem(items, query)
-
-    return additional
-      ? items.concat(additional)
-      : items
+    var found = findVersionItem(items, query)
+    if (!found) {
+      var queryBased = getQueryBasedItem(query)
+      if (queryBased) {
+        return items.concat(queryBased)
+      }
+    }
+    return items
   }
 
   function getCompItemVersion(compItem) {
@@ -386,6 +416,7 @@ mciModule.factory('PerfDiscoveryDataService', function(
     findVersionItem: findVersionItem,
     getVersionOptions: getVersionOptions,
     getCompItemVersion: getCompItemVersion,
+    getQueryBasedItem: getQueryBasedItem,
 
     // For teting
     _extractTasks: extractTasks,

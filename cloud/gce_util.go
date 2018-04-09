@@ -100,7 +100,7 @@ func makeImage(name string) string {
 
 // Generates a unique instance name for an instance based on the distro ID.
 // Must be a match of regex '(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)'
-func generateName(d *distro.Distro) string {
+func generateName(d distro.Distro) string {
 	name := d.GenerateName()
 
 	// Ensure all characters in tags are on the whitelist

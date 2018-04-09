@@ -225,7 +225,7 @@ func (s *PatchIntentUnitsSuite) TestProcessCliPatchIntent() {
 func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 	s.Require().NotEmpty(s.env.Settings().GithubPRCreatorOrg)
 
-	user := user.DBUser{
+	dbUser := user.DBUser{
 		Id: "testuser",
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -234,8 +234,8 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 			},
 		},
 	}
-	s.NoError(user.Insert())
-	s.user = user.Id
+	s.NoError(dbUser.Insert())
+	s.user = dbUser.Id
 
 	intent, err := patch.NewGithubIntent("1", testutil.NewGithubPREvent(s.prNumber, s.repo, s.headRepo, s.hash, "tychoish", ""))
 	s.NoError(err)
@@ -252,7 +252,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 
 	s.Equal(s.prNumber, patchDoc.GithubPatchData.PRNumber)
 	s.Equal("tychoish", patchDoc.GithubPatchData.Author)
-	s.Equal(user.Id, patchDoc.Author)
+	s.Equal(dbUser.Id, patchDoc.Author)
 
 	repo := strings.Split(s.repo, "/")
 	s.Equal(repo[0], patchDoc.GithubPatchData.BaseOwner)
@@ -268,7 +268,7 @@ func (s *PatchIntentUnitsSuite) TestProcessGithubPatchIntent() {
 }
 
 func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
-	user := user.DBUser{
+	dbUser := user.DBUser{
 		Id: "testuser",
 		Settings: user.UserSettings{
 			GithubUser: user.GithubUser{
@@ -277,7 +277,7 @@ func (s *PatchIntentUnitsSuite) TestFindEvergreenUserForPR() {
 			},
 		},
 	}
-	s.NoError(user.Insert())
+	s.NoError(dbUser.Insert())
 
 	u, err := findEvergreenUserForPR(1234)
 	s.NoError(err)

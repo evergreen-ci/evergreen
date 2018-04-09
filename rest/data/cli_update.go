@@ -42,12 +42,12 @@ func (c *MockCLIUpdateConnector) GetCLIUpdate() (*model.APICLIUpdate, error) {
 		ClientConfig: model.APIClientConfig{
 			ClientBinaries: []model.APIClientBinary{
 				model.APIClientBinary{
-					Arch: "amd64",
-					OS:   "darwin",
-					URL:  "localhost/clients/darwin_amd64/evergreen",
+					Arch: model.ToAPIString("amd64"),
+					OS:   model.ToAPIString("darwin"),
+					URL:  model.ToAPIString("localhost/clients/darwin_amd64/evergreen"),
 				},
 			},
-			LatestRevision: "2017-12-29",
+			LatestRevision: model.ToAPIString("2017-12-29"),
 		},
 		IgnoreUpdate: c.degradedModeOn,
 	}

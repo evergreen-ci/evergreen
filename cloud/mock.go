@@ -169,11 +169,7 @@ func (_ *mockManager) Validate() error {
 	return nil
 }
 
-func (mockMgr *mockManager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
-func (*mockManager) GetInstanceName(d *distro.Distro) string {
+func (*mockManager) GetInstanceName(d distro.Distro) string {
 	return d.GenerateName()
 }
 

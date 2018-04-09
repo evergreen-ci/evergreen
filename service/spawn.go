@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
+var (
 	HostPasswordUpdate         = "updateRDPPassword"
 	HostExpirationExtension    = "extendHostExpiration"
 	HostTerminate              = "terminate"
@@ -28,7 +28,7 @@ const (
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 
-	var spawnDistro *distro.Distro
+	var spawnDistro distro.Distro
 	var spawnTask *task.Task
 	var err error
 	if len(r.FormValue("distro_id")) > 0 {
@@ -49,7 +49,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Distro          *distro.Distro
+		Distro          distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int
 		ViewData
@@ -144,7 +144,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	hostId := string(updateParams.HostID)
+	hostId := restModel.FromAPIString(updateParams.HostID)
 	h, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
@@ -162,8 +162,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if updateParams.Action == nil {
+		http.Error(w, "no action specified", http.StatusBadRequest)
+		return
+	}
 	// determine what action needs to be taken
-	switch updateParams.Action {
+	switch *updateParams.Action {
 	case HostTerminate:
 		if h.Status == evergreen.HostTerminated {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", h.Id))
@@ -181,7 +185,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostPasswordUpdate:
-		pwd := string(updateParams.RDPPwd)
+		pwd := restModel.FromAPIString(updateParams.RDPPwd)
 		if !h.Distro.IsWindows() {
 			uis.LoggedError(w, r, http.StatusBadRequest, errors.New("rdp password can only be set on Windows hosts"))
 			return
@@ -199,7 +203,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case HostExpirationExtension:
-		addtHours, err := strconv.Atoi(string(updateParams.AddHours))
+		addtHours, err := strconv.Atoi(restModel.FromAPIString(updateParams.AddHours))
 		if err != nil {
 			http.Error(w, "bad hours param", http.StatusBadRequest)
 			return

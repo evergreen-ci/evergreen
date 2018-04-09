@@ -43,7 +43,7 @@ tasks:
 
 // mock implementations, for testing purposes
 
-func MockFindRunnableTasks() ([]task.Task, error) {
+func MockFindRunnableTasks(_ string) ([]task.Task, error) {
 	return nil, errors.New("MockFindRunnableTasks not implemented")
 }
 
@@ -69,7 +69,7 @@ func MockGetExpectedDurations(runnableTasks []task.Task) (model.ProjectTaskDurat
 
 type MockHostAllocator struct{}
 
-func (self *MockHostAllocator) NewHostsNeeded(ctx context.Context, d HostAllocatorData, s *evergreen.Settings) (
+func (self *MockHostAllocator) NewHostsNeeded(ctx context.Context, d HostAllocatorData) (
 	map[string]int, error) {
 	return nil, errors.New("NewHostsNeeded not implemented")
 }

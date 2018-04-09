@@ -48,7 +48,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				}
 
 				So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData,
-					dist, hostAllocatorTestConf), ShouldEqual, 0)
+					dist), ShouldEqual, 0)
 			})
 
 		Convey("if the number of existing hosts equals the max hosts, no new"+
@@ -68,7 +68,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 			hosts := []host.Host{
 				{Id: hostIds[0]},
@@ -87,7 +87,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 
@@ -118,7 +118,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 
@@ -148,7 +148,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 
 		})
@@ -179,7 +179,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 
@@ -214,7 +214,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				},
 			}
 
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 
 			dist.PoolSize = 8
@@ -229,7 +229,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 3)
 			dist.PoolSize = 7
 			hostAllocatorData = &HostAllocatorData{
@@ -243,7 +243,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 2)
 			dist.PoolSize = 6
 			hostAllocatorData = &HostAllocatorData{
@@ -257,7 +257,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 1)
 		})
 
@@ -284,7 +284,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					"": dist,
 				},
 			}
-			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist, hostAllocatorTestConf),
+			So(hostAllocator.numNewHostsForDistro(ctx, hostAllocatorData, dist),
 				ShouldEqual, 0)
 		})
 

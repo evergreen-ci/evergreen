@@ -190,11 +190,3 @@ func TestParserFunctionality(t *testing.T) {
 	})
 
 }
-
-func matchResultWithLog(tr *goTestResult, logs []string) {
-	startLine := logs[tr.StartLine-1]
-	endLine := logs[tr.EndLine-1]
-	So(startLine, ShouldContainSubstring, tr.Name)
-	So(endLine, ShouldContainSubstring, tr.Name)
-	So(endLine, ShouldContainSubstring, tr.Status)
-}
