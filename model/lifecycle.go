@@ -218,9 +218,6 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
 		}
-		if t.DisplayOnly {
-			restartIds = append(restartIds, t.ExecutionTasks...)
-		}
 	}
 
 	if abortInProgress {
@@ -305,11 +302,6 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 				return errors.Wrapf(err,
 					"Restarting build %v failed, could not task.reset on task",
 					buildId, t.Id)
-			}
-		}
-		if t.DisplayOnly {
-			if err = task.ResetTasks(t.ExecutionTasks); err != nil {
-				return errors.WithStack(err)
 			}
 		}
 	}

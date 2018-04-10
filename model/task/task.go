@@ -393,7 +393,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	t.HostId = hostId
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -411,7 +411,16 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 			},
 		},
 	)
-
+	if err != nil {
+		return errors.Wrapf(err, "error marking task %s as dispatched", t.Id)
+	}
+	if t.IsPartOfDisplay() {
+		//when dispatching an execution task, mark its parent as dispatched
+		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == util.ZeroTime {
+			return t.DisplayTask.MarkAsDispatched("", "", dispatchTime)
+		}
+	}
+	return nil
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
@@ -774,7 +783,7 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	tasks, err := Find(ByIds(taskIds))
+	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
 	if err != nil {
 		return err
 	}
