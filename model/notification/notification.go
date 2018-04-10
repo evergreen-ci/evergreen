@@ -1,33 +1,49 @@
 package notification
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	NotificationsCollection = "notifications"
-)
+// makeNotificationID creates a string representing the notification generated
+// from the given event, with the given trigger, for the given subscriber.
+// This function will produce an ID that will collide to prevent duplicate
+// notifications from being inserted
+func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string {
+	return fmt.Sprintf("%s-%s-%s", event.ID.Hex(), trigger, subscriber.String())
+}
 
-//nolint: deadcode, megacheck
-var (
-	idKey         = bsonutil.MustHaveTag(Notification{}, "ID")
-	subscriberKey = bsonutil.MustHaveTag(Notification{}, "Subscriber")
-	sentAtKey     = bsonutil.MustHaveTag(Notification{}, "SentAt")
-	errorKey      = bsonutil.MustHaveTag(Notification{}, "Error")
-	payloadKey    = bsonutil.MustHaveTag(Notification{}, "Payload")
-)
+// New returns a new Notification, with a correctly initialised ID
+func New(e *event.EventLogEntry, trigger string, subscriber *event.Subscriber, payload interface{}) (*Notification, error) {
+	if e == nil {
+		return nil, errors.New("cannot create notification from nil event")
+	}
+	if len(trigger) == 0 {
+		return nil, errors.New("cannot create notification from nil trigger")
+	}
+	if subscriber == nil {
+		return nil, errors.New("cannot create notification from nil subscriber")
+	}
+	if payload == nil {
+		return nil, errors.New("cannot create notification with nil payload")
+	}
+
+	return &Notification{
+		ID:         makeNotificationID(e, trigger, subscriber),
+		Subscriber: *subscriber,
+		Payload:    payload,
+	}, nil
+}
 
 type Notification struct {
-	ID         bson.ObjectId    `bson:"_id"`
+	ID         string           `bson:"_id"`
 	Subscriber event.Subscriber `bson:"subscriber"`
 	Payload    interface{}      `bson:"payload"`
 
@@ -35,108 +51,7 @@ type Notification struct {
 	Error  string    `bson:"error,omitempty"`
 }
 
-type unmarshalNotification struct {
-	ID         bson.ObjectId    `bson:"_id"`
-	Subscriber event.Subscriber `bson:"subscriber"`
-	Payload    bson.Raw         `bson:"payload"`
-
-	SentAt time.Time `bson:"sent_at,omitempty"`
-	Error  string    `bson:"error,omitempty"`
-}
-
-func (n *Notification) SetBSON(raw bson.Raw) error {
-	temp := unmarshalNotification{}
-	if err := raw.Unmarshal(&temp); err != nil {
-		return errors.Wrap(err, "can't unmarshal notification")
-	}
-
-	switch temp.Subscriber.Type {
-	case event.EvergreenWebhookSubscriberType:
-		str := ""
-		n.Payload = &str
-
-	case event.EmailSubscriberType:
-		n.Payload = &EmailPayload{}
-
-	case event.JIRAIssueSubscriberType:
-		n.Payload = &message.JiraIssue{}
-
-	case event.JIRACommentSubscriberType:
-		str := ""
-		n.Payload = &str
-
-	case event.SlackSubscriberType:
-		str := ""
-		n.Payload = &str
-
-	case event.GithubPullRequestSubscriberType:
-		n.Payload = &GithubStatusAPIPayload{}
-
-	default:
-		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)
-	}
-
-	if err := temp.Payload.Unmarshal(n.Payload); err != nil {
-		return errors.Wrap(err, "error unmarshalling payload")
-	}
-
-	n.ID = temp.ID
-	n.Subscriber = temp.Subscriber
-	n.SentAt = temp.SentAt
-	n.Error = temp.Error
-
-	return nil
-}
-
-func (n *Notification) MarkSent() error {
-	if !n.ID.Valid() {
-		return errors.New("notification has no ID")
-	}
-
-	n.SentAt = time.Now().Truncate(time.Millisecond)
-
-	update := bson.M{
-		"$set": bson.M{
-			sentAtKey: n.SentAt,
-		},
-	}
-
-	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
-		return errors.Wrap(err, "failed to update notification")
-	}
-
-	return nil
-}
-
-func (n *Notification) MarkError(sendErr error) error {
-	if sendErr == nil {
-		return nil
-	}
-	if !n.ID.Valid() {
-		return errors.New("notification has no ID")
-	}
-	if n.SentAt.IsZero() {
-		if err := n.MarkSent(); err != nil {
-			return err
-		}
-	}
-
-	errMsg := sendErr.Error()
-	update := bson.M{
-		"$set": bson.M{
-			errorKey: errMsg,
-		},
-	}
-	n.Error = errMsg
-
-	if err := db.Update(NotificationsCollection, ByID(n.ID), update); err != nil {
-		n.Error = ""
-		return errors.Wrap(err, "failed to add error to notification")
-	}
-
-	return nil
-}
-
+// Composer builds a grip/message.Composer
 func (n *Notification) Composer() (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
@@ -206,50 +121,68 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return c, nil
 
 	case event.GithubPullRequestSubscriberType:
-		// TODO make real composer for this
 		payload, ok := n.Payload.(*GithubStatusAPIPayload)
 		if !ok || payload == nil {
 			return nil, errors.New("github-pull-request payload is invalid")
 		}
 
-		return message.ConvertToComposer(level.Notice, message.Fields{
-			"url":         payload.URL,
-			"context":     payload.Context,
-			"status":      payload.Status,
-			"description": payload.Description,
-		}), nil
+		c := message.NewGithubStatus(level.Notice, payload.Context, payload.State, payload.URL, payload.Description)
+		if !c.Loggable() {
+			return nil, errors.New("github-pull-request payload is invalid")
+		}
+
+		return c, nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
 	}
 }
 
-func InsertMany(items ...Notification) error {
-	if len(items) == 0 {
+func (n *Notification) MarkSent() error {
+	if len(n.ID) == 0 {
+		return errors.New("notification has no ID")
+	}
+
+	n.SentAt = time.Now().Truncate(time.Millisecond)
+
+	update := bson.M{
+		"$set": bson.M{
+			sentAtKey: n.SentAt,
+		},
+	}
+
+	if err := db.UpdateId(Collection, n.ID, update); err != nil {
+		return errors.Wrap(err, "failed to update notification")
+	}
+
+	return nil
+}
+
+func (n *Notification) MarkError(sendErr error) error {
+	if sendErr == nil {
 		return nil
 	}
-
-	interfaces := make([]interface{}, len(items))
-	for i := range items {
-		interfaces[i] = &items[i]
+	if len(n.ID) == 0 {
+		return errors.New("notification has no ID")
+	}
+	if n.SentAt.IsZero() {
+		if err := n.MarkSent(); err != nil {
+			return err
+		}
 	}
 
-	return db.InsertMany(NotificationsCollection, interfaces...)
-}
+	errMsg := sendErr.Error()
+	update := bson.M{
+		"$set": bson.M{
+			errorKey: errMsg,
+		},
+	}
+	n.Error = errMsg
 
-func ByID(id bson.ObjectId) db.Q {
-	return db.Query(bson.M{
-		idKey: id,
-	})
-}
-
-func Find(id bson.ObjectId) (*Notification, error) {
-	notification := Notification{}
-	err := db.FindOneQ(NotificationsCollection, ByID(id), &notification)
-
-	if err == mgo.ErrNotFound {
-		return nil, nil
+	if err := db.UpdateId(Collection, n.ID, update); err != nil {
+		n.Error = ""
+		return errors.Wrap(err, "failed to add error to notification")
 	}
 
-	return &notification, err
+	return nil
 }

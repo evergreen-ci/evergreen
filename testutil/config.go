@@ -153,6 +153,11 @@ func MockConfig() *evergreen.Settings {
 			GithubPRTestingDisabled:      true,
 			RepotrackerPushEventDisabled: true,
 			CLIUpdatesDisabled:           true,
+			EventProcessingDisabled:      true,
+			JIRANotificationsDisabled:    true,
+			SlackNotificationsDisabled:   true,
+			EmailNotificationsDisabled:   true,
+			WebhookNotificationsDisabled: true,
 			GithubStatusAPIDisabled:      true,
 		},
 		Slack: evergreen.SlackConfig{
