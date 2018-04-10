@@ -7,40 +7,35 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestModifyHostStatus(t *testing.T) {
-	Convey("Changing host status through the UI", t, func() {
-		Convey("should allow users to change hosts from 'running' to 'undefined'", func() {
-			user1 := user.DBUser{Id: "user1"}
-			h1 := host.Host{Id: "h1", Status: evergreen.HostRunning}
-			opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined}
+	assert := assert.New(t)
 
-			result, err := modifyHostStatus(&h1, &opts1, &user1)
-			So(err, ShouldBeNil)
-			So(result, ShouldEqual, fmt.Sprintf(HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
-			So(h1.Status, ShouldEqual, evergreen.HostQuarantined)
-		})
+	// Normal test, changing a host from running to quarantined
+	user1 := user.DBUser{Id: "user1"}
+	h1 := host.Host{Id: "h1", Status: evergreen.HostRunning}
+	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined}
 
-		Convey("should not allow users to decommission static hosts", func() {
-			user2 := user.DBUser{Id: "user2"}
-			h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
-			opts2 := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
+	result, err := modifyHostStatus(&h1, &opts1, &user1)
+	assert.Nil(err)
+	assert.Equal(result, fmt.Sprintf(HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
+	assert.Equal(h1.Status, evergreen.HostQuarantined)
 
-			_, err := modifyHostStatus(&h2, &opts2, &user2)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, DecommissionStaticHostError)
-		})
+	user2 := user.DBUser{Id: "user2"}
+	h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
+	opts2 := uiParams{Action: "updateStatus", Status: evergreen.HostDecommissioned}
 
-		Convey("should not allow users to change the status to something undefined", func() {
-			user3 := user.DBUser{Id: "user3"}
-			h3 := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
-			opts3 := uiParams{Action: "updateStatus", Status: "undefined"}
+	_, err = modifyHostStatus(&h2, &opts2, &user2)
+	assert.NotNil(err)
+	assert.Equal(err.Error(), DecommissionStaticHostError)
 
-			_, err := modifyHostStatus(&h3, &opts3, &user3)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, fmt.Sprintf(InvalidStatusError, "undefined"))
-		})
-	})
+	user3 := user.DBUser{Id: "user3"}
+	h3 := host.Host{Id: "h3", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
+	opts3 := uiParams{Action: "updateStatus", Status: "undefined"}
+
+	_, err = modifyHostStatus(&h3, &opts3, &user3)
+	assert.NotNil(err)
+	assert.Equal(err.Error(), fmt.Sprintf(InvalidStatusError, "undefined"))
 }
