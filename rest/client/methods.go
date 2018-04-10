@@ -258,11 +258,7 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	info.path = "agent/next_task"
 	resp, err := c.retryRequest(ctx, info, details)
 	if err != nil {
-		// caller will check for HTTPConflictError, so do not wrap
-		if err.Error() != HTTPConflictError {
-			err = errors.Wrap(err, "failed to get task")
-		}
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get task")
 	}
 	defer resp.Body.Close()
 	if err = util.ReadJSONInto(resp.Body, nextTask); err != nil {
