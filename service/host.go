@@ -25,15 +25,7 @@ var (
 )
 
 const (
-	IncludeSpawnedHosts            = "includeSpawnedHosts"
-	InvalidStatusError             = "'%v' is not a valid status"
-	DecommissionStaticHostError    = "Cannot decommission static hosts"
-	HostTerminationQueueingError   = "Error starting background job for host termination"
-	HostUpdateError                = "Error updating host"
-	HostTerminationQueueingSuccess = "Host %v successfully queued for termination"
-	HostStatusUpdateSuccess        = "Host status successfully updated from '%v' to '%v'"
-	HostStatusWriteConfirm         = "Successfully updated host status"
-	UnrecognizedAction             = "Unrecognized action: %v"
+	IncludeSpawnedHosts = "includeSpawnedHosts"
 )
 
 type uiParams struct {
