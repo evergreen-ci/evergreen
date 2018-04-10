@@ -241,7 +241,7 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 }
 
 func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
-	out := map[string]time.Time{}
+	out := []map[string]time.Time{}
 
 	err := db.Aggregate(TaskQueuesCollection, []bson.M{
 		{"$group": bson.M{
@@ -253,18 +253,21 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 		},
 		{
 			"$project": bson.M{
-				"root": bson.M{"$arrayToOject": "$disroQueue"},
+				"root": bson.M{"$arrayToObject": "$distroQueue"},
 			},
 		},
 		{
 			"$replaceRoot": bson.M{"newRoot": "$root"},
 		},
-	}, out)
+	}, &out)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return out, nil
+	if len(out) != 1 {
+		return nil, errors.New("produced invalid results")
+	}
+	return out[0], nil
 }
 
 // pull out the task with the specified id from both the in-memory and db
