@@ -141,6 +141,21 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 
 	cloudStatus, err := cloudHost.GetInstanceStatus(ctx)
 	if err != nil {
+		// host may still be an intent host
+		if j.host.Status == evergreen.HostUninitialized {
+			if err := j.host.Terminate(evergreen.User); err != nil {
+				j.AddError(errors.Wrap(err, "problem terminating intent host in db"))
+				grip.Error(message.WrapError(err, message.Fields{
+					"host":     j.host.Id,
+					"provider": j.host.Distro.Provider,
+					"job_type": j.Type().Name,
+					"job":      j.ID(),
+					"message":  "problem terminating intent host in db",
+				}))
+			}
+			return
+		}
+
 		j.AddError(err)
 		grip.Error(message.WrapError(err, message.Fields{
 			"host":     j.host.Id,
