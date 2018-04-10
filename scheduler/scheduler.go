@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -15,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -32,7 +34,10 @@ type Scheduler struct {
 	FindRunnableTasks    TaskFinder
 }
 
-const underwaterPruningEnabled = true
+const (
+	underwaterPruningEnabled = true
+	allDistros               = ""
+)
 
 // versionBuildVariant is used to keep track of the version/buildvariant fields
 // for tasks that are to be split by distro
@@ -45,25 +50,17 @@ type versionBuildVariant struct {
 // the per-distro queues.  Then determines the number of new hosts to spin up
 // for each distro, and spins them up.
 func (s *Scheduler) Schedule(ctx context.Context) error {
+	startAt := time.Now()
+
 	if err := model.UpdateStaticHosts(); err != nil {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 
-	if underwaterPruningEnabled {
-		num, err := task.UnscheduleStaleUnderwaterTasks()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		grip.InfoWhen(num > 0, message.Fields{
-			"message": "unscheduled stale tasks",
-			"runner":  RunnerName,
-			"count":   num,
-		})
+	if err := underwaterUnschedule(allDistros); err != nil {
+		return errors.Wrap(err, "problem unscheduled underwater tasks")
 	}
 
-	startAt := time.Now()
-	runnableTasks, err := s.FindRunnableTasks("")
+	runnableTasks, err := s.FindRunnableTasks(allDistros)
 	if err != nil {
 		return errors.Wrap(err, "Error finding runnable tasks")
 	}
@@ -125,6 +122,12 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	// make a channel to collect all of function results from scheduling the distros
 	distroSchedulerResultChan := make(chan distroSchedulerResult)
 
+	ds := &distroSchedueler{
+		Settings:           s.Settings,
+		TaskPrioritizer:    s.TaskPrioritizer,
+		TaskQueuePersister: s.TaskQueuePersister,
+	}
+
 	// for each worker, create a new goroutine
 	for i := 0; i < workers; i++ {
 		go func() {
@@ -133,7 +136,7 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 			for d := range distroInputChan {
 				distroStartTime := time.Now()
 				// schedule the distro
-				res := s.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
+				res := ds.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
 				if res.err != nil {
 					grip.Error(message.Fields{
 						"operation": "scheduling distro",
@@ -158,25 +161,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 					"span":     time.Since(distroStartTime).String(),
 					"duration": time.Since(distroStartTime),
 				})
-				if len(d.runnableTasksForDistro) != len(res.taskQueueItem) {
-					delta := make(map[string]string)
-					for _, t := range res.taskQueueItem {
-						delta[t.Id] = "res.taskQueueItem"
-					}
-					for _, i := range d.runnableTasksForDistro {
-						if delta[i.Id] == "res.taskQueueItem" {
-							delete(delta, i.Id)
-						} else {
-							delta[i.Id] = "d.runnableTasksForDistro"
-						}
-					}
-					grip.Alert(message.Fields{
-						"runner":             RunnerName,
-						"distro":             d.distroId,
-						"message":            "inconsistency with scheduler input and output",
-						"inconsistent_tasks": delta,
-					})
-				}
 			}
 		}()
 	}
@@ -241,12 +225,12 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		"operation": "removing stale intent hosts older than 3 minutes",
 	})
 
-	if err = host.RemoveAllStaleInitializing(); err != nil {
+	if err = host.RemoveStaleInitializing(""); err != nil {
 		return errors.Wrap(err, "problem removing previously intented hosts, before creating new ones.") // nolint:misspell
 	}
 
 	// get hosts that we can use
-	hostsByDistro, err := s.findUsableHosts()
+	hostsByDistro, err := findUsableHosts("")
 	if err != nil {
 		return err
 	}
@@ -274,13 +258,17 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	}
 
 	// figure out how many new hosts we need
-	newHostsNeeded, err := s.NewHostsNeeded(ctx, hostAllocatorData)
+	hs := &hostScheduler{
+		HostAllocator: s.HostAllocator,
+	}
+
+	newHostsNeeded, err := hs.NewHostsNeeded(ctx, hostAllocatorData)
 	if err != nil {
 		return errors.Wrap(err, "Error determining how many new hosts are needed")
 	}
 
 	// spawn up the hosts
-	hostsSpawned, err := s.spawnHosts(ctx, newHostsNeeded)
+	hostsSpawned, err := hs.spawnHosts(ctx, newHostsNeeded)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
@@ -348,7 +336,13 @@ type distroSchedulerResult struct {
 	err            error
 }
 
-func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
+type distroSchedueler struct {
+	TaskPrioritizer
+	TaskQueuePersister
+	*evergreen.Settings
+}
+
+func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
 	taskExpectedDuration model.ProjectTaskDurations) distroSchedulerResult {
 
 	res := distroSchedulerResult{
@@ -401,6 +395,28 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 		NumHostsRunning:  0,
 		ExpectedDuration: totalDuration,
 	}
+
+	// final sanity check
+	if len(runnableTasksForDistro) != len(res.taskQueueItem) {
+		delta := make(map[string]string)
+		for _, t := range res.taskQueueItem {
+			delta[t.Id] = "res.taskQueueItem"
+		}
+		for _, i := range runnableTasksForDistro {
+			if delta[i.Id] == "res.taskQueueItem" {
+				delete(delta, i.Id)
+			} else {
+				delta[i.Id] = "d.runnableTasksForDistro"
+			}
+		}
+		grip.Alert(message.Fields{
+			"runner":             RunnerName,
+			"distro":             distroId,
+			"message":            "inconsistency with scheduler input and output",
+			"inconsistent_tasks": delta,
+		})
+	}
+
 	return res
 
 }
@@ -543,10 +559,14 @@ func (s *Scheduler) getDistrosForBuildVariant(task task.Task, bv model.BuildVari
 	return []string{}, errors.New("no matching task found for buildvariant")
 }
 
+type hostScheduler struct {
+	HostAllocator
+}
+
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
+func (s *hostScheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
 	startTime := time.Now()
 
 	// loop over the distros, spawning up the appropriate number of hosts
@@ -616,8 +636,7 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 				return nil, err
 			}
 
-			hostsSpawnedPerDistro[distroId] =
-				append(hostsSpawnedPerDistro[distroId], *intentHost)
+			hostsSpawnedPerDistro[distroId] = append(hostsSpawnedPerDistro[distroId], *intentHost)
 
 		}
 		// if none were spawned successfully
@@ -645,10 +664,17 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 	return hostsSpawnedPerDistro, nil
 }
 
-// Finds live hosts in the DB and organizes them by distro
-func (s *Scheduler) findUsableHosts() (map[string][]host.Host, error) {
+// Finds live hosts in the DB and organizes them by distro. Pass the
+// empty string to retrieve all distros
+func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 	// fetch all hosts, split by distro
-	allHosts, err := host.Find(host.IsLive)
+	query := host.IsLive()
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(host.DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	allHosts, err := host.Find(db.Query(query))
 	if err != nil {
 		return nil, errors.Wrap(err, "Error finding live hosts")
 	}
@@ -661,4 +687,22 @@ func (s *Scheduler) findUsableHosts() (map[string][]host.Host, error) {
 	}
 
 	return hostsByDistro, nil
+}
+
+// pass 'allDistros' or the empty string to unchedule all distros.
+func underwaterUnschedule(distroID string) error {
+	if underwaterPruningEnabled {
+		num, err := task.UnscheduleStaleUnderwaterTasks(distroID)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		grip.InfoWhen(num > 0, message.Fields{
+			"message": "unscheduled stale tasks",
+			"runner":  RunnerName,
+			"count":   num,
+		})
+	}
+
+	return nil
 }
