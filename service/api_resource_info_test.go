@@ -54,6 +54,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 			request, err := http.NewRequest("POST", url+taskId+"/system_info", bytes.NewBuffer(payload))
 			So(err, ShouldBeNil)
 			request.Header.Add(evergreen.HostHeader, hostId)
+			request.Header.Add(evergreen.HostSecretHeader, "secret")
 
 			resp, err := http.DefaultClient.Do(request)
 			testutil.HandleTestingErr(err, t, "problem making request")
@@ -81,6 +82,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 			request, err := http.NewRequest("POST", url+taskId+"/process_info", bytes.NewBuffer(payload))
 			So(err, ShouldBeNil)
 			request.Header.Add(evergreen.HostHeader, hostId)
+			request.Header.Add(evergreen.HostSecretHeader, "secret")
 			resp, err := http.DefaultClient.Do(request)
 			testutil.HandleTestingErr(err, t, "problem making request")
 			So(resp.StatusCode, ShouldEqual, 200)
