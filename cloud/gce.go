@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -74,11 +73,6 @@ func (opts *GCESettings) Validate() error {
 // instance creation.
 func (m *gceManager) GetSettings() ProviderSettings {
 	return &GCESettings{}
-}
-
-//GetInstanceName returns a name to be used for an instance
-func (*gceManager) GetInstanceName(d distro.Distro) string {
-	return generateName(d)
 }
 
 // Configure loads the necessary credentials from the global config object.

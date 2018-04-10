@@ -5,11 +5,9 @@ package cloud
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -85,11 +83,6 @@ func (settings *dockerSettings) Validate() error {
 // GetSettings returns an empty ProviderSettings struct.
 func (*dockerManager) GetSettings() ProviderSettings {
 	return &dockerSettings{}
-}
-
-//GetInstanceName returns a name to be used for an instance
-func (*dockerManager) GetInstanceName(_ distro.Distro) string {
-	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
 // SpawnHost creates and starts a new Docker container

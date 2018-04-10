@@ -597,22 +597,12 @@ func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]in
 				continue
 			}
 
-			cloudManager, err := cloud.GetCloudManager(ctx, d.Provider, s.Settings)
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"distro":  distroId,
-					"runner":  RunnerName,
-					"message": "problem getting cloud manager for distro",
-				}))
-				continue
-			}
-
 			hostOptions := cloud.HostOptions{
 				UserName: evergreen.User,
 				UserHost: false,
 			}
 
-			intentHost := cloud.NewIntent(d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
+			intentHost := cloud.NewIntent(d, d.GenerateName(), d.Provider, hostOptions)
 			if err := intentHost.Insert(); err != nil {
 				err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
 
