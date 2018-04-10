@@ -693,8 +693,6 @@ func (as *APIServer) AttachRoutes(root *mux.Router) {
 
 	taskRouter.HandleFunc("/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
-	taskRouter.HandleFunc("/new_end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
-	taskRouter.HandleFunc("/new_start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
 
 	taskRouter.HandleFunc("/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
 	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
