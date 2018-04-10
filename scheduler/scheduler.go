@@ -34,7 +34,10 @@ type Scheduler struct {
 	FindRunnableTasks    TaskFinder
 }
 
-const underwaterPruningEnabled = true
+const (
+	underwaterPruningEnabled = true
+	allDistros               = ""
+)
 
 // versionBuildVariant is used to keep track of the version/buildvariant fields
 // for tasks that are to be split by distro
@@ -53,11 +56,11 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 
-	if err := underwaterUnschedule(""); err != nil {
+	if err := underwaterUnschedule(allDistros); err != nil {
 		return errors.Wrap(err, "problem unscheduled underwater tasks")
 	}
 
-	runnableTasks, err := s.FindRunnableTasks("")
+	runnableTasks, err := s.FindRunnableTasks(allDistros)
 	if err != nil {
 		return errors.Wrap(err, "Error finding runnable tasks")
 	}
@@ -661,7 +664,8 @@ func (s *hostScheduler) spawnHosts(ctx context.Context, newHostsNeeded map[strin
 	return hostsSpawnedPerDistro, nil
 }
 
-// Finds live hosts in the DB and organizes them by distro
+// Finds live hosts in the DB and organizes them by distro. Pass the
+// empty string to retrieve all distros
 func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 	// fetch all hosts, split by distro
 	query := host.IsLive()
@@ -685,6 +689,7 @@ func findUsableHosts(distroID string) (map[string][]host.Host, error) {
 	return hostsByDistro, nil
 }
 
+// pass 'allDistros' or the empty string to unchedule all distros.
 func underwaterUnschedule(distroID string) error {
 	if underwaterPruningEnabled {
 		num, err := task.UnscheduleStaleUnderwaterTasks(distroID)

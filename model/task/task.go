@@ -480,6 +480,9 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 // Removes tasks older than the unscheduable threshold (e.g. two
 // weeks) from the scheduler queue.
+//
+// If you pass an empty string as an argument to this function, this
+// operation will select tasks from all distros.
 func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0

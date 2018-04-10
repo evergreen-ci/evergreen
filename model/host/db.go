@@ -325,6 +325,11 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
+// Removes host intents that have been been pending for more than 3
+// minutes for the specified distro.
+//
+// If you pass the empty string as a distroID, it will remove stale
+// host intents for *all* distros.
 func RemoveStaleInitializing(distroID string) error {
 	query := bson.M{
 		StatusKey:     evergreen.HostUninitialized,
