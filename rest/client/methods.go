@@ -258,13 +258,13 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context, details *apimodels.G
 	info.path = "agent/next_task"
 	resp, err := c.retryRequest(ctx, info, details)
 	if err != nil {
-		err = errors.Wrap(err, "failed to get task")
+		// caller will check for HTTPConflictError, so do not wrap
+		if err.Error() != HTTPConflictError {
+			err = errors.Wrap(err, "failed to get task")
+		}
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusConflict {
-		return nil, errors.New("conflict - wrong secret")
-	}
 	if err = util.ReadJSONInto(resp.Body, nextTask); err != nil {
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
