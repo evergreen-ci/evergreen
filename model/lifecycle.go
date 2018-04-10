@@ -207,7 +207,6 @@ func SetVersionPriority(versionId string, priority int64) error {
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
-
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -305,11 +304,6 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 				return errors.Wrapf(err,
 					"Restarting build %v failed, could not task.reset on task",
 					buildId, t.Id)
-			}
-		}
-		if t.DisplayOnly {
-			if err = task.ResetTasks(t.ExecutionTasks); err != nil {
-				return errors.WithStack(err)
 			}
 		}
 	}
