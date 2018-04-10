@@ -23,7 +23,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2018-03-22"
+	ClientVersion = "2018-04-10"
 
 	errNotFound = "not found"
 )

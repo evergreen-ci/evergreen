@@ -167,14 +167,16 @@ func prepareUpdate(url, newVersion string) (string, error) {
 		return "", err
 	}
 
-	fmt.Println("Upgraded binary downloaded to", tempPath, "- verifying")
-
-	// XXX: All executables on windows must end in .exe
+	// Executables on windows must end in .exe
 	if runtime.GOOS == "windows" {
-		if err = os.Rename(tempPath, tempPath+".exe"); err != nil {
-			return "", errors.Wrap(err, "problem renaming file")
+		winTempPath := tempPath + ".exe"
+		if err = os.Rename(tempPath, winTempPath); err != nil {
+			return "", errors.Wrapf(err, "problem renaming file %s to %s", tempPath, winTempPath)
 		}
+		tempPath = winTempPath
 	}
+
+	fmt.Println("Upgraded binary downloaded to", tempPath, "- verifying")
 
 	// Run the new binary's "version" command to verify that it is in fact the correct upgraded
 	// version
