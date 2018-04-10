@@ -1563,21 +1563,23 @@ func resetTaskData() error {
 		return err
 	}
 	task5 := &task.Task{
-		Id:          "task5",
-		DisplayName: "task5",
-		BuildId:     build3.Id,
-		Version:     v.Id,
-		Status:      evergreen.TaskSucceeded,
+		Id:           "task5",
+		DisplayName:  "task5",
+		BuildId:      build3.Id,
+		Version:      v.Id,
+		Status:       evergreen.TaskSucceeded,
+		DispatchTime: time.Now(),
 	}
 	if err := task5.Insert(); err != nil {
 		return err
 	}
 	task6 := &task.Task{
-		Id:          "task6",
-		DisplayName: "task6",
-		BuildId:     build3.Id,
-		Version:     v.Id,
-		Status:      evergreen.TaskFailed,
+		Id:           "task6",
+		DisplayName:  "task6",
+		BuildId:      build3.Id,
+		Version:      v.Id,
+		Status:       evergreen.TaskFailed,
+		DispatchTime: time.Now(),
 	}
 	if err := task6.Insert(); err != nil {
 		return err
@@ -1590,6 +1592,7 @@ func resetTaskData() error {
 		DisplayOnly:    true,
 		ExecutionTasks: []string{task5.Id, task6.Id},
 		Status:         evergreen.TaskFailed,
+		DispatchTime:   time.Now(),
 	}
 	if err := displayTask.Insert(); err != nil {
 		return err

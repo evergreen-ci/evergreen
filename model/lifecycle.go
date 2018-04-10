@@ -207,7 +207,6 @@ func SetVersionPriority(versionId string, priority int64) error {
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
 	allTasks, err := task.FindWithDisplayTasks(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
-
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -217,6 +216,9 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	for _, t := range allTasks {
 		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
+		}
+		if t.DisplayOnly {
+			restartIds = append(restartIds, t.ExecutionTasks...)
 		}
 	}
 
