@@ -69,7 +69,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		return nil, http.StatusInternalServerError, errors.Wrapf(err, "Error loading context for host %s", hostId)
 	}
 	if secret == "" {
-		return nil, http.StatusBadRequest, errors.New("Missing host secret for host %s", h.Id)
+		return nil, http.StatusBadRequest, errors.Errorf("Missing host secret for host %s", h.Id)
 	}
 	if secret != h.Secret {
 		return nil, http.StatusConflict, errors.Errorf("Invalid host secret for host %s", h.Id)
