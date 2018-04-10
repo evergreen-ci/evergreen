@@ -39,6 +39,7 @@ func insertHostWithRunningTask(hostId, taskId string) (host.Host, error) {
 	h := host.Host{
 		Id:          hostId,
 		RunningTask: taskId,
+		Secret:      "secret",
 	}
 	return h, h.Insert()
 }

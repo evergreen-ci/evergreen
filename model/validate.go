@@ -66,11 +66,13 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		return nil, http.StatusBadRequest, errors.Errorf("Host %s not found", hostId)
 	}
 	if err != nil {
-		return nil, http.StatusInternalServerError, errors.Wrapf(err, "Error loading context for host %v", hostId)
+		return nil, http.StatusInternalServerError, errors.Wrapf(err, "Error loading context for host %s", hostId)
 	}
-	// if there is a secret, ensure we are using the correct one -- fail if we arent
-	if secret != "" && secret != h.Secret {
-		return nil, http.StatusConflict, errors.Errorf("Invalid host secret for host %v", h.Id)
+	if secret == "" {
+		return nil, http.StatusBadRequest, errors.Errorf("Missing host secret for host %s", h.Id)
+	}
+	if secret != h.Secret {
+		return nil, http.StatusConflict, errors.Errorf("Invalid host secret for host %s", h.Id)
 	}
 
 	// if the task is attached to the context, check host-task relationship
@@ -81,7 +83,7 @@ func ValidateHost(hostId string, r *http.Request) (*host.Host, int, error) {
 		}
 	}
 	if badHostTaskRelationship(h, t) {
-		return nil, http.StatusConflict, errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id)
+		return nil, http.StatusConflict, errors.Errorf("Host %s should be running %s, not %s", h.Id, h.RunningTask, t.Id)
 	}
 	return h, http.StatusOK, nil
 }
