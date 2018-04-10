@@ -1,8 +1,8 @@
   <div ng-show="validHostStatuses.length != 0">
-    <span>
+    <div>
       <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="status">
         <span>
-          <i class="fa fa-desktop" style="margin-right:10px"></i>Update status to 
+          <i class="fa fa-desktop" style="margin-right:10px"></i>Update status to
         </span>
         <strong>
           [[newStatus]]
@@ -17,8 +17,13 @@
           </a>
         </li>
       </ul>
-      <button type="button" class="btn btn-info host-button" style="float: right;" ng-click="updateStatus()">
-      Update
-      </button>
-    </span>
+    </div>
+    <div>
+      <span>
+        <input type="text" placeholder="Notes" ng-model="notes.text" style="margin-left:10px"/>
+        <button type="button" class="btn btn-info host-button" style="float:right; margin-top:-8px;" ng-click="updateStatus()">
+        Update
+        </button>
+      </span>
+    </div>
   </div>
