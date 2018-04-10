@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
@@ -232,6 +233,47 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 
 		for _, h := range hosts {
 			catcher.Add(queue.Put(NewHostTerminationJob(env, h)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
+func PopulateSchedulerJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.SchedulerDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "scheduler is disabled",
+				"impact":  "new tasks are not enqueued",
+				"mode":    "degraded",
+			})
+		}
+
+		lastPlanned, err := model.FindTaskQueueGenerationTimes()
+		if err != nil {
+			return errors.Wrap(err, "problem finding last task generation times")
+		}
+
+		names, err := distro.FindAllNames()
+		if err != nil {
+			return errors.Wrap(err, "problem finding all configured distros")
+		}
+
+		ts := util.RoundPartOfMinute(20)
+		catcher := grip.NewBasicCatcher()
+		for _, id := range names {
+			lastRun, ok := lastPlanned[id]
+			if ok && time.Since(lastRun) < 40*time.Second {
+				continue
+			}
+
+			job := NewDistroSchedulerJob(id, ts)
+			catcher.Add(queue.Put(job))
 		}
 
 		return catcher.Resolve()
