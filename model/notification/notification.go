@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/mongodb/grip/level"
@@ -51,7 +52,35 @@ type Notification struct {
 	Error  string    `bson:"error,omitempty"`
 }
 
-// Composer builds a grip/message.Composer
+// SenderKey returns an evergreen.SenderKey to get a grip sender for this
+// notification from the evergreen environment
+func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
+	switch n.Subscriber.Type {
+	case event.EvergreenWebhookSubscriberType:
+		return evergreen.SenderEvergreenWebhook, nil
+
+	case event.EmailSubscriberType:
+		return evergreen.SenderEmail, nil
+
+	case event.JIRAIssueSubscriberType:
+		return evergreen.SenderJIRAIssue, nil
+
+	case event.JIRACommentSubscriberType:
+		return evergreen.SenderJIRAComment, nil
+
+	case event.SlackSubscriberType:
+		return evergreen.SenderSlack, nil
+
+	case event.GithubPullRequestSubscriberType:
+		return evergreen.SenderGithubStatus, nil
+
+	default:
+		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
+	}
+}
+
+// Composer builds a grip/message.Composer for the notification. Composer is
+// guaranteed to be non-nil if error is nil
 func (n *Notification) Composer() (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
