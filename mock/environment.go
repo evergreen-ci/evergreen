@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
+	"github.com/mongodb/grip/send"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -87,4 +88,8 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 			},
 		},
 	}
+}
+
+func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	return send.MakeInternalLogger(), nil
 }

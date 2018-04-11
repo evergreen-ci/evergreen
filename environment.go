@@ -17,6 +17,8 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
 )
@@ -72,6 +74,11 @@ type Environment interface {
 	// ClientConfig provides access to a list of the latest evergreen
 	// clients, that this server can serve to users
 	ClientConfig() *ClientConfig
+
+	// GetSender provides a grip Sender configured with the environment's
+	// settings. These Grip senders must be used with Composers that specify
+	// all message details.
+	GetSender(SenderKey) (send.Sender, error)
 }
 
 type envState struct {
@@ -305,6 +312,101 @@ func (e *envState) ClientConfig() *ClientConfig {
 
 	config := *e.clientConfig
 	return &config
+}
+
+func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+
+	levelInfo := send.LevelInfo{
+		Default:   level.Notice,
+		Threshold: level.Notice,
+	}
+
+	switch key {
+	case SenderGithubStatus:
+		settings, err := GetConfig()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to fetch settings")
+		}
+		if settings == nil {
+			return nil, errors.New("fetched empty settings")
+		}
+
+		token, err := settings.GetGithubOauthToken()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get github oauth token")
+		}
+
+		return send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+			Token: token,
+		}, "")
+
+	case SenderSlack:
+		slack := SlackConfig{}
+		if err := slack.Get(); err != nil {
+			return nil, errors.Wrap(err, "failed to get Slack settings")
+		}
+		return send.NewSlackLogger(&send.SlackOptions{
+			Channel: "#",
+			Name:    "evergreen",
+		}, slack.Token, levelInfo)
+
+	case SenderJIRAIssue:
+		jira := JiraConfig{}
+		if err := jira.Get(); err != nil {
+			return nil, errors.Wrap(err, "failed to get JIRA settings")
+		}
+		return send.NewJiraLogger(&send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+
+	case SenderJIRAComment:
+		jira := JiraConfig{}
+		if err := jira.Get(); err != nil {
+			return nil, errors.Wrap(err, "failed to get JIRA settings")
+		}
+
+		return send.NewJiraCommentLogger("", &send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+
+	case SenderEmail:
+		smtp := NotifyConfig{}
+		if err := smtp.Get(); err != nil {
+			return nil, errors.Wrap(err, "failed to get SMTP settings")
+		}
+		if smtp.SMTP == nil {
+			return nil, errors.New("got empty SMTP settings")
+		}
+		opts := send.SMTPOptions{
+			Name:              "evergreen",
+			Server:            smtp.SMTP.Server,
+			Port:              smtp.SMTP.Port,
+			UseSSL:            smtp.SMTP.UseSSL,
+			Username:          smtp.SMTP.Username,
+			Password:          smtp.SMTP.Password,
+			From:              smtp.SMTP.From,
+			PlainTextContents: false,
+			NameAsSubject:     true,
+		}
+		if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+			return nil, errors.Wrap(err, "failed to setup logger")
+		}
+		return send.NewSMTPLogger(&opts, levelInfo)
+
+	case SenderEvergreenWebhook:
+		return nil, errors.New("TODO")
+
+	default:
+		return nil, errors.Errorf("unknown sender key %v", key)
+	}
 }
 
 // getClientConfig should be called once at startup and looks at the
