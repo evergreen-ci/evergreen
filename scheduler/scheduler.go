@@ -518,6 +518,11 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 			tasksByDistro[d] = append(tasksByDistro[d], task)
 		}
 
+		if task.DistroId == "" {
+			// this is a lazy way to backfill distro names on tasks.
+			task.SetDistro(distrosToUse[0])
+		}
+
 		// for tasks that can run on multiple distros, keep track of which
 		// distros they will be scheduled on
 		if len(distrosToUse) > 1 {
