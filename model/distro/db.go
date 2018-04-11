@@ -39,7 +39,7 @@ func FindOne(query db.Q) (Distro, error) {
 }
 
 func FindAllNames() ([]string, error) {
-	out := struct {
+	out := []struct {
 		Distros []string `bson:"distros"`
 	}{}
 	err := db.Aggregate(Collection, []bson.M{
@@ -47,6 +47,8 @@ func FindAllNames() ([]string, error) {
 			"$project": bson.M{
 				IdKey: 1,
 			},
+		},
+		{
 			"$group": bson.M{
 				"_id": 0,
 				"distros": bson.M{
@@ -60,7 +62,11 @@ func FindAllNames() ([]string, error) {
 		return nil, errors.Wrap(err, "problem building list of all distros")
 	}
 
-	return out.Distros, nil
+	if len(out) != 1 {
+		return nil, errors.New("produced invalid results")
+	}
+
+	return out[0].Distros, nil
 }
 
 // Find gets every Distro matching the given query.

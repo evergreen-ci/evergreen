@@ -123,7 +123,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	distroSchedulerResultChan := make(chan distroSchedulerResult)
 
 	ds := &distroSchedueler{
-		Settings:           s.Settings,
 		TaskPrioritizer:    s.TaskPrioritizer,
 		TaskQueuePersister: s.TaskQueuePersister,
 	}
@@ -339,7 +338,6 @@ type distroSchedulerResult struct {
 type distroSchedueler struct {
 	TaskPrioritizer
 	TaskQueuePersister
-	*evergreen.Settings
 }
 
 func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
@@ -354,8 +352,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"num_tasks": len(runnableTasksForDistro),
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroId, s.Settings,
-		runnableTasksForDistro)
+	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")
 		return res
