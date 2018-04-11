@@ -113,8 +113,7 @@ LOOP:
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{tc.taskGroup})
 			if err != nil {
 				// task secret doesn't match, get another task
-				conflictError := client.HTTPConflictError{}
-				if errors.Cause(err) == conflictError {
+				if errors.Cause(err) == client.HTTPConflictError {
 					continue LOOP
 				}
 				return errors.Wrap(err, "error getting next task")

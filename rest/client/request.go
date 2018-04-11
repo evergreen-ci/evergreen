@@ -46,15 +46,7 @@ const (
 	patch         = "PATCH"
 )
 
-type HTTPConflictError struct{}
-
-func (e HTTPConflictError) Error() string {
-	return "Received status code 409"
-}
-
-func (e HTTPConflictError) Cause() error {
-	return e
-}
+var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
 func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
@@ -205,7 +197,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
 			} else if resp.StatusCode == http.StatusConflict {
-				return nil, HTTPConflictError{}
+				return nil, HTTPConflictError
 			} else if resp != nil {
 				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			}

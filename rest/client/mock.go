@@ -228,7 +228,7 @@ func (c *Mock) GetNextTask(ctx context.Context, details *apimodels.GetNextTaskDe
 		return nil, errors.New("NextTaskShouldFail is true")
 	}
 	if c.NextTaskShouldConflict {
-		return nil, errors.WithStack(HTTPConflictError{})
+		return nil, errors.WithStack(HTTPConflictError)
 	}
 	if c.NextTaskResponse != nil {
 		return c.NextTaskResponse, nil
