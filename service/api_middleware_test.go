@@ -121,7 +121,7 @@ func TestCheckHostWrapper(t *testing.T) {
 				r.Header.Add(evergreen.HostHeader, h1.Id)
 				r.Header.Add(evergreen.HostSecretHeader, "bad thing!!!")
 				root.ServeHTTP(w, r)
-				So(w.Code, ShouldEqual, http.StatusConflict)
+				So(w.Code, ShouldEqual, http.StatusUnauthorized)
 				msg, _ := ioutil.ReadAll(w.Body)
 				So(string(msg), ShouldContainSubstring, "secret")
 
@@ -222,7 +222,7 @@ func TestCheckHostWrapper(t *testing.T) {
 				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
 				r.Header.Add(evergreen.HostSecretHeader, "bad thing!!!")
 				root.ServeHTTP(w, r)
-				So(w.Code, ShouldEqual, http.StatusConflict)
+				So(w.Code, ShouldEqual, http.StatusUnauthorized)
 				msg, _ := ioutil.ReadAll(w.Body)
 				So(string(msg), ShouldContainSubstring, "secret")
 

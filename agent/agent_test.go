@@ -126,6 +126,24 @@ func (s *AgentSuite) TestAgentEndTaskShouldExit() {
 	s.Error(err)
 }
 
+func (s *AgentSuite) TestNextTaskConflict() {
+	s.mockCommunicator.NextTaskShouldConflict = true
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errChan := make(chan error)
+	go func() {
+		errChan <- s.a.loop(ctx)
+	}()
+	time.Sleep(time.Millisecond)
+	select {
+	case err := <-errChan:
+		s.NoError(err)
+	default:
+		// pass
+	}
+}
+
 func (s *AgentSuite) TestFinishTaskReturnsEndTaskResponse() {
 	s.mockCommunicator.EndTaskResponse = &apimodels.EndTaskResponse{}
 	ctx, cancel := context.WithCancel(context.Background())
