@@ -244,12 +244,13 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 	out := []map[string]time.Time{}
 
 	err := db.Aggregate(TaskQueuesCollection, []bson.M{
-		{"$group": bson.M{
-			"_id": 0,
-			"distroQueue": bson.M{"$push": bson.M{
-				"k": "$" + taskQueueDistroKey,
-				"v": "$" + taskQueueGeneratedAtKey,
-			}}},
+		{
+			"$group": bson.M{
+				"_id": 0,
+				"distroQueue": bson.M{"$push": bson.M{
+					"k": "$" + taskQueueDistroKey,
+					"v": "$" + taskQueueGeneratedAtKey,
+				}}},
 		},
 		{
 			"$project": bson.M{

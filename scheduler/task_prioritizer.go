@@ -11,14 +11,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+// this controls (I think) how the system interleaves patches and
+// commits, but it doesn't really make sense. It used to be
+// configurable, but that complicates interface complexity.
+const schedulerMergeToggle = 2
+
 // TaskPrioritizer is responsible for taking in a slice of tasks, and ordering them
 // according to which should be run first.
 type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(distroId string, settings *evergreen.Settings, tasks []task.Task) (
-		[]task.Task, error)
+	PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error)
 }
 
 // CmpBasedTaskComparator runs the tasks through a slice of comparator functions
@@ -35,6 +39,8 @@ type CmpBasedTaskComparator struct {
 	// cache the number of tasks that have failed in other buildvariants; tasks
 	// with the same revision, project, display name and requester
 	similarFailingCount map[string]int
+
+	mergeToggle int
 }
 
 // CmpBasedTaskQueues represents the three types of queues that are created for merging together into one queue.
@@ -63,6 +69,7 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 			bySimilarFailing,
 			byRecentlyFailing,
 		},
+		mergeToggle: schedulerMergeToggle,
 	}
 }
 
@@ -72,9 +79,7 @@ type CmpBasedTaskPrioritizer struct{}
 // whether they are part of patch versions or automatically created versions.
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
-func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
-	distroId string,
-	settings *evergreen.Settings, tasks []task.Task) ([]task.Task, error) {
+func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error) {
 
 	comparator := NewCmpBasedTaskComparator()
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
@@ -135,7 +140,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 		"high priority tasks": len(prioritizedTaskQueues.HighPriorityTasks),
 	})
 
-	comparator.tasks = comparator.mergeTasks(settings, &prioritizedTaskQueues)
+	comparator.tasks = comparator.mergeTasks(&prioritizedTaskQueues)
 
 	return comparator.tasks, nil
 }
@@ -251,16 +256,9 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
-func (self *CmpBasedTaskComparator) mergeTasks(settings *evergreen.Settings,
-	tq *CmpBasedTaskQueues) []task.Task {
-
+func (self *CmpBasedTaskComparator) mergeTasks(tq *CmpBasedTaskQueues) []task.Task {
 	mergedTasks := make([]task.Task, 0, len(tq.RepotrackerTasks)+
 		len(tq.PatchTasks)+len(tq.HighPriorityTasks))
-
-	toggle := settings.Scheduler.MergeToggle
-	if toggle == 0 {
-		toggle = 2 // defaults to interleaving evenly
-	}
 
 	rIdx := 0
 	pIdx := 0
@@ -276,7 +274,7 @@ func (self *CmpBasedTaskComparator) mergeTasks(settings *evergreen.Settings,
 		} else if rIdx >= lenRepoTrackerTasks { // overruns repotracker tasks
 			mergedTasks = append(mergedTasks, tq.PatchTasks[pIdx])
 			pIdx++
-		} else if idx > 0 && (idx+1)%toggle == 0 { // turn for a repotracker task
+		} else if idx > 0 && (idx+1)%self.mergeToggle == 0 { // turn for a repotracker task
 			mergedTasks = append(mergedTasks, tq.RepotrackerTasks[rIdx])
 			rIdx++
 		} else { // turn for a patch task

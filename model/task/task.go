@@ -423,6 +423,19 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	return nil
 }
 
+func (t *Task) SetDistro(distroID string) error {
+	t.DistroId = distroID
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				DistroIdKey: distroID,
+			},
+		})
+}
+
 // MarkAsUndispatched marks that the task has been undispatched from a
 // particular host. Unsets the running task field on the host and the
 // host id field on the task
@@ -555,9 +568,10 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
-	return UpdateOne(bson.M{
-		IdKey: t.Id,
-	},
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:   true,

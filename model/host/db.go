@@ -335,6 +335,7 @@ func RemoveStaleInitializing(distroID string) error {
 		StatusKey:     evergreen.HostUninitialized,
 		UserHostKey:   false,
 		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
 	}
 
 	if distroID != "" {
