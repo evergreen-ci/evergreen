@@ -568,9 +568,10 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
-	return UpdateOne(bson.M{
-		IdKey: t.Id,
-	},
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:   true,

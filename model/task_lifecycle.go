@@ -46,6 +46,7 @@ func SetActiveState(taskId string, caller string, active bool) error {
 				return errors.Wrap(err, "error while activating task")
 			}
 		}
+
 		// If the task was not activated by step back, and either the caller is not evergreen
 		// or the task was originally activated by evergreen, deactivate the task
 	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
