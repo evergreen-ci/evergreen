@@ -2,10 +2,12 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
@@ -22,7 +24,7 @@ const (
 	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
-func modifyHostStatus(h *host.Host, opts *uiParams, u *user.DBUser) (string, error) {
+func modifyHostStatus(h *host.Host, opts *uiParams, u *user.DBUser) (string, *rest.APIError) {
 	env := evergreen.GetEnvironment()
 	queue := env.RemoteQueue()
 
@@ -31,26 +33,41 @@ func modifyHostStatus(h *host.Host, opts *uiParams, u *user.DBUser) (string, err
 		currentStatus := h.Status
 		newStatus := opts.Status
 		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
-			return "", errors.Errorf(InvalidStatusError, newStatus)
+			return "", &rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    fmt.Sprintf(InvalidStatusError, newStatus),
+			}
 		}
 
 		if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
-			return "", errors.New(DecommissionStaticHostError)
+			return "", &rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    DecommissionStaticHostError,
+			}
 		}
 
 		if newStatus == evergreen.HostTerminated {
 			if err := queue.Put(units.NewHostTerminationJob(env, *h)); err != nil {
-				return "", errors.New(HostTerminationQueueingError)
+				return "", &rest.APIError{
+					StatusCode: http.StatusInternalServerError,
+					Message:    HostTerminationQueueingError,
+				}
 			}
 			return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), nil
 		}
 
 		err := h.SetStatus(newStatus, u.Id, "")
 		if err != nil {
-			return "", errors.Wrap(err, HostUpdateError)
+			return "", &rest.APIError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    errors.Wrap(err, HostUpdateError).Error(),
+			}
 		}
 		return fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status), nil
 	default:
-		return "", errors.Errorf(UnrecognizedAction, opts.Action)
+		return "", &rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    fmt.Sprintf(UnrecognizedAction, opts.Action),
+		}
 	}
 }

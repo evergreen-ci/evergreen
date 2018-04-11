@@ -117,24 +117,15 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentStatus := h.Status
-	modifyResult, err := modifyHostStatus(h, opts, u)
+	modifyResult, restErr := modifyHostStatus(h, opts, u)
 
-	if err != nil {
-		switch err.Error() {
+	if restErr != nil {
+		switch restErr.Error() {
 		case fmt.Sprintf(UnrecognizedAction, opts.Action):
-			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf(UnrecognizedAction, opts.Action))
-			return
-		case fmt.Sprintf(InvalidStatusError, opts.Status):
-			http.Error(w, fmt.Sprintf(InvalidStatusError, opts.Status), http.StatusBadRequest)
-			return
-		case DecommissionStaticHostError:
-			http.Error(w, DecommissionStaticHostError, http.StatusBadRequest)
-			return
-		case HostTerminationQueueingError:
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.New(HostTerminationQueueingError))
+			uis.WriteJSON(w, restErr.StatusCode, restErr.Message)
 			return
 		default:
-			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			uis.LoggedError(w, r, restErr.StatusCode, restErr)
 			return
 		}
 	}
