@@ -517,20 +517,22 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	}
 
 	for _, t := range tg.Tasks {
-		tasks = append(tasks, BuildVariantTaskUnit{
+		bvt := BuildVariantTaskUnit{
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:         true,
 			GroupName:       in.Name,
-			Patchable:       taskMap[t].Patchable,
-			Priority:        taskMap[t].Priority,
-			DependsOn:       taskMap[t].DependsOn,
-			Requires:        taskMap[t].Requires,
+			Patchable:       in.Patchable,
+			Priority:        in.Priority,
+			DependsOn:       in.DependsOn,
+			Requires:        in.Requires,
 			Distros:         in.Distros,
-			ExecTimeoutSecs: taskMap[t].ExecTimeoutSecs,
-			Stepback:        taskMap[t].Stepback,
-		})
+			ExecTimeoutSecs: in.ExecTimeoutSecs,
+			Stepback:        in.Stepback,
+		}
+		bvt.Populate(taskMap[t])
+		tasks = append(tasks, bvt)
 	}
 	return tasks
 }

@@ -1613,3 +1613,37 @@ func TestShouldNotPatch(t *testing.T) {
 	bv.Patchable = nil
 	assert.False(shouldNotPatchBuild(bv, evergreen.GithubPRRequester))
 }
+
+func TestCreateTasksFromGroup(t *testing.T) {
+	assert := assert.New(t)
+	in := BuildVariantTaskUnit{
+		Name:            "name",
+		IsGroup:         true,
+		GroupName:       "task_group",
+		Priority:        0,
+		DependsOn:       []TaskUnitDependency{{Name: "new_dependency"}},
+		Requires:        nil,
+		Distros:         []string{},
+		ExecTimeoutSecs: 0,
+	}
+	p := &Project{
+		Tasks: []ProjectTask{
+			{
+				Name:      "first_task",
+				DependsOn: []TaskUnitDependency{{Name: "dependency"}},
+			},
+			{
+				Name: "second_task",
+			},
+		},
+		TaskGroups: []TaskGroup{
+			{
+				Name:  "name",
+				Tasks: []string{"first_task", "second_task"},
+			},
+		},
+	}
+	bvts := CreateTasksFromGroup(in, p)
+	assert.Equal("new_dependency", bvts[0].DependsOn[0].Name)
+	assert.Equal("new_dependency", bvts[1].DependsOn[0].Name)
+}
