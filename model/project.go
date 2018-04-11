@@ -785,18 +785,13 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 	return p, nil
 }
 
-func FindDistroNameForTask(t *task.Task) (string, error) {
-	proj, err := FindProjectFromTask(t)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
-	}
-
-	bv, err := proj.BuildVariants.Get(t.BuildVariant)
+func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
+	bv, err := p.BuildVariants.Get(t.BuildVariant)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem finding buildvariant for task '%s'", t.Id)
 	}
 
-	bvt, err := bv.Get(t.Id)
+	bvt, err := bv.Get(t.DisplayName)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem finding buildvarianttask for task '%s'", t.Id)
 	}

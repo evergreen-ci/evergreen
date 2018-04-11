@@ -48,8 +48,14 @@ func SetActiveState(taskId string, caller string, active bool) error {
 		}
 
 		if t.DistroId == "" {
+			var project *Project
+			project, err = FindProjectFromTask(t)
+			if err != nil {
+				return errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
+			}
+
 			var distro string
-			distro, err = FindDistroNameForTask(t)
+			distro, err = project.FindDistroNameForTask(t)
 			if err != nil {
 				errors.Wrapf(err, "problem finding distro for activating task '%s'", taskId)
 			}

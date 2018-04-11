@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -653,6 +654,17 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					Activated:    false,
 				},
 			},
+			Config: `
+buildvariants:
+- name: "buildVar"
+  run_on:
+   - "arch"
+  tasks:
+   - name: "taskA"
+   - name: "taskB"
+   - name: "taskC"
+   - name: "taskD"
+`,
 		}
 		So(v.Insert(), ShouldBeNil)
 
@@ -883,6 +895,25 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(b.DisplayName, ShouldEqual, buildVar1.DisplayName)
 			So(b.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
 			So(b.Requester, ShouldEqual, v.Requester)
+		})
+
+		Convey("find distro name for tasks works", func() {
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
+
+			So(err, ShouldBeNil)
+			So(buildId, ShouldNotEqual, "")
+
+			tasks, err := task.Find(task.All)
+			So(err, ShouldBeNil)
+			for _, t := range tasks {
+				t.DistroId = ""
+				fmt.Println(t.Id, "||", t.DisplayName)
+				distro, err := project.FindDistroNameForTask(&t)
+				So(err, ShouldBeNil)
+				So(distro, ShouldEqual, "arch")
+				So(t.DistroId, ShouldNotEqual, distro)
+			}
+
 		})
 
 		Convey("all of the tasks' essential fields should be set correctly", func() {
