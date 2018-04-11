@@ -165,7 +165,7 @@ func (s *SenderSuite) SetupTest() {
 	}
 	s.NoError(s.senders["gh-comment-mocked"].SetFormatter(MakeDefaultFormatter()))
 
-	s.senders["gh-status-mocked"] = &githubStatusLogger{
+	s.senders["gh-status-mocked"] = &githubStatusMessageLogger{
 		Base: NewBase("gh-status-mocked"),
 		opts: &GithubOptions{},
 		gh:   &githubClientMock{},
@@ -305,12 +305,12 @@ func TestBaseConstructor(t *testing.T) {
 }
 
 func (s *SenderSuite) TestGithubStatusLogger() {
-	sender := s.senders["gh-status-mocked"].(*githubStatusLogger)
+	sender := s.senders["gh-status-mocked"].(*githubStatusMessageLogger)
 	client := sender.gh.(*githubClientMock)
 
 	// failed send test
 	client.failSend = true
-	c := message.NewGithubStatus(level.Info, "example", message.GithubStatePending,
+	c := message.NewGithubStatusMessage(level.Info, "example", message.GithubStatePending,
 		"https://example.com/hi", "description")
 
 	s.NoError(sender.SetErrorHandler(func(err error, c message.Composer) {
@@ -327,12 +327,28 @@ func (s *SenderSuite) TestGithubStatusLogger() {
 	sender.Send(c)
 	s.Equal(1, client.numSent)
 
+	// WithRepo constructor should override sender's defaults
+	p := message.GithubStatus{
+		Owner:       "somewhere",
+		Repo:        "over",
+		Ref:         "therainbow",
+		Context:     "example",
+		State:       message.GithubStatePending,
+		URL:         "https://example.com/hi",
+		Description: "description",
+	}
+	c = message.NewGithubStatusMessageWithRepo(level.Info, p)
+	s.True(c.Loggable())
+	sender.Send(c)
+	s.Equal(2, client.numSent)
+	s.Equal("somewhere/over@therainbow", client.lastRepo)
+
 	// don't send invalid messages
-	c = message.NewGithubStatus(level.Info, "", message.GithubStatePending,
+	c = message.NewGithubStatusMessage(level.Info, "", message.GithubStatePending,
 		"https://example.com/hi", "description")
 	s.False(c.Loggable())
 	sender.Send(c)
-	s.Equal(1, client.numSent)
+	s.Equal(2, client.numSent)
 }
 
 func (s *SenderSuite) TestGithubCommentLogger() {
