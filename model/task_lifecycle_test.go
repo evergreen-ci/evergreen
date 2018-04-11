@@ -156,6 +156,7 @@ func TestSetActiveState(t *testing.T) {
 			Id:          taskId,
 			DisplayName: displayName,
 			Activated:   false,
+			DistroId:    "arch",
 			BuildId:     buildId,
 			DependsOn: []task.Dependency{
 				{
@@ -175,6 +176,7 @@ func TestSetActiveState(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
+		So(testTask.DistroId, ShouldNotEqual, "")
 
 		Convey("activating the task should activate the tasks it depends on", func() {
 			So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
@@ -192,6 +194,7 @@ func TestSetActiveState(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(depTask.Activated, ShouldBeTrue)
 			})
+
 		})
 	})
 

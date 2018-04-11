@@ -777,7 +777,7 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 		return nil, errors.Errorf("problem finding project: %s", t.Project)
 	}
 
-	p, err := FindProject("", ref)
+	p, err := FindProject(t.Revision, ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
 	}
@@ -788,17 +788,17 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 func FindDistroNameForTask(t *task.Task) (string, error) {
 	proj, err := FindProjectFromTask(t)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding project for task", t.Id)
+		return "", errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
 	}
 
 	bv, err := proj.BuildVariants.Get(t.BuildVariant)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding buildvariant for task", t.Id)
+		return "", errors.Wrapf(err, "problem finding buildvariant for task '%s'", t.Id)
 	}
 
 	bvt, err := bv.Get(t.Id)
 	if err != nil {
-		return "", errors.Wrapf(err, "problem finding buildvarianttask for task", t.Id)
+		return "", errors.Wrapf(err, "problem finding buildvarianttask for task '%s'", t.Id)
 	}
 
 	var distro string

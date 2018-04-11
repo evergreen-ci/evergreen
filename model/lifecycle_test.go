@@ -539,13 +539,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 	Convey("When creating a build from a version", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(ProjectRefCollection, version.Collection, build.Collection, task.Collection), t,
 			"Error clearing test collection")
 
 		// the mock build variant we'll be using. runs all three tasks
 		buildVar1 := BuildVariant{
 			Name:        "buildVar",
 			DisplayName: "Build Variant",
+			RunOn:       []string{"arch"},
 			Tasks: []BuildVariantTaskUnit{
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskD"},
 			},
@@ -585,7 +586,13 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			},
 		}
 
+		pref := &ProjectRef{
+			Identifier: "projectName",
+		}
+		So(pref.Insert(), ShouldBeNil)
+
 		project := &Project{
+			Identifier: "projectName",
 			Tasks: []ProjectTask{
 				{
 					Name:      "taskA",
@@ -647,6 +654,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				},
 			},
 		}
+		So(v.Insert(), ShouldBeNil)
 
 		table := NewTaskIdTable(project, v)
 		tt := table.ExecutionTasks
@@ -711,6 +719,23 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			tasks, err := task.Find(task.All)
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 2)
+
+		})
+
+		Convey("ensure distro is populated to tasks", func() {
+
+			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false,
+				[]string{"taskA", "taskB"}, nil)
+			So(err, ShouldBeNil)
+			So(buildId, ShouldNotEqual, "")
+
+			// find the tasks, make sure they were all created
+			tasks, err := task.Find(task.All)
+			So(err, ShouldBeNil)
+
+			for _, t := range tasks {
+				So(t.DistroId, ShouldEqual, "arch")
+			}
 
 		})
 
@@ -835,8 +860,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(len(tasks[8].DependsOn), ShouldEqual, 8)
 		})
 
-		Convey("all of the build's essential fields should be set"+
-			" correctly", func() {
+		Convey("all of the build's essential fields should be set correctly", func() {
 
 			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
@@ -859,11 +883,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(b.DisplayName, ShouldEqual, buildVar1.DisplayName)
 			So(b.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
 			So(b.Requester, ShouldEqual, v.Requester)
-
 		})
 
-		Convey("all of the tasks' essential fields should be set"+
-			" correctly", func() {
+		Convey("all of the tasks' essential fields should be set correctly", func() {
 
 			buildId, err := CreateBuildFromVersion(project, v, table, buildVar1.Name, false, []string{}, nil)
 			So(err, ShouldBeNil)
@@ -882,7 +904,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[0].Secret, ShouldNotEqual, "")
 			So(tasks[0].DisplayName, ShouldEqual, "taskA")
 			So(tasks[0].BuildId, ShouldEqual, buildId)
-			So(tasks[0].DistroId, ShouldEqual, "")
+			So(tasks[0].DistroId, ShouldEqual, "arch")
 			So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
@@ -898,7 +920,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[1].Secret, ShouldNotEqual, "")
 			So(tasks[1].DisplayName, ShouldEqual, "taskB")
 			So(tasks[1].BuildId, ShouldEqual, buildId)
-			So(tasks[1].DistroId, ShouldEqual, "")
+			So(tasks[1].DistroId, ShouldEqual, "arch")
 			So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
@@ -914,7 +936,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].Secret, ShouldNotEqual, "")
 			So(tasks[2].DisplayName, ShouldEqual, "taskC")
 			So(tasks[2].BuildId, ShouldEqual, buildId)
-			So(tasks[2].DistroId, ShouldEqual, "")
+			So(tasks[2].DistroId, ShouldEqual, "arch")
 			So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
@@ -930,7 +952,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[3].Secret, ShouldNotEqual, "")
 			So(tasks[3].DisplayName, ShouldEqual, "taskD")
 			So(tasks[3].BuildId, ShouldEqual, buildId)
-			So(tasks[3].DistroId, ShouldEqual, "")
+			So(tasks[3].DistroId, ShouldEqual, "arch")
 			So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 			So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
 				b.CreateTime.Truncate(time.Second))
@@ -964,7 +986,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[0].Secret, ShouldNotEqual, "")
 				So(tasks[0].DisplayName, ShouldEqual, "taskA")
 				So(tasks[0].BuildId, ShouldEqual, buildId)
-				So(tasks[0].DistroId, ShouldEqual, "")
+				So(tasks[0].DistroId, ShouldEqual, "arch")
 				So(tasks[0].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[0].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
@@ -980,7 +1002,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[1].Secret, ShouldNotEqual, "")
 				So(tasks[1].DisplayName, ShouldEqual, "taskB")
 				So(tasks[1].BuildId, ShouldEqual, buildId)
-				So(tasks[1].DistroId, ShouldEqual, "")
+				So(tasks[1].DistroId, ShouldEqual, "arch")
 				So(tasks[1].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[1].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
@@ -996,7 +1018,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[2].Secret, ShouldNotEqual, "")
 				So(tasks[2].DisplayName, ShouldEqual, "taskC")
 				So(tasks[2].BuildId, ShouldEqual, buildId)
-				So(tasks[2].DistroId, ShouldEqual, "")
+				So(tasks[2].DistroId, ShouldEqual, "arch")
 				So(tasks[2].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[2].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
@@ -1012,7 +1034,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[3].Secret, ShouldNotEqual, "")
 				So(tasks[3].DisplayName, ShouldEqual, "taskD")
 				So(tasks[3].BuildId, ShouldEqual, buildId)
-				So(tasks[3].DistroId, ShouldEqual, "")
+				So(tasks[3].DistroId, ShouldEqual, "arch")
 				So(tasks[3].BuildVariant, ShouldEqual, buildVar1.Name)
 				So(tasks[3].CreateTime.Truncate(time.Second), ShouldResemble,
 					b.CreateTime.Truncate(time.Second))
