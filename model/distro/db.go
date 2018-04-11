@@ -3,6 +3,7 @@ package distro
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/mongodb/anser/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -35,6 +36,31 @@ var All = db.Query(nil).Sort([]string{IdKey})
 func FindOne(query db.Q) (Distro, error) {
 	d := Distro{}
 	return d, db.FindOneQ(Collection, query, &d)
+}
+
+func FindAllNames() ([]string, error) {
+	out := struct {
+		Distros []string `bson:"distros"`
+	}{}
+	err := db.Aggregate(Collection, []bson.M{
+		{
+			"$project": bson.M{
+				IdKey: 1,
+			},
+			"$group": bson.M{
+				"_id": 0,
+				"distros": bson.M{
+					"$push": "$_id",
+				},
+			},
+		},
+	}, &out)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "problem building list of all distros")
+	}
+
+	return out.Distros, nil
 }
 
 // Find gets every Distro matching the given query.

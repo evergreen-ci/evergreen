@@ -19,9 +19,10 @@ const (
 
 // represents the next n tasks to be run on hosts of the distro
 type TaskQueue struct {
-	Id     bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
-	Distro string          `bson:"distro" json:"distro"`
-	Queue  []TaskQueueItem `bson:"queue" json:"queue"`
+	Id          bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
+	Distro      string          `bson:"distro" json:"distro"`
+	GeneratedAt time.Time       `bson:"generated_at" json:"generated_at"`
+	Queue       []TaskQueueItem `bson:"queue" json:"queue"`
 }
 
 type TaskDep struct {
@@ -46,9 +47,10 @@ type TaskQueueItem struct {
 // nolint
 var (
 	// bson fields for the task queue struct
-	taskQueueIdKey     = bsonutil.MustHaveTag(TaskQueue{}, "Id")
-	taskQueueDistroKey = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
-	taskQueueQueueKey  = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
+	taskQueueIdKey          = bsonutil.MustHaveTag(TaskQueue{}, "Id")
+	taskQueueDistroKey      = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
+	taskQueueGeneratedAtKey = bsonutil.MustHaveTag(TaskQueue{}, "GeneratedAt")
+	taskQueueQueueKey       = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
 
 	// bson fields for the individual task queue items
 	taskQueueItemIdKey           = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
@@ -64,8 +66,9 @@ var (
 
 func NewTaskQueue(distro string, queue []TaskQueueItem) TaskQueueAccessor {
 	return &TaskQueue{
-		Distro: distro,
-		Queue:  queue,
+		Distro:      distro,
+		Queue:       queue,
+		GeneratedAt: time.Now(),
 	}
 }
 
@@ -235,6 +238,36 @@ func FindAllTaskQueues() ([]TaskQueue, error) {
 		&taskQueues,
 	)
 	return taskQueues, err
+}
+
+func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
+	out := []map[string]time.Time{}
+
+	err := db.Aggregate(TaskQueuesCollection, []bson.M{
+		{"$group": bson.M{
+			"_id": 0,
+			"distroQueue": bson.M{"$push": bson.M{
+				"k": "$" + taskQueueDistroKey,
+				"v": "$" + taskQueueGeneratedAtKey,
+			}}},
+		},
+		{
+			"$project": bson.M{
+				"root": bson.M{"$arrayToObject": "$distroQueue"},
+			},
+		},
+		{
+			"$replaceRoot": bson.M{"newRoot": "$root"},
+		},
+	}, &out)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if len(out) != 1 {
+		return nil, errors.New("produced invalid results")
+	}
+	return out[0], nil
 }
 
 // pull out the task with the specified id from both the in-memory and db
