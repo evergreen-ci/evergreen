@@ -39,6 +39,8 @@ type CmpBasedTaskComparator struct {
 	// cache the number of tasks that have failed in other buildvariants; tasks
 	// with the same revision, project, display name and requester
 	similarFailingCount map[string]int
+
+	mergeToggle int
 }
 
 // CmpBasedTaskQueues represents the three types of queues that are created for merging together into one queue.
@@ -67,6 +69,7 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 			bySimilarFailing,
 			byRecentlyFailing,
 		},
+		mergeToggle: schedulerMergeToggle,
 	}
 }
 
@@ -271,7 +274,7 @@ func (self *CmpBasedTaskComparator) mergeTasks(tq *CmpBasedTaskQueues) []task.Ta
 		} else if rIdx >= lenRepoTrackerTasks { // overruns repotracker tasks
 			mergedTasks = append(mergedTasks, tq.PatchTasks[pIdx])
 			pIdx++
-		} else if idx > 0 && (idx+1)%schedulerMergeToggle == 0 { // turn for a repotracker task
+		} else if idx > 0 && (idx+1)%self.mergeToggle == 0 { // turn for a repotracker task
 			mergedTasks = append(mergedTasks, tq.RepotrackerTasks[rIdx])
 			rIdx++
 		} else { // turn for a patch task

@@ -49,8 +49,7 @@ func MockFindRunnableTasks(_ string) ([]task.Task, error) {
 
 type MockTaskPrioritizer struct{}
 
-func (self *MockTaskPrioritizer) PrioritizeTasks(distroId string, settings *evergreen.Settings,
-	tasks []task.Task) ([]task.Task, error) {
+func (self *MockTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error) {
 	return nil, errors.New("PrioritizeTasks not implemented")
 }
 
