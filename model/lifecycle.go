@@ -786,7 +786,7 @@ func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Projec
 
 	if len(buildVarTask.Distros) > 0 {
 		distroID = buildVarTask.Distros[0]
-	} else if len(buildVariant.RunOn) >= 0 {
+	} else if len(buildVariant.RunOn) > 0 {
 		distroID = buildVariant.RunOn[0]
 	} else {
 		grip.Warning(message.Fields{
