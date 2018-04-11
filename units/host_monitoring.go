@@ -3,63 +3,68 @@ package units
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
-const hostMonitorExternalStateCheckName = "host-monitoring-external-state-check"
+const hostMonitorName = "host-monitoring"
 
 func init() {
-	registry.AddJobType(hostMonitorExternalStateCheckName, func() amboy.Job {
-		return makeHostMonitorExternalState()
+	registry.AddJobType(hostMonitorName, func() amboy.Job {
+		return makeHostMonitor()
 	})
 }
 
-type hostMonitorExternalStateCheckJob struct {
+type hostMonitorJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
 	// cache
-	host *host.Host
-	env  evergreen.Environment
+	host   *host.Host
+	env    evergreen.Environment
+	logger grip.Journaler
 }
 
-func makeHostMonitorExternalState() *hostMonitorExternalStateCheckJob {
-	j := &hostMonitorExternalStateCheckJob{
+func makeHostMonitor() *hostMonitorJob {
+	j := &hostMonitorJob{
 		Base: job.Base{
 			JobType: amboy.JobType{
-				Name:    hostMonitorExternalStateCheckName,
+				Name:    hostMonitorName,
 				Version: 0,
 			},
 		},
+		logger: logging.MakeGrip(grip.GetSender()),
 	}
 
 	j.SetDependency(dependency.NewAlways())
 	return j
 }
 
-func NewHostMonitorExternalStateJob(env evergreen.Environment, h *host.Host, id string) amboy.Job {
-	job := makeHostMonitorExternalState()
+func NewHostMonitorJob(env evergreen.Environment, h *host.Host, id string) amboy.Job {
+	job := makeHostMonitor()
 
 	job.host = h
 	job.HostID = h.Id
 
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorExternalStateCheckName, job.HostID, id))
+	job.SetID(fmt.Sprintf("%s.%s.%s", hostMonitorName, job.HostID, id))
 
 	return job
 }
 
-func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
+func (j *hostMonitorJob) Run(ctx context.Context) {
 	var cancel context.CancelFunc
 
 	ctx, cancel = context.WithCancel(ctx)
@@ -76,18 +81,25 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		return
 	}
 
-	if j.host == nil {
-		j.host, err = host.FindOneId(j.HostID)
-		if err != nil {
-			j.AddError(err)
-			return
-		}
-	}
-
 	if j.env == nil {
 		j.env = evergreen.GetEnvironment()
 	}
 
+	j.host, err = host.FindOneId(j.HostID)
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if j.host == nil {
+		j.AddError(fmt.Errorf("unable to retrieve host %s", j.HostID))
+		return
+	}
+
+	j.monitorExternalTermination(ctx)
+	j.monitorLongRunningTasks()
+}
+
+func (j *hostMonitorJob) monitorExternalTermination(ctx context.Context) {
 	settings := j.env.Settings()
 
 	cloudHost, err := cloud.GetCloudHost(ctx, j.host, settings)
@@ -105,8 +117,8 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 	switch cloudStatus {
 	case cloud.StatusRunning:
 		if j.host.Status != evergreen.HostRunning {
-			grip.Info(message.Fields{
-				"op":      hostMonitorExternalStateCheckName,
+			j.logger.Info(message.Fields{
+				"op":      hostMonitorName,
 				"op_id":   j.ID(),
 				"message": "found running host, with incorrect status ",
 				"status":  j.host.Status,
@@ -117,8 +129,8 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 			j.AddError(errors.Wrapf(j.host.MarkReachable(), "error updating reachability for host %s", j.HostID))
 		}
 	case cloud.StatusTerminated:
-		grip.Info(message.Fields{
-			"op":      hostMonitorExternalStateCheckName,
+		j.logger.Info(message.Fields{
+			"op":      hostMonitorName,
 			"op_id":   j.ID(),
 			"message": "host terminated externally",
 			"host":    j.HostID,
@@ -130,9 +142,9 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 		// the instance was terminated from outside our control
 		j.AddError(errors.Wrapf(j.host.SetTerminated("external"), "error setting host %s terminated", j.HostID))
 	default:
-		grip.Warning(message.Fields{
+		j.logger.Warning(message.Fields{
 			"message":      "host found with unexpected status",
-			"op":           hostMonitorExternalStateCheckName,
+			"op":           hostMonitorName,
 			"op_id":        j.ID(),
 			"host":         j.HostID,
 			"distro":       j.host.Distro.Id,
@@ -140,4 +152,31 @@ func (j *hostMonitorExternalStateCheckJob) Run(ctx context.Context) {
 			"cloud_status": cloudStatus,
 		})
 	}
+}
+
+func (j *hostMonitorJob) monitorLongRunningTasks() {
+	const warnThreshold = 12 * time.Hour
+	const criticalThreshold = 24 * time.Hour
+
+	runningTask, err := task.FindOne(task.ById(j.host.RunningTask))
+	if err != nil {
+		j.AddError(err)
+		return
+	}
+	if runningTask == nil {
+		return
+	}
+	elapsed := time.Now().Sub(runningTask.StartTime)
+	msg := message.Fields{
+		"message":     "host running task for too long",
+		"op":          hostMonitorName,
+		"op_id":       j.ID(),
+		"host":        j.HostID,
+		"distro":      j.host.Distro.Id,
+		"task":        runningTask.Id,
+		"elapsed":     elapsed.String(),
+		"elapsed_raw": elapsed,
+	}
+	j.logger.WarningWhen(elapsed > warnThreshold && elapsed <= criticalThreshold, msg)
+	j.logger.CriticalWhen(elapsed > criticalThreshold, msg)
 }

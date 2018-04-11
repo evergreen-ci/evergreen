@@ -175,12 +175,12 @@ func PopulateHostMonitoring(env evergreen.Environment) amboy.QueueOperation {
 
 		grip.InfoWhen(len(hosts) > 0, message.Fields{
 			"runner":    "monitor",
-			"operation": "host reachability monitor",
+			"operation": "host monitor",
 			"num_hosts": len(hosts),
 		})
 
 		for _, host := range hosts {
-			job := NewHostMonitorExternalStateJob(env, &host, ts)
+			job := NewHostMonitorJob(env, &host, ts)
 			catcher.Add(queue.Put(job))
 		}
 
