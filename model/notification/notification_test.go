@@ -37,7 +37,7 @@ func (s *notificationSuite) SetupTest() {
 				Ref:      "sadasdkjsad",
 			},
 		},
-		Payload: GithubStatusAPIPayload{
+		Payload: message.GithubStatus{
 			State:       message.GithubStateFailure,
 			Context:     "evergreen",
 			URL:         "https://example.com",
@@ -112,14 +112,15 @@ func (s *notificationSuite) TestMarkErrorWithNilErrorHasNoSideEffect() {
 func (s *notificationSuite) TestInsertMany() {
 	s.n.ID = "1"
 
-	payload := "slack hi"
 	n2 := Notification{
 		ID: "2",
 		Subscriber: event.Subscriber{
 			Type:   event.SlackSubscriberType,
 			Target: "#general",
 		},
-		Payload: &payload,
+		Payload: &slackPayload{
+			Body: "slack hi",
+		},
 	}
 
 	payload2 := "jira hi"
@@ -149,8 +150,8 @@ func (s *notificationSuite) TestInsertMany() {
 		s.Empty(n.Error)
 
 		if n.ID == slice[0].ID {
-			s.Require().IsType(&GithubStatusAPIPayload{}, n.Payload)
-			payload := n.Payload.(*GithubStatusAPIPayload)
+			payload, ok := n.Payload.(*message.GithubStatus)
+			s.Require().True(ok)
 			s.Equal("failure", string(payload.State))
 			s.Equal("evergreen", payload.Context)
 			s.Equal("https://example.com", payload.URL)
@@ -158,9 +159,9 @@ func (s *notificationSuite) TestInsertMany() {
 
 		} else if n.ID == slice[1].ID {
 			s.Equal(event.SlackSubscriberType, n.Subscriber.Type)
-			payload, ok := n.Payload.(*string)
+			payload, ok := n.Payload.(*slackPayload)
 			s.True(ok)
-			s.Equal("slack hi", *payload)
+			s.Equal("slack hi", payload.Body)
 
 		} else if n.ID == slice[2].ID {
 			s.Equal(event.JIRACommentSubscriberType, n.Subscriber.Type)
@@ -192,7 +193,6 @@ func (s *notificationSuite) TestWebhookPayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-	s.Equal(jsonData, c.String())
 }
 
 func (s *notificationSuite) TestJIRACommentPayload() {
@@ -214,6 +214,7 @@ func (s *notificationSuite) TestJIRACommentPayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 	s.Equal("hi", c.String())
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestJIRAIssuePayload() {
@@ -246,19 +247,7 @@ func (s *notificationSuite) TestJIRAIssuePayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-
-	fields, ok := c.Raw().(message.JiraIssue)
-	s.True(ok)
-
-	s.Equal("1234", fields.Project)
-	s.Equal("1", fields.Summary)
-	s.Equal("2", fields.Description)
-	s.Equal("3", fields.Reporter)
-	s.Equal("4", fields.Assignee)
-	s.Equal("5", fields.Type)
-	s.Equal([]string{"6"}, fields.Components)
-	s.Equal([]string{"7"}, fields.Labels)
-	s.Len(fields.Fields, 2)
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestEmailPayload() {
@@ -266,13 +255,14 @@ func (s *notificationSuite) TestEmailPayload() {
 	s.n.Subscriber.Type = event.EmailSubscriberType
 	email := "a@a.a"
 	s.n.Subscriber.Target = &email
-	s.n.Payload = &EmailPayload{
-		Headers: map[string]string{
-			"8":  "9",
-			"10": "11",
+	s.n.Payload = &message.Email{
+		Headers: map[string][]string{
+			"8":  []string{"9"},
+			"10": []string{"11"},
 		},
-		Subject: "subject",
-		Body:    "body",
+		Subject:    "subject",
+		Body:       "body",
+		Recipients: []string{},
 	}
 
 	s.NoError(InsertMany(s.n))
@@ -287,7 +277,7 @@ func (s *notificationSuite) TestEmailPayload() {
 	s.NoError(err)
 	s.Require().NotNil(c)
 
-	_, ok := c.Raw().(message.Fields)
+	_, ok := c.Raw().(*message.Email)
 	s.True(ok)
 }
 
@@ -296,8 +286,10 @@ func (s *notificationSuite) TestSlackPayload() {
 	s.n.Subscriber.Type = event.SlackSubscriberType
 	slack := "#general"
 	s.n.Subscriber.Target = &slack
-	data := "text"
-	s.n.Payload = &data
+	s.n.Payload = &slackPayload{
+		Body:        "Hi",
+		Attachments: []message.SlackAttachment{},
+	}
 
 	s.NoError(InsertMany(s.n))
 
@@ -310,15 +302,14 @@ func (s *notificationSuite) TestSlackPayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-
-	s.Equal("text", c.String())
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestGithubPayload() {
 	s.n.ID = "1"
 	s.n.Subscriber.Type = event.GithubPullRequestSubscriberType
 	s.n.Subscriber.Target = &event.GithubPullRequestSubscriber{}
-	s.n.Payload = &GithubStatusAPIPayload{
+	s.n.Payload = &message.GithubStatus{
 		State:       message.GithubStateFailure,
 		Context:     "evergreen",
 		URL:         "https://example.com",

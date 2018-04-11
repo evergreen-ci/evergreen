@@ -12,11 +12,11 @@ type notificationGenerator struct {
 	selectors   []event.Selector
 
 	// Optional payloads
-	evergreenWebhook *string
-	email            *EmailPayload
+	evergreenWebhook *evergreenWebhookPayload
+	email            *message.Email
 	jiraIssue        *message.JiraIssue
 	jiraComment      *string
-	githubStatusAPI  *GithubStatusAPIPayload
+	githubStatusAPI  *message.GithubStatus
 	slack            *string
 }
 
@@ -52,6 +52,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 	if len(g.selectors) == 0 {
 		return nil, errors.Errorf("trigger %s has no selectors", g.triggerName)
 	}
+
 	groupedSubs, err := event.FindSubscribers(e.ResourceType, g.triggerName, g.selectors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscribers")

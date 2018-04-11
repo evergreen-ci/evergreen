@@ -21,14 +21,14 @@ const (
 
 type evergreenWebhookMessage struct {
 	id     string
-	url    *url.URL
+	url    string
 	secret []byte
 	body   []byte
 
 	message.Base
 }
 
-func NewWebhookMessage(id string, url *url.URL, secret []byte, body []byte) message.Composer {
+func NewWebhookMessage(id string, url string, secret []byte, body []byte) message.Composer {
 	return &evergreenWebhookMessage{
 		id:     id,
 		url:    url,
@@ -38,7 +38,22 @@ func NewWebhookMessage(id string, url *url.URL, secret []byte, body []byte) mess
 }
 
 func (w *evergreenWebhookMessage) Loggable() bool {
-	return w.url != nil && len(w.id) != 0 && len(w.secret) != 0 && len(w.body) != 0
+	if len(w.id) == 0 {
+		return false
+	}
+	if len(w.secret) == 0 {
+		return false
+	}
+	if len(w.body) == 0 {
+		return false
+	}
+	if len(w.url) == 0 {
+		return false
+	}
+
+	_, err := url.Parse(w.url)
+
+	return err == nil
 }
 
 func (w *evergreenWebhookMessage) Raw() interface{} {
@@ -77,7 +92,7 @@ func (w *evergreenWebhookLogger) send(m message.Composer) error {
 	}
 
 	reader := bytes.NewReader(raw.body)
-	req, err := http.NewRequest(http.MethodPost, raw.url.String(), reader)
+	req, err := http.NewRequest(http.MethodPost, raw.url, reader)
 	if err != nil {
 		return errors.Wrap(err, "evergreen-webhook failed to create http request")
 	}

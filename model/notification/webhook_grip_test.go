@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -18,11 +17,10 @@ import (
 func TestEvergreenWebhookComposer(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewWebhookMessage("", nil, nil, nil)
+	m := NewWebhookMessage("", "", nil, nil)
 	assert.False(m.Loggable())
 
-	url, err := url.Parse("https://example.com")
-	assert.NoError(err)
+	url := "https://example.com"
 
 	m2, ok := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important")).(*evergreenWebhookMessage)
 	assert.True(ok)
@@ -35,11 +33,7 @@ func TestEvergreenWebhookComposer(t *testing.T) {
 func TestEvergreenWebhookSender(t *testing.T) {
 	assert := assert.New(t)
 
-	url, err := url.Parse("https://example.com")
-	assert.NoError(err)
-	assert.NotNil(url)
-
-	m := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"))
+	m := NewWebhookMessage("evergreen", "https://example.com", []byte("hi"), []byte("something important"))
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 
@@ -64,7 +58,7 @@ func TestEvergreenWebhookSender(t *testing.T) {
 	s.Send(m)
 
 	// unloggable message shouldn't send
-	m = NewWebhookMessage("", nil, nil, nil)
+	m = NewWebhookMessage("", "", nil, nil)
 	s.Send(m)
 }
 
