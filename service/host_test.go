@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestModifyHostStatus(t *testing.T) {
+func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	assert := assert.New(t)
 
 	// Normal test, changing a host from running to quarantined
