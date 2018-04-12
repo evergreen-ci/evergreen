@@ -122,6 +122,12 @@ func (j *eventNotificationJob) send(n *notification.Notification) error {
 	if err != nil {
 		return err
 	}
+	if err = c.SetPriority(level.Notice); err != nil {
+		return errors.Wrap(err, "can't set priority")
+	}
+	if !c.Loggable() {
+		return errors.New("composer is not loggable")
+	}
 
 	key, err := n.SenderKey()
 	if err != nil {
@@ -191,10 +197,16 @@ func getSendErrorHandler(n *notification.Notification) send.ErrorHandler {
 		if err == nil || c == nil {
 			return
 		}
+		grip.Error(message.WrapError(err, message.Fields{
+			"job":             eventNotificationJobName,
+			"notification_id": n.ID,
+			"source":          "events-processing",
+			"composer":        c.String(),
+		}))
 
 		err = n.MarkError(err)
 		grip.Error(message.WrapError(err, message.Fields{
-			"job":             eventMetaJobName,
+			"job":             eventNotificationJobName,
 			"notification_id": n.ID,
 			"source":          "events-processing",
 			"message":         "failed to add error to notification",

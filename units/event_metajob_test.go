@@ -3,11 +3,14 @@ package units
 import (
 	"bufio"
 	"context"
+	"crypto/hmac"
 	"encoding/base64"
+	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +20,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/notification"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -178,26 +184,6 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 	s.Require().NoError(err)
 	defer ln.Close()
 
-	addr := strings.Split(ln.Addr().String(), ":")
-	s.Require().Len(addr, 2)
-
-	port, err := strconv.Atoi(addr[1])
-	s.Require().NoError(err)
-
-	notifyConfig := evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
-			From:     "evergreen@example.com",
-			Server:   "127.0.0.1",
-			Port:     port,
-			Username: "much",
-			Password: "security",
-		},
-	}
-	s.Require().NoError(notifyConfig.Set())
-
-	s.Require().True(evergreen.GetEnvironment().LocalQueue().Started())
-	s.NoError(db.ClearCollections(event.AllLogCollection, event.TaskLogCollection, notification.Collection, event.SubscriptionsCollection))
-
 	e := event.EventLogEntry{
 		ResourceType: event.ResourceTypeTest,
 		EventType:    "test",
@@ -221,8 +207,11 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 				},
 			},
 			Subscriber: event.Subscriber{
-				Type:   event.EmailSubscriberType,
-				Target: "test1@no.op",
+				Type: event.EvergreenWebhookSubscriberType,
+				Target: &event.WebhookSubscriber{
+					URL:    fmt.Sprintf("http://%s", ln.Addr()),
+					Secret: []byte("darkmagic"),
+				},
 			},
 		},
 		{
@@ -240,8 +229,11 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 				},
 			},
 			Subscriber: event.Subscriber{
-				Type:   event.EmailSubscriberType,
-				Target: "test3@no.op",
+				Type: event.EvergreenWebhookSubscriberType,
+				Target: &event.WebhookSubscriber{
+					URL:    fmt.Sprintf("http://%s", ln.Addr()),
+					Secret: []byte("darkermagic"),
+				},
 			},
 		},
 	}
@@ -250,28 +242,16 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 		s.NoError(subs[i].Upsert())
 	}
 
-	bodyC := make(chan string, 1)
+	handler := &mockWebhookHandler{
+		secret: []byte("darkmagic"),
+	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	go smtpServer(ctx, ln, bodyC)
+	go httpServer(ln, handler)
 
-	job := NewEventMetaJob(evergreen.GetEnvironment().RemoteQueue(), "1")
+	job := NewEventMetaJob(evergreen.GetEnvironment().LocalQueue(), "1").(*eventMetaJob)
+	job.q = evergreen.GetEnvironment().LocalQueue()
 	job.Run(s.ctx)
 	s.NoError(job.Error())
-
-	bodyText := ""
-	select {
-	case bodyText = <-bodyC:
-	case <-time.After(10 * time.Second):
-	}
-	s.Require().NotEmpty(bodyText)
-
-	body := parseEmailBody(bodyText)
-	s.Equal(`"evergreen" <evergreen@example.com>`, body["From"])
-	s.Equal(`<test1@no.op>`, body["To"])
-	s.Equal(`Hi`, body["Subject"])
-	s.Equal(`event says 'i'm an event driven notification'`, body["body"])
 
 	time.Sleep(5 * time.Second)
 	out := []notification.Notification{}
@@ -304,6 +284,7 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) {
 		bodyOut <- "Err: " + err.Error()
 		return
 	}
+	reader := bufio.NewReader(conn)
 
 	for {
 		select {
@@ -312,7 +293,10 @@ func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) {
 
 		default:
 		}
-		message, err := bufio.NewReader(conn).ReadString('\n')
+		b := make([]byte, 200)
+		_, err = reader.Read(b)
+		message := string(b)
+		//message, err := reader.ReadString('\n')
 		grip.Error(err)
 		if err != nil {
 			bodyOut <- "Err: " + err.Error()
@@ -398,4 +382,74 @@ func parseEmailBody(body string) map[string]string {
 		}
 	}
 	return m
+}
+
+func httpServer(ln net.Listener, handler *mockWebhookHandler) {
+	err := http.Serve(ln, handler)
+	grip.Error(err)
+	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+		panic(err)
+	}
+}
+
+type mockWebhookHandler struct {
+	secret []byte
+
+	body []byte
+	err  error
+}
+
+func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
+	if outErr == nil {
+		return
+	}
+	w.WriteHeader(http.StatusBadRequest)
+
+	_, err := w.Write([]byte(outErr.Error()))
+	grip.Error(err)
+	m.err = outErr
+}
+
+func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+
+	if req.Method != http.MethodPost {
+		m.error(errors.Errorf("expected method POST, got %s", req.Method), w)
+		return
+	}
+
+	mid := req.Header.Get(evergreenNotificationIDHeader)
+	if len(mid) == 0 {
+		m.error(errors.New("no message id"), w)
+		return
+	}
+	sig := []byte(req.Header.Get(evergreenHMACHeader))
+	if len(sig) == 0 {
+		m.error(errors.New("no signature"), w)
+		return
+	}
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		m.error(err, w)
+		return
+	}
+	hash, err := util.CalculateHMACHash(m.secret, body)
+	if err != nil {
+		m.error(err, w)
+		return
+	}
+
+	if !hmac.Equal([]byte(hash), sig) {
+		m.error(errors.Errorf("expected signature: %s, got %s", sig, hash), w)
+		return
+	}
+	m.body = body
+
+	w.WriteHeader(http.StatusNoContent)
+	grip.Info(message.Fields{
+		"message":   fmt.Sprintf("received %s", mid),
+		"signature": string(sig),
+		"body":      string(body),
+	})
 }
