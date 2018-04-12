@@ -192,3 +192,26 @@ func byTaskGroupOrder(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) 
 	}
 	return -1, nil
 }
+
+// groupTaskGroups puts tasks that have the same build and task group next to
+// each other in the queue. This ensures that, in a stable sort,
+// byTaskGroupOrder sorts task group members relative to each other.
+func groupTaskGroups(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
+	if t1.BuildId != t2.BuildId {
+		if t1.BuildId > t2.BuildId {
+			return 1, nil
+		}
+		if t1.BuildId < t2.BuildId {
+			return -1, nil
+		}
+	}
+	if t1.TaskGroup != t2.TaskGroup {
+		if t1.TaskGroup > t2.TaskGroup {
+			return 1, nil
+		}
+		if t1.TaskGroup < t2.TaskGroup {
+			return -1, nil
+		}
+	}
+	return 0, nil
+}
