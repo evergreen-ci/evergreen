@@ -138,9 +138,9 @@ func ByMostRecentForRequester(projectId, requester string) db.Q {
 	).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
-// ByMostRecentNonignored finds all non-ignored versions within a project,
+// ByMostRecentNonIgnored finds all non-ignored versions within a project,
 // ordered by most recently created to oldest.
-func ByMostRecentNonignored(projectId string) db.Q {
+func ByMostRecentNonIgnored(projectId string) db.Q {
 	return db.Query(
 		bson.M{
 			RequesterKey:  evergreen.RepotrackerVersionRequester,

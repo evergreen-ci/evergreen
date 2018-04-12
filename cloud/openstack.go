@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/gophercloud/gophercloud"
@@ -55,11 +54,6 @@ func (opts *openStackSettings) Validate() error {
 // instance creation.
 func (m *openStackManager) GetSettings() ProviderSettings {
 	return &openStackSettings{}
-}
-
-//GetInstanceName returns a name to be used for an instance
-func (*openStackManager) GetInstanceName(d distro.Distro) string {
-	return d.GenerateName()
 }
 
 // Configure loads the necessary credentials from the global config object.

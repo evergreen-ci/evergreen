@@ -393,7 +393,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	t.HostId = hostId
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -411,7 +411,29 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 			},
 		},
 	)
+	if err != nil {
+		return errors.Wrapf(err, "error marking task %s as dispatched", t.Id)
+	}
+	if t.IsPartOfDisplay() {
+		//when dispatching an execution task, mark its parent as dispatched
+		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == util.ZeroTime {
+			return t.DisplayTask.MarkAsDispatched("", "", dispatchTime)
+		}
+	}
+	return nil
+}
 
+func (t *Task) SetDistro(distroID string) error {
+	t.DistroId = distroID
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				DistroIdKey: distroID,
+			},
+		})
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
@@ -480,10 +502,17 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 // Removes tasks older than the unscheduable threshold (e.g. two
 // weeks) from the scheduler queue.
-func UnscheduleStaleUnderwaterTasks() (int, error) {
+//
+// If you pass an empty string as an argument to this function, this
+// operation will select tasks from all distros.
+func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0
 	query[ActivatedByKey] = ""
+
+	if distroID != "" {
+		query[DistroIdKey] = distroID
+	}
 
 	query["$and"] = []bson.M{
 		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
@@ -539,9 +568,10 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
-	return UpdateOne(bson.M{
-		IdKey: t.Id,
-	},
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:   true,
@@ -767,7 +797,7 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	tasks, err := Find(ByIds(taskIds))
+	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
 	if err != nil {
 		return err
 	}

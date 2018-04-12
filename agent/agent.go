@@ -112,6 +112,10 @@ LOOP:
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx, &apimodels.GetNextTaskDetails{tc.taskGroup})
 			if err != nil {
+				// task secret doesn't match, get another task
+				if errors.Cause(err) == client.HTTPConflictError {
+					continue LOOP
+				}
 				return errors.Wrap(err, "error getting next task")
 			}
 			if nextTask.TaskId != "" {

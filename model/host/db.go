@@ -29,6 +29,7 @@ var (
 	DistroKey                  = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                = bsonutil.MustHaveTag(Host{}, "Provider")
 	ProvisionedKey             = bsonutil.MustHaveTag(Host{}, "Provisioned")
+	ProvisionTimeKey           = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                   = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
 	RunningTaskKey             = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
@@ -79,12 +80,12 @@ func ByUserWithRunningStatus(user string) db.Q {
 }
 
 // IsLive is a query that returns all working hosts started by Evergreen
-var IsLive = db.Query(
-	bson.M{
+func IsLive() bson.M {
+	return bson.M{
 		StartedByKey: evergreen.User,
 		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
-	},
-)
+	}
+}
 
 // ByUserWithUnterminatedStatus produces a query that returns all running hosts
 // for the given user id.
@@ -325,13 +326,25 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-func RemoveAllStaleInitializing() error {
-	return db.RemoveAll(Collection,
-		bson.M{
-			StatusKey:     evergreen.HostUninitialized,
-			UserHostKey:   false,
-			CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
-		})
+// Removes host intents that have been been pending for more than 3
+// minutes for the specified distro.
+//
+// If you pass the empty string as a distroID, it will remove stale
+// host intents for *all* distros.
+func RemoveStaleInitializing(distroID string) error {
+	query := bson.M{
+		StatusKey:     evergreen.HostUninitialized,
+		UserHostKey:   false,
+		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
+	}
+
+	if distroID != "" {
+		key := bsonutil.GetDottedKeyName(DistroKey, distro.IdKey)
+		query[key] = distroID
+	}
+
+	return db.RemoveAll(Collection, query)
 }
 
 // === DB Logic ===

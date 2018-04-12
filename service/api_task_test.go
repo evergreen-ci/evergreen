@@ -39,6 +39,7 @@ func insertHostWithRunningTask(hostId, taskId string) (host.Host, error) {
 	h := host.Host{
 		Id:          hostId,
 		RunningTask: taskId,
+		Secret:      "secret",
 	}
 	return h, h.Insert()
 }
@@ -78,7 +79,7 @@ func getEndTaskEndpoint(t *testing.T, as *APIServer, hostId, taskId string, deta
 	if err != nil {
 		t.Fatalf("creating test API handler: %v", err)
 	}
-	url := fmt.Sprintf("/api/2/task/%v/new_end", taskId)
+	url := fmt.Sprintf("/api/2/task/%s/end", taskId)
 
 	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {

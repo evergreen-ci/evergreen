@@ -39,13 +39,12 @@ func UpdateStaticHosts() error {
 	return host.MarkInactiveStaticHosts(activeHosts)
 }
 
-func UpdateStaticDistro(name string) error {
-	distro, err := distro.FindOne(distro.ById(name))
-	if err != nil {
-		return errors.WithStack(err)
+func UpdateStaticDistro(d distro.Distro) error {
+	if d.Provider != evergreen.ProviderNameStatic {
+		return nil
 	}
 
-	hosts, err := doStatcHostUpdate(distro)
+	hosts, err := doStatcHostUpdate(d)
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -49,8 +49,7 @@ func MockFindRunnableTasks(_ string) ([]task.Task, error) {
 
 type MockTaskPrioritizer struct{}
 
-func (self *MockTaskPrioritizer) PrioritizeTasks(distroId string, settings *evergreen.Settings,
-	tasks []task.Task) ([]task.Task, error) {
+func (self *MockTaskPrioritizer) PrioritizeTasks(distroId string, tasks []task.Task) ([]task.Task, error) {
 	return nil, errors.New("PrioritizeTasks not implemented")
 }
 
@@ -131,13 +130,8 @@ func TestSpawnHosts(t *testing.T) {
 
 		distroIds := []string{"d1", "d2", "d3"}
 
-		schedulerInstance := &Scheduler{
-			schedulerTestConf,
-			&MockTaskPrioritizer{},
-			&MockTaskQueuePersister{},
-			&MockHostAllocator{},
-			MockGetExpectedDurations,
-			MockFindRunnableTasks,
+		hs := &hostScheduler{
+			HostAllocator: &MockHostAllocator{},
 		}
 
 		Convey("if there are no hosts to be spawned, the Scheduler should not"+
@@ -148,7 +142,7 @@ func TestSpawnHosts(t *testing.T) {
 				distroIds[2]: 0,
 			}
 
-			newHostsSpawned, err := schedulerInstance.spawnHosts(ctx, newHostsNeeded)
+			newHostsSpawned, err := hs.spawnHosts(ctx, newHostsNeeded)
 			So(err, ShouldBeNil)
 			So(len(newHostsSpawned[distroIds[0]]), ShouldEqual, 0)
 			So(len(newHostsSpawned[distroIds[1]]), ShouldEqual, 0)
@@ -170,7 +164,7 @@ func TestSpawnHosts(t *testing.T) {
 				So(d.Insert(), ShouldBeNil)
 			}
 
-			newHostsSpawned, err := schedulerInstance.spawnHosts(ctx, newHostsNeeded)
+			newHostsSpawned, err := hs.spawnHosts(ctx, newHostsNeeded)
 			So(err, ShouldBeNil)
 			distroZeroHosts := newHostsSpawned[distroIds[0]]
 			distroOneHosts := newHostsSpawned[distroIds[1]]
