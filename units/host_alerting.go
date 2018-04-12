@@ -47,13 +47,13 @@ func makeHostAlerting() *hostAlertingJob {
 	return j
 }
 
-func NewHostAlertingJob(h *host.Host, id string) amboy.Job {
+func NewHostAlertingJob(h *host.Host, ts string) amboy.Job {
 	job := makeHostAlerting()
 
 	job.host = h
 	job.HostID = h.Id
 
-	job.SetID(fmt.Sprintf("%s.%s.%s", hostAlertingName, job.HostID, id))
+	job.SetID(fmt.Sprintf("%s.%s.%s", hostAlertingName, job.HostID, ts))
 
 	return job
 }
