@@ -30,8 +30,6 @@ const (
 	// statusTerminated means the instance was shut down or encountered a
 	// failure, either through the API or from inside the guest.
 	statusTerminated = "TERMINATED"
-	// maxNameLength is the maximum length of an instance name permitted by GCE.
-	maxNameLength = 63
 )
 
 // SSHKey is the ssh key information to add to a VM instance.
