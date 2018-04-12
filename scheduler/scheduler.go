@@ -517,7 +517,9 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 
 		if t.DistroId == "" {
 			// this is a lazy way to backfill distro names on tasks.
-			t.SetDistro(distrosToUse[0])
+			if err = t.SetDistro(distrosToUse[0]); err != nil {
+				return errors.Wrap(err, "failed to set backfill task distro")
+			}
 		}
 
 		// for tasks that can run on multiple distros, keep track of which
