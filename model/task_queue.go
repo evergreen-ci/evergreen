@@ -64,7 +64,18 @@ var (
 	taskQueuePriorityKey         = bsonutil.MustHaveTag(TaskQueueItem{}, "Priority")
 )
 
-func NewTaskQueue(distro string, queue []TaskQueueItem) TaskQueueAccessor {
+// TaskSpec is an argument structure to formalize the way that callers
+// may query/select a task from an existing task queue to support
+// out-of-order task execution for the purpose of task-groups.
+type TaskSpec struct {
+	Group         string
+	BuildVariant  string
+	ProjectID     string
+	Version       string
+	GroupMaxHosts int
+}
+
+func NewTaskQueue(distro string, queue []TaskQueueItem) *TaskQueue {
 	return &TaskQueue{
 		Distro:      distro,
 		Queue:       queue,
@@ -72,7 +83,7 @@ func NewTaskQueue(distro string, queue []TaskQueueItem) TaskQueueAccessor {
 	}
 }
 
-func LoadTaskQueue(distro string) (TaskQueueAccessor, error) {
+func LoadTaskQueue(distro string) (*TaskQueue, error) {
 	return findTaskQueueForDistro(distro)
 }
 
