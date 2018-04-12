@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
 )
@@ -179,8 +180,13 @@ func (s *notificationSuite) TestWebhookPayload() {
 	jsonData := `{"iama": "potato"}`
 	s.n.ID = "1"
 	s.n.Subscriber.Type = event.EvergreenWebhookSubscriberType
-	s.n.Subscriber.Target = event.WebhookSubscriber{}
-	s.n.Payload = jsonData
+	s.n.Subscriber.Target = event.WebhookSubscriber{
+		URL:    "https://example.com",
+		Secret: []byte("it's dangerous to go alone. take this!"),
+	}
+	s.n.Payload = &util.EvergreenWebhook{
+		Body: []byte(jsonData),
+	}
 
 	s.NoError(InsertMany(s.n))
 
@@ -188,11 +194,12 @@ func (s *notificationSuite) TestWebhookPayload() {
 	s.NoError(err)
 	s.NotNil(n)
 
-	s.Equal(jsonData, *n.Payload.(*string))
+	s.Equal(jsonData, string(n.Payload.(*util.EvergreenWebhook).Body))
 
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestJIRACommentPayload() {
@@ -279,6 +286,7 @@ func (s *notificationSuite) TestEmailPayload() {
 
 	_, ok := c.Raw().(*message.Email)
 	s.True(ok)
+	s.True(c.Loggable())
 }
 
 func (s *notificationSuite) TestSlackPayload() {
@@ -327,5 +335,5 @@ func (s *notificationSuite) TestGithubPayload() {
 	c, err := n.Composer()
 	s.NoError(err)
 	s.Require().NotNil(c)
-	s.Require().True(c.Loggable())
+	s.True(c.Loggable())
 }

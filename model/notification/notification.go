@@ -81,7 +81,8 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 }
 
 // Composer builds a grip/message.Composer for the notification. Composer is
-// guaranteed to be non-nil if error is nil
+// guaranteed to be non-nil if error is nil, but the composer may not be
+// loggable
 func (n *Notification) Composer() (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
