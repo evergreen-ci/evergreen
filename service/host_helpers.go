@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/units"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/amboy"
 	"github.com/pkg/errors"
 )
 
@@ -24,9 +25,8 @@ const (
 	UnrecognizedAction             = "Unrecognized action: %v"
 )
 
-func modifyHostStatus(h *host.Host, opts *uiParams, u *user.DBUser) (string, *rest.APIError) {
+func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.DBUser) (string, *rest.APIError) {
 	env := evergreen.GetEnvironment()
-	queue := env.RemoteQueue()
 
 	switch opts.Action {
 	case "updateStatus":
@@ -47,6 +47,13 @@ func modifyHostStatus(h *host.Host, opts *uiParams, u *user.DBUser) (string, *re
 		}
 
 		if newStatus == evergreen.HostTerminated {
+			if !queue.Started() {
+				return "", &rest.APIError{
+					StatusCode: http.StatusInternalServerError,
+					Message:    HostTerminationQueueingError,
+				}
+			}
+
 			if err := queue.Put(units.NewHostTerminationJob(env, *h)); err != nil {
 				return "", &rest.APIError{
 					StatusCode: http.StatusInternalServerError,

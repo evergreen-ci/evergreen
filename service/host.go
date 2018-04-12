@@ -93,6 +93,8 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
 
 	vars := mux.Vars(r)
@@ -117,7 +119,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currentStatus := h.Status
-	modifyResult, restErr := modifyHostStatus(h, opts, u)
+	modifyResult, restErr := modifyHostStatus(queue, h, opts, u)
 
 	if restErr != nil {
 		switch restErr.Error() {
