@@ -43,6 +43,7 @@ func TestSetActiveState(t *testing.T) {
 			ScheduledTime: testTime,
 			Activated:     false,
 			BuildId:       b.Id,
+			DistroId:      "arch",
 		}
 		b.Tasks = []build.TaskCache{{Id: testTask.Id}}
 
@@ -138,16 +139,19 @@ func TestSetActiveState(t *testing.T) {
 		testTime := time.Now()
 		taskId := "t1"
 		buildId := "b1"
+		distroId := "d1"
 
 		dep1 := &task.Task{
 			Id:            "t2",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
+			DistroId:      distroId,
 		}
 		dep2 := &task.Task{
 			Id:            "t3",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
+			DistroId:      distroId,
 		}
 		So(dep1.Insert(), ShouldBeNil)
 		So(dep2.Insert(), ShouldBeNil)
@@ -213,6 +217,7 @@ func TestSetActiveState(t *testing.T) {
 			Status:         evergreen.TaskUndispatched,
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"execTask"},
+			DistroId:       "arch",
 		}
 		So(dt.Insert(), ShouldBeNil)
 		t1 := &task.Task{
@@ -252,6 +257,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           false,
 			BuildId:             b.Id,
+			DistroId:            "arch",
 		}
 		currentTask := &task.Task{
 			Id:                  "two",
@@ -261,6 +267,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b.Id,
+			DistroId:            "arch",
 		}
 		tc := []build.TaskCache{
 			{
