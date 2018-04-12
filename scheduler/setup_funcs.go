@@ -64,7 +64,7 @@ func groupTaskGroups(comparator *CmpBasedTaskComparator) error {
 	taskMap := make(map[string]task.Task)
 	taskKeys := []string{}
 	for _, t := range comparator.tasks {
-		k := fmt.Sprintf("%s_%s_%s", t.BuildId, t.TaskGroup, t.Id)
+		k := fmt.Sprintf("%s-%s-%s", t.BuildId, t.TaskGroup, t.Id)
 		taskMap[k] = t
 		taskKeys = append(taskKeys, k)
 	}
