@@ -21,12 +21,12 @@ func TestEvergreenWebhookComposer(t *testing.T) {
 
 	url := "https://example.com"
 
-	m2, ok := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important")).(*EvergreenWebhookMessage)
+	m2, ok := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important")).(*evergreenWebhookMessage)
 	assert.True(ok)
-	assert.Equal("evergreen", m2.id)
-	assert.Equal(url, m2.url)
-	assert.Equal("hi", string(m2.secret))
-	assert.Equal("something important", string(m2.body))
+	assert.Equal("evergreen", m2.raw.NotificationID)
+	assert.Equal(url, m2.raw.URL)
+	assert.Equal("hi", string(m2.raw.Secret))
+	assert.Equal("something important", string(m2.raw.Body))
 }
 
 func TestEvergreenWebhookSender(t *testing.T) {
@@ -36,7 +36,7 @@ func TestEvergreenWebhookSender(t *testing.T) {
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 
-	transport := mockTransport{
+	transport := mockWebhookTransport{
 		secret: []byte("hi"),
 	}
 
@@ -68,7 +68,7 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 
-	transport := mockTransport{
+	transport := mockWebhookTransport{
 		secret: []byte("hi"),
 	}
 
@@ -91,12 +91,12 @@ func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
 	assert.EqualError(<-channel, "evergreen-webhook response status was 400 Bad Request")
 }
 
-type mockTransport struct {
+type mockWebhookTransport struct {
 	lastUrl string
 	secret  []byte
 }
 
-func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp := &http.Response{
 		StatusCode: http.StatusNoContent,
 		Body:       ioutil.NopCloser(nil),

@@ -63,7 +63,9 @@ func (s *eventNotificationSuite) SetupTest() {
 					Secret: []byte("memes"),
 				},
 			},
-			Payload: "o hai",
+			Payload: &util.EvergreenWebhook{
+				Body: []byte("o hai"),
+			},
 		},
 		{
 			ID: "email",
