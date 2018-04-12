@@ -358,7 +358,7 @@ task_groups:
 - name: example_task_group
   tasks:
   - first_task
-  - second_task
+  - another_task
 `
 	v := &version.Version{
 		Id:     "version_1",
@@ -374,7 +374,7 @@ task_groups:
 		{
 			Id:          "task_1",
 			BuildId:     "build_1",
-			DisplayName: "second_task",
+			DisplayName: "another_task",
 			Version:     "version_1",
 			Requester:   evergreen.PatchVersionRequester,
 			TaskGroup:   "example_task_group",
@@ -390,7 +390,7 @@ task_groups:
 		{
 			Id:          "task_3",
 			BuildId:     "build_2",
-			DisplayName: "second_task",
+			DisplayName: "another_task",
 			Version:     "version_1",
 			Requester:   evergreen.PatchVersionRequester,
 			TaskGroup:   "example_task_group",
