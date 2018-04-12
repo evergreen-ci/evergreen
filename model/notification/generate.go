@@ -55,12 +55,20 @@ func (p *notificationGenerator) get(subType string) (interface{}, error) {
 	return val, nil
 }
 
+func (p *notificationGenerator) isEmpty() bool {
+	return p.evergreenWebhook == nil && p.email == nil && p.jiraIssue == nil &&
+		p.jiraComment == nil && p.slack == nil && p.githubStatusAPI == nil
+}
+
 func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification, error) {
 	if len(g.triggerName) == 0 {
 		return nil, errors.New("trigger name is empty")
 	}
 	if len(g.selectors) == 0 {
 		return nil, errors.Errorf("trigger %s has no selectors", g.triggerName)
+	}
+	if g.isEmpty() {
+		return nil, errors.New("generator has no payloads, and cannot yield any notifications")
 	}
 
 	groupedSubs, err := event.FindSubscribers(e.ResourceType, g.triggerName, g.selectors)
