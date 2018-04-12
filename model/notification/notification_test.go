@@ -118,7 +118,7 @@ func (s *notificationSuite) TestInsertMany() {
 			Type:   event.SlackSubscriberType,
 			Target: "#general",
 		},
-		Payload: &slackPayload{
+		Payload: &SlackPayload{
 			Body: "slack hi",
 		},
 	}
@@ -159,7 +159,7 @@ func (s *notificationSuite) TestInsertMany() {
 
 		} else if n.ID == slice[1].ID {
 			s.Equal(event.SlackSubscriberType, n.Subscriber.Type)
-			payload, ok := n.Payload.(*slackPayload)
+			payload, ok := n.Payload.(*SlackPayload)
 			s.True(ok)
 			s.Equal("slack hi", payload.Body)
 
@@ -286,7 +286,7 @@ func (s *notificationSuite) TestSlackPayload() {
 	s.n.Subscriber.Type = event.SlackSubscriberType
 	slack := "#general"
 	s.n.Subscriber.Target = &slack
-	s.n.Payload = &slackPayload{
+	s.n.Payload = &SlackPayload{
 		Body:        "Hi",
 		Attachments: []message.SlackAttachment{},
 	}

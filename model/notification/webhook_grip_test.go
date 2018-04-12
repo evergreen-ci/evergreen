@@ -62,6 +62,36 @@ func TestEvergreenWebhookSender(t *testing.T) {
 	s.Send(m)
 }
 
+func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
+	assert := assert.New(t)
+
+	m := NewWebhookMessage("evergreen", "https://example.com", []byte("bye"), []byte("something forged"))
+	assert.True(m.Loggable())
+	assert.NotNil(m)
+
+	transport := mockTransport{
+		secret: []byte("hi"),
+	}
+
+	sender, err := NewEvergreenWebhookLogger()
+	assert.NoError(err)
+	assert.NotNil(sender)
+
+	s, ok := sender.(*evergreenWebhookLogger)
+	assert.True(ok)
+	s.client = &http.Client{
+		Transport: &transport,
+	}
+
+	channel := make(chan error, 1)
+	s.SetErrorHandler(func(err error, _ message.Composer) {
+		channel <- err
+	})
+	s.Send(m)
+
+	assert.EqualError(<-channel, "evergreen-webhook response status was 400 Bad Request")
+}
+
 type mockTransport struct {
 	lastUrl string
 	secret  []byte
@@ -107,7 +137,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !hmac.Equal([]byte(hash), sig) {
-		resp.StatusCode = http.StatusUnauthorized
+		resp.StatusCode = http.StatusBadRequest
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected signature: %s, got %s", sig, hash)))
 		return resp, nil
 	}

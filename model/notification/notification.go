@@ -126,7 +126,7 @@ func (n *Notification) Composer() (message.Composer, error) {
 
 	case event.SlackSubscriberType:
 		sub := n.Subscriber.Target.(*string)
-		payload, ok := n.Payload.(*slackPayload)
+		payload, ok := n.Payload.(*SlackPayload)
 		if !ok || payload == nil {
 			return nil, errors.New("slack payload is invalid")
 		}

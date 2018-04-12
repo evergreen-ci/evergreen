@@ -2,7 +2,7 @@ package notification
 
 import "github.com/mongodb/grip/message"
 
-type slackPayload struct {
+type SlackPayload struct {
 	Body        string                    `bson:"body"`
 	Attachments []message.SlackAttachment `bson:"attachments"`
 }
