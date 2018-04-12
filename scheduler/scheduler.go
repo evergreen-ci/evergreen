@@ -518,7 +518,15 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if t.DistroId == "" {
 			// this is a lazy way to backfill distro names on tasks.
 			if err = t.SetDistro(distrosToUse[0]); err != nil {
-				return errors.Wrap(err, "failed to set backfill task distro")
+				grip.Info(message.WrapError(err, message.Fields{
+					"runner":  RunnerName,
+					"version": t.Version,
+					"task":    t.Id,
+					"distro":  distrosToUse[0],
+					"message": "failed to backfill task distro",
+					"err":     errors.WithStack(err),
+				}))
+				continue
 			}
 		}
 
