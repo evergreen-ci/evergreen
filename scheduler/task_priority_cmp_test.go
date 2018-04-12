@@ -405,7 +405,7 @@ task_groups:
 		},
 	}
 	prioritizer := &CmpBasedTaskPrioritizer{}
-	sorted, err := prioritizer.PrioritizeTasks("distro", &evergreen.Settings{}, tasks)
+	sorted, err := prioritizer.PrioritizeTasks("distro", tasks)
 	assert.NoError(err)
 	assert.Equal("task_4", sorted[0].Id)
 	assert.Equal("task_1", sorted[1].Id)
