@@ -280,6 +280,7 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 	}
 }
 
+// used for infrequently running system alerts
 func PopulateAlertingJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
