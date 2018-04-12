@@ -402,7 +402,7 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 		return send.NewSMTPLogger(&opts, levelInfo)
 
 	case SenderEvergreenWebhook:
-		return nil, errors.New("TODO")
+		return util.NewEvergreenWebhookLogger()
 
 	default:
 		return nil, errors.Errorf("unknown sender key %v", key)

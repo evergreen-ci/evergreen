@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -84,21 +85,34 @@ func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
 func (n *Notification) Composer() (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
-		sub := n.Subscriber.Target.(*event.WebhookSubscriber)
+		sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
+		if !ok {
+			return nil, errors.New("evergreen-webhook subscriber is invalid")
+		}
 
-		payload, ok := n.Payload.(*string)
+		payload, ok := n.Payload.(*util.EvergreenWebhook)
 		if !ok || payload == nil {
 			return nil, errors.New("evergreen-webhook payload is invalid")
 		}
 
-		return NewWebhookMessage(n.ID, sub.URL, sub.Secret, []byte(*payload)), nil
+		payload.Secret = sub.Secret
+		payload.URL = sub.URL
+		payload.NotificationID = n.ID
+
+		return util.NewWebhookMessageWithStruct(*payload), nil
 
 	case event.EmailSubscriberType:
+		sub, ok := n.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.New("email subscriber is invalid")
+		}
+
 		payload, ok := n.Payload.(*message.Email)
 		if !ok || payload == nil {
 			return nil, errors.New("email payload is invalid")
 		}
 
+		payload.Recipients = []string{*sub}
 		return message.NewEmailMessage(level.Notice, *payload), nil
 
 	case event.JIRAIssueSubscriberType:
@@ -116,7 +130,11 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return message.MakeJiraMessage(*payload), nil
 
 	case event.JIRACommentSubscriberType:
-		sub := n.Subscriber.Target.(*string)
+		sub, ok := n.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.New("jira-comment subscriber is invalid")
+		}
+
 		payload, ok := n.Payload.(*string)
 		if !ok || payload == nil {
 			return nil, errors.New("jira-comment payload is invalid")
@@ -125,7 +143,11 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return message.NewJIRACommentMessage(level.Notice, *sub, *payload), nil
 
 	case event.SlackSubscriberType:
-		sub := n.Subscriber.Target.(*string)
+		sub, ok := n.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.New("slack subscriber is invalid")
+		}
+
 		payload, ok := n.Payload.(*SlackPayload)
 		if !ok || payload == nil {
 			return nil, errors.New("slack payload is invalid")

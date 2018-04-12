@@ -1,7 +1,10 @@
 package notification
 
 import (
+	"reflect"
+
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -12,7 +15,7 @@ type notificationGenerator struct {
 	selectors   []event.Selector
 
 	// Optional payloads
-	evergreenWebhook *evergreenWebhookPayload
+	evergreenWebhook *util.EvergreenWebhook
 	email            *message.Email
 	jiraIssue        *message.JiraIssue
 	jiraComment      *string
@@ -21,28 +24,35 @@ type notificationGenerator struct {
 }
 
 func (p *notificationGenerator) get(subType string) (interface{}, error) {
+	var val interface{}
 	switch subType {
 	case event.EvergreenWebhookSubscriberType:
-		return p.evergreenWebhook, nil
+		val = p.evergreenWebhook
 
 	case event.EmailSubscriberType:
-		return p.email, nil
+		val = p.email
 
 	case event.JIRAIssueSubscriberType:
-		return p.jiraIssue, nil
+		val = p.jiraIssue
 
 	case event.JIRACommentSubscriberType:
-		return p.jiraComment, nil
+		val = p.jiraComment
 
 	case event.SlackSubscriberType:
-		return p.slack, nil
+		val = p.slack
 
 	case event.GithubPullRequestSubscriberType:
-		return p.githubStatusAPI, nil
+		val = p.githubStatusAPI
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", subType)
 	}
+
+	if reflect.ValueOf(val).IsNil() {
+		return nil, nil
+	}
+
+	return val, nil
 }
 
 func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification, error) {
@@ -71,7 +81,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 	for subType, subs := range groupedSubs {
 		payload, err := g.get(subType)
 		catcher.Add(err)
-		if err != nil {
+		if err != nil || payload == nil {
 			continue
 		}
 

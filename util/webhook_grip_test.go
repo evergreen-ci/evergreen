@@ -1,4 +1,4 @@
-package notification
+package util
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +21,7 @@ func TestEvergreenWebhookComposer(t *testing.T) {
 
 	url := "https://example.com"
 
-	m2, ok := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important")).(*evergreenWebhookMessage)
+	m2, ok := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important")).(*EvergreenWebhookMessage)
 	assert.True(ok)
 	assert.Equal("evergreen", m2.id)
 	assert.Equal(url, m2.url)
@@ -129,7 +128,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 
-	hash, err := util.CalculateHMACHash(t.secret, body)
+	hash, err := CalculateHMACHash(t.secret, body)
 	if err != nil {
 		resp.StatusCode = http.StatusInternalServerError
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(err.Error()))
