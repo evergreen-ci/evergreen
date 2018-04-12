@@ -172,7 +172,7 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 )
 
-type SenderKey = int
+type SenderKey int
 
 const (
 	SenderGithubStatus = SenderKey(iota)
