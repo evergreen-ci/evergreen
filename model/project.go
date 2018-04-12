@@ -83,6 +83,17 @@ type BuildVariantTaskUnit struct {
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
+func (b BuildVariant) Get(name string) (BuildVariantTaskUnit, error) {
+	for idx := range b.Tasks {
+		if b.Tasks[idx].Name == name {
+			return b.Tasks[idx], nil
+		}
+	}
+
+	return BuildVariantTaskUnit{}, errors.Errorf("could not find task %s in build variant %s",
+		name, b.Name)
+}
+
 type DisplayTask struct {
 	Name           string   `yaml:"name,omitempty" bson:"name,omitempty"`
 	ExecutionTasks []string `yaml:"execution_tasks,omitempty" bson:"execution_tasks,omitempty"`
@@ -93,6 +104,15 @@ type BuildVariants []BuildVariant
 func (b BuildVariants) Len() int           { return len(b) }
 func (b BuildVariants) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
 func (b BuildVariants) Less(i, j int) bool { return b[i].DisplayName < b[j].DisplayName }
+func (b BuildVariants) Get(name string) (BuildVariant, error) {
+	for idx := range b {
+		if b[idx].Name == name {
+			return b[idx], nil
+		}
+	}
+
+	return BuildVariant{}, errors.Errorf("could not find build variant named %s", name)
+}
 
 // Populate updates the base fields of the BuildVariantTaskUnit with
 // fields from the project task definition.
@@ -757,12 +777,36 @@ func FindProjectFromTask(t *task.Task) (*Project, error) {
 		return nil, errors.Errorf("problem finding project: %s", t.Project)
 	}
 
-	p, err := FindProject("", ref)
+	p, err := FindProject(t.Revision, ref)
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem finding project config for %s", t.Project)
 	}
 
 	return p, nil
+}
+
+func (p *Project) FindDistroNameForTask(t *task.Task) (string, error) {
+	bv, err := p.BuildVariants.Get(t.BuildVariant)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding buildvariant for task '%s'", t.Id)
+	}
+
+	bvt, err := bv.Get(t.DisplayName)
+	if err != nil {
+		return "", errors.Wrapf(err, "problem finding buildvarianttask for task '%s'", t.Id)
+	}
+
+	var distro string
+
+	if len(bvt.Distros) > 0 {
+		distro = bvt.Distros[0]
+	} else if len(bv.RunOn) > 0 {
+		distro = bv.RunOn[0]
+	} else {
+		return "", errors.Errorf("cannot find the distro for %s", t.Id)
+	}
+
+	return distro, nil
 }
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
