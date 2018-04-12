@@ -53,9 +53,9 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 		setupFuncs: []sortSetupFunc{
 			cachePreviousTasks,
 			cacheSimilarFailing,
+			groupTaskGroups,
 		},
 		comparators: []taskPriorityCmp{
-			groupTaskGroups,
 			byTaskGroupOrder,
 			byPriority,
 			byNumDeps,
