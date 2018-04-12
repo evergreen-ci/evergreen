@@ -1,7 +1,8 @@
 mciModule.directive('microTrendChart', function(PERF_DISCOVERY) { return {
   restrict: 'E',
   scope: {
-    data: '=',
+    data: '=', // list of numeric items
+    ctx: '=', // list of [min, max] of given context
   },
   link: function ($scope, el) {
     var container = el[0].parentElement
@@ -34,7 +35,9 @@ mciModule.directive('microTrendChart', function(PERF_DISCOVERY) { return {
 
     // This $watch is required due to known bug with ui-grid
     // https://github.com/angular-ui/ui-grid/issues/4869
-    $scope.$watch('data', function(data) {
+    $scope.$watchCollection('[data, ctx]', function(values) {
+      var data = values[0]
+      var ctx = values[1]
       // Don't draw anything for invalid data
       if(_.any(data, _.isNaN)) return
 
@@ -49,9 +52,12 @@ mciModule.directive('microTrendChart', function(PERF_DISCOVERY) { return {
         .range([cfg.margin, effectiveWidth])
 
       // Concat 0, because zero reference should always be in domain
+      // ctx[0] is min context value
+      // ctx[1] is max context value
+      // Adding context provides common reference to all visible charts
       yScale.domain([
-        d3.min(samples.concat(0)),
-        d3.max(samples.concat(0))
+        d3.min(samples.concat([0, ctx[0]])),
+        d3.max(samples.concat([0, ctx[1]]))
       ])
 
       line.attr({
