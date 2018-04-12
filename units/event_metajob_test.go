@@ -286,6 +286,10 @@ func (m *mockWebhookHandler) error(outErr error, w http.ResponseWriter) {
 }
 
 func (m *mockWebhookHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	const (
+		evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
+		evergreenHMACHeader           = "X-Evergreen-Signature"
+	)
 	defer req.Body.Close()
 
 	if req.Method != http.MethodPost {
