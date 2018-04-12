@@ -141,16 +141,18 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 	}
 
 	const (
-		monitoringInterval      = time.Minute
-		taskPlanningInterval    = 15 * time.Second
-		backgroundStatsInterval = time.Minute
-		sysStatsInterval        = 15 * time.Second
+		monitoringInterval         = time.Minute
+		taskPlanningInterval       = 15 * time.Second
+		backgroundStatsInterval    = time.Minute
+		sysStatsInterval           = 15 * time.Second
+		infrequentAlertingInterval = 30 * time.Minute
 	)
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), infrequentAlertingInterval, time.Now(), opts, units.PopulateAlertingJobs())
 
 	if useNewScheduler {
 		amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())

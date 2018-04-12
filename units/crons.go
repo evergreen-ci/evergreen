@@ -279,3 +279,29 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 		return catcher.Resolve()
 	}
 }
+
+func PopulateAlertingJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(addHostLongRunningTaskJobs(queue))
+
+		return catcher.Resolve()
+	}
+}
+
+func addHostLongRunningTaskJobs(queue amboy.Queue) error {
+	hosts, err := host.Find(host.IsRunningTask)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
+	catcher := grip.NewBasicCatcher()
+
+	for _, host := range hosts {
+		job := NewHostAlertingJob(&host, ts)
+		catcher.Add(queue.Put(job))
+	}
+
+	return catcher.Resolve()
+}
