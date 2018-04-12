@@ -54,7 +54,7 @@ func makeAdminMapMigration(database string) db.MigrationOperation {
 		var credentials map[string]string
 		var expansions map[string]string
 		var keys map[string]string
-		var plugins map[string]map[string]string
+		var plugins map[string]map[string]interface{}
 		for _, raw := range rawD {
 			switch raw.Name {
 			case credentialsKey:
