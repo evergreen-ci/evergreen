@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -22,10 +21,6 @@ import (
 
 const (
 	eventNotificationJobName = "event-send"
-
-	evergreenWebhookTimeout       = 5 * time.Second
-	evergreenNotificationIDHeader = "X-Evergreen-Notification-ID"
-	evergreenHMACHeader           = "X-Evergreen-Signature"
 )
 
 func init() {

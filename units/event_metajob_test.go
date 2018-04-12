@@ -1,16 +1,13 @@
 package units
 
 import (
-	"bufio"
 	"context"
 	"crypto/hmac"
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -260,128 +257,6 @@ func (s *eventMetaJobSuite) TestEndToEnd() {
 
 	s.NotZero(out[0].SentAt)
 	s.Empty(out[0].Error)
-}
-
-func smtpServer(ctx context.Context, ln net.Listener, bodyOut chan string) {
-	d, _ := ctx.Deadline()
-	ctx, cancel := context.WithDeadline(ctx, d)
-	defer cancel()
-	defer ln.Close()
-
-	conn, err := ln.Accept()
-	if err != nil {
-		grip.Error(err)
-		bodyOut <- "Err: " + err.Error()
-		return
-	}
-	defer conn.Close()
-
-	grip.Info("Accepted connection")
-
-	_, err = conn.Write([]byte("220 127.0.0.1 ESMTP imsorrysmtp\r\n"))
-	if err != nil {
-		grip.Error(err)
-		bodyOut <- "Err: " + err.Error()
-		return
-	}
-	reader := bufio.NewReader(conn)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-
-		default:
-		}
-		b := make([]byte, 200)
-		_, err = reader.Read(b)
-		message := string(b)
-		//message, err := reader.ReadString('\n')
-		grip.Error(err)
-		if err != nil {
-			bodyOut <- "Err: " + err.Error()
-			return
-		}
-		grip.Infof("C: %s", message)
-
-		var out string
-		if strings.HasPrefix(message, "EHLO ") {
-			out = "250-localhost Hello localhost\r\n250-SIZE 5000\r\n250 AUTH LOGIN PLAIN"
-
-		} else if strings.HasPrefix(message, "AUTH ") {
-			out = "235 2.7.0 Authentication successful"
-
-		} else if strings.HasPrefix(message, "DATA") {
-			out = "354 End data with <CR><LF>.<CR><LF>"
-			_, err = conn.Write([]byte(out + "\r\n"))
-			grip.Error(err)
-			if err != nil {
-				bodyOut <- "Err: " + err.Error()
-				return
-			}
-
-			input := ""
-			bytes := make([]byte, 1)
-			for !strings.HasSuffix(input, "\r\n.\r\n") {
-				_, err = conn.Read(bytes)
-				grip.Error(err)
-				if err != nil {
-					bodyOut <- "Err: " + err.Error()
-					return
-				}
-				input += string(bytes)
-			}
-			grip.Infof("C: %s", input)
-			bodyOut <- input
-
-			out = "250 Ok: queued as 9001"
-
-		} else if strings.HasPrefix(message, "QUIT") {
-			out = "221 Bye"
-
-		} else {
-			out = "250 Ok"
-		}
-
-		if out != "" {
-			grip.Infof("S: %s\n", out)
-			_, err = conn.Write([]byte(out + "\r\n"))
-			grip.Error(err)
-			if out == "221 Bye" || err != nil {
-				bodyOut <- "Err: " + err.Error()
-				return
-			}
-		}
-	}
-}
-
-func parseEmailBody(body string) map[string]string {
-	m := map[string]string{}
-	c := regexp.MustCompile(".+:.+")
-	s := strings.Split(body, "\r\n")
-	for i := range s {
-		if c.MatchString(s[i]) {
-			header := strings.SplitN(s[i], ":", 2)
-			m[header[0]] = strings.Trim(header[1], " ")
-
-		} else {
-			body := ""
-			for ; s[i] != "." || i == len(s); i++ {
-				body += s[i]
-			}
-			if enc, ok := m["Content-Transfer-Encoding"]; ok && enc == "base64" {
-				data, err := base64.StdEncoding.DecodeString(body)
-				grip.Error(err)
-				if err == nil {
-					m["body"] = string(data)
-				}
-			} else {
-				m["body"] = body
-			}
-			break
-		}
-	}
-	return m
 }
 
 func httpServer(ln net.Listener, handler *mockWebhookHandler) {
