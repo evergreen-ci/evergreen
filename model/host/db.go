@@ -325,6 +325,12 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
+func ByStatus(status string) db.Q {
+	return db.Query(bson.M{
+		StatusKey: status,
+	})
+}
+
 // Removes host intents that have been been pending for more than 3
 // minutes for the specified distro.
 //
