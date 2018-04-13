@@ -63,7 +63,7 @@ func modifyHostStatus(queue amboy.Queue, h *host.Host, opts *uiParams, u *user.D
 			return fmt.Sprintf(HostTerminationQueueingSuccess, h.Id), nil
 		}
 
-		err := h.SetStatus(newStatus, u.Id, "")
+		err := h.SetStatus(newStatus, u.Id, opts.Notes)
 		if err != nil {
 			return "", &rest.APIError{
 				StatusCode: http.StatusInternalServerError,

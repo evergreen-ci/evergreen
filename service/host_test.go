@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/mock"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -22,16 +24,23 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
 	assert.NoError(env.LocalQueue().Start(ctx))
+	testutil.HandleTestingErr(db.ClearCollections(event.AllLogCollection), t, "error clearing collections")
 
 	// Normal test, changing a host from running to quarantined
 	user1 := user.DBUser{Id: "user1"}
 	h1 := host.Host{Id: "h1", Status: evergreen.HostRunning}
-	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined}
+	opts1 := uiParams{Action: "updateStatus", Status: evergreen.HostQuarantined, Notes: "because I can"}
 
 	result, err := modifyHostStatus(env.LocalQueue(), &h1, &opts1, &user1)
 	assert.Nil(err)
 	assert.Equal(result, fmt.Sprintf(HostStatusUpdateSuccess, evergreen.HostRunning, evergreen.HostQuarantined))
 	assert.Equal(h1.Status, evergreen.HostQuarantined)
+	events, err2 := event.Find(event.AllLogCollection, event.MostRecentHostEvents("h1", 1))
+	assert.NoError(err2)
+	assert.Len(events, 1)
+	hostevent, ok := events[0].Data.(*event.HostEventData)
+	assert.True(ok)
+	assert.Equal("because I can", hostevent.Logs)
 
 	user2 := user.DBUser{Id: "user2"}
 	h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, Provider: evergreen.ProviderNameStatic}
