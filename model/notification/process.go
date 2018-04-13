@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type trigger func(*event.EventLogEntry) (notificationGenerator, error)
+type trigger func(*event.EventLogEntry) (*notificationGenerator, error)
 
 // NotificationsFromEvent takes an event, processes all of its triggers, and returns
 // a slice of notifications, and an error object representing all errors

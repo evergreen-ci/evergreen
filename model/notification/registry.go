@@ -36,7 +36,7 @@ func init() {
 	registryAdd(event.ResourceTypeTest, testTrigger)
 }
 
-func testTrigger(e *event.EventLogEntry) (notificationGenerator, error) {
+func testTrigger(e *event.EventLogEntry) (*notificationGenerator, error) {
 	data := e.Data.(*event.TestEvent)
 	selectors := []event.Selector{
 		{
@@ -49,7 +49,7 @@ func testTrigger(e *event.EventLogEntry) (notificationGenerator, error) {
 		},
 	}
 
-	return notificationGenerator{
+	return &notificationGenerator{
 		triggerName: "test",
 		selectors:   selectors,
 		evergreenWebhook: &util.EvergreenWebhook{
