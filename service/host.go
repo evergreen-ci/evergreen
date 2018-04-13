@@ -122,14 +122,8 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	modifyResult, restErr := modifyHostStatus(queue, h, opts, u)
 
 	if restErr != nil {
-		switch restErr.Error() {
-		case fmt.Sprintf(UnrecognizedAction, opts.Action):
-			uis.WriteJSON(w, restErr.StatusCode, restErr.Message)
-			return
-		default:
-			uis.LoggedError(w, r, restErr.StatusCode, restErr)
-			return
-		}
+		uis.LoggedError(w, r, restErr.StatusCode, restErr)
+		return
 	}
 
 	var msg flashMessage
@@ -194,7 +188,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, msg)
 		return
 	default:
-		http.Error(w, fmt.Sprintf("Unrecognized action: %v", opts.Action), http.StatusBadRequest)
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
 }
