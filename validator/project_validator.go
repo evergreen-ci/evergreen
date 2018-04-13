@@ -828,6 +828,12 @@ func validateTaskGroups(p *model.Project) []ValidationError {
 func checkTaskGroups(p *model.Project) []ValidationError {
 	errs := []ValidationError{}
 	for _, tg := range p.TaskGroups {
+		if tg.MaxHosts < 1 {
+			errs = append(errs, ValidationError{
+				Message: fmt.Sprintf("task group %s has number of hosts %d less than 1", tg.Name, tg.MaxHosts),
+				Level:   Warning,
+			})
+		}
 		if len(tg.Tasks) == 1 {
 			continue
 		}
