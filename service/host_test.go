@@ -21,7 +21,7 @@ func TestModifyHostStatusWithUpdateStatus(t *testing.T) {
 
 	env := mock.Environment{}
 	assert.NoError(env.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
-	env.LocalQueue().Start(ctx)
+	assert.NoError(env.LocalQueue().Start(ctx))
 
 	// Normal test, changing a host from running to quarantined
 	user1 := user.DBUser{Id: "user1"}
