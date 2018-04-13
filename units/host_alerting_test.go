@@ -41,7 +41,7 @@ func (s *hostAlertSuite) TestLongRunningTasks() {
 		StartTime: time.Now().Add(-15 * time.Hour),
 	}
 	s.NoError(t.Insert())
-	h := &host.Host{
+	h := host.Host{
 		Id: "h2",
 		LastCommunicationTime: time.Now(),
 		Status:                evergreen.HostRunning,

@@ -325,9 +325,11 @@ func NeedsNewAgent(currentTime time.Time) db.Q {
 	})
 }
 
-func ByStatus(status string) db.Q {
+func ByStatuses(statuses []string) db.Q {
 	return db.Query(bson.M{
-		StatusKey: status,
+		"$in": bson.M{
+			StatusKey: statuses,
+		},
 	})
 }
 

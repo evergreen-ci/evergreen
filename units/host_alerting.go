@@ -28,7 +28,7 @@ type hostAlertingJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
-	host   *host.Host
+	host   host.Host
 	logger grip.Journaler
 }
 
@@ -47,7 +47,7 @@ func makeHostAlerting() *hostAlertingJob {
 	return j
 }
 
-func NewHostAlertingJob(h *host.Host, ts string) amboy.Job {
+func NewHostAlertingJob(h host.Host, ts string) amboy.Job {
 	job := makeHostAlerting()
 
 	job.host = h
@@ -60,21 +60,21 @@ func NewHostAlertingJob(h *host.Host, ts string) amboy.Job {
 
 func (j *hostAlertingJob) Run(ctx context.Context) {
 	var cancel context.CancelFunc
-	var err error
 
 	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 	defer j.MarkComplete()
 
-	j.host, err = host.FindOneId(j.HostID)
+	h, err := host.FindOneId(j.HostID)
 	if err != nil {
 		j.AddError(err)
 		return
 	}
-	if j.host == nil {
+	if h == nil {
 		j.AddError(fmt.Errorf("unable to retrieve host %s", j.HostID))
 		return
 	}
+	j.host = *h
 
 	j.monitorLongRunningTasks()
 }

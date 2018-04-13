@@ -285,7 +285,7 @@ func PopulateAlertingJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		catcher := grip.NewBasicCatcher()
 		catcher.Add(addHostLongRunningTaskJobs(queue))
-		catcher.Add(logDecoHostCount())
+		catcher.Add(addHostStatsJob(queue))
 
 		return catcher.Resolve()
 	}
@@ -301,34 +301,15 @@ func addHostLongRunningTaskJobs(queue amboy.Queue) error {
 	catcher := grip.NewBasicCatcher()
 
 	for _, host := range hosts {
-		job := NewHostAlertingJob(&host, ts)
+		job := NewHostAlertingJob(host, ts)
 		catcher.Add(queue.Put(job))
 	}
 
 	return catcher.Resolve()
 }
 
-func logDecoHostCount() error {
-	hosts, err := host.Find(host.ByStatus(evergreen.HostDecommissioned))
-	if err != nil {
-		return err
-	}
-	dynamic := 0
-	static := 0
-	for _, h := range hosts {
-		if h.Provider == evergreen.HostTypeStatic {
-			static++
-		} else {
-			dynamic++
-		}
-	}
-	if hosts != nil {
-		grip.Info(message.Fields{
-			"message": "count of decommissioned hosts",
-			"total":   len(hosts),
-			"static":  static,
-			"dynamic": dynamic,
-		})
-	}
-	return nil
+func addHostStatsJob(queue amboy.Queue) error {
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
+	job := NewHostStatsJob(ts)
+	return queue.Put(job)
 }
