@@ -753,7 +753,7 @@ buildvariants:
     run_on:
       - ubuntu1604-test
     expansions:
-      build_env: "GOROOT=/opt/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/go1.8/go/bin:$PATH KARMA_REPORTER=junit"
+      build_env: "GOROOT=/opt/golang/go1.10.1 DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/opt/node/bin:/opt/golang/go1.10.1/bin:$PATH KARMA_REPORTER=junit"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.1.tgz
     tasks:
       - name: "dist"
@@ -766,7 +766,7 @@ buildvariants:
     run_on:
       - ubuntu1604-test
     expansions:
-      build_env: "DEBUG_ENABLED=1 GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "DEBUG_ENABLED=1 GOROOT=/opt/golang/go1.10.1 PATH=/opt/golang/go1.10.1/bin:$PATH"
     tasks:
       - name: "dist"
         depends_on:
@@ -798,7 +798,7 @@ buildvariants:
     run_on:
       - macos-1012
     expansions:
-      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/usr/local/go1.8/go PATH=/usr/local/go1.8/go/bin:$PATH"
+      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes GOROOT=/opt/golang/go1.10.1 PATH=/opt/golang/go1.10.1/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.1.tgz
     tasks:
       - name: "dist"
@@ -809,7 +809,7 @@ buildvariants:
     run_on:
       - windows-64-vs2015-small
     expansions:
-      build_env: "GOROOT=c:/go1.8/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/cygdrive/c/go1.8/go/bin:$PATH"
+      build_env: "GOROOT=c:/golang/go1.10.1 DISABLE_COVERAGE=yes EVERGREEN_ALL=true PATH=/cygdrive/c/golang/go1.10.1/bin:$PATH"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-ssl-3.6.1.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -824,7 +824,7 @@ buildvariants:
     run_on:
       - rhel71-power8-test
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=ppc64le GOROOT=/opt/golang/go1.10.1 PATH=/opt/golang/go1.10.1/bin:$PATH"
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.6.1.tgz
     tasks:
       - name: "dist-test"
@@ -838,7 +838,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=s390x GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=s390x GOROOT=/opt/golang/go1.10.1 PATH=/opt/golang/go1.10.1/bin:$PATH"
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.5.13.tgz
     tasks:
       - name: "dist-test"
@@ -852,7 +852,7 @@ buildvariants:
     run_on:
       - ubuntu1604-arm64-small
     expansions:
-      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=arm64 GOROOT=/opt/go1.8/go PATH=/opt/go1.8/go/bin:$PATH"
+      build_env: "DISABLE_COVERAGE=yes GOOS=linux GOARCH=arm64 GOROOT=/opt/golang/go1.10.1 PATH=/opt/golang/go1.10.1/bin:$PATH"
       mongodb_url: https://downloads.mongodb.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.5.13.tgz
     tasks:
       - name: "dist-test"

@@ -563,7 +563,7 @@ func (init *HostInit) ProvisionHost(ctx context.Context, h *host.Host) error {
 			"operation": "increment provisioning errors failed",
 		}))
 
-		if h.ProvisionAttempts <= 10 {
+		if h.ProvisionAttempts <= 15 {
 			grip.Debug(message.Fields{
 				"runner":   RunnerName,
 				"host":     h.Id,
