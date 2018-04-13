@@ -145,7 +145,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		taskPlanningInterval       = 15 * time.Second
 		backgroundStatsInterval    = time.Minute
 		sysStatsInterval           = 15 * time.Second
-		infrequentAlertingInterval = 30 * time.Minute
+		infrequentAlertingInterval = 15 * time.Minute
 	)
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(

@@ -14,6 +14,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const hostAlertingName = "host-alerting"
@@ -71,7 +72,7 @@ func (j *hostAlertingJob) Run(ctx context.Context) {
 		return
 	}
 	if h == nil {
-		j.AddError(fmt.Errorf("unable to retrieve host %s", j.HostID))
+		j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
 		return
 	}
 	j.host = *h

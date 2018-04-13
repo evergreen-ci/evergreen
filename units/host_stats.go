@@ -14,7 +14,7 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-const hostStatsName = "host-stats"
+const hostStatsName = "host-status-alerting"
 
 func init() {
 	registry.AddJobType(hostStatsName, func() amboy.Job {
