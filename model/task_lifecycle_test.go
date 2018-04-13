@@ -1452,6 +1452,7 @@ func TestStepback(t *testing.T) {
 	}
 	t1 := &task.Task{
 		Id:                  "t1",
+		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           true,
 		BuildId:             b1.Id,
@@ -1463,6 +1464,7 @@ func TestStepback(t *testing.T) {
 	}
 	t2 := &task.Task{
 		Id:                  "t2",
+		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           false,
 		BuildId:             b2.Id,
@@ -1474,6 +1476,7 @@ func TestStepback(t *testing.T) {
 	}
 	t3 := &task.Task{
 		Id:                  "t3",
+		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           true,
 		BuildId:             b2.Id,
@@ -1485,6 +1488,7 @@ func TestStepback(t *testing.T) {
 	}
 	dt1 := &task.Task{
 		Id:                  "dt1",
+		DistroId:            "test",
 		DisplayName:         "displayTask",
 		Activated:           true,
 		BuildId:             b1.Id,
@@ -1498,6 +1502,7 @@ func TestStepback(t *testing.T) {
 	}
 	dt2 := &task.Task{
 		Id:                  "dt2",
+		DistroId:            "test",
 		DisplayName:         "displayTask",
 		Activated:           false,
 		BuildId:             b2.Id,
@@ -1511,6 +1516,7 @@ func TestStepback(t *testing.T) {
 	}
 	dt3 := &task.Task{
 		Id:                  "dt3",
+		DistroId:            "test",
 		DisplayName:         "displayTask",
 		Activated:           true,
 		BuildId:             b2.Id,
@@ -1524,6 +1530,7 @@ func TestStepback(t *testing.T) {
 	}
 	et1 := &task.Task{
 		Id:                  "et1",
+		DistroId:            "test",
 		DisplayName:         "execTask",
 		Activated:           true,
 		BuildId:             b1.Id,
@@ -1535,6 +1542,7 @@ func TestStepback(t *testing.T) {
 	}
 	et2 := &task.Task{
 		Id:                  "et2",
+		DistroId:            "test",
 		DisplayName:         "execTask",
 		Activated:           false,
 		BuildId:             b2.Id,
@@ -1546,6 +1554,7 @@ func TestStepback(t *testing.T) {
 	}
 	et3 := &task.Task{
 		Id:                  "et3",
+		DistroId:            "test",
 		DisplayName:         "execTask",
 		Activated:           true,
 		BuildId:             b3.Id,

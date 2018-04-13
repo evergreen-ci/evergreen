@@ -329,6 +329,8 @@ task_groups:
 		Config: yml,
 	}
 	require.NoError(v.Insert())
+	taskComparator.tasks = tasks
+	cacheTaskGroups(taskComparator)
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(1, result)
@@ -344,6 +346,7 @@ task_groups:
 `
 	v.Config = yml
 	require.NoError(v.Insert())
+	cacheTaskGroups(taskComparator)
 	result, err = byTaskGroupOrder(tasks[0], tasks[1], taskComparator)
 	assert.NoError(err)
 	assert.Equal(-1, result)

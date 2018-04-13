@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -176,19 +175,34 @@ func tasksAreCommitBuilds(t1, t2 task.Task) bool {
 // and considers one more important if it appears earlier in the task group task
 // list. This is to ensure that task groups are dispatched in the order that
 // they are defined.
-func byTaskGroupOrder(t1, t2 task.Task, _ *CmpBasedTaskComparator) (int, error) {
-	if t1.TaskGroup == "" ||
-		t2.TaskGroup == "" ||
-		t1.TaskGroup != t2.TaskGroup ||
-		t1.BuildId != t2.BuildId {
+func byTaskGroupOrder(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int, error) {
+	if differentBuildOrTaskGroup(t1, t2) {
 		return 0, nil
 	}
-	earlier, err := model.EarlierInTaskGroup(&t1, &t2, t1.TaskGroup)
-	if err != nil {
-		return 0, errors.Wrapf(err, "error finding out which task is earlier (%s, %s)", t1.Id, t2.Id)
+
+	// find earlier task
+	for _, tg := range comparator.projects[t1.Version].TaskGroups {
+		if tg.Name == t1.TaskGroup {
+			for _, t := range tg.Tasks {
+				if t == t1.DisplayName {
+					return 1, nil
+				}
+				if t == t2.DisplayName {
+					return -1, nil
+				}
+			}
+		}
 	}
-	if earlier {
-		return 1, nil
+	return 0, errors.Errorf("did not find tasks %s or %s in task group %s", t1.DisplayName, t2.DisplayName, t1.TaskGroup)
+}
+
+// differentBuildOrTaskGroup returns true iff two tasks have different builds
+// or task groups, or empty task groups.
+func differentBuildOrTaskGroup(t1, t2 task.Task) bool {
+	if t1.TaskGroup == "" || t2.TaskGroup == "" ||
+		t1.TaskGroup != t2.TaskGroup ||
+		t1.BuildId != t2.BuildId {
+		return true
 	}
-	return -1, nil
+	return false
 }
