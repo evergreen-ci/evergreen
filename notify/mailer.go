@@ -121,3 +121,30 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 
 	return errors.WithStack(err)
 }
+
+type MockMailer struct {
+	Sent []MockMail
+}
+
+type MockMail struct {
+	Recipients []string
+	Subject    string
+	Body       string
+}
+
+func (m *MockMailer) SendMail(recipients []string, subject, body string) error {
+	if len(recipients) == 0 {
+		return errors.New("recipients is empty")
+	}
+	newMail := MockMail{
+		Recipients: recipients,
+		Subject:    subject,
+		Body:       body,
+	}
+	if m.Sent == nil {
+		m.Sent = []MockMail{}
+	}
+	m.Sent = append(m.Sent, newMail)
+
+	return nil
+}
