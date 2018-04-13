@@ -517,20 +517,22 @@ func CreateTasksFromGroup(in BuildVariantTaskUnit, proj *Project) []BuildVariant
 	}
 
 	for _, t := range tg.Tasks {
-		tasks = append(tasks, BuildVariantTaskUnit{
+		bvt := BuildVariantTaskUnit{
 			Name: t,
 			// IsGroup is not persisted, and indicates here that the
 			// task is a member of a task group.
 			IsGroup:         true,
 			GroupName:       in.Name,
-			Patchable:       taskMap[t].Patchable,
-			Priority:        taskMap[t].Priority,
-			DependsOn:       taskMap[t].DependsOn,
-			Requires:        taskMap[t].Requires,
+			Patchable:       in.Patchable,
+			Priority:        in.Priority,
+			DependsOn:       in.DependsOn,
+			Requires:        in.Requires,
 			Distros:         in.Distros,
-			ExecTimeoutSecs: taskMap[t].ExecTimeoutSecs,
-			Stepback:        taskMap[t].Stepback,
-		})
+			ExecTimeoutSecs: in.ExecTimeoutSecs,
+			Stepback:        in.Stepback,
+		}
+		bvt.Populate(taskMap[t])
+		tasks = append(tasks, bvt)
 	}
 	return tasks
 }
@@ -782,12 +784,30 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time, updates *St
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTaskUnit, project *Project,
 	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
+	var distroID string
+
+	if len(buildVarTask.Distros) > 0 {
+		distroID = buildVarTask.Distros[0]
+	} else if len(buildVariant.RunOn) > 0 {
+		distroID = buildVariant.RunOn[0]
+	} else {
+		grip.Warning(message.Fields{
+			"task_id":   id,
+			"message":   "task is not runnable as there is no distro specified",
+			"variant":   buildVariant.Name,
+			"project":   project.Identifier,
+			"version":   v.Revision,
+			"requester": v.Requester,
+		})
+	}
+
 	t := &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
 		DisplayName:         buildVarTask.Name,
 		BuildId:             b.Id,
 		BuildVariant:        buildVariant.Name,
+		DistroId:            distroID,
 		CreateTime:          b.CreateTime,
 		IngestTime:          time.Now(),
 		ScheduledTime:       util.ZeroTime,

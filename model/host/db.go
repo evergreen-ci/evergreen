@@ -29,6 +29,7 @@ var (
 	DistroKey                  = bsonutil.MustHaveTag(Host{}, "Distro")
 	ProviderKey                = bsonutil.MustHaveTag(Host{}, "Provider")
 	ProvisionedKey             = bsonutil.MustHaveTag(Host{}, "Provisioned")
+	ProvisionTimeKey           = bsonutil.MustHaveTag(Host{}, "ProvisionTime")
 	ExtIdKey                   = bsonutil.MustHaveTag(Host{}, "ExternalIdentifier")
 	RunningTaskKey             = bsonutil.MustHaveTag(Host{}, "RunningTask")
 	RunningTaskGroupKey        = bsonutil.MustHaveTag(Host{}, "RunningTaskGroup")
@@ -335,6 +336,7 @@ func RemoveStaleInitializing(distroID string) error {
 		StatusKey:     evergreen.HostUninitialized,
 		UserHostKey:   false,
 		CreateTimeKey: bson.M{"$lt": time.Now().Add(-3 * time.Minute)},
+		ProviderKey:   bson.M{"$in": evergreen.ProviderSpawnable},
 	}
 
 	if distroID != "" {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/repotracker"
 	"github.com/mongodb/amboy"
@@ -26,7 +25,6 @@ func init() {
 type versionActivationCatchup struct {
 	Project  string `bson:"project" json:"project" yaml:"project"`
 	job.Base `bson:"metadata" json:"metadata" yaml:"metadata"`
-	env      evergreen.Environment
 }
 
 func makeVersionActivationCatchupJob() *versionActivationCatchup {
@@ -55,18 +53,12 @@ func NewVersionActiationJob(project string, id string) amboy.Job {
 func (j *versionActivationCatchup) Run(_ context.Context) {
 	defer j.MarkComplete()
 
-	if j.env == nil {
-		j.env = evergreen.GetEnvironment()
-	}
-
-	conf := j.env.Settings()
-
 	ref, err := model.FindOneProjectRef(j.Project)
 	if err != nil {
 		j.AddError(errors.WithStack(err))
 		return
 	}
 
-	j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(conf, *ref),
+	j.AddError(errors.Wrapf(repotracker.ActivateBuildsForProject(*ref),
 		"problem activating builds for project %s", j.Project))
 }

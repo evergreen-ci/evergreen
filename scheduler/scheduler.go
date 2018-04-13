@@ -123,7 +123,6 @@ func (s *Scheduler) Schedule(ctx context.Context) error {
 	distroSchedulerResultChan := make(chan distroSchedulerResult)
 
 	ds := &distroSchedueler{
-		Settings:           s.Settings,
 		TaskPrioritizer:    s.TaskPrioritizer,
 		TaskQueuePersister: s.TaskQueuePersister,
 	}
@@ -339,7 +338,6 @@ type distroSchedulerResult struct {
 type distroSchedueler struct {
 	TaskPrioritizer
 	TaskQueuePersister
-	*evergreen.Settings
 }
 
 func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
@@ -354,8 +352,7 @@ func (s *distroSchedueler) scheduleDistro(distroId string, runnableTasksForDistr
 		"num_tasks": len(runnableTasksForDistro),
 	})
 
-	prioritizedTasks, err := s.PrioritizeTasks(distroId, s.Settings,
-		runnableTasksForDistro)
+	prioritizedTasks, err := s.PrioritizeTasks(distroId, runnableTasksForDistro)
 	if err != nil {
 		res.err = errors.Wrap(err, "Error prioritizing tasks")
 		return res
@@ -461,23 +458,23 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 	versionBuildVarMap := make(map[versionBuildVariant]model.BuildVariant)
 
 	// insert the tasks into the appropriate distro's queue in our map
-	for _, task := range tasksToSplit {
-		key := versionBuildVariant{task.Version, task.BuildVariant}
+	for _, t := range tasksToSplit {
+		key := versionBuildVariant{t.Version, t.BuildVariant}
 		var p *model.Project
 		var err error
 		if _, exists := versionBuildVarMap[key]; !exists {
-			p, err = s.getProject(task.Version)
+			p, err = s.getProject(t.Version)
 			if err != nil {
 				grip.Info(message.WrapError(err, message.Fields{
 					"runner":  RunnerName,
-					"version": task.Version,
-					"task":    task.Id,
+					"version": t.Version,
+					"task":    t.Id,
 					"message": "skipping version after problem getting project for task",
 					"err":     errors.WithStack(err),
 				}))
 				continue
 			}
-			updateVersionBuildVarMap(task.Version, p, versionBuildVarMap)
+			updateVersionBuildVarMap(t.Version, p, versionBuildVarMap)
 		}
 
 		// get the build variant for the task
@@ -485,22 +482,22 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if !ok {
 			grip.Info(message.Fields{
 				"runner":  RunnerName,
-				"variant": task.BuildVariant,
-				"project": task.Project,
-				"task":    task.Id,
+				"variant": t.BuildVariant,
+				"project": t.Project,
+				"task":    t.Id,
 				"message": "buildvariant not defined",
 			})
 			continue
 		}
 
-		distros, err := s.getDistrosForBuildVariant(task, buildVariant, p)
+		distros, err := s.getDistrosForBuildVariant(t, buildVariant, p)
 		// If no matching spec was found, log it and continue.
 		if err != nil {
 			grip.Info(message.Fields{
 				"runner":  RunnerName,
-				"variant": task.BuildVariant,
-				"project": task.Project,
-				"task":    task.Id,
+				"variant": t.BuildVariant,
+				"project": t.Project,
+				"task":    t.Id,
 				"message": "task has no matching spec for buildvariant",
 			})
 			continue
@@ -515,13 +512,18 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		// remove duplicates to avoid scheduling twice
 		distrosToUse = util.UniqueStrings(distrosToUse)
 		for _, d := range distrosToUse {
-			tasksByDistro[d] = append(tasksByDistro[d], task)
+			tasksByDistro[d] = append(tasksByDistro[d], t)
+		}
+
+		if t.DistroId == "" {
+			// this is a lazy way to backfill distro names on tasks.
+			t.SetDistro(distrosToUse[0])
 		}
 
 		// for tasks that can run on multiple distros, keep track of which
 		// distros they will be scheduled on
 		if len(distrosToUse) > 1 {
-			taskRunDistros[task.Id] = distrosToUse
+			taskRunDistros[t.Id] = distrosToUse
 		}
 	}
 

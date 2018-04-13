@@ -212,7 +212,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				RepotrackerTasks: repoTrackerTasks,
 				PatchTasks:       patchTasks,
 			}
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &taskQueues)
+			mergedTasks := taskComparator.mergeTasks(&taskQueues)
 			So(len(mergedTasks), ShouldEqual, 3)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[0])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[1])
@@ -229,7 +229,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					HighPriorityTasks: priorityTasks,
 					RepotrackerTasks:  repoTrackerTasks,
 				}
-				mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tq)
+				mergedTasks := taskComparator.mergeTasks(&tq)
 				So(len(mergedTasks), ShouldEqual, 5)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[3])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[4])
@@ -251,7 +251,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				RepotrackerTasks: repoTrackerTasks,
 				PatchTasks:       patchTasks,
 			}
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &taskQueues)
+			mergedTasks := taskComparator.mergeTasks(&taskQueues)
 			So(len(mergedTasks), ShouldEqual, 3)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[0])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[1])
@@ -270,7 +270,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					RepotrackerTasks: repoTrackerTasks,
 					PatchTasks:       patchTasks,
 				}
-				mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+				mergedTasks := taskComparator.mergeTasks(&tqs)
 				So(len(mergedTasks), ShouldEqual, 6)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[3])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[0])
@@ -282,8 +282,8 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 			})
 
 			Convey("A MergeToggle of 3 should interleave a patch task every third task", func() {
+				taskComparator.mergeToggle = 3
 
-				taskComparatorTestConf.Scheduler.MergeToggle = 3
 				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3]}
 				patchTasks := []task.Task{tasks[4], tasks[5]}
 
@@ -291,7 +291,8 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					RepotrackerTasks: repoTrackerTasks,
 					PatchTasks:       patchTasks,
 				}
-				mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+				mergedTasks := taskComparator.mergeTasks(&tqs)
+
 				So(len(mergedTasks), ShouldEqual, 6)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[4])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[5])
@@ -306,7 +307,8 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 		Convey("With a lot of patch tasks, the extras should be added on the end", func() {
 
-			taskComparatorTestConf.Scheduler.MergeToggle = 2
+			taskComparator.mergeToggle = 2
+
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1]}
 			patchTasks := []task.Task{tasks[2], tasks[3], tasks[4], tasks[5]}
 			tqs := CmpBasedTaskQueues{
@@ -314,7 +316,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				PatchTasks:       patchTasks,
 			}
 
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+			mergedTasks := taskComparator.mergeTasks(&tqs)
 			So(len(mergedTasks), ShouldEqual, 6)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[2])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[0])
@@ -335,7 +337,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				PatchTasks:       patchTasks,
 			}
 
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+			mergedTasks := taskComparator.mergeTasks(&tqs)
 			So(len(mergedTasks), ShouldEqual, 6)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[5])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[0])

@@ -1,7 +1,7 @@
 mciModule.controller('PerformanceDiscoveryCtrl', function(
-  $q, $scope, $window, ApiTaskdata, ApiV1, ApiV2, EVG, EvgUiGridUtil,
-  PERF_DISCOVERY, PerfDiscoveryDataService, PerfDiscoveryStateService,
-  uiGridConstants
+  $q, $scope, $timeout, $window, ApiTaskdata, ApiV1, ApiV2,
+  EVG, EvgUiGridUtil, PERF_DISCOVERY, PerfDiscoveryDataService,
+  PerfDiscoveryStateService, uiGridConstants 
 ) {
   var vm = this;
   var gridUtil = EvgUiGridUtil
@@ -9,6 +9,8 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
   var dataUtil = PerfDiscoveryDataService
   var PD = PERF_DISCOVERY
   var grid
+  vm.refCtx = [0, 0]
+
   // Load state from the URL
   var state = stateUtil.readState({
     // Default sorting
@@ -133,6 +135,19 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     loadCompOptions(fromVersion, toVersion)
   }
 
+  function updateChartContext(grid) {
+    // Update context chart data for given rendered rows
+    // sets [min, max] list to the scope for visible rows
+    vm.refCtx = d3.extent(
+      _.reduce(grid.renderContainers.body.renderedRows, function(m, d) {
+        return m.concat([
+          Math.log(d.entity.avgVsSelf[0]),
+          Math.log(d.entity.avgVsSelf[1])
+        ])
+      }, [])
+    )
+  }
+
   // Returns a predefined URL for given `row` and `col`
   // Works with build abd task columns only
   vm.getCellUrl = function(row, col) {
@@ -147,8 +162,18 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
     enableGridMenu: true,
     onRegisterApi: function(gridApi) {
       grid = gridApi.grid;
+
       // Using _.once, because this behavior is required on init only
-      gridApi.core.on.rowsRendered($scope, _.once(function() {
+      gridApi.core.on.rowsRendered($scope, function() {
+        // For some reason, calback being called before
+        // the changes were applied to grid
+        // Timeout forces underlying code to be executed at the end
+        $timeout(
+          _.bind(updateChartContext, null, grid) // When rendered, update charts context
+        )
+      })
+
+      gridApi.core.on.rowsRendered($scope, _.once(function() { // Do once
         stateUtil.applyStateToGrid(state, grid)
         // Set handlers after grid initialized
         gridApi.core.on.sortChanged(
@@ -158,6 +183,15 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
           $scope, stateUtil.onFilteringChanged(state, grid)
         )
       }))
+
+      // Adding grid to $scope to create a watcher
+      $scope.grid = grid
+      // This triggers on vertical scroll
+      $scope.$watch(
+        'grid.renderContainers.body.currentTopRow', function() {
+          updateChartContext(grid)
+        }
+      )
     },
     columnDefs: [
       gridUtil.multiselectColDefMixin({
@@ -204,7 +238,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Trend',
         field: 'trendData',
-        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" ctx="grid.appScope.$ctrl.refCtx"/>',
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,
@@ -212,7 +246,7 @@ mciModule.controller('PerformanceDiscoveryCtrl', function(
       {
         name: 'Avg and Self',
         field: 'avgVsSelf',
-        cellTemplate: '<micro-trend-chart data="COL_FIELD" />',
+        cellTemplate: '<micro-trend-chart data="COL_FIELD" ctx="grid.appScope.$ctrl.refCtx"/>',
         width: PERF_DISCOVERY.TREND_COL_WIDTH,
         enableSorting: false,
         enableFiltering: false,

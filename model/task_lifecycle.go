@@ -46,6 +46,25 @@ func SetActiveState(taskId string, caller string, active bool) error {
 				return errors.Wrap(err, "error while activating task")
 			}
 		}
+
+		if t.DistroId == "" {
+			var project *Project
+			project, err = FindProjectFromTask(t)
+			if err != nil {
+				return errors.Wrapf(err, "problem finding project for task '%s'", t.Id)
+			}
+
+			var distro string
+			distro, err = project.FindDistroNameForTask(t)
+			if err != nil {
+				errors.Wrapf(err, "problem finding distro for activating task '%s'", taskId)
+			}
+			err = t.SetDistro(distro)
+			if err != nil {
+				errors.Wrapf(err, "problem setting distro for activating task '%s'", taskId)
+			}
+		}
+
 		// If the task was not activated by step back, and either the caller is not evergreen
 		// or the task was originally activated by evergreen, deactivate the task
 	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {

@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -66,8 +67,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 			// make sure the db representation was updated
-			tq, err := LoadTaskQueue(distroId)
-			taskQueue := tq.(*TaskQueue)
+			taskQueue, err := LoadTaskQueue(distroId)
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
@@ -280,4 +280,28 @@ func TestFindNextTaskWithLastTask(t *testing.T) {
 	}
 	next := queue.FindNextTask(TaskSpec{})
 	assert.Nil(next)
+}
+
+func TestTasQueueGenerationTimes(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	require.NoError(db.ClearCollections(TaskQueuesCollection))
+	defer db.ClearCollections(TaskQueuesCollection)
+
+	now := time.Now().Round(time.Millisecond)
+	taskQueue := &TaskQueue{
+		Distro:      "foo",
+		GeneratedAt: now,
+	}
+
+	assert.NoError(db.Insert(TaskQueuesCollection, taskQueue))
+
+	times, err := FindTaskQueueGenerationTimes()
+	assert.NoError(err)
+	assert.NotNil(times)
+	assert.Len(times, 1)
+	genTime, ok := times["foo"]
+	assert.True(ok)
+	assert.Equal(now, genTime)
 }

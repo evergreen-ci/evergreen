@@ -62,7 +62,10 @@ func (s *adminMapSuite) SetupTest() {
 		},
 		"plugins": db.Document{
 			"plugin1": db.Document{
-				"plugin1key": "plugin1val",
+				"plugin1key": db.Document{
+					"stringField": "stringVal",
+					"arrayField":  []string{"one", "two"},
+				},
 			},
 		},
 	}
@@ -113,7 +116,10 @@ func (s *adminMapSuite) TestMigration() {
 	pluginConfigs := plugin["value"].([]interface{})
 	pluginConfig := pluginConfigs[0].(db.Document)
 	s.Equal("plugin1key", pluginConfig["key"])
-	s.Equal("plugin1val", pluginConfig["value"])
+	s.EqualValues(db.Document{
+		"stringField": "stringVal",
+		"arrayField":  []interface{}{"one", "two"},
+	}, pluginConfig["value"])
 }
 
 func (s *adminMapSuite) TearDownSuite() {

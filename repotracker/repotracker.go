@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/notify"
@@ -175,7 +174,7 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		}
 	}
 
-	if err := repoTracker.activationForProject(projectIdentifier); err != nil {
+	if err := model.DoProjectActivation(projectIdentifier); err != nil {
 		grip.Error(message.WrapError(err, message.Fields{
 			"message": "problem activating recent commit for project",
 			"project": projectIdentifier,
@@ -186,92 +185,6 @@ func (repoTracker *RepoTracker) FetchRevisions(ctx context.Context) error {
 		return errors.WithStack(err)
 	}
 
-	return nil
-}
-
-func (repoTracker *RepoTracker) activationForProject(projectId string) error {
-	// fetch the most recent, non-ignored version version to activate
-	activateVersion, err := version.FindOne(version.ByMostRecentNonignored(projectId))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	if activateVersion == nil {
-		grip.Info(message.Fields{
-			"message": "no version to activate for repository",
-			"project": projectId,
-			"runner":  RunnerName,
-		})
-		return nil
-	}
-
-	if err = repoTracker.activateElapsedBuilds(activateVersion); err != nil {
-		return errors.WithStack(err)
-	}
-
-	return nil
-}
-
-// Activates any builds if their BatchTimes have elapsed.
-func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err error) {
-	projectId := repoTracker.ProjectRef.Identifier
-	hasActivated := false
-	now := time.Now()
-	for i, status := range v.BuildVariants {
-		// last comparison is to check that ActivateAt is actually set
-		if !status.Activated && now.After(status.ActivateAt) && !status.ActivateAt.IsZero() {
-			grip.Info(message.Fields{
-				"message":  "activating revision",
-				"variant":  status.BuildVariant,
-				"project":  projectId,
-				"revision": v.Revision,
-				"runner":   RunnerName,
-			})
-
-			// Go copies the slice value, we want to modify the actual value
-			status.Activated = true
-			status.ActivateAt = now
-			v.BuildVariants[i] = status
-
-			b, err := build.FindOne(build.ById(status.BuildId))
-			if err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"message": "problem retrieving build",
-					"runner":  RunnerName,
-					"variant": status.BuildVariant,
-					"build":   status.BuildId,
-					"project": projectId,
-				}))
-				continue
-			}
-
-			grip.Info(message.Fields{
-				"message": "activating build",
-				"runner":  RunnerName,
-				"variant": status.BuildVariant,
-				"build":   status.BuildId,
-				"project": projectId,
-			})
-
-			// Don't need to set the version in here since we do it ourselves in a single update
-			if err = model.SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator); err != nil {
-				grip.Error(message.WrapError(err, message.Fields{
-					"runner":  RunnerName,
-					"message": "problem activating build",
-					"variant": status.BuildVariant,
-					"build":   status.BuildId,
-					"project": projectId,
-				}))
-				continue
-			}
-			hasActivated = true
-		}
-	}
-
-	// If any variants were activated, update the stored version so that we don't
-	// attempt to activate them again
-	if hasActivated {
-		return v.UpdateBuildVariants()
-	}
 	return nil
 }
 

@@ -101,7 +101,14 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 		DistroId:      conf.DistroID,
 	})
 
-	makespan := res.schedulerEvent.ExpectedDuration / time.Duration(len(distroHostsMap)+len(hostsSpawned))
+	var makespan time.Duration
+	numHosts := time.Duration(len(distroHostsMap) + len(hostsSpawned))
+	if numHosts != 0 {
+		makespan = res.schedulerEvent.ExpectedDuration / numHosts
+	} else if res.schedulerEvent.TaskQueueLength > 0 {
+		makespan = res.schedulerEvent.ExpectedDuration
+	}
+
 	grip.Info(message.Fields{
 		"message":                "hosts spawned",
 		"runner":                 RunnerName,

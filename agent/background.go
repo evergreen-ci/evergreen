@@ -50,7 +50,7 @@ func (a *Agent) doHeartbeat(ctx context.Context, tc *taskContext, failed int) (i
 		return failed, evergreen.TaskFailed
 	}
 	if err != nil {
-		if err.Error() == client.HTTPConflictError {
+		if errors.Cause(err) == client.HTTPConflictError {
 			return failed, evergreen.TaskConflict
 		}
 		failed++

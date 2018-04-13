@@ -348,3 +348,67 @@ task_groups:
 	assert.NoError(err)
 	assert.Equal(-1, result)
 }
+
+func TestPrioritizeTasksWithSameTaskGroupsAndDifferentBuilds(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	require.NoError(db.ClearCollections(version.Collection))
+	yml := `
+task_groups:
+- name: example_task_group
+  tasks:
+  - first_task
+  - another_task
+`
+	v := &version.Version{
+		Id:     "version_1",
+		Config: yml,
+	}
+	require.NoError(v.Insert())
+	v = &version.Version{
+		Id:     "version_2",
+		Config: yml,
+	}
+	require.NoError(v.Insert())
+	tasks := []task.Task{
+		{
+			Id:          "task_1",
+			BuildId:     "build_1",
+			DisplayName: "another_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			TaskGroup:   "example_task_group",
+		},
+		{
+			Id:          "task_2",
+			BuildId:     "build_2",
+			DisplayName: "first_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			TaskGroup:   "example_task_group",
+		},
+		{
+			Id:          "task_3",
+			BuildId:     "build_2",
+			DisplayName: "another_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			TaskGroup:   "example_task_group",
+		},
+		{
+			Id:          "task_4",
+			BuildId:     "build_1",
+			DisplayName: "first_task",
+			Version:     "version_1",
+			Requester:   evergreen.PatchVersionRequester,
+			TaskGroup:   "example_task_group",
+		},
+	}
+	prioritizer := &CmpBasedTaskPrioritizer{}
+	sorted, err := prioritizer.PrioritizeTasks("distro", tasks)
+	assert.NoError(err)
+	assert.Equal("task_4", sorted[0].Id)
+	assert.Equal("task_1", sorted[1].Id)
+	assert.Equal("task_2", sorted[2].Id)
+	assert.Equal("task_3", sorted[3].Id)
+}

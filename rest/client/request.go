@@ -33,9 +33,6 @@ type apiVersion string
 const (
 	apiVersion1 apiVersion = "/api/2"
 	apiVersion2 apiVersion = "/rest/v2"
-
-	// HTTPConflictError indicates the client received a 409 status from the API.
-	HTTPConflictError = "Received status code 409"
 )
 
 // Method is an "enum" for the supported HTTP methods
@@ -48,6 +45,8 @@ const (
 	delete        = "DELETE"
 	patch         = "PATCH"
 )
+
+var HTTPConflictError = errors.New(evergreen.TaskConflict)
 
 func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
@@ -198,7 +197,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
 			} else if resp.StatusCode == http.StatusConflict {
-				return nil, errors.New(HTTPConflictError)
+				return nil, HTTPConflictError
 			} else if resp != nil {
 				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			}

@@ -202,7 +202,24 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			So(len(idle), ShouldEqual, 1)
 			So(idle[0].Id, ShouldEqual, "h4")
 		})
+		Convey("hosts that have been provisioned should have the timer reset", func() {
+			now := time.Now()
+			h5 := host.Host{
+				Id:                    "h5",
+				Provider:              evergreen.ProviderNameMock,
+				LastCommunicationTime: now,
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+				CreationTime:          now.Add(-10 * time.Minute), // created before the cutoff
+				ProvisionTime:         now.Add(-2 * time.Minute),  // provisioned after the cutoff
+			}
+			So(h5.Insert(), ShouldBeNil)
 
+			// h5 should not be flagged as idle
+			idle, err := flagIdleHosts(ctx, nil, nil)
+			So(err, ShouldBeNil)
+			So(len(idle), ShouldEqual, 0)
+		})
 	})
 
 }

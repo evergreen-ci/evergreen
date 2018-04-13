@@ -29,6 +29,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+const useNewScheduler = false
+
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
 		grip.SetName("evergreen.runner")
@@ -140,6 +142,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 	const (
 		monitoringInterval      = time.Minute
+		taskPlanningInterval    = 15 * time.Second
 		backgroundStatsInterval = time.Minute
 		sysStatsInterval        = 15 * time.Second
 	)
@@ -149,6 +152,10 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
+
+	if useNewScheduler {
+		amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), taskPlanningInterval, time.Now(), opts, units.PopulateSchedulerJobs())
+	}
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 150*time.Second, time.Now(), opts, units.PopulateRepotrackerPollingJobs(5))
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), 3*time.Minute, time.Now(), opts, units.PopulateActivationJobs(6))
@@ -249,6 +256,10 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	})
 
 	for _, r := range backgroundRunners {
+		if useNewScheduler && r.Name() == scheduler.RunnerName {
+			continue
+		}
+
 		wg.Add(1)
 		if util.StringSliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)

@@ -34,8 +34,9 @@ type Host struct {
 	Zone    string `bson:"zone" json:"zone"`
 
 	// true if the host has been set up properly
-	Provisioned       bool `bson:"provisioned" json:"provisioned"`
-	ProvisionAttempts int  `bson:"priv_attempts" json:"provision_attempts"`
+	Provisioned       bool      `bson:"provisioned" json:"provisioned"`
+	ProvisionAttempts int       `bson:"priv_attempts" json:"provision_attempts"`
+	ProvisionTime     time.Time `bson:"prov_time,omitempty" json:"prov_time,omitempty"`
 
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
@@ -119,6 +120,11 @@ func (h *Host) IdleTime() time.Duration {
 	// passed since the last task finished
 	if h.LastTask != "" {
 		return time.Since(h.LastTaskCompletedTime)
+	}
+
+	// if the host has been provisioned, the idle time is how long it has been provisioned
+	if !util.IsZeroTime(h.ProvisionTime) {
+		return time.Since(h.ProvisionTime)
 	}
 
 	// if the host has not run a task before, the idle time is just
@@ -307,8 +313,9 @@ func (h *Host) MarkAsProvisioned() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:      evergreen.HostRunning,
-				ProvisionedKey: true,
+				StatusKey:        evergreen.HostRunning,
+				ProvisionedKey:   true,
+				ProvisionTimeKey: time.Now(),
 			},
 		},
 	)
@@ -417,6 +424,11 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	err := UpdateOne(selector, update)
 	if err != nil {
 		if mgo.IsDup(err) {
+			grip.Debug(message.Fields{
+				"message": "found duplicate running task",
+				"task":    t.Id,
+				"host":    h.Id,
+			})
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "error updating running task %s for host %s", t.Id, h.Id)
