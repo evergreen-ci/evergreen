@@ -18,7 +18,7 @@ const (
 	// is allowed to run for, even if it is not idle. This default is used
 	// if exec_timeout_secs is not specified in the project file.
 	// exec_timeout_secs can be specified only at the project and task level.
-	defaultExecTimeoutSecs = 60 * 60 * 6
+	defaultExecTimeout = 6 * time.Hour
 
 	// defaultHeartbeatInterval is the interval after which agent sends a
 	// heartbeat to API server.

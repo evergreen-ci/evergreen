@@ -69,10 +69,10 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 
 			if isTaskCommands {
 				tc.setCurrentCommand(cmd)
-				tc.setCurrentTimeout(a.getTimeout(cmd))
+				tc.setCurrentTimeout(cmd)
 				a.comm.UpdateLastMessageTime()
 			} else {
-				tc.setCurrentTimeout(defaultIdleTimeout)
+				tc.setCurrentTimeout(nil)
 			}
 
 			start := time.Now()
@@ -127,13 +127,6 @@ func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext) error {
 		return errors.New("task failed")
 	}
 	return nil
-}
-
-func (a *Agent) getTimeout(cmd command.Command) time.Duration {
-	if cmd.IdleTimeout() > 0 {
-		return cmd.IdleTimeout()
-	}
-	return defaultIdleTimeout
 }
 
 func (a *Agent) getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) string {

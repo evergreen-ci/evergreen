@@ -89,11 +89,13 @@ func (s *BackgroundSuite) TestMaxHeartbeats() {
 }
 
 func (s *BackgroundSuite) TestGetCurrentTimeout() {
+	s.tc.taskConfig.Timeout = &model.Timeout{}
 	cmdFactory, exists := command.GetCommandFactory("shell.exec")
 	s.True(exists)
 	cmd := cmdFactory()
+	cmd.SetIdleTimeout(time.Second)
 	s.tc.setCurrentCommand(cmd)
-	s.tc.setCurrentTimeout(time.Second)
+	s.tc.setCurrentTimeout(cmd)
 	s.Equal(time.Second, s.tc.getCurrentTimeout())
 }
 
