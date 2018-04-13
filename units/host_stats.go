@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -12,6 +13,7 @@ import (
 	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 const hostStatsName = "host-status-alerting"
@@ -52,27 +54,26 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
-	statuses := []string{evergreen.HostDecommissioned, evergreen.HostQuarantined}
-	hosts, err := host.Find(host.ByStatuses(statuses))
+	var counts []host.InactiveHostCounts
+	var static int
+	var dynamic int
+	err := db.Aggregate(host.Collection, host.InactiveHostCountPipeline(), &counts)
 	if err != nil {
-		j.AddError(err)
+		j.AddError(errors.Wrap(err, "error aggregating inactive hosts"))
 		return
 	}
-	dynamic := 0
-	static := 0
-	for _, h := range hosts {
-		if h.Provider == evergreen.HostTypeStatic {
-			static++
+	for _, count := range counts {
+		if count.HostType == evergreen.HostTypeStatic {
+			static = count.Count
 		} else {
 			dynamic++
 		}
 	}
-	if hosts != nil {
-		grip.Info(message.Fields{
-			"message": "count of decommissioned/quarantined hosts",
-			"total":   len(hosts),
-			"static":  static,
-			"dynamic": dynamic,
-		})
-	}
+
+	grip.Info(message.Fields{
+		"message": "count of decommissioned/quarantined hosts",
+		"total":   static + dynamic,
+		"static":  static,
+		"dynamic": dynamic,
+	})
 }

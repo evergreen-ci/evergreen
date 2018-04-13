@@ -989,3 +989,51 @@ func TestHostFindingWithTask(t *testing.T) {
 	assert.Equal(task2.Id, hosts[1].RunningTaskFull.Id)
 	assert.Nil(hosts[2].RunningTaskFull)
 }
+
+func TestInactiveHostCountPipeline(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(Collection), t, "error clearing collections")
+	assert := assert.New(t)
+
+	h1 := Host{
+		Id:       "h1",
+		Status:   evergreen.HostRunning,
+		Provider: evergreen.HostTypeStatic,
+	}
+	assert.NoError(h1.Insert())
+	h2 := Host{
+		Id:       "h2",
+		Status:   evergreen.HostQuarantined,
+		Provider: evergreen.HostTypeStatic,
+	}
+	assert.NoError(h2.Insert())
+	h3 := Host{
+		Id:       "h3",
+		Status:   evergreen.HostDecommissioned,
+		Provider: "notstatic",
+	}
+	assert.NoError(h3.Insert())
+	h4 := Host{
+		Id:       "h4",
+		Status:   evergreen.HostRunning,
+		Provider: "notstatic",
+	}
+	assert.NoError(h4.Insert())
+	h5 := Host{
+		Id:       "h5",
+		Status:   evergreen.HostQuarantined,
+		Provider: "notstatic",
+	}
+	assert.NoError(h5.Insert())
+
+	var out []InactiveHostCounts
+	err := db.Aggregate(Collection, InactiveHostCountPipeline(), &out)
+	assert.NoError(err)
+	assert.Len(out, 2)
+	for _, count := range out {
+		if count.HostType == evergreen.HostTypeStatic {
+			assert.Equal(1, count.Count)
+		} else {
+			assert.Equal(2, count.Count)
+		}
+	}
+}
