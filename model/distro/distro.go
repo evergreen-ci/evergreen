@@ -56,21 +56,20 @@ func (d *Distro) GenerateName() string {
 		return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 	}
 
-	defaultName := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
+	name := fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(evergreen.NameTimeFormat), rand.Int())
 
 	if d.Provider == evergreen.ProviderNameGce {
 		// Ensure all characters in tags are on the whitelist
 		r, _ := regexp.Compile("[^a-z0-9_-]+")
-		name := string(r.ReplaceAll([]byte(strings.ToLower(defaultName)), []byte("")))
+		name = string(r.ReplaceAll([]byte(strings.ToLower(name)), []byte("")))
 
 		// Ensure the new name's is no longer than gceMaxNameLength
 		if len(name) > gceMaxNameLength {
-			return name[:gceMaxNameLength]
+			name = name[:gceMaxNameLength]
 		}
-		return name
 	}
 
-	return defaultName
+	return name
 }
 
 func (d *Distro) IsWindows() bool {
