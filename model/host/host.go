@@ -424,6 +424,11 @@ func (h *Host) UpdateRunningTask(t *task.Task) (bool, error) {
 	err := UpdateOne(selector, update)
 	if err != nil {
 		if mgo.IsDup(err) {
+			grip.Debug(message.Fields{
+				"message": "found duplicate running task",
+				"task":    t.Id,
+				"host":    h.Id,
+			})
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "error updating running task %s for host %s", t.Id, h.Id)

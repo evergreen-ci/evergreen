@@ -189,25 +189,28 @@ func (j *hostTerminationJob) Run(ctx context.Context) {
 		return
 	}
 
-	if err := runHostTeardown(ctx, j.host, cloudHost); err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"job_type": j.Type().Name,
-			"message":  "Error running teardown script",
-			"host":     j.host.Id,
-		}))
-
-		subj := fmt.Sprintf("%v Error running teardown for host %v",
-			notify.TeardownFailurePreface, j.host.Id)
-
-		grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
-			message.Fields{
-				"message":  "problem sending email",
-				"host":     j.host.Id,
-				"subject":  subj,
-				"error":    err.Error(),
+	if j.host.Status != evergreen.HostProvisionFailed {
+		// only run teardown if provisioning was successful
+		if err := runHostTeardown(ctx, j.host, cloudHost); err != nil {
+			grip.Error(message.WrapError(err, message.Fields{
 				"job_type": j.Type().Name,
-				"job":      j.ID(),
+				"message":  "Error running teardown script",
+				"host":     j.host.Id,
 			}))
+
+			subj := fmt.Sprintf("%v Error running teardown for host %v",
+				notify.TeardownFailurePreface, j.host.Id)
+
+			grip.Error(message.WrapError(notify.NotifyAdmins(subj, err.Error(), settings),
+				message.Fields{
+					"message":  "problem sending email",
+					"host":     j.host.Id,
+					"subject":  subj,
+					"error":    err.Error(),
+					"job_type": j.Type().Name,
+					"job":      j.ID(),
+				}))
+		}
 	}
 
 	if err := cloudHost.TerminateInstance(ctx, evergreen.User); err != nil {

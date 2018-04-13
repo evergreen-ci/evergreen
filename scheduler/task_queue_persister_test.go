@@ -145,10 +145,9 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				durationMappings)
 			So(err, ShouldBeNil)
 
-			tq, err := model.LoadTaskQueue(distroIds[0])
+			taskQueue, err := model.LoadTaskQueue(distroIds[0])
 			So(err, ShouldBeNil)
-			So(tq.Length(), ShouldEqual, 3)
-			taskQueue := tq.(*model.TaskQueue)
+			So(taskQueue.Length(), ShouldEqual, 3)
 
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])
 			So(taskQueue.Queue[0].DisplayName, ShouldEqual,
@@ -186,10 +185,9 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			So(taskQueue.Queue[2].Project, ShouldEqual, tasks[2].Project)
 			So(taskQueue.Queue[2].ExpectedDuration, ShouldEqual, durations[2])
 
-			tq, err = model.LoadTaskQueue(distroIds[1])
+			taskQueue, err = model.LoadTaskQueue(distroIds[1])
 			So(err, ShouldBeNil)
-			So(tq.Length(), ShouldEqual, 2)
-			taskQueue = tq.(*model.TaskQueue)
+			So(taskQueue.Length(), ShouldEqual, 2)
 
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[3])
 			So(taskQueue.Queue[0].DisplayName, ShouldEqual,

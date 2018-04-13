@@ -67,8 +67,7 @@ func TestDequeueTask(t *testing.T) {
 			So(taskQueue.Queue[1].Id, ShouldEqual, taskIds[2])
 
 			// make sure the db representation was updated
-			tq, err := LoadTaskQueue(distroId)
-			taskQueue := tq.(*TaskQueue)
+			taskQueue, err := LoadTaskQueue(distroId)
 			So(err, ShouldBeNil)
 			So(taskQueue.Length(), ShouldEqual, 2)
 			So(taskQueue.Queue[0].Id, ShouldEqual, taskIds[0])

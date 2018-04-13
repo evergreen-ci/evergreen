@@ -59,6 +59,7 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 		setupFuncs: []sortSetupFunc{
 			cachePreviousTasks,
 			cacheSimilarFailing,
+			groupTaskGroups,
 		},
 		comparators: []taskPriorityCmp{
 			byTaskGroupOrder,
@@ -113,7 +114,7 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(distroId string, tas
 			"runner":    RunnerName,
 			"operation": "prioritize tasks",
 		})
-		sort.Sort(comparator)
+		sort.Stable(comparator)
 
 		if len(comparator.errsDuringSort) > 0 {
 			errString := "The following errors were thrown while sorting:"
