@@ -1,7 +1,10 @@
 package notification
 
 import (
+	"reflect"
+
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -12,37 +15,49 @@ type notificationGenerator struct {
 	selectors   []event.Selector
 
 	// Optional payloads
-	evergreenWebhook *string
-	email            *EmailPayload
+	evergreenWebhook *util.EvergreenWebhook
+	email            *message.Email
 	jiraIssue        *message.JiraIssue
 	jiraComment      *string
-	githubStatusAPI  *GithubStatusAPIPayload
+	githubStatusAPI  *message.GithubStatus
 	slack            *string
 }
 
 func (p *notificationGenerator) get(subType string) (interface{}, error) {
+	var val interface{}
 	switch subType {
 	case event.EvergreenWebhookSubscriberType:
-		return p.evergreenWebhook, nil
+		val = p.evergreenWebhook
 
 	case event.EmailSubscriberType:
-		return p.email, nil
+		val = p.email
 
 	case event.JIRAIssueSubscriberType:
-		return p.jiraIssue, nil
+		val = p.jiraIssue
 
 	case event.JIRACommentSubscriberType:
-		return p.jiraComment, nil
+		val = p.jiraComment
 
 	case event.SlackSubscriberType:
-		return p.slack, nil
+		val = p.slack
 
 	case event.GithubPullRequestSubscriberType:
-		return p.githubStatusAPI, nil
+		val = p.githubStatusAPI
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", subType)
 	}
+
+	if reflect.ValueOf(val).IsNil() {
+		return nil, nil
+	}
+
+	return val, nil
+}
+
+func (p *notificationGenerator) isEmpty() bool {
+	return p.evergreenWebhook == nil && p.email == nil && p.jiraIssue == nil &&
+		p.jiraComment == nil && p.slack == nil && p.githubStatusAPI == nil
 }
 
 func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification, error) {
@@ -52,6 +67,10 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 	if len(g.selectors) == 0 {
 		return nil, errors.Errorf("trigger %s has no selectors", g.triggerName)
 	}
+	if g.isEmpty() {
+		return nil, errors.New("generator has no payloads, and cannot yield any notifications")
+	}
+
 	groupedSubs, err := event.FindSubscribers(e.ResourceType, g.triggerName, g.selectors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscribers")
@@ -70,7 +89,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 	for subType, subs := range groupedSubs {
 		payload, err := g.get(subType)
 		catcher.Add(err)
-		if err != nil {
+		if err != nil || payload == nil {
 			continue
 		}
 

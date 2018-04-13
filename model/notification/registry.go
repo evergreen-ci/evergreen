@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 var triggerRegistry map[string][]trigger = map[string][]trigger{}
@@ -47,12 +48,12 @@ func testTrigger(e *event.EventLogEntry) (notificationGenerator, error) {
 			Data: "notawesomeness",
 		},
 	}
+
 	return notificationGenerator{
 		triggerName: "test",
 		selectors:   selectors,
-		email: &EmailPayload{
-			Subject: "Hi",
-			Body:    fmt.Sprintf("event says '%s'", data.Message),
+		evergreenWebhook: &util.EvergreenWebhook{
+			Body: []byte(fmt.Sprintf("event says '%s'", data.Message)),
 		},
 	}, nil
 }

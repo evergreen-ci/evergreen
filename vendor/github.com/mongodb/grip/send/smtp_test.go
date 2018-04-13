@@ -20,8 +20,6 @@ func TestSMTPSuite(t *testing.T) {
 	suite.Run(t, new(SMTPSuite))
 }
 
-func (s *SMTPSuite) SetupSuite() {}
-
 func (s *SMTPSuite) SetupTest() {
 	s.opts = &SMTPOptions{
 		client:        &smtpClientMock{},
@@ -276,4 +274,50 @@ func (s *SMTPSuite) TestSendMethodWithError() {
 	mock.failData = true
 	sender.Send(m)
 	s.Equal(mock.numMsgs, 1)
+}
+
+func (s *SMTPSuite) TestSendMethodWithEmailComposerOverridesSMTPOptions() {
+	sender, err := NewSMTPLogger(s.opts, LevelInfo{level.Trace, level.Info})
+	s.NoError(err)
+	s.NotNil(sender)
+
+	s.NoError(sender.SetErrorHandler(func(err error, m message.Composer) {
+		s.T().Errorf("unexpected error in sender: %+v", err)
+		s.T().FailNow()
+	}))
+
+	mock, ok := s.opts.client.(*smtpClientMock)
+	s.True(ok)
+	s.Equal(0, mock.numMsgs)
+	m := message.NewEmailMessage(level.Notice, message.Email{
+		From:              "Mr Super Powers <from@example.com>",
+		Recipients:        []string{"to@example.com"},
+		Subject:           "Test",
+		Body:              "just a test",
+		PlainTextContents: true,
+		Headers: map[string][]string{
+			"X-Custom-Header":           []string{"special"},
+			"Content-Type":              []string{"something/proprietary"},
+			"Content-Transfer-Encoding": []string{"somethingunexpected"},
+		},
+	})
+	s.True(m.Loggable())
+
+	sender.Send(m)
+	s.Equal(1, mock.numMsgs)
+
+	contains := []string{
+		"From: \"Mr Super Powers\" <from@example.com>\r\n",
+		"To: <to@example.com>\r\n",
+		"Subject: Test\r\n",
+		"MIME-Version: 1.0\r\n",
+		"Content-Type: something/proprietary\r\n",
+		"X-Custom-Header: special\r\n",
+		"Content-Transfer-Encoding: base64\r\n",
+		"anVzdCBhIHRlc3Q=",
+	}
+	data := mock.message.String()
+	for i := range contains {
+		s.Contains(data, contains[i])
+	}
 }

@@ -172,6 +172,17 @@ const (
 	RepotrackerVersionRequester = "gitter_request"
 )
 
+type SenderKey int
+
+const (
+	SenderGithubStatus = SenderKey(iota)
+	SenderEvergreenWebhook
+	SenderSlack
+	SenderJIRAIssue
+	SenderJIRAComment
+	SenderEmail
+)
+
 const (
 	defaultLogBufferingDuration  = 20
 	defaultMgoDialTimeout        = 5 * time.Second

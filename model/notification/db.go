@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -42,11 +43,10 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 
 	switch temp.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
-		str := ""
-		n.Payload = &str
+		n.Payload = &util.EvergreenWebhook{}
 
 	case event.EmailSubscriberType:
-		n.Payload = &EmailPayload{}
+		n.Payload = &message.Email{}
 
 	case event.JIRAIssueSubscriberType:
 		n.Payload = &message.JiraIssue{}
@@ -56,11 +56,10 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 		n.Payload = &str
 
 	case event.SlackSubscriberType:
-		str := ""
-		n.Payload = &str
+		n.Payload = &SlackPayload{}
 
 	case event.GithubPullRequestSubscriberType:
-		n.Payload = &GithubStatusAPIPayload{}
+		n.Payload = &message.GithubStatus{}
 
 	default:
 		return errors.Errorf("unknown payload type %s", temp.Subscriber.Type)

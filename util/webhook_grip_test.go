@@ -1,4 +1,4 @@
-package notification
+package util
 
 import (
 	"bytes"
@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
@@ -18,32 +16,28 @@ import (
 func TestEvergreenWebhookComposer(t *testing.T) {
 	assert := assert.New(t)
 
-	m := NewWebhookMessage("", nil, nil, nil)
+	m := NewWebhookMessage("", "", nil, nil)
 	assert.False(m.Loggable())
 
-	url, err := url.Parse("https://example.com")
-	assert.NoError(err)
+	url := "https://example.com"
 
-	m2, ok := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important")).(*evergreenWebhookMessage)
+	m = NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"))
+	m2, ok := m.(*evergreenWebhookMessage)
 	assert.True(ok)
-	assert.Equal("evergreen", m2.id)
-	assert.Equal(url, m2.url)
-	assert.Equal("hi", string(m2.secret))
-	assert.Equal("something important", string(m2.body))
+	assert.Equal("evergreen", m2.raw.NotificationID)
+	assert.Equal(url, m2.raw.URL)
+	assert.Equal("hi", string(m2.raw.Secret))
+	assert.Equal("something important", string(m2.raw.Body))
 }
 
 func TestEvergreenWebhookSender(t *testing.T) {
 	assert := assert.New(t)
 
-	url, err := url.Parse("https://example.com")
-	assert.NoError(err)
-	assert.NotNil(url)
-
-	m := NewWebhookMessage("evergreen", url, []byte("hi"), []byte("something important"))
+	m := NewWebhookMessage("evergreen", "https://example.com", []byte("hi"), []byte("something important"))
 	assert.True(m.Loggable())
 	assert.NotNil(m)
 
-	transport := mockTransport{
+	transport := mockWebhookTransport{
 		secret: []byte("hi"),
 	}
 
@@ -57,23 +51,56 @@ func TestEvergreenWebhookSender(t *testing.T) {
 		Transport: &transport,
 	}
 
-	s.SetErrorHandler(func(err error, _ message.Composer) {
+	assert.NoError(s.SetErrorHandler(func(err error, _ message.Composer) {
 		t.Error("error handler was called, but shouldn't have been")
 		t.FailNow()
-	})
+	}))
 	s.Send(m)
+	assert.Equal("https://example.com", transport.lastUrl)
 
 	// unloggable message shouldn't send
-	m = NewWebhookMessage("", nil, nil, nil)
+	m = NewWebhookMessage("", "", nil, nil)
 	s.Send(m)
 }
 
-type mockTransport struct {
+func TestEvergreenWebhookSenderWithBadSecret(t *testing.T) {
+	assert := assert.New(t)
+
+	m := NewWebhookMessage("evergreen", "https://example.com", []byte("bye"), []byte("something forged"))
+	assert.True(m.Loggable())
+	assert.NotNil(m)
+
+	transport := mockWebhookTransport{
+		secret: []byte("hi"),
+	}
+
+	sender, err := NewEvergreenWebhookLogger()
+	assert.NoError(err)
+	assert.NotNil(sender)
+
+	s, ok := sender.(*evergreenWebhookLogger)
+	assert.True(ok)
+	s.client = &http.Client{
+		Transport: &transport,
+	}
+
+	channel := make(chan error, 1)
+	assert.NoError(s.SetErrorHandler(func(err error, _ message.Composer) {
+		channel <- err
+	}))
+	s.Send(m)
+
+	assert.EqualError(<-channel, "evergreen-webhook response status was 400 Bad Request")
+	assert.Equal("https://example.com", transport.lastUrl)
+}
+
+type mockWebhookTransport struct {
 	lastUrl string
 	secret  []byte
 }
 
-func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *mockWebhookTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.lastUrl = req.URL.String()
 	resp := &http.Response{
 		StatusCode: http.StatusNoContent,
 		Body:       ioutil.NopCloser(nil),
@@ -105,7 +132,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, nil
 	}
 
-	hash, err := util.CalculateHMACHash(t.secret, body)
+	hash, err := CalculateHMACHash(t.secret, body)
 	if err != nil {
 		resp.StatusCode = http.StatusInternalServerError
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(err.Error()))
@@ -113,7 +140,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if !hmac.Equal([]byte(hash), sig) {
-		resp.StatusCode = http.StatusUnauthorized
+		resp.StatusCode = http.StatusBadRequest
 		resp.Body = ioutil.NopCloser(bytes.NewBufferString(fmt.Sprintf("expected signature: %s, got %s", sig, hash)))
 		return resp, nil
 	}

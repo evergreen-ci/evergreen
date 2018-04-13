@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -51,33 +53,68 @@ type Notification struct {
 	Error  string    `bson:"error,omitempty"`
 }
 
-// Composer builds a grip/message.Composer
+// SenderKey returns an evergreen.SenderKey to get a grip sender for this
+// notification from the evergreen environment
+func (n *Notification) SenderKey() (evergreen.SenderKey, error) {
+	switch n.Subscriber.Type {
+	case event.EvergreenWebhookSubscriberType:
+		return evergreen.SenderEvergreenWebhook, nil
+
+	case event.EmailSubscriberType:
+		return evergreen.SenderEmail, nil
+
+	case event.JIRAIssueSubscriberType:
+		return evergreen.SenderJIRAIssue, nil
+
+	case event.JIRACommentSubscriberType:
+		return evergreen.SenderJIRAComment, nil
+
+	case event.SlackSubscriberType:
+		return evergreen.SenderSlack, nil
+
+	case event.GithubPullRequestSubscriberType:
+		return evergreen.SenderGithubStatus, nil
+
+	default:
+		return evergreen.SenderEmail, errors.Errorf("unknown type '%s'", n.Subscriber.Type)
+	}
+}
+
+// Composer builds a grip/message.Composer for the notification. Composer is
+// guaranteed to be non-nil if error is nil, but the composer may not be
+// loggable
 func (n *Notification) Composer() (message.Composer, error) {
 	switch n.Subscriber.Type {
 	case event.EvergreenWebhookSubscriberType:
-		payload, ok := n.Payload.(*string)
+		sub, ok := n.Subscriber.Target.(*event.WebhookSubscriber)
+		if !ok {
+			return nil, errors.New("evergreen-webhook subscriber is invalid")
+		}
+
+		payload, ok := n.Payload.(*util.EvergreenWebhook)
 		if !ok || payload == nil {
 			return nil, errors.New("evergreen-webhook payload is invalid")
 		}
-		c := message.NewString(*payload)
-		if err := c.SetPriority(level.Notice); err != nil {
-			return nil, errors.Wrap(err, "failed to set priority")
-		}
 
-		return c, nil
+		payload.Secret = sub.Secret
+		payload.URL = sub.URL
+		payload.NotificationID = n.ID
+
+		return util.NewWebhookMessageWithStruct(*payload), nil
 
 	case event.EmailSubscriberType:
-		// TODO make real composer for this
-		payload, ok := n.Payload.(*EmailPayload)
+		sub, ok := n.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.New("email subscriber is invalid")
+		}
+
+		payload, ok := n.Payload.(*message.Email)
 		if !ok || payload == nil {
 			return nil, errors.New("email payload is invalid")
 		}
 
-		return message.ConvertToComposer(level.Notice, message.Fields{
-			"headers": payload.Headers,
-			"subject": payload.Subject,
-			"body":    payload.Body,
-		}), nil
+		payload.Recipients = []string{*sub}
+		return message.NewEmailMessage(level.Notice, *payload), nil
 
 	case event.JIRAIssueSubscriberType:
 		project, ok := n.Subscriber.Target.(*string)
@@ -94,44 +131,42 @@ func (n *Notification) Composer() (message.Composer, error) {
 		return message.MakeJiraMessage(*payload), nil
 
 	case event.JIRACommentSubscriberType:
+		sub, ok := n.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.New("jira-comment subscriber is invalid")
+		}
+
 		payload, ok := n.Payload.(*string)
 		if !ok || payload == nil {
 			return nil, errors.New("jira-comment payload is invalid")
 		}
 
-		c := message.NewString(*payload)
-		if err := c.SetPriority(level.Notice); err != nil {
-			return nil, errors.Wrap(err, "failed to set priority")
-		}
-
-		return c, nil
+		return message.NewJIRACommentMessage(level.Notice, *sub, *payload), nil
 
 	case event.SlackSubscriberType:
-		// TODO figure out slack message structure that works
-		payload, ok := n.Payload.(*string)
+		sub, ok := n.Subscriber.Target.(*string)
+		if !ok {
+			return nil, errors.New("slack subscriber is invalid")
+		}
+
+		payload, ok := n.Payload.(*SlackPayload)
 		if !ok || payload == nil {
 			return nil, errors.New("slack payload is invalid")
 		}
 
-		c := message.NewString(*payload)
-		if err := c.SetPriority(level.Notice); err != nil {
-			return nil, errors.Wrap(err, "failed to set priority")
-		}
-
-		return c, nil
+		return message.NewSlackMessage(level.Notice, *sub, payload.Body, payload.Attachments), nil
 
 	case event.GithubPullRequestSubscriberType:
-		payload, ok := n.Payload.(*GithubStatusAPIPayload)
+		sub := n.Subscriber.Target.(*event.GithubPullRequestSubscriber)
+		payload, ok := n.Payload.(*message.GithubStatus)
 		if !ok || payload == nil {
 			return nil, errors.New("github-pull-request payload is invalid")
 		}
+		payload.Owner = sub.Owner
+		payload.Repo = sub.Repo
+		payload.Ref = sub.Ref
 
-		c := message.NewGithubStatus(level.Notice, payload.Context, payload.State, payload.URL, payload.Description)
-		if !c.Loggable() {
-			return nil, errors.New("github-pull-request payload is invalid")
-		}
-
-		return c, nil
+		return message.NewGithubStatusMessageWithRepo(level.Notice, *payload), nil
 
 	default:
 		return nil, errors.Errorf("unknown type '%s'", n.Subscriber.Type)

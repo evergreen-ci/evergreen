@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/google/go-github/github"
 	"github.com/mongodb/grip/level"
 )
 
@@ -20,62 +19,112 @@ const (
 	GithubStateFailure = GithubState("failure")
 )
 
-type githubStatus struct {
+// GithubStatus is a message to be posted to Github's Status API
+type GithubStatus struct {
+	Owner string `bson:"owner,omitempty" json:"owner,omitempty" yaml:"owner,omitempty"`
+	Repo  string `bson:"repo,omitempty" json:"repo,omitempty" yaml:"repo,omitempty"`
+	Ref   string `bson:"ref,omitempty" json:"ref,omitempty" yaml:"ref,omitempty"`
+
 	Context     string      `bson:"context" json:"context" yaml:"context"`
 	State       GithubState `bson:"state" json:"state" yaml:"state"`
 	URL         string      `bson:"url" json:"url" yaml:"url"`
 	Description string      `bson:"description" json:"description" yaml:"description"`
-
-	Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-// NewGithubStatus creates a composer for sending payloads to the Github Status
-// API
-func NewGithubStatus(p level.Priority, context string, state GithubState, URL, description string) Composer {
-	s := &githubStatus{
-		Context:     context,
-		State:       state,
-		URL:         URL,
-		Description: description,
-	}
-	_ = s.SetPriority(p)
-
-	return s
-}
-
-func (c *githubStatus) Loggable() bool {
-	_, err := url.Parse(c.URL)
-	if err != nil || len(c.Context) == 0 {
+// Valid returns true if the message is well formed
+func (p *GithubStatus) Valid() bool {
+	// owner, repo and ref must be empty or must be set
+	ownerEmpty := len(p.Owner) == 0
+	repoEmpty := len(p.Repo) == 0
+	refLen := len(p.Ref) == 0
+	if ownerEmpty != repoEmpty || repoEmpty != refLen {
 		return false
 	}
 
-	switch c.State {
+	switch p.State {
 	case GithubStatePending, GithubStateSuccess, GithubStateError, GithubStateFailure:
 	default:
+		return false
+	}
+
+	_, err := url.Parse(p.URL)
+	if err != nil || len(p.Context) == 0 {
 		return false
 	}
 
 	return true
 }
 
-func (c *githubStatus) String() string {
-	if len(c.Description) == 0 {
-		// looks like: evergreen failed (https://evergreen.mongodb.com)
-		return fmt.Sprintf("%s %s (%s)", c.Context, string(c.State), c.URL)
-	}
-	// looks like: evergreen failed: 1 task failed (https://evergreen.mongodb.com)
-	return fmt.Sprintf("%s %s: %s (%s)", c.Context, string(c.State), c.Description, c.URL)
+type githubStatusMessage struct {
+	raw GithubStatus
+	str string
+
+	Base `bson:"metadata" json:"metadata" yaml:"metadata"`
 }
 
-func (c *githubStatus) Raw() interface{} {
-	s := &github.RepoStatus{
-		Context: github.String(c.Context),
-		State:   github.String(string(c.State)),
-		URL:     github.String(c.URL),
-	}
-	if len(c.Description) > 0 {
-		s.Description = github.String(c.Description)
-	}
+// NewGithubStatusMessageWithRepo creates a composer for sending payloads to the Github Status
+// API, with the repository and ref stored in the composer
+func NewGithubStatusMessageWithRepo(p level.Priority, status GithubStatus) Composer {
+	s := MakeGithubStatusMessageWithRepo(status)
+	_ = s.SetPriority(p)
 
 	return s
+}
+
+// MakeGithubStatusMessageWithRepo creates a composer for sending payloads to the Github Status
+// API, with the repository and ref stored in the composer
+func MakeGithubStatusMessageWithRepo(status GithubStatus) Composer {
+	return &githubStatusMessage{
+		raw: status,
+	}
+}
+
+// NewGithubStatusMessage creates a composer for sending payloads to the Github Status
+// API.
+func NewGithubStatusMessage(p level.Priority, context string, state GithubState, URL, description string) Composer {
+	s := MakeGithubStatusMessage(context, state, URL, description)
+	_ = s.SetPriority(p)
+
+	return s
+}
+
+// MakeGithubStatusMessage creates a composer for sending payloads to the Github Status
+// API without setting a priority
+func MakeGithubStatusMessage(context string, state GithubState, URL, description string) Composer {
+	return &githubStatusMessage{
+		raw: GithubStatus{
+			Context:     context,
+			State:       state,
+			URL:         URL,
+			Description: description,
+		},
+	}
+}
+
+func (c *githubStatusMessage) Loggable() bool {
+	return c.raw.Valid()
+}
+
+func (c *githubStatusMessage) String() string {
+	if len(c.str) != 0 {
+		return c.str
+	}
+
+	base := c.raw.Ref
+	if len(c.raw.Owner) > 0 {
+		base = fmt.Sprintf("%s/%s@%s ", c.raw.Owner, c.raw.Repo, c.raw.Ref)
+	}
+	if len(c.raw.Description) == 0 {
+		// looks like: evergreen failed (https://evergreen.mongodb.com)
+		c.str = base + fmt.Sprintf("%s %s (%s)", c.raw.Context, string(c.raw.State), c.raw.URL)
+	} else {
+		// looks like: evergreen failed: 1 task failed (https://evergreen.mongodb.com)
+		c.str = base + fmt.Sprintf("%s %s: %s (%s)", c.raw.Context, string(c.raw.State), c.raw.Description, c.raw.URL)
+	}
+
+	return c.str
+}
+
+func (c *githubStatusMessage) Raw() interface{} {
+	return &c.raw
 }
