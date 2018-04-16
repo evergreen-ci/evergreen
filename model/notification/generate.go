@@ -71,7 +71,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 		return nil, errors.New("generator has no payloads, and cannot yield any notifications")
 	}
 
-	groupedSubs, err := event.FindSubscribers(e.ResourceType, g.triggerName, g.selectors)
+	groupedSubs, err := event.FindSubscriptions(e.ResourceType, g.triggerName, g.selectors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscribers")
 	}
@@ -94,7 +94,7 @@ func (g *notificationGenerator) generate(e *event.EventLogEntry) ([]Notification
 		}
 
 		for i := range subs {
-			notification, err := New(e, g.triggerName, &subs[i], payload)
+			notification, err := New(e, g.triggerName, &subs[i].Subscriber, payload)
 			if err != nil {
 				catcher.Add(err)
 				continue

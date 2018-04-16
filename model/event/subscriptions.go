@@ -25,11 +25,8 @@ var (
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
 	subscriptionExtraDataKey      = bsonutil.MustHaveTag(Subscription{}, "ExtraData")
 
-	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(groupedSubscribers{}, "Type")
-	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(groupedSubscribers{}, "Subscribers")
-
-	subscriberWithRegexKey               = bsonutil.MustHaveTag(subscriberWithRegex{}, "Subscriber")
-	subscriberWithRegexRegexSelectorsKey = bsonutil.MustHaveTag(subscriberWithRegex{}, "RegexSelectors")
+	groupedSubscriptionsTypeKey          = bsonutil.MustHaveTag(groupedSubscriptions{}, "Type")
+	groupedSubscriptionsSubscriptionsKey = bsonutil.MustHaveTag(groupedSubscriptions{}, "Subscriptions")
 )
 
 type Subscription struct {
@@ -94,18 +91,14 @@ type Selector struct {
 	Data string `bson:"data"`
 }
 
-type groupedSubscribers struct {
-	Type        string                `bson:"_id"`
-	Subscribers []subscriberWithRegex `bson:"subscribers"`
+type groupedSubscriptions struct {
+	Type          string         `bson:"_id"`
+	Subscriptions []Subscription `bson:"subscriptions"`
 }
 
-type subscriberWithRegex struct {
-	Subscriber     Subscriber `bson:"subscriber"`
-	RegexSelectors []Selector `bson:"regex_selectors"`
-}
-
-// FindSubscribers finds all subscriptions that match the given information
-func FindSubscribers(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscriber, error) {
+// FindSubscriptions finds all subscriptions that match the given information,
+// returning them in a map by subscriber type
+func FindSubscriptions(subscriptionType, triggerType string, selectors []Selector) (map[string][]Subscription, error) {
 	if len(selectors) == 0 {
 		return nil, nil
 	}
@@ -117,9 +110,7 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 			},
 		},
 		{
-			"$project": bson.M{
-				subscriptionSubscriberKey:     1,
-				subscriptionRegexSelectorsKey: 1,
+			"$addFields": bson.M{
 				"keep": bson.M{
 					"$setIsSubset": []interface{}{"$" + subscriptionSelectorsKey, selectors},
 				},
@@ -133,46 +124,41 @@ func FindSubscribers(subscriptionType, triggerType string, selectors []Selector)
 		{
 			"$group": bson.M{
 				"_id": "$" + bsonutil.GetDottedKeyName(subscriptionSubscriberKey, subscriberTypeKey),
-				"subscribers": bson.M{
-					"$push": bson.M{
-						subscriberWithRegexKey:               "$" + subscriptionSubscriberKey,
-						subscriberWithRegexRegexSelectorsKey: "$" + subscriptionRegexSelectorsKey,
-					},
+				"subscriptions": bson.M{
+					"$push": "$$ROOT",
 				},
 			},
 		},
 	}
 
-	gs := []groupedSubscribers{}
+	gs := []groupedSubscriptions{}
 	if err := db.Aggregate(SubscriptionsCollection, pipeline, &gs); err != nil {
 		return nil, errors.Wrap(err, "failed to fetch subscriptions")
 	}
 
-	out := map[string][]Subscriber{}
+	out := map[string][]Subscription{}
 	for i := range gs {
-		subscribers := []Subscriber{}
-		for j := range gs[i].Subscribers {
-			sub := &gs[i].Subscribers[j]
-			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub) {
+		for j := range gs[i].Subscriptions {
+			sub := &gs[i].Subscriptions[j]
+			if len(sub.RegexSelectors) > 0 && !regexSelectorsMatch(selectors, sub.RegexSelectors) {
 				continue
 			}
 
-			subscribers = append(subscribers, sub.Subscriber)
+			out[gs[i].Type] = append(out[gs[i].Type], *sub)
 		}
-		out[gs[i].Type] = subscribers
 	}
 
 	return out, nil
 }
 
-func regexSelectorsMatch(selectors []Selector, s *subscriberWithRegex) bool {
-	for i := range s.RegexSelectors {
-		selector := findSelector(selectors, s.RegexSelectors[i].Type)
+func regexSelectorsMatch(selectors []Selector, regexSelectors []Selector) bool {
+	for i := range regexSelectors {
+		selector := findSelector(selectors, regexSelectors[i].Type)
 		if selector == nil {
 			return false
 		}
 
-		matched, err := regexp.MatchString(s.RegexSelectors[i].Data, selector.Data)
+		matched, err := regexp.MatchString(regexSelectors[i].Data, selector.Data)
 		grip.Error(message.WrapError(err, message.Fields{
 			"source":  "notifications-errors",
 			"message": "bad regex in db",
