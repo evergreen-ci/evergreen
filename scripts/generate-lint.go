@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path"
 	"strings"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +18,8 @@ const (
 	lintGroup         = "lint-group"
 	groupMaxHosts     = 1
 	evergreenLintTask = "evergreen"
-	jsonFilename      = "generate-lint.json"
+	jsonFilename      = "bin/generate-lint.json"
+	scriptsDir        = "scripts"
 )
 
 // whatChanged returns a list of files that have changed in the working
@@ -55,7 +56,7 @@ func targetsFromChangedFiles(files []string) ([]string, error) {
 		filePath := strings.TrimSpace(f)
 		if strings.HasSuffix(filePath, ".go") {
 			dir := path.Dir(filePath)
-			if dir == "scripts" {
+			if dir == scriptsDir {
 				continue
 			}
 			if dir == "." || dir == "main" {
@@ -159,8 +160,7 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 func main() {
 	generate, err := generateTasks()
 	if err != nil {
-		fmt.Printf("ERROR: %+v\n", err)
-		os.Exit(1)
+		grip.EmergencyFatal(err)
 	}
 	jsonBytes, _ := json.MarshalIndent(generate, "", "  ")
 	ioutil.WriteFile(jsonFilename, jsonBytes, 0644)

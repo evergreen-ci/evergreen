@@ -1,5 +1,5 @@
 command_type: test
-stepback: true
+stepback: false
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
@@ -126,6 +126,27 @@ variables:
           target: "${task_name}"
   - &version-constants
     nodejs_version: "6.11.1"
+  - &run-generate-lint
+    name: generate-lint
+    commands:
+      - func: get-project
+      - func: run-make
+        vars: { target: "${task_name}" }
+      - command: s3.put
+        type: system
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/generate-lint.json
+          remote_file: evergreen/${build_id}-${build_variant}/bin/generate-lint.json
+          bucket: mciuploads
+          content_type: application/json
+          permissions: public-read
+          display_name: generate-lint.json
+      - command: generate.tasks
+        params:
+          files:
+            - gopath/src/github.com/evergreen-ci/evergreen/bin/generate-lint.json
 
 #######################################
 #              Functions              #
@@ -353,26 +374,7 @@ tasks:
   - <<: *run-smoke-test
     name: smoke-test-endpoints
     tags: ["smoke"]
-  - name: generate-lint
-    commands:
-      - func: get-project
-      - func: run-make
-        vars: { target: "${task_name}" }
-      - command: s3.put
-        type: system
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_file: gopath/src/github.com/evergreen-ci/evergreen/generate-lint.json
-          remote_file: evergreen/${build_id}-${build_variant}/generate-lint.json
-          bucket: mciuploads
-          content_type: application/json
-          permissions: public-read
-          display_name: generate-lint.json
-      - command: generate.tasks
-        params:
-          files:
-            - gopath/src/github.com/evergreen-ci/evergreen/generate-lint.json
+  - <<: *run-generate-lint
 
   - <<: *run-go-test-suite
     name: js-test
