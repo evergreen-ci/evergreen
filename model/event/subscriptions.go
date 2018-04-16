@@ -23,6 +23,7 @@ var (
 	subscriptionSelectorsKey      = bsonutil.MustHaveTag(Subscription{}, "Selectors")
 	subscriptionRegexSelectorsKey = bsonutil.MustHaveTag(Subscription{}, "RegexSelectors")
 	subscriptionSubscriberKey     = bsonutil.MustHaveTag(Subscription{}, "Subscriber")
+	subscriptionExtraDataKey      = bsonutil.MustHaveTag(Subscription{}, "ExtraData")
 
 	groupedSubscriberTypeKey       = bsonutil.MustHaveTag(groupedSubscribers{}, "Type")
 	groupedSubscriberSubscriberKey = bsonutil.MustHaveTag(groupedSubscribers{}, "Subscribers")
@@ -38,6 +39,54 @@ type Subscription struct {
 	Selectors      []Selector    `bson:"selectors,omitempty"`
 	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
 	Subscriber     Subscriber    `bson:"subscriber"`
+	ExtraData      interface{}   `bson:"extra_data,omitempty"`
+}
+
+type unmarshalSubscription struct {
+	ID             bson.ObjectId `bson:"_id"`
+	Type           string        `bson:"type"`
+	Trigger        string        `bson:"trigger"`
+	Selectors      []Selector    `bson:"selectors,omitempty"`
+	RegexSelectors []Selector    `bson:"regex_selectors,omitempty"`
+	Subscriber     Subscriber    `bson:"subscriber"`
+	ExtraData      bson.Raw      `bson:"extra_data,omitempty"`
+}
+
+func (s *Subscription) SetBSON(raw bson.Raw) error {
+	temp := unmarshalSubscription{}
+
+	if err := raw.Unmarshal(&temp); err != nil {
+		return errors.Wrap(err, "error unmarshalling subscriber")
+	}
+
+	if data := registry.GetExtraData(temp.Type, temp.Trigger); data != nil {
+		s.ExtraData = data
+	}
+
+	// if ExtraData is a bson null
+	if temp.ExtraData.Kind == 0x0A {
+		if s.ExtraData != nil {
+			s.ExtraData = nil
+			return errors.New("error unmarshalling extra data: expected extra data in subscription; found none")
+		}
+
+	} else {
+		if s.ExtraData == nil {
+			return errors.New("error unmarshalling extra data: unexpected extra data in subscription")
+		}
+		if err := temp.ExtraData.Unmarshal(s.ExtraData); err != nil {
+			return errors.Wrap(err, "error unmarshalling extra data")
+		}
+	}
+
+	s.ID = temp.ID
+	s.Type = temp.Type
+	s.Trigger = temp.Trigger
+	s.Selectors = temp.Selectors
+	s.RegexSelectors = temp.RegexSelectors
+	s.Subscriber = temp.Subscriber
+
+	return nil
 }
 
 type Selector struct {
@@ -160,6 +209,7 @@ func (s *Subscription) Upsert() error {
 		subscriptionSelectorsKey:      s.Selectors,
 		subscriptionRegexSelectorsKey: s.RegexSelectors,
 		subscriptionSubscriberKey:     s.Subscriber,
+		subscriptionExtraDataKey:      s.ExtraData,
 	})
 	if err != nil {
 		return err

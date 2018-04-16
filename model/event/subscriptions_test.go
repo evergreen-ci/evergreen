@@ -217,3 +217,39 @@ func (s *subscriptionsSuite) TestRegexSelectorsMatch() {
 	a.RegexSelectors[0].Data = "^S"
 	s.False(regexSelectorsMatch(selectors, &a))
 }
+
+func (s *subscriptionsSuite) TestExtraData() {
+	subscription := Subscription{
+		ID:      bson.NewObjectId(),
+		Type:    ResourceTypePatch,
+		Trigger: "time-exceeds-n-constant",
+		Selectors: []Selector{
+			{
+				Type: "data1",
+				Data: "something",
+			},
+		},
+		RegexSelectors: []Selector{},
+		Subscriber: Subscriber{
+			Type:   EmailSubscriberType,
+			Target: "test@domain.invalid",
+		},
+		ExtraData: 123456,
+	}
+	s.NoError(subscription.Upsert())
+
+	out := Subscription{}
+	s.NoError(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+		"_id": subscription.ID,
+	}), &out))
+	s.Equal(123456, *(out.ExtraData.(*int)))
+
+	subscription.ExtraData = nil
+	s.NoError(subscription.Upsert())
+
+	out = Subscription{}
+	s.Error(db.FindOneQ(SubscriptionsCollection, db.Query(bson.M{
+		"_id": subscription.ID,
+	}), &out))
+	s.Zero(out)
+}
