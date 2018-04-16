@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -63,6 +64,10 @@ func (w *evergreenWebhookMessage) Loggable() bool {
 	}
 
 	_, err := url.Parse(w.raw.URL)
+	grip.Error(message.WrapError(err, message.Fields{
+		"message":         "evergreen-webhook invalid url",
+		"notification_id": w.raw.NotificationID,
+	}))
 
 	return err == nil
 }

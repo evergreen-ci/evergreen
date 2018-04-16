@@ -8,22 +8,28 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
-var triggerRegistry map[string][]trigger = map[string][]trigger{}
-var triggerRegistryM = sync.RWMutex{}
-
-func registryAdd(eventResourceType string, t ...trigger) {
-	triggerRegistryM.Lock()
-	defer triggerRegistryM.Unlock()
-
-	triggers, _ := triggerRegistry[eventResourceType]
-	triggerRegistry[eventResourceType] = append(triggers, t...)
+var registry = triggerRegistry{
+	triggers: map[string][]trigger{},
+	lock:     sync.RWMutex{},
 }
 
-func getTriggers(resourceType string) []trigger {
-	triggerRegistryM.RLock()
-	defer triggerRegistryM.RUnlock()
+type triggerRegistry struct {
+	triggers map[string][]trigger
+	lock     sync.RWMutex
+}
 
-	triggers, ok := triggerRegistry[resourceType]
+func (r *triggerRegistry) AddTrigger(resourceType string, t ...trigger) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.triggers[resourceType] = append(r.triggers[resourceType], t...)
+}
+
+func (r *triggerRegistry) Triggers(resourceType string) []trigger {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	triggers, ok := r.triggers[resourceType]
 	if !ok {
 		return nil
 	}
@@ -33,7 +39,7 @@ func getTriggers(resourceType string) []trigger {
 
 // TODO delete this and test event after the first real event is implemented
 func init() {
-	registryAdd(event.ResourceTypeTest, testTrigger)
+	registry.AddTrigger(event.ResourceTypeTest, testTrigger)
 }
 
 func testTrigger(e *event.EventLogEntry) (*notificationGenerator, error) {
