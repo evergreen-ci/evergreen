@@ -10,12 +10,12 @@ import (
 )
 
 func TestRegistryItemsAreSane(t *testing.T) {
-	triggerRegistryM.RLock()
-	defer triggerRegistryM.RUnlock()
+	registry.lock.RLock()
+	defer registry.lock.RUnlock()
 
 	assert := assert.New(t)
 
-	for k, v := range triggerRegistry {
+	for k, v := range registry.triggers {
 		set := map[reflect.Value]bool{}
 
 		assert.NotEmpty(v)

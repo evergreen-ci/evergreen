@@ -20,6 +20,7 @@ var (
 		evergreen.HostRunning,
 		evergreen.HostQuarantined,
 		evergreen.HostDecommissioned,
+		evergreen.HostTerminated,
 	}
 )
 
@@ -92,6 +93,8 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
+	env := evergreen.GetEnvironment()
+	queue := env.RemoteQueue()
 	u := MustHaveUser(r)
 
 	vars := mux.Vars(r)
@@ -115,32 +118,23 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// determine what action needs to be taken
-	switch opts.Action {
-	case "updateStatus":
-		currentStatus := h.Status
-		newStatus := opts.Status
-		if !util.StringSliceContains(validUpdateToStatuses, newStatus) {
-			http.Error(w, fmt.Sprintf("'%v' is not a valid status", newStatus), http.StatusBadRequest)
-			return
-		}
+	currentStatus := h.Status
+	modifyResult, restErr := modifyHostStatus(queue, h, opts, u)
 
-		if h.Provider == evergreen.ProviderNameStatic && newStatus == evergreen.HostDecommissioned {
-			http.Error(w, "cannot decommission static hosts", http.StatusBadRequest)
-			return
-		}
-
-		err := h.SetStatus(newStatus, u.Id, "")
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
-			return
-		}
-		msg := NewSuccessFlash(fmt.Sprintf("Host status successfully updated from '%v' to '%v'", currentStatus, h.Status))
-		PushFlash(uis.CookieStore, r, w, msg)
-		uis.WriteJSON(w, http.StatusOK, "Successfully updated host status")
-	default:
-		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Unrecognized action: %v", opts.Action))
+	if restErr != nil {
+		uis.LoggedError(w, r, restErr.StatusCode, restErr)
+		return
 	}
+
+	var msg flashMessage
+	switch modifyResult {
+	case fmt.Sprintf(HostTerminationQueueingSuccess, h.Id):
+		msg = NewSuccessFlash(fmt.Sprintf(HostTerminationQueueingSuccess, h.Id))
+	case fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status):
+		msg = NewSuccessFlash(fmt.Sprintf(HostStatusUpdateSuccess, currentStatus, h.Status))
+	}
+	PushFlash(uis.CookieStore, r, w, msg)
+	uis.WriteJSON(w, http.StatusOK, HostStatusWriteConfirm)
 }
 
 func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +188,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, msg)
 		return
 	default:
-		http.Error(w, fmt.Sprintf("Unrecognized action: %v", opts.Action), http.StatusBadRequest)
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Unrecognized action: %v", opts.Action))
 		return
 	}
 }

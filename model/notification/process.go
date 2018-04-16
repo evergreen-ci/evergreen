@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type trigger func(*event.EventLogEntry) (notificationGenerator, error)
+type trigger func(*event.EventLogEntry) (*notificationGenerator, error)
 
 // NotificationsFromEvent takes an event, processes all of its triggers, and returns
 // a slice of notifications, and an error object representing all errors
@@ -16,7 +16,7 @@ type trigger func(*event.EventLogEntry) (notificationGenerator, error)
 // same time. If the notifications array is not nil, they are valid and should
 // be processed as normal.
 func NotificationsFromEvent(event *event.EventLogEntry) ([]Notification, error) {
-	triggers := getTriggers(event.ResourceType)
+	triggers := registry.Triggers(event.ResourceType)
 	if len(triggers) == 0 {
 		return nil, errors.Errorf("no triggers for event type: '%s'", event.ResourceType)
 	}

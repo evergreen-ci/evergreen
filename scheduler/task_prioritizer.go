@@ -32,6 +32,7 @@ type CmpBasedTaskComparator struct {
 	errsDuringSort []error
 	setupFuncs     []sortSetupFunc
 	comparators    []taskPriorityCmp
+	projects       map[string]project
 
 	// caches for sorting
 	previousTasksCache map[string]task.Task
@@ -59,6 +60,7 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 		setupFuncs: []sortSetupFunc{
 			cachePreviousTasks,
 			cacheSimilarFailing,
+			cacheTaskGroups,
 			groupTaskGroups,
 		},
 		comparators: []taskPriorityCmp{
