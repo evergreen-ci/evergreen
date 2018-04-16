@@ -147,7 +147,7 @@ task_groups:
 	}
 	comparator := &CmpBasedTaskComparator{}
 	comparator.tasks = tasks
-	cacheTaskGroups(comparator)
+	assert.NoError(cacheTaskGroups(comparator))
 	for i, v := range versions {
 		if i%2 == 0 {
 			assert.Equal("even_task_group", comparator.projects[v.Id].TaskGroups[0].Name)
