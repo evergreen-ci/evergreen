@@ -215,8 +215,22 @@ func (e *envState) initClientConfig() (err error) {
 }
 
 type bbProject struct {
-	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
-	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
+	TicketCreateProject  string   `mapstructure:"ticket_create_project"`
+	TicketSearchProjects []string `mapstructure:"ticket_search_projects"`
+
+	AlternativeEndpointURL struct {
+		Scheme string `mapstructure:"scheme" bson:"scheme"`
+		Host   string `mapstructure:"host" bson:"host"`
+		Path   string `mapstructure:"path" bson:"path"`
+	} `mapstructure:"alt_endpoint_url" bson:"alt_endpoint_url"`
+
+	AlternativeEndpointCredentials struct {
+		Username string `mapstructure:"username" bson:"username"`
+		Password string `mapstructure:"password" bson:"password"`
+	} `mapstructure:"alt_endpoint_auth" bson:"alt_endpoint_auth"`
+
+	AlternativeEndpointTimeoutSecs int  `mapstructure:"alt_endpoint_timeout_secs" bson:"alt_endpoint_timeout_secs"`
+	AlternativeEndpointEnabled     bool `mapstructure:"alt_endpoint_enabled" bson:"alt_endpoint_enabled"`
 }
 
 func (e *envState) persistSettings() error {
