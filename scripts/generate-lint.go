@@ -15,7 +15,7 @@ import (
 
 const (
 	lintPrefix        = "lint"
-	lintVariant       = "race-detector"
+	lintVariant       = "ubuntu1604"
 	lintGroup         = "lint-group"
 	groupMaxHosts     = 1
 	evergreenLintTask = "evergreen"
