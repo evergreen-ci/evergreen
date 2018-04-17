@@ -224,6 +224,7 @@ func (e *envState) initClientConfig() (err error) {
 }
 
 func (e *envState) initSenders() (err error) {
+	e.senders = map[SenderKey]send.Sender{}
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
 	}
