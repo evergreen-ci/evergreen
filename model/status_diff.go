@@ -76,14 +76,21 @@ func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 	// NOTE: this implicitly skips all tasks not present in the patch
 	for _, task := range patch.Tasks {
 		baseTask := originalTasks[task.DisplayName]
-		diff.Tasks = append(diff.Tasks,
-			TaskStatusDiff{
-				Name:         task.DisplayName,
-				Diff:         StatusDetailsDiff{baseTask.StatusDetails, task.StatusDetails},
-				Original:     baseTask.Id,
-				Patch:        task.Id,
-				BuildVariant: diff.Name,
-			})
+		newDiff := TaskStatusDiff{
+			Name:         task.DisplayName,
+			Diff:         StatusDetailsDiff{Original: baseTask.StatusDetails, Patch: task.StatusDetails},
+			Original:     baseTask.Id,
+			Patch:        task.Id,
+			BuildVariant: diff.Name,
+		}
+		// handle if the status details do not contain a status, such as in display tasks
+		if newDiff.Diff.Original.Status == "" {
+			newDiff.Diff.Original.Status = baseTask.Status
+		}
+		if newDiff.Diff.Patch.Status == "" {
+			newDiff.Diff.Patch.Status = task.Status
+		}
+		diff.Tasks = append(diff.Tasks, newDiff)
 	}
 	return diff
 }
