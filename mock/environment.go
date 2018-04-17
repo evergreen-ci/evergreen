@@ -12,6 +12,7 @@ import (
 	"github.com/mongodb/amboy/queue"
 	"github.com/mongodb/anser/db"
 	anserMock "github.com/mongodb/anser/mock"
+	"github.com/mongodb/grip/send"
 )
 
 // this is just a hack to ensure that compile breaks clearly if the
@@ -25,6 +26,8 @@ type Environment struct {
 	DBSession         *anserMock.Session
 	EvergreenSettings *evergreen.Settings
 	mu                sync.RWMutex
+
+	InternalSender *send.InternalSender
 }
 
 func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.DBSettings) error {
@@ -48,6 +51,8 @@ func (e *Environment) Configure(ctx context.Context, path string, db *evergreen.
 	e.Local = queue.NewLocalUnordered(2)
 
 	edb.SetGlobalSessionProvider(e.EvergreenSettings.SessionFactory())
+
+	e.InternalSender = send.MakeInternalLogger()
 
 	return nil
 }
@@ -87,4 +92,8 @@ func (e *Environment) ClientConfig() *evergreen.ClientConfig {
 			},
 		},
 	}
+}
+
+func (e *Environment) GetSender(key evergreen.SenderKey) (send.Sender, error) {
+	return e.InternalSender, nil
 }

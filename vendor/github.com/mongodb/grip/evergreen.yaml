@@ -8,20 +8,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
-        params:
-          directory: gopath/src/github.com/mongodb/grip
-      - func: run-make
-        vars: { target: "${task_name}" }
-
-  - &run-go-test-suite
-    # runs a make target and then uploads gotest output to
-    # evergreen. The test name should correspond to a make target for
-    # that suite
-    name: test
-    depends_on:
-      - name: build
-    commands:
-      - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/mongodb/grip
       - func: run-make
@@ -34,6 +21,7 @@ variables:
 functions:
   run-make:
     command: shell.exec
+    type: test
     params:
        script: |
          set -o errexit
@@ -59,6 +47,7 @@ functions:
 #######################################
 post:
   - command: gotest.parse_files
+    type: setup
     params:
       files:
         - "gopath/src/github.com/mongodb/grip/build/output.*"
@@ -94,6 +83,7 @@ tasks:
     tags: ["report"]
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/mongodb/grip
       - func: run-make
@@ -103,6 +93,7 @@ tasks:
     tags: [ "report" ]
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/mongodb/grip
       - func: run-make
@@ -126,7 +117,6 @@ buildvariants:
     display_name: Race Detector (Arch Linux)
     run_on:
       - archlinux-test
-      - archlinux-build
     tasks: [ ".race", ".report" ]
 
   - name: ubuntu1604
@@ -149,8 +139,6 @@ buildvariants:
     display_name: Windows
     run_on:
       - windows-64-vs2015-small
-      - windows-64-vs2013-test
-      - windows-64-vs2010-test
     expansions:
       build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes"
     tasks: [ ".test" ]

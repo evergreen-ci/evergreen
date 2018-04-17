@@ -98,4 +98,5 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testSettings.Plugins = integrationSettings.Plugins
 	testSettings.Jira = integrationSettings.Jira
 	testSettings.GithubPRCreatorOrg = integrationSettings.GithubPRCreatorOrg
+	testSettings.Slack = integrationSettings.Slack
 }

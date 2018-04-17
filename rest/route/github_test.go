@@ -3,9 +3,6 @@ package route
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -17,10 +14,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/google/go-github/github"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/grip"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -153,17 +150,10 @@ func makeRequest(uid string, body, secret []byte) (*http.Request, error) {
 		return nil, err
 	}
 
-	// from genMAC in google/go-github/github/messages.go
-	mac := hmac.New(sha256.New, secret)
-	n, err := mac.Write(body)
-	if n != len(body) {
-		return nil, errors.Errorf("Body length expected to be %d, but was %d", len(body), n)
-	}
-
+	signature, err := util.CalculateHMACHash(secret, body)
 	if err != nil {
 		return nil, err
 	}
-	signature := "sha256=" + hex.EncodeToString(mac.Sum(nil))
 
 	req.Header.Add("Content-type", "application/json")
 	req.Header.Add("X-Github-Event", "pull_request")

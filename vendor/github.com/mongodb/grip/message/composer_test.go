@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -45,6 +44,24 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		When(true, testMsg):                                                    testMsg,
 		Whenf(true, testMsg):                                                   testMsg,
 		Whenln(true, testMsg):                                                  testMsg,
+		NewEmailMessage(level.Error, Email{
+			Recipients: []string{"someone@example.com"},
+			Subject:    "Test msg",
+			Body:       testMsg,
+		}): fmt.Sprintf("To: someone@example.com; Body: %s", testMsg),
+		NewGithubStatusMessage(level.Error, "tests", GithubStateError, "https://example.com", testMsg): fmt.Sprintf("tests error: %s (https://example.com)", testMsg),
+		NewGithubStatusMessageWithRepo(level.Error, GithubStatus{
+			Owner: "mongodb",
+			Repo:  "grip",
+			Ref:   "master",
+
+			Context:     "tests",
+			State:       GithubStateError,
+			URL:         "https://example.com",
+			Description: testMsg,
+		}): fmt.Sprintf("mongodb/grip@master tests error: %s (https://example.com)", testMsg),
+		NewJIRACommentMessage(level.Error, "ABC-123", testMsg): testMsg,
+		NewSlackMessage(level.Error, "@someone", testMsg, nil): fmt.Sprintf("@someone: %s", testMsg),
 	}
 
 	for msg, output := range cases {
@@ -71,6 +88,8 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		// check message annotation functionality
 		switch msg.(type) {
 		case *GroupComposer:
+			continue
+		case *slackMessage:
 			continue
 		default:
 			assert.NoError(msg.Annotate("k1", "foo"), "%T", msg)
@@ -106,6 +125,11 @@ func TestUnpopulatedMessageComposers(t *testing.T) {
 		When(false, ""),
 		Whenf(false, "", ""),
 		Whenln(false, "", ""),
+		NewEmailMessage(level.Error, Email{}),
+		NewGithubStatusMessage(level.Error, "", GithubState(""), "", ""),
+		NewGithubStatusMessageWithRepo(level.Error, GithubStatus{}),
+		NewJIRACommentMessage(level.Error, "", ""),
+		NewSlackMessage(level.Error, "", "", nil),
 	}
 
 	for idx, msg := range cases {
@@ -155,10 +179,6 @@ func TestDataCollecterComposerConstructors(t *testing.T) {
 func TestStackMessages(t *testing.T) {
 	const testMsg = "hello"
 	var stackMsg = "message/composer_test"
-
-	if runtime.GOOS == "windows" {
-		stackMsg = strings.Replace(stackMsg, "/", "\\", 1)
-	}
 
 	assert := assert.New(t) // nolint
 	// map objects to output (prefix)

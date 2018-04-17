@@ -3,6 +3,7 @@ package send
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/go-github/github"
 )
@@ -10,6 +11,8 @@ import (
 type githubClientMock struct {
 	failSend bool
 	numSent  int
+
+	lastRepo string
 }
 
 func (g *githubClientMock) Init(_ context.Context, _ string) {}
@@ -28,5 +31,15 @@ func (g *githubClientMock) CreateComment(_ context.Context, _ string, _ string, 
 	}
 
 	g.numSent++
+	return nil, nil, nil
+}
+
+func (g *githubClientMock) CreateStatus(_ context.Context, repo, owner, ref string, _ *github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
+	if g.failSend {
+		return nil, nil, errors.New("failed to create status")
+	}
+
+	g.numSent++
+	g.lastRepo = fmt.Sprintf("%s/%s@%s", repo, owner, ref)
 	return nil, nil, nil
 }

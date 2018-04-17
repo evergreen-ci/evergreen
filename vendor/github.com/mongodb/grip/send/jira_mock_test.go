@@ -12,6 +12,8 @@ type jiraClientMock struct {
 	failAuth   bool
 	failSend   bool
 	numSent    int
+
+	lastIssue string
 }
 
 func (j *jiraClientMock) CreateClient(_ *http.Client, _ string) error {
@@ -44,6 +46,7 @@ func (j *jiraClientMock) PostComment(issueID string, comment string) error {
 	}
 
 	j.numSent++
+	j.lastIssue = issueID
 
 	return nil
 }

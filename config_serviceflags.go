@@ -18,8 +18,15 @@ type ServiceFlags struct {
 	GithubPRTestingDisabled      bool `bson:"github_pr_testing_disabled" json:"github_pr_testing_disabled"`
 	RepotrackerPushEventDisabled bool `bson:"repotracker_push_event_disabled" json:"repotracker_push_event_disabled"`
 	CLIUpdatesDisabled           bool `bson:"cli_updates_disabled" json:"cli_updates_disabled"`
-	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
 	BackgroundStatsDisabled      bool `bson:"background_stats_disabled" json:"background_stats_disabled"`
+
+	// Notification Flags
+	EventProcessingDisabled      bool `bson:"event_processing_disabled" json:"event_processing_disabled"`
+	JIRANotificationsDisabled    bool `bson:"jira_notifications_disabled" json:"jira_notifications_disabled"`
+	SlackNotificationsDisabled   bool `bson:"slack_notifications_disabled" json:"slack_notifications_disabled"`
+	EmailNotificationsDisabled   bool `bson:"email_notifications_disabled" json:"email_notifications_disabled"`
+	WebhookNotificationsDisabled bool `bson:"webhook_notifications_disabled" json:"webhook_notifications_disabled"`
+	GithubStatusAPIDisabled      bool `bson:"github_status_api_disabled" json:"github_status_api_disabled"`
 }
 
 func (c *ServiceFlags) SectionId() string { return "service_flags" }
@@ -46,8 +53,13 @@ func (c *ServiceFlags) Set() error {
 			githubPRTestingDisabledKey:      c.GithubPRTestingDisabled,
 			repotrackerPushEventDisabledKey: c.RepotrackerPushEventDisabled,
 			cliUpdatesDisabledKey:           c.CLIUpdatesDisabled,
-			githubStatusAPIDisabledKey:      c.GithubStatusAPIDisabled,
 			backgroundStatsDisabledKey:      c.BackgroundStatsDisabled,
+			eventProcessingDisabledKey:      c.EventProcessingDisabled,
+			jiraNotificationsDisabledKey:    c.JIRANotificationsDisabled,
+			slackNotificationsDisabledKey:   c.SlackNotificationsDisabled,
+			emailNotificationsDisabledKey:   c.EmailNotificationsDisabled,
+			webhookNotificationsDisabledKey: c.WebhookNotificationsDisabled,
+			githubStatusAPIDisabledKey:      c.GithubStatusAPIDisabled,
 		},
 	})
 	return errors.Wrapf(err, "error updating section %s", c.SectionId())

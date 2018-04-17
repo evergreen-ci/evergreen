@@ -1,6 +1,8 @@
 package event
 
 import (
+	"fmt"
+
 	"github.com/mongodb/anser/bsonutil"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
@@ -64,9 +66,39 @@ func (s *Subscriber) SetBSON(raw bson.Raw) error {
 	return nil
 }
 
+func (s *Subscriber) String() string {
+	subscriberStr := "NIL_SUBSCRIBER"
+
+	switch v := s.Target.(type) {
+	case GithubPullRequestSubscriber:
+		subscriberStr = v.String()
+	case *GithubPullRequestSubscriber:
+		subscriberStr = v.String()
+
+	case WebhookSubscriber:
+		subscriberStr = v.String()
+	case *WebhookSubscriber:
+		subscriberStr = v.String()
+
+	case string:
+		subscriberStr = v
+	case *string:
+		subscriberStr = *v
+	}
+
+	return fmt.Sprintf("%s-%s", s.Type, subscriberStr)
+}
+
 type WebhookSubscriber struct {
 	URL    string `bson:"url"`
 	Secret []byte `bson:"secret"`
+}
+
+func (s *WebhookSubscriber) String() string {
+	if len(s.URL) == 0 {
+		return "NIL_URL"
+	}
+	return s.URL
 }
 
 type GithubPullRequestSubscriber struct {
@@ -74,4 +106,8 @@ type GithubPullRequestSubscriber struct {
 	Repo     string `bson:"repo"`
 	PRNumber int    `bson:"pr_number"`
 	Ref      string `bson:"ref"`
+}
+
+func (s *GithubPullRequestSubscriber) String() string {
+	return fmt.Sprintf("%s-%s-%d-%s", s.Owner, s.Repo, s.PRNumber, s.Ref)
 }

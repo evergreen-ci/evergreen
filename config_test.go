@@ -2,6 +2,7 @@ package evergreen
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
@@ -163,19 +164,14 @@ func (s *AdminSuite) TestBaseConfig() {
 }
 
 func (s *AdminSuite) TestServiceFlags() {
-	testFlags := ServiceFlags{
-		TaskDispatchDisabled:         true,
-		HostinitDisabled:             true,
-		MonitorDisabled:              true,
-		AlertsDisabled:               true,
-		TaskrunnerDisabled:           true,
-		RepotrackerDisabled:          true,
-		SchedulerDisabled:            true,
-		GithubPRTestingDisabled:      true,
-		RepotrackerPushEventDisabled: true,
-		CLIUpdatesDisabled:           true,
-		GithubStatusAPIDisabled:      true,
-	}
+	testFlags := ServiceFlags{}
+	s.NotPanics(func() {
+		v := reflect.ValueOf(&testFlags).Elem()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			f.SetBool(true)
+		}
+	}, "error setting all fields to true")
 
 	err := testFlags.Set()
 	s.NoError(err)
@@ -183,6 +179,15 @@ func (s *AdminSuite) TestServiceFlags() {
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(testFlags, settings.ServiceFlags)
+
+	s.NotPanics(func() {
+		t := reflect.TypeOf(&settings.ServiceFlags).Elem()
+		v := reflect.ValueOf(&settings.ServiceFlags).Elem()
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			s.True(f.Bool(), "all fields should be true, but '%s' was false", t.Field(i).Name)
+		}
+	})
 }
 
 func (s *AdminSuite) TestAlertsConfig() {

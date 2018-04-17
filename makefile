@@ -63,7 +63,7 @@ lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
-lintArgs += --exclude="should check returned error before deferring .* (SA5001) (megacheck)$$"
+lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
 lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
@@ -232,6 +232,7 @@ lint-%:$(buildDir)/output.%.lint
 # start vendoring configuration
 vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/mgo.v2/
