@@ -322,13 +322,12 @@ func (e *envState) initSenders() error {
 	}
 	e.senders[SenderEvergreenWebhook] = sender
 
+	catcher := grip.NewBasicCatcher()
 	for _, s := range e.senders {
-		if err = s.SetLevel(levelInfo); err != nil {
-			return errors.Wrap(err, "failed to sender level")
-		}
+		catcher.Add(s.SetLevel(levelInfo))
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 type bbProject struct {
