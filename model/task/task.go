@@ -39,7 +39,7 @@ type Task struct {
 	// scheduled - the time the commit is scheduled
 	// start - the time the agent starts the task on the host after spinning it up
 	// finish - the time the task was completed on the remote host
-	CreateTime    time.Time `bson:"create_time" json:"create_time"`
+	CreateTime    time.Time `bson:"crate_time" json:"create_time"`
 	IngestTime    time.Time `bson:"injest_time" json:"ingest_time"`
 	DispatchTime  time.Time `bson:"dispatch_time" json:"dispatch_time"`
 	ScheduledTime time.Time `bson:"scheduled_time" json:"scheduled_time"`
@@ -1279,6 +1279,17 @@ func FindRunnable(distroID string) ([]Task, error) {
 		},
 	}
 
+	filterPatchingDisabledProjects := bson.M{
+		"$match": bson.M{"$or": []bson.M{
+			{
+				RequesterKey: bson.M{"$nin": evergreen.PatchRequesters},
+			},
+			{
+				"project_ref.0." + "patching_disabled": false,
+			},
+		}},
+	}
+
 	removeProjectRef := bson.M{
 		"$project": bson.M{
 			"project_ref": 0,
@@ -1294,6 +1305,7 @@ func FindRunnable(distroID string) ([]Task, error) {
 		replaceRoot,
 		joinProjectRef,
 		filterDisabledProejcts,
+		filterPatchingDisabledProjects,
 		removeProjectRef,
 	}
 

@@ -3,8 +3,10 @@ package scheduler
 import (
 	"sync"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -65,6 +67,17 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    task.Id,
+				"project": task.Project,
+			})
+			continue
+		}
+
+		if util.StringSliceContains(evergreen.PatchRequesters, task.Requester) && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"task":    task.Id,
 				"project": task.Project,
@@ -150,6 +163,17 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if util.StringSliceContains(evergreen.PatchRequesters, t.Requester) && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,
@@ -244,6 +268,17 @@ func ParallelTaskFinder(distroID string) ([]task.Task, error) {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "project disabled",
+				"outcome": "skipping",
+				"task":    t.Id,
+				"project": t.Project,
+			})
+			continue
+		}
+
+		if util.StringSliceContains(evergreen.PatchRequesters, t.Requester) && ref.PatchingDisabled {
+			grip.Notice(message.Fields{
+				"runner":  RunnerName,
+				"message": "patch testing disabled",
 				"outcome": "skipping",
 				"task":    t.Id,
 				"project": t.Project,
