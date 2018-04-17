@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/recovery"
 )
 
 // StatsCollector samples machine statistics and logs them
@@ -60,6 +61,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()
+		defer recovery.LogStackTraceAndContinue("encountered issue in stats collector")
 
 		output := subprocess.OutputOptions{
 			Output: sc.logger.SystemWriter(level.Info),
