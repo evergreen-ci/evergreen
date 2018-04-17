@@ -264,7 +264,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Identifier = id
 	projectRef.TracksPushEvents = responseRef.TracksPushEvents
 	projectRef.PRTestingEnabled = responseRef.PRTestingEnabled
-	projectRef.PatchingDisableed = responseRef.PatchingDisabled
+	projectRef.PatchingDisabled = responseRef.PatchingDisabled
 
 	projectRef.Alerts = map[string][]model.AlertConfig{}
 	for triggerId, alerts := range responseRef.AlertConfig {
