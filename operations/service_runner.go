@@ -147,6 +147,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 		sysStatsInterval        = 15 * time.Second
 	)
 
+	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),

@@ -5,7 +5,7 @@ nodeDir := public
 packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += thirdparty alerts auth scheduler model validator service monitor repotracker
-packages += model-alert model-alertrecord model-artifact model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-patch model-testresult model-version
+packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
 packages += rest-client rest-data rest-route rest-model migrations spawn
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
@@ -63,7 +63,7 @@ lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
-lintArgs += --exclude="should check returned error before deferring .* (SA5001) (megacheck)$$"
+lintArgs += --exclude=".* \(SA5001\) \(megacheck\)$$"
 lintArgs += --exclude="declaration of \"assert\" shadows declaration at .*_test.go:"
 lintArgs += --exclude="declaration of \"require\" shadows declaration at .*_test.go:"
 lintArgs += --linter="evg:$(gopath)/bin/evg-lint:PATH:LINE:COL:MESSAGE" --enable=evg
@@ -153,6 +153,14 @@ $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	go build -o $@ $<
 # end lint setup targets
 
+# generate lint JSON document for evergreen
+generate-lint:$(buildDir)/generate-lint.json
+$(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
+	./$(buildDir)/generate-lint
+$(buildDir)/generate-lint:scripts/generate-lint.go
+	go build -o $@ $<
+# end generate lint
+
 # npm setup
 $(buildDir)/.npmSetup:
 	@mkdir -p $(buildDir)
@@ -224,6 +232,7 @@ lint-%:$(buildDir)/output.%.lint
 # start vendoring configuration
 vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/stretchr/testify/
+	rm -rf vendor/github.com/mongodb/grip/vendor/github.com/google/go-github/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/sys/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/gopkg.in/mgo.v2/

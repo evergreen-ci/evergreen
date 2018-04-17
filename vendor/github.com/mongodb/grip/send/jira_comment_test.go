@@ -109,3 +109,18 @@ func (j *JiraCommentSuite) TestCreateMethodChangesClientState() {
 	j.NoError(new.CreateClient(nil, "foo"))
 	j.NotEqual(base, new)
 }
+
+func (j *JiraCommentSuite) TestSendWithJiraIssueComposer() {
+	c := message.NewJIRACommentMessage(level.Notice, "ABC-123", "Hi")
+
+	sender, err := NewJiraCommentLogger("XYZ-123", j.opts, LevelInfo{level.Trace, level.Info})
+	j.NoError(err)
+	j.Require().NotNil(sender)
+
+	sender.Send(c)
+
+	mock, ok := j.opts.client.(*jiraClientMock)
+	j.True(ok)
+	j.Equal(1, mock.numSent)
+	j.Equal("ABC-123", mock.lastIssue)
+}

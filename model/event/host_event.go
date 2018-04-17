@@ -11,6 +11,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func init() {
+	registry.AddType(ResourceTypeHost, hostEventFactory)
+}
+
 const (
 	// resource type
 	ResourceTypeHost = "HOST"

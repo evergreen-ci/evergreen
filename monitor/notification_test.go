@@ -122,7 +122,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
 func TestWarnSlowProvisioningHosts(t *testing.T) {
 
-	testConfig := testutil.TestConfig()
+	testConfig := testutil.TestConfigWithDefaultAuthTokens()
 
 	db.SetGlobalSessionProvider(testConfig.SessionFactory())
 

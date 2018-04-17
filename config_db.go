@@ -60,8 +60,13 @@ var (
 	githubPRTestingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubPRTestingDisabled")
 	repotrackerPushEventDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerPushEventDisabled")
 	cliUpdatesDisabledKey           = bsonutil.MustHaveTag(ServiceFlags{}, "CLIUpdatesDisabled")
-	githubStatusAPIDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 	backgroundStatsDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "BackgroundStatsDisabled")
+	eventProcessingDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "EventProcessingDisabled")
+	jiraNotificationsDisabledKey    = bsonutil.MustHaveTag(ServiceFlags{}, "JIRANotificationsDisabled")
+	slackNotificationsDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "SlackNotificationsDisabled")
+	emailNotificationsDisabledKey   = bsonutil.MustHaveTag(ServiceFlags{}, "EmailNotificationsDisabled")
+	webhookNotificationsDisabledKey = bsonutil.MustHaveTag(ServiceFlags{}, "WebhookNotificationsDisabled")
+	githubStatusAPIDisabledKey      = bsonutil.MustHaveTag(ServiceFlags{}, "GithubStatusAPIDisabled")
 )
 
 func byId(id string) bson.M {
