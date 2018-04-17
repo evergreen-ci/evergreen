@@ -83,7 +83,6 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 
 func CountUnprocessedEvents() (int, error) {
 	q := db.Query(UnprocessedEvents())
-	q.Limit(100000)
 
 	n, err := db.CountQ(AllLogCollection, q)
 	if err != nil {
