@@ -21,7 +21,7 @@ tasks:
     commands:
       - command: timeout.update
         params:
-          timeout_secs: 2
+          timeout_secs: ${my_new_timeout}
       - func: "task"
         timeout_secs: 30
 
