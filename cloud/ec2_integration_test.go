@@ -22,8 +22,8 @@ const (
 	stopped  = 80
 )
 
-func fetchTestDistro() *distro.Distro {
-	return &distro.Distro{
+func fetchTestDistro() distro.Distro {
+	return distro.Distro{
 		Id:       "test_distro",
 		Arch:     "linux_amd64",
 		WorkDir:  "/data/mci",
@@ -78,7 +78,7 @@ func TestSpawnEC2InstanceOnDemand(t *testing.T) {
 
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2OnDemand
-	h := NewIntent(*d, m.GetInstanceName(d), d.Provider, HostOptions{
+	h := NewIntent(d, d.GenerateName(), d.Provider, HostOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})
@@ -145,7 +145,7 @@ func TestSpawnEC2InstanceSpot(t *testing.T) {
 	require.NoError(m.client.Create(m.credentials))
 	d := fetchTestDistro()
 	d.Provider = evergreen.ProviderNameEc2Spot
-	h := NewIntent(*d, m.GetInstanceName(d), d.Provider, HostOptions{
+	h := NewIntent(d, d.GenerateName(), d.Provider, HostOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	})

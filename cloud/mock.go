@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -167,14 +166,6 @@ func (_ *mockManager) GetSettings() ProviderSettings {
 
 func (_ *mockManager) Validate() error {
 	return nil
-}
-
-func (mockMgr *mockManager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
-func (*mockManager) GetInstanceName(d *distro.Distro) string {
-	return d.GenerateName()
 }
 
 // terminate an instance

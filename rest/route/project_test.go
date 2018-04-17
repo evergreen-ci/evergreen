@@ -1,7 +1,9 @@
 package route
 
 import (
+	"bytes"
 	"context"
+	"net/http"
 	"testing"
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -79,8 +81,8 @@ func (s *ProjectGetSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NoError(err)
 	s.NotNil(rd)
 	s.Len(rd.Result, 2)
-	s.Equal(model.APIString("projectC"), (rd.Result[0]).(*model.APIProject).Identifier)
-	s.Equal(model.APIString("projectD"), (rd.Result[1]).(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("projectC"), (rd.Result[0]).(*model.APIProject).Identifier)
+	s.Equal(model.ToAPIString("projectD"), (rd.Result[1]).(*model.APIProject).Identifier)
 
 	metadata, ok := rd.Metadata.(*PaginationMetadata)
 	s.True(ok)
@@ -132,4 +134,25 @@ func executeProjectRequest(key string, limit int, sc *data.MockConnector) (Respo
 	pe.limit = limit
 
 	return pe.Execute(context.TODO(), sc)
+}
+
+func (s *ProjectGetSuite) TestGetRecentVersions() {
+	routeManager := getRecentVersionsManager("/projects/projectA/recent_versions", 2)
+	getVersions := routeManager.Methods[0]
+	ctx := context.Background()
+
+	// valid request with defaults
+	request, err := http.NewRequest("GET", "/projects/projectA/recent_versions", bytes.NewReader(nil))
+	s.NoError(err)
+	s.NoError(getVersions.ParseAndValidate(ctx, request))
+
+	// invalid limit
+	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?limit=asdf", bytes.NewReader(nil))
+	s.NoError(err)
+	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid limit")
+
+	// invalid offset
+	request, err = http.NewRequest("GET", "/projects/projectA/recent_versions?offset=idk", bytes.NewReader(nil))
+	s.NoError(err)
+	s.EqualError(getVersions.ParseAndValidate(ctx, request), "Invalid offset")
 }

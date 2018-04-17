@@ -5,7 +5,6 @@ package cloud
 import (
 	"context"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 type GCESuite struct {
 	client   gceClient
 	manager  *gceManager
-	distro   *distro.Distro
+	distro   distro.Distro
 	hostOpts HostOptions
 	suite.Suite
 }
@@ -42,7 +41,7 @@ func (s *GCESuite) SetupTest() {
 	s.manager = &gceManager{
 		client: s.client,
 	}
-	s.distro = &distro.Distro{
+	s.distro = distro.Distro{
 		Id:       "host",
 		Provider: "gce",
 		ProviderSettings: &map[string]interface{}{
@@ -217,14 +216,14 @@ func (s *GCESuite) TestTerminateInstanceAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	hostA := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostA, err := s.manager.SpawnHost(ctx, hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
 	_, err = hostA.Upsert()
 	s.NoError(err)
 
-	hostB := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostB, err = s.manager.SpawnHost(ctx, hostB)
 	s.NotNil(hostB)
 	s.NoError(err)
@@ -246,7 +245,7 @@ func (s *GCESuite) TestTerminateInstanceDB() {
 	defer cancel()
 
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	myHost, err := s.manager.SpawnHost(ctx, myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
@@ -329,25 +328,25 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 	defer cancel()
 
 	var err error
-	dProviderName := &distro.Distro{Provider: "ec2"}
-	h := NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	dProviderName := distro.Distro{Provider: "ec2"}
+	h := NewIntent(dProviderName, dProviderName.GenerateName(), dProviderName.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
 	s.Nil(h)
 
-	dSettingsNone := &distro.Distro{Provider: "gce"}
-	h = NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	dSettingsNone := distro.Distro{Provider: "gce"}
+	h = NewIntent(dSettingsNone, dSettingsNone.GenerateName(), dSettingsNone.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Nil(h)
 	s.Error(err)
 
-	dSettingsInvalid := &distro.Distro{
+	dSettingsInvalid := distro.Distro{
 		Provider:         "gce",
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
-	h = NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	h = NewIntent(dSettingsInvalid, dSettingsInvalid.GenerateName(), dSettingsInvalid.Provider, s.hostOpts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
@@ -360,19 +359,19 @@ func (s *GCESuite) TestSpawnDuplicateHostID() {
 
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostOne, err := s.manager.SpawnHost(ctx, hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo := NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo := NewIntent(s.distro, s.distro.GenerateName(), s.distro.Provider, s.hostOpts)
 	hostTwo, err = s.manager.SpawnHost(ctx, hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
 }
 
 func (s *GCESuite) TestSpawnAPICall() {
-	dist := &distro.Distro{
+	dist := distro.Distro{
 		Id:       "id",
 		Provider: "gce",
 		ProviderSettings: &map[string]interface{}{
@@ -391,13 +390,13 @@ func (s *GCESuite) TestSpawnAPICall() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	h := NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	h := NewIntent(dist, dist.GenerateName(), dist.Provider, opts)
 	h, err := s.manager.SpawnHost(ctx, h)
 	s.NoError(err)
 	s.NotNil(h)
 
 	mock.failCreate = true
-	h = NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	h = NewIntent(dist, dist.GenerateName(), dist.Provider, opts)
 	s.NotNil(h)
 	h, err = s.manager.SpawnHost(ctx, h)
 	s.Error(err)
@@ -431,25 +430,6 @@ func (s *GCESuite) TestUtilSSHKeyFormatters() {
 		sshKey{Username: "user2", PublicKey: "key2"},
 	}
 	s.Equal("user:key\nuser1:key1\nuser2:key2", keys.String())
-}
-
-func (s *GCESuite) TestUtilGenerateName() {
-	r, _ := regexp.Compile("(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)")
-	d := &distro.Distro{Id: "name"}
-
-	nameA := generateName(d)
-	nameB := generateName(d)
-	s.True(r.Match([]byte(nameA)))
-	s.True(r.Match([]byte(nameB)))
-	s.NotEqual(nameA, nameB)
-
-	d.Id = "!nv@lid N@m3*"
-	invalidChars := generateName(d)
-	s.True(r.Match([]byte(invalidChars)))
-
-	d.Id = strings.Repeat("abc", 10)
-	tooManyChars := generateName(d)
-	s.True(r.Match([]byte(tooManyChars)))
 }
 
 func (s *GCESuite) TestUtilMakeLabels() {

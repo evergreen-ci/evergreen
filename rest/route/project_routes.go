@@ -3,11 +3,14 @@ package route
 import (
 	"context"
 	"net/http"
+	"strconv"
 
+	dbModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -112,7 +115,7 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 		}
 
 		// now set the vars field
-		vars, err := sc.FindProjectVars(string(projectModel.Identifier))
+		vars, err := sc.FindProjectVars(model.FromAPIString(projectModel.Identifier))
 		if err != nil {
 			return []model.Model{}, nil, &rest.APIError{
 				Message:    "problem fetching project vars",
@@ -127,4 +130,83 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 	}
 
 	return models, pages, nil
+}
+
+type versionsGetHandler struct {
+	project string
+	limit   int
+	offset  int
+}
+
+func getRecentVersionsManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			{
+				Authenticator:  &NoAuthAuthenticator{},
+				RequestHandler: &versionsGetHandler{},
+				MethodType:     http.MethodGet,
+			},
+		},
+		Version: version,
+	}
+}
+
+func (h *versionsGetHandler) Handler() RequestHandler {
+	return &versionsGetHandler{}
+}
+
+func (h *versionsGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	var err error
+	vars := mux.Vars(r)
+	h.project = vars["project_id"]
+	limit := r.URL.Query().Get("limit")
+	if limit != "" {
+		h.limit, err = strconv.Atoi(limit)
+		if err != nil {
+			return rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Invalid limit",
+			}
+		}
+	} else {
+		h.limit = 10
+	}
+	offset := r.URL.Query().Get("offset")
+	if offset != "" {
+		h.offset, err = strconv.Atoi(offset)
+		if err != nil {
+			return rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Invalid offset",
+			}
+		}
+	} else {
+		h.offset = 0
+	}
+	return nil
+}
+
+func (h *versionsGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	projRef, err := dbModel.FindOneProjectRef(h.project)
+	if err != nil {
+		return ResponseData{}, rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Project not found",
+		}
+	}
+	proj, err := dbModel.FindProject("", projRef)
+	if err != nil {
+		return ResponseData{}, rest.APIError{
+			StatusCode: http.StatusBadRequest,
+			Message:    "Project not found",
+		}
+	}
+	versions, err := sc.GetVersionsAndVariants(h.offset, h.limit, proj)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Error retrieving versions")
+	}
+	return ResponseData{
+		Result: []model.Model{versions},
+	}, nil
 }

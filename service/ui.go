@@ -153,6 +153,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 
 	// Performance discovery pages
 	r.HandleFunc("/perfdiscovery/", requireLogin(uis.loadCtx(uis.perfdiscoveryPage))).Methods("GET")
+	r.HandleFunc("/perfdiscovery/{project_id}", requireLogin(uis.loadCtx(uis.perfdiscoveryPage))).Methods("GET")
 
 	// Test Logs
 	r.HandleFunc("/test_log/{task_id}/{task_execution}/{test_name}", uis.loadCtx(uis.testLog))
@@ -173,7 +174,7 @@ func (uis *UIServer) AttachRoutes(r *mux.Router) error {
 	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.hostsPage))).Methods("GET")
 	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.modifyHosts))).Methods("PUT")
 	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.hostPage))).Methods("GET")
-	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.modifyHost))).Methods("PUT")
+	r.HandleFunc("/host/{host_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyHost))).Methods("PUT")
 
 	// Distros
 	r.HandleFunc("/distros", requireLogin(uis.loadCtx(uis.distrosPage))).Methods("GET")

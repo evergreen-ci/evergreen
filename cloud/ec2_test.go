@@ -418,12 +418,6 @@ func (s *EC2Suite) TestSpawnHostVPCSpot() {
 	s.Equal(base64OfSomeUserData, *requestInput.LaunchSpecification.UserData)
 }
 
-func (s *EC2Suite) TestCanSpawn() {
-	can, err := s.onDemandManager.CanSpawn()
-	s.True(can)
-	s.NoError(err)
-}
-
 func (s *EC2Suite) TestGetInstanceStatus() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -523,7 +517,8 @@ func (s *EC2Suite) TestTimeTilNextPaymentWindows() {
 }
 
 func (s *EC2Suite) TestGetInstanceName() {
-	id := s.onDemandManager.GetInstanceName(&distro.Distro{Id: "foo"})
+	d := distro.Distro{Id: "foo"}
+	id := d.GenerateName()
 	s.True(strings.HasPrefix(id, "evg-foo-"))
 }
 

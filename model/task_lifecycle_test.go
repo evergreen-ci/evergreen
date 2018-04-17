@@ -43,6 +43,7 @@ func TestSetActiveState(t *testing.T) {
 			ScheduledTime: testTime,
 			Activated:     false,
 			BuildId:       b.Id,
+			DistroId:      "arch",
 		}
 		b.Tasks = []build.TaskCache{{Id: testTask.Id}}
 
@@ -138,16 +139,19 @@ func TestSetActiveState(t *testing.T) {
 		testTime := time.Now()
 		taskId := "t1"
 		buildId := "b1"
+		distroId := "d1"
 
 		dep1 := &task.Task{
 			Id:            "t2",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
+			DistroId:      distroId,
 		}
 		dep2 := &task.Task{
 			Id:            "t3",
 			ScheduledTime: testTime,
 			BuildId:       buildId,
+			DistroId:      distroId,
 		}
 		So(dep1.Insert(), ShouldBeNil)
 		So(dep2.Insert(), ShouldBeNil)
@@ -156,6 +160,7 @@ func TestSetActiveState(t *testing.T) {
 			Id:          taskId,
 			DisplayName: displayName,
 			Activated:   false,
+			DistroId:    "arch",
 			BuildId:     buildId,
 			DependsOn: []task.Dependency{
 				{
@@ -175,6 +180,7 @@ func TestSetActiveState(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
+		So(testTask.DistroId, ShouldNotEqual, "")
 
 		Convey("activating the task should activate the tasks it depends on", func() {
 			So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
@@ -192,6 +198,7 @@ func TestSetActiveState(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(depTask.Activated, ShouldBeTrue)
 			})
+
 		})
 	})
 
@@ -210,6 +217,7 @@ func TestSetActiveState(t *testing.T) {
 			Status:         evergreen.TaskUndispatched,
 			DisplayOnly:    true,
 			ExecutionTasks: []string{"execTask"},
+			DistroId:       "arch",
 		}
 		So(dt.Insert(), ShouldBeNil)
 		t1 := &task.Task{
@@ -249,6 +257,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           false,
 			BuildId:             b.Id,
+			DistroId:            "arch",
 		}
 		currentTask := &task.Task{
 			Id:                  "two",
@@ -258,6 +267,7 @@ func TestActivatePreviousTask(t *testing.T) {
 			Priority:            1,
 			Activated:           true,
 			BuildId:             b.Id,
+			DistroId:            "arch",
 		}
 		tc := []build.TaskCache{
 			{
@@ -1442,6 +1452,7 @@ func TestStepback(t *testing.T) {
 	}
 	t1 := &task.Task{
 		Id:                  "t1",
+		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           true,
 		BuildId:             b1.Id,
@@ -1453,6 +1464,7 @@ func TestStepback(t *testing.T) {
 	}
 	t2 := &task.Task{
 		Id:                  "t2",
+		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           false,
 		BuildId:             b2.Id,
@@ -1464,6 +1476,7 @@ func TestStepback(t *testing.T) {
 	}
 	t3 := &task.Task{
 		Id:                  "t3",
+		DistroId:            "test",
 		DisplayName:         "task",
 		Activated:           true,
 		BuildId:             b2.Id,
@@ -1475,6 +1488,7 @@ func TestStepback(t *testing.T) {
 	}
 	dt1 := &task.Task{
 		Id:                  "dt1",
+		DistroId:            "test",
 		DisplayName:         "displayTask",
 		Activated:           true,
 		BuildId:             b1.Id,
@@ -1488,6 +1502,7 @@ func TestStepback(t *testing.T) {
 	}
 	dt2 := &task.Task{
 		Id:                  "dt2",
+		DistroId:            "test",
 		DisplayName:         "displayTask",
 		Activated:           false,
 		BuildId:             b2.Id,
@@ -1501,6 +1516,7 @@ func TestStepback(t *testing.T) {
 	}
 	dt3 := &task.Task{
 		Id:                  "dt3",
+		DistroId:            "test",
 		DisplayName:         "displayTask",
 		Activated:           true,
 		BuildId:             b2.Id,
@@ -1514,6 +1530,7 @@ func TestStepback(t *testing.T) {
 	}
 	et1 := &task.Task{
 		Id:                  "et1",
+		DistroId:            "test",
 		DisplayName:         "execTask",
 		Activated:           true,
 		BuildId:             b1.Id,
@@ -1525,6 +1542,7 @@ func TestStepback(t *testing.T) {
 	}
 	et2 := &task.Task{
 		Id:                  "et2",
+		DistroId:            "test",
 		DisplayName:         "execTask",
 		Activated:           false,
 		BuildId:             b2.Id,
@@ -1536,6 +1554,7 @@ func TestStepback(t *testing.T) {
 	}
 	et3 := &task.Task{
 		Id:                  "et3",
+		DistroId:            "test",
 		DisplayName:         "execTask",
 		Activated:           true,
 		BuildId:             b3.Id,

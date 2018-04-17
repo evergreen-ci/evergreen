@@ -5,11 +5,9 @@ package cloud
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
@@ -87,11 +85,6 @@ func (*dockerManager) GetSettings() ProviderSettings {
 	return &dockerSettings{}
 }
 
-//GetInstanceName returns a name to be used for an instance
-func (*dockerManager) GetInstanceName(_ *distro.Distro) string {
-	return fmt.Sprintf("container-%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-}
-
 // SpawnHost creates and starts a new Docker container
 func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, error) {
 	if h.Distro.Provider != evergreen.ProviderNameDocker {
@@ -122,7 +115,7 @@ func (m *dockerManager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host
 	})
 
 	// Create container
-	if err := m.client.CreateContainer(ctx, h.Id, &h.Distro, settings); err != nil {
+	if err := m.client.CreateContainer(ctx, h.Id, h.Distro, settings); err != nil {
 		err = errors.Wrapf(err, "Failed to create container for host '%s'", settings.HostIP)
 		grip.Error(err)
 		return nil, err
@@ -189,12 +182,6 @@ func (m *dockerManager) GetDNSName(ctx context.Context, h *host.Host) (string, e
 		return "", errors.New("DNS name is empty")
 	}
 	return h.Host, nil
-}
-
-//CanSpawn returns if a given cloud provider supports spawning a new host
-//dynamically. Always returns true for Docker.
-func (m *dockerManager) CanSpawn() (bool, error) {
-	return true, nil
 }
 
 //TerminateInstance destroys a container.

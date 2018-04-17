@@ -393,7 +393,7 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 	t.HostId = hostId
 	t.LastHeartbeat = dispatchTime
 	t.DistroId = distroId
-	return UpdateOne(
+	err := UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
@@ -411,7 +411,29 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 			},
 		},
 	)
+	if err != nil {
+		return errors.Wrapf(err, "error marking task %s as dispatched", t.Id)
+	}
+	if t.IsPartOfDisplay() {
+		//when dispatching an execution task, mark its parent as dispatched
+		if t.DisplayTask != nil && t.DisplayTask.DispatchTime == util.ZeroTime {
+			return t.DisplayTask.MarkAsDispatched("", "", dispatchTime)
+		}
+	}
+	return nil
+}
 
+func (t *Task) SetDistro(distroID string) error {
+	t.DistroId = distroID
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				DistroIdKey: distroID,
+			},
+		})
 }
 
 // MarkAsUndispatched marks that the task has been undispatched from a
@@ -480,10 +502,17 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 // Removes tasks older than the unscheduable threshold (e.g. two
 // weeks) from the scheduler queue.
-func UnscheduleStaleUnderwaterTasks() (int, error) {
+//
+// If you pass an empty string as an argument to this function, this
+// operation will select tasks from all distros.
+func UnscheduleStaleUnderwaterTasks(distroID string) (int, error) {
 	query := scheduleableTasksQuery()
 	query[PriorityKey] = 0
 	query[ActivatedByKey] = ""
+
+	if distroID != "" {
+		query[DistroIdKey] = distroID
+	}
 
 	query["$and"] = []bson.M{
 		{CreateTimeKey: bson.M{"$lte": time.Now().Add(-unschedulableThreshold)}},
@@ -539,9 +568,10 @@ func (t *Task) SetAborted() error {
 func (t *Task) ActivateTask(caller string) error {
 	t.ActivatedBy = caller
 	t.Activated = true
-	return UpdateOne(bson.M{
-		IdKey: t.Id,
-	},
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
 		bson.M{
 			"$set": bson.M{
 				ActivatedKey:   true,
@@ -767,7 +797,7 @@ func (t *Task) Reset() error {
 // Reset sets the task state to be activated, with a new secret,
 // undispatched status and zero time on Start, Scheduled, Dispatch and FinishTime
 func ResetTasks(taskIds []string) error {
-	tasks, err := Find(ByIds(taskIds))
+	tasks, err := FindWithDisplayTasks(ByIds(taskIds))
 	if err != nil {
 		return err
 	}
@@ -1161,15 +1191,28 @@ func MergeTestResultsBulk(tasks []Task, query *db.Q) ([]Task, error) {
 	return out, nil
 }
 
-func FindSchedulable() ([]Task, error) {
-	return Find(db.Query(scheduleableTasksQuery()))
+func FindSchedulable(distroID string) ([]Task, error) {
+	query := scheduleableTasksQuery()
+
+	if distroID == "" {
+		return Find(db.Query(query))
+	}
+
+	query[DistroIdKey] = distroID
+	return Find(db.Query(query))
 }
 
-func FindRunnable() ([]Task, error) {
+func FindRunnable(distroID string) ([]Task, error) {
 	expectedStatuses := []string{evergreen.TaskSucceeded, evergreen.TaskFailed, ""}
 
+	match := scheduleableTasksQuery()
+	if distroID != "" {
+		match[DistroIdKey] = distroID
+
+	}
+
 	matchActivatedUndispatchedTasks := bson.M{
-		"$match": scheduleableTasksQuery(),
+		"$match": match,
 	}
 
 	graphLookupTaskDeps := bson.M{
@@ -1294,4 +1337,34 @@ func (t *Task) GetHistoricRuntime() (time.Duration, error) {
 	}
 
 	return time.Duration(runtimes[0].ExpectedDuration), nil
+}
+
+// TaskStatusCount holds counts for task statuses
+type TaskStatusCount struct {
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
+}
+
+func (tsc *TaskStatusCount) IncrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
+	switch status {
+	case evergreen.TaskSucceeded:
+		tsc.Succeeded++
+	case evergreen.TaskFailed, evergreen.TaskSetupFailed:
+		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
+			tsc.TimedOut++
+		} else {
+			tsc.Failed++
+		}
+	case evergreen.TaskStarted, evergreen.TaskDispatched:
+		tsc.Started++
+	case evergreen.TaskUndispatched:
+		tsc.Undispatched++
+	case evergreen.TaskInactive:
+		tsc.Inactive++
+	}
 }

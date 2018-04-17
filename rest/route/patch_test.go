@@ -56,7 +56,7 @@ func (s *PatchByIdSuite) TestFindById() {
 
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
 	rm := getPatchByIdManager("", 2)
@@ -222,7 +222,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
@@ -231,7 +231,7 @@ func (s *PatchAbortSuite) TestAbort() {
 	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok = (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
+	s.Equal(model.ToAPIString(s.objIds[0].Hex()), p.Id)
 
 	rm = getPatchAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[1].Hex()

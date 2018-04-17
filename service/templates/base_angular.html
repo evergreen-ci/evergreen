@@ -21,20 +21,20 @@
         <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
 
         <!-- underscore.js js v1.4.4 js -->
-        <script type="text/javascript" src="/static/js/underscore-min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/underscore-min.js"></script>
 
         <!-- d3.js v3.5.3 -->
-        <script type="text/javascript" src="/static/js/d3.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/d3.min.js"></script>
 
         <!-- angular.js v1.2.18 js -->
-        <script type="text/javascript" src="/static/js/angular{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-sanitize.min.js"></script>
-        <script type="text/javascript" src="/static/js/angular-aria{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-messages{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-animate{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/angular-material{{if IsProd }}.min{{end}}.js"></script>
-        <script type="text/javascript" src="/static/js/ansi_up.js"></script>
-        <script type="text/javascript" src="/static/js/angular-md5.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-sanitize.min.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-aria{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-messages{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-animate{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-material{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/ansi_up.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/angular-md5.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/filters/filters.common.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/directives/directives.drawer.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/directives/directives.eventlogs.js?hash={{ StaticsMD5 }}"></script>
@@ -48,7 +48,7 @@
         <script type="text/javascript" src="/static/js/directives/directives.events.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/directives/directives.svg.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/directives/directives.confirm.js?hash={{ StaticsMD5 }}"></script>
-        <script type="text/javascript" src="/static/js/md-time-picker.js"></script>
+        <script type="text/javascript" src="/static/thirdparty/md-time-picker.js"></script>
         <script type="text/javascript" src="/static/js/services/location_hash.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/services/rest.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/mci_module.js?hash={{ StaticsMD5 }}"></script>
@@ -57,11 +57,11 @@
         <script type="text/javascript" src="{{Static "js" "notifybox.js"}}?hash={{ StaticsMD5 }}"></script>
 
         <!-- Angular UI-Grid -->
-        <script type="text/javascript" src="/static/js/ui-grid.min.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/thirdparty/ui-grid.min.js?hash={{ StaticsMD5 }}"></script>
         <link href="/static/css/ui-grid.min.css?hash={{ StaticsMD5 }}" rel="stylesheet"/>
 
         <!-- Angular UI-Select -->
-        <script type="text/javascript" src="/static/js/select.min.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/thirdparty/select.min.js?hash={{ StaticsMD5 }}"></script>
         <link href="/static/css/select.min.css?hash={{ StaticsMD5 }}" rel="stylesheet"/>
 
         <style type="text/css">
@@ -90,12 +90,12 @@
 
     <body ng-controller="ProjectController">
         {{template "menu" .}}
-        <script src="/static/js/jquery.js"></script>
-        <script src="/static/js/mongostrap.min.js"></script>
         <script src="/static/js/common.js"></script>
-        <script src="/static/js/moment.min.js"></script>
-        <script src="/static/js/moment-timezone.min.js"></script>
-        <script src="/static/js/moment-timezone-data.js"></script>
+        <script src="/static/thirdparty/jquery.js"></script>
+        <script src="/static/thirdparty/mongostrap.min.js"></script>
+        <script src="/static/thirdparty/moment.min.js"></script>
+        <script src="/static/thirdparty/moment-timezone.min.js"></script>
+        <script src="/static/thirdparty/moment-timezone-data.js"></script>
 
         <!-- our scripts -->
         {{ template "scripts" .}}

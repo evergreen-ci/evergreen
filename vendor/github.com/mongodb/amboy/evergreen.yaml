@@ -18,8 +18,6 @@ variables:
     # evergreen. The test name should correspond to a make target for
     # that suite
     name: test
-    depends_on:
-      - name: build
     commands:
       - command: git.get_project
         type: system
@@ -32,8 +30,6 @@ variables:
     # runs a make target above, but only on systems that have a
     # running mongod started for testing.
     name: test
-    depends_on:
-      - name: build
     commands:
       - command: git.get_project
         type: system

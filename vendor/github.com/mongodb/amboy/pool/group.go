@@ -213,6 +213,7 @@ func groupWorker(ctx context.Context, wg *sync.WaitGroup, name string, work <-ch
 
 			runJob(ctx, unit.j)
 
+			ti.End = time.Now()
 			unit.j.UpdateTimeInfo(ti)
 			unit.q.Complete(ctx, unit.j)
 			ti.End = time.Now()

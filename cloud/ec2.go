@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
@@ -427,11 +426,6 @@ func (m *ec2Manager) SpawnHost(ctx context.Context, h *host.Host) (*host.Host, e
 	return h, nil
 }
 
-// CanSpawn indicates if a host can be spawned.
-func (m *ec2Manager) CanSpawn() (bool, error) {
-	return true, nil
-}
-
 // GetInstanceStatus returns the current status of an EC2 instance.
 func (m *ec2Manager) GetInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {
 	if err := m.client.Create(m.credentials); err != nil {
@@ -706,11 +700,6 @@ func (m *ec2Manager) GetSSHOptions(h *host.Host, keyName string) ([]string, erro
 // TimeTilNextPayment returns how long until the next payment is due for a host.
 func (m *ec2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
-}
-
-// GetInstanceName returns the name of an instance.
-func (m *ec2Manager) GetInstanceName(d *distro.Distro) string {
-	return d.GenerateName()
 }
 
 func (m *ec2Manager) getSpotInstanceStatus(ctx context.Context, h *host.Host) (CloudStatus, error) {

@@ -3,13 +3,9 @@ package scheduler
 import (
 	"context"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -22,7 +18,7 @@ type DeficitBasedHostAllocator struct{}
 // the number of tasks that need to be run for the distro is greater than the number
 // of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
 func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
-	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (map[string]int, error) {
+	hostAllocatorData HostAllocatorData) (map[string]int, error) {
 
 	newHostsNeeded := make(map[string]int)
 
@@ -40,7 +36,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 		}
 
 		newHostsNeeded[distroId] = self.numNewHostsForDistro(ctx,
-			&hostAllocatorData, distro, settings)
+			&hostAllocatorData, distro)
 	}
 
 	return newHostsNeeded, nil
@@ -49,31 +45,9 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(ctx context.Context,
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
 func (self *DeficitBasedHostAllocator) numNewHostsForDistro(ctx context.Context,
-	hostAllocatorData *HostAllocatorData, distro distro.Distro, settings *evergreen.Settings) int {
+	hostAllocatorData *HostAllocatorData, distro distro.Distro) int {
 
-	cloudManager, err := cloud.GetCloudManager(ctx, distro.Provider, settings)
-
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"message":  "could not get cloud provider for distro",
-			"distro":   distro.Id,
-			"provider": distro.Provider,
-			"runner":   RunnerName,
-		}))
-		return 0
-	}
-
-	can, err := cloudManager.CanSpawn()
-	if err != nil {
-		grip.Error(message.WrapError(err, message.Fields{
-			"distro":   distro.Id,
-			"provider": distro.Provider,
-			"runner":   RunnerName,
-			"message":  "could not check if provider is spawnable",
-		}))
-		return 0
-	}
-	if !can {
+	if !distro.IsEphemeral() {
 		return 0
 	}
 

@@ -1,6 +1,6 @@
 {{ define "menu"}}
 <script src="{{Static "js" "menu.js"}}?hash={{ StaticsMD5 }}"></script>
-<script src="{{Static "js" "md5.js"}}?hash={{ StaticsMD5 }}"></script>
+<script src="{{Static "thirdparty" "md5.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
 {{if .User}}
   window.isSuperUser = {{IsSuperUser .User.Id}};
@@ -36,7 +36,7 @@ window.JiraHost = {{.JiraHost}};
           <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Plugins </a>
           <ul class="dropdown-menu">
             <li ng-repeat="plugin in appPlugins"> <a ng-href="/plugin/[[plugin]]/app"> [[plugin]] </a> </li>
-            <li><a ng-href="/perfdiscovery">Performance Discovery</a></li>
+            <li><a ng-href="/perfdiscovery/[[project]]">Performance Discovery</a></li>
           </ul>
           </li>
           {{end}}

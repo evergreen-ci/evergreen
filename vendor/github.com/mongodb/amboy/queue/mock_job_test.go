@@ -31,6 +31,13 @@ func (e *mockJobRunEnv) Count() int {
 	return e.runCount
 }
 
+func (e *mockJobRunEnv) Reset() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.runCount = 0
+}
+
 func init() {
 	mockJobCounters = &mockJobRunEnv{}
 	registry.AddJobType("mock", func() amboy.Job { return newMockJob() })

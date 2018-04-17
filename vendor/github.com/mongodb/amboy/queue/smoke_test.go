@@ -243,15 +243,15 @@ func runWaitUntilSmokeTest(ctx context.Context, q amboy.Queue, size int, assert 
 				assert.True(ok)
 
 				cmd = fmt.Sprintf("echo %s.%d.b", name, num)
-				j = job.NewShellJob(cmd, "")
-				j.UpdateTimeInfo(amboy.JobTimeInfo{
+				j2 := job.NewShellJob(cmd, "")
+				j2.UpdateTimeInfo(amboy.JobTimeInfo{
 					WaitUntil: time.Now().Add(time.Hour),
 				})
-				ti = j.TimeInfo()
-				assert.NotZero(ti.WaitUntil)
-				assert.NoError(q.Put(j),
+				ti2 := j2.TimeInfo()
+				assert.NotZero(ti2.WaitUntil)
+				assert.NoError(q.Put(j2),
 					fmt.Sprintf("(b) with %d workers", num))
-				_, ok = q.Get(j.ID())
+				_, ok = q.Get(j2.ID())
 				assert.True(ok)
 			}
 			wg.Done()
@@ -262,7 +262,7 @@ func runWaitUntilSmokeTest(ctx context.Context, q amboy.Queue, size int, assert 
 	assert.Equal(numJobs*2, q.Stats().Total, fmt.Sprintf("with %d workers", size))
 
 	// wait for things to finish
-	time.Sleep(time.Second + 500*time.Millisecond)
+	time.Sleep(time.Second + time.Second)
 
 	completed := 0
 	for result := range q.Results(ctx) {
@@ -1079,7 +1079,7 @@ func TestSmokeWaitUntilMongoDBQueue(t *testing.T) {
 	opts := DefaultMongoDBOptions()
 	opts.CheckWaitUntil = true
 
-	for _, poolSize := range []int{1, 2} {
+	for _, poolSize := range []int{1, 2, 4, 8} {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		q := NewSimpleRemoteOrdered(poolSize)
@@ -1103,7 +1103,7 @@ func TestSmokeWaitUntilMongoDBQueueNewQuery(t *testing.T) {
 	opts := DefaultMongoDBOptions()
 	opts.CheckWaitUntil = true
 
-	for _, poolSize := range []int{1, 2} {
+	for _, poolSize := range []int{1, 2, 4, 8} {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		q := NewSimpleRemoteOrdered(poolSize)
