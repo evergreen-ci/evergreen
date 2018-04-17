@@ -241,6 +241,10 @@ func (t *Task) satisfiesDependency(depTask *Task) bool {
 	return false
 }
 
+func (t *Task) IsPatchRequest() bool {
+	return util.StringSliceContains(evergreen.PatchRequesters, t.Requester)
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database. All queries

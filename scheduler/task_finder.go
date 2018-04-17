@@ -3,10 +3,8 @@ package scheduler
 import (
 	"sync"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -50,15 +48,15 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 	// filter out any tasks whose dependencies are not met
 	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
 	dependencyCaches := make(map[string]task.Task)
-	for _, task := range undispatchedTasks {
-		ref, ok := projectRefCache[task.Project]
+	for _, t := range undispatchedTasks {
+		ref, ok := projectRefCache[t.Project]
 		if !ok {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "could not find project for task",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
@@ -68,30 +66,30 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 				"runner":  RunnerName,
 				"message": "project disabled",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
 
-		if util.StringSliceContains(evergreen.PatchRequesters, task.Requester) && ref.PatchingDisabled {
+		if t.IsPatchRequest() && ref.PatchingDisabled {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
 				"outcome": "skipping",
-				"task":    task.Id,
-				"project": task.Project,
+				"task":    t.Id,
+				"project": t.Project,
 			})
 			continue
 		}
 
-		depsMet, err := task.DependenciesMet(dependencyCaches)
+		depsMet, err := t.DependenciesMet(dependencyCaches)
 		if err != nil {
 			grip.Warning(message.Fields{
 				"runner":  RunnerName,
 				"message": "error checking dependencies for task",
 				"outcome": "skipping",
-				"task":    task.Id,
+				"task":    t.Id,
 				"error":   err.Error(),
 			})
 			continue
@@ -100,7 +98,7 @@ func LegacyFindRunnableTasks(distroID string) ([]task.Task, error) {
 			continue
 		}
 
-		runnableTasks = append(runnableTasks, task)
+		runnableTasks = append(runnableTasks, t)
 	}
 
 	return runnableTasks, nil
@@ -170,7 +168,7 @@ func AlternateTaskFinder(distroID string) ([]task.Task, error) {
 			continue
 		}
 
-		if util.StringSliceContains(evergreen.PatchRequesters, t.Requester) && ref.PatchingDisabled {
+		if t.IsPatchRequest() && ref.PatchingDisabled {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
@@ -275,7 +273,7 @@ func ParallelTaskFinder(distroID string) ([]task.Task, error) {
 			continue
 		}
 
-		if util.StringSliceContains(evergreen.PatchRequesters, t.Requester) && ref.PatchingDisabled {
+		if t.IsPatchRequest() && ref.PatchingDisabled {
 			grip.Notice(message.Fields{
 				"runner":  RunnerName,
 				"message": "patch testing disabled",
