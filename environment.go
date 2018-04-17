@@ -223,7 +223,7 @@ func (e *envState) initClientConfig() (err error) {
 	return errors.WithStack(err)
 }
 
-func (e *envState) initSenders() (err error) {
+func (e *envState) initSenders() error {
 	e.senders = map[SenderKey]send.Sender{}
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
@@ -268,7 +268,8 @@ func (e *envState) initSenders() (err error) {
 
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
-		sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		var sender send.Sender
+		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 			Token: githubToken,
 		}, "")
 		if err != nil {
@@ -278,7 +279,8 @@ func (e *envState) initSenders() (err error) {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		sender, err := send.NewJiraLogger(&send.JiraOptions{
+		var sender send.Sender
+		sender, err = send.NewJiraLogger(&send.JiraOptions{
 			Name:     "evergreen",
 			BaseURL:  jira.GetHostURL(),
 			Username: jira.Username,
@@ -302,7 +304,8 @@ func (e *envState) initSenders() (err error) {
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
-		sender, err := send.NewSlackLogger(&send.SlackOptions{
+		var sender send.Sender
+		sender, err = send.NewSlackLogger(&send.SlackOptions{
 			Channel: "#",
 			Name:    "evergreen",
 		}, slack.Token, levelInfo)
@@ -312,14 +315,17 @@ func (e *envState) initSenders() (err error) {
 		e.senders[SenderSlack] = sender
 	}
 
-	sender, err := util.NewEvergreenWebhookLogger()
+	var sender send.Sender
+	sender, err = util.NewEvergreenWebhookLogger()
 	if err != nil {
 		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
 	}
 	e.senders[SenderEvergreenWebhook] = sender
 
 	for _, s := range e.senders {
-		s.SetLevel(levelInfo)
+		if err = s.SetLevel(levelInfo); err != nil {
+			return errors.Wrap(err, "failed to sender level")
+		}
 	}
 
 	return nil
