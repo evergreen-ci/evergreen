@@ -8,13 +8,22 @@ import (
 )
 
 const (
-	TestDir      = "config_test"
-	TestSettings = "evg_settings.yml"
+	TestDir                    = "config_test"
+	TestSettings               = "evg_settings.yml"
+	TestSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
 )
 
 // TestConfig creates test settings from a test config.
 func TestConfig() *evergreen.Settings {
-	file := filepath.Join(evergreen.FindEvergreenHome(), TestDir, TestSettings)
+	return loadConfig(TestDir, TestSettings)
+}
+
+func TestConfigWithDefaultAuthTokens() *evergreen.Settings {
+	return loadConfig(TestDir, TestSettingsWithAuthTokens)
+}
+
+func loadConfig(path ...string) *evergreen.Settings {
+	file := filepath.Join(evergreen.FindEvergreenHome(), path...)
 	settings, err := evergreen.NewSettings(file)
 	if err != nil {
 		panic(err)

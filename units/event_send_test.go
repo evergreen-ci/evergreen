@@ -152,7 +152,7 @@ func (s *eventNotificationSuite) notificationHasError(id string, pattern string)
 	} else {
 		match, err := regexp.MatchString(pattern, n.Error)
 		s.NoError(err)
-		s.True(match, "error doesn't match regex")
+		s.True(match, n.Error)
 	}
 
 	return n.SentAt
@@ -280,7 +280,7 @@ func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
 	pattern := "error building sender for notification: dial tcp 127.0.0.1:12345: [a-zA-Z-_]+: connection refused"
 	match, err := regexp.MatchString(pattern, errMsg)
 	s.NoError(err)
-	s.True(match)
+	s.True(match, errMsg)
 	s.NotZero(s.notificationHasError(s.email.ID, pattern))
 }
 
