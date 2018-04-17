@@ -82,6 +82,11 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			// We therefore check both if the context is cancled and if Wait() has finished.
 			cmdChan := make(chan error)
 			go func() {
+				defer func() {
+					cmdChan <- recovery.HandlePanicWithError(recover(), nil,
+						fmt.Sprintf("problem running command '%s'", cmd.Name()))
+				}()
+
 				cmdChan <- cmd.Execute(ctx, a.comm, tc.logger, tc.taskConfig)
 			}()
 			select {
