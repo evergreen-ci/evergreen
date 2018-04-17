@@ -88,6 +88,7 @@ type envState struct {
 	session      *mgo.Session
 	mu           sync.RWMutex
 	clientConfig *ClientConfig
+	senders      map[SenderKey]send.Sender
 }
 
 // Configure requires that either the path or DB is sent so that it can construct the
@@ -120,6 +121,7 @@ func (e *envState) Configure(ctx context.Context, confPath string, db *DBSetting
 	catcher.Add(e.createQueues(ctx))
 	catcher.Extend(e.initQueues(ctx))
 	catcher.Add(e.initClientConfig())
+	catcher.Add(e.initSenders())
 	if confPath != "" {
 		catcher.Add(e.persistSettings())
 	}
@@ -221,6 +223,98 @@ func (e *envState) initClientConfig() (err error) {
 	return errors.WithStack(err)
 }
 
+func (e *envState) initSenders() (err error) {
+	if e.settings == nil {
+		return errors.New("no settings object, cannot build senders")
+	}
+
+	levelInfo := send.LevelInfo{
+		Default:   level.Notice,
+		Threshold: level.Notice,
+	}
+
+	if e.settings.Notify.SMTP != nil {
+		smtp := e.settings.Notify.SMTP
+		opts := send.SMTPOptions{
+			Name:              "evergreen",
+			Server:            smtp.Server,
+			Port:              smtp.Port,
+			UseSSL:            smtp.UseSSL,
+			Username:          smtp.Username,
+			Password:          smtp.Password,
+			From:              smtp.From,
+			PlainTextContents: false,
+			NameAsSubject:     true,
+		}
+		if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+			return errors.Wrap(err, "failed to setup logger")
+		}
+		sender, err := send.NewSMTPLogger(&opts, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup email logger")
+		}
+		e.senders[SenderEmail] = sender
+	}
+
+	githubToken, err := e.settings.GetGithubOauthToken()
+	if err == nil && len(githubToken) > 0 {
+		sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+			Token: githubToken,
+		}, "")
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup github status logger")
+		}
+		e.senders[SenderGithubStatus] = sender
+	}
+
+	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
+		sender, err := send.NewJiraLogger(&send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup jira issue logger")
+		}
+		e.senders[SenderJIRAIssue] = sender
+
+		sender, err = send.NewJiraCommentLogger("", &send.JiraOptions{
+			Name:     "evergreen",
+			BaseURL:  jira.GetHostURL(),
+			Username: jira.Username,
+			Password: jira.Password,
+		}, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup jira comment logger")
+		}
+		e.senders[SenderJIRAComment] = sender
+	}
+
+	if slack := &e.settings.Slack; len(slack.Token) != 0 {
+		sender, err := send.NewSlackLogger(&send.SlackOptions{
+			Channel: "#",
+			Name:    "evergreen",
+		}, slack.Token, levelInfo)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup slack logger")
+		}
+		e.senders[SenderSlack] = sender
+	}
+
+	sender, err := util.NewEvergreenWebhookLogger()
+	if err != nil {
+		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
+	}
+	e.senders[SenderEvergreenWebhook] = sender
+
+	for _, s := range e.senders {
+		s.SetLevel(levelInfo)
+	}
+
+	return nil
+}
+
 type bbProject struct {
 	TicketCreateProject  string   `mapstructure:"ticket_create_project" bson:"ticket_create_project"`
 	TicketSearchProjects []string `mapstructure:"ticket_search_projects" bson:"ticket_search_projects"`
@@ -318,95 +412,12 @@ func (e *envState) GetSender(key SenderKey) (send.Sender, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	levelInfo := send.LevelInfo{
-		Default:   level.Notice,
-		Threshold: level.Notice,
-	}
-
-	switch key {
-	case SenderGithubStatus:
-		settings, err := GetConfig()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to fetch settings")
-		}
-		if settings == nil {
-			return nil, errors.New("fetched empty settings")
-		}
-
-		token, err := settings.GetGithubOauthToken()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get github oauth token")
-		}
-
-		return send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
-			Token: token,
-		}, "")
-
-	case SenderSlack:
-		slack := SlackConfig{}
-		if err := slack.Get(); err != nil {
-			return nil, errors.Wrap(err, "failed to get Slack settings")
-		}
-		return send.NewSlackLogger(&send.SlackOptions{
-			Channel: "#",
-			Name:    "evergreen",
-		}, slack.Token, levelInfo)
-
-	case SenderJIRAIssue:
-		jira := JiraConfig{}
-		if err := jira.Get(); err != nil {
-			return nil, errors.Wrap(err, "failed to get JIRA settings")
-		}
-		return send.NewJiraLogger(&send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
-		}, levelInfo)
-
-	case SenderJIRAComment:
-		jira := JiraConfig{}
-		if err := jira.Get(); err != nil {
-			return nil, errors.Wrap(err, "failed to get JIRA settings")
-		}
-
-		return send.NewJiraCommentLogger("", &send.JiraOptions{
-			Name:     "evergreen",
-			BaseURL:  jira.GetHostURL(),
-			Username: jira.Username,
-			Password: jira.Password,
-		}, levelInfo)
-
-	case SenderEmail:
-		smtp := NotifyConfig{}
-		if err := smtp.Get(); err != nil {
-			return nil, errors.Wrap(err, "failed to get SMTP settings")
-		}
-		if smtp.SMTP == nil {
-			return nil, errors.New("got empty SMTP settings")
-		}
-		opts := send.SMTPOptions{
-			Name:              "evergreen",
-			Server:            smtp.SMTP.Server,
-			Port:              smtp.SMTP.Port,
-			UseSSL:            smtp.SMTP.UseSSL,
-			Username:          smtp.SMTP.Username,
-			Password:          smtp.SMTP.Password,
-			From:              smtp.SMTP.From,
-			PlainTextContents: false,
-			NameAsSubject:     true,
-		}
-		if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-			return nil, errors.Wrap(err, "failed to setup logger")
-		}
-		return send.NewSMTPLogger(&opts, levelInfo)
-
-	case SenderEvergreenWebhook:
-		return util.NewEvergreenWebhookLogger()
-
-	default:
+	sender, ok := e.senders[key]
+	if !ok {
 		return nil, errors.Errorf("unknown sender key %v", key)
 	}
+
+	return sender, nil
 }
 
 // getClientConfig should be called once at startup and looks at the
