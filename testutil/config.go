@@ -23,8 +23,9 @@ func TestConfigWithDefaultAuthTokens() *evergreen.Settings {
 }
 
 func loadConfig(path ...string) *evergreen.Settings {
-	file := filepath.Join(evergreen.FindEvergreenHome(), path...)
-	settings, err := evergreen.NewSettings(file)
+	paths := []string{evergreen.FindEvergreenHome()}
+	paths = append(paths, path...)
+	settings, err := evergreen.NewSettings(filepath.Join(paths...))
 	if err != nil {
 		panic(err)
 	}

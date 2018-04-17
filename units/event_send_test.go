@@ -259,31 +259,6 @@ func (s *eventNotificationSuite) TestEmail() {
 	})
 }
 
-func (s *eventNotificationSuite) TestEmailWithUnreachableSMTP() {
-	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
-	notify := evergreen.NotifyConfig{
-		SMTP: &evergreen.SMTPConfig{
-			From:     "evergreen@example.com",
-			Server:   "127.0.0.1",
-			Port:     12345,
-			Username: "much",
-			Password: "security",
-		},
-	}
-	s.Require().NoError(notify.Set())
-
-	job.Run(s.ctx)
-	s.Require().Error(job.Error())
-
-	errMsg := job.Error().Error()
-	s.Require().NotEmpty(errMsg)
-	pattern := "error building sender for notification: dial tcp 127.0.0.1:12345: [a-zA-Z-_]+: connection refused"
-	match, err := regexp.MatchString(pattern, errMsg)
-	s.NoError(err)
-	s.True(match, errMsg)
-	s.NotZero(s.notificationHasError(s.email.ID, pattern))
-}
-
 func (s *eventNotificationSuite) TestSlack() {
 	job := newEventNotificationJob(s.slack.ID).(*eventNotificationJob)
 	job.env = s.env
