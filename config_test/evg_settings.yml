@@ -5,6 +5,9 @@ database:
       wmode: "majority"
 
 configdir: "config_test"
+credentials:  {
+        github: "token xxx",
+}
 
 amboy:
   name: test_queue

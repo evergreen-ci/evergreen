@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/send"
 	"github.com/stretchr/testify/assert"
@@ -68,7 +67,7 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.Empty(token)
 
 	settings, err = NewSettings(filepath.Join(FindEvergreenHome(),
-		testutil.TestDir, testutil.TestSettingsWithAuthTokens))
+		"config_test", "evg_settings_with_3rd_party_defaults.yml"))
 	assert.NoError(err)
 	assert.NotNil(settings.Credentials["github"])
 
