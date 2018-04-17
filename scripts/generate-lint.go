@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/google/shlex"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -20,6 +21,7 @@ const (
 	evergreenLintTask = "evergreen"
 	jsonFilename      = "bin/generate-lint.json"
 	scriptsDir        = "scripts"
+	packagePrefix     = "github.com/evergreen-ci/evergreen"
 )
 
 // whatChanged returns a list of files that have changed in the working
@@ -37,13 +39,9 @@ func whatChanged() ([]string, error) {
 		return nil, errors.Wrap(err, "problem getting diff")
 	}
 	var split []string
-	// if there is no diff, this is not a patch build, so diff against HEAD~
+	// if there is no diff, this is not a patch build
 	if len(files) == 0 {
-		diffCmd := exec.Command("git", "diff", "HEAD~", "--name-only")
-		files, err = diffCmd.Output()
-		if err != nil {
-			return nil, errors.Wrap(err, "problem getting diff")
-		}
+		return []string{}, nil
 	}
 	split = strings.Split(strings.TrimSpace(string(files)), "\n")
 	return split, nil
@@ -100,9 +98,31 @@ func generateTasks() (map[string][]map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	targets, err := targetsFromChangedFiles(changes)
-	if err != nil {
-		return nil, err
+	var targets []string
+	if len(changes) == 0 {
+		args, _ := shlex.Split("go list -f '{{ join .Deps  \"\\n\"}}' main/evergreen.go")
+		cmd := exec.Command(args[0], args[1:]...)
+		allPackages, err := cmd.Output()
+		if err != nil {
+			return nil, errors.Wrap(err, "problem getting diff")
+		}
+		split := strings.Split(strings.TrimSpace(string(allPackages)), "\n")
+		for _, p := range split {
+			if !strings.Contains(p, "vendor") && strings.Contains(p, "evergreen") {
+				if p == packagePrefix {
+					continue
+				}
+				p = strings.TrimPrefix(p, packagePrefix)
+				p = strings.TrimPrefix(p, "/")
+				p = strings.Replace(p, "/", "-", -1)
+				targets = append(targets, p)
+			}
+		}
+	} else {
+		targets, err = targetsFromChangedFiles(changes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	taskList := []map[string]interface{}{}
 	bvTasksList := []map[string]string{}
