@@ -67,7 +67,7 @@ func TestGetGithubSettings(t *testing.T) {
 	assert.Empty(token)
 
 	settings, err = NewSettings(filepath.Join(FindEvergreenHome(),
-		"config_test", "evg_settings_with_3rd_party_defaults.yml"))
+		"config_test", "evg_settings.yml"))
 	assert.NoError(err)
 	assert.NotNil(settings.Credentials["github"])
 

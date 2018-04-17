@@ -10,7 +10,7 @@ import (
 const (
 	TestDir                    = "config_test"
 	TestSettings               = "evg_settings.yml"
-	TestSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
+	testSettingsWithAuthTokens = "evg_settings_with_3rd_party_defaults.yml"
 )
 
 // TestConfig creates test settings from a test config.
@@ -19,7 +19,7 @@ func TestConfig() *evergreen.Settings {
 }
 
 func TestConfigWithDefaultAuthTokens() *evergreen.Settings {
-	return loadConfig(TestDir, TestSettingsWithAuthTokens)
+	return loadConfig(TestDir, testSettingsWithAuthTokens)
 }
 
 func loadConfig(path ...string) *evergreen.Settings {

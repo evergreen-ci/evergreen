@@ -3,7 +3,6 @@ package units
 import (
 	"context"
 	"fmt"
-	"net"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -18,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type eventNotificationSuite struct {
@@ -204,59 +202,6 @@ func (s *eventNotificationSuite) TestEvergreenWebhookWithDeadServer() {
 
 	pattern := "evergreen-webhook failed to send webhook data: Post http://127.0.0.1:12345: dial tcp 127.0.0.1:12345: [a-zA-Z]+: connection refused"
 	s.NotZero(s.notificationHasError(s.webhook.ID, pattern))
-}
-
-func (s *eventNotificationSuite) TestEvergreenWebhookWithBadSecret() {
-	job := newEventNotificationJob(s.webhook.ID).(*eventNotificationJob)
-	//job.env = s.env
-
-	handler := &mockWebhookHandler{
-		secret: []byte("somethingelse"),
-	}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	s.Require().NoError(err)
-	defer ln.Close()
-	s.NoError(db.UpdateId(notification.Collection, s.webhook.ID, bson.M{
-		"$set": bson.M{
-			"subscriber.target.url": "http://" + ln.Addr().String(),
-		},
-	}))
-
-	s.NotPanics(func() {
-		go httpServer(ln, handler)
-	})
-
-	job.Run(s.ctx)
-	s.NoError(job.Error())
-
-	n, err := notification.Find(s.webhook.ID)
-	s.NoError(err)
-	s.NotNil(n)
-
-	s.Equal("evergreen-webhook response status was 400 Bad Request", n.Error)
-	s.NotZero(s.notificationHasError(s.webhook.ID, "evergreen-webhook response status was 400"))
-}
-
-func (s *eventNotificationSuite) TestEmail() {
-	job := newEventNotificationJob(s.email.ID).(*eventNotificationJob)
-	job.env = s.env
-	job.Run(s.ctx)
-
-	s.NoError(job.Error())
-	s.NotZero(s.notificationHasError(s.email.ID, ""))
-	s.Nil(job.Error())
-
-	msg, recv := s.env.InternalSender.GetMessageSafe()
-	s.True(recv)
-	s.NotPanics(func() {
-		email := msg.Message.Raw().(*message.Email)
-
-		s.Equal("i'm a notification", email.Body)
-		s.Equal("o hai", email.Subject)
-		s.Equal([]string{"o@hai.hai"}, email.Recipients)
-		s.Len(email.Headers, 1)
-		s.Equal([]string{"much"}, email.Headers["such"])
-	})
 }
 
 func (s *eventNotificationSuite) TestSlack() {

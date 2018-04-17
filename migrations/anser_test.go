@@ -29,7 +29,8 @@ func TestAnserBasicPlaceholder(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	assert.NoError(evgEnv.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettingsWithAuthTokens), nil))
+	assert.NoError(evgEnv.Configure(ctx, filepath.Join(evergreen.FindEvergreenHome(), testutil.TestDir, testutil.TestSettings), nil))
+
 	opts := Options{
 		Database: "mci_test",
 		Period:   time.Second,
