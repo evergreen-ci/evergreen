@@ -1026,7 +1026,7 @@ func TestInactiveHostCountPipeline(t *testing.T) {
 	assert.NoError(h5.Insert())
 
 	var out []InactiveHostCounts
-	err := db.Aggregate(Collection, InactiveHostCountPipeline(), &out)
+	err := db.Aggregate(Collection, inactiveHostCountPipeline(), &out)
 	assert.NoError(err)
 	assert.Len(out, 2)
 	for _, count := range out {

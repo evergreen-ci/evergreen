@@ -463,7 +463,7 @@ type InactiveHostCounts struct {
 	Count    int    `bson:"count"`
 }
 
-func InactiveHostCountPipeline() []bson.M {
+func inactiveHostCountPipeline() []bson.M {
 	return []bson.M{
 		{
 			"$match": bson.M{

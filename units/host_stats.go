@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
@@ -54,26 +52,14 @@ func (j *hostStatsJob) Run(ctx context.Context) {
 	defer cancel()
 	defer j.MarkComplete()
 
-	var counts []host.InactiveHostCounts
-	var static int
-	var dynamic int
-	err := db.Aggregate(host.Collection, host.InactiveHostCountPipeline(), &counts)
+	counts, err := host.CountInactiveHostsByProvider()
 	if err != nil {
 		j.AddError(errors.Wrap(err, "error aggregating inactive hosts"))
 		return
 	}
-	for _, count := range counts {
-		if count.HostType == evergreen.HostTypeStatic {
-			static = count.Count
-		} else {
-			dynamic++
-		}
-	}
 
 	grip.Info(message.Fields{
 		"message": "count of decommissioned/quarantined hosts",
-		"total":   static + dynamic,
-		"static":  static,
-		"dynamic": dynamic,
+		"counts":  counts,
 	})
 }
