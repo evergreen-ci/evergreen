@@ -1,5 +1,5 @@
 command_type: test
-stepback: false
+stepback: true
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
@@ -653,6 +653,7 @@ buildvariants:
       - name: ".smoke"
       - name: ".test"
       - name: "js-test"
+      - name: generate-lint
 
   - name: ubuntu1604-debug
     display_name: Ubuntu 16.04 Debug
@@ -678,7 +679,6 @@ buildvariants:
       - name: ".race"
       - name: ".report"
         stepback: false
-      - name: generate-lint
 
   - name: osx
     display_name: OSX
