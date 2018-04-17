@@ -57,7 +57,7 @@ func NewNotificationStatsCollector(id string) amboy.Job {
 }
 
 func (j *notificationsStatsCollector) Run(ctx context.Context) {
-    defer j.MarkComplete()
+	defer j.MarkComplete()
 
 	msg := message.Fields{
 		"start_time": j.TimeInfo().Start.String(),
@@ -72,24 +72,20 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 		msg["last_processed_at"] = e.ProcessedAt
 	}
 
-	if ctx.Err() == nil {
-		nUnprocessed, err := event.CountUnprocessedEvents()
-		j.AddError(errors.Wrap(err, "failed to count unprocessed events"))
-		if j.HasErrors() {
-			return
-		}
-		msg["unprocessed_events"] = nUnprocessed
+	nUnprocessed, err := event.CountUnprocessedEvents()
+	j.AddError(errors.Wrap(err, "failed to count unprocessed events"))
+	if j.HasErrors() {
+		return
+	}
+	msg["unprocessed_events"] = nUnprocessed
+
+	stats, err := notification.CollectUnsentNotificationStats()
+	j.AddError(errors.Wrap(err, "failed to collect notification stats"))
+	if j.HasErrors() {
+		return
 	}
 
-	if ctx.Err() == nil {
-		stats, err := notification.CollectUnsentNotificationStats()
-		j.AddError(errors.Wrap(err, "failed to collect notification stats"))
-		if j.HasErrors() {
-			return
-		}
-
-		msg["pending_notifications_by_type"] = stats
-	}
+	msg["pending_notifications_by_type"] = stats
 
 	j.AddError(ctx.Err())
 	if ctx.Err() == nil {
