@@ -247,8 +247,17 @@ func (e *envState) initSenders() (err error) {
 			PlainTextContents: false,
 			NameAsSubject:     true,
 		}
-		if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-			return errors.Wrap(err, "failed to setup logger")
+		if len(smtp.AdminEmail) == 0 {
+			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+				return errors.Wrap(err, "failed to setup email logger")
+			}
+
+		} else {
+			for i := range smtp.AdminEmail {
+				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
+					return errors.Wrap(err, "failed to setup email logger")
+				}
+			}
 		}
 		sender, err := send.NewSMTPLogger(&opts, levelInfo)
 		if err != nil {
