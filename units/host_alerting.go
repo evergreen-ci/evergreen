@@ -29,7 +29,7 @@ type hostAlertingJob struct {
 	HostID   string `bson:"host_id" json:"host_id" yaml:"host_id"`
 	job.Base `bson:"base" json:"base" yaml:"base"`
 
-	host   host.Host
+	host   *host.Host
 	logger grip.Journaler
 }
 
@@ -51,7 +51,7 @@ func makeHostAlerting() *hostAlertingJob {
 func NewHostAlertingJob(h host.Host, ts string) amboy.Job {
 	job := makeHostAlerting()
 
-	job.host = h
+	job.host = &h
 	job.HostID = h.Id
 
 	job.SetID(fmt.Sprintf("%s.%s.%s", hostAlertingName, job.HostID, ts))
@@ -59,23 +59,25 @@ func NewHostAlertingJob(h host.Host, ts string) amboy.Job {
 	return job
 }
 
-func (j *hostAlertingJob) Run(ctx context.Context) {
-	var cancel context.CancelFunc
-
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
+func (j *hostAlertingJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
-	h, err := host.FindOneId(j.HostID)
-	if err != nil {
-		j.AddError(err)
-		return
+	if j.logger == nil {
+		j.logger = logging.MakeGrip(grip.GetSender())
 	}
-	if h == nil {
-		j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
-		return
+
+	if j.host == nil {
+		h, err := host.FindOneId(j.HostID)
+		if err != nil {
+			j.AddError(err)
+			return
+		}
+		if h == nil {
+			j.AddError(errors.Errorf("unable to retrieve host %s", j.HostID))
+			return
+		}
+		j.host = h
 	}
-	j.host = *h
 
 	j.monitorLongRunningTasks()
 }
