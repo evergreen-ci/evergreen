@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	// noop
 	// determines the default maximum number of revisions to fetch for a newly tracked repo
 	// if not specified in configuration file
 	DefaultNumNewRepoRevisionsToFetch = 200
