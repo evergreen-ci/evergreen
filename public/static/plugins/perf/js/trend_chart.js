@@ -88,7 +88,7 @@ mciModule.factory('PerfChartService', function() {
   // Returns list of y-positions of ops labels for given
   // yScaledValues list.
   function getOpsLabelYPosition(vals, cfg) {
-    yScaledValues = _.sortBy(vals, function(d) { return -d })
+    var yScaledValues = _.sortBy(vals, function(d) { return -d })
 
     // Calculate the most top (the last) label position.
     // Also checks top margin overlap
