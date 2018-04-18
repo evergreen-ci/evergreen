@@ -18,7 +18,7 @@ import (
 // from the given event, with the given trigger, for the given subscriber.
 // This function will produce an ID that will collide to prevent duplicate
 // notifications from being inserted
-func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string {
+func makeNotificationID(event *event.EventLogEntry, trigger string, subscriber *event.Subscriber) string { //nolint:interfacer
 	return fmt.Sprintf("%s-%s-%s", event.ID.Hex(), trigger, subscriber.String())
 }
 

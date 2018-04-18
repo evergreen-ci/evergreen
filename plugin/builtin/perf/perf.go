@@ -61,5 +61,4 @@ func (pp *PerfPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			},
 		},
 	}, nil
-	return nil, nil
 }
