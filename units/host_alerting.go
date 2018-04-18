@@ -94,7 +94,7 @@ func (j *hostAlertingJob) monitorLongRunningTasks() {
 	if runningTask == nil {
 		return
 	}
-	elapsed := time.Now().Sub(runningTask.StartTime)
+	elapsed := time.Since(runningTask.StartTime)
 	msg := message.Fields{
 		"message":     "host running task for too long",
 		"op":          hostAlertingName,
