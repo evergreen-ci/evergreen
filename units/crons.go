@@ -288,3 +288,37 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 		return catcher.Resolve()
 	}
 }
+
+// used for infrequently running system alerts
+func PopulateAlertingJobs() amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		catcher := grip.NewBasicCatcher()
+		catcher.Add(addHostLongRunningTaskJobs(queue))
+		catcher.Add(addHostStatsJob(queue))
+
+		return catcher.Resolve()
+	}
+}
+
+func addHostLongRunningTaskJobs(queue amboy.Queue) error {
+	hosts, err := host.Find(host.IsRunningTask)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
+	catcher := grip.NewBasicCatcher()
+
+	for _, host := range hosts {
+		job := NewHostAlertingJob(host, ts)
+		catcher.Add(queue.Put(job))
+	}
+
+	return catcher.Resolve()
+}
+
+func addHostStatsJob(queue amboy.Queue) error {
+	ts := util.RoundPartOfHour(2).Format(tsFormat)
+	job := NewHostStatsJob(ts)
+	return queue.Put(job)
+}
