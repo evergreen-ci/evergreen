@@ -248,6 +248,37 @@ func PopulateHostTerminationJobs(env evergreen.Environment) amboy.QueueOperation
 	}
 }
 
+func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
+	return func(queue amboy.Queue) error {
+		flags, err := evergreen.GetServiceFlags()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		if flags.MonitorDisabled {
+			grip.InfoWhen(sometimes.Percent(evergreen.DegradedLoggingPercent), message.Fields{
+				"message": "monitor is disabled",
+				"impact":  "not submitting detecting idle hosts",
+				"mode":    "degraded",
+			})
+			return nil
+		}
+
+		catcher := grip.NewBasicCatcher()
+		ts := util.RoundPartOfHour(1).Format(tsFormat)
+		hosts, err := host.AllIdleEphemeral()
+		if err != nil {
+			return errors.Wrap(err, "problem finding idle hosts")
+		}
+
+		for _, h := range hosts {
+			catcher.Add(queue.Put(NewIdleHostTerminationJob(env, h, ts)))
+		}
+
+		return catcher.Resolve()
+	}
+}
+
 func PopulateSchedulerJobs() amboy.QueueOperation {
 	return func(queue amboy.Queue) error {
 		flags, err := evergreen.GetServiceFlags()
