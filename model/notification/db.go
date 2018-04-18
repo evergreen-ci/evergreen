@@ -87,8 +87,8 @@ func BulkInserter(ctx context.Context) (adb.BufferedInserter, error) {
 
 	opts := adb.BufferedInsertOptions{
 		DB:         mdb.Name,
-		Count:      10,
-		Duration:   10 * time.Second,
+		Count:      50,
+		Duration:   5 * time.Second,
 		Collection: Collection,
 	}
 
