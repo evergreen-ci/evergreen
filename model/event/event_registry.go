@@ -13,18 +13,18 @@ type extraDataKey struct {
 	Trigger      string
 }
 
-var registry eventRegistry = eventRegistry{
-	types:          map[string]eventFactory{},
-	isSubscribable: map[EventLogEntry]bool{},
-	extraData:      map[extraDataKey]interface{}{},
-}
-
 type eventRegistry struct {
 	lock sync.RWMutex
 
 	types          map[string]eventFactory
 	isSubscribable map[EventLogEntry]bool
 	extraData      map[extraDataKey]interface{}
+}
+
+var registry eventRegistry = eventRegistry{
+	types:          map[string]eventFactory{},
+	isSubscribable: map[EventLogEntry]bool{},
+	extraData:      map[extraDataKey]interface{}{},
 }
 
 // AddType adds an event data factory to the registry with the given resource
@@ -40,6 +40,41 @@ func (r *eventRegistry) AddType(resourceType string, f eventFactory) {
 	}
 
 	r.types[resourceType] = f
+}
+
+func (r *eventRegistry) RegisterExtraData(resourceType, triggerName string, i interface{}) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	e := extraDataKey{
+		ResourceType: resourceType,
+		Trigger:      triggerName,
+	}
+
+	_, ok := r.extraData[e]
+	if ok {
+		panic(fmt.Sprintf("attempted to register extra data for event '%s', trigger: '%s' more than once", resourceType, triggerName))
+	}
+
+	r.extraData[e] = i
+}
+
+func (r *eventRegistry) GetExtraData(resourceType, triggerName string) interface{} {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	e := extraDataKey{
+		ResourceType: resourceType,
+		Trigger:      triggerName,
+	}
+
+	data, ok := r.extraData[e]
+	if !ok {
+		return nil
+	}
+
+	t := reflect.ValueOf(data).Type()
+	return reflect.New(t).Interface()
 }
 
 // AllowSubscription a combination of resource type and Event Type as
@@ -79,41 +114,6 @@ func (r *eventRegistry) IsSubscribable(resourceType, eventType string) bool {
 	allowSubs := r.isSubscribable[e]
 
 	return allowSubs
-}
-
-func (r *eventRegistry) RegisterExtraData(resourceType, triggerName string, i interface{}) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
-	e := extraDataKey{
-		ResourceType: resourceType,
-		Trigger:      triggerName,
-	}
-
-	_, ok := r.extraData[e]
-	if ok {
-		panic(fmt.Sprintf("attempted to register extra data for event '%s', trigger: '%s' more than once", resourceType, triggerName))
-	}
-
-	r.extraData[e] = i
-}
-
-func (r *eventRegistry) GetExtraData(resourceType, triggerName string) interface{} {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
-
-	e := extraDataKey{
-		ResourceType: resourceType,
-		Trigger:      triggerName,
-	}
-
-	data, ok := r.extraData[e]
-	if !ok {
-		return nil
-	}
-
-	t := reflect.ValueOf(data).Type()
-	return reflect.New(t).Interface()
 }
 
 func NewEventFromType(resourceType string) interface{} {

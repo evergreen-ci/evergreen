@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -159,5 +160,14 @@ func TestBuildFileList(t *testing.T) {
 				}
 			})
 		})
+	})
+}
+
+func TestBuildFileListWithMissingRoot(t *testing.T) {
+	assert := assert.New(t)
+	assert.NotPanics(func() {
+		list, err := BuildFileList("this/path/does/not/exist", "*")
+		assert.Empty(list)
+		assert.Error(err)
 	})
 }

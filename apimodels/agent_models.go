@@ -47,7 +47,7 @@ type NextTaskResponse struct {
 	// gracefully. Practically speaking, this means that if the agent is
 	// currently in a task group, it should only exit when it has finished
 	// the task group.
-	NewAgent bool `json:"new_agent,omitempty`
+	NewAgent bool `json:"new_agent,omitempty"`
 }
 
 // EndTaskResponse is what is returned when the task ends

@@ -120,7 +120,7 @@ Evergreen Projects
           <label class="control-label"> Config File</label>
         </div>
         <div class="col-lg-4">
-          <input class="form-control" type="text" ng-model="settingsFormData.remote_path" placeholder=".evergreen.yml">
+          <input class="form-control" type="text" ng-model="settingsFormData.remote_path">
         </div>
       </div>
 
@@ -271,7 +271,18 @@ Evergreen Projects
           </div>
         </div>
 
+        <div class="variables" ng-show="isSuperUser">
+          <div class="form-group">
+            <div class="col-header col-lg-6 form-control-static"> <h3>Patch Settings</h3> </div>
+          </div>
 
+	  <div id="patching-disabled" class="form-group">
+            <div class="col-lg-6">
+              <input type="checkbox" id="patching-disabled-checkbox" ng-model="settingsFormData.patching_disabled" />
+              <label for="patching-disabled-checkbox">Disable Patching</label>
+            </div>
+          </div>
+	</div>
 
         <div class="variables">
           <div class="form-group">

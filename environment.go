@@ -223,7 +223,7 @@ func (e *envState) initClientConfig() (err error) {
 	return errors.WithStack(err)
 }
 
-func (e *envState) initSenders() (err error) {
+func (e *envState) initSenders() error {
 	e.senders = map[SenderKey]send.Sender{}
 	if e.settings == nil {
 		return errors.New("no settings object, cannot build senders")
@@ -247,8 +247,17 @@ func (e *envState) initSenders() (err error) {
 			PlainTextContents: false,
 			NameAsSubject:     true,
 		}
-		if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
-			return errors.Wrap(err, "failed to setup logger")
+		if len(smtp.AdminEmail) == 0 {
+			if err := opts.AddRecipient("", "test@domain.invalid"); err != nil {
+				return errors.Wrap(err, "failed to setup email logger")
+			}
+
+		} else {
+			for i := range smtp.AdminEmail {
+				if err := opts.AddRecipient("", smtp.AdminEmail[i]); err != nil {
+					return errors.Wrap(err, "failed to setup email logger")
+				}
+			}
 		}
 		sender, err := send.NewSMTPLogger(&opts, levelInfo)
 		if err != nil {
@@ -259,7 +268,8 @@ func (e *envState) initSenders() (err error) {
 
 	githubToken, err := e.settings.GetGithubOauthToken()
 	if err == nil && len(githubToken) > 0 {
-		sender, err := send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
+		var sender send.Sender
+		sender, err = send.NewGithubStatusLogger("evergreen", &send.GithubOptions{
 			Token: githubToken,
 		}, "")
 		if err != nil {
@@ -269,7 +279,8 @@ func (e *envState) initSenders() (err error) {
 	}
 
 	if jira := &e.settings.Jira; len(jira.GetHostURL()) != 0 {
-		sender, err := send.NewJiraLogger(&send.JiraOptions{
+		var sender send.Sender
+		sender, err = send.NewJiraLogger(&send.JiraOptions{
 			Name:     "evergreen",
 			BaseURL:  jira.GetHostURL(),
 			Username: jira.Username,
@@ -293,7 +304,8 @@ func (e *envState) initSenders() (err error) {
 	}
 
 	if slack := &e.settings.Slack; len(slack.Token) != 0 {
-		sender, err := send.NewSlackLogger(&send.SlackOptions{
+		var sender send.Sender
+		sender, err = send.NewSlackLogger(&send.SlackOptions{
 			Channel: "#",
 			Name:    "evergreen",
 		}, slack.Token, levelInfo)
@@ -303,17 +315,19 @@ func (e *envState) initSenders() (err error) {
 		e.senders[SenderSlack] = sender
 	}
 
-	sender, err := util.NewEvergreenWebhookLogger()
+	var sender send.Sender
+	sender, err = util.NewEvergreenWebhookLogger()
 	if err != nil {
 		return errors.Wrap(err, "Failed to setup evergreen webhook logger")
 	}
 	e.senders[SenderEvergreenWebhook] = sender
 
+	catcher := grip.NewBasicCatcher()
 	for _, s := range e.senders {
-		s.SetLevel(levelInfo)
+		catcher.Add(s.SetLevel(levelInfo))
 	}
 
-	return nil
+	return catcher.Resolve()
 }
 
 type bbProject struct {

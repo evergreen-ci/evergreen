@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/recovery"
 	"github.com/mongodb/grip/sometimes"
 	"github.com/pkg/errors"
 )
@@ -48,6 +49,8 @@ func (c *metricsCollector) start(ctx context.Context) error {
 // high granularity after beginning to run a task and with a lower
 // granularity throughout the life of a commit.
 func (c *metricsCollector) processInfoCollector(ctx context.Context, interval time.Duration) {
+	defer recovery.LogStackTraceAndContinue("encountered problem in metrics collector")
+
 	grip.Info("starting process metrics collector")
 
 	timer := time.NewTimer(0)
@@ -86,6 +89,8 @@ func convertProcInfo(messages []message.Composer) []*message.ProcessInfo {
 // interval as long as the metrics collector is running, and sends these
 // data to the API server.
 func (c *metricsCollector) sysInfoCollector(ctx context.Context, interval time.Duration) {
+	defer recovery.LogStackTraceAndContinue("encountered problem in metrics collector")
+
 	grip.Info("starting system metrics collector")
 	timer := time.NewTimer(0)
 	defer timer.Stop()

@@ -169,20 +169,10 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *
 	for _, bv := range g.BuildVariants {
 		// If the buildvariant already exists, append tasks to it.
 		if _, ok := cachedProject.buildVariants[bv.Name]; ok {
-			for _, t := range bv.Tasks {
-				newTVPairsForExistingVariants.ExecTasks = append(newTVPairsForExistingVariants.ExecTasks, TVPair{bv.Name, t.Name})
-			}
-			for _, dt := range bv.DisplayTasks {
-				newTVPairsForExistingVariants.DisplayTasks = append(newTVPairsForExistingVariants.DisplayTasks, TVPair{bv.Name, dt.Name})
-			}
+			newTVPairsForExistingVariants = appendTasks(newTVPairsForExistingVariants, bv, p)
 		} else {
 			// If the buildvariant does not exist, create it.
-			for _, t := range bv.Tasks {
-				newTVPairsForNewVariants.ExecTasks = append(newTVPairsForNewVariants.ExecTasks, TVPair{bv.Name, t.Name})
-			}
-			for _, dt := range bv.DisplayTasks {
-				newTVPairsForNewVariants.DisplayTasks = append(newTVPairsForNewVariants.DisplayTasks, TVPair{bv.Name, dt.Name})
-			}
+			newTVPairsForNewVariants = appendTasks(newTVPairsForNewVariants, bv, p)
 		}
 	}
 	if err := AddNewTasks(true, v, p, newTVPairsForExistingVariants); err != nil {
@@ -192,6 +182,26 @@ func (g *GeneratedProject) saveNewBuildsAndTasks(cachedProject *projectMaps, v *
 		return errors.Wrap(err, "errors adding new builds")
 	}
 	return nil
+}
+
+func appendTasks(pairs TaskVariantPairs, bv parserBV, p *Project) TaskVariantPairs {
+	taskGroups := map[string]TaskGroup{}
+	for _, tg := range p.TaskGroups {
+		taskGroups[tg.Name] = tg
+	}
+	for _, t := range bv.Tasks {
+		if tg, ok := taskGroups[t.Name]; ok {
+			for _, taskInGroup := range tg.Tasks {
+				pairs.ExecTasks = append(pairs.ExecTasks, TVPair{bv.Name, taskInGroup})
+			}
+		} else {
+			pairs.ExecTasks = append(pairs.ExecTasks, TVPair{bv.Name, t.Name})
+		}
+	}
+	for _, dt := range bv.DisplayTasks {
+		pairs.DisplayTasks = append(pairs.DisplayTasks, TVPair{bv.Name, dt.Name})
+	}
+	return pairs
 }
 
 // addGeneratedProjectToConfig takes a YML config and returns a new one with the GeneratedProject included.

@@ -5,7 +5,7 @@ nodeDir := public
 packages := $(name) agent operations cloud command db subprocess taskrunner util plugin hostinit units
 packages += plugin-builtin-attach plugin-builtin-manifest plugin-builtin-buildbaron plugin-builtin-perfdash
 packages += thirdparty alerts auth scheduler model validator service monitor repotracker
-packages += model-alert model-alertrecord model-artifact model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-patch model-testresult model-version
+packages += model-patch model-artifact model-host model-build model-event model-task model-user model-distro model-testresult model-version
 packages += rest-client rest-data rest-route rest-model migrations spawn
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
@@ -152,6 +152,14 @@ $(buildDir)/.lintSetup:$(lintDeps)
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	go build -o $@ $<
 # end lint setup targets
+
+# generate lint JSON document for evergreen
+generate-lint:$(buildDir)/generate-lint.json
+$(buildDir)/generate-lint.json:$(buildDir)/generate-lint $(srcFiles)
+	./$(buildDir)/generate-lint
+$(buildDir)/generate-lint:scripts/generate-lint.go
+	go build -o $@ $<
+# end generate lint
 
 # npm setup
 $(buildDir)/.npmSetup:

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 )
 
@@ -50,7 +51,10 @@ type fileListBuilder struct {
 	prefix    string
 }
 
-func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, _ error) error {
+func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return errors.Wrapf(err, "Error received by walkFunc for path %s", path)
+	}
 	path = strings.TrimPrefix(path, fb.prefix)
 	path = strings.TrimLeft(path, string(os.PathSeparator))
 	if !info.IsDir() && fb.ignorer.MatchesPath(path) {

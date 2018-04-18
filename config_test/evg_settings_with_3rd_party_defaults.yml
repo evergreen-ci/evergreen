@@ -28,6 +28,11 @@ auth:
         password: "change me"
         urlroot: "https://crowdtest.10gen.com"
 
+jira:
+    host: jira.mongodb.org
+    username: xgen-mci-user
+    password: Bu1Ld5
+
 keys:
     mci: "/data/home/etc/mci.pem"
 
@@ -107,6 +112,15 @@ hostinit:
 
 notify:
     logfile: "/tmp/notify_test.log"
+    smtp:
+        from: "mailer@test.test"
+        server: "localhost"
+        port: 25
+        use_ssl: false
+        username:
+        password:
+        admin_email:
+        - test@test.test
 
 arranger:
     logfile: "/tmp/arranger_test.log"

@@ -36,6 +36,9 @@ type uiParams struct {
 
 	// for the update status option
 	Status string `json:"status"`
+
+	// additional notes that will be added to the event log_path
+	Notes string `json:"notes"`
 }
 
 func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +179,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 		numHostsUpdated := 0
 
 		for _, host := range hosts {
-			err := host.SetStatus(newStatus, user.Id, "")
+			err := host.SetStatus(newStatus, user.Id, opts.Notes)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))
 				return

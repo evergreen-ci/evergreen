@@ -102,6 +102,7 @@ func FindSubscriptions(subscriptionType, triggerType string, selectors []Selecto
 	if len(selectors) == 0 {
 		return nil, nil
 	}
+
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{

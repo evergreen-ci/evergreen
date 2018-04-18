@@ -181,6 +181,9 @@ var IsRunningAndSpawned = db.Query(
 var IsRunningTask = db.Query(
 	bson.M{
 		RunningTaskKey: bson.M{"$exists": true},
+		StatusKey: bson.M{
+			"$ne": evergreen.HostTerminated,
+		},
 	},
 )
 
@@ -455,6 +458,38 @@ func QueryWithFullTaskPipeline(match bson.M) []bson.M {
 			"$unwind": bson.M{
 				"path": "$task_full",
 				"preserveNullAndEmptyArrays": true,
+			},
+		},
+	}
+}
+
+type InactiveHostCounts struct {
+	HostType string `bson:"_id"`
+	Count    int    `bson:"count"`
+}
+
+func inactiveHostCountPipeline() []bson.M {
+	return []bson.M{
+		{
+			"$match": bson.M{
+				StatusKey: bson.M{
+					"$in": []string{evergreen.HostDecommissioned, evergreen.HostQuarantined},
+				},
+			},
+		},
+		{
+			"$project": bson.M{
+				IdKey:       0,
+				StatusKey:   1,
+				ProviderKey: 1,
+			},
+		},
+		{
+			"$group": bson.M{
+				"_id": "$" + ProviderKey,
+				"count": bson.M{
+					"$sum": 1,
+				},
 			},
 		},
 	}
