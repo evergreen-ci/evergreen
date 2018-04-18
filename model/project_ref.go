@@ -35,7 +35,8 @@ type ProjectRef struct {
 	PRTestingEnabled bool `bson:"pr_testing_enabled" json:"pr_testing_enabled" yaml:"pr_testing_enabled"`
 
 	//Tracked determines whether or not the project is discoverable in the UI
-	Tracked bool `bson:"tracked" json:"tracked"`
+	Tracked          bool `bson:"tracked" json:"tracked"`
+	PatchingDisabled bool `bson:"patching_disabled" json:"patching_disabled"`
 
 	// Admins contain a list of users who are able to access the projects page.
 	Admins []string `bson:"admins" json:"admins"`
@@ -97,6 +98,7 @@ var (
 	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 	projectRefTracksPushEventsKey   = bsonutil.MustHaveTag(ProjectRef{}, "TracksPushEvents")
 	projectRefPRTestingEnabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PRTestingEnabled")
+	projectRefPatchingDisabledKey   = bsonutil.MustHaveTag(ProjectRef{}, "PatchingDisabled")
 )
 
 const (
@@ -306,6 +308,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefAdminsKey:             projectRef.Admins,
 				projectRefTracksPushEventsKey:   projectRef.TracksPushEvents,
 				projectRefPRTestingEnabledKey:   projectRef.PRTestingEnabled,
+				projectRefPatchingDisabledKey:   projectRef.PatchingDisabled,
 			},
 		},
 	)

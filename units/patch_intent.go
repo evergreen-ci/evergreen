@@ -185,6 +185,19 @@ func (j *patchIntentProcessor) finishPatch(ctx context.Context, patchDoc *patch.
 		}
 	}
 
+	pref, err := model.FindOneProjectRef(patchDoc.Project)
+	if err != nil {
+		return errors.Wrap(err, "can't find patch project")
+	}
+
+	if !pref.Enabled {
+		return errors.New("project is disabled")
+	}
+
+	if pref.PatchingDisabled {
+		return errors.New("patching is diabled for project")
+	}
+
 	// Get and validate patched config and add it to the patch document
 	project, err := validator.GetPatchedProject(ctx, patchDoc, githubOauthToken)
 	if err != nil {

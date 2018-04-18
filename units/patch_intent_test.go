@@ -70,6 +70,7 @@ func (s *PatchIntentUnitsSuite) SetupTest() {
 		Repo:             "evergreen",
 		Identifier:       "mci",
 		Enabled:          true,
+		PatchingDisabled: false,
 		Branch:           "master",
 		RemotePath:       "self-tests.yml",
 		RepoKind:         "github",
