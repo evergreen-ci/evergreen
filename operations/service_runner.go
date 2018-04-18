@@ -236,11 +236,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 		monitor.RunnerName,
 	}
 
-	if !useNewScheduler {
-		backgroundRunners = append(backgroundRunners, &scheduler.Runner{})
-		frequentRunners = append(frequentRunners, scheduler.RunnerName)
-	}
-
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
 		"cause":        "programmer error",
 		"frequent":     frequentRunners,
