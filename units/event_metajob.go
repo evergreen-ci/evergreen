@@ -154,7 +154,7 @@ func (j *eventMetaJob) dispatch(notifications []notification.Notification) error
 
 func (j *eventMetaJob) Run(ctx context.Context) {
 	var cancel context.CancelFunc
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 	defer j.MarkComplete()
 
