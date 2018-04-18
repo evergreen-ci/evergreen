@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"sync"
@@ -173,7 +172,21 @@ func (c *Mock) GetDistro(ctx context.Context, td TaskData) (*distro.Distro, erro
 func (c *Mock) GetVersion(ctx context.Context, td TaskData) (*version.Version, error) {
 	var err error
 	var data []byte
-	data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", fmt.Sprintf("%s.yaml", td.ID)))
+
+	switch td.ID {
+	case "shellexec":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "shellexec.yaml"))
+	case "s3copy":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "s3copy.yaml"))
+	case "exec_timeout_project":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "exec_timeout_project.yaml"))
+	case "exec_timeout_task":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "exec_timeout_task.yaml"))
+	case "idle_timeout_func":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout_func.yaml"))
+	case "idle_timeout_task":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "idle_timeout_task.yaml"))
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -198,9 +211,8 @@ func (c *Mock) Heartbeat(ctx context.Context, td TaskData) (bool, error) {
 // FetchExpansionVars returns a mock ExpansionVars.
 func (c *Mock) FetchExpansionVars(ctx context.Context, td TaskData) (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{
-		"shellexec_fn":   c.ShellExecFilename,
-		"timeout_fn":     c.TimeoutFilename,
-		"my_new_timeout": "2",
+		"shellexec_fn": c.ShellExecFilename,
+		"timeout_fn":   c.TimeoutFilename,
 	}, nil
 }
 
