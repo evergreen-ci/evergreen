@@ -46,10 +46,7 @@ func NewHostStatsJob(ts string) amboy.Job {
 	return job
 }
 
-func (j *hostStatsJob) Run(ctx context.Context) {
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
-	defer cancel()
+func (j *hostStatsJob) Run(_ context.Context) {
 	defer j.MarkComplete()
 
 	counts, err := host.CountInactiveHostsByProvider()

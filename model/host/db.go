@@ -181,6 +181,9 @@ var IsRunningAndSpawned = db.Query(
 var IsRunningTask = db.Query(
 	bson.M{
 		RunningTaskKey: bson.M{"$exists": true},
+		StatusKey: bson.M{
+			"$ne": evergreen.HostTerminated,
+		},
 	},
 )
 
