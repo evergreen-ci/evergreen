@@ -18,7 +18,6 @@ var (
 	// the functions the host monitor will run through to find hosts needing
 	// to be terminated
 	defaultHostFlaggingFuncs = []hostFlagger{
-		{flagIdleHosts, "idle"},
 		{flagExcessHosts, "excess"},
 	}
 
