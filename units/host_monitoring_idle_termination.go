@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/amboy"
 	"github.com/mongodb/amboy/dependency"
 	"github.com/mongodb/amboy/job"
+	"github.com/mongodb/amboy/registry"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -26,6 +27,13 @@ const (
 	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
 	maxTimeTilNextPayment = 5 * time.Minute
 )
+
+func init() {
+	registry.AddJobType(idleHostJobName, func() amboy.Job {
+		return makeIdleHostJob()
+	})
+
+}
 
 type idleHostJob struct {
 	HostID     string `bson:"host" json:"host" yaml:"host"`

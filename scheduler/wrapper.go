@@ -110,7 +110,7 @@ func PlanDistro(ctx context.Context, conf Configuration) error {
 	}
 
 	grip.Info(message.Fields{
-		"message":                "hosts spawned",
+		"message":                "distro-scheduler-report",
 		"runner":                 RunnerName,
 		"distro":                 conf.DistroID,
 		"new_hosts":              hostList,
