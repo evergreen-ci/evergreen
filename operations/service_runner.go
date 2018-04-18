@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
@@ -29,7 +28,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const useNewScheduler = false
+const useNewScheduler = true
 
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
@@ -150,6 +149,7 @@ func startSystemCronJobs(ctx context.Context, env evergreen.Environment) {
 
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), units.EventProcessingInterval, time.Now(), opts, units.EventMetaJobQueueOperation())
 	amboy.IntervalQueueOperation(ctx, env.RemoteQueue(), monitoringInterval, time.Now(), opts, amboy.GroupQueueOperationFactory(
+		units.PopulateIdleHostJobs(env),
 		units.PopulateHostTerminationJobs(env),
 		units.PopulateHostMonitoring(env),
 		units.PopulateTaskMonitoring()))
@@ -211,7 +211,6 @@ var backgroundRunners = []processRunner{
 	&alerts.QueueProcessor{},
 	&monitor.Runner{},
 
-	&scheduler.Runner{},
 	&hostinit.Runner{},
 	&taskrunner.Runner{},
 }
@@ -227,7 +226,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	wg := &sync.WaitGroup{}
 
 	frequentRunners := []string{
-		scheduler.RunnerName,
 		hostinit.RunnerName,
 		taskrunner.RunnerName,
 		monitor.RunnerName,
@@ -258,10 +256,6 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	})
 
 	for _, r := range backgroundRunners {
-		if useNewScheduler && r.Name() == scheduler.RunnerName {
-			continue
-		}
-
 		wg.Add(1)
 		if util.StringSliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)

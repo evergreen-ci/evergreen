@@ -14,6 +14,9 @@ import (
 //
 // Previously this oepration marked these hosts as "decommissioned,"
 // which is not a state that makes sense for static hosts.
+//
+// If the distro is the empty string ("") then this operation affects
+// all distros.
 func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
 	if activeStaticHosts == nil {
 		return nil
