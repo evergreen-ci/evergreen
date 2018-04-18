@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/units"
@@ -28,7 +29,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-const useNewScheduler = true
+const useNewScheduler = false
 
 func setupRunner() cli.BeforeFunc {
 	return func(c *cli.Context) error {
@@ -235,6 +236,11 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 		alerts.RunnerName,
 	}
 
+	if !useNewScheduler {
+		backgroundRunners = append(backgroundRunners, &scheduler.Runner{})
+		frequentRunners = append(frequentRunners, scheduler.RunnerName)
+	}
+
 	grip.AlertWhen(len(frequentRunners)+len(infrequentRunners) != len(backgroundRunners), message.Fields{
 		"cause":        "programmer error",
 		"frequent":     frequentRunners,
@@ -256,6 +262,10 @@ func startRunners(ctx context.Context, s *evergreen.Settings, waiter chan struct
 	})
 
 	for _, r := range backgroundRunners {
+		if useNewScheduler && r.Name() == scheduler.RunnerName {
+			continue
+		}
+
 		wg.Add(1)
 		if util.StringSliceContains(frequentRunners, r.Name()) {
 			go runnerBackgroundWorker(ctx, r, s, frequentRunInterval, wg)
