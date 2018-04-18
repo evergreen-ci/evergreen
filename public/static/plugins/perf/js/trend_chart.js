@@ -87,33 +87,33 @@ mciModule.factory('PerfChartService', function() {
 
   // Returns list of y-positions of ops labels for given
   // yScaledValues list.
-  function getOpsLabelYPosition(yScaledValues, cfg) {
-    // The function assumes that ops/second for threads is always
-    // 16 > 8 > 4 > 1. This assumption should be correct in regular cases
+  function getOpsLabelYPosition(vals, cfg) {
+    yScaledValues = _.sortBy(vals, function(d) { return -d })
+
     // Calculate the most top (the last) label position.
     // Also checks top margin overlap
-    var prevPos = _.last(yScaledValues) + cfg.focus.labelOffset.y;
+    var currentVal = _.last(yScaledValues)
+    var prevPos = currentVal + cfg.focus.labelOffset.y
     if (prevPos < cfg.margin.top) {
       prevPos = cfg.margin.top + 5
     }
-    var textPosList = [prevPos];
-    var pos;
+    var textPosList = []
+    textPosList[_.indexOf(vals, currentVal)] = prevPos
 
     // Calculate all other items positions, based on previous item position
     // Loop skips the last item (see code above)
     for (var i = yScaledValues.length - 2; i >= 0; i--) {
-      var currentPos = yScaledValues[i] + cfg.focus.labelOffset.y;
+      var currentVal = yScaledValues[i]
+      var currentPos = currentVal + cfg.focus.labelOffset.y;
       var delta = prevPos - currentPos;
       // If labels overlapping, move the label below previous label
       var newPos = (delta > -cfg.focus.labelOffset.between)
         ? prevPos + cfg.focus.labelOffset.between
-        : currentPos;
-      prevPos = newPos;
-      textPosList.push(newPos);
+        : currentPos
+      prevPos = newPos
+      textPosList[_.indexOf(vals, currentVal)] = newPos
     }
 
-    // Resotre original order
-    textPosList.reverse()
     return textPosList;
   }
 
@@ -561,8 +561,6 @@ var drawSingleTrendChart = function(params) {
       scope.currentHash = hash;
       scope.currentHashDate = d.startedAt
       scope.$emit('hashChanged', hash)
-      // FIXME This slowdowns the chart dramatically
-      scope.$digest()
     }
   }
 
@@ -583,7 +581,7 @@ var drawSingleTrendChart = function(params) {
 
     var maxOps = _.max(values);
     // List of dot Y positions
-    var yScaledValues = _.map(values, yScale);
+    var yScaledValues = _.map(values, yScale)
     var opsLabelsY = PerfChartService.getOpsLabelYPosition(yScaledValues, cfg);
 
     focusG.attr('transform', d3Translate(x, 0))
@@ -593,15 +591,16 @@ var drawSingleTrendChart = function(params) {
     })
 
     focusedText
-      .attr({y: function(d, i) { return opsLabelsY[i] },
-             transform: function() {
-               // transform the hover text location based on the list index
-               var x = 0;
-               if (series) {
-                 x = (cfg.focus.labelOffset.x + this.getBBox().width) * idx / series.length
-               }
-               return d3Translate(-x, 0)
-             }
+      .attr({
+        y: function(d, i) { return opsLabelsY[i] },
+        transform: function(d, i) {
+          // transform the hover text location based on the list index
+          var x = 0
+          if (series) {
+            x = (cfg.focus.labelOffset.x + this.getBBox().width) * idx / series.length
+          }
+          return d3Translate(-x, 0)
+        }
       })
       .text(function(d, i) {
         var value = values[i];
@@ -611,7 +610,7 @@ var drawSingleTrendChart = function(params) {
         } else if (absolute < 1) {
           if (absolute >= .1) {
             return cfg.formatters.digits_1(value);
-          }  else if (absolute >= .01) {
+          } else if (absolute >= .01) {
             return cfg.formatters.digits_2(value);
           } else {
             return cfg.formatters.digits_3(value);

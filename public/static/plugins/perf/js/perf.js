@@ -711,6 +711,8 @@ var drawTrendGraph = function(scope, PerfChartService) {
       taskId = scope.task.id,
       compareSamples = scope.comparePerfSamples;
 
+  // Creates new, non-isolated scope for charts
+  var chartsScope = scope.$new()
   for (var i = 0; i < tests.length; i++) {
     var key = tests[i];
     var series = trendSamples.seriesByName[key];
@@ -720,7 +722,7 @@ var drawTrendGraph = function(scope, PerfChartService) {
       PerfChartService: PerfChartService,
       series: series,
       key: key,
-      scope: scope,
+      scope: chartsScope,
       containerId: containerId,
       compareSamples: compareSamples,
       threadMode: scope.threadLevelsRadio.value,
