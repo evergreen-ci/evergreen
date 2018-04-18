@@ -1,12 +1,14 @@
 package notification
 
 import (
+	"context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/anser/bsonutil"
+	adb "github.com/mongodb/anser/db"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	mgo "gopkg.in/mgo.v2"
@@ -75,6 +77,27 @@ func (n *Notification) SetBSON(raw bson.Raw) error {
 	n.Error = temp.Error
 
 	return nil
+}
+
+func BulkInserter(ctx context.Context) (adb.BufferedInserter, error) {
+	session, mdb, err := db.GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	opts := adb.BufferedInsertOptions{
+		DB:         mdb.Name,
+		Count:      10,
+		Duration:   10 * time.Second,
+		Collection: Collection,
+	}
+
+	bi, err := adb.NewBufferedSessionInserter(ctx, session, opts)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return bi, nil
 }
 
 func InsertMany(items ...Notification) error {
