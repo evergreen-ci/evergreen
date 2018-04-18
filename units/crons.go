@@ -267,12 +267,26 @@ func PopulateIdleHostJobs(env evergreen.Environment) amboy.QueueOperation {
 		catcher := grip.NewBasicCatcher()
 		ts := util.RoundPartOfHour(1).Format(tsFormat)
 		hosts, err := host.AllIdleEphemeral()
-		if err != nil {
-			return errors.Wrap(err, "problem finding idle hosts")
-		}
+		catcher.Add(err)
+		grip.Warning(message.WrapError(err, message.Fields{
+			"id":    idleHostJobName,
+			"hosts": hosts,
+		}))
+
+		grip.InfoWhen(sometimes.Percent(10), message.Fields{
+			"id":    idleHostJobName,
+			"op":    "dispatcher",
+			"hosts": hosts,
+			"num":   len(hosts),
+		})
 
 		for _, h := range hosts {
-			catcher.Add(queue.Put(NewIdleHostTerminationJob(env, h, ts)))
+			err := queue.Put(NewIdleHostTerminationJob(env, h, ts))
+			grip.Warning(message.WrapError(err, message.Fields{
+				"id":   idleHostJobName,
+				"host": h,
+			}))
+			catcher.Add(err)
 		}
 
 		return catcher.Resolve()
@@ -294,18 +308,22 @@ func PopulateSchedulerJobs() amboy.QueueOperation {
 			})
 		}
 
+		catcher := grip.NewBasicCatcher()
+
 		lastPlanned, err := model.FindTaskQueueGenerationTimes()
-		if err != nil {
-			return errors.Wrap(err, "problem finding last task generation times")
-		}
+		catcher.Add(err)
 
 		names, err := distro.FindAllNames()
-		if err != nil {
-			return errors.Wrap(err, "problem finding all configured distros")
-		}
+		catcher.Add(err)
+
+		grip.InfoWhen(sometimes.Percent(10), message.Fields{
+			"runner":   "scheduler",
+			"previous": lastPlanned,
+			"distros":  names,
+			"op":       "dispatcher",
+		})
 
 		ts := util.RoundPartOfMinute(20)
-		catcher := grip.NewBasicCatcher()
 		for _, id := range names {
 			lastRun, ok := lastPlanned[id]
 			if ok && time.Since(lastRun) < 40*time.Second {

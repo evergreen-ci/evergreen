@@ -180,7 +180,8 @@ func updateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				taskQueueQueueKey: taskQueue,
+				taskQueueQueueKey:       taskQueue,
+				taskQueueGeneratedAtKey: time.Now(),
 			},
 		},
 	)
@@ -272,13 +273,15 @@ func FindTaskQueueGenerationTimes() (map[string]time.Time, error) {
 			"$replaceRoot": bson.M{"newRoot": "$root"},
 		},
 	}, &out)
+
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return map[string]time.Time{}, errors.WithStack(err)
 	}
 
 	if len(out) != 1 {
-		return nil, errors.New("produced invalid results")
+		return map[string]time.Time{}, errors.New("produced invalid results")
 	}
+
 	return out[0], nil
 }
 
