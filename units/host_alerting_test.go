@@ -52,7 +52,7 @@ func (s *hostAlertSuite) TestLongRunningTasks() {
 	s.NoError(h.Insert())
 
 	j := makeHostAlerting()
-	j.host = h
+	j.host = &h
 	j.HostID = h.Id
 	j.logger = logging.MakeGrip(s.sender)
 	j.Run(context.Background())
