@@ -69,7 +69,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 		return
 	}
 	if e != nil {
-		msg["last_processed_at"] = e.ProcessedAt
+		msg["last_processed_at"] = e.ProcessedAt.String()
 	}
 
 	nUnprocessed, err := event.CountUnprocessedEvents()
