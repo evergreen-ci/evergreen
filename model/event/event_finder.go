@@ -14,7 +14,7 @@ import (
 func UnprocessedEvents() bson.M {
 	return bson.M{
 		processedAtKey: bson.M{
-			"$exists": false,
+			"$eq": time.Time{},
 		},
 	}
 }
@@ -66,7 +66,7 @@ func CountProcessEvents(taskID string) (int, error) {
 func FindLastProcessedEvent() (*EventLogEntry, error) {
 	q := db.Query(bson.M{
 		processedAtKey: bson.M{
-			"$exists": true,
+			"$gt": time.Time{},
 		},
 	}).Sort([]string{"-" + processedAtKey})
 

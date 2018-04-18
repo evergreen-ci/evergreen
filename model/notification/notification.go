@@ -258,7 +258,7 @@ func CollectUnsentNotificationStats() (*NotificationStats, error) {
 		Count int    `bson:"n"`
 	}{}
 
-	if err := db.Aggregate(NotificationsCollection, pipeline, &stats); err != nil {
+	if err := db.Aggregate(Collection, pipeline, &stats); err != nil {
 		return nil, errors.Wrap(err, "failed to count unsent notifications")
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type notificationSuite struct {
@@ -349,15 +350,15 @@ func (s *notificationSuite) TestCollectUnsentNotificationStats() {
 	// add one of every notification, unsent
 	for i, type_ := range types {
 		n = append(n, s.n)
-		n[i].ID = bson.NewObjectId()
+		n[i].ID = bson.NewObjectId().Hex()
 		n[i].Subscriber.Type = type_
-		s.NoError(db.Insert(NotificationsCollection, n[i]))
+		s.NoError(db.Insert(Collection, n[i]))
 	}
 
 	// add one more, mark it sent
-	s.n.ID = bson.NewObjectId()
+	s.n.ID = bson.NewObjectId().Hex()
 	s.n.SentAt = time.Now()
-	s.NoError(db.Insert(NotificationsCollection, s.n))
+	s.NoError(db.Insert(Collection, s.n))
 
 	stats, err := CollectUnsentNotificationStats()
 	s.NoError(err)

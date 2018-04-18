@@ -55,7 +55,7 @@ func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	err := db.Update(l.collection, bson.M{
 		idKey: event.ID,
 		processedAtKey: bson.M{
-			"$exists": false,
+			"$eq": time.Time{},
 		},
 	}, bson.M{
 		"$set": bson.M{
@@ -64,7 +64,7 @@ func (l *DBEventLogger) MarkProcessed(event *EventLogEntry) error {
 	})
 	if err != nil {
 		event.ProcessedAt = time.Time{}
-		return errors.Wrap(err, "failed to update process time")
+		return errors.Wrap(err, "failed to update 'processed at' time")
 	}
 
 	return nil

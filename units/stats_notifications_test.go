@@ -30,7 +30,7 @@ func (s *notificationsStatsCollectorSuite) SetupSuite() {
 }
 
 func (s *notificationsStatsCollectorSuite) SetupTest() {
-	s.NoError(db.ClearCollections(event.AllLogCollection, notification.NotificationsCollection))
+	s.NoError(db.ClearCollections(event.AllLogCollection, notification.Collection))
 	s.expectedTime = time.Time{}.Add(time.Second)
 
 	events := []event.EventLogEntry{
@@ -58,43 +58,43 @@ func (s *notificationsStatsCollectorSuite) SetupTest() {
 
 	n := []notification.Notification{
 		{
-			ID: bson.NewObjectId(),
+			ID: "1",
 			Subscriber: event.Subscriber{
 				Type: event.EmailSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "2",
 			Subscriber: event.Subscriber{
 				Type: event.SlackSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "3",
 			Subscriber: event.Subscriber{
 				Type: event.JIRAIssueSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "4",
 			Subscriber: event.Subscriber{
 				Type: event.JIRACommentSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "5",
 			Subscriber: event.Subscriber{
 				Type: event.GithubPullRequestSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "6",
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 			},
 		},
 		{
-			ID: bson.NewObjectId(),
+			ID: "7",
 			Subscriber: event.Subscriber{
 				Type: event.EvergreenWebhookSubscriberType,
 			},
@@ -102,7 +102,7 @@ func (s *notificationsStatsCollectorSuite) SetupTest() {
 		},
 	}
 	for i := range n {
-		s.NoError(db.Insert(notification.NotificationsCollection, n[i]))
+		s.NoError(db.Insert(notification.Collection, n[i]))
 	}
 }
 

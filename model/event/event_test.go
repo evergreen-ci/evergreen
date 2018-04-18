@@ -269,13 +269,13 @@ func (s *eventSuite) TestMarkProcessed() {
 
 	s.EqualError(logger.MarkProcessed(&event), "event has no ID")
 	event.ID = bson.NewObjectId()
-	s.EqualError(logger.MarkProcessed(&event), "failed to update process time: not found")
+	s.EqualError(logger.MarkProcessed(&event), "failed to update 'processed at' time: not found")
 
 	s.NoError(logger.LogEvent(&event))
 
 	s.NoError(db.UpdateId(AllLogCollection, event.ID, bson.M{
-		"$unset": bson.M{
-			"processed_at": 1,
+		"$set": bson.M{
+			"processed_at": time.Time{},
 		},
 	}))
 
@@ -316,16 +316,17 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 		{
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
-		},
-		{
 			processedAtKey:  time.Time{},
-			resourceTypeKey: ResourceTypeHost,
-			DataKey:         bson.M{},
 		},
 		{
-			processedAtKey:  time.Now(),
 			resourceTypeKey: ResourceTypeHost,
 			DataKey:         bson.M{},
+			processedAtKey:  time.Time{}.Add(time.Second),
+		},
+		{
+			resourceTypeKey: ResourceTypeHost,
+			DataKey:         bson.M{},
+			processedAtKey:  time.Now(),
 		},
 	}
 	for i := range data {
@@ -505,10 +506,12 @@ func (s *eventSuite) TestMarkAllEventsProcessed() {
 	data := []bson.M{
 		{
 			resourceTypeKey: ResourceTypeHost,
+			processedAtKey:  time.Time{},
 			DataKey:         bson.M{},
 		},
 		{
 			resourceTypeKey: ResourceTypeHost,
+			processedAtKey:  time.Time{},
 			DataKey:         bson.M{},
 		},
 		{
