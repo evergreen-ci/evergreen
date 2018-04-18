@@ -25,31 +25,6 @@ func patchValidator(t func(data *event.PatchEventData) (*notificationGenerator, 
 	}
 }
 
-func patchBaseSelectors(data *event.PatchEventData) []event.Selector {
-	return []event.Selector{
-		{
-			Type: "object",
-			Data: "patch",
-		},
-		{
-			Type: "trigger",
-			Data: "outcome",
-		},
-		{
-			Type: "user",
-			Data: data.Author,
-		},
-		{
-			Type: "user",
-			Data: data.Author,
-		},
-		{
-			Type: "user",
-			Data: data.Author,
-		},
-	}
-}
-
 func patchOutcome(data *event.PatchEventData) (*notificationGenerator, error) {
 	const name = "outcome"
 
@@ -61,7 +36,6 @@ func patchOutcome(data *event.PatchEventData) (*notificationGenerator, error) {
 	return &gen, nil
 }
 
-// patch failure trigger is the outcome trigger, but only for failures
 func patchFailure(data *event.PatchEventData) (*notificationGenerator, error) {
 	const name = "failure"
 
