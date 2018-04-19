@@ -28,6 +28,12 @@ mciModule.controller('TaskBuildBaronCtrl', function($scope, $http, $window) {
             }
             // next, prefer tickets resolved with "Fixed"
             if (a.statusKey == 2) {
+              // The alternative suggestion endpoint may not return the resolution of tickets, even
+              // if their status is "Fixed" or "Closed". We fall back to comparing the tickets by
+              // their updated date.
+              a.fields.resolution = a.fields.resolution || {};
+              b.fields.resolution = b.fields.resolution || {};
+
               if (a.fields.resolution.name != b.fields.resolution.name) {
                 if (a.fields.resolution.name == "Fixed") {
                     return -1;

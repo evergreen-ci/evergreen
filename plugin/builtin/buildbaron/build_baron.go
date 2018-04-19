@@ -1,10 +1,15 @@
 package buildbaron
 
 import (
+	"context"
 	"fmt"
 	"html/template"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +23,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -37,12 +44,7 @@ type bbPluginOptions struct {
 	Host     string
 	Username string
 	Password string
-	Projects map[string]bbProject
-}
-
-type bbProject struct {
-	TicketCreateProject  string   `mapstructure:"ticket_create_project"`
-	TicketSearchProjects []string `mapstructure:"ticket_search_projects"`
+	Projects map[string]evergreen.BuildBaronProject
 }
 
 type BuildBaronPlugin struct {
@@ -86,12 +88,31 @@ func (bbp *BuildBaronPlugin) Configure(conf map[string]interface{}) error {
 	if len(bbpOptions.Projects) == 0 {
 		return fmt.Errorf("Must specify at least 1 Evergreen project")
 	}
-	for _, proj := range bbpOptions.Projects {
+	for projName, proj := range bbpOptions.Projects {
 		if proj.TicketCreateProject == "" {
 			return fmt.Errorf("ticket_create_project cannot be blank")
 		}
 		if len(proj.TicketSearchProjects) == 0 {
 			return fmt.Errorf("ticket_search_projects cannot be empty")
+		}
+		if proj.AlternativeEndpointURL != "" {
+			if _, err := url.Parse(proj.AlternativeEndpointURL); err != nil {
+				return errors.Wrapf(err, `Failed to parse alt_endpoint_url for project "%s"`, projName)
+			}
+			if proj.AlternativeEndpointUsername == "" && proj.AlternativeEndpointPassword != "" {
+				return errors.Errorf(`Failed validating configuration for project "%s": `+
+					"alt_endpoint_password must be blank if alt_endpoint_username is blank", projName)
+			}
+			if proj.AlternativeEndpointTimeoutSecs <= 0 {
+				return errors.Errorf(`Failed validating configuration for project "%s": `+
+					"alt_endpoint_timeout_secs must be positive", projName)
+			}
+		} else if proj.AlternativeEndpointUsername != "" || proj.AlternativeEndpointPassword != "" {
+			return errors.Errorf(`Failed validating configuration for project "%s": `+
+				"alt_endpoint_username and alt_endpoint_password must be blank alt_endpoint_url is blank", projName)
+		} else if proj.AlternativeEndpointTimeoutSecs != 0 {
+			return errors.Errorf(`Failed validating configuration for project "%s": `+
+				"alt_endpoint_timeout_secs must be zero when alt_endpoint_url is blank", projName)
 		}
 	}
 	bbp.opts = bbpOptions
@@ -130,6 +151,47 @@ type searchReturnInfo struct {
 	Search string                  `json:"search"`
 }
 
+// raceSuggesters returns the JIRA ticket results from the altEndpoint suggester if it returns
+// within its configured interval, and returns the JIRA ticket results from the fallback suggester
+// otherwise.
+func raceSuggesters(fallback, altEndpoint suggester, t *task.Task) ([]thirdparty.JiraTicket, error) {
+	type result struct {
+		Tickets []thirdparty.JiraTicket
+		Error   error
+	}
+
+	// thirdparty/jira.go and thirdparty/http.go do not expose an API that accepts a context.Context.
+	fallbackCtx := context.TODO()
+	fallbackChan := make(chan result, 1)
+	go func() {
+		suggestions, err := fallback.Suggest(fallbackCtx, t)
+		fallbackChan <- result{suggestions, err}
+		close(fallbackChan)
+	}()
+
+	altEndpointTimeout := altEndpoint.GetTimeout()
+	altEndpointCtx, altEndpointCancel := context.WithTimeout(context.Background(), altEndpointTimeout)
+	defer altEndpointCancel()
+	suggestions, err := altEndpoint.Suggest(altEndpointCtx, t)
+
+	// If the alternative endpoint didn't respond quickly enough or didn't have results available,
+	// then we wait for the fallback results. Ideally we'd otherwise be able to cancel the request
+	// for fetching the fallback results, but we instead just return back to the caller without
+	// waiting for the associated goroutine to complete.
+	if err != nil {
+		grip.Warning(message.WrapError(err, message.Fields{
+			"message":   "failed to get results from alternative endpoint",
+			"task_id":   t.Id,
+			"execution": t.Execution,
+		}))
+
+		fallbackChanRes := <-fallbackChan
+		return fallbackChanRes.Tickets, fallbackChanRes.Error
+	}
+
+	return suggestions, nil
+}
+
 // BuildFailuresSearchHandler handles the requests of searching jira in the build
 //  failures project
 func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.Request) {
@@ -156,16 +218,157 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 			fmt.Sprintf("Corresponding JIRA project for %v not found", t.Project))
 		return
 	}
-	jql := taskToJQL(t, bbProj.TicketSearchProjects)
 
-	results, err := bbp.jiraHandler.JQLSearch(jql, 0, -1)
+	fallback := jiraSuggest{bbProj, bbp.jiraHandler}
+	altEndpoint := altEndpointSuggest{bbProj}
+
+	var tickets []thirdparty.JiraTicket
+	if bbProj.AlternativeEndpointURL != "" {
+		tickets, err = raceSuggesters(&fallback, &altEndpoint, t)
+	} else {
+		tickets, err = fallback.Suggest(context.TODO(), t)
+	}
+
+	jql := taskToJQL(t, bbProj.TicketSearchProjects)
 	if err != nil {
 		message := fmt.Sprintf("%v: %v, %v", JIRAFailure, err, jql)
 		grip.Error(message)
 		util.WriteJSON(w, http.StatusInternalServerError, message)
 		return
 	}
-	util.WriteJSON(w, http.StatusOK, searchReturnInfo{Issues: results.Issues, Search: jql})
+	util.WriteJSON(w, http.StatusOK, searchReturnInfo{Issues: tickets, Search: jql})
+}
+
+type suggester interface {
+	Suggest(context.Context, *task.Task) ([]thirdparty.JiraTicket, error)
+	GetTimeout() time.Duration
+}
+
+type jiraSuggest struct {
+	bbProj      evergreen.BuildBaronProject
+	jiraHandler thirdparty.JiraHandler
+}
+
+// Suggest returns JIRA ticket results based on the test and/or task name.
+func (js *jiraSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
+	jql := taskToJQL(t, js.bbProj.TicketSearchProjects)
+
+	results, err := js.jiraHandler.JQLSearch(jql, 0, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	return results.Issues, nil
+}
+
+func (js *jiraSuggest) GetTimeout() time.Duration {
+	// This function is never called because we are willing to wait forever for the fallback handler
+	// to return JIRA ticket results.
+	return 0
+}
+
+type altEndpointSuggest struct {
+	bbProj evergreen.BuildBaronProject
+}
+
+type altEndpointSuggestion struct {
+	TestName string `json:"test_name"`
+	Issues   []struct {
+		Key         string `json:"key"`
+		Summary     string `json:"summary"`
+		Status      string `json:"status"`
+		Resolution  string `json:"resolution"`
+		CreatedDate string `json:"created_date"`
+		UpdatedDate string `json:"updated_date"`
+	}
+}
+
+type altEndpointResponse struct {
+	Status      string                  `json:"status"`
+	Suggestions []altEndpointSuggestion `json:"suggestions"`
+}
+
+// parseResponse converts the Build Baron tool's suggestion response into JIRA ticket results.
+func (aes *altEndpointSuggest) parseResponse(r io.ReadCloser) ([]thirdparty.JiraTicket, error) {
+	data := altEndpointResponse{}
+
+	if err := util.ReadJSONInto(r, &data); err != nil {
+		return nil, errors.Wrap(err, "Failed to parse Build Baron suggestions")
+	}
+
+	if data.Status != "ok" {
+		return nil, errors.Errorf("Build Baron suggestions weren't ready: status=%s", data.Status)
+	}
+
+	var tickets []thirdparty.JiraTicket
+	for _, suggestion := range data.Suggestions {
+		for _, issue := range suggestion.Issues {
+			ticket := thirdparty.JiraTicket{
+				Key: issue.Key,
+				Fields: &thirdparty.TicketFields{
+					Summary: issue.Summary,
+					Created: issue.CreatedDate,
+					Updated: issue.UpdatedDate,
+					Status:  &thirdparty.JiraStatus{Name: issue.Status},
+				},
+			}
+
+			if issue.Resolution != "" {
+				ticket.Fields.Resolution = &thirdparty.JiraResolution{Name: issue.Resolution}
+			}
+
+			tickets = append(tickets, ticket)
+		}
+	}
+
+	if len(tickets) == 0 {
+		// We treat not having suggestions as an error so that it causes fallback to occur in a
+		// unified way.
+		return nil, errors.New("no suggestions found")
+	}
+
+	return tickets, nil
+}
+
+func (aes *altEndpointSuggest) Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error) {
+	client := util.GetHTTPClient()
+	defer util.PutHTTPClient(client)
+
+	url := aes.bbProj.AlternativeEndpointURL
+	url = strings.Replace(url, "{task_id}", t.Id, -1)
+	url = strings.Replace(url, "{execution}", strconv.Itoa(t.Execution), -1)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if aes.bbProj.AlternativeEndpointUsername != "" {
+		req.SetBasicAuth(aes.bbProj.AlternativeEndpointUsername, aes.bbProj.AlternativeEndpointPassword)
+	}
+
+	req = req.WithContext(ctx)
+	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, errors.Errorf("HTTP request returned unexpected status: %v", resp.Status)
+		}
+		return nil, errors.Errorf("HTTP request returned unexpected status=%v: %s", resp.Status, string(body))
+	}
+
+	return aes.parseResponse(resp.Body)
+}
+
+func (aes *altEndpointSuggest) GetTimeout() time.Duration {
+	return time.Duration(aes.bbProj.AlternativeEndpointTimeoutSecs) * time.Second
 }
 
 func (bbp *BuildBaronPlugin) getCreatedTickets(w http.ResponseWriter, r *http.Request) {
