@@ -269,25 +269,27 @@ type altEndpointSuggest struct {
 	bbProj bbProject
 }
 
+type altEndpointResponse struct {
+	Status      string `json:"status"`
+	Suggestions []struct {
+		TestName string `json:"test_name"`
+		Issues   []struct {
+			Key         string `json:"key"`
+			Summary     string `json:"summary"`
+			Status      string `json:"status"`
+			Resolution  string `json:"resolution"`
+			CreatedDate string `json:"created_date"`
+			UpdatedDate string `json:"updated_date"`
+		}
+	} `json:"suggestions"`
+}
+
 // parseResponse converts the Build Baron tool's suggestion response into JIRA ticket results.
 func (aes *altEndpointSuggest) parseResponse(r io.ReadCloser) ([]thirdparty.JiraTicket, error) {
-	data := struct {
-		Status      string `json:"status"`
-		Suggestions []struct {
-			TestName string `json:"test_name"`
-			Issues   []struct {
-				Key         string `json:"key"`
-				Summary     string `json:"summary"`
-				Status      string `json:"status"`
-				Resolution  string `json:"resolution"`
-				CreatedDate string `json:"created_date"`
-				UpdatedDate string `json:"updated_date"`
-			}
-		} `json:"suggestions"`
-	}{}
+	data := altEndpointResponse{}
 
 	if err := util.ReadJSONInto(r, &data); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to parse Build Baron suggestions")
 	}
 
 	if data.Status != "ok" {
