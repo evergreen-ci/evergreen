@@ -83,6 +83,108 @@ func TestTaskToJQL(t *testing.T) {
 	})
 }
 
+func TestBuildBaronPluginConfigure(t *testing.T) {
+	assert := assert.New(t)
+
+	bbPlugin := BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Username": "user",
+		"Password": "pass",
+		"Projects": map[string]bbProject{
+			"proj": bbProject{
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+		},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Nil(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Username": "user",
+		"Password": "pass",
+		"Projects": map[string]bbProject{
+			"proj1": bbProject{
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+			"proj2": bbProject{
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+		},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Error(bbPlugin.Configure(map[string]interface{}{
+		"Username": "user",
+		"Password": "pass",
+		"Projects": map[string]bbProject{
+			"proj": bbProject{
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+		},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Error(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Password": "pass",
+		"Projects": map[string]bbProject{
+			"proj": bbProject{
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+		},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Error(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Username": "user",
+		"Projects": map[string]bbProject{
+			"proj": bbProject{
+				TicketCreateProject:  "BFG",
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+		},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Error(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Username": "user",
+		"Password": "pass",
+		"Projects": map[string]bbProject{},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Error(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Username": "user",
+		"Password": "pass",
+		"Projects": map[string]bbProject{
+			"proj": bbProject{
+				TicketCreateProject: "BFG",
+			},
+		},
+	}))
+
+	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
+	assert.Error(bbPlugin.Configure(map[string]interface{}{
+		"Host":     "host",
+		"Username": "user",
+		"Password": "pass",
+		"Projects": map[string]bbProject{
+			"proj": bbProject{
+				TicketSearchProjects: []string{"BF", "BFG"},
+			},
+		},
+	}))
+}
+
 func TestAltEndpointProcessResponse(t *testing.T) {
 	assert := assert.New(t)
 
