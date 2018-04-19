@@ -1,6 +1,7 @@
 package data
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -23,8 +24,5 @@ type MockSubscriptionConnector struct {
 }
 
 func (mc *MockSubscriptionConnector) SaveSubscriptions(subscriptions []event.Subscription) error {
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-	mc.MockSubscriptions = append(mc.MockSubscriptions, subscriptions...)
-	return nil
+	return errors.New("MockSubscriptionConnector unimplemented")
 }

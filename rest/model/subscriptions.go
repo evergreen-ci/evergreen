@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type APISelector struct {
@@ -12,6 +13,7 @@ type APISelector struct {
 }
 
 type APISubscription struct {
+	ID             APIString     `json:"id"`
 	Type           APIString     `json:"type"`
 	Trigger        APIString     `json:"trigger"`
 	Selectors      []APISelector `json:"selectors"`
@@ -42,6 +44,7 @@ func (s *APISelector) ToService() (interface{}, error) {
 func (s *APISubscription) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case event.Subscription:
+		s.ID = ToAPIString(v.ID.Hex())
 		s.Type = ToAPIString(v.Type)
 		s.Trigger = ToAPIString(v.Trigger)
 		s.Owner = ToAPIString(v.Owner)
@@ -75,7 +78,16 @@ func (s *APISubscription) BuildFromService(h interface{}) error {
 }
 
 func (s *APISubscription) ToService() (interface{}, error) {
+	var id bson.ObjectId
+	if s.ID != nil {
+		idString := FromAPIString(s.ID)
+		if !bson.IsObjectIdHex(idString) {
+			return nil, errors.New("subscription ID is not an ObjectId")
+		}
+		id = bson.ObjectIdHex(idString)
+	}
 	out := event.Subscription{
+		ID:             id,
 		Type:           FromAPIString(s.Type),
 		Trigger:        FromAPIString(s.Trigger),
 		Owner:          FromAPIString(s.Owner),

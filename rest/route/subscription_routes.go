@@ -39,7 +39,9 @@ func (s *subscriptionPostHandler) Handler() RequestHandler {
 }
 
 func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	u := MustHaveUser(ctx)
 	s.Subscriptions = &[]model.APISubscription{}
+	s.dbSubscriptions = []event.Subscription{}
 	if err := util.ReadJSONInto(r.Body, s.Subscriptions); err != nil {
 		return err
 	}
@@ -57,6 +59,13 @@ func (s *subscriptionPostHandler) ParseAndValidate(ctx context.Context, r *http.
 			return rest.APIError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    "Error parsing subscription interface",
+			}
+		}
+
+		if dbSubscription.Owner != u.Username() {
+			return rest.APIError{
+				StatusCode: http.StatusUnauthorized,
+				Message:    "Cannot change subscriptions for anyone other than yourself",
 			}
 		}
 

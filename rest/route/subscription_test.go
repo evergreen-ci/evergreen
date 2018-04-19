@@ -27,7 +27,6 @@ func TestSubscriptionRouteSuiteWithDB(t *testing.T) {
 	db.SetGlobalSessionProvider(testutil.TestConfig().SessionFactory())
 	s.sc = &data.DBConnector{}
 
-	// run the rest of the tests
 	suite.Run(t, s)
 }
 
@@ -49,7 +48,7 @@ func (s *SubscriptionRouteSuite) SetupTest() {
 
 func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
 	body := []map[string]interface{}{{
 		"type":    "atype",
 		"trigger": "atrigger",
@@ -70,6 +69,7 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.NoError(err)
 	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 
+	// test creating a new subscription
 	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
 	s.NoError(err)
 	s.NotNil(resp)
@@ -80,4 +80,60 @@ func (s *SubscriptionRouteSuite) TestSubscriptionPost() {
 	s.Equal("atype", dbSubscriptions[0].Type)
 	s.Equal("seldata", dbSubscriptions[0].Selectors[0].Data)
 	s.Equal("slack", dbSubscriptions[0].Subscriber.Type)
+
+	// test updating the same subscription
+	id := dbSubscriptions[0].ID
+	body = []map[string]interface{}{{
+		"id":      id.Hex(),
+		"type":    "new type",
+		"trigger": "atrigger",
+		"owner":   "me",
+		"selectors": []map[string]string{{
+			"type": "seltype",
+			"data": "seldata",
+		}},
+		"subscriber": map[string]string{
+			"type":   "slack",
+			"target": "slack message",
+		},
+	}}
+	jsonBody, err = json.Marshal(body)
+	s.NoError(err)
+	buffer = bytes.NewBuffer(jsonBody)
+	request, err = http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
+
+	resp, err = s.postHandler.RequestHandler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(resp)
+
+	dbSubscriptions, err = event.FindSubscriptionsByOwner("me")
+	s.NoError(err)
+	s.Len(dbSubscriptions, 1)
+	s.Equal("new type", dbSubscriptions[0].Type)
+}
+
+func (s *SubscriptionRouteSuite) TestUnauthorizedUser() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "me"})
+	body := []map[string]interface{}{{
+		"type":    "atype",
+		"trigger": "atrigger",
+		"owner":   "not_me",
+		"selectors": []map[string]string{{
+			"type": "seltype",
+			"data": "seldata",
+		}},
+		"subscriber": map[string]string{
+			"type":   "slack",
+			"target": "slack message",
+		},
+	}}
+	jsonBody, err := json.Marshal(body)
+	s.NoError(err)
+	buffer := bytes.NewBuffer(jsonBody)
+	request, err := http.NewRequest(http.MethodPost, "/subscriptions", buffer)
+	s.NoError(err)
+	s.EqualError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request), "Cannot change subscriptions for anyone other than yourself")
 }

@@ -3,8 +3,10 @@ package model
 import (
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/rest"
 )
 
 type APISubscriber struct {
@@ -77,7 +79,10 @@ func (s *APISubscriber) ToService() (interface{}, error) {
 	case event.GithubPullRequestSubscriberType:
 		apiModel, ok := s.Target.(APIGithubPRSubscriber)
 		if !ok {
-			return nil, errors.New("unable to convert to APIGithubPRSubscriber")
+			return nil, rest.APIError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Subscriber target is malformed",
+			}
 		}
 		target, err = apiModel.ToService()
 		if err != nil {
