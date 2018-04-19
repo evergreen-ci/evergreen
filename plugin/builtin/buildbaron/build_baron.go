@@ -40,13 +40,11 @@ const (
 	maxNoteSize = 16 * 1024 // 16KB
 )
 
-type bbProject evergreen.BuildBaronProject
-
 type bbPluginOptions struct {
 	Host     string
 	Username string
 	Password string
-	Projects map[string]bbProject
+	Projects map[string]evergreen.BuildBaronProject
 }
 
 type BuildBaronPlugin struct {
@@ -247,7 +245,7 @@ type suggester interface {
 }
 
 type jiraSuggest struct {
-	bbProj      bbProject
+	bbProj      evergreen.BuildBaronProject
 	jiraHandler thirdparty.JiraHandler
 }
 
@@ -270,7 +268,7 @@ func (js *jiraSuggest) GetTimeout() time.Duration {
 }
 
 type altEndpointSuggest struct {
-	bbProj bbProject
+	bbProj evergreen.BuildBaronProject
 }
 
 type altEndpointSuggestion struct {

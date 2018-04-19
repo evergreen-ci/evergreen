@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -91,8 +92,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -104,12 +105,12 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj1": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj1": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
-			"proj2": bbProject{
+			"proj2": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -120,8 +121,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -132,8 +133,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Host":     "host",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -144,8 +145,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 	assert.Error(bbPlugin.Configure(map[string]interface{}{
 		"Host":     "host",
 		"Username": "user",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:  "BFG",
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
@@ -157,7 +158,7 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{},
+		"Projects": map[string]evergreen.BuildBaronProject{},
 	}))
 
 	bbPlugin = BuildBaronPlugin{nil, thirdparty.JiraHandler{}}
@@ -165,8 +166,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject: "BFG",
 			},
 		},
@@ -177,8 +178,8 @@ func TestBuildBaronPluginConfigure(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketSearchProjects: []string{"BF", "BFG"},
 			},
 		},
@@ -193,8 +194,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
@@ -210,8 +211,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
@@ -225,8 +226,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:         "BFG",
 				TicketSearchProjects:        []string{"BF", "BFG"},
 				AlternativeEndpointUsername: "user",
@@ -240,8 +241,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointTimeoutSecs: 10,
@@ -254,8 +255,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointURL:         "://evergreen.mongodb.com",
@@ -269,8 +270,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
@@ -285,8 +286,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
@@ -300,8 +301,8 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 		"Host":     "host",
 		"Username": "user",
 		"Password": "pass",
-		"Projects": map[string]bbProject{
-			"proj": bbProject{
+		"Projects": map[string]evergreen.BuildBaronProject{
+			"proj": evergreen.BuildBaronProject{
 				TicketCreateProject:            "BFG",
 				TicketSearchProjects:           []string{"BF", "BFG"},
 				AlternativeEndpointURL:         "https://evergreen.mongodb.com",
@@ -314,7 +315,7 @@ func TestBuildBaronPluginConfigureAltEndpoint(t *testing.T) {
 func TestAltEndpointProcessResponse(t *testing.T) {
 	assert := assert.New(t)
 
-	altEndpoint := altEndpointSuggest{bbProject{}}
+	altEndpoint := altEndpointSuggest{evergreen.BuildBaronProject{}}
 	tickets, err := altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
 			"task_id": "my_task",
 			"execution": 0,
@@ -354,7 +355,7 @@ func TestAltEndpointProcessResponse(t *testing.T) {
 	assert.Equal(tickets, []thirdparty.JiraTicket{ticket1, ticket2, ticket3},
 		"expected JIRA tickets for all suggestions to be returned")
 
-	altEndpoint = altEndpointSuggest{bbProject{}}
+	altEndpoint = altEndpointSuggest{evergreen.BuildBaronProject{}}
 	tickets, err = altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
 			"task_id": "my_task",
 			"execution": 0,
@@ -399,7 +400,7 @@ func TestAltEndpointProcessResponse(t *testing.T) {
 	assert.Equal(tickets, []thirdparty.JiraTicket{ticket1, ticket3, ticket2},
 		"expected JIRA tickets for all tests to be returned")
 
-	altEndpoint = altEndpointSuggest{bbProject{}}
+	altEndpoint = altEndpointSuggest{evergreen.BuildBaronProject{}}
 	tickets, err = altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
 		"task_id": "my_task",
 		"execution": 0,
@@ -411,7 +412,7 @@ func TestAltEndpointProcessResponse(t *testing.T) {
 		"expected an error to be return if no suggestions were made")
 	assert.Nil(tickets)
 
-	altEndpoint = altEndpointSuggest{bbProject{}}
+	altEndpoint = altEndpointSuggest{evergreen.BuildBaronProject{}}
 	tickets, err = altEndpoint.parseResponse(ioutil.NopCloser(bytes.NewBufferString(`{
 			"task_id": "my_task",
 			"execution": 0,
