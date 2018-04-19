@@ -22,6 +22,7 @@ type APITask struct {
 	ScheduledTime      APITime          `json:"scheduled_time"`
 	StartTime          APITime          `json:"start_time"`
 	FinishTime         APITime          `json:"finish_time"`
+	IngestTime         APITime          `json:"ingest_time"`
 	Version            APIString        `json:"version_id"`
 	Revision           APIString        `json:"revision"`
 	Priority           int64            `json:"priority"`
@@ -83,6 +84,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 			ScheduledTime: NewTime(v.ScheduledTime),
 			StartTime:     NewTime(v.StartTime),
 			FinishTime:    NewTime(v.FinishTime),
+			IngestTime:    NewTime(v.IngestTime),
 			Version:       ToAPIString(v.Version),
 			Revision:      ToAPIString(v.Revision),
 			Priority:      v.Priority,
@@ -140,6 +142,7 @@ func (ad *APITask) ToService() (interface{}, error) {
 		ScheduledTime:       time.Time(ad.ScheduledTime),
 		StartTime:           time.Time(ad.StartTime),
 		FinishTime:          time.Time(ad.FinishTime),
+		IngestTime:          time.Time(ad.IngestTime),
 		Version:             FromAPIString(ad.Version),
 		Revision:            FromAPIString(ad.Revision),
 		Priority:            ad.Priority,
