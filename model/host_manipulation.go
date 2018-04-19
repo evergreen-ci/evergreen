@@ -24,7 +24,7 @@ func UpdateStaticHosts() error {
 	activeHosts := []string{}
 	catcher := grip.NewBasicCatcher()
 	for _, d := range distros {
-		hosts, err := doStatcHostUpdate(d)
+		hosts, err := doStaticHostUpdate(d)
 		if err != nil {
 			catcher.Add(err)
 			continue
@@ -44,15 +44,19 @@ func UpdateStaticDistro(d distro.Distro) error {
 		return nil
 	}
 
-	hosts, err := doStatcHostUpdate(d)
+	hosts, err := doStaticHostUpdate(d)
 	if err != nil {
 		return errors.WithStack(err)
+	}
+
+	if d.Id == "" {
+		return nil
 	}
 
 	return host.MarkInactiveStaticHosts(hosts, d.Id)
 }
 
-func doStatcHostUpdate(d distro.Distro) ([]string, error) {
+func doStaticHostUpdate(d distro.Distro) ([]string, error) {
 	settings := &cloud.StaticSettings{}
 	err := mapstructure.Decode(d.ProviderSettings, settings)
 	if err != nil {

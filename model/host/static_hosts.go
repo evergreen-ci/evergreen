@@ -23,10 +23,9 @@ func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
 	}
 
 	query := bson.M{
-		IdKey: bson.M{
-			"$nin": activeStaticHosts,
-		},
+		IdKey:       bson.M{"$nin": activeStaticHosts},
 		ProviderKey: evergreen.HostTypeStatic,
+		StatusKey:   bson.M{"$ne": evergreen.HostQuarantined},
 	}
 
 	if distro != "" {
