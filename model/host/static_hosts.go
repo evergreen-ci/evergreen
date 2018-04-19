@@ -18,7 +18,7 @@ import (
 // If the distro is the empty string ("") then this operation affects
 // all distros.
 func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
-	if activeStaticHosts == nil || len(activeStaticHosts) == 0 {
+	if len(activeStaticHosts) == 0 {
 		return nil
 	}
 
