@@ -242,7 +242,7 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 }
 
 type suggester interface {
-	Suggest(ctx context.Context, t *task.Task) ([]thirdparty.JiraTicket, error)
+	Suggest(context.Context, *task.Task) ([]thirdparty.JiraTicket, error)
 	GetTimeout() time.Duration
 }
 
