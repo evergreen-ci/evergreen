@@ -150,7 +150,7 @@ func (s *eventNotificationSuite) notificationHasError(id string, pattern string)
 	} else {
 		match, err := regexp.MatchString(pattern, n.Error)
 		s.NoError(err)
-		s.True(match, "error doesn't match regex")
+		s.True(match, n.Error)
 	}
 
 	return n.SentAt

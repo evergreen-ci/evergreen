@@ -64,12 +64,12 @@ func (s *Subscription) SetBSON(raw bson.Raw) error {
 	if temp.ExtraData.Kind == 0x0A {
 		if s.ExtraData != nil {
 			s.ExtraData = nil
-			return errors.New("error unmarshalling extra data: expected extra data in subscription; found none")
+			return errors.New("error unmarshaling extra data: expected extra data in subscription; found none")
 		}
 
 	} else {
 		if s.ExtraData == nil {
-			return errors.New("error unmarshalling extra data: unexpected extra data in subscription")
+			return errors.New("error unmarshaling extra data: unexpected extra data in subscription")
 		}
 		if err := temp.ExtraData.Unmarshal(s.ExtraData); err != nil {
 			return errors.Wrap(err, "error unmarshalling extra data")
