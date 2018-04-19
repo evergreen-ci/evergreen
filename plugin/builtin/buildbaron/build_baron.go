@@ -219,12 +219,12 @@ func (bbp *BuildBaronPlugin) buildFailuresSearch(w http.ResponseWriter, r *http.
 		return
 	}
 
-	fallback := jiraSuggest{bbProj, bbp.jiraHandler}
-	altEndpoint := altEndpointSuggest{bbProj}
+	fallback := &jiraSuggest{bbProj, bbp.jiraHandler}
+	altEndpoint := &altEndpointSuggest{bbProj}
 
 	var tickets []thirdparty.JiraTicket
 	if bbProj.AlternativeEndpointURL != "" {
-		tickets, err = raceSuggesters(&fallback, &altEndpoint, t)
+		tickets, err = raceSuggesters(fallback, altEndpoint, t)
 	} else {
 		tickets, err = fallback.Suggest(context.TODO(), t)
 	}

@@ -440,26 +440,26 @@ func (ms *mockSuggest) GetTimeout() time.Duration {
 func TestRaceSuggesters(t *testing.T) {
 	assert := assert.New(t)
 
-	fallback := mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
-	altEndpoint := mockSuggest{nil, errors.New("Build Baron suggestions returned an error")}
+	fallback := &mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
+	altEndpoint := &mockSuggest{nil, errors.New("Build Baron suggestions returned an error")}
 
-	tickets, err := raceSuggesters(&fallback, &altEndpoint, &task.Task{})
+	tickets, err := raceSuggesters(fallback, altEndpoint, &task.Task{})
 	assert.Nil(err)
 	assert.Equal(tickets, []thirdparty.JiraTicket{ticket1},
 		"expected fallback result to be returned")
 
-	fallback = mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
-	altEndpoint = mockSuggest{[]thirdparty.JiraTicket{ticket2, ticket3}, nil}
+	fallback = &mockSuggest{[]thirdparty.JiraTicket{ticket1}, nil}
+	altEndpoint = &mockSuggest{[]thirdparty.JiraTicket{ticket2, ticket3}, nil}
 
-	tickets, err = raceSuggesters(&fallback, &altEndpoint, &task.Task{})
+	tickets, err = raceSuggesters(fallback, altEndpoint, &task.Task{})
 	assert.Nil(err)
 	assert.Equal(tickets, []thirdparty.JiraTicket{ticket2, ticket3},
 		"expected alternative endpoint result to be returned")
 
-	fallback = mockSuggest{nil, errors.New("Error from fallback")}
-	altEndpoint = mockSuggest{nil, errors.New("Error from alternative endpoint")}
+	fallback = &mockSuggest{nil, errors.New("Error from fallback")}
+	altEndpoint = &mockSuggest{nil, errors.New("Error from alternative endpoint")}
 
-	tickets, err = raceSuggesters(&fallback, &altEndpoint, &task.Task{})
+	tickets, err = raceSuggesters(fallback, altEndpoint, &task.Task{})
 	assert.EqualError(err, "Error from fallback",
 		"expected error from fallback to be returned since both failed")
 	assert.Nil(tickets)
