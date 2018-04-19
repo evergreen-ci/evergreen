@@ -343,12 +343,14 @@ func (aes *altEndpointSuggest) Suggest(ctx context.Context, t *task.Task) ([]thi
 
 	req = req.WithContext(ctx)
 	resp, err := client.Do(req)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return nil, errors.Errorf("HTTP request returned unexpected status: %v", resp.Status)
