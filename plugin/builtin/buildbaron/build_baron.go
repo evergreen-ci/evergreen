@@ -273,19 +273,21 @@ type altEndpointSuggest struct {
 	bbProj bbProject
 }
 
+type altEndpointSuggestion struct {
+	TestName string `json:"test_name"`
+	Issues   []struct {
+		Key         string `json:"key"`
+		Summary     string `json:"summary"`
+		Status      string `json:"status"`
+		Resolution  string `json:"resolution"`
+		CreatedDate string `json:"created_date"`
+		UpdatedDate string `json:"updated_date"`
+	}
+}
+
 type altEndpointResponse struct {
-	Status      string `json:"status"`
-	Suggestions []struct {
-		TestName string `json:"test_name"`
-		Issues   []struct {
-			Key         string `json:"key"`
-			Summary     string `json:"summary"`
-			Status      string `json:"status"`
-			Resolution  string `json:"resolution"`
-			CreatedDate string `json:"created_date"`
-			UpdatedDate string `json:"updated_date"`
-		}
-	} `json:"suggestions"`
+	Status      string                  `json:"status"`
+	Suggestions []altEndpointSuggestion `json:"suggestions"`
 }
 
 // parseResponse converts the Build Baron tool's suggestion response into JIRA ticket results.
