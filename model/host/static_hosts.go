@@ -18,15 +18,14 @@ import (
 // If the distro is the empty string ("") then this operation affects
 // all distros.
 func MarkInactiveStaticHosts(activeStaticHosts []string, distro string) error {
-	if activeStaticHosts == nil {
+	if activeStaticHosts == nil || len(activeStaticHosts) == 0 {
 		return nil
 	}
 
 	query := bson.M{
-		IdKey: bson.M{
-			"$nin": activeStaticHosts,
-		},
+		IdKey:       bson.M{"$nin": activeStaticHosts},
 		ProviderKey: evergreen.HostTypeStatic,
+		StatusKey:   bson.M{"$ne": evergreen.HostQuarantined},
 	}
 
 	if distro != "" {
