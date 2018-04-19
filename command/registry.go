@@ -40,6 +40,7 @@ func init() {
 		"shell.track":           shellTrackFactory,
 		"subprocess.exec":       subprocessExecFactory,
 		"setup.initial":         initialSetupFactory,
+		"timeout.update":        timeoutUpdateFactory,
 	}
 
 	for name, factory := range cmds {
