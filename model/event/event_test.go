@@ -332,7 +332,7 @@ func (s *eventSuite) TestFindUnprocessedEvents() {
 	for i := range data {
 		s.NoError(db.Insert(AllLogCollection, data[i]))
 	}
-	events, err := Find(AllLogCollection, db.Query(UnprocessedEvents()))
+	events, err := FindUnprocessedEvents()
 	s.NoError(err)
 	s.Len(events, 1)
 

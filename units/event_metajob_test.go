@@ -116,8 +116,8 @@ func (s *eventMetaJobSuite) TestDegradedMode() {
 	job.Run(s.ctx)
 	s.NoError(job.Error())
 
-	out := []event.EventLogEntry{}
-	s.NoError(db.FindAllQ(event.AllLogCollection, db.Query(event.UnprocessedEvents()), &out))
+	out, err := event.FindUnprocessedEvents()
+	s.NoError(err)
 	s.Empty(out)
 }
 

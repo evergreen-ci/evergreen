@@ -60,7 +60,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 	defer j.MarkComplete()
 
 	msg := message.Fields{
-		"start_time": j.TimeInfo().Start.String(),
+		"start_time": j.TimeInfo().Start,
 	}
 
 	e, err := event.FindLastProcessedEvent()
@@ -69,7 +69,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 		return
 	}
 	if e != nil {
-		msg["last_processed_at"] = e.ProcessedAt.String()
+		msg["last_processed_at"] = e.ProcessedAt
 	}
 
 	nUnprocessed, err := event.CountUnprocessedEvents()
@@ -87,16 +87,7 @@ func (j *notificationsStatsCollector) Run(ctx context.Context) {
 
 	msg["pending_notifications_by_type"] = stats
 
-	j.AddError(ctx.Err())
 	if ctx.Err() == nil {
 		j.logger.Info(msg)
-
-	} else {
-		j.logger.Warning(message.WrapError(ctx.Err(), message.Fields{
-			"start_time": j.TimeInfo().Start.String(),
-			"message":    "job context cancelled",
-			"job":        notificationsStatsCollectorJobName,
-			"job_id":     j.ID(),
-		}))
 	}
 }

@@ -10,8 +10,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// UnprocessedEvents returns a bson.M query to fetch all unprocessed events
-func UnprocessedEvents() bson.M {
+// unprocessedEvents returns a bson.M query to fetch all unprocessed events
+func unprocessedEvents() bson.M {
 	return bson.M{
 		processedAtKey: bson.M{
 			"$eq": time.Time{},
@@ -33,6 +33,18 @@ func Find(coll string, query db.Q) ([]EventLogEntry, error) {
 	events := []EventLogEntry{}
 	err := db.FindAllQ(coll, query, &events)
 	return events, err
+}
+
+// FindUnprocessedEvents returns all unprocessed events in AllLogCollection.
+// Events are considered unprocessed if their "processed_at" time IsZero
+func FindUnprocessedEvents() ([]EventLogEntry, error) {
+	out := []EventLogEntry{}
+	err := db.FindAllQ(AllLogCollection, db.Query(unprocessedEvents()), &out)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fetch unprocssed events")
+	}
+
+	return out, nil
 }
 
 // CountSystemEvents returns the total number of system metrics events
@@ -82,7 +94,7 @@ func FindLastProcessedEvent() (*EventLogEntry, error) {
 }
 
 func CountUnprocessedEvents() (int, error) {
-	q := db.Query(UnprocessedEvents())
+	q := db.Query(unprocessedEvents())
 
 	n, err := db.CountQ(AllLogCollection, q)
 	if err != nil {
