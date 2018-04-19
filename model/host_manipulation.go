@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -36,6 +37,12 @@ func UpdateStaticHosts() error {
 		return catcher.Resolve()
 	}
 
+	grip.Info(message.Fields{
+		"op":     "all-static-host-update",
+		"hosts":  activeHosts,
+		"distro": "*",
+	})
+
 	return host.MarkInactiveStaticHosts(activeHosts, "")
 }
 
@@ -48,6 +55,12 @@ func UpdateStaticDistro(d distro.Distro) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	grip.Info(message.Fields{
+		"op":     "static-host-update",
+		"hosts":  hosts,
+		"distro": d.Id,
+	})
 
 	if d.Id == "" || len(hosts) == 0 {
 		return nil
